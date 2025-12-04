@@ -96,7 +96,7 @@ const Connections = () => {
   const columns = columnConfigurations['connections']
 
   const handleRefresh = (id) => {
-    fetch(`${hostnameV1}/refresh/${id}`, {
+    fetch(`${hostnameV2}/refresh/${id}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -251,7 +251,7 @@ const Connections = () => {
   const filteredConnections = useMemo(() => {
     let filtered = connections;
 
-    if (project !== "none" && project) {
+    if (project !== "none" && project !== "default" && project) {
       filtered = filtered.filter((conn) => conn.project === project);
     }
 

@@ -206,7 +206,7 @@ import { useAuth } from "../../../../context/AuthContext";
 const SupersetReport = ({ showModal, setShowModal, currentReportName, dashboardId }) => {
   const [isLoading, setIsLoading] = useState(false);
 
-  const {hostnameV1} = useAuth();
+  const {hostnameV1, token} = useAuth();
 
   const SUPERSET_URL = window._env_?.VITE_REPORTING_DASHBOARD_URL;
 
@@ -275,7 +275,9 @@ const SupersetReport = ({ showModal, setShowModal, currentReportName, dashboardI
       //   }
       // );
 
-      const response = await fetch(`${hostnameV1}/superset/fetchGuestToken?embed_id=${dashboardId}`);
+      const response = await fetch(`${hostnameV1}/superset/fetchGuestToken?embed_id=${dashboardId}`, {
+        headers: {'Authorization': `Bearer ${token}`}
+      });
       const data = await response.json();
 
       return data["token"] || "";

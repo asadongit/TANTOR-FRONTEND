@@ -161,7 +161,7 @@ export function TargetNode({ id, data }) {
     if (!targetConnection || !selectedBulkTables) return;
     try {
       const response = await fetch(
-        `${hostname}/connection-master-metadata/${targetConnection}/${selectedBulkTables}`,
+        `${hostname}/connection-master-metadata/${targetConnection}/${selectedBulkTables?.split(".")[1] || selectedBulkTables}`,
         {
           method: "GET",
           headers: {
@@ -175,9 +175,23 @@ export function TargetNode({ id, data }) {
         throw new Error(`HTTP error! status: ${metaDataResponse.status}`);
       }
 
-      let json = await response.json();
-      setBulkTableMetadata(json);
-      return json;
+      const json = await response.json();
+      console.log("JSON ===> ", json);
+
+      let result = json;
+
+      if (Array.isArray(json) && json.length > 0) {
+        result = json.map(j => ({
+          ...j,
+          table_name: `${j.table_schema}.${j.table_name}`
+        }));
+        
+        console.log("FORMATTED JSON ==> ", result);
+      }
+
+      setBulkTableMetadata(result);
+      return result;
+
     } catch (error) {
       console.error("Error fetching tables ", error);
     }
@@ -272,6 +286,7 @@ export function TargetNode({ id, data }) {
             part => part.partition_name === sourcePartition.partition_name
           );
   
+          console.log("MATCHED PARTITIONS ==> ", matchedPartition);
           if (matchedPartition) {
             saveBulkFiltersAndPartitions("target", sourceTable, targetTable, matchedPartition, null);
           }

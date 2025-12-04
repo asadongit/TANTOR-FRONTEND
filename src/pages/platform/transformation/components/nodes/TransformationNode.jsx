@@ -86,7 +86,7 @@ export const TransformationNode = ({ id, data }) => {
   }, [id, sourceColumns, isButtonEnabled, isDataReady]);
 
   return (
-    <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[250px] max-w-[280px] relative group">
+    <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[320px] max-w-[280px] relative group">
       <button
         onClick={() => window.deleteNode?.(id)}
         className="absolute top-1.5 right-2 p-1"

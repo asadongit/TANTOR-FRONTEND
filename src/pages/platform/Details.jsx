@@ -26,9 +26,10 @@ import DataTable from "../../components/DataTable";
 import { getActionConfigurations } from "../../components/actionsConfig";
 import columnConfigurations from "../../components/columnsConfig";
 import { useAuth } from "../../context/AuthContext";
+import { encrypt } from "../../utils/Crypto";
 
 const useDynamicData = (componentType) => {
-  
+
   const hookMap = {
     cdc: useCDCData,
     migration: useArchivalData,
@@ -80,9 +81,9 @@ const Details = () => {
     "metadata-archivals": "migration",
   };
 
-  
+
   const selectedType = cardType || componentType;
-  
+
   const { data = [], isLoading, isError, refetch } = useDynamicData(selectedType);
 
   const [page, setPage] = useState(1);
@@ -151,7 +152,8 @@ const processedData = useMemo(() => {
             {
               label:
                 componentType?.charAt(0).toUpperCase() + componentType.slice(1),
-              path: `/${componentType}`,
+              path: componentType === "metadata" ? `/details?${encodeURIComponent(
+                        encrypt("componentType=metadata&heading=metadata"))}` : `/${componentType}`,
             },
             { label: "Details", path: null },
           ].map((item, index) => (

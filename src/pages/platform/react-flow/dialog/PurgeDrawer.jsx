@@ -174,22 +174,14 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
 
         saveDropPartitions(
           nodeKey,
-          partition?.partition_name,
-          partition?.column_name,
-          partition?.high_value,
-          partition?.partition_type,
-          partition?.table_name
+          partition
         )
-      } else if (purgeNode === "Target node" && hasPartitions && dropPartitions.source.partitionName) {
+      } else if (purgeNode === "Target node" && hasPartitions && dropPartitions.source.partition_name) {
         const partition = sortedCurrentPartitions[0];
 
         saveDropPartitions(
           nodeKey,
-          partition?.partition_name,
-          partition?.column_name,
-          partition?.high_value,
-          partition?.partition_type,
-          partition?.table_name
+          partition
         )
       }
       saveFilter(nodeKey);
@@ -225,15 +217,16 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
     } else if (activeTab === "partition-tab") {
       if (purgeNode === "Source Node" && hasPartitions) {
         const partition = sortedCurrentPartitions[0];
+        console.log("PARTITION ==>> ", partition);
 
-        const partitionData = {
-          partition_name: partition?.partition_name,
-          column_name: partition?.column_name,
-          high_value: partition?.high_value,
-          partition_type: partition?.partition_type,
-          table_name: partition?.table_name
-        }
-        saveBulkFiltersAndPartitions(nodeKey, localTable?.source_table, null, partitionData, null)
+        // const partitionData = {
+        //   partition_name: partition?.partition_name,
+        //   column_name: partition?.column_name,
+        //   high_value: partition?.high_value,
+        //   partition_type: partition?.partition_type,
+        //   table_name: partition?.table_name
+        // }
+        saveBulkFiltersAndPartitions(nodeKey, localTable?.source_table, null, partition, null)
 
       } else if (purgeNode === "Target node" && hasPartitions) {
         const targetTable = localTable?.table_name || localTable?.source_table;

@@ -68,6 +68,9 @@ export const TargetNode = ({ id, data }) => {
   const hasRestoredEnableCountLogging = useRef(false);
   // Add a ref to track restoration for loadType
   const hasRestoredLoadType = useRef(false);
+  // Add state for surrogate population
+  const [surPopulation, setSurPopulation] = useState(false);
+  const hasRestoredSurPopulation = useRef(false);
 
   const connectionDropdownRef = useRef(null);
   const schemaDropdownRef = useRef(null);
@@ -1011,6 +1014,13 @@ export const TargetNode = ({ id, data }) => {
       hasRestoredEnableCountLogging.current = true;
     }
 
+    // Restore surrogate population value
+    if (typeof data.surPopulation === 'boolean' && !hasRestoredSurPopulation.current) {
+      setSurPopulation(data.surPopulation);
+      hasRestoredSurPopulation.current = true;
+      hasUpdated = true;
+    }
+
     // restore SCD selections
     if (data.scdConfig && JSON.stringify(data.scdConfig) !== JSON.stringify(scdConfig)) {
       setScdConfig({
@@ -1087,6 +1097,7 @@ export const TargetNode = ({ id, data }) => {
     data.loadStrategy, // Keep this but now protected by hasRestoredLoadType ref
     data.selectedSourceId,
     data.enableCountLogging, // Keep this dependency for proper restoration
+    data.surPopulation, // Add to dependency array
     data.scdConfig
   ]);
 
@@ -1271,6 +1282,7 @@ export const TargetNode = ({ id, data }) => {
       preProcedures: enrichedPreProcedures,
       postProcedures: enrichedPostProcedures,
       enableCountLogging: enableCountLogging,
+      surPopulation: surPopulation, // Add surrogate population to data changes
       // FIXED: Always include validated SCD config in data changes
       scdConfig: {
         primaryKeys: Array.isArray(scdConfig.primaryKeys) ? scdConfig.primaryKeys : [],
@@ -1284,6 +1296,7 @@ export const TargetNode = ({ id, data }) => {
     tables, alias, columnMapping, targetMapping, selectedSourceForMapping,
     selectedObjectType, selectedPreProcedures, selectedPostProcedures, storedParameterMappings,
     enableCountLogging,
+    surPopulation, // Add to dependency array
     // FIXED: Ensure all SCD config fields trigger updates
     scdConfig,
     JSON.stringify(scdConfig.primaryKeys),
@@ -1297,7 +1310,7 @@ export const TargetNode = ({ id, data }) => {
   const tableDropdownClasses = "w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8";
 
   return (
-    <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[280px] max-w-[320px] relative group">
+    <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[320px] max-w-[320px] relative group">
       <button
         onClick={() => window.deleteNode?.(id)}
         className="absolute top-1.5 right-2 p-1"
@@ -1665,6 +1678,52 @@ export const TargetNode = ({ id, data }) => {
                         <span>Enable Count Logging</span>
                       </label>
                     </div>
+
+                    {/* Add Surrogate Population checkbox for SCD1 */}
+                    {loadType === "SCD1" && (
+                      <div className="mt-2">
+                        <label className="flex items-center text-xs font-semibold text-black">
+                          <input
+                            type="checkbox"
+                            className="mr-1.5 h-3.5 w-3.5"
+                            checked={surPopulation}
+                            onChange={(e) => {
+                              const newValue = e.target.checked;
+                              setSurPopulation(newValue);
+
+                              // Update the data through onDataChange
+                              if (data.onDataChange) {
+                                data.onDataChange({ surPopulation: newValue });
+                              }
+
+                              // Update the actual node data in window.allNodes if available
+                              if (window.allNodes) {
+                                const nodeIndex = window.allNodes.findIndex(n => n.id === id);
+                                if (nodeIndex !== -1) {
+                                  window.allNodes[nodeIndex].data.surPopulation = newValue;
+                                }
+                              }
+
+                              // Update context immediately for JSON generation
+                              dispatch({
+                                type: ACTION_TYPES.UPDATE_TARGET,
+                                payload: {
+                                  id: id,
+                                  data: { surPopulation: newValue }
+                                }
+                              });
+
+                              // Trigger sidebar update
+                              window.allNodesLastUpdate = Date.now();
+                              if (window.triggerSidebarUpdate) {
+                                window.triggerSidebarUpdate();
+                              }
+                            }}
+                          />
+                          <span>Surrogate Population</span>
+                        </label>
+                      </div>
+                    )}
                   </>
                 )}
                 {selectedTable && data.connectedSources > 0 && (
@@ -1861,6 +1920,7 @@ export const TargetNode = ({ id, data }) => {
                             }}
                             onClick={() => setPostProcedureDropdownOpen(prev => ({ ...prev, [procedureItem.id]: !prev[procedureItem.id] }))}
                             title={procedureItem.procedure ? procedureItem.procedure.procedure_name : 'Select post procedure'}
+
                           >
                             <span
                               className="truncate block"

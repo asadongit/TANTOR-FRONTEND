@@ -79,18 +79,18 @@ const Project = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-  
+
     setFormData((prev) => {
       if (name === "assigned_users") {
         return {
           ...prev,
           assigned_users: {
             ...prev.assigned_users,
-            assigned_users: value,  
+            assigned_users: value,
           },
         };
       }
-  
+
       return {
         ...prev,
         [name]: value,
@@ -104,7 +104,7 @@ const Project = () => {
       });
     }
   };
-  
+
   const validateForm = () => {
     let formErrors = {};
     let isValid = true;
@@ -112,7 +112,7 @@ const Project = () => {
     if (!formData.project.trim()) {
       formErrors.project = "Project name is required";
       isValid = false;
-    } 
+    }
 
     // if (!formData.description.trim()) {
     //   formErrors.description = "Description is required";
@@ -179,7 +179,7 @@ const Project = () => {
       setIsSubmitting(false);
     }
   };
-  
+
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
@@ -205,7 +205,7 @@ const Project = () => {
     "CDC": [""],
     "Federation": [""],
   };
- 
+
   const cards = [
     {
       icon: "material-symbols:database-upload-outline",
@@ -228,13 +228,13 @@ const Project = () => {
       title: "CDC",
       count: cardData?.cdc || 0,
     },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#16ABC2] bg-opacity-25",
-      iconcolor: "text-cyan-700",
-      title: "Federation",
-      count: cardData?.federation || 0,
-    },
+    // {
+    //   icon: "material-symbols:tab-group-outline",
+    //   bgcolor: "bg-[#16ABC2] bg-opacity-25",
+    //   iconcolor: "text-cyan-700",
+    //   title: "Federation",
+    //   count: cardData?.federation || 0,
+    // },
     {
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#16ABC2] bg-opacity-25",
@@ -256,7 +256,7 @@ const Project = () => {
       onClick: handleDeleteClick,
     },
   ];
-  
+
   const columns = [
     { key: "project", label: "Project Name" },
     { key: "created_by", label: "Created By" },
@@ -268,7 +268,7 @@ const Project = () => {
     { key: "cdc", label: "CDC" },
     { label: "Action", sortable: false },
   ];
-  
+
   const handleCardClick = (card) => {
     const url = `/componentType=project&cardType=${card.title}&heading=${card.title}`;
     const encryptedUrl = encodeURIComponent(encrypt(url));
@@ -305,7 +305,7 @@ const Project = () => {
       <div className="flex gap-2 mb-6 items-center justify-between">
         <h1 className="text-2xl font-semibold">Project</h1>
         <div className="flex items-center">
-       
+
           <button
             type="button"
             onClick={()=>navigate(`/details?${encodeURIComponent(encrypt("componentType=project&heading=project"))}`)}
@@ -330,12 +330,12 @@ const Project = () => {
         </div>
       </div>
 
-   
 
-    
+
+
       <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading}/>
 
-     
+
         <DataTable
           columns={columns}
           data={projectData}
@@ -401,7 +401,7 @@ const Project = () => {
                   {/* <div>
                     <div className="relative">
                       <label className="block text-sm text-black mb-1.5">
-                        Sub Category 
+                        Sub Category
                       </label>
                       <select
                         name="subCategory"
@@ -410,7 +410,7 @@ const Project = () => {
                         className={`w-full p-2.5 border ${errors.subCategory ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white`}
                       >
                         <option value="Select">Select</option>
-                        {formData.category && formData.category !== "Select" && 
+                        {formData.category && formData.category !== "Select" &&
                           subCategories[formData.category]?.map(sub => (
                             <option key={sub} value={sub}>{sub}</option>
                           ))
@@ -455,7 +455,7 @@ const Project = () => {
                   {/* <div>
                     <div className="relative">
                       <label className="block text-sm text-black mb-1.5">
-                        Category 
+                        Category
                       </label>
                       <select
                         name="category"
