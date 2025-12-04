@@ -320,17 +320,18 @@ export function SourceNode({ id, data }) {
           console.log("Comparing sourcePartitionTable with sourceTableName", cleanSourcePartitionTable, sourceTableName);
 
           if (sourceTableName !== cleanSourcePartitionTable) {
-            saveDropPartitions("source");
-            console.log("REMOVED SOURCE PARTITIONS");
+            setDropPartitions({source: {}, target: {}});
+            console.log("REMOVED SOURCE and target PARTITIONS");
           } else {
             console.log("Source partition table matches, no action needed");
           }
         } else {
           console.log("sourcePartitionTable is empty");
+          setDropPartitions({source: {}, target: {}});
         }
-
-        toast.success("Table updated successfully");
       }
+
+      toast.success("Table updated successfully");
 }
 
   };

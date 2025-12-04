@@ -1172,7 +1172,7 @@ export function TargetNode({ id, data }) {
                                         {targetTable}
                                       </label>
                                     </div>
-                                    <button
+                                    {/* <button
                                       onClick={async () => {
                                         const table =
                                           await fetchMetadataAccToConnectionAndBulkTable(
@@ -1188,7 +1188,7 @@ export function TargetNode({ id, data }) {
                                       className="text-purple-600 hover:text-purple-700 pl-2"
                                     >
                                       <Pencil className="w-4 h-4" />
-                                    </button>
+                                    </button> */}
                                   </div>
                                 )
                               )}

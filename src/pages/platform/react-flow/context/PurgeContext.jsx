@@ -153,6 +153,7 @@ export const PurgeContextProvider = ({ children }) => {
       saveSourceData,
       targetData,
       saveTargetData,
+      setDropPartitions
     }}
   >
     {children}
