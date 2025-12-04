@@ -47,9 +47,10 @@ function PurgeCanvas() {
   const location = useLocation();
   const ui_json = location.state?.ui_json;
 
+
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const {isVisibleFooter, handleIsVisibleFooter, handleDefineNodeName, handleDefineNodeDesc, handleSourceConnectionName, handleSourceSchemaName, handleSelectedTables, handleTargetConnectionName} = useStateContext("");
+  const {isVisibleFooter, handleIsVisibleFooter} = useStateContext("");
 
   // Pre-populate nodes from ui_json on mount (edit flow)
   useEffect(() => {
@@ -64,10 +65,11 @@ function PurgeCanvas() {
           id: 'define',
           type: 'define',
           position: ui_json.defineNode.position || { x: 100, y },
-          data: { ...ui_json.defineNode },
+          data: { ...ui_json.defineNode, isEdit: true },
         });
-        if (ui_json.defineNode.name) handleDefineNodeName(ui_json.defineNode.name);
-        if (ui_json.defineNode.desc) handleDefineNodeDesc(ui_json.defineNode.desc);
+        // Removed manual context updates; nodes handle this via data prop
+        // if (ui_json.defineNode.name) handleDefineNodeName(ui_json.defineNode.name);
+        // if (ui_json.defineNode.desc) handleDefineNodeDesc(ui_json.defineNode.desc);
         y += 120;
       }
       // Source node
@@ -78,10 +80,10 @@ function PurgeCanvas() {
           position: ui_json.sourceNode.position || { x: 350, y: 50 },
           data: { ...ui_json.sourceNode },
         });
-        // Pre-populate context for Source node
-        if (ui_json.sourceNode.connectionName) handleSourceConnectionName(ui_json.sourceNode.connectionName);
-        if (ui_json.sourceNode.schemaName) handleSourceSchemaName(ui_json.sourceNode.schemaName);
-        if (ui_json.sourceNode.selectedTables) handleSelectedTables(ui_json.sourceNode.selectedTables);
+        // Removed manual context updates; nodes handle this via data prop
+        // if (ui_json.sourceNode.connectionName) handleSourceConnectionName(ui_json.sourceNode.connectionName);
+        // if (ui_json.sourceNode.schemaName) handleSourceSchemaName(ui_json.sourceNode.schemaName);
+        // if (ui_json.sourceNode.selectedTables) handleSelectedTables(ui_json.sourceNode.selectedTables);
         y += 120;
       }
       // Target node
@@ -92,8 +94,8 @@ function PurgeCanvas() {
           position: ui_json.targetNode.position || { x: 600, y: 50 },
           data: { ...ui_json.targetNode },
         });
-        // Pre-populate context for Target node
-        if (ui_json.targetNode.connectionName) handleTargetConnectionName(ui_json.targetNode.connectionName);
+        // Removed manual context updates; nodes handle this via data prop
+        // if (ui_json.targetNode.connectionName) handleTargetConnectionName(ui_json.targetNode.connectionName);
         y += 120;
       }
       // Scheduler node (if present)
@@ -123,7 +125,7 @@ function PurgeCanvas() {
         }
       }, 300);
     }
-  }, [ui_json, setNodes, setEdges, handleDefineNodeName, handleDefineNodeDesc, handleSourceConnectionName, handleSourceSchemaName, handleSelectedTables, handleTargetConnectionName])
+  }, [ui_json, setNodes, setEdges, handleIsVisibleFooter])
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
@@ -150,7 +152,7 @@ function PurgeCanvas() {
       id : getId(),
       type,
       position,
-      data : { 
+      data : {
         lable : type,
         tables : []
       }
@@ -208,7 +210,7 @@ function PurgeCanvas() {
             {
               duration: 2000,
               position: "top-center",
-              icon: "✅", 
+              icon: "✅",
             }
           );
           return "";

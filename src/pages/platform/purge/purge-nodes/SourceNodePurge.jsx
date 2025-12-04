@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { Upload, X, Search, Pencil } from "lucide-react";
@@ -39,8 +39,9 @@ export function SourceNode({ id, data }) {
     handleSourceSelectedTable,
     handleSourceBulkSelectedObjects,
   } = useStateContext("");
-  const { saveSourceData } = usePurgeContext("");
-  const [selectedTables, setSelectedTables] = useState("");
+  const { saveSourceData, setFilters, setDropPartitions } = usePurgeContext("");
+  const [selectedTables, setSelectedTables] = useState([]);
+  const isInitialized = useRef(false);
 
   let connectionsData;
   let schemacount;
@@ -319,36 +320,72 @@ export function SourceNode({ id, data }) {
     return sortedPartitions[0]?.partition_name || null;
   };
 
+  useEffect(() => {
+    if (tables.length > 0 && selectedTables.length > 0 && selectedPurgeScope === 'subset') {
+      const tableName = selectedTables[0];
+      const tableObj = tables.find(t => t.table_name === tableName);
+
+      if (tableObj) {
+        handleSourceSelectedTable(tableObj);
+        handleFirstSourcePartitionName(getFirstPartitionNameFromTable(tableObj));
+        handleSelectedDataSetName([tableName]);
+      }
+    }
+  }, [tables, selectedTables, selectedPurgeScope]);
+
   // Pre-populate state from data prop on mount (edit mode)
   useEffect(() => {
-    if (data) {
+    if (data && !isInitialized.current) {
+      isInitialized.current = true;
+
       if (data.connectionName) setSelectedConnection(data.connectionName);
       if (data.schemaName) {
         setSelectedSchema(data.schemaName);
         fetchschema(data.connectionName);
       }
-      // Fix: select tableName if present in data
-      if (data.tableName) setSelectedTables([data.tableName]);
+
+      // Fix: Handle tableName as array or string
+      if (data.tableName) {
+        setSelectedTables(Array.isArray(data.tableName) ? data.tableName : [data.tableName]);
+      } else if (data.selectedTables) {
+        setSelectedTables(data.selectedTables);
+      }
+
       if (data.selectedItems) setSelectedItems(data.selectedItems);
       if (data.selectedBulkSourceTables) setSelectedBulkSourceTables(data.selectedBulkSourceTables);
-      if (data.tableName) setTables(data.tableName);
+
+      // Removed incorrect setTables(data.tableName) which was breaking the table list
+
       if (data.schemas) setSchema(data.schemas);
       if (data.searchTerm) setSearchTerm(data.searchTerm);
+
       if (data.scope) setSelectedPurgeScope(data.scope);
       else if (data.selectedPurgeScope) setSelectedPurgeScope(data.selectedPurgeScope);
+      else if (data.purge_scope) setSelectedPurgeScope(data.purge_scope);
+
       if (data.connectionName && data.schemaName) {
         fetchTables(data.connectionName, data.schemaName);
+        if (data.scope === 'bulk' || data.selectedPurgeScope === 'bulk') {
+             fetchMetadata(data.connectionName, data.schemaName);
+        }
       }
-      // Add more fields as needed for full pre-population
+
+      // Restore filters and partitions
+      if (data.filters && setFilters) {
+        setFilters(prev => ({ ...prev, source: data.filters }));
+      }
+      if (data.dropPartitions && setDropPartitions) {
+        setDropPartitions(prev => ({ ...prev, source: data.dropPartitions }));
+      }
     }
-  }, [data]);
+  }, [data, fetchschema, fetchTables, fetchMetadata, setFilters, setDropPartitions]);
 
   return (
     <div
-      className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] 
-                             w-fit min-w-min max-w-[90vw] 
-                             relative group 
-                             grid grid-cols-[repeat(auto-fit,minmax(min-content,1fr))] 
+      className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB]
+                             w-fit min-w-min max-w-[90vw]
+                             relative group
+                             grid grid-cols-[repeat(auto-fit,minmax(min-content,1fr))]
                              "
     >
       <button
@@ -441,6 +478,7 @@ export function SourceNode({ id, data }) {
               id="table-bulk"
               name="table"
               value="bulk"
+              checked={selectedPurgeScope === "bulk"}
               onChange={(e) => {
                 const scopeName = e.target.value;
                 setSelectedPurgeScope(scopeName);
@@ -458,6 +496,7 @@ export function SourceNode({ id, data }) {
               id="table-subset"
               name="table"
               value="subset"
+              checked={selectedPurgeScope === "subset"}
               onChange={(e) => {
                 const scopeName = e.target.value;
                 setSelectedPurgeScope(scopeName);
