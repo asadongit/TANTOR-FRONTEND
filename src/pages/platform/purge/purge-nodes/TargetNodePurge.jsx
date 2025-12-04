@@ -53,7 +53,8 @@ export function TargetNode({ id, data }) {
     saveBulkFiltersAndPartitions,
     setFilters,
     setDropPartitions,
-    setBulkFiltersAndPartitions
+    setBulkFiltersAndPartitions,
+    saveDropPartitions
   } = usePurgeContext("");
   const isInitialized = useRef(false);
 
@@ -164,8 +165,21 @@ export function TargetNode({ id, data }) {
   ) => {
     if (!targetConnection || !selectedBulkTables) return;
     try {
+      let bulkTableName = null;
+
+      if (Array.isArray(selectedBulkTables)){
+        if(selectedBulkTables[0].split(".").length > 1){
+          bulkTableName = selectedBulkTables[0].split(".")[1]
+        }
+        else{
+          bulkTableName = selectedBulkTables[0];
+        }
+      }else{
+        bulkTableName = selectedBulkTables;
+      }
+
       const response = await fetch(
-        `${hostname}/connection-master-metadata/${targetConnection}/${selectedBulkTables?.split(".")[1] || selectedBulkTables}`,
+        `${hostname}/connection-master-metadata/${targetConnection}/${bulkTableName}`,
         {
           method: "GET",
           headers: {
@@ -649,6 +663,44 @@ export function TargetNode({ id, data }) {
 
     //   savebulkTableSelection(checkedBulkTables);
     // }
+
+    // NEW CODE
+    if(selectedScope === "subset"){
+      const sourcePartitions = dropPartitions?.source;
+      
+      const sourceTable = sourceNode.selectedTables[0];
+      console.log("sourceTable ==> ", sourceTable);
+
+      if(sourcePartitions && sourcePartitions?.partition_name){
+        let targetTableMetadata = await fetchMetadataAccToConnectionAndBulkTable(targetConnection, targetNode.selectedTables);
+        targetTableMetadata = Array.isArray(targetTableMetadata) ? targetTableMetadata[0] : targetTableMetadata;
+        
+        const targetPartitions = targetTableMetadata?.partition_json || [];
+        
+        if(targetPartitions.length === 0){
+          toast.error(`No partitions available for target table: "${targetNode.selectedTables}"`)
+          return;
+        }
+
+        // Selecting partition by partition name
+        console.log("source partition ==> ", sourcePartitions);
+        console.log("targetPartitions ==> ", targetPartitions);
+        
+        const selectedTargetPartition = targetPartitions.find(p => p.partition_name === sourcePartitions.partition_name);
+        
+        console.log("selectedTargetPartition ==> ", selectedTargetPartition);
+        
+        if(!selectedTargetPartition){
+          toast.error(`Partition ${sourcePartitions.partition_name} doesn't exist for the target table "${targetNode.selectedTables}".`);
+          return;
+        }
+        saveDropPartitions("target", selectedTargetPartition);
+      }else{
+        console.log("Dropping target partitions since source partition is empty.")
+        saveDropPartitions("target");
+      }
+    }
+    
 
     try {
       const apiPromise = window.handleConnectNode?.(id);
@@ -1205,7 +1257,7 @@ export function TargetNode({ id, data }) {
                           {table.table_name}
                         </label>
                       </div>
-                      <button
+                      {/* <button
                         onClick={() => {
                           handlePurgeNode("Target node");
                           openDrawer(id, table);
@@ -1213,7 +1265,7 @@ export function TargetNode({ id, data }) {
                         className="text-purple-600 hover:text-purple-700"
                       >
                         <Pencil className="w-4 h-4" />
-                      </button>
+                      </button> */}
                     </div>
                   ))}
               </>

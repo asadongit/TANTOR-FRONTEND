@@ -39,7 +39,7 @@ export function SourceNode({ id, data }) {
     handleSourceSelectedTable,
     handleSourceBulkSelectedObjects,
   } = useStateContext("");
-  const { saveSourceData, setFilters, setDropPartitions } = usePurgeContext("");
+  const { saveSourceData, setFilters, setDropPartitions, dropPartitions, saveDropPartitions } = usePurgeContext("");
   const [selectedTables, setSelectedTables] = useState([]);
   const isInitialized = useRef(false);
 
@@ -304,6 +304,17 @@ export function SourceNode({ id, data }) {
       return;
     } else {
       saveNode();
+
+      // NEW CODE Remove partitions if source tablename doesn't match source partition table name
+      if (selectedPurgeScope === "subset") {
+      const { table_name: sourcePartitionTable } = dropPartitions?.source || {};
+      const sourceTableName = selectedTables[0];
+
+      if (sourcePartitionTable && sourceTableName !== sourcePartitionTable.split(".")[1]){
+        saveDropPartitions("source");
+        console.log("REMOVED SOURCE PARTITIONS");
+      }
+    }
       toast.success("Table updated successfully");
     }
   };
