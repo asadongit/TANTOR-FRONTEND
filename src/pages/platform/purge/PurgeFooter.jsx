@@ -19,7 +19,7 @@ const PurgeFooter = ({ onCancel }) => {
 
   const {sourceData, targetData, filters, dropPartitions, selectedBulkTargetTablesPayload, bulkFiltersAndPartitions} = usePurgeContext("");
 
-  const { defineNodeName, defineNodeDesc, selectedScope } = useStateContext("");  
+  const { defineNodeName, defineNodeDesc, selectedScope } = useStateContext("");
 
   const sourceList = Array.isArray(bulkFiltersAndPartitions?.source)
   ? bulkFiltersAndPartitions.source
@@ -65,7 +65,7 @@ const PurgeFooter = ({ onCancel }) => {
     const hasTargetPartition =
       targetMatch?.target_partition &&
       Object.keys(targetMatch.target_partition).length > 0;
-    
+
     if (isDropPartitionsSelected && hasTargetPartition) {
       entry.source_partition = sourceMatch?.source_partition || {};
     } else {
@@ -86,6 +86,54 @@ const PurgeFooter = ({ onCancel }) => {
     return formattedDate;
   }
 
+  const buildUiJson = () => {
+    let flowGraph = {};
+    if (window.getPurgeFlowGraph) {
+      flowGraph = window.getPurgeFlowGraph();
+    }
+
+    const getNodePosition = (id) => {
+      const node = flowGraph?.nodes?.find((n) => n.id === id);
+      return node ? node.position : undefined;
+    };
+
+    const hasScheduleNode = flowGraph?.nodes?.some((n) => n.id === "schedule");
+
+    const json = {
+      defineNode: {
+        name: defineNodeName,
+        desc: defineNodeDesc,
+        position: getNodePosition("define"),
+      },
+      sourceNode: {
+        ...sourceData,
+        filters: filters?.source,
+        dropPartitions: dropPartitions?.source,
+        scope: selectedScope,
+        position: getNodePosition("source"),
+      },
+      targetNode: {
+        ...targetData,
+        filters: filters?.target,
+        dropPartitions: dropPartitions?.target,
+        scope: selectedScope,
+        position: getNodePosition("target"),
+      },
+      bulk: {
+        selectedBulkTargetTablesPayload,
+        bulkFiltersAndPartitions,
+      },
+    };
+
+    if (hasScheduleNode) {
+      json.scheduleNode = {
+        position: getNodePosition("schedule"),
+      };
+    }
+
+    return json;
+  };
+
   const buildPurgeSubsetSavePayload = () => {
     const isValidDropPartition = (partition) => {
       return partition &&
@@ -97,30 +145,7 @@ const PurgeFooter = ({ onCancel }) => {
     };
 
     // Collect all node UI state for ui_json
-    // For full React Flow graph, include all nodes and edges with their data and positions
-    const ui_json = {
-      defineNode: {
-        name: defineNodeName,
-        desc: defineNodeDesc,
-      },
-      sourceNode: {
-        ...sourceData,
-        filters: filters?.source,
-        dropPartitions: dropPartitions?.source,
-        scope: selectedScope, // Add selected scope
-      },
-      targetNode: {
-        ...targetData,
-        filters: filters?.target,
-        dropPartitions: dropPartitions?.target,
-        scope: selectedScope, // Add selected scope
-      },
-      bulk: {
-        selectedBulkTargetTablesPayload,
-        bulkFiltersAndPartitions,
-      },
-      // Add more node details as needed
-    };
+    const ui_json = buildUiJson();
 
     return {
       created_by: decodedToken.preferred_username,
@@ -199,7 +224,8 @@ const PurgeFooter = ({ onCancel }) => {
         //target_conn_type: targetData.connectionType,
         source_schema:sourceData.schemaName,
         target_schema:targetData.schemaName,
-        purge_list: purgeList
+        purge_list: purgeList,
+        ui_json: buildUiJson()
     }
   }
 
@@ -217,7 +243,7 @@ const PurgeFooter = ({ onCancel }) => {
       if (!res.ok) throw new Error('Failed to post data');
 
       const data = await res.json();
-      toast.success("Purge fow submitted successfully!", 
+      toast.success("Purge fow submitted successfully!",
         {
           duration: 2000,
           position: "top-right",
@@ -246,7 +272,7 @@ const PurgeFooter = ({ onCancel }) => {
       if (!res.ok) throw new Error('Failed to post data');
 
       const data = await res.json();
-      toast.success("Purge fow submitted successfully!", 
+      toast.success("Purge fow submitted successfully!",
         {
           duration: 2000,
           position: "top-right",
@@ -346,7 +372,7 @@ const PurgeFooter = ({ onCancel }) => {
                   No
                 </button>
                 <button
-                  onClick={() => 
+                  onClick={() =>
                   {
                     //createPurge()
                     handleCreatePurge();

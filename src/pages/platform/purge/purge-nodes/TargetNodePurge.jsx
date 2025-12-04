@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { CloudCog, Pencil, Search, Upload, X } from "lucide-react";
@@ -51,7 +51,12 @@ export function TargetNode({ id, data }) {
     sourceData,
     saveSelectedBulkTargetTablesPayload,
     saveBulkFiltersAndPartitions,
+    setFilters,
+    setDropPartitions,
+    setBulkFiltersAndPartitions,
+    saveDropPartitions
   } = usePurgeContext("");
+  const isInitialized = useRef(false);
 
   let connectionsData;
   let schemadetails;
@@ -160,8 +165,21 @@ export function TargetNode({ id, data }) {
   ) => {
     if (!targetConnection || !selectedBulkTables) return;
     try {
+      let bulkTableName = null;
+
+      if (Array.isArray(selectedBulkTables)){
+        if(selectedBulkTables[0].split(".").length > 1){
+          bulkTableName = selectedBulkTables[0].split(".")[1]
+        }
+        else{
+          bulkTableName = selectedBulkTables[0];
+        }
+      }else{
+        bulkTableName = selectedBulkTables;
+      }
+
       const response = await fetch(
-        `${hostname}/connection-master-metadata/${targetConnection}/${selectedBulkTables?.split(".")[1] || selectedBulkTables}`,
+        `${hostname}/connection-master-metadata/${targetConnection}/${bulkTableName}`,
         {
           method: "GET",
           headers: {
@@ -185,7 +203,7 @@ export function TargetNode({ id, data }) {
           ...j,
           table_name: `${j.table_schema}.${j.table_name}`
         }));
-        
+
         console.log("FORMATTED JSON ==> ", result);
       }
 
@@ -262,30 +280,30 @@ export function TargetNode({ id, data }) {
 
       return partitions;
     };
-  
+
     for (const sourceItem of bulkFiltersAndPartitions?.source || []) {
       const sourceTable = sourceItem.source_table;
       const sourcePartition = sourceItem.source_partition;
-  
+
       if (!sourcePartition) continue;
-  
+
       const checkedItem = checkedBulkTables?.find(item => item[sourceTable] !== undefined);
       if (!checkedItem) continue;
-  
+
       const targetTables = checkedItem.target_tables;
-  
+
       for (const [targetTable, isSelected] of Object.entries(targetTables)) {
 
         if (!isSelected) continue;
 
         const targetPartitionsData = await checkTargetPartitionExists(targetTable);
         const targetPartitionExists = Array.isArray(targetPartitionsData) && targetPartitionsData.length > 0;
-  
+
         if (targetPartitionExists) {
           const matchedPartition = targetPartitionsData?.find(
             part => part.partition_name === sourcePartition.partition_name
           );
-  
+
           console.log("MATCHED PARTITIONS ==> ", matchedPartition);
           if (matchedPartition) {
             saveBulkFiltersAndPartitions("target", sourceTable, targetTable, matchedPartition, null);
@@ -294,7 +312,7 @@ export function TargetNode({ id, data }) {
       }
     }
   };
-  
+
 
   const filterMetaData = metadata.filter((targetTable) =>
     targetTable.target_table
@@ -405,7 +423,9 @@ export function TargetNode({ id, data }) {
 
   // Pre-populate state from data prop on mount (edit mode)
   useEffect(() => {
-    if (data) {
+    if (data && !isInitialized.current) {
+      isInitialized.current = true;
+
       if (data.connectionName) setTargetConnection(data.connectionName);
       if (data.schemaName) {
         setSelectedSchema(data.schemaName);
@@ -422,8 +442,26 @@ export function TargetNode({ id, data }) {
       fetchTables(data.connectionName, data.selectedSchema);
     }
     // Add more fields as needed for full pre-population
+
+    // Restore filters and partitions
+    if (data.filters && setFilters) {
+      setFilters(prev => ({ ...prev, target: data.filters }));
+    }
+    if (data.dropPartitions && setDropPartitions) {
+      setDropPartitions(prev => ({ ...prev, target: data.dropPartitions }));
+    }
+
+    // Restore Bulk Data
+    if (data.bulk) {
+      if (data.bulk.selectedBulkTargetTablesPayload && saveSelectedBulkTargetTablesPayload) {
+          saveSelectedBulkTargetTablesPayload(data.bulk.selectedBulkTargetTablesPayload);
+      }
+      if (data.bulk.bulkFiltersAndPartitions && setBulkFiltersAndPartitions) {
+          setBulkFiltersAndPartitions(data.bulk.bulkFiltersAndPartitions);
+      }
+    }
   }
-}, [data, handleTargetConnectionName]);
+}, [data, handleTargetConnectionName, setFilters, setDropPartitions, saveSelectedBulkTargetTablesPayload, setBulkFiltersAndPartitions, fetchSchema, fetchTables]);
 
   const handleTableSelection = (tableName) => {
     if (selectedScope === "subset") {
@@ -626,6 +664,44 @@ export function TargetNode({ id, data }) {
     //   savebulkTableSelection(checkedBulkTables);
     // }
 
+    // NEW CODE
+    if(selectedScope === "subset"){
+      const sourcePartitions = dropPartitions?.source;
+      
+      const sourceTable = sourceNode.selectedTables[0];
+      console.log("sourceTable ==> ", sourceTable);
+
+      if(sourcePartitions && sourcePartitions?.partition_name){
+        let targetTableMetadata = await fetchMetadataAccToConnectionAndBulkTable(targetConnection, targetNode.selectedTables);
+        targetTableMetadata = Array.isArray(targetTableMetadata) ? targetTableMetadata[0] : targetTableMetadata;
+        
+        const targetPartitions = targetTableMetadata?.partition_json || [];
+        
+        if(targetPartitions.length === 0){
+          toast.error(`No partitions available for target table: "${targetNode.selectedTables}"`)
+          return;
+        }
+
+        // Selecting partition by partition name
+        console.log("source partition ==> ", sourcePartitions);
+        console.log("targetPartitions ==> ", targetPartitions);
+        
+        const selectedTargetPartition = targetPartitions.find(p => p.partition_name === sourcePartitions.partition_name);
+        
+        console.log("selectedTargetPartition ==> ", selectedTargetPartition);
+        
+        if(!selectedTargetPartition){
+          toast.error(`Partition ${sourcePartitions.partition_name} doesn't exist for the target table "${targetNode.selectedTables}".`);
+          return;
+        }
+        saveDropPartitions("target", selectedTargetPartition);
+      }else{
+        console.log("Dropping target partitions since source partition is empty.")
+        saveDropPartitions("target");
+      }
+    }
+    
+
     try {
       const apiPromise = window.handleConnectNode?.(id);
 
@@ -705,11 +781,7 @@ export function TargetNode({ id, data }) {
     toggleSourceTableChecked(source_table_name);
   };
 
-  const handleTargetTableOnChange = (
-    e,
-    source_table_name,
-    target_table_name
-  ) => {
+  const handleTargetTableOnChange = (e, source_table_name, target_table_name) => {
     toggleTargetTableChecked(source_table_name, target_table_name);
 
     // Check/uncheck source based on target tables
@@ -741,10 +813,10 @@ export function TargetNode({ id, data }) {
 
   return (
     <div
-      className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] 
-                             w-fit min-w-min max-w-[90vw] 
-                             relative group 
-                             grid grid-cols-[repeat(auto-fit,minmax(min-content,1fr))] 
+      className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB]
+                             w-fit min-w-min max-w-[90vw]
+                             relative group
+                             grid grid-cols-[repeat(auto-fit,minmax(min-content,1fr))]
                              "
     >
       <button
@@ -1100,7 +1172,7 @@ export function TargetNode({ id, data }) {
                                         {targetTable}
                                       </label>
                                     </div>
-                                    <button
+                                    {/* <button
                                       onClick={async () => {
                                         const table =
                                           await fetchMetadataAccToConnectionAndBulkTable(
@@ -1116,7 +1188,7 @@ export function TargetNode({ id, data }) {
                                       className="text-purple-600 hover:text-purple-700 pl-2"
                                     >
                                       <Pencil className="w-4 h-4" />
-                                    </button>
+                                    </button> */}
                                   </div>
                                 )
                               )}
@@ -1185,7 +1257,7 @@ export function TargetNode({ id, data }) {
                           {table.table_name}
                         </label>
                       </div>
-                      <button
+                      {/* <button
                         onClick={() => {
                           handlePurgeNode("Target node");
                           openDrawer(id, table);
@@ -1193,7 +1265,7 @@ export function TargetNode({ id, data }) {
                         className="text-purple-600 hover:text-purple-700"
                       >
                         <Pencil className="w-4 h-4" />
-                      </button>
+                      </button> */}
                     </div>
                   ))}
               </>
