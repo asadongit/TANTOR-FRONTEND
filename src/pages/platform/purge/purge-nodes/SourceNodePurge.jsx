@@ -306,17 +306,33 @@ export function SourceNode({ id, data }) {
       saveNode();
 
       // NEW CODE Remove partitions if source tablename doesn't match source partition table name
+      
       if (selectedPurgeScope === "subset") {
-      const { table_name: sourcePartitionTable } = dropPartitions?.source || {};
-      const sourceTableName = selectedTables[0];
+        const { table_name: sourcePartitionTable } = dropPartitions?.source || {};
+        const sourceTableName = selectedTables[0];
 
-      if (sourcePartitionTable && sourceTableName !== sourcePartitionTable.split(".")[1]){
-        saveDropPartitions("source");
-        console.log("REMOVED SOURCE PARTITIONS");
+        console.log("SOURCE TABLE ==> ", sourceTableName);
+        console.log("sourcePartitionTable ==> ", sourcePartitionTable);
+        
+        if (sourcePartitionTable) {
+          const cleanSourcePartitionTable = sourcePartitionTable.split(".")[1] || sourcePartitionTable;
+
+          console.log("Comparing sourcePartitionTable with sourceTableName", cleanSourcePartitionTable, sourceTableName);
+
+          if (sourceTableName !== cleanSourcePartitionTable) {
+            saveDropPartitions("source");
+            console.log("REMOVED SOURCE PARTITIONS");
+          } else {
+            console.log("Source partition table matches, no action needed");
+          }
+        } else {
+          console.log("sourcePartitionTable is empty");
+        }
+
+        toast.success("Table updated successfully");
       }
-    }
-      toast.success("Table updated successfully");
-    }
+}
+
   };
 
   const getFirstPartitionNameFromTable = (table) => {
