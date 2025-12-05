@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import { Position } from "reactflow";
 import { Minus, X } from "lucide-react";
@@ -6,19 +6,25 @@ import { Handle } from "../../components/CustomHandle";
 import { useWorkflow } from "../../context/WorkflowContext";
 import { useArchivalData } from "../../../../../hooks/platform/archival";
 export function DefineNode({ id, data, selected }) {
-const { data: MigrationData=[], isLoading: isMigrationLoading, error: MigrationError } = useArchivalData();
+  const { data: MigrationData=[], isLoading: isMigrationLoading, error: MigrationError } = useArchivalData();
   const [nodeData, setNodeData] = useState({
     name: data.define?.name || "",
     description: data.define?.description || "",
-    autoName:data.define?.autoName || "",
+    autoName: data.define?.autoName || "",
   });
 
+  const isEditMode = data?.isEditMode;
   const pipelineId = data?.pipelineId;
   const isPipelineNode = pipelineId !== undefined;
   const ID = isPipelineNode ? pipelineId : id;
 
   const { updateData, pipelines } = useWorkflow();
-  // console.log("Define-Data----------", data);
+
+  // Use ref to track if initial data has been set
+  const initializedRef = useRef(false);
+  const prevSourceRef = useRef(null);
+  const prevNodeDataRef = useRef(null);
+
   const handleInputChange = (e, field) => {
     const value = e.target.value;
     setNodeData((prevState) => ({
@@ -27,75 +33,80 @@ const { data: MigrationData=[], isLoading: isMigrationLoading, error: MigrationE
     }));
   };
 
-
-useEffect(() => {
-  const migrationAutoNames = MigrationData?.map(item => item.migration_auto_name)||[];
-  const sourceData = isPipelineNode 
-    ? pipelines[ID]?.data?.source 
-    : data?.source;
-
-  const firstSource = sourceData
-    ? Array.isArray(sourceData)
-      ? sourceData[0]
-      : sourceData
-    : null;
-
-
-    const sourceName = firstSource?.connection && firstSource?.schema && firstSource?.mode
-    ? `${firstSource.connection}_${firstSource.schema}_${firstSource.mode}`
-    : nodeData.name;
-    let nameCount = migrationAutoNames?.filter(name =>
-      typeof name === 'string' &&
-      name.toLowerCase() === (sourceName || '').toLowerCase()
-    ).length;
-    
-    if (isPipelineNode) {
-    if (sourceName && sourceName !== nodeData.name) {
-      setNodeData((prevData) => ({
-        ...prevData,
-        name: `${sourceName}${nameCount+1}`,
-        autoName:sourceName
-      }));
-    }
-  } else {
-
-    if (sourceName && (!nodeData.name || nodeData.name.trim() === "" || sourceName !== nodeData.name)) {
-      setNodeData((prevData) => ({
-        ...prevData,
-        name: `${sourceName}${nameCount}`,
-        autoName:sourceName
-
-      }));
-    }
-  }
-
-  updateData(ID, isPipelineNode, "define", nodeData);
-
-}, [
-  pipelines[ID]?.data?.define?.name, 
-  pipelines[ID]?.data?.source, 
-  data?.source, 
-  isPipelineNode, 
-  nodeData.name, 
-]);
-
-  // Initialize node with pre-populated data in edit mode
+  // Initialize node with pre-populated data in edit mode - run once
   useEffect(() => {
+    if (initializedRef.current) return;
+
     if (data?.define && Object.keys(data.define).length > 0) {
       const defineData = data.define;
-      
-      // Pre-populate node data
-      if (defineData) {
-        setNodeData({
-          name: defineData.name || "",
-          description: defineData.description || "",
-          autoName: defineData.autoName || "",
-        });
-      }
+      initializedRef.current = true;
+
+      setNodeData({
+        name: defineData.name || "",
+        description: defineData.description || "",
+        autoName: defineData.autoName || "",
+      });
     }
   }, [data?.define]);
 
-  
+  // Auto-generate name only when NOT in edit mode and source changes
+  useEffect(() => {
+    if (isEditMode) return;
+    if (data?.define?.name && data?.define?.name.trim() !== "") return;
+
+    const sourceData = isPipelineNode
+      ? pipelines[ID]?.data?.source
+      : data?.source;
+
+    const firstSource = sourceData
+      ? Array.isArray(sourceData)
+        ? sourceData[0]
+        : sourceData
+      : null;
+
+    const sourceName = firstSource?.connection && firstSource?.schema && firstSource?.mode
+      ? `${firstSource.connection}_${firstSource.schema}_${firstSource.mode}`
+      : "";
+
+    // Check if source actually changed to avoid unnecessary updates
+    const sourceKey = JSON.stringify(firstSource);
+    if (sourceKey === prevSourceRef.current || !sourceName) return;
+    prevSourceRef.current = sourceKey;
+
+    const migrationAutoNames = MigrationData?.map(item => item.migration_auto_name) || [];
+    let nameCount = migrationAutoNames?.filter(name =>
+      typeof name === 'string' &&
+      name.toLowerCase() === sourceName.toLowerCase()
+    ).length;
+
+    const newName = `${sourceName}${nameCount + 1}`;
+
+    setNodeData((prevData) => ({
+      ...prevData,
+      name: newName,
+      autoName: sourceName
+    }));
+  }, [
+    pipelines[ID]?.data?.source,
+    data?.source,
+    isPipelineNode,
+    MigrationData,
+    isEditMode,
+    data?.define?.name,
+    ID
+  ]);
+
+  // Sync nodeData changes to workflow context - with change detection
+  useEffect(() => {
+    if (!nodeData.name && !nodeData.description) return;
+
+    const currentDataStr = JSON.stringify(nodeData);
+    if (prevNodeDataRef.current === currentDataStr) return;
+
+    prevNodeDataRef.current = currentDataStr;
+    updateData(ID, isPipelineNode, "define", nodeData);
+  }, [nodeData, ID, isPipelineNode]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
 
   return (
@@ -137,10 +148,11 @@ useEffect(() => {
         <input
           type="text"
           value={nodeData.name}
+          disabled={isEditMode}
           placeholder={`${data.category} Name`}
           onChange={(e) => handleInputChange(e, "name")}
           // onBlur={() => handleBlur("name")}
-          className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+          className={`w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 ${isEditMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
         />
       </div>
 

@@ -16,6 +16,7 @@ export function TargetNode({ id, data }) {
 
   const {
     selectedTables,
+    setSelectedTables,
     sourceConnectionName,
     sourceSchemaName,
     selectedScope,
@@ -159,6 +160,7 @@ export function TargetNode({ id, data }) {
     }
   }, []);
 
+  
   const fetchMetadataAccToConnectionAndBulkTable = async (
     targetConnection,
     selectedBulkTables
@@ -425,14 +427,23 @@ export function TargetNode({ id, data }) {
   useEffect(() => {
     if (data && !isInitialized.current) {
       isInitialized.current = true;
-
       if (data.connectionName) setTargetConnection(data.connectionName);
       if (data.schemaName) {
         setSelectedSchema(data.schemaName);
         fetchSchema(data.connectionName);
       }
       if (data.scope === "subset" && data.tableName) setSelectedTableName([data.tableName]);
-    if (data.scope === "bulk" && data.tableName) setSelectedBulkTables([data.tableName]);
+    // if (data.scope === "bulk" && data.tableName) setSelectedBulkTables([data.tableName]);
+    
+    if (data.scope === "bulk") {
+      data.bulk.selectedBulkTargetTablesPayload.forEach(t => {
+        setSelectedBulkTables(t.target_table);
+        // handleTargetTableOnChange(null, t.source_table, t.target_table);
+      });
+      console.log("SOURCE GROUP ==> ", sourceMappedTargetTables)
+      } 
+    
+
     if (data.selectedTableName) setSelectedTableName(data.TableName);
     if (data.checkedBulkTables) setCheckedBulkTables(data.checkedBulkTables);
     if (data.searchTerm) setSearchTerm(data.searchTerm);
@@ -461,7 +472,7 @@ export function TargetNode({ id, data }) {
       }
     }
   }
-}, [data, handleTargetConnectionName, setFilters, setDropPartitions, saveSelectedBulkTargetTablesPayload, setBulkFiltersAndPartitions, fetchSchema, fetchTables]);
+}, [data, handleTargetConnectionName, setFilters, setDropPartitions, saveSelectedBulkTargetTablesPayload, setBulkFiltersAndPartitions, fetchSchema, fetchTables, checkedBulkTables]);
 
   const handleTableSelection = (tableName) => {
     if (selectedScope === "subset") {
