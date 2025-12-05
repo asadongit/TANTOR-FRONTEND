@@ -40,6 +40,7 @@ export function TargetNode({ id, data, selected }) {
   const [selectedConnectionObj, setSelectedConnectionObj] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
   const [isEditModeInitialized, setIsEditModeInitialized] = useState(false);
+  const [previousMode, setPreviousMode] = useState("");
 
   const [nodeData, setNodeData] = useState(() => ({
     connection: "",
@@ -76,6 +77,7 @@ export function TargetNode({ id, data, selected }) {
     pipelines,
     completeMapping,
     pipelineMappings,
+    setPipelineMappings,
     inProgressMappings,
     updateData,
     deleteMapping,
@@ -110,12 +112,39 @@ export function TargetNode({ id, data, selected }) {
       const currentSourceTables = latestSourceData?.bulk_list || [];
       setBulkList(currentSourceTables);
 
-      // Only set mode during initial load if not yet initialized
-      if (!isEditModeInitialized) {
-        setSelectedMode(latestSourceData?.mode || "bulk");
+      const newMode = latestSourceData?.mode || "bulk";
+
+      // Check if mode changed after initialization (user switched scope)
+      if (isEditModeInitialized && previousMode && previousMode !== newMode) {
+        // Mode changed - reset target mappings
+        const key = isPipelineNode ? ID : `${data?.source?.id}-${ID}`;
+
+        // Clear bulk mappings
+        if (setBulkMappings) {
+          setBulkMappings(prev => ({
+            ...prev,
+            [key]: [],
+          }));
+        }
+
+        // Clear pipeline mappings (for subset mode)
+        if (setPipelineMappings) {
+          setPipelineMappings(prev => ({
+            ...prev,
+            [key]: [],
+            [ID]: [],
+          }));
+        }
+
+        // Reset selected items
+        setSelectedItems([]);
       }
+
+      // Update mode
+      setSelectedMode(newMode);
+      setPreviousMode(newMode);
     }
-  }, [latestSourceData, isEditModeInitialized]);
+  }, [latestSourceData, isEditModeInitialized, previousMode, ID, isPipelineNode, setBulkMappings, setPipelineMappings]);
 
   // Initialize node with pre-populated data in edit mode (only once when connections are loaded)
   useEffect(() => {
@@ -142,13 +171,34 @@ export function TargetNode({ id, data, selected }) {
           setSelectedSchema(targetData.schema);
         }
 
-        // Pre-populate mode
+        // Pre-populate mode and track it
         if (targetData.mode) {
           setSelectedMode(targetData.mode);
+          setPreviousMode(targetData.mode);
         }
 
-        // Pre-populate selected items from bulk_list
-        if (targetData.bulk_list && Array.isArray(targetData.bulk_list)) {
+        // Pre-populate based on mode
+        if (targetData.mode === "subset") {
+          // For subset mode, use bulk_list from target (which contains the mappings)
+          // and initialize pipelineMappings
+          if (targetData.bulk_list && Array.isArray(targetData.bulk_list)) {
+            setSelectedItems(targetData.bulk_list);
+
+            const key = isPipelineNode ? ID : `${data?.source?.id}-${ID}`;
+            if (setPipelineMappings && (!pipelineMappings[key] || pipelineMappings[key].length === 0)) {
+              setPipelineMappings(prev => ({
+                ...prev,
+                [key]: targetData.bulk_list.map(item => ({
+                  source_table: item.source_table,
+                  target_table: item.target_table,
+                  schedule: item.schedule || {},
+                  whereCondition: item.whereCondition || "",
+                })),
+              }));
+            }
+          }
+        } else if (targetData.bulk_list && Array.isArray(targetData.bulk_list)) {
+          // Bulk mode - use bulkMappings
           setSelectedItems(targetData.bulk_list);
 
           // Initialize bulk mappings in context if not already present
@@ -180,7 +230,7 @@ export function TargetNode({ id, data, selected }) {
         setIsEditModeInitialized(true);
       }
     }
-  }, [isEditMode, safeConnections, data?.target, isEditModeInitialized, ID, isPipelineNode, bulkMappings, setBulkMappings]);
+  }, [isEditMode, safeConnections, data?.target, isEditModeInitialized, ID, isPipelineNode, bulkMappings, setBulkMappings, pipelineMappings, setPipelineMappings]);
 
   const filteredTables = useMemo(() => {
     if (selectedMode == "bulk") {
@@ -293,11 +343,11 @@ export function TargetNode({ id, data, selected }) {
 
   const constructedKey = `${firstSource?.id}-${ID}`;
   const pipelineData = isPipelineNode
-    ? pipelineMappings[pipelineId] || []
+    ? pipelineMappings[pipelineId] || pipelineMappings[ID] || []
     : pipelineMappings[constructedKey] || [];
 
-  const targetTables = pipelineData.map((mapping) => mapping.target_table);
-  const sourceTables = pipelineData.map((mapping) => mapping.source_table);
+  const targetTables = useMemo(() => pipelineData.map((mapping) => mapping.target_table), [pipelineData]);
+  const sourceTables = useMemo(() => pipelineData.map((mapping) => mapping.source_table), [pipelineData]);
 
   const sourceTable = isPipelineNode
     ? inProgressMappings[pipelineId]?.source_table
@@ -306,8 +356,9 @@ export function TargetNode({ id, data, selected }) {
   const showTablesList = Boolean(
     selectedMode === "bulk"
       ? !loading || filteredTables?.length > 0
-      : (pipelineMappings[pipelineId]?.length ?? 0) > 0 ||
-          (pipelineMappings[constructedKey]?.length ?? 0) > 0
+      : selectedMode === "subset"
+      ? pipelineData.length > 0
+      : false
   );
   const handleAddTable = () => {
     if (sourceTable) {
@@ -402,6 +453,12 @@ export function TargetNode({ id, data, selected }) {
       setLoading(true);
     }
   };
+
+  // For subset mode, also show the dropdown to add new mappings when there's a source table selected
+  const showSubsetDropdown = selectedMode === "subset" &&
+    filteredTables &&
+    filteredTables.length > 0 &&
+    sourceTable;
 
   return (
     <div
@@ -501,40 +558,39 @@ export function TargetNode({ id, data, selected }) {
         />
       )}
 
-      {filteredTables &&
-        filteredTables.length > 0 &&
-        selectedMode === "subset" && (
-          <div>
-            <div className="flex items-center space-x-2 my-2">
-              <span className="text-sm font-semibold text-black">Map for:</span>
-              <span className="text-sm text-gray-700">
-                {sourceTable || "No source selected"}
-              </span>
-            </div>
-
-            <AutoComplete
-              id="connection-select"
-              options={filteredTables || []}
-              placeholder="Select Table"
-              onChange={(e) => {
-                const selectedTable = e?.target?.value || "";
-
-                if (selectedTable) {
-                  completeMapping(
-                    ID,
-                    firstSource?.id,
-                    selectedTable,
-                    isPipelineNode
-                  );
-                }
-              }}
-              valueKey="target_table"
-              labelKey="target_table"
-              className="w-full"
-              disabled={!filteredTables || filteredTables.length === 0}
-            />
+      {/* Show dropdown for adding new subset mappings */}
+      {showSubsetDropdown && (
+        <div>
+          <div className="flex items-center space-x-2 my-2">
+            <span className="text-sm font-semibold text-black">Map for:</span>
+            <span className="text-sm text-gray-700">
+              {sourceTable || "No source selected"}
+            </span>
           </div>
-        )}
+
+          <AutoComplete
+            id="connection-select"
+            options={filteredTables || []}
+            placeholder="Select Table"
+            onChange={(e) => {
+              const selectedTable = e?.target?.value || "";
+
+              if (selectedTable) {
+                completeMapping(
+                  ID,
+                  firstSource?.id,
+                  selectedTable,
+                  isPipelineNode
+                );
+              }
+            }}
+            valueKey="target_table"
+            labelKey="target_table"
+            className="w-full"
+            disabled={!filteredTables || filteredTables.length === 0}
+          />
+        </div>
+      )}
 
       {showTablesList && selectedConnection && selectedSchema && (
         <div className="my-3">
@@ -558,8 +614,10 @@ export function TargetNode({ id, data, selected }) {
                 <SkeletonLoader />
                 <SkeletonLoader />
               </>
-            ) : filteredTables.length === 0 ? (
+            ) : selectedMode === "bulk" && filteredTables.length === 0 ? (
               <div className="text-sm text-gray-500 py-2">No tables found</div>
+            ) : selectedMode === "subset" && targetTables.length === 0 ? (
+              <div className="text-sm text-gray-500 py-2">No mappings found. Select a source table first.</div>
             ) : (
               <div>
                 {selectedMode == "bulk" ? (
@@ -672,7 +730,7 @@ export function TargetNode({ id, data, selected }) {
                                             deselectMapping(
                                               ID,
                                               {
-                                                target_table: target_table,
+                                                target_table: targetTable,
                                                 source_table:
                                                   sourceGroup.source_table,
                                               },
@@ -708,7 +766,6 @@ export function TargetNode({ id, data, selected }) {
                                       }
                                       className="text-purple-600 hover:text-purple-700"
                                     >
-                                      {/* <Pencil className="w-4 h-4 ml-8" /> */}
                                     </button>
                                   </div>
                                 );
@@ -720,76 +777,74 @@ export function TargetNode({ id, data, selected }) {
                     );
                   })
                 ) : (
-                  <>
-                    <div className="max-w-sm mx-auto">
-                      <div>
-                        {targetTables.map((targetTable, idx) => (
-                          <div
-                            key={`target-table-${idx}`}
-                            className="flex items-center justify-between mt-4"
-                          >
-                            <div className="flex items-center space-x-2 ">
-                              <input
-                                type="checkbox"
-                                id={`target-${idx}`}
-                                checked={true}
-                                onChange={(e) =>
-                                  handleItemSelection(e.target.checked, {
-                                    source_table: sourceTables[idx],
-                                    target_table: targetTable,
-                                  })
-                                }
-                                className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                              />
-                              <label
-                                htmlFor={`target-${idx}`}
-                                className="text-xs font-semibold text-black"
-                              >
-                                {targetTable}
-                              </label>
-                            </div>
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() =>
-                                  openDrawer(
-                                    data.category,
-                                    "editTable",
-                                    id,
-                                    data.pipelineId,
-                                    sourceTable
-                                  )
-                                }
-                                className="text-purple-600 hover:text-purple-700"
-                                aria-label={`Edit ${sourceTable}`}
-                              >
-                                {/* <Pencil className="w-4 h-4" /> */}
-                              </button>
-                              <button
-                                onClick={() =>
-                                  deleteMapping(
-                                    data?.source?.id,
-                                    ID,
-                                    idx,
-                                    isPipelineNode
-                                  )
-                                }
-                                className="text-red-600 hover:text-red-700"
-                                aria-label={`Delete ${sourceTable}`}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
+                  // Subset mode - show mapped tables
+                  <div className="max-w-sm mx-auto">
+                    <div>
+                      {targetTables.map((targetTable, idx) => (
+                        <div
+                          key={`target-table-${idx}`}
+                          className="flex items-center justify-between mt-4"
+                        >
+                          <div className="flex items-center space-x-2 ">
+                            <input
+                              type="checkbox"
+                              id={`target-${idx}`}
+                              checked={true}
+                              readOnly
+                              className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                            />
+                            <label
+                              htmlFor={`target-${idx}`}
+                              className="text-xs font-semibold text-black"
+                            >
+                              <span className="text-gray-500">{sourceTables[idx]}</span>
+                              <span className="mx-1">→</span>
+                              {targetTable}
+                            </label>
                           </div>
-                        ))}
-                      </div>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() =>
+                                openDrawer(
+                                  data.category,
+                                  "editTable",
+                                  id,
+                                  data.pipelineId,
+                                  { source_table: sourceTables[idx], target_table: targetTable }
+                                )
+                              }
+                              className="text-purple-600 hover:text-purple-700"
+                              aria-label={`Edit mapping`}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() =>
+                                deleteMapping(
+                                  firstSource?.id,
+                                  ID,
+                                  idx,
+                                  isPipelineNode
+                                )
+                              }
+                              className="text-red-600 hover:text-red-700"
+                              aria-label={`Delete mapping`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
             )}
           </div>
         </div>
       )}
+
+      {/* ...existing add table button for subset mode... */}
       {selectedMode == "subset" && selectedSchema && (
         <button
           className="w-full py-1 px-4 flex items-center justify-center border border-dashed border-[#8e78b7]  text-[#8e78b7] rounded-md  bg-transparent transition-all duration-200 ease-in-out

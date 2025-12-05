@@ -115,6 +115,8 @@ const handleEditClick = async (row) => {
 
     const nodeJson = row.ui_json ? JSON.parse(JSON.stringify(row.ui_json)) : null;
 
+    // console.log("Fetched Migration Node JSON:", nodeJson);
+
     if (nodeJson) {
       if (nodeJson.nodes) {
         const sourceNode = nodeJson.nodes.find(n => n.type === 'sourceNode' || n.type === 'migrationSource' || (n.data && n.data.source));

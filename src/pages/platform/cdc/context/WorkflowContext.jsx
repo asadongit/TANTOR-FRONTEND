@@ -560,6 +560,7 @@ export const WorkflowProvider = ({ children }) => {
         updateMappingDetails,
         deleteMapping,
         pipelineMappings,
+        setPipelineMappings,
         inProgressMappings,
         updateCustomNode,
         updateData,

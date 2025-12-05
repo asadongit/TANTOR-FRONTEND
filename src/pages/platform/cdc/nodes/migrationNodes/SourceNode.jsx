@@ -54,6 +54,7 @@ export function SourceNode({ id, data, selected }) {
     source_conn_id: "",
     type: "",
   }));
+  const [previousMode, setPreviousMode] = useState("");
 
   const { data: connections, isLoading: isLoadingConnections } =
     useConnections("source");
@@ -78,11 +79,13 @@ export function SourceNode({ id, data, selected }) {
   const {
     selectSource,
     pipelineMappings,
+    setPipelineMappings,
     deleteMapping,
     updateData,
     pipelines,
     editMode,
     isPipelineInitialized,
+    setBulkMappings,
   } = useWorkflow();
 
   // Check if this is edit mode
@@ -112,13 +115,33 @@ export function SourceNode({ id, data, selected }) {
           setSelectedSchema(sourceData.schema);
         }
 
-        // Pre-populate mode
+        // Pre-populate mode and track it
         if (sourceData.mode) {
           setSelectedMode(sourceData.mode);
+          setPreviousMode(sourceData.mode);
         }
 
-        // Pre-populate selected items
-        if (sourceData.bulk_list && Array.isArray(sourceData.bulk_list)) {
+        // Pre-populate selected items based on mode
+        if (sourceData.mode === "subset") {
+          // For subset mode, extract source tables from subset_list
+          if (sourceData.subset_list && Array.isArray(sourceData.subset_list)) {
+            const sourceTables = sourceData.subset_list.map(item => item.source_table);
+            setSelectedItems(sourceTables);
+
+            // Initialize pipelineMappings for subset mode
+            if (setPipelineMappings) {
+              setPipelineMappings(prev => ({
+                ...prev,
+                [ID]: sourceData.subset_list.map(item => ({
+                  source_table: item.source_table,
+                  target_table: item.target_table,
+                  schedule: item.schedule || {},
+                  whereCondition: item.whereCondition || "",
+                })),
+              }));
+            }
+          }
+        } else if (sourceData.bulk_list && Array.isArray(sourceData.bulk_list)) {
           setSelectedItems(sourceData.bulk_list);
         }
 
@@ -133,7 +156,7 @@ export function SourceNode({ id, data, selected }) {
         setIsEditModeInitialized(true);
       }
     }
-  }, [isEditMode, safeConnections, data?.source, isEditModeInitialized]);
+  }, [isEditMode, safeConnections, data?.source, isEditModeInitialized, ID, setPipelineMappings]);
 
   // Sync state to context when values change
   // This should run whenever selectedItems changes, regardless of edit mode state
@@ -204,9 +227,27 @@ export function SourceNode({ id, data, selected }) {
   };
 
   const handleModeChange = (mode) => {
+    // Check if mode is actually changing
+    const isModeChanging = selectedMode !== mode;
+
     setSelectedMode(mode);
     // Always reset items when mode changes
     setSelectedItems([]);
+
+    // If mode changed and we're in edit mode, clear the target mappings too
+    if (isModeChanging && isEditModeInitialized) {
+      const key = ID;
+
+      // Clear pipeline mappings (for subset mode)
+      if (setPipelineMappings) {
+        setPipelineMappings(prev => ({
+          ...prev,
+          [key]: [],
+        }));
+      }
+    }
+
+    setPreviousMode(mode);
 
     if (!selectedConnection || !selectedSchema) return;
   };
@@ -232,6 +273,34 @@ export function SourceNode({ id, data, selected }) {
     });
   };
 
+  // Handle deleting a source table in subset mode
+  const handleDeleteSubsetSource = (sourceTableToDelete, idx) => {
+    // Remove from pipelineMappings
+    if (setPipelineMappings) {
+      setPipelineMappings(prev => {
+        const key = ID;
+        const currentMappings = prev[key] || [];
+        const updatedMappings = currentMappings.filter(
+          mapping => mapping.source_table !== sourceTableToDelete
+        );
+        return {
+          ...prev,
+          [key]: updatedMappings,
+        };
+      });
+    }
+
+    // Also remove from selectedItems if tracking source tables
+    setSelectedItems(prev => {
+      const safePrev = Array.isArray(prev) ? prev : [];
+      return safePrev.filter(item => {
+        if (typeof item === 'string') {
+          return item !== sourceTableToDelete;
+        }
+        return item?.source_table !== sourceTableToDelete;
+      });
+    });
+  };
 
   const areAllSelected =
     Array.isArray(filteredTables) && filteredTables.length > 0 &&
@@ -256,13 +325,28 @@ export function SourceNode({ id, data, selected }) {
     ? pipelineMappings[constructedKey]
     : [];
 
-  const sourceTables = pipelineData.map((mapping) => mapping.source_table);
+  // For subset mode, show the source tables from pipelineMappings
+  const subsetSourceTables = useMemo(() => {
+    if (selectedMode !== "subset") return [];
+
+    const mappings = pipelineMappings[ID] || pipelineMappings[pipelineId] || [];
+    return mappings.map(m => m.source_table);
+  }, [selectedMode, pipelineMappings, ID, pipelineId]);
+
+  // Update sourceTables to use subsetSourceTables when in subset mode
+  const sourceTables = selectedMode === "subset" && isEditMode
+    ? subsetSourceTables.length > 0 ? subsetSourceTables : pipelineData.map((mapping) => mapping.source_table)
+    : pipelineData.map((mapping) => mapping.source_table);
+
   const showTablesList = Boolean(
     selectedMode === "bulk"
       ? (tables && tables.length > 0) || loading
-      : (pipelineMappings[pipelineId]?.length ?? 0) > 0 ||
-          (constructedKey &&
-            (pipelineMappings[constructedKey]?.length ?? 0) > 0)
+      : selectedMode === "subset"
+      ? (pipelineMappings[pipelineId]?.length ?? 0) > 0 ||
+        (pipelineMappings[ID]?.length ?? 0) > 0 ||
+        (constructedKey && (pipelineMappings[constructedKey]?.length ?? 0) > 0) ||
+        (filteredTables && filteredTables.length > 0)
+      : false
   );
 
   return (
@@ -569,11 +653,7 @@ export function SourceNode({ id, data, selected }) {
                                 type="checkbox"
                                 id={`source-${idx}`}
                                 checked={true}
-                                onChange={(e) =>
-                                  handleItemSelection(e.target.checked, {
-                                    source_table: sourceTable,
-                                  })
-                                }
+                                readOnly
                                 className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                               />
                               <label
@@ -598,6 +678,13 @@ export function SourceNode({ id, data, selected }) {
                                 aria-label={`Edit ${sourceTable}`}
                               >
                                 <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteSubsetSource(sourceTable, idx)}
+                                className="text-red-600 hover:text-red-700"
+                                aria-label={`Delete ${sourceTable}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
                           </div>
