@@ -8,9 +8,11 @@ const Dashboard = () => {
   const [technicalCounts, setTechnicalCounts] = useState(null);
   const [connectionTypes, setConnectionTypes] = useState({});
   const [connectorAssets, setConnectorAssets] = useState([]);
+  const [repositoryData, setRepositoryData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [technicalLoading, setTechnicalLoading] = useState(true);
   const [connectorLoading, setConnectorLoading] = useState(true);
+  const [repositoryLoading, setRepositoryLoading] = useState(true);
   const [error, setError] = useState(null);
   const { token, decodedToken } = useAuth();
 
@@ -39,6 +41,53 @@ const Dashboard = () => {
     } catch (err) {
       console.error('Error fetching connection types:', err);
       return {};
+    }
+  };
+
+  const fetchRepositoryData = async (policyIds) => {
+    try {
+      const response = await fetch(
+        `${window._env_?.VITE_FAST_API}/governance/dashboard/repository`,
+        {
+          method: 'POST',
+          headers: {
+            'accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            policy_id: policyIds
+          })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch repository data');
+      }
+
+      const data = await response.json();
+      
+      const transformedData = Object.keys(data).map(dbName => {
+        const dbData = data[dbName];
+        const total = dbData.sensitive + dbData.non_sensitive + dbData.personal + dbData.others;
+        
+        return {
+          name: dbName.charAt(0).toUpperCase() + dbName.slice(1),
+          sensitive: dbData.sensitive,
+          nonSensitive: dbData.non_sensitive,
+          personal: dbData.personal,
+          others: dbData.others,
+          total: total,
+          sensitivePercent: total > 0 ? (dbData.sensitive / total) * 100 : 0,
+          nonSensitivePercent: total > 0 ? (dbData.non_sensitive / total) * 100 : 0,
+          personalPercent: total > 0 ? (dbData.personal / total) * 100 : 0,
+          othersPercent: total > 0 ? (dbData.others / total) * 100 : 0
+        };
+      });
+
+      return transformedData;
+    } catch (err) {
+      console.error('Error fetching repository data:', err);
+      return [];
     }
   };
 
@@ -177,8 +226,12 @@ const Dashboard = () => {
                   
                   const assetsData = calculateConnectorAssets(connectionDetailsData, typesData);
                   setConnectorAssets(assetsData);
+
+                  const repoData = await fetchRepositoryData(policyIds);
+                  setRepositoryData(repoData);
                 } else {
                   setConnectorAssets([]);
+                  setRepositoryData([]);
                 }
               }
             } else {
@@ -189,6 +242,7 @@ const Dashboard = () => {
                 columns: 0
               });
               setConnectorAssets([]);
+              setRepositoryData([]);
             }
           }
         } catch (technicalErr) {
@@ -199,9 +253,11 @@ const Dashboard = () => {
             columns: 0
           });
           setConnectorAssets([]);
+          setRepositoryData([]);
         } finally {
           setTechnicalLoading(false);
           setConnectorLoading(false);
+          setRepositoryLoading(false);
         }
 
         setLoading(false);
@@ -210,6 +266,7 @@ const Dashboard = () => {
         setLoading(false);
         setTechnicalLoading(false);
         setConnectorLoading(false);
+        setRepositoryLoading(false);
         if (!technicalCounts) {
           setTechnicalCounts({
             connectors: 0,
@@ -219,6 +276,7 @@ const Dashboard = () => {
           });
         }
         setConnectorAssets([]);
+        setRepositoryData([]);
       }
     };
 
@@ -312,30 +370,6 @@ const Dashboard = () => {
     { title: "History", content: "Your history list is empty." }
   ];
 
-  const repositoryData = [
-    {
-      name: 'Hive',
-      sensitive: 1,
-      nonSensitive: 4,
-      personal: 25,
-      others: 90
-    },
-    {
-      name: 'Oracle',
-      sensitive: 25,
-      nonSensitive: 30,
-      personal: 45,
-      others: 90
-    },
-    {
-      name: 'Postgres',
-      sensitive: 10,
-      nonSensitive: 35,
-      personal: 55,
-      others: 90
-    }
-  ];
-
   const governanceData = [
     { subject: 'Security', value: 78 },
     { subject: 'Quality', value: 85 },
@@ -345,31 +379,115 @@ const Dashboard = () => {
     { subject: 'Catalog', value: 80 }
   ];
 
-  const RepositoryBar = ({ data }) => {
+  const RepositoryBar = ({ data, loading }) => {
+    if (loading) {
+      return (
+        <div className="flex flex-col space-y-4">
+          {[1, 2, 3].map((item) => (
+            <div key={item} className="w-full">
+              <div className="flex justify-between mb-1">
+                <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+              </div>
+              <div className="h-4 sm:h-6 bg-gray-200 rounded-md animate-pulse"></div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (!data || data.length === 0) {
+      return (
+        <div className="text-center py-8 text-gray-500">
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-col space-y-4">
         {data.map((item) => (
-          <div key={item.name} className="w-full">
+          <div key={item.name} className="w-full group/database relative">
             <div className="flex justify-between mb-1">
-              <span className="text-sm text-gray-600">{item.name}</span>
+              <span className="text-sm text-gray-600 font-medium">{item.name}</span>
+              <span className="text-xs text-gray-500">Total: {item.total}</span>
             </div>
-            <div className="flex h-4 sm:h-6 rounded-md overflow-hidden">
-              <div
-                style={{ width: `${item.sensitive}%` }}
-                className="bg-orange-500"
-              />
-              <div
-                style={{ width: `${item.nonSensitive}%` }}
-                className="bg-yellow-300"
-              />
-              <div
-                style={{ width: `${item.personal}%` }}
-                className="bg-blue-500"
-              />
-              <div
-                style={{ width: `${item.others}%` }}
-                className="bg-gray-300"
-              />
+            
+            <div className="absolute z-20 invisible group-hover/database:visible bg-gray-800 text-white text-xs rounded-lg p-3 shadow-lg -top-2 left-0 transform -translate-y-full w-56">
+              <div className="font-semibold mb-2 pb-2 border-b border-gray-600">{item.name} Database</div>
+              <div className="grid grid-cols-2 gap-y-2 gap-x-3">
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-orange-500 rounded-sm mr-2"></div>
+                  <span className="text-gray-300">Sensitive:</span>
+                </div>
+                <div className="text-right font-medium">{item.sensitive}</div>
+                
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-yellow-300 rounded-sm mr-2"></div>
+                  <span className="text-gray-300">Non-Sensitive:</span>
+                </div>
+                <div className="text-right font-medium">{item.nonSensitive}</div>
+                
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-blue-500 rounded-sm mr-2"></div>
+                  <span className="text-gray-300">Personal:</span>
+                </div>
+                <div className="text-right font-medium">{item.personal}</div>
+                
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-gray-300 rounded-sm mr-2"></div>
+                  <span className="text-gray-300">Others:</span>
+                </div>
+                <div className="text-right font-medium">{item.others}</div>
+                
+              </div>
+              <div className="absolute left-4 bottom-0 transform translate-y-1/2 rotate-45 w-2 h-2 bg-gray-800"></div>
+            </div>
+            
+            <div className="flex h-4 sm:h-6 rounded-md overflow-hidden relative cursor-pointer">
+              {item.sensitivePercent > 0 && (
+                <div
+                  style={{ width: `${item.sensitivePercent}%` }}
+                  className="bg-orange-500 relative group/segment"
+                >
+                  <div className="absolute z-10 invisible group-hover/segment:visible bg-gray-800 text-white text-xs rounded p-2 w-32 left-0 -top-12 whitespace-nowrap">
+                    Sensitive: {item.sensitive}
+                  </div>
+                </div>
+              )}
+              {item.nonSensitivePercent > 0 && (
+                <div
+                  style={{ width: `${item.nonSensitivePercent}%` }}
+                  className="bg-yellow-300 relative group/segment"
+                >
+                  <div className="absolute z-10 invisible group-hover/segment:visible bg-gray-800 text-white text-xs rounded p-2 w-32 left-0 -top-12 whitespace-nowrap">
+                    Non-Sensitive: {item.nonSensitive}
+                  </div>
+                </div>
+              )}
+              {item.personalPercent > 0 && (
+                <div
+                  style={{ width: `${item.personalPercent}%` }}
+                  className="bg-blue-500 relative group/segment"
+                >
+                  <div className="absolute z-10 invisible group-hover/segment:visible bg-gray-800 text-white text-xs rounded p-2 w-32 left-0 -top-12 whitespace-nowrap">
+                    Personal: {item.personal}
+                  </div>
+                </div>
+              )}
+              {item.othersPercent > 0 && (
+                <div
+                  style={{ width: `${item.othersPercent}%` }}
+                  className="bg-gray-300 relative group/segment"
+                >
+                  <div className="absolute z-10 invisible group-hover/segment:visible bg-gray-800 text-white text-xs rounded p-2 w-32 left-0 -top-12 whitespace-nowrap">
+                    Others: {item.others}
+                  </div>
+                </div>
+              )}
+              {item.total === 0 && (
+                <div className="w-full bg-gray-100 flex items-center justify-center">
+                  <span className="text-xs text-gray-400">No data</span>
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -528,7 +646,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 mt-6 sm:mt-8">
         <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm">
           <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">Data repository by sensitivity</h2>
-          <RepositoryBar data={repositoryData} />
+          <RepositoryBar data={repositoryData} loading={repositoryLoading} />
           <div className="flex flex-wrap justify-start gap-3 sm:gap-6 mt-4">
             <div className="flex items-center">
               <div className="w-3 h-3 sm:w-4 sm:h-4 bg-[#ff9500] rounded-sm mr-2" />
