@@ -39,6 +39,7 @@ export function TargetNode({ id, data, selected }) {
   const [bulkList, setBulkList] = useState([]);
   const [selectedConnectionObj, setSelectedConnectionObj] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
+  const [isEditModeInitialized, setIsEditModeInitialized] = useState(false);
 
   const [nodeData, setNodeData] = useState(() => ({
     connection: "",
@@ -82,176 +83,182 @@ export function TargetNode({ id, data, selected }) {
     updateBulkMappings,
     deselectMapping,
     bulkMappings,
+    setBulkMappings,
     editMode,
   } = useWorkflow();
 
+  // Check if this is edit mode
+  const isEditMode = data?.isEditMode || editMode;
+
+  // Get the latest source data from pipelines context (for real-time updates)
+  const latestSourceData = useMemo(() => {
+    if (isPipelineNode && pipelines?.[ID]?.data?.source) {
+      return pipelines[ID].data.source;
+    }
+    // Fallback to data.source
+    const sourceArray = data?.source;
+    return Array.isArray(sourceArray) ? sourceArray[0] : sourceArray;
+  }, [isPipelineNode, pipelines, ID, data?.source]);
+
+  // Initialize and sync source data from props/context (runs on source changes)
   useEffect(() => {
-    let sourceArray = isPipelineNode
-      ? pipelines?.[ID]?.data?.source
-      : data?.source;
-    const firstSource = isPipelineNode
-      ? sourceArray
-      : Array.isArray(sourceArray)
-      ? sourceArray[0]
-      : sourceArray;
-         
-    if (firstSource) {
-      setSourceConnection(firstSource?.connection || "");
-      setSourceSchema(firstSource?.schema);
-      
-      // Always use live source data for bulkList, regardless of edit mode
-      const currentSourceTables = firstSource?.bulk_list || [];
-      
-      // Always update bulkList with live data
+    if (latestSourceData) {
+      setSourceConnection(latestSourceData?.connection || "");
+      setSourceSchema(latestSourceData?.schema || "");
+
+      // Get source tables from bulk_list - this should update when source changes
+      const currentSourceTables = latestSourceData?.bulk_list || [];
       setBulkList(currentSourceTables);
-      
-      // In edit mode, we need to handle existing mappings
-      if (data?.target && Object.keys(data.target).length > 0) {
-        // We're in edit mode - check if we have existing mappings
-        const savedMappings = data.target?.bulk_list || [];
-        
-        if (savedMappings.length > 0) {
-          // Filter saved mappings to only include those that still exist in new source selections
-          const validMappings = savedMappings.filter(mapping => {
-            const sourceTable = typeof mapping === 'object' ? mapping.source_table : mapping;
-            return currentSourceTables.includes(sourceTable);
-          });
-          
-          setSelectedItems(validMappings);
-        } else {
-          // No saved mappings, start fresh
-          setSelectedItems([]);
-        }
-      } else {
-        // Not in edit mode - start fresh
-        setSelectedItems([]);
-      }
-      
-      setSelectedMode(firstSource?.mode || "bulk");
-    } else {
-      console.log("=== TargetNode firstSource is null/undefined ===");
-    }
-  }, [pipelines, pipelineId, data?.source, isPipelineNode, data?.target]);
 
-  // Monitor source data changes specifically
-  useEffect(() => {    
-    const sourceData = isPipelineNode 
-      ? pipelines?.[ID]?.data?.source 
-      : data?.source;
-      
-    if (sourceData) {
-      const sourceTables = Array.isArray(sourceData) 
-        ? sourceData[0]?.bulk_list || sourceData?.bulk_list || []
-        : sourceData?.bulk_list || [];
-        
-      
-      // Update bulkList if source tables have changed
-      if (JSON.stringify(sourceTables) !== JSON.stringify(bulkList)) {
-        setBulkList(sourceTables);
+      // Only set mode during initial load if not yet initialized
+      if (!isEditModeInitialized) {
+        setSelectedMode(latestSourceData?.mode || "bulk");
       }
-    } else {
-      console.log("No source data found in pipeline");
     }
-  }, [pipelines?.[ID]?.data?.source, data?.source, isPipelineNode, ID, bulkList]);
+  }, [latestSourceData, isEditModeInitialized]);
 
-  // Initialize node with pre-populated data in edit mode
+  // Initialize node with pre-populated data in edit mode (only once when connections are loaded)
   useEffect(() => {
-    if (data?.target && Object.keys(data.target).length > 0) {
-      const targetData = data.target;
-    
-      // Pre-populate connection
-      if (targetData.connection) {
-        setSelectedConnection(targetData.connection);
-      }
-      
-      // Pre-populate schema
-      if (targetData.schema) {
-        setSelectedSchema(targetData.schema);
-      }
-      
-      // Pre-populate mode
-      if (targetData.mode) {
-        setSelectedMode(targetData.mode);
-      }
-      
-      // Pre-populate selected items and bulk list
-      if (targetData.bulk_list && Array.isArray(targetData.bulk_list)) {
-        
-        // Handle both formats: array of strings or array of objects
-        if (targetData.bulk_list.length > 0 && typeof targetData.bulk_list[0] === 'object') {
-          // If bulk_list contains objects with source_table and target_table
-          const sourceTables = targetData.bulk_list.map(item => item.source_table).filter(Boolean);
-          const targetTables = targetData.bulk_list.map(item => item.target_table).filter(Boolean);
-          
-         
-          // Set the bulk list for filtering
-          setBulkList(sourceTables);
-          
-          // Set selected items (the full mapping objects)
-          setSelectedItems(targetData.bulk_list);
-          
-          // If we have source tables, we need to set source connection and schema
-          // This is needed for bulkTables to be fetched correctly
-          if (sourceTables.length > 0) {
-            // Try to get source connection and schema from the first mapping
-            const firstMapping = targetData.bulk_list[0];
-            if (firstMapping.source_connection) {
-              setSourceConnection(firstMapping.source_connection);
-            }
-            if (firstMapping.source_schema) {
-              setSourceSchema(firstMapping.source_schema);
-            }
-          }
-        } else {
-          // If bulk_list contains just strings
-          setSelectedItems(targetData.bulk_list);
-          setBulkList(targetData.bulk_list);
-        }
-      }
-      
-      // Also try to get source connection and schema from source data if available
-      if (data?.source) {
-        const sourceData = Array.isArray(data.source) ? data.source[0] : data.source;
-        if (sourceData?.connection) {
-          setSourceConnection(sourceData.connection);
-        }
-        if (sourceData?.schema) {
-          setSourceSchema(sourceData.schema);
-        }
-      }
-      
-      // Pre-populate connection object if available
-      if (targetData.target_conn_id) {
+    if (isEditMode && !isEditModeInitialized && safeConnections?.length > 0) {
+      const targetData = data?.target;
+
+      if (targetData && Object.keys(targetData).length > 0) {
         // Find the connection object from connections data
-        const connectionObj = safeConnections?.find(conn => 
-          conn.connection_id === targetData.target_conn_id || 
-          conn.connection_name === targetData.connection
+        const connectionObj = safeConnections.find(
+          (conn) =>
+            conn.connection_id === targetData.target_conn_id ||
+            conn.connection_name === targetData.connection
         );
+
         if (connectionObj) {
           setSelectedConnectionObj(connectionObj);
+          setSelectedConnection(connectionObj.connection_name);
+        } else if (targetData.connection) {
+          setSelectedConnection(targetData.connection);
         }
-      }
-      
-      // Pre-populate node data
-      if (targetData) {
-        setNodeData(targetData);
+
+        // Pre-populate schema
+        if (targetData.schema) {
+          setSelectedSchema(targetData.schema);
+        }
+
+        // Pre-populate mode
+        if (targetData.mode) {
+          setSelectedMode(targetData.mode);
+        }
+
+        // Pre-populate selected items from bulk_list
+        if (targetData.bulk_list && Array.isArray(targetData.bulk_list)) {
+          setSelectedItems(targetData.bulk_list);
+
+          // Initialize bulk mappings in context if not already present
+          const key = isPipelineNode ? ID : `${data?.source?.id}-${ID}`;
+          if (!bulkMappings[key] || bulkMappings[key].length === 0) {
+            const mappingsToAdd = targetData.bulk_list.map((mapping) => ({
+              source_table: mapping.source_table,
+              target_table: mapping.target_table,
+              schedule: mapping.schedule || {},
+              whereCondition: mapping.whereCondition || "",
+              source_columns: mapping.source_columns || [],
+            }));
+
+            setBulkMappings((prev) => ({
+              ...prev,
+              [key]: mappingsToAdd,
+            }));
+          }
+        }
+
+        // Pre-populate node data with all target properties
+        setNodeData((prevData) => ({
+          ...prevData,
+          ...targetData,
+          target_conn_id: connectionObj?.connection_id || targetData.target_conn_id,
+          type: connectionObj?.connection_type || targetData.type,
+        }));
+
+        setIsEditModeInitialized(true);
       }
     }
-  }, [data?.target, data?.source, safeConnections]);
+  }, [isEditMode, safeConnections, data?.target, isEditModeInitialized, ID, isPipelineNode, bulkMappings, setBulkMappings]);
 
   const filteredTables = useMemo(() => {
-    if (selectedMode == "bulk")
-      return bulkTables?.filter((item) =>
-        bulkList?.includes(item.source_table)
-      );
+    if (selectedMode == "bulk") {
+      // Prefer API-driven bulkTables if present
+      const apiData = Array.isArray(bulkTables) ? bulkTables : [];
+      const apiFiltered =
+        apiData.length > 0
+          ? apiData.filter((item) => bulkList?.includes(item.source_table))
+          : [];
 
+      if (apiFiltered.length > 0) {
+        return apiFiltered;
+      }
+
+      // In edit mode after initialization, if source changed but API hasn't returned yet,
+      // we should not show stale data from nodeJson
+      if (isEditModeInitialized && bulkList.length > 0) {
+        // Return empty to wait for API, or show loading state
+        // Only fall back to nodeJson bulk_list if bulkList matches
+        const nodeBulkList = Array.isArray(data?.target?.bulk_list)
+          ? data.target.bulk_list
+          : [];
+
+        // Filter nodeBulkList to only include items whose source_table is in current bulkList
+        const filteredNodeBulkList = nodeBulkList.filter(
+          (m) => m && m.source_table && bulkList.includes(m.source_table)
+        );
+
+        if (filteredNodeBulkList.length > 0) {
+          // Convert [{source_table,target_table},...] into grouped format
+          const grouped = filteredNodeBulkList.reduce((acc, m) => {
+            if (!m || !m.source_table || !m.target_table) return acc;
+            const key = m.source_table;
+            if (!acc[key]) {
+              acc[key] = {
+                source_table: key,
+                target_tables: [],
+                metadata_id: m.metadata_id,
+              };
+            }
+            acc[key].target_tables.push(m.target_table);
+            return acc;
+          }, {});
+
+          return Object.values(grouped);
+        }
+
+        return [];
+      }
+
+      // Fallback to nodeJson target.bulk_list (edit mode prefill - initial load only)
+      const nodeBulkList = Array.isArray(data?.target?.bulk_list)
+        ? data.target.bulk_list
+        : [];
+
+      // Convert [{source_table,target_table},...] into grouped format
+      const grouped = nodeBulkList.reduce((acc, m) => {
+        if (!m || !m.source_table || !m.target_table) return acc;
+        const key = m.source_table;
+        if (!acc[key]) {
+          acc[key] = {
+            source_table: key,
+            target_tables: [],
+            metadata_id: m.metadata_id,
+          };
+        }
+        acc[key].target_tables.push(m.target_table);
+        return acc;
+      }, {});
+
+      return Object.values(grouped);
+    }
+
+    // subset mode
     if (!Array.isArray(tables) || tables.length === 0) return [];
-
-    let dataSource = tables;
-
     const processedData =
       selectedMode === "subset"
-        ? dataSource.map((item) => ({
+        ? tables.map((item) => ({
             target_table: item.source_table,
             connection_name: item.connection_name,
             connection_id: item.connection_id,
@@ -260,11 +267,9 @@ export function TargetNode({ id, data, selected }) {
         : [];
 
     return processedData.filter((table) =>
-      table?.target_table
-        ?.toLowerCase()
-        .includes(searchTerm?.toLowerCase() || "")
+      table?.target_table?.toLowerCase().includes(searchTerm?.toLowerCase() || "")
     );
-  }, [selectedMode, tables, bulkList, searchTerm, selectedSchema]);
+  }, [selectedMode, tables, bulkList, searchTerm, selectedSchema, bulkTables, data?.target?.bulk_list, isEditModeInitialized]);
 
   useEffect(() => {
     if (filteredTables) {
@@ -280,7 +285,7 @@ export function TargetNode({ id, data, selected }) {
         mode: selectedMode,
         bulk_list: selectedItems, // Keep the full mapping objects
       };
-      
+
       updateData(ID, isPipelineNode, "target", updatedNodeData);
     }
   };
@@ -322,19 +327,20 @@ export function TargetNode({ id, data, selected }) {
     }
   };
 
+  // Sync state to context when values change (but not during initial edit mode load)
   useEffect(() => {
-    if (selectedConnection && selectedSchema && ID) {
-      const key = isPipelineNode ? ID : constructedKey;
+    if (selectedConnection && selectedSchema && ID && isEditModeInitialized) {
+      const key = isPipelineNode ? ID : `${data?.source?.[0]?.id || data?.source?.id}-${ID}`;
       const updatedNodeData = {
         connection: selectedConnection,
         schema: selectedSchema,
         mode: selectedMode,
         bulk_list:
-          selectedMode === "bulk" ? bulkMappings[key] : pipelineMappings[key],
+          selectedMode === "bulk" ? bulkMappings[key] || [] : pipelineMappings[key] || [],
         target_conn_id: nodeData?.target_conn_id,
         type: nodeData?.type,
-        source: data?.source?.[0],
-        define: data?.source?.[0]?.define,
+        source: data?.source?.[0] || data?.source,
+        define: data?.source?.[0]?.define || data?.define,
       };
       setNodeData(updatedNodeData);
 
@@ -343,9 +349,10 @@ export function TargetNode({ id, data, selected }) {
   }, [
     selectedConnection,
     selectedSchema,
-    selectedItems,
+    selectedMode,
     bulkMappings,
     pipelineMappings,
+    isEditModeInitialized,
   ]);
 
   const [openSections, setOpenSections] = useState({});
@@ -366,6 +373,35 @@ export function TargetNode({ id, data, selected }) {
       setOpenSections(initialState);
     }
   }, [filteredTables]);
+
+  // Handle connection selection
+  const handleConnectionSelect = (selectedConn) => {
+    const connName = selectedConn?.connection_name || "";
+    const connId = selectedConn?.connection_id || null;
+    const connType = selectedConn?.connection_type || null;
+
+    setSelectedConnectionObj(selectedConn);
+    setSelectedConnection(connName);
+    // Only reset if user is actively changing (not during init)
+    if (isEditModeInitialized || !isEditMode) {
+      setSelectedSchema("");
+    }
+    setNodeData((prevData) => ({
+      ...prevData,
+      target_conn_id: connId,
+      type: connType,
+    }));
+  };
+
+  // Handle schema selection
+  const handleSchemaChange = (schemaName) => {
+    setSelectedSchema(schemaName || "");
+    // Only reset if user is actively changing
+    if (isEditModeInitialized || !isEditMode) {
+      setSelectedItems([]);
+      setLoading(true);
+    }
+  };
 
   return (
     <div
@@ -405,56 +441,12 @@ export function TargetNode({ id, data, selected }) {
             Connection
           </label>
           <div className="w-full">
-            {/* <select
-              className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-              value={
-                selectedConnectionObj
-                  ? JSON.stringify(selectedConnectionObj)
-                  : ""
-              }
-              onChange={(e) => {
-                const selectedConnection = JSON.parse(e.target.value);
-                setSelectedConnectionObj(selectedConnection);
-                setSelectedConnection(selectedConnection.connection_name);
-                setSelectedSchema("");
-                setNodeData((prevData) => ({
-                  ...prevData,
-                  target_conn_id: selectedConnection.connection_id,
-                  "type":selectedConnection.connection_type
-                }));
-              }}
-            >
-              <option value="">Select Connection</option>
-              {safeConnections?.length > 0 ? (
-                safeConnections.map((connection, idx) => (
-                  <option key={idx} value={JSON.stringify(connection)}>
-                    {connection.connection_name}
-                  </option>
-                ))
-              ) : (
-                <option disabled>No connections available</option>
-              )}
-            </select> */}
+            {/* AutoComplete connection selector fixed to use onSelect and returnFullObject */}
             <AutoComplete
               options={safeConnections || []}
               value={selectedConnectionObj}
               placeholder="Select Connection"
-              onChange={(e) => {
-                const selectedConnection = e?.target?.selectedOption || null;
-
-                const connName = selectedConnection?.connection_name || "";
-                const connId = selectedConnection?.connection_id || null;
-                const connType = selectedConnection?.connection_type || null;
-
-                setSelectedConnectionObj(selectedConnection);
-                setSelectedConnection(connName);
-                setSelectedSchema("");
-                setNodeData((prevData) => ({
-                  ...prevData,
-                  target_conn_id: connId,
-                  type: connType,
-                }));
-              }}
+              onSelect={handleConnectionSelect}
               valueKey="connection_id"
               labelKey="connection_name"
               returnFullObject={true}
@@ -472,40 +464,11 @@ export function TargetNode({ id, data, selected }) {
           </label>
           <div className="relative w-full flex items-center gap-2">
             <div className="w-full relative">
-              {/* <select
-                className="w-full min-w-0 p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-                value={selectedSchema}
-                onChange={(e) => {
-                  const schemaName = e.target.value;
-                  setSelectedSchema(schemaName);
-                  setLoading(true);
-                }}
-                disabled={!selectedConnection || schemaLoading}
-              >
-                {schemaLoading ? (
-                  <option value="">Loading schemas...</option>
-                ) : (
-                  <>
-                    <option value="">Select Schema</option>
-                    {schemas?.map((schema, idx) => (
-                      <option key={idx} value={schema.table_schema}>
-                        {schema.table_schema}
-                      </option>
-                    ))}
-                  </>
-                )}
-              </select> */}
               <AutoComplete
                 options={schemas || []}
                 value={selectedSchema}
                 placeholder="Select Schema"
-                onChange={(e) => {
-                  const schemaName = e?.target?.value || "";
-                  setSelectedSchema(schemaName);
-                  setSelectedItems([]);
-                  setSelectedMode("");
-                  setLoading(true);
-                }}
+                onChange={(e) => handleSchemaChange(e?.target?.value || "")}
                 disabled={!selectedConnection || schemaLoading}
                 isLoading={schemaLoading}
                 loadingText="Loading schemas..."
@@ -548,29 +511,7 @@ export function TargetNode({ id, data, selected }) {
                 {sourceTable || "No source selected"}
               </span>
             </div>
-            {/* <select
-              id="connection-select"
-              className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-              // value={selectedConnection}
-              onChange={(e) =>
-                completeMapping(
-                  ID,
-                  firstSource?.id,
-                  e.target.value,
-                  isPipelineNode
-                )
-              }
-            >
-              <option value="">Select Table</option>
-              {filteredTables.map((table, idx) => (
-                <option
-                  key={idx}
-                  // value={table.connection_name}
-                >
-                  {table.target_table}
-                </option>
-              ))}
-            </select> */}
+
             <AutoComplete
               id="connection-select"
               options={filteredTables || []}
@@ -858,26 +799,7 @@ export function TargetNode({ id, data, selected }) {
           + Add table
         </button>
       )}
-      {/* <div className="flex space-x-2 mt-4">
-        <button className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded"
-        onClick={
-          ()=>{
-            setSelectedConnection("");
-            setSelectedSchema("");
-            setSchemacount([])
-            setTables([]);
-          }
-          }
-        
-        >
-          Cancel
-        </button>
-        <button 
-          onClick={handleOkClick}
-          className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
-          OK
-        </button>
-      </div> */}
+
     </div>
   );
 }

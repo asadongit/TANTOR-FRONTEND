@@ -26,11 +26,101 @@ export const WorkflowProvider = ({ children }) => {
   const [inProgressMappings, setInProgressMappings] = useState({});
   const [bulkMappings, setBulkMappings] = useState({});
   const [editMode, setEditMode] = useState(false);
+  const [initializedPipelines, setInitializedPipelines] = useState(new Set());
 
   const pipelineCounterRef = useRef({ count: 0 });
   const reactFlowInstance = useReactFlow();
   const reactFlowWrapper = useRef(null);
   const { fitView } = useReactFlow();
+
+  // Initialize workflow from nodeJson (for edit mode)
+  const initializeFromNodeJson = useCallback((nodeJson) => {
+    if (!nodeJson || !nodeJson.nodes || !nodeJson.edges) return;
+
+    setEditMode(true);
+
+    // Set nodes and edges
+    setNodes(nodeJson.nodes);
+    setEdges(nodeJson.edges);
+
+    // Extract pipeline IDs and initialize pipelines state
+    const pipelineData = {};
+    const bulkMappingsData = {};
+    const initializedIds = new Set();
+
+    nodeJson.nodes.forEach((node) => {
+      const pipelineId = node.data?.pipelineId;
+      if (pipelineId && !pipelineData[pipelineId]) {
+        pipelineData[pipelineId] = {
+          data: {
+            define: node.data?.define || null,
+            source: node.data?.source || null,
+            target: node.data?.target || null,
+            scheduler: node.data?.scheduler || null,
+          },
+        };
+        initializedIds.add(pipelineId);
+
+        // Initialize bulk mappings from target.bulk_list
+        if (node.data?.target?.bulk_list && Array.isArray(node.data.target.bulk_list)) {
+          bulkMappingsData[pipelineId] = node.data.target.bulk_list.map((mapping) => ({
+            source_table: mapping.source_table,
+            target_table: mapping.target_table,
+            schedule: mapping.schedule || {},
+            whereCondition: mapping.whereCondition || "",
+            source_columns: mapping.source_columns || [],
+          }));
+        }
+      }
+    });
+
+    // Also check pipelineData from nodeJson if available
+    if (nodeJson.pipelineData) {
+      const firstPipelineId = Object.keys(pipelineData)[0];
+      if (firstPipelineId) {
+        pipelineData[firstPipelineId] = {
+          data: {
+            define: nodeJson.pipelineData.define || pipelineData[firstPipelineId]?.data?.define,
+            source: nodeJson.pipelineData.source || pipelineData[firstPipelineId]?.data?.source,
+            target: nodeJson.pipelineData.target || pipelineData[firstPipelineId]?.data?.target,
+            scheduler: nodeJson.pipelineData.scheduler || pipelineData[firstPipelineId]?.data?.scheduler,
+          },
+        };
+
+        // Initialize bulk mappings from pipelineData.target.bulk_list
+        if (nodeJson.pipelineData.target?.bulk_list && Array.isArray(nodeJson.pipelineData.target.bulk_list)) {
+          bulkMappingsData[firstPipelineId] = nodeJson.pipelineData.target.bulk_list.map((mapping) => ({
+            source_table: mapping.source_table,
+            target_table: mapping.target_table,
+            schedule: mapping.schedule || {},
+            whereCondition: mapping.whereCondition || "",
+            source_columns: mapping.source_columns || [],
+          }));
+        }
+      }
+    }
+
+    setPipelines(pipelineData);
+    setBulkMappings(bulkMappingsData);
+    setInitializedPipelines(initializedIds);
+
+    // Update pipeline counter
+    pipelineCounterRef.current.count = Object.keys(pipelineData).length;
+
+    setTimeout(() => {
+      reactFlowInstance?.fitView?.({ padding: 0.2, duration: 800 });
+    }, 100);
+  }, [setNodes, setEdges, reactFlowInstance]);
+
+  // Check if a pipeline has been initialized (for edit mode)
+  const isPipelineInitialized = useCallback((pipelineId) => {
+    return initializedPipelines.has(pipelineId);
+  }, [initializedPipelines]);
+
+  // Mark a pipeline as initialized
+  const markPipelineInitialized = useCallback((pipelineId) => {
+    setInitializedPipelines((prev) => new Set([...prev, pipelineId]));
+  }, []);
 
   const addPipeline = (category) => {
     const pipelineId = `pipeline_${Date.now()}`;
@@ -62,16 +152,27 @@ export const WorkflowProvider = ({ children }) => {
     }, 100);
   };
 
-  const updatePipelineData = (pipelineId, nodeType, nodeData) => {   
+  const updatePipelineData = (pipelineId, nodeType, nodeData) => {
     setPipelines((prevPipelines) => {
-      
+
       if (!prevPipelines[pipelineId]) {
-        return prevPipelines;
+        // If pipeline doesn't exist yet, create it
+        return {
+          ...prevPipelines,
+          [pipelineId]: {
+            data: {
+              define: null,
+              source: null,
+              target: null,
+              scheduler: null,
+              [nodeType]: { ...nodeData },
+            },
+          },
+        };
       }
 
       // Handle table_op_types if present
       if (nodeData.table_op_types) {
-        // Make sure we're preserving existing table operation types that aren't being updated
         const existingTableOpTypes = prevPipelines[pipelineId]?.data?.[nodeType]?.table_op_types || {};
         nodeData = {
           ...nodeData,
@@ -89,8 +190,7 @@ export const WorkflowProvider = ({ children }) => {
           data: {
             ...prevPipelines[pipelineId].data,
             [nodeType]: {
-              ...prevPipelines[pipelineId].data[nodeType],
-              ...nodeData,
+              ...nodeData, // Replace entirely to ensure new bulk_list is used
             },
           },
         },
@@ -292,7 +392,7 @@ export const WorkflowProvider = ({ children }) => {
     });
   };
 
-  const updateData = (ID, isPipelineNode = false, type, updatedNodeData) => {  
+  const updateData = (ID, isPipelineNode = false, type, updatedNodeData) => {
     isPipelineNode
       ? updatePipelineData(ID, type, updatedNodeData)
       : updateCustomNode(ID, type, updatedNodeData);
@@ -311,12 +411,15 @@ export const WorkflowProvider = ({ children }) => {
       );
 
       if (!exists) {
-        updated[key].push({
-          ...mapping,
-          schedule: {},
-          whereCondition: "",
-          source_columns: [],
-        });
+        updated[key] = [
+          ...updated[key],
+          {
+            ...mapping,
+            schedule: mapping.schedule || {},
+            whereCondition: mapping.whereCondition || "",
+            source_columns: mapping.source_columns || [],
+          },
+        ];
       }
 
       return updated;
@@ -398,7 +501,7 @@ export const WorkflowProvider = ({ children }) => {
     const enhancedNodes = nodes.map((node) => {
       const pid = node.data?.pipelineId || node.id;
       const latestData = pipelines[pid]?.data;
-      
+
       return {
         ...node,
         data: {
@@ -411,7 +514,7 @@ export const WorkflowProvider = ({ children }) => {
         },
       };
     });
-    
+
     return {
       nodes: enhancedNodes,
       edges,
@@ -464,9 +567,13 @@ export const WorkflowProvider = ({ children }) => {
         updateBulkMappings,
         deselectMapping,
         bulkMappings,
+        setBulkMappings,
         editMode,
         setEditMode,
         getEnhancedNodeData,
+        initializeFromNodeJson,
+        isPipelineInitialized,
+        markPipelineInitialized,
       }}
     >
       {children}

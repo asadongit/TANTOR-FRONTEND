@@ -40,6 +40,7 @@ export function SourceNode({ id, data, selected }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedItems, setSelectedItems] = useState([]);
   const [selectedConnectionObj, setSelectedConnectionObj] = useState(null);
+  const [isEditModeInitialized, setIsEditModeInitialized] = useState(false);
   const [nodeData, setNodeData] = useState(() => ({
     connection: "",
     schema: "",
@@ -65,10 +66,10 @@ export function SourceNode({ id, data, selected }) {
     selectedMode
   );
   const { data: ddl } = useDDL(selectedConnection, selectedSchema);
-  
+
   // Ensure connections is always an array
   const safeConnections = Array.isArray(connections) ? connections : [];
-  
+
   const pipelineId = data?.pipelineId;
   const isPipelineNode = pipelineId !== undefined;
   const ID = isPipelineNode ? pipelineId : id;
@@ -80,8 +81,62 @@ export function SourceNode({ id, data, selected }) {
     deleteMapping,
     updateData,
     pipelines,
+    editMode,
+    isPipelineInitialized,
   } = useWorkflow();
 
+  // Check if this is edit mode
+  const isEditMode = data?.isEditMode || editMode;
+
+  // Initialize node with pre-populated data in edit mode (only once when connections are loaded)
+  useEffect(() => {
+    if (isEditMode && !isEditModeInitialized && safeConnections?.length > 0) {
+      const sourceData = data?.source;
+
+      if (sourceData && Object.keys(sourceData).length > 0) {
+        // Find the connection object from connections data
+        const connectionObj = safeConnections.find(conn =>
+          conn.connection_id === sourceData.source_conn_id ||
+          conn.connection_name === sourceData.connection
+        );
+
+        if (connectionObj) {
+          setSelectedConnectionObj(connectionObj);
+          setSelectedConnection(connectionObj.connection_name);
+        } else if (sourceData.connection) {
+          setSelectedConnection(sourceData.connection);
+        }
+
+        // Pre-populate schema
+        if (sourceData.schema) {
+          setSelectedSchema(sourceData.schema);
+        }
+
+        // Pre-populate mode
+        if (sourceData.mode) {
+          setSelectedMode(sourceData.mode);
+        }
+
+        // Pre-populate selected items
+        if (sourceData.bulk_list && Array.isArray(sourceData.bulk_list)) {
+          setSelectedItems(sourceData.bulk_list);
+        }
+
+        // Pre-populate node data with all source properties
+        setNodeData(prevData => ({
+          ...prevData,
+          ...sourceData,
+          source_conn_id: connectionObj?.connection_id || sourceData.source_conn_id,
+          type: connectionObj?.connection_type || sourceData.type,
+        }));
+
+        setIsEditModeInitialized(true);
+      }
+    }
+  }, [isEditMode, safeConnections, data?.source, isEditModeInitialized]);
+
+  // Sync state to context when values change
+  // This should run whenever selectedItems changes, regardless of edit mode state
   useEffect(() => {
     if (selectedConnection && selectedSchema && ID) {
       const updatedNodeData = {
@@ -90,10 +145,10 @@ export function SourceNode({ id, data, selected }) {
         mode: selectedMode,
         bulk_list: selectedItems,
         subset_list: pipelineMappings?.[ID] ?? [],
-        op_types: nodeData?.op_types ?? [],
+        op_types: nodeData?.op_types ?? { datafederation: false },
         source_conn_id: nodeData?.source_conn_id ?? null,
         type: nodeData?.type,
-        define: data?.define?.[0] ?? null,
+        define: data?.define?.[0] ?? data?.define ?? null,
       };
 
       setNodeData(updatedNodeData);
@@ -105,50 +160,12 @@ export function SourceNode({ id, data, selected }) {
     selectedMode,
     selectedItems,
     pipelineMappings,
+    ID,
+    isPipelineNode,
+    nodeData?.op_types,
+    nodeData?.source_conn_id,
+    nodeData?.type,
   ]);
-
-  // Initialize node with pre-populated data in edit mode
-  useEffect(() => {
-    if (data?.source && Object.keys(data.source).length > 0) {
-      const sourceData = data.source;
-      // Pre-populate connection
-      if (sourceData.connection) {
-        setSelectedConnection(sourceData.connection);
-      }
-      
-      // Pre-populate schema
-      if (sourceData.schema) {
-        setSelectedSchema(sourceData.schema);
-      }
-      
-      // Pre-populate mode
-      if (sourceData.mode) {
-        setSelectedMode(sourceData.mode);
-      }
-      
-      // Pre-populate selected items
-      if (sourceData.bulk_list && Array.isArray(sourceData.bulk_list)) {
-        setSelectedItems(sourceData.bulk_list);
-      }
-      
-      // Pre-populate connection object if available
-      if (sourceData.source_conn_id) {
-        // Find the connection object from connections data
-        const connectionObj = safeConnections?.find(conn => 
-          conn.connection_id === sourceData.source_conn_id || 
-          conn.connection_name === sourceData.connection
-        );
-        if (connectionObj) {
-          setSelectedConnectionObj(connectionObj);
-        }
-      }
-      
-      // Pre-populate node data
-      if (sourceData) {
-        setNodeData(sourceData);
-      }
-    }
-  }, [data?.source, safeConnections]);
 
   const filteredTables = useMemo(() => {
     if (!tables || !Array.isArray(tables) || !tables.length) return [];
@@ -168,6 +185,7 @@ export function SourceNode({ id, data, selected }) {
 
     setSelectedConnectionObj(selectedConnection);
     setSelectedConnection(connName);
+    // Always reset when user changes connection (both create and edit mode after init)
     setSelectedSchema("");
     setSelectedItems([]);
     setSelectedMode("");
@@ -180,12 +198,14 @@ export function SourceNode({ id, data, selected }) {
 
   const handleSelectSchema = (schemaName) => {
     setSelectedSchema(schemaName || "");
+    // Always reset when user changes schema
     setSelectedItems([]);
     setSelectedMode("");
   };
 
   const handleModeChange = (mode) => {
     setSelectedMode(mode);
+    // Always reset items when mode changes
     setSelectedItems([]);
 
     if (!selectedConnection || !selectedSchema) return;
@@ -212,30 +232,12 @@ export function SourceNode({ id, data, selected }) {
     });
   };
 
-  const handleOkClick = () => {
-    if (selectedConnection && selectedSchema && selectedMode) {
-      const updatedNodeData = {
-        connection: selectedConnection,
-        schema: selectedSchema,
-        mode: selectedMode,
-        bulk_list: selectedItems,
-        subset_list: pipelineMappings?.[ID] ?? [],
-        op_types: nodeData.op_types,
-      };
-
-      setNodeData(updatedNodeData);
-      updateData(ID, isPipelineNode, "source", updatedNodeData);
-    }
-  };
 
   const areAllSelected =
     Array.isArray(filteredTables) && filteredTables.length > 0 &&
     Array.isArray(selectedItems) && selectedItems.length ===
       filteredTables.filter((table) => table !== null).length;
 
-  const isSubmitEnabled = Boolean(
-    selectedConnection && selectedSchema && selectedMode
-  );
 
   const connectedTargets = (Array.isArray(data?.target) ? data.target : [])
     .filter((target) => target && target.id !== undefined)
@@ -308,29 +310,8 @@ export function SourceNode({ id, data, selected }) {
             Connection
           </label>
           <div className="w-full">
-            {/* <select
-              id="connection-select"
-              className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-              value={selectedConnectionObj ? JSON.stringify(selectedConnectionObj) : ""}
-                onChange={(e) => {
-                const selectedConnection = JSON.parse(e.target.value); 
-                handleSelectConnection(selectedConnection)
-              }}
-            >
-              
-              <option value="">Select Connection</option>
-              {connections?.length > 0 ? (
-                connections.map((connection, idx) => (
-                  <option key={idx} value={JSON.stringify(connection)}>
-                    {connection.connection_name}
-                  </option>
-                ))
-              ) : (
-                <option disabled>No connections available</option>
-              )}
-            </select> */}
 
-            <AutoComplete
+           <AutoComplete
               options={safeConnections || []}
               placeholder="Select Connection"
               labelKey="connection_name"
@@ -354,29 +335,7 @@ export function SourceNode({ id, data, selected }) {
           </label>
           <div className="relative w-full flex items-center gap-2">
             <div className="w-full relative">
-              {/* <select
-                id="schema-select"
-                className="w-full min-w-0 p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-                value={selectedSchema}
-                onChange={(e) => handleSelectSchema(e.target.value)}
-                disabled={!selectedConnection || isLoadingSchemas}
-              >
-                {isLoadingSchemas ? (
-                  <option value="">Loading schemas...</option>
-                ) : (
-                  <>
-                    <option value="">Select Schema</option>
-                    {schemas?.map((schema) => (
-                      <option
-                        key={schema.table_schema}
-                        value={schema.table_schema}
-                      >
-                        {schema.table_schema}
-                      </option>
-                    ))}
-                  </>
-                )}
-              </select> */}
+
               <AutoComplete
                 options={schemas || []}
                 value={selectedSchema}
@@ -453,25 +412,7 @@ export function SourceNode({ id, data, selected }) {
         {filteredTables &&
           filteredTables.length > 0 &&
           selectedMode === "subset" && (
-            // <select
-            //   id="table-select"
-            //   className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-            //   onChange={(e) =>
-            //     selectSource(
-            //       ID,
-            //       e.target.value,
-            //       connectedTargets,
-            //       isPipelineNode
-            //     )
-            //   }
-            // >
-            //   <option value="">Select Table</option>
-            //   {filteredTables.map((table, idx) => (
-            //     <option key={idx} value={table.source_table}>
-            //       {table.source_table}
-            //     </option>
-            //   ))}
-            // </select>
+
             <AutoComplete
               options={filteredTables}
               placeholder="Select Table"
@@ -513,25 +454,7 @@ export function SourceNode({ id, data, selected }) {
                 <ArrowDownUp size={16} className="text-gray-500" />
               </div>
 
-              {/* <button
-                className="flex items-center gap-1 px-2 py-1 text-sm font-medium text-[#8e78b7] border border-[#8e78b7] rounded-md hover:bg-[#8e78b7] hover:text-white transition"
-                onClick={() =>
-                  openDrawer(data.category || 'source', "scope", id, data.pipelineId)
-                }
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    fill="currentColor"
-                    d="M12 13.5q-.633 0-1.066-.434Q10.5 12.633 10.5 12t.434-1.066Q11.367 10.5 12 10.5t1.066.434q.434.433.434 1.066t-.434 1.066q-.433.434-1.066.434ZM11.5 8V4h1v4h-1Zm0 12v-4h1v4h-1Zm4.5-7.5v-1h4v1h-4Zm-12 0v-1h4v1H4Z"
-                  />
-                </svg>
-                <span>Scope</span>
-              </button> */}
+
             </div>
           </div>
 
