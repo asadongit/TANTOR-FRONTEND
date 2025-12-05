@@ -380,7 +380,7 @@ export function TargetNode({ id, data, selected }) {
 
   // Sync state to context when values change (but not during initial edit mode load)
   useEffect(() => {
-    if (selectedConnection && selectedSchema && ID && isEditModeInitialized) {
+    if (selectedConnection && selectedSchema && ID) {
       const key = isPipelineNode ? ID : `${data?.source?.[0]?.id || data?.source?.id}-${ID}`;
       const updatedNodeData = {
         connection: selectedConnection,
