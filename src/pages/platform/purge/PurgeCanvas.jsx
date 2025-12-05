@@ -9,9 +9,9 @@ import { DrawerContainer } from "../react-flow/drawers/DrawerContainer";
 import PurgeDrawer from "../react-flow/dialog/PurgeDrawer"
 import PurgeSidebar from "./PurgeSidebar";
 import PurgeFooter from "./PurgeFooter";
+import { createPipeline } from "../cdc/components/CreatePipeline";
 import { useStateContext } from "../react-flow/context/ContextProvider";
 import toast from "react-hot-toast";
-
 
 const nodeTypes = {
   define : DefineNodePurge,
@@ -78,7 +78,7 @@ function PurgeCanvas() {
           id: 'source',
           type: 'source',
           position: ui_json.sourceNode.position || { x: 350, y: 50 },
-          data: { ...ui_json.sourceNode },
+          data: { ...ui_json.sourceNode, bulk: ui_json?.bulk || {} },
         });
         // Removed manual context updates; nodes handle this via data prop
         // if (ui_json.sourceNode.connectionName) handleSourceConnectionName(ui_json.sourceNode.connectionName);
@@ -92,7 +92,7 @@ function PurgeCanvas() {
           id: 'target',
           type: 'target',
           position: ui_json.targetNode.position || { x: 600, y: 50 },
-          data: { ...ui_json.targetNode },
+          data: { ...ui_json.targetNode, bulk: ui_json?.bulk || {} },
         });
         // Removed manual context updates; nodes handle this via data prop
         // if (ui_json.targetNode.connectionName) handleTargetConnectionName(ui_json.targetNode.connectionName);
@@ -126,6 +126,16 @@ function PurgeCanvas() {
       }, 300);
     }
   }, [ui_json, setNodes, setEdges, handleIsVisibleFooter])
+
+   useEffect(() => {
+    if (ui_json) return;
+
+    const { nodes: autoNodes, edges: autoEdges } = createPipeline("purge", "purge_1");
+
+    setNodes(autoNodes);
+    setEdges(autoEdges);
+  }, [ui_json, setNodes, setEdges]);
+
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),

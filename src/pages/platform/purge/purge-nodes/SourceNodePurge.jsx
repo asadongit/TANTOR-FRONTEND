@@ -179,9 +179,13 @@ export function SourceNode({ id, data }) {
 
       metadatalist = await metaDataResponse.json();
       setMetaData(metadatalist);
+      
+      return metadatalist;
     } catch (error) {
       console.error("Error fetching tables:", error);
       setMetaData([]);
+      
+      return [];
     } finally {
       setLoading(false);
     }
@@ -336,6 +340,19 @@ export function SourceNode({ id, data }) {
 
   };
 
+  const checkIfTableHasOnlyOnePartition = (table, scopeType) =>{
+    console.log("checkIfTableHasOnlyOnePartition ==> ", table);
+    console.log("Scope ==> ", scopeType);
+
+    if(scopeType === "bulk"){
+      return table?.metadatas?.partition_json ? table.metadatas.partition_json.length == 1 : false;
+    }
+
+    if(scopeType === "subset"){
+      return table?.partition_json ? table.partition_json.length == 1 : false;
+    }
+
+  }
   const getFirstPartitionNameFromTable = (table) => {
     if (!table?.partition_json) return null;
 
@@ -348,6 +365,7 @@ export function SourceNode({ id, data }) {
     return sortedPartitions[0]?.partition_name || null;
   };
 
+  
   useEffect(() => {
     if (tables.length > 0 && selectedTables.length > 0 && selectedPurgeScope === 'subset') {
       const tableName = selectedTables[0];
@@ -393,8 +411,20 @@ export function SourceNode({ id, data }) {
 
       if (data.connectionName && data.schemaName) {
         fetchTables(data.connectionName, data.schemaName);
+        
+        
         if (data.scope === 'bulk' || data.selectedPurgeScope === 'bulk') {
-             fetchMetadata(data.connectionName, data.schemaName);
+          let sourceTableNames = [];
+          
+          if(data.bulk){
+           sourceTableNames = data.bulk.selectedBulkTargetTablesPayload.map(t => t.source_table);
+           setSelectedItems(prev => [...sourceTableNames]);
+          }
+
+          fetchMetadata(data.connectionName, data.schemaName).then(m => {
+            let selectedSourceTableMetadatas = m.filter(e => sourceTableNames.includes(e.source_table));
+            setSelectedBulkSourceTables([...selectedSourceTableMetadatas]);
+          });
         }
       }
 
@@ -699,8 +729,12 @@ export function SourceNode({ id, data }) {
                               </div>
                               <button
                                 onClick={() => {
-                                  openDrawer(id, table);
-                                  handlePurgeNode("Source Node");
+                                  if(checkIfTableHasOnlyOnePartition(table, "bulk")){
+                                    toast.error("Table only has one partition!")
+                                  }else{
+                                    openDrawer(id, table);
+                                    handlePurgeNode("Source Node");
+                                  }
                                 }}
                                 className="text-purple-600 hover:text-purple-700"
                               >
@@ -775,8 +809,12 @@ export function SourceNode({ id, data }) {
                         </div>
                         <button
                           onClick={() => {
-                            openDrawer(id, table);
-                            handlePurgeNode("Source Node");
+                            if(checkIfTableHasOnlyOnePartition(table, "subset")){
+                              toast.error("Table only has one partition!")
+                            }else{
+                              openDrawer(id, table);
+                              handlePurgeNode("Source Node");
+                            }
                           }}
                           className="text-purple-600 hover:text-purple-700"
                         >
