@@ -6,8 +6,11 @@ import { useStateContext } from "../context/ContextProvider";
 import { usePurgeContext } from "../context/PurgeContext";
 import toast from "react-hot-toast";
 
-const PurgeDrawer = ({ nodes, setNodes }) => {
+const PurgeDrawer = ({ nodes, setNodes, isEditMode = false }) => {
   const { drawerState, closeDrawer } = useTableContext();
+
+
+  
   const [localTable, setLocalTable] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
   const [selectedRows, setSelectedRows] = useState([0]);
@@ -69,6 +72,11 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
   const [queryMode, setQueryMode] = useState("simple");
   const [tableSort, setTableSort] = useState([]);
   const [partitionMismatch, setPartitionMismatch] = useState(false);
+  useEffect(() => {
+    if (!drawerState.isOpen) {
+      setActiveTab("filter-tab");
+    }
+  }, [drawerState.isOpen]);
 
   useEffect(() => {
     if (!drawerState.isOpen) {
@@ -278,6 +286,24 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
     (a, b) => a.partition_id - b.partition_id
   );
 
+  const checkIfTableHasOnlyOnePartition = () => {
+  if (selectedScope === "bulk") {
+    console.log("LOCAL TABLE BULK==> ", localTable);
+    if(localTable?.metadatas && localTable.metadatas?.partition_json && localTable.metadatas.partition_json.length === 1)
+      return true;
+
+  }
+
+  if(selectedScope === "subset"){
+    console.log("LOCAL TABLE SUBSET ==> ", localTable);
+    if(localTable?.partition_json && localTable.partition_json.length === 1){
+      return true;
+    }
+  }
+  return false;
+};
+
+
   const isMSSQLConnection = purgeNode === "Source Node"
     ? sourceConnectionName.toLowerCase().includes("mssql")
     : targetConnectionName.toLowerCase().includes("mssql")
@@ -313,7 +339,12 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
 
   // -------------------------------Update Drawer for Purge[includes both Add_condition/Drop_Partitoin]-------------------------------------------
 
+  
   const switchTab = (tabId) => {
+    if(tabId === "partition-tab" && checkIfTableHasOnlyOnePartition()){
+      toast.error("Can't drop default partition!");
+      return;
+    }
     setActiveTab(tabId);
   };
 
