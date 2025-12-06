@@ -133,13 +133,14 @@ const handleEditClick = async (row) => {
             data: {
               ...node.data,
               isEditMode: true,
+              migration_id: row.migration_id,
               // Ensure source data is available on all nodes that need it
               source: node.data?.source || sourceData,
             }
           };
         });
       }
-      navigate('/canvas/metadataCanvas', { state: { nodeJson, isEditMode: true } });
+      navigate('/canvas/metadataCanvas', { state: { nodeJson, isEditMode: true, migration_id: row.migration_id } });
     } else {
       toast.error('No migration node data found.');
     }

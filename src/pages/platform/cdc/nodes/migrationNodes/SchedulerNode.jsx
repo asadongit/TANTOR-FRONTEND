@@ -27,6 +27,10 @@ export function SchedulerNode({ id, data, selected}) {
   const [startDateTime, setStartDateTime] = useState("");
   const [endDateTime, setEndDateTime] = useState("");
 
+  // Get edit mode and migration_id directly from data
+  const isEditMode = data?.isEditMode || pipelines?.[ID]?.data?.isEditMode || false;
+  const migrationId = data?.migration_id || pipelines?.[ID]?.data?.migration_id;
+
   // Initialize node with pre-populated data in edit mode
   useEffect(() => {
     // Check multiple locations for scheduler data
@@ -212,6 +216,109 @@ export function SchedulerNode({ id, data, selected}) {
     } catch (error) {
       console.error("Error:", error);
       toast.error("Failed to save Migration. Please try again.", { duration: 4000 });
+    }
+  };
+
+  const handleUpdate = async () => {
+    let pipelineData = {};
+
+    if (isPipelineNode) {
+      pipelineData = pipelines[ID]?.data || {};
+    } else {
+      if (data?.target && Array.isArray(data.target) && data.target.length > 0) {
+        const targetData = data.target[0];
+        pipelineData = {
+          define: targetData.define || {},
+          source: targetData.source || {},
+          target: targetData
+        };
+      }
+    }
+
+    if (!pipelineData?.define?.name) {
+      toast.error("Please provide a name for the Migration!", { duration: 4000 });
+      return;
+    }
+
+    if (!pipelineData?.source?.source_conn_id) {
+      toast.error("Source connection is required!", { duration: 4000 });
+      return;
+    }
+
+    if (!pipelineData?.target?.target_conn_id) {
+      toast.error("Target connection is required!", { duration: 4000 });
+      return;
+    }
+
+    if (!pipelineData?.target?.bulk_list || pipelineData.target.bulk_list.length === 0) {
+      toast.error("Please select at least one table mapping!", { duration: 4000 });
+      return;
+    }
+
+    const schedulerData = selectedOption === "auto" ? {
+      mode: "auto",
+      column: scheduleColumn,
+      startDateTime,
+      intervalType,
+      intervalValue,
+      ...(showFrequency && { frequency })
+    } : {
+      mode: "manual",
+      startDateTime,
+      endDateTime
+    };
+
+    const allNodeData = getEnhancedNodeData();
+
+    const finalPayload = {
+      project: project,
+      created_by: decodedToken.preferred_username,
+      migration_name: pipelineData.define?.name,
+      migration_auto_name: pipelineData.define?.autoName,
+      description: pipelineData.define?.description || "",
+      source_conn_id: pipelineData.source?.source_conn_id,
+      target_conn_id: pipelineData.target?.target_conn_id,
+      source_conn_name: pipelineData.source?.connection,
+      target_conn_name: pipelineData.target?.connection,
+      source_schema: pipelineData.source?.schema,
+      target_schema: pipelineData.target?.schema,
+      source_conn_type: pipelineData.source?.type,
+      target_conn_type: pipelineData.target?.type,
+      migration_list: pipelineData.target?.bulk_list || [],
+      op_types: pipelineData.source?.op_types || {},
+      scheduler: schedulerData,
+      ui_json: allNodeData
+    };
+
+    try {
+      const response = await fetch(`${hostnameV2}/update-migration/${migrationId}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(finalPayload),
+      });
+
+      const responseData = await response.json();
+
+      if (responseData.status === "error") {
+        toast.error(responseData.message || "Failed to update Migration.", { duration: 4000 });
+        return;
+      }
+
+      setTimeout(() => {
+        setNodes([]);
+        openModal({
+          title: "Success!",
+          message: "Your Migration has been updated successfully.",
+          type: "success",
+          onClose: () => handleClose(),
+        });
+      }, 800);
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Failed to update Migration. Please try again.", { duration: 4000 });
     }
   };
 
@@ -417,15 +524,17 @@ export function SchedulerNode({ id, data, selected}) {
         <button
           className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded"
           onClick={() => openModal({
-            title: "Save Confirmation",
-            message: "Are you sure you want to save this Migration?",
+            title: isEditMode ? "Update Confirmation" : "Save Confirmation",
+            message: isEditMode
+              ? "Are you sure you want to update this Migration?"
+              : "Are you sure you want to save this Migration?",
             type: "question",
             confirmText: "Yes",
-            loadingText: "Saving",
-            onConfirm: () => handleSave(),
+            loadingText: isEditMode ? "Updating" : "Saving",
+            onConfirm: () => isEditMode ? handleUpdate() : handleSave(),
           })}
         >
-          SAVE
+          {isEditMode ? "UPDATE" : "SAVE"}
         </button>
       </div>
     </div>
