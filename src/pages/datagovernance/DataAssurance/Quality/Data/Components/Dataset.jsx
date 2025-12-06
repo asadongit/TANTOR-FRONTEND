@@ -392,6 +392,7 @@ function Dataset({ query, setQuery, setQuerySuccess,setFormData }) {
         const historyPayload = {
           query: query,
           owner: decodedToken?.preferred_username,
+          status: "success",
           project: 'dg',
           type: 'dg'
         };
