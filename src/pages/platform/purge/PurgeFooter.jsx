@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 
-const PurgeFooter = ({ onCancel }) => {
+const PurgeFooter = ({ onCancel, isEditMode = false}) => {
 
   const hostname = window._env_?.VITE_FAST_API;
   const hostnameV2 = window._env_?.VITE_FAST_API_V2;
@@ -230,9 +230,12 @@ const PurgeFooter = ({ onCancel }) => {
   }
 
   const createBulkPurge = async () => {
+    const url = `${hostnameV2}/${isEditMode ? "update-purge" : "create-purge"}`;
+    const method = isEditMode ? "PUT" : "POST";
+
     try {
-      const res = await fetch(`${hostnameV2}/create-purge`, {
-        method: "POST",
+      const res = await fetch(url, {
+        method: method,
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -243,7 +246,7 @@ const PurgeFooter = ({ onCancel }) => {
       if (!res.ok) throw new Error('Failed to post data');
 
       const data = await res.json();
-      toast.success("Purge fow submitted successfully!",
+      toast.success(`Purge job ${isEditMode ? "updated" : "saved"} successfully!`,
         {
           duration: 2000,
           position: "top-right",
@@ -261,8 +264,11 @@ const PurgeFooter = ({ onCancel }) => {
 
   const createPurge = async () => {
     try {
-      const res = await fetch(`${hostname}/purges`, {
-        method: "POST",
+      const url = `${hostname}/${isEditMode ? "edit-purges" : "purges"}`;
+      const method = isEditMode ? "PUT" : "POST";
+      
+      const res = await fetch(url, {
+        method: method,
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -272,7 +278,7 @@ const PurgeFooter = ({ onCancel }) => {
       if (!res.ok) throw new Error('Failed to post data');
 
       const data = await res.json();
-      toast.success("Purge fow submitted successfully!",
+      toast.success(`Purge job ${isEditMode ? "updated" : "saved"} successfully!`,
         {
           duration: 2000,
           position: "top-right",

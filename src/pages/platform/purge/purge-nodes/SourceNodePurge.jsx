@@ -178,6 +178,7 @@ export function SourceNode({ id, data }) {
       }
 
       metadatalist = await metaDataResponse.json();
+      console.log("METADATA LIST ==> ", metadatalist);
       setMetaData(metadatalist);
       
       return metadatalist;
@@ -437,6 +438,39 @@ export function SourceNode({ id, data }) {
       }
     }
   }, [data, fetchschema, fetchTables, fetchMetadata, setFilters, setDropPartitions]);
+
+
+const fetchTablePartitionJson = async (connectionName, tableSchema, tableName) => {
+  try {
+    const res = await fetch(
+      `${hostname}/connection-master-metadata/${connectionName}/${tableName}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!res.ok) throw new Error(`Failed to fetch partition info`);
+    const result = await res.json();
+
+    if (!Array.isArray(result) || result.length === 0) {
+      return [];
+    }
+
+    const partitionJSON = result
+      .map(r => r?.partition_json)
+      .flat();
+
+    return partitionJSON;
+  } catch (err) {
+    console.error("Error fetching table info:", err);
+    toast.error("Failed to fetch table details");
+    return [];
+  }
+};
 
   return (
     <div
@@ -728,13 +762,18 @@ export function SourceNode({ id, data }) {
                                 </label>
                               </div>
                               <button
-                                onClick={() => {
-                                  if(checkIfTableHasOnlyOnePartition(table, "bulk")){
-                                    toast.error("Table only has one partition!")
-                                  }else{
-                                    openDrawer(id, table);
-                                    handlePurgeNode("Source Node");
-                                  }
+                                onClick={async () => {
+                                  const tablePartitionJson = await fetchTablePartitionJson(table.source_conn_name, table.source_schema, table.source_table);
+                                  if (!tablePartitionJson) return;
+
+                                  const updatedTable = {
+                                    ...table,
+                                    metadatas: {...table.metadatas, partition_json: tablePartitionJson},
+                                  };
+                                  
+                                  console.log("updatedTable ==> ", updatedTable)
+                                  openDrawer(id, updatedTable);
+                                  handlePurgeNode("Source Node");
                                 }}
                                 className="text-purple-600 hover:text-purple-700"
                               >
@@ -809,12 +848,8 @@ export function SourceNode({ id, data }) {
                         </div>
                         <button
                           onClick={() => {
-                            if(checkIfTableHasOnlyOnePartition(table, "subset")){
-                              toast.error("Table only has one partition!")
-                            }else{
-                              openDrawer(id, table);
-                              handlePurgeNode("Source Node");
-                            }
+                            openDrawer(id, table);
+                            handlePurgeNode("Source Node");
                           }}
                           className="text-purple-600 hover:text-purple-700"
                         >

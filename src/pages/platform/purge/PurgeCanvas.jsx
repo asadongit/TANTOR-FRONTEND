@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import ReactFlow, { addEdge, Controls, Panel, useEdgesState, useNodesState } from "reactflow";
 import { DefineNodePurge } from "../purge/purge-nodes/DefineNodePurge";
@@ -51,6 +51,7 @@ function PurgeCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const {isVisibleFooter, handleIsVisibleFooter} = useStateContext("");
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Pre-populate nodes from ui_json on mount (edit flow)
   useEffect(() => {
@@ -128,7 +129,10 @@ function PurgeCanvas() {
   }, [ui_json, setNodes, setEdges, handleIsVisibleFooter])
 
    useEffect(() => {
-    if (ui_json) return;
+    if (ui_json) {
+      setIsEditMode(true);
+      return;
+    }
 
     const { nodes: autoNodes, edges: autoEdges } = createPipeline("purge", "purge_1");
 
@@ -281,7 +285,7 @@ function PurgeCanvas() {
           <PurgeSidebar />
         </Panel>
         {isVisibleFooter && (<Panel position="bottom-right" className="w-full">
-          <PurgeFooter onCancel = {() => handleIsVisibleFooter(false)}/>
+          <PurgeFooter onCancel = {() => handleIsVisibleFooter(false)} isEditMode={isEditMode} />
         </Panel>)}
       </ReactFlow>
       <DrawerContainer />
