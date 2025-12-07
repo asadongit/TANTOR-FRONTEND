@@ -27,11 +27,11 @@ const ArchivalList = () => {
   const {token, hostnameV1, hostnameV2}= useAuth()
 
 
-  
+
   const handleCreateMigration  = () => {
-    navigate('/Migrationcanvas'); 
+    navigate('/Migrationcanvas');
   };
- 
+
   const cards = [
     {
       icon: "material-symbols:database-upload-outline",
@@ -83,7 +83,7 @@ const ArchivalList = () => {
     { label: "Action", sortable: false },
     ]
 
-    
+
     const handleCardClick = (card) => {
         const url = `/componentType=migration&dataScope=${card.title.replace(/\s+/g, '').toLowerCase()}&heading=${card.title}`;
 
@@ -113,9 +113,35 @@ const confirmDeleteMigration = async () => {
 
 const handleEditClick = async (row) => {
   try {
-    const nodeJson = row.ui_json;
+
+    const nodeJson = row.ui_json ? JSON.parse(JSON.stringify(row.ui_json)) : null;
+
+    // console.log("Fetched Migration Node JSON:", nodeJson);
+
     if (nodeJson) {
-      navigate('/canvas/metadataCanvas', { state: { nodeJson } });
+      if (nodeJson.nodes) {
+        const sourceNode = nodeJson.nodes.find(n => n.type === 'sourceNode' || n.type === 'migrationSource' || (n.data && n.data.source));
+        let sourceData = sourceNode ? sourceNode.data.source : null;
+
+        if (sourceData && sourceNode && !sourceData.id) {
+             sourceData = { ...sourceData, id: sourceNode.id };
+        }
+
+        nodeJson.nodes = nodeJson.nodes.map(node => {
+          // Mark all nodes as edit mode and ensure data consistency
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              isEditMode: true,
+              migration_id: row.migration_id,
+              // Ensure source data is available on all nodes that need it
+              source: node.data?.source || sourceData,
+            }
+          };
+        });
+      }
+      navigate('/canvas/metadataCanvas', { state: { nodeJson, isEditMode: true, migration_id: row.migration_id } });
     } else {
       toast.error('No migration node data found.');
     }

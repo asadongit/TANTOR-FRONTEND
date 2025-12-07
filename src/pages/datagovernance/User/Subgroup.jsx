@@ -611,9 +611,9 @@ function Subgroup() {
 
           {viewMode === 'list' && (
             <>
-              <div className="bg-white rounded-lg shadow mt-0" style={{ overflow: 'visible' }}>
-                <table className="w-full">
-                  <thead>
+             <div className="bg-white rounded-lg shadow mt-0 overflow-x-auto" style={{ maxHeight: 'calc(100vh - 300px)', overflowY: 'auto' }}>
+              <table className="w-full min-w-[900px]">
+                  <thead className="sticky top-0 z-10">
                     <tr className="bg-[#29304a] text-white text-sm">
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>ID</th>
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>Name</th>
