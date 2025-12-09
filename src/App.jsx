@@ -36,6 +36,7 @@ import {
 import { BusinessHeader } from "./pages/platform/Federation/BusinessView/BusinessHeader";
 import TransformationCanvas from "./pages/platform/transformation/components/TransformationCanvas";
 import { DatabotProvider } from "./pages/datagovernance/Databot/context/DatabotContext";
+import { AIGovernanceRoutes } from "./routes/AiRoutes";
 
 function App() {
   const [activeSection, setActiveSection] = useState("platform");
@@ -87,6 +88,7 @@ function App() {
                           />
                           <Route path="/*" element={<PlatformRoutes />} />
                           {DataGovernanceRoutes}
+                          {AIGovernanceRoutes}
                         </Routes>
                       </main>
                     </div>
