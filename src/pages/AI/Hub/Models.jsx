@@ -8,6 +8,7 @@ function Models() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState('both');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const metricsData = [
     {
@@ -62,20 +63,20 @@ function Models() {
   ];
 
   const modelFlowData = {
-    aiModel: { id: 'ai-model', label: '564', sublabel: 'AI Model', x: 20, y: 80 },
+    aiModel: { id: 'ai-model', label: '564', sublabel: 'All Models', x: 30, y: 100 },
     classificationAgents: [
-      { id: 'class-1', label: 'Classification Agent', x: 130, y: 30 },
-      { id: 'class-2', label: 'Classification Agent', x: 130, y: 105 },
+      { id: 'class-1', label: 'Classification\nAgent', x: 180, y: 60 },
+      { id: 'class-2', label: 'Classification\nAgent', x: 180, y: 140 },
     ],
     middleAgents: [
-      { id: 'loan-agent', label: 'Loan Agent', color: '#4ADE80', x: 250, y: 10 },
-      { id: 'gst-agent', label: 'GST Agent', color: '#FB923C', x: 250, y: 45 },
-      { id: 'loan-agent-1', label: 'Loan Agent 1', color: '#F87171', x: 250, y: 80 },
-      { id: 'multi-agent', label: 'Multi Agent', color: '#60A5FA', x: 250, y: 115 },
-      { id: 'gst-agent-1', label: 'GST Agent 1', color: '#4ADE80', x: 250, y: 150 },
+      { id: 'loan-agent', label: 'Loan Agent', color: '#FB923C', x: 320, y: 20 },
+      { id: 'gst-agent', label: 'GST Agent', color: '#FB923C', x: 320, y: 60 },
+      { id: 'loan-agent-1', label: 'Loan Agent 1', color: '#FB923C', x: 320, y: 100 },
+      { id: 'multi-agent', label: 'Multi Agent', color: '#FB923C', x: 320, y: 140 },
+      { id: 'gst-agent-1', label: 'GST Agent 1', color: '#FB923C', x: 320, y: 180 },
     ],
-    preprocessingLayer: { id: 'preprocess', label: 'data preprocessing layer', x: 350, y: 60 },
-    output: { id: 'output', label: 'Output', x: 480, y: 85 },
+    orchestrationLayer: { id: 'orchestration', label: 'Orchestration Agent', x: 500, y: 90 },
+    output: { id: 'output', label: 'Output', x: 660, y: 100 },
   };
 
   const projectsData = [
@@ -97,7 +98,9 @@ function Models() {
 
   const handleRefresh = () => {
     setIsLoading(true);
+    setRefreshTrigger(prev => prev + 1);
     setTimeout(() => setIsLoading(false), 1000);
+
   };
 
   const getStatusStyle = (status) => {
@@ -116,7 +119,7 @@ function Models() {
   };
 
   const columns = [
-    { key: 'sno', label: 'Sno', sortable: true },
+    { key: 'sno', label: 'Sno', sortable: true, width: '90px' },
     {
       key: 'name',
       label: 'Name',
@@ -302,7 +305,7 @@ function Models() {
         >
           <svg
             ref={svgRef}
-            viewBox="0 0 600 220"
+            viewBox="0 0 780 240"
             className="w-full h-full"
             style={{
               transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
@@ -311,22 +314,22 @@ function Models() {
             }}
           >
             <g className="cursor-pointer hover:opacity-80 transition-opacity">
-              <rect x={data.aiModel.x} y={data.aiModel.y} width="80" height="80" rx="8" fill="#7C3AED" />
-              <text x={data.aiModel.x + 40} y={data.aiModel.y + 35} textAnchor="middle" fill="white" fontSize="24" fontWeight="bold">
+              <rect x={data.aiModel.x} y={data.aiModel.y} width="100" height="60" rx="8" fill="#7C3AED" />
+              <text x={data.aiModel.x + 50} y={data.aiModel.y + 28} textAnchor="middle" fill="white" fontSize="20" fontWeight="bold">
                 {data.aiModel.label}
               </text>
-              <text x={data.aiModel.x + 40} y={data.aiModel.y + 55} textAnchor="middle" fill="white" fontSize="10">
+              <text x={data.aiModel.x + 50} y={data.aiModel.y + 45} textAnchor="middle" fill="white" fontSize="9">
                 {data.aiModel.sublabel}
               </text>
             </g>
 
             {data.classificationAgents.map((agent, idx) => (
               <g key={agent.id} className="cursor-pointer hover:opacity-80 transition-opacity">
-                <rect x={agent.x} y={agent.y} width="90" height="35" rx="6" fill="#A78BFA" />
-                <text x={agent.x + 45} y={agent.y + 15} textAnchor="middle" fill="white" fontSize="8">
+                <rect x={agent.x} y={agent.y} width="90" height="40" rx="8" fill="#EC4899" />
+                <text x={agent.x + 45} y={agent.y + 15} textAnchor="middle" fill="white" fontSize="9" fontWeight="500">
                   Classification
                 </text>
-                <text x={agent.x + 45} y={agent.y + 26} textAnchor="middle" fill="white" fontSize="8">
+                <text x={agent.x + 45} y={agent.y + 28} textAnchor="middle" fill="white" fontSize="9" fontWeight="500">
                   Agent
                 </text>
               </g>
@@ -334,53 +337,63 @@ function Models() {
 
             {data.middleAgents.map((agent) => (
               <g key={agent.id} className="cursor-pointer hover:opacity-80 transition-opacity">
-                <rect x={agent.x} y={agent.y} width="70" height="28" rx="5" fill={agent.color} />
-                <text x={agent.x + 35} y={agent.y + 18} textAnchor="middle" fill="white" fontSize="8">
+                <rect x={agent.x} y={agent.y} width="80" height="32" rx="6" fill={agent.color} />
+                <text x={agent.x + 40} y={agent.y + 20} textAnchor="middle" fill="white" fontSize="9" fontWeight="500">
                   {agent.label}
                 </text>
               </g>
             ))}
 
             <g className="cursor-pointer hover:opacity-80 transition-opacity">
-              <rect x={data.preprocessingLayer.x} y={data.preprocessingLayer.y} width="100" height="80" rx="8" fill="#FDE68A" opacity="0.9" />
-              <text x={data.preprocessingLayer.x + 50} y={data.preprocessingLayer.y + 35} textAnchor="middle" fill="#92400E" fontSize="9">
-                data preprocessing
+              <rect x={data.orchestrationLayer.x} y={data.orchestrationLayer.y} width="110" height="80" rx="8" fill="#10B981" />
+              <text x={data.orchestrationLayer.x + 55} y={data.orchestrationLayer.y + 38} textAnchor="middle" fill="white" fontSize="9" fontWeight="500">
+                Orchestration
               </text>
-              <text x={data.preprocessingLayer.x + 50} y={data.preprocessingLayer.y + 50} textAnchor="middle" fill="#92400E" fontSize="9">
-                layer
+              <text x={data.orchestrationLayer.x + 55} y={data.orchestrationLayer.y + 52} textAnchor="middle" fill="white" fontSize="9" fontWeight="500">
+                Agent
               </text>
             </g>
 
             <g className="cursor-pointer hover:opacity-80 transition-opacity">
-              <rect x={data.output.x} y={data.output.y} width="80" height="35" rx="6" fill="#4ADE80" />
-              <text x={data.output.x + 40} y={data.output.y + 22} textAnchor="middle" fill="white" fontSize="10">
+              <rect x={data.output.x} y={data.output.y} width="80" height="40" rx="8" fill="#06B6D4" />
+              <text x={data.output.x + 40} y={data.output.y + 25} textAnchor="middle" fill="white" fontSize="10" fontWeight="600">
                 {data.output.label}
               </text>
             </g>
 
-            <path d="M100 120 Q115 50 130 47" stroke="#A78BFA" strokeWidth="2" fill="none" opacity="0.6" />
-            <path d="M100 120 Q115 120 130 122" stroke="#A78BFA" strokeWidth="2" fill="none" opacity="0.6" />
+            <path d="M130 120 C155 120, 155 80, 180 80" stroke="#A78BFA" strokeWidth="3" fill="none" opacity="0.5" />
+            <path d="M130 130 C155 130, 155 160, 180 160" stroke="#A78BFA" strokeWidth="3" fill="none" opacity="0.5" />
 
-            {data.middleAgents.map((agent, idx) => (
-              <g key={`lines-${agent.id}`}>
+            {data.middleAgents.map((agent, idx) => {
+              const sourceY = idx < 2 ? 80 : 160;
+              const targetY = agent.y + 16;
+              return (
                 <path
-                  d={`M220 ${idx < 2 ? 47 : 122} Q235 ${agent.y + 14} 250 ${agent.y + 14}`}
-                  stroke={agent.color}
-                  strokeWidth="2"
-                  fill="none"
-                  opacity="0.6"
-                />
-                <path
-                  d={`M320 ${agent.y + 14} Q335 100 350 100`}
-                  stroke={agent.color}
-                  strokeWidth="2"
+                  key={`class-to-middle-${agent.id}`}
+                  d={`M270 ${sourceY} C295 ${sourceY}, 295 ${targetY}, 320 ${targetY}`}
+                  stroke={idx < 2 ? '#EC4899' : '#EC4899'}
+                  strokeWidth="2.5"
                   fill="none"
                   opacity="0.4"
                 />
-              </g>
-            ))}
+              );
+            })}
 
-            <path d="M450 100 L480 102" stroke="#4ADE80" strokeWidth="2" fill="none" />
+            {data.middleAgents.map((agent) => {
+              const sourceY = agent.y + 16;
+              return (
+                <path
+                  key={`middle-to-orch-${agent.id}`}
+                  d={`M400 ${sourceY} C450 ${sourceY}, 450 130, 500 130`}
+                  stroke="#FB923C"
+                  strokeWidth="2.5"
+                  fill="none"
+                  opacity="0.3"
+                />
+              );
+            })}
+
+            <path d="M610 130 C635 130, 635 120, 660 120" stroke="#10B981" strokeWidth="3" fill="none" opacity="0.6" />
           </svg>
         </div>
       </div>
@@ -464,14 +477,14 @@ function Models() {
           >
             <Icon
               icon="material-symbols-light:format-list-bulleted"
-              width="22"
+              width="25"
               height="22"
               className="text-purple-600"
             />
           </button>
 
           <button
-            className="p-1.5 rounded-lg border border-gray-300 hover:bg-gray-50"
+            className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50"
             onClick={handleRefresh}
             title="Refresh data"
             disabled={isLoading}
@@ -509,7 +522,7 @@ function Models() {
         isLoading={isLoading}
         isError={false}
         refetch={handleRefresh}
-        title=""
+        resetSortTrigger={refreshTrigger}
       />
     </div>
   );
