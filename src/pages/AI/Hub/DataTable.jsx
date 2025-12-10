@@ -1,8 +1,25 @@
-import { MoreVertical, Library, Box, Database, Archive, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { MoreVertical, Library, Box, Database, Archive, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 
 const DataTable = () => {
   const [openMenu, setOpenMenu] = useState(null);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setOpenMenu(null);
+      }
+    };
+
+    if (openMenu !== null) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openMenu]);
 
   const tableData = [
     {
@@ -139,37 +156,37 @@ const DataTable = () => {
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.features}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 <div className="flex items-center gap-2 justify-end">
-                  <div className="relative">
+                  <div className="relative" ref={openMenu === row.id ? menuRef : null}>
                     <button
                       onClick={() => setOpenMenu(openMenu === row.id ? null : row.id)}
-                      className="p-1 hover:bg-gray-100 rounded transition-colors"
+                      className="p-1 hover:bg-purple-50 rounded transition-colors group"
                     >
-                      <MoreVertical className="w-5 h-5 text-gray-400" />
+                      <MoreVertical className="w-5 h-5 text-gray-400 group-hover:text-purple-600 transition-colors" />
                     </button>
                     
                     {openMenu === row.id && (
-                      <div className="absolute right-8 top-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 py-2 pr-2 z-10">
-                        <button className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3">
-                          <Library className="w-4 h-4 text-purple-600" />
+                      <div className={`absolute ${row.id <= 5 ? 'right-8 top-0' : 'right-8 bottom-0'} mt-2 bg-white rounded-lg shadow-lg border border-gray-200 py-2 px-2 z-10 min-w-[160px]`}>
+                        <button className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-purple-100 hover:text-purple-700 rounded flex items-center gap-3 transition-colors">
+                          <Library className="w-4 h-4 text-gray-600" />
                           <span>Library</span>
                         </button>
-                        <button className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3">
+                        <button className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-purple-100 hover:text-purple-700 rounded flex items-center gap-3 transition-colors">
                           <Box className="w-4 h-4 text-gray-600" />
                           <span>FI Mode</span>
                         </button>
-                        <button className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3">
+                        <button className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-purple-100 hover:text-purple-700 rounded flex items-center gap-3 transition-colors">
                           <Database className="w-4 h-4 text-gray-600" />
                           <span>AI Canvas</span>
                         </button>
-                        <button className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3">
+                        <button className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-purple-100 hover:text-purple-700 rounded flex items-center gap-3 transition-colors">
                           <Box className="w-4 h-4 text-gray-600" />
                           <span>Deploy</span>
                         </button>
-                        <button className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3">
+                        <button className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-purple-100 hover:text-purple-700 rounded flex items-center gap-3 transition-colors">
                           <Archive className="w-4 h-4 text-gray-600" />
                           <span>Archive</span>
                         </button>
-                        <button className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 flex items-center gap-3">
+                        <button className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-100 flex items-center rounded gap-3 transition-colors">
                           <Trash2 className="w-4 h-4" />
                           <span>Delete</span>
                         </button>
@@ -195,10 +212,10 @@ const DataTable = () => {
           </select>
           <div className="flex gap-1">
             <button className="px-3 py-1 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-              &lt;
+              <ChevronLeft className="h-5 w-5"/>
             </button>
             <button className="px-3 py-1 border border-gray-300 rounded-md text-sm hover:bg-gray-50">
-              &gt;
+               <ChevronRight className="h-5 w-5"/>
             </button>
           </div>
         </div>
