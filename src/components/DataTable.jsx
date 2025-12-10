@@ -31,6 +31,7 @@ const DataTable = ({
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [activeMenu, setActiveMenu] = useState(null);
+  const [hoveredAction, setHoveredAction] = useState(null);
   const menuRef = useRef(null);
   const { project } = useAuth();
   useEffect(() => {
@@ -281,7 +282,9 @@ const DataTable = ({
                           {activeMenu === rowIndex && (
                             <div
                               ref={menuRef}
-                              className="absolute right-4 mt-2 bg-white shadow-lg rounded-lg py-1 px-3 z-10 border"
+                              className={`absolute right-4 bg-white shadow-lg rounded-lg py-1 px-3 z-10 border ${
+                                rowIndex >= paginatedData.length - 2 ? 'bottom-full mb-2' : 'mt-2'
+                              }`}
                               role="menu"
                               aria-orientation="horizontal"
                             >
@@ -295,17 +298,26 @@ const DataTable = ({
                                         : action.show)
                                   )
                                   .map((action, actionIndex) => (
-                                    <button
-                                      className="p-1 text-gray-500 hover:text-gray-800"
-                                      key={actionIndex}
-                                      onClick={() => handleAction(action, row)}
-                                      aria-label={action.label}
-                                      role="menuitem"
-                                    >
-                                      {action.icon && (
-                                        <span>{action.icon}</span>
+                                    <div key={actionIndex} className="relative">
+                                      <button
+                                        className="p-1 text-gray-500 hover:text-gray-800 transition-colors"
+                                        onClick={() => handleAction(action, row)}
+                                        onMouseEnter={() => setHoveredAction(`${rowIndex}-${actionIndex}`)}
+                                        onMouseLeave={() => setHoveredAction(null)}
+                                        aria-label={action.label}
+                                        role="menuitem"
+                                      >
+                                        {action.icon && (
+                                          <span>{action.icon}</span>
+                                        )}
+                                      </button>
+                                      {hoveredAction === `${rowIndex}-${actionIndex}` && (action.tooltip || action.label) && (
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap z-20">
+                                          {action.tooltip || action.label}
+                                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                                        </div>
                                       )}
-                                    </button>
+                                    </div>
                                   ))}
                                 {actions.length === 0 && (
                                   <>
