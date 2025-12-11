@@ -1,10 +1,12 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, RefreshCcw, ArrowUp, ArrowDown, Info } from 'lucide-react';
 import { Icon } from '@iconify-icon/react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import DataTable from '../../../components/DataTable';
 
 function Models() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState('both');
@@ -146,7 +148,7 @@ function Models() {
     {
       label: 'Library',
       icon: <Icon icon="material-symbols:library-books-outline" className="w-5 h-5" />,
-      onClick: (row) => console.log('Library:', row),
+      onClick: (row) => navigate('/ai/hub/models/library', { state: { modelData: row } }),
       tooltip: 'Library',
     },
     {
