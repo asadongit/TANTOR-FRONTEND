@@ -156,7 +156,7 @@ const Data = () => {
       key: 'name',
       label: 'Name',
       sortable: true,
-      render: (row) => <span className="text-purple-600 hover:underline cursor-pointer">{row.name}</span>,
+      render: (row) => <span className="text-[#8e78b7] hover:underline cursor-pointer">{row.name}</span>,
     },
     { key: 'createdDate', label: 'Created Date', sortable: true },
     { key: 'lastUsedDate', label: 'Last Used Date', sortable: true },
@@ -220,7 +220,7 @@ const Data = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="px-2 py-4">
-            <Icon className="w-5 h-5 text-purple-600" />
+            <Icon className="w-5 h-5 text-[#8e78b7]" />
           </div>
           <span className="text-gray-600 text-xs sm:text-sm">{label}</span>
         </div>
@@ -238,7 +238,7 @@ const Data = () => {
       <div className={`bg-white rounded-lg p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow ${className}`}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
+            <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-[#8e78b7]" />
             <span className="text-gray-700 font-medium text-sm sm:text-base">{title}</span>
           </div>
           <div className="relative">
@@ -273,7 +273,7 @@ const Data = () => {
               placeholder="Search database"
               value={searchTerm}
               onChange={handleSearchChange}
-              className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm"
             />
           </div>
           <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50">

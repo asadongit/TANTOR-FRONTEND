@@ -22,7 +22,7 @@ const CommentsTab = () => {
                 <div className="flex items-end gap-3">
                     <div className="flex flex-col">
                         <label className="text-xs text-gray-600 mb-1">Component</label>
-                        <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white min-w-[160px]">
+                        <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white min-w-[160px]">
                             <option>Component 1</option>
                             <option>Data Upload</option>
                             <option>User Registration</option>
@@ -35,7 +35,7 @@ const CommentsTab = () => {
                         <input
                             type="date"
                             defaultValue="2025-01-02"
-                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 min-w-[160px]"
+                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm  min-w-[160px]"
                         />
                     </div>
 
@@ -44,13 +44,13 @@ const CommentsTab = () => {
                         <input
                             type="date"
                             defaultValue="2025-01-02"
-                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 min-w-[160px]"
+                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm min-w-[160px]"
                         />
                     </div>
 
                     <div className="flex flex-col">
                         <label className="text-xs text-gray-600 mb-1">Sort by</label>
-                        <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white min-w-[140px]">
+                        <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white min-w-[140px]">
                             <option>Date</option>
                             <option>Component</option>
                             <option>Subject</option>
@@ -62,7 +62,7 @@ const CommentsTab = () => {
                         <input
                             type="text"
                             placeholder="Search Comments"
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm"
                         />
                     </div>
                 </div>

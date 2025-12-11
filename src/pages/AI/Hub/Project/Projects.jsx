@@ -1,4 +1,3 @@
-// Updated Projects.jsx
 import { Search, List, RefreshCw, CheckCircle, TrendingUp, TrendingDown, Target, BookOpenText, Trash2 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -10,6 +9,7 @@ const Projects = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [viewMode, setViewMode] = useState('both'); // 'both' or 'list'
 
     const statsCards = [
         { label: 'Projects', value: '17', trend: '2%', trendUp: true },
@@ -138,7 +138,7 @@ const Projects = () => {
     };
 
     const handleProjectLibrary = (row) => {
-        navigate(`/ai/hub/projects/${row.id}/library`);
+        navigate(`/ai/hub/projects/${row.id}/library`, { state: { ProjectData: row } });
     };
 
     const handleDelete = (row) => {
@@ -151,7 +151,7 @@ const Projects = () => {
             key: 'name',
             label: 'Name',
             sortable: true,
-            render: (row) => <span className="text-purple-600 hover:underline cursor-pointer">{row.name}</span>,
+            render: (row) => <span className="text-[#8e78b7] hover:underline cursor-pointer">{row.name}</span>,
         },
         { key: 'description', label: 'Description', sortable: true },
         { key: 'created_date', label: 'Created Date', sortable: true },
@@ -198,7 +198,7 @@ const Projects = () => {
         <div className="bg-white rounded-lg p-4 border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-purple-600" />
+                    <CheckCircle className="w-5 h-5 text-[#8e78b7]" />
                     <span className="text-gray-600 text-sm">{label}</span>
                 </div>
             </div>
@@ -215,7 +215,7 @@ const Projects = () => {
     const LastAccessedCard = () => (
         <div className="bg-white rounded-lg p-4 border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center gap-2 mb-3">
-                <CheckCircle className="w-5 h-5 text-purple-600" />
+                <CheckCircle className="w-5 h-5 text-[#8e78b7]" />
                 <span className="text-gray-600 text-sm">Last Accessed</span>
             </div>
             <div className="flex items-center gap-2">
@@ -241,12 +241,18 @@ const Projects = () => {
                         <input
                             type="text"
                             placeholder="Search database"
-                            className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm"
                             value={searchTerm}
                             onChange={handleSearchChange}
                         />
                     </div>
-                    <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                    <button
+                        className={`p-2 rounded-lg border ${
+                            viewMode === 'list' ? 'bg-gray-100 border-gray-500' : 'border-gray-300'
+                        } hover:bg-gray-50`}
+                        onClick={() => setViewMode(viewMode === 'list' ? 'both' : 'list')}
+                        title={viewMode === 'list' ? 'Show All Views' : 'Show List Only'}
+                    >
                         <List className="w-5 h-5 text-gray-600" />
                     </button>
                     <button
@@ -260,14 +266,16 @@ const Projects = () => {
             </div>
 
             <div className="space-y-6">
-                <div className="bg-gradient-to-r from-purple-400 via-purple-300 to-purple-200 rounded-xl p-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                        {statsCards.map((stat, index) => (
-                            <StatCard key={index} {...stat} />
-                        ))}
-                        <LastAccessedCard />
+                {viewMode === 'both' && (
+                    <div className="bg-gradient-to-r from-purple-400 via-purple-300 to-purple-200 rounded-xl p-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                            {statsCards.map((stat, index) => (
+                                <StatCard key={index} {...stat} />
+                            ))}
+                            <LastAccessedCard />
+                        </div>
                     </div>
-                </div>
+                )}
 
                 <DataTable
                     columns={columns}

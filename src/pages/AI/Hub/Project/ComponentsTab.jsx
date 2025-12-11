@@ -62,7 +62,7 @@ const ComponentsTab = () => {
                 <input
                     type="text"
                     placeholder="Search Components"
-                    className="w-full sm:w-80 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full sm:w-80 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm"
                 />
                 <button className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 border border-gray-300 rounded-lg hover:bg-gray-50">
                     <EllipsisVertical className="w-5 h-5 text-gray-600" />
@@ -94,7 +94,7 @@ const ComponentsTab = () => {
                                     key: 'name',
                                     label: 'Name',
                                     sortable: true,
-                                    render: (row) => <span className="text-purple-600 hover:underline cursor-pointer">{row.name}</span>,
+                                    render: (row) => <span className="text-[#8e78b7] hover:underline cursor-pointer">{row.name}</span>,
                                 },
                                 { key: 'description', label: 'Description', sortable: true },
                                 { key: 'created_date', label: 'Created Date', sortable: true },
@@ -136,7 +136,7 @@ const ComponentsTab = () => {
                                     key: 'name',
                                     label: 'Name',
                                     sortable: true,
-                                    render: (row) => <span className="text-purple-600 hover:underline cursor-pointer">{row.name}</span>,
+                                    render: (row) => <span className="text-[#8e78b7] hover:underline cursor-pointer">{row.name}</span>,
                                 },
                                 { key: 'description', label: 'Description', sortable: true },
                                 { key: 'created_date', label: 'Created Date', sortable: true },
@@ -177,7 +177,7 @@ const ComponentsTab = () => {
                                     key: 'name',
                                     label: 'Name',
                                     sortable: true,
-                                    render: (row) => <span className="text-purple-600 hover:underline cursor-pointer">{row.name}</span>,
+                                    render: (row) => <span className="text-[#8e78b7] hover:underline cursor-pointer">{row.name}</span>,
                                 },
                                 { key: 'description', label: 'Description', sortable: true },
                                 { key: 'created_date', label: 'Created Date', sortable: true },

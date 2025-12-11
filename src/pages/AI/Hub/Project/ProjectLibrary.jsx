@@ -1,7 +1,7 @@
 // ProjectLibrary.jsx
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { ChevronLeft, Cloud } from 'lucide-react';
 import CommentsTab from './CommentsTab';
 import ClonesTab from './ClonesTab';
 import OverviewTab from './OverviewTab';
@@ -10,25 +10,18 @@ import ComponentsTab from './ComponentsTab';
 const ProjectLibrary = () => {
     const { projectId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('Overview');
+
+    const ProjectData = location.state?.ProjectData;
 
     const tabs = ['Overview', 'Components', 'Comments', 'Clones'];
 
     const getProjectName = () => {
-        const projectNames = {
-            'churn': 'Churn',
-            'analysis': 'Analysis',
-            'retention': 'Retention',
-            'acquisition': 'Acquisition',
-            'engagement': 'Engagement',
-            'onboarding': 'Onboarding',
-            'feedback': 'Feedback',
-            'analysis-2': 'Analysis',
-            'strategy': 'Strategy',
-            'optimization': 'Optimization'
-        };
-        return projectNames[projectId] || 'Unknown';
+        if (ProjectData?.name) {
+            return ProjectData.name.replace('Project - ', '');
+        }
     };
 
     const handleLibraryBack = () => {
@@ -53,60 +46,58 @@ const ProjectLibrary = () => {
         }
     };
 
+    const ProjectName = getProjectName();
+
     return (
-        <div className="p-3 sm:p-4 lg:p-6 bg-gray-50 min-h-screen">
-
-            <div className="flex items-center gap-2 mb-4">
-                <button
-                    onClick={handleLibraryBack}
-                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-                    aria-label="Go back to projects"
-                >
-                    <ChevronLeft className="w-6 h-6 text-gray-600" />
-                </button>
-                <div className="flex items-center gap-2">
-                    <h1 className="text-xl font-semibold text-gray-900">Project Library - </h1>
-                    <span className="text-xl font-semibold text-[#8e78b7]">{getProjectName()}</span>
-                </div>
-                <button className="ml-auto px-6 py-2 font-semibold rounded-lg bg-purple-200 text-[#8e78b7] transition-colors text-sm">
-                    AI/ML
-                </button>
-            </div>
-
-            <div className="flex items-center gap-6 mb-6 border-b border-gray-200">
-                {tabs.map((tab) => (
-                    <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        className={`pb-3 px-1 text-sm font-medium transition-colors relative ${activeTab === tab
-                            ? 'text-[#8e78b7]'
-                            : 'text-gray-600 hover:text-gray-900'
-                            }`}
-                    >
-                        {tab}
-                        {activeTab === tab && (
-                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#8e78b7]"></div>
-                        )}
+        <div className="min-h-screen bg-gray-50 p-6 space-y-4">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={handleLibraryBack}
+                            className="hover:bg-gray-100 rounded-lg transition-colors p-1"
+                            aria-label="Go back to projects"
+                        >
+                            <ChevronLeft className="w-5 h-5 text-gray-600" />
+                        </button>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-lg font-semibold text-gray-900">Project Library - </h1>
+                            <span className="text-lg font-semibold text-[#8e78b7]">{ProjectName}</span>
+                        </div>
+                    </div>
+                    <button className="px-3 py-1.5 rounded bg-purple-100 text-[#8e78b7] font-medium text-sm flex items-center gap-1.5 hover:bg-purple-200 transition-colors">
+                        <Cloud className="w-4 h-4" />
+                        AI/ML
                     </button>
-                ))}
+                </div>
+
+                <div className="flex items-center gap-8 px-6 pt-4">
+                    {tabs.map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`pb-3 px-4 text-sm font-medium transition-colors relative ${activeTab === tab
+                                    ? 'text-[#8e78b7]'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                        >
+                            {tab}
+                            {activeTab === tab && (
+                                <div className="absolute bottom-0 left-[-8px] right-[-8px] h-1 bg-[#8e78b7] rounded-t"></div>
+                            )}
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            <div className='bg-white p-4 rounded-lg border border-gray-200'>
-                {activeTab === 'Overview' && (
-                    <OverviewTab />
-                )}
-                {activeTab === 'Components' && (
-                    <ComponentsTab />
-                )}
-                {activeTab === 'Comments' && (
-                    <CommentsTab />
-                )}
-                {activeTab === 'Clones' && (
-                    <ClonesTab />
-                )}
+            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                {activeTab === 'Overview' && <OverviewTab projectData={ProjectData} />}
+                {activeTab === 'Components' && <ComponentsTab projectData={ProjectData} />}
+                {activeTab === 'Comments' && <CommentsTab projectData={ProjectData} />}
+                {activeTab === 'Clones' && <ClonesTab projectData={ProjectData} />}
             </div>
 
-            <div className="flex justify-end gap-3 mt-6">
+            <div className="flex justify-end gap-3">
                 <button
                     onClick={handleBack}
                     className="px-10 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
@@ -116,7 +107,8 @@ const ProjectLibrary = () => {
                 {activeTab !== 'Clones' && (
                     <button
                         onClick={handleNext}
-                        className="px-10 py-2 bg-[#8e78b7] text-white rounded-lg transition-colors">
+                        className="px-10 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7d6ba3] transition-colors"
+                    >
                         Next
                     </button>
                 )}
