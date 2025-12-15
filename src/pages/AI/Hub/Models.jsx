@@ -4,6 +4,7 @@ import { Search, RefreshCcw, ArrowUp, ArrowDown, Info } from 'lucide-react';
 import { Icon } from '@iconify-icon/react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import DataTable from '../../../components/DataTable';
+import { StatCard, StatsContainer, StatsGrid } from './Components/StatsCard';
 
 function Models() {
   const navigate = useNavigate();
@@ -15,43 +16,38 @@ function Models() {
   const metricsData = [
     {
       title: 'Projects',
-      count: 39,
+      value: 39,
       trend: 'up',
       trendValue: '10%',
       icon: 'material-symbols:check-circle-outline',
-      color: 'border-l-purple-500',
     },
     {
       title: 'Projects',
-      count: 15,
+      value: 15,
       trend: 'up',
       trendValue: '6%',
       icon: 'material-symbols:check-circle-outline',
-      color: 'border-l-green-500',
     },
     {
       title: 'Projects',
-      count: '82%',
+      value: '82%',
       trend: 'up',
       trendValue: '2%',
       icon: 'material-symbols:check-circle-outline',
-      color: 'border-l-yellow-500',
     },
     {
       title: 'Projects',
-      count: 9,
+      value: 9,
       trend: 'down',
       trendValue: '2%',
       icon: 'material-symbols:check-circle-outline',
-      color: 'border-l-pink-500',
     },
     {
       title: 'Projects',
-      count: '17sec',
+      value: '17sec',
       trend: 'down',
       trendValue: '2%',
       icon: 'material-symbols:check-circle-outline',
-      color: 'border-l-cyan-500',
     },
   ];
 
@@ -192,27 +188,6 @@ function Models() {
       )
     );
   }, [searchTerm, projectsData]);
-
-  const StatCard = ({ title, count, trend, trendValue, icon, color }) => (
-    <div className="bg-white rounded-xl px-5 py-4 border border-purple-200 shadow-sm">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-purple-50 rounded-lg">
-            <Icon icon={icon} className="w-5 h-5 text-purple-600" />
-          </div>
-          <span className="text-gray-600 text-sm">{title}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xl font-bold text-gray-800">{count}</span>
-          {trend === 'up' ? (
-            <ArrowUp className="w-4 h-4 text-orange-500" />
-          ) : (
-            <ArrowDown className="w-4 h-4 text-orange-500" />
-          )}
-        </div>
-      </div>
-    </div>
-  );
 
   const ModelFlowDiagram = ({ data }) => {
     const svgRef = useRef(null);
@@ -498,13 +473,21 @@ function Models() {
 
       {viewMode !== 'list' && (
         <>
-          <div className="bg-gradient-to-r from-purple-400 via-purple-300 to-purple-200 rounded-2xl p-4">
-            <div className="grid grid-cols-5 gap-4">
+          <StatsContainer gradient="from-purple-400 via-purple-300 to-purple-200">
+            <StatsGrid columns={5} gap={4}>
               {metricsData.map((metric, index) => (
-                <StatCard key={index} {...metric} />
+                <StatCard
+                  key={index}
+                  title={metric.title}
+                  value={metric.value}
+                  icon={metric.icon}
+                  trend={metric.trend}
+                  trendValue={metric.trendValue}
+                  variant="bordered"
+                />
               ))}
-            </div>
-          </div>
+            </StatsGrid>
+          </StatsContainer>
 
           <div className="grid grid-cols-3 gap-4">
             <div className="col-span-2">

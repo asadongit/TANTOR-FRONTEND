@@ -1,21 +1,21 @@
-import React, { useState, useMemo, useRef, useCallback } from "react";
-import { ArrowUp, ArrowDown, Info } from "lucide-react";
+import React, { useState, useMemo } from "react";
 import { Icon } from "@iconify-icon/react";
 import DataTable from "../../../../../../../components/DataTable";
+import { StatCard, LinkCard, StatsContainer, StatsRow } from "../../../StatsCard";
 
 function Features() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const statsCards = [
-    { title: "Features", value: "30", type: "stat" },
-    { title: "Data points", value: "10,000", type: "stat" },
+    { title: "Features", value: "30" },
+    { title: "Data points", value: "10,000" },
   ];
 
   const linkCards = [
-    { title: "Raw Data", type: "link" },
-    { title: "DQ Report", type: "link" },
-    { title: "Feature Impact", type: "link" },
+    { title: "Raw Data" },
+    { title: "DQ Report" },
+    { title: "Feature Impact" },
   ];
 
   const columns = [
@@ -212,45 +212,16 @@ function Features() {
     );
   }, [searchTerm, projectsData]);
 
-  const StatCard = ({ title, value }) => (
-    <div className="bg-white rounded-xl px-5 py-4 border-l-4 border-l-purple-500 shadow-sm flex items-center justify-between flex-1">
-      <div className="flex items-center gap-3">
-        <Icon
-          icon="material-symbols:description-outline"
-          className="w-5 h-5 text-purple-600"
-        />
-        <span className="text-gray-700 text-sm font-medium">{title}</span>
-      </div>
-      <span className="text-xl font-bold text-gray-800">{value}</span>
-    </div>
-  );
-
-  const LinkCard = ({ title }) => (
-    <div className="bg-white rounded-xl px-4 py-4 border border-purple-100 shadow-sm flex items-center gap-2 cursor-pointer hover:bg-purple-50 transition-colors whitespace-nowrap">
-      <Icon
-        icon="material-symbols:description-outline"
-        className="w-5 h-5 text-purple-600"
-      />
-      <span className="text-purple-600 text-sm font-medium">{title}</span>
-    </div>
-  );
-
   return (
     <div>
-      <div className="bg-gradient-to-r from-purple-400 via-purple-300 to-purple-100 rounded-2xl p-4">
-        <div className="flex gap-4 items-center">
-          <div className="flex gap-4 flex-1">
-            {statsCards.map((card, index) => (
-              <StatCard key={index} title={card.title} value={card.value} />
-            ))}
-          </div>
-          <div className="flex gap-4">
-            {linkCards.map((card, index) => (
-              <LinkCard key={index} title={card.title} />
-            ))}
-          </div>
-        </div>
-      </div>
+      <StatsContainer gradient="from-purple-400 via-purple-300 to-purple-100">
+        <StatsRow
+          statsCards={statsCards}
+          linkCards={linkCards}
+          variant="default"
+          gap={4}
+        />
+      </StatsContainer>
 
       <DataTable
         columns={columns}

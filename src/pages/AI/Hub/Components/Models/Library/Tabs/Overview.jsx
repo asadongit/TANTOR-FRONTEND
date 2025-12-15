@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Search } from 'lucide-react';
 import { Icon } from '@iconify-icon/react';
-import DataTable from '../../../../../../../components/DataTable';
 
-function Overview() {
+function Overview({ modelData }) {
   const [searchTerm, setSearchTerm] = useState('');
 
   const libraryData = [
@@ -52,6 +51,27 @@ function Overview() {
     );
   }, [searchTerm]);
 
+  const overviewData = {
+    name: modelData?.name || 'Project - Churn',
+    description: modelData?.description || 'Predict churn risk',
+    marketplaceId: '#1234',
+    useCase: 'Use Case 1',
+    owner: 'Salish',
+    createdDate: '01/10/2025',
+    updatedDate: '05/10/2025',
+    lastRunDate: '05/10/2025',
+    type: 'Analytics',
+    targetVariable: 'Churn Model',
+    projects: 'Projects',
+  };
+
+  const InfoCard = ({ label, value }) => (
+    <div className="bg-gray-50 rounded-lg p-4">
+      <p className="text-sm text-gray-500 mb-1">{label}</p>
+      <p className="text-base font-semibold text-gray-800">{value}</p>
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -70,12 +90,22 @@ function Overview() {
         </button>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={filteredData}
-        isLoading={false}
-        isError={false}
-      />
+      <div className="grid grid-cols-3 gap-4">
+        <InfoCard label="Name" value={overviewData.name} />
+        <InfoCard label="Description" value={overviewData.description} />
+        <InfoCard label="Marketplace ID" value={overviewData.marketplaceId} />
+
+        <InfoCard label="Use Case" value={overviewData.useCase} />
+        <InfoCard label="Owner" value={overviewData.owner} />
+        <InfoCard label="Created Date" value={overviewData.createdDate} />
+
+        <InfoCard label="Updated Date" value={overviewData.updatedDate} />
+        <InfoCard label="Last Run Date" value={overviewData.lastRunDate} />
+        <InfoCard label="Type" value={overviewData.type} />
+
+        <InfoCard label="Target Variable" value={overviewData.targetVariable} />
+        <InfoCard label="Projects" value={overviewData.projects} />
+      </div>
     </div>
   );
 }

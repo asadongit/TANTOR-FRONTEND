@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import { Icon } from '@iconify-icon/react';
@@ -19,6 +19,10 @@ function Library() {
   const modelData = location.state?.modelData;
 
   const [activeTab, setActiveTab] = useState(0);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeTab]);
 
   const tabs = [
     { name: 'Overview', component: Overview },
