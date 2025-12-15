@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight, EllipsisVertical, Search } from "lucide-react"
-import DataTable from "../../../../components/DataTable"
+import DataTable from "../../../../../components/DataTable"
 import { useState } from "react";
 
 const ComponentsTab = () => {

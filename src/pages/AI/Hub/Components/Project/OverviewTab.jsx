@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Search, List, RefreshCw, ChevronLeft, EllipsisVertical, ChevronDown, ChevronRight, EllipsisVerticalIcon } from 'lucide-react';
-import DataTable from '../../../../components/DataTable';
-import Breadcrumb from '../../../../components/Breadcrumb';
+import DataTable from '../../../../../components/DataTable';
+import Breadcrumb from '../../../../../components/Breadcrumb';
 import CommentsTab from './CommentsTab';
 import ClonesTab from './ClonesTab';
 

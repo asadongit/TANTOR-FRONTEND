@@ -1,6 +1,6 @@
 // tabs/CommentsTab.jsx
 import { Search, EllipsisVertical } from 'lucide-react';
-import DataTable from '../../../../components/DataTable';
+import DataTable from '../../../../../components/DataTable';
 
 const CommentsTab = () => {
     const commentsData = [

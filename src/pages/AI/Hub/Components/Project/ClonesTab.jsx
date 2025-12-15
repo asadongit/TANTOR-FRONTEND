@@ -1,7 +1,7 @@
 // ClonesTab.jsx
 import React, { useState, useMemo } from 'react';
 import { Search, EllipsisVertical } from 'lucide-react';
-import DataTable from '../../../../components/DataTable';
+import DataTable from '../../../../../components/DataTable';
 
 const ClonesTab = () => {
     const [searchTerm, setSearchTerm] = useState('');
