@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, Cloud } from 'lucide-react';
 import CommentsTab from './CommentsTab';
-import ClonesTab from './ClonesTab';
 import OverviewTab from './OverviewTab';
 import ComponentsTab from './ComponentsTab';
 
@@ -16,7 +15,7 @@ const ProjectLibrary = () => {
 
     const ProjectData = location.state?.ProjectData;
 
-    const tabs = ['Overview', 'Components', 'Comments', 'Clones'];
+    const tabs = ['Overview', 'Components', 'Comments'];
 
     const getProjectName = () => {
         if (ProjectData?.name) {
@@ -94,7 +93,6 @@ const ProjectLibrary = () => {
                 {activeTab === 'Overview' && <OverviewTab projectData={ProjectData} />}
                 {activeTab === 'Components' && <ComponentsTab projectData={ProjectData} />}
                 {activeTab === 'Comments' && <CommentsTab projectData={ProjectData} />}
-                {activeTab === 'Clones' && <ClonesTab projectData={ProjectData} />}
             </div>
 
             <div className="flex justify-end gap-3">
@@ -104,7 +102,7 @@ const ProjectLibrary = () => {
                 >
                     Back
                 </button>
-                {activeTab !== 'Clones' && (
+                {activeTab !== 'Comments' && (
                     <button
                         onClick={handleNext}
                         className="px-10 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7d6ba3] transition-colors"

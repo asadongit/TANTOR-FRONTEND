@@ -181,7 +181,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     {
       name: 'Hub',
       icon: Network,
-      path: `${AI_PREFIX}/hub`,
+      path: `${AI_PREFIX}/hub/data`,
       subItems: [
         { name: 'Data', path: `${AI_PREFIX}/hub/data` },
         { name: 'Projects', path: `${AI_PREFIX}/hub/projects` },

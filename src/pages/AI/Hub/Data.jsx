@@ -24,7 +24,7 @@ const Data = () => {
     { name: 'Fraud', count: 4, trend: 'up' },
     { name: 'NPA', count: 3, trend: 'down' },
     { name: 'Fraud', count: 4, trend: 'up' },
-    { name: 'Campaign', count: 2, trend: 'down'},
+    { name: 'Campaign', count: 2, trend: 'down' },
     { name: 'M_risk', count: 6, trend: 'up' },
   ];
 
@@ -175,13 +175,13 @@ const Data = () => {
     },
     {
       label: 'F1 Mode',
-      icon: <Gauge className="w-4 h-4"/>,
+      icon: <Gauge className="w-4 h-4" />,
       onClick: (row) => console.log('F1 Mode:', row),
       tooltip: 'F1 Mode',
     },
     {
       label: 'AI Canvas',
-      icon: <Palette className="w-4 h-4"/>,
+      icon: <Palette className="w-4 h-4" />,
       onClick: (row) => console.log('AI Canvas:', row),
       tooltip: 'AI Canvas',
     },
@@ -279,7 +279,7 @@ const Data = () => {
           <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50">
             <List className="w-5 h-5 text-gray-600" />
           </button>
-          <button 
+          <button
             className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
             onClick={handleRefresh}
             disabled={isLoading}
@@ -344,21 +344,19 @@ const Data = () => {
             icon={Activity}
             infoText="Recently accessed datasets and their frequency"
           >
-            <div className="space-y-2 max-h-[240px] overflow-y-auto">
+            <div className="max-h-[240px] overflow-y-auto">
               {lastAccessedData.map((item, index) => (
-                <div key={index} className="flex justify-between items-center p-2 hover:bg-gray-50 rounded-lg">
-                  <span className="text-sm text-gray-700">{item.name}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-900">{item.count}</span>
-                    {item.trend === 'up' ? (
-                      <ArrowUp className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
-                    ) : (
-                      <ArrowDown className="w-3 h-3 sm:w-4 sm:h-4 text-red-500"/>
-                    )}
+                <div key={index}>
+                  <div className="flex items-center justify-between py-3 px-2 hover:bg-gray-50">
+                    <span className="text-sm text-gray-700 flex-1">{item.name}</span>
+                    <span className="text-sm font-medium text-gray-900 mx-8">{item.count}</span>
                     <button className="p-1 hover:bg-gray-100 rounded">
                       <BookOpenText className="w-4 h-4 text-[#8e78b7]" />
                     </button>
                   </div>
+                  {index < lastAccessedData.length - 1 && (
+                    <div className="border-b border-gray-200"></div>
+                  )}
                 </div>
               ))}
             </div>
