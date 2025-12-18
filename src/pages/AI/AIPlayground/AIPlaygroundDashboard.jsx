@@ -1,70 +1,132 @@
 import React, { useState } from 'react';
-import {
-  Upload,
-  Boxes,
-  SlidersHorizontal,
-  ListChecks,
-  BrainCircuit,
-  Rocket,
-  Lightbulb,
-  Sparkles,
-  BarChart3,
-  Activity
-} from 'lucide-react';
-
-const workflowStages = [
-  { id: 'data-ingestion', label: 'Data Ingestion', icon: Upload },
-  { id: 'model-genesis', label: 'Model Genesis', icon: Boxes },
-  { id: 'data-preprocessing', label: 'Data Pre-Processing', icon: SlidersHorizontal },
-  { id: 'model-selection', label: 'Model Selection', icon: ListChecks },
-  { id: 'model-inferencing', label: 'Model Inferencing', icon: BrainCircuit },
-  { id: 'model-deployment', label: 'Model Deployment', icon: Rocket },
-  { id: 'xai', label: 'XAI', icon: Lightbulb },
-  { id: 'gen-ai', label: 'Gen AI', icon: Sparkles },
-  { id: 'business-analysis', label: 'Business Analysis', icon: BarChart3 },
-  { id: 'model-observability', label: 'Model Observability', icon: Activity },
-];
 
 function AIPlaygroundDashboard() {
-  const [selectedStage, setSelectedStage] = useState('data-ingestion');
+  const [selectedExperiment, setSelectedExperiment] = useState('');
+
+  // Dummy experiment options for demonstration
+  const experimentOptions = [
+    { value: '', label: 'Select' },
+    { value: 'exp1', label: 'Experiment 1' },
+    { value: 'exp2', label: 'Experiment 2' },
+  ];
+
+  const isDisabled = !selectedExperiment;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-violet-50 to-gray-100 flex items-center justify-center p-10">
-      <div className="text-center max-w-4xl w-full">
-        <h1 className="text-3xl font-semibold text-gray-900 mb-3">
-          Start Your <span className="text-purple-600">AI Workflow</span>
-        </h1>
-        <p className="text-sm text-gray-500 mb-10">
-          Select a workflow stage to configure data, train models, and deploy intelligent solutions.
-        </p>
-
-        <div className="grid grid-cols-5 gap-4">
-          {workflowStages.map((stage) => {
-            const IconComponent = stage.icon;
-            const isSelected = selectedStage === stage.id;
-            return (
-              <button
-                key={stage.id}
-                className={`bg-white rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer transition-all duration-200 shadow-sm border-2 ${
-                  isSelected
-                    ? 'border-purple-500 bg-purple-50/30'
-                    : 'border-transparent hover:border-purple-200 hover:shadow-md'
-                }`}
-                onClick={() => setSelectedStage(stage.id)}
-              >
-                <div
-                  className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200 ${
-                    isSelected
-                      ? 'bg-purple-100 text-purple-600'
-                      : 'bg-gray-100 text-gray-400'
-                  }`}
-                >
-                  <IconComponent size={24} />
-                </div>
-                <span className="text-sm font-medium text-gray-600">{stage.label}</span>
-              </button>
-            );
-          })}
+    <div style={{ padding: 24, background: '#fafbfc', minHeight: '100vh', borderRadius: 12 }}>
+      <h2 style={{ fontWeight: 600, fontSize: 24, marginBottom: 24 }}>AI playground</h2>
+      <div style={{
+        background: '#fff',
+        borderRadius: 12,
+        padding: 32,
+        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+        marginBottom: 24,
+        maxWidth: 900,
+        margin: '0 auto'
+      }}>
+        <div style={{ marginBottom: 16, fontWeight: 500, fontSize: 16 }}>
+          Inject Your Data to Get Started
+        </div>
+        <div style={{ color: '#888', marginBottom: 24 }}>
+          Select an experiment and upload a dataset—or fetch data from views—to begin machine learning, GenAI, analytics, and observability workflows.
+        </div>
+        <div style={{ marginBottom: 24 }}>
+          <label style={{ fontWeight: 500, fontSize: 14, marginBottom: 8, display: 'block' }}>Experiment Name</label>
+          <select
+            value={selectedExperiment}
+            onChange={e => setSelectedExperiment(e.target.value)}
+            style={{
+              width: 260,
+              padding: '8px 12px',
+              borderRadius: 6,
+              border: '1px solid #ddd',
+              fontSize: 15,
+              background: '#fafbfc'
+            }}
+          >
+            {experimentOptions.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+        <div style={{ display: 'flex', gap: 16 }}>
+          {/* Drag & Drop Upload */}
+          <div style={{
+            flex: 1,
+            border: '1.5px dashed #d6d3f8',
+            borderRadius: 10,
+            padding: 24,
+            background: isDisabled ? '#f5f5f5' : '#fafbfc',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            opacity: isDisabled ? 0.6 : 1,
+            pointerEvents: isDisabled ? 'none' : 'auto'
+          }}>
+            <div style={{ marginBottom: 12, color: '#888', fontSize: 14 }}>
+              Drag & Drop or Choose file to Upload
+            </div>
+            <div style={{ marginBottom: 12, color: '#b0b0b0', fontSize: 12 }}>
+              Supported: Pdf, XL, XLSX | Max size: 25 MB
+            </div>
+            <button
+              disabled={isDisabled}
+              style={{
+                padding: '8px 24px',
+                borderRadius: 6,
+                border: '1px solid #e0e0e0',
+                background: isDisabled ? '#eaeaea' : '#f6f0ff',
+                color: '#7c5cff',
+                fontWeight: 500,
+                cursor: isDisabled ? 'not-allowed' : 'pointer'
+              }}
+            >
+              Upload
+            </button>
+          </div>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            fontWeight: 500,
+            color: '#bbb',
+            fontSize: 15
+          }}>
+            OR
+          </div>
+          {/* Fetch Data from Views */}
+          <div style={{
+            flex: 1,
+            border: '1.5px solid #eae6fa',
+            borderRadius: 10,
+            padding: 24,
+            background: isDisabled ? '#f5f5f5' : '#fafbfc',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            opacity: isDisabled ? 0.6 : 1,
+            pointerEvents: isDisabled ? 'none' : 'auto'
+          }}>
+            <div style={{ marginBottom: 12, color: '#888', fontSize: 14 }}>
+              Fetch Data from Views
+            </div>
+            <div style={{ marginBottom: 12, color: '#b0b0b0', fontSize: 12 }}>
+              Load data directly from available database views.
+            </div>
+            <button
+              disabled={isDisabled}
+              style={{
+                padding: '8px 24px',
+                borderRadius: 6,
+                border: '1px solid #e0e0e0',
+                background: isDisabled ? '#eaeaea' : '#f6f0ff',
+                color: '#7c5cff',
+                fontWeight: 500,
+                cursor: isDisabled ? 'not-allowed' : 'pointer'
+              }}
+            >
+              Fetch Data
+            </button>
+          </div>
         </div>
       </div>
     </div>
