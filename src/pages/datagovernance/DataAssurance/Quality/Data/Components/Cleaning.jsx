@@ -422,8 +422,8 @@ function Cleaning({ query, formData, setFormData }) {
           {!showDisplayButton && (
             <button
               type="submit"
-              disabled={loading}
-              className="flex items-center gap-2 px-4 py-1.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a67a0] transition-colors disabled:opacity-50"
+              disabled={loading || formData.operations.length === 0}
+              className="flex items-center gap-2 px-4 py-1.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a67a0] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Processing...' : 'Process'}
             </button>
@@ -445,12 +445,12 @@ function Cleaning({ query, formData, setFormData }) {
             Save
           </button> */}
 
-          <button
+          {/* <button
             type="button"
             className="flex items-center gap-2 px-7 py-1.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a67a0] transition-colors"
           >
             Ok
-          </button>
+          </button> */}
         </div>
       </form>
 
