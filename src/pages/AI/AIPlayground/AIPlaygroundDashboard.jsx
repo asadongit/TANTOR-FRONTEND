@@ -1,47 +1,45 @@
 import React, { useState } from 'react';
 
-function AIPlaygroundDashboard() {
+export default function AIPlayground() {
   const [selectedExperiment, setSelectedExperiment] = useState('');
 
-  // Dummy experiment options for demonstration
   const experimentOptions = [
     { value: '', label: 'Select' },
     { value: 'exp1', label: 'Experiment 1' },
     { value: 'exp2', label: 'Experiment 2' },
   ];
 
-  const isDisabled = !selectedExperiment;
+  const disabled = !selectedExperiment;
 
   return (
-    <div style={{ padding: 24, background: '#fafbfc', minHeight: '100vh', borderRadius: 12 }}>
-      <h2 style={{ fontWeight: 600, fontSize: 24, marginBottom: 24 }}>AI playground</h2>
-      <div style={{
-        background: '#fff',
-        borderRadius: 12,
-        padding: 32,
-        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-        marginBottom: 24,
-        maxWidth: 900,
-        margin: '0 auto'
-      }}>
-        <div style={{ marginBottom: 16, fontWeight: 500, fontSize: 16 }}>
+    <div>
+    <div style={{ minHeight: '100vh', background: '#fafbfc', padding: '32px 40px', fontFamily: 'Inter, system-ui, -apple-system, Segoe UI, Roboto' }}>
+
+              <h1 style={{ fontSize: 24, fontWeight: 700, color: '#111827', marginBottom: 24 }}>AI playground</h1>
+
+        <h2 style={{ fontSize: 16, fontWeight: 600, color: '#111827', marginBottom: 8 }}>
           Inject Your Data to Get Started
-        </div>
-        <div style={{ color: '#888', marginBottom: 24 }}>
-          Select an experiment and upload a dataset—or fetch data from views—to begin machine learning, GenAI, analytics, and observability workflows.
-        </div>
-        <div style={{ marginBottom: 24 }}>
-          <label style={{ fontWeight: 500, fontSize: 14, marginBottom: 8, display: 'block' }}>Experiment Name</label>
+        </h2>
+
+        <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 24, maxWidth: 780 }}>
+          Select an experiment and upload a dataset—or fetch data from views—to begin machine learning. GenAI, analytics, and observability workflows.
+        </p>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
+          <label style={{ fontSize: 14, fontWeight: 500, color: '#111827', minWidth: 140 }}>
+            Experiment Name
+          </label>
           <select
             value={selectedExperiment}
             onChange={e => setSelectedExperiment(e.target.value)}
             style={{
               width: 260,
-              padding: '8px 12px',
+              height: 40,
               borderRadius: 6,
-              border: '1px solid #ddd',
-              fontSize: 15,
-              background: '#fafbfc'
+              border: '1px solid #e5e7eb',
+              padding: '0 12px',
+              fontSize: 14,
+              background: '#f9fafb'
             }}
           >
             {experimentOptions.map(opt => (
@@ -49,79 +47,75 @@ function AIPlaygroundDashboard() {
             ))}
           </select>
         </div>
-        <div style={{ display: 'flex', gap: 16 }}>
-          {/* Drag & Drop Upload */}
-          <div style={{
-            flex: 1,
-            border: '1.5px dashed #d6d3f8',
-            borderRadius: 10,
-            padding: 24,
-            background: isDisabled ? '#f5f5f5' : '#fafbfc',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            opacity: isDisabled ? 0.6 : 1,
-            pointerEvents: isDisabled ? 'none' : 'auto'
-          }}>
-            <div style={{ marginBottom: 12, color: '#888', fontSize: 14 }}>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1px 1fr', gap: 32, alignItems: 'stretch' }}>
+          {/* Upload box */}
+          <div
+            style={{
+              border: '1px dashed #dbe0ea',
+              borderRadius: 8,
+              padding: '32px 24px',
+              textAlign: 'center',
+              background: disabled ? '#f9fafb' : '#ffffff',
+              opacity: disabled ? 0.6 : 1
+            }}
+          >
+            <div style={{ fontSize: 14, fontWeight: 500, color: '#9ca3af', marginBottom: 8 }}>
               Drag & Drop or Choose file to Upload
             </div>
-            <div style={{ marginBottom: 12, color: '#b0b0b0', fontSize: 12 }}>
+            <div style={{ fontSize: 12, color: '#c0c6d4', marginBottom: 20 }}>
               Supported: Pdf, XL, XLSX | Max size: 25 MB
             </div>
             <button
-              disabled={isDisabled}
+              disabled={disabled}
               style={{
-                padding: '8px 24px',
+                height: 36,
+                padding: '0 22px',
                 borderRadius: 6,
-                border: '1px solid #e0e0e0',
-                background: isDisabled ? '#eaeaea' : '#f6f0ff',
-                color: '#7c5cff',
+                border: '1px solid #ede9fe',
+                background: '#f5f3ff',
+                color: '#8b5cf6',
+                fontSize: 14,
                 fontWeight: 500,
-                cursor: isDisabled ? 'not-allowed' : 'pointer'
+                cursor: disabled ? 'not-allowed' : 'pointer'
               }}
             >
               Upload
             </button>
           </div>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            fontWeight: 500,
-            color: '#bbb',
-            fontSize: 15
-          }}>
-            OR
-          </div>
-          {/* Fetch Data from Views */}
-          <div style={{
-            flex: 1,
-            border: '1.5px solid #eae6fa',
-            borderRadius: 10,
-            padding: 24,
-            background: isDisabled ? '#f5f5f5' : '#fafbfc',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            opacity: isDisabled ? 0.6 : 1,
-            pointerEvents: isDisabled ? 'none' : 'auto'
-          }}>
-            <div style={{ marginBottom: 12, color: '#888', fontSize: 14 }}>
+
+          {/* divider */}
+          <div style={{ width: 1, background: '#eef0f4' }} />
+
+          {/* Fetch box */}
+          <div
+            style={{
+              border: '1px solid #eef0f4',
+              borderRadius: 8,
+              padding: '32px 24px',
+              textAlign: 'center',
+              background: disabled ? '#f9fafb' : '#ffffff',
+              opacity: disabled ? 0.6 : 1
+            }}
+          >
+            <div style={{ fontSize: 14, fontWeight: 500, color: '#9ca3af', marginBottom: 8 }}>
               Fetch Data from Views
             </div>
-            <div style={{ marginBottom: 12, color: '#b0b0b0', fontSize: 12 }}>
+            <div style={{ fontSize: 12, color: '#c0c6d4', marginBottom: 20 }}>
               Load data directly from available database views.
             </div>
             <button
-              disabled={isDisabled}
+              disabled={disabled}
               style={{
-                padding: '8px 24px',
+                height: 36,
+                padding: '0 22px',
                 borderRadius: 6,
-                border: '1px solid #e0e0e0',
-                background: isDisabled ? '#eaeaea' : '#f6f0ff',
-                color: '#7c5cff',
+                border: '1px solid #ede9fe',
+                background: '#f5f3ff',
+                color: '#8b5cf6',
+                fontSize: 14,
                 fontWeight: 500,
-                cursor: isDisabled ? 'not-allowed' : 'pointer'
+                cursor: disabled ? 'not-allowed' : 'pointer'
               }}
             >
               Fetch Data
@@ -132,5 +126,3 @@ function AIPlaygroundDashboard() {
     </div>
   );
 }
-
-export default AIPlaygroundDashboard;
