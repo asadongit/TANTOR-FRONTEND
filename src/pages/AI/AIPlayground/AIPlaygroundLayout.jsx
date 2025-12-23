@@ -30,7 +30,8 @@ export function AIPlaygroundLayout({
     totalPreprocessingSteps,
     onPreprocessingStepChange,
     isStep7Preview,
-    onPreviewData
+    onPreviewData,
+    isNextDisabled: isNextDisabledProp
 }) {
     const navigate = useNavigate();
     const location = useLocation();
@@ -113,6 +114,9 @@ export function AIPlaygroundLayout({
     };
 
     const isNextDisabled = () => {
+        if (isNextDisabledProp !== undefined) {
+            return isNextDisabledProp;
+        }
         return !isPreprocessingPage && currentStageIndex === workflowStages.length - 1 && !(isOnStep7 && !isStep7Preview);
     };
 
@@ -233,7 +237,7 @@ export function AIPlaygroundLayout({
                             <button
                                 onClick={handleNext}
                                 disabled={isNextDisabled()}
-                                className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#7d67a6] disabled:hover:bg-[#8e78b7]"
                             >
                                 {getNextButtonLabel()}
                                 <ArrowRight size={16} />
