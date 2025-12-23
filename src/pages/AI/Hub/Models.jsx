@@ -473,7 +473,7 @@ function Models() {
 
       {viewMode !== 'list' && (
         <>
-          <StatsContainer gradient="from-purple-400 via-purple-300 to-purple-200">
+          <StatsContainer gradient="from-[#8e78b7] via-purple-300 to-purple-100">
             <StatsGrid columns={5} gap={4}>
               {metricsData.map((metric, index) => (
                 <StatCard

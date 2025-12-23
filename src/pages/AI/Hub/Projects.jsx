@@ -267,7 +267,7 @@ const Projects = () => {
 
             <div className="space-y-6">
                 {viewMode === 'both' && (
-                    <div className="bg-gradient-to-r from-purple-400 via-purple-300 to-purple-200 rounded-xl p-4">
+                    <div className="bg-gradient-to-r from-[#8e78b7] via-purple-300 to-purple-100 rounded-xl p-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                             {statsCards.map((stat, index) => (
                                 <StatCard key={index} {...stat} />

@@ -16,7 +16,7 @@ const preprocessingSteps = [
   { id: 4, label: 'Scaling & Transformation' },
   { id: 5, label: 'Statistical Analysis' },
   { id: 6, label: 'Feature Importance' },
-  { id: 7, label: 'Pre-processing' },
+  { id: 7, label: 'Imbalance handling' },
 ];
 
 function DataPreprocessing() {
@@ -65,7 +65,6 @@ function DataPreprocessing() {
                       )}
 
                       <button
-                        onClick={() => setCurrentStep(step.id)}
                         className={`flex items-center gap-3 py-3 lg:py-4 text-left transition-colors relative ${currentStep === step.id ? 'text-[#8e78b7]' : 'text-gray-500'
                           }`}
                       >
