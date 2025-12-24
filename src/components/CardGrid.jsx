@@ -13,7 +13,7 @@ const CardSkeleton = () => (
   </div>
 );
 
-const CardGrid = ({ cards, onCardClick, isLoading=false }) => {
+const CardGrid = ({ cards, onCardClick, isLoading = false, showDetails = true }) => {
   const navigate = useNavigate();
 
   return (
@@ -37,13 +37,15 @@ const CardGrid = ({ cards, onCardClick, isLoading=false }) => {
             <p className="text-black text-5xl font-bold">{card.count}</p>
           )}
 
-          <button
-            className="mt-4 text-purple-600 text-sm font-normal relative transition-all duration-300 group hover:scale-105 hover:font-medium"
-            onClick={() => onCardClick(card)}
-          >
-            See details
-            <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-purple-600 transition-all duration-300 group-hover:w-full"></span>
-          </button>
+          {showDetails && (
+            <button
+              className="mt-4 text-purple-600 text-sm font-normal relative transition-all duration-300 group hover:scale-105 hover:font-medium"
+              onClick={() => onCardClick(card)}
+            >
+              See details
+              <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-purple-600 transition-all duration-300 group-hover:w-full"></span>
+            </button>
+          )}
         </div>
       ))}
     </div>
