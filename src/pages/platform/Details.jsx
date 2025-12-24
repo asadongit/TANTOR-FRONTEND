@@ -1,15 +1,7 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import  { useState, useMemo, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { usePlatform } from "../../context/platformContext";
 import {
-  ChevronLeft,
-  ChevronRight,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  Play,
   RefreshCcw,
-  ArrowUpDown,
   Search,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -18,43 +10,29 @@ import { useConnectionData } from "../../hooks/platform/connection";
 import { usePurgeData } from "../../hooks/platform/purge";
 import { useReportData } from "../../hooks/platform/report";
 import { useCDCData } from "../../hooks/platform/cdc";
-import { useArchivalData } from "../../hooks/platform/archival";
 import { useMigrationData } from "../../hooks/platform/migration";
+import { useMetadataData } from "../../hooks/platform/metadata";
 import { useProjectData } from "../../hooks/platform/project";
 import { useRuleData } from "../../hooks/platform/reportingframework/rules";
 import DataTable from "../../components/DataTable";
 import { getActionConfigurations } from "../../components/actionsConfig";
 import columnConfigurations from "../../components/columnsConfig";
 import { useAuth } from "../../context/AuthContext";
-import { encrypt } from "../../utils/Crypto";
 
 const useDynamicData = (componentType) => {
 
   const hookMap = {
     cdc: useCDCData,
-    migration: useArchivalData,
+    migration: useMigrationData,
     purge: usePurgeData,
     project: useProjectData,
     connections: useConnectionData,
-    metadata: useMigrationData,
+    metadata: useMetadataData,
     report: useReportData,
     rules: useRuleData,
     //   federation: useFederationData,
   };
 
-
-
-  //   const hookMap = {
-  //   cdc: useCDCData,
-  //   migration: useMigrationData,
-  //   purge: usePurgeData,
-  //   project: useProjectData,
-  //   connections: useConnectionData,
-  //   transformation: useArchivalData,
-  //   report: useReportData,
-  //   rules: useRuleData,
-  //   //   federation: useFederationData,
-  // };
 
   return hookMap[componentType] ? hookMap[componentType]() : [];
 };

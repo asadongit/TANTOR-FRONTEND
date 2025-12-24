@@ -7,10 +7,7 @@ import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import { PlatformRoutes } from "./routes/PlatformRoutes";
 import { DataGovernanceRoutes } from "./routes/DataGovernanceRoutes";
-import ArchivalCanvas from "./pages/platform/archival/ArchivalCanvas";
 import RuleCanvas from "./pages/platform/rule-framework/RuleCanvas";
-import MetadataCanvas from "./pages/platform/metadata/MetadataCanvas";
-import { WelcomeModal } from "./pages/platform/react-flow/WelcomeModal";
 import { DrawerProvider } from "./pages/platform/react-flow/context/DrawerContext";
 import { ThemeProvider } from "./pages/platform/react-flow/context/ThemeContext";
 import { TableProvider } from "./pages/platform/react-flow/context/TableContext";
@@ -36,6 +33,7 @@ import {
 import { BusinessHeader } from "./pages/platform/Federation/BusinessView/BusinessHeader";
 import TransformationCanvas from "./pages/platform/transformation/components/TransformationCanvas";
 import { DatabotProvider } from "./pages/datagovernance/Databot/context/DatabotContext";
+import MigrationCanvas from "./pages/platform/migration/components/MigrationCanvas";
 
 function App() {
   const [activeSection, setActiveSection] = useState("platform");
@@ -95,6 +93,34 @@ function App() {
                 }
               />
 
+              {/* Migration canvas */}
+              <Route
+                path="/migrationCanvas"
+                element={
+                  <TableProvider>
+                    <FlowDataProvider>
+                      <ThemeProvider>
+                        <DrawerProvider>
+                          <div className="flex flex-col h-screen text-black-100">
+                            <Header className="h-16 flex-shrink-0" />
+                            <div className="flex-1 flex">
+                              <div className="flex-1 relative">
+                                <ReactFlowProvider>
+                                  <MigrationCanvas />
+                                </ReactFlowProvider>
+                              </div>
+                            </div>
+                          </div>
+                        </DrawerProvider>
+                      </ThemeProvider>
+                    </FlowDataProvider>
+                  </TableProvider>
+                }
+              />
+
+
+
+              {/* Transformation canvas */}
               <Route
                 path="/transformation/studio"
                 element={
@@ -119,56 +145,7 @@ function App() {
                 }
               />
 
-              <Route
-                path="/Metadatacanvas"
-                element={
-                  <TableProvider>
-                    <FlowDataProvider>
-                      <ThemeProvider>
-                        <DrawerProvider>
-                          <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
-                            <Header className="h-16 flex-shrink-0" />
-                            <div className="flex-1 flex">
-                              <div className="flex-1 relative">
-                                <ReactFlowProvider>
-                                  <MetadataCanvas />
-                                </ReactFlowProvider>
-                              </div>
-                            </div>
-                            <WelcomeModal />
-                          </div>
-                        </DrawerProvider>
-                      </ThemeProvider>
-                    </FlowDataProvider>
-                  </TableProvider>
-                }
-              />
-
-              <Route
-                path="/Migrationcanvas"
-                element={
-                  <TableProvider>
-                    <FlowDataProvider>
-                      <ThemeProvider>
-                        <DrawerProvider>
-                          <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
-                            <Header className="h-16 flex-shrink-0" />
-                            <div className="flex-1 flex">
-                              <div className="flex-1 relative">
-                                <ReactFlowProvider>
-                                  <ArchivalCanvas />
-                                </ReactFlowProvider>
-                              </div>
-                            </div>
-                            <WelcomeModal />
-                          </div>
-                        </DrawerProvider>
-                      </ThemeProvider>
-                    </FlowDataProvider>
-                  </TableProvider>
-                }
-              />
-
+                {/* using this purge */}
               <Route
                 path="/PurgeCanvas"
                 element={
@@ -187,7 +164,6 @@ function App() {
                                     </ReactFlowProvider>
                                   </div>
                                 </div>
-                                {/* <WelcomeModal /> */}
                               </div>
                             </PurgeContextProvider>
                           </ContextProvider>
@@ -198,11 +174,13 @@ function App() {
                 }
               />
 
+                {/* this is used in cdc canvas */}
               <Route
                 path="/canvas/:canvasTypeParam"
                 element={<CanvasLayout />}
               />
 
+                {/* federation canvas */}
               <Route
                 path="/viewcanvas"
                 element={
@@ -242,6 +220,8 @@ function App() {
                 }
               />
 
+
+                {/* rules canvas */}
               <Route
                 path="/config/rule/create-rule"
                 element={

@@ -4,9 +4,9 @@ import { Position } from "reactflow";
 import { useWorkflow } from "../../context/WorkflowContext";
 import { Minus, X } from "lucide-react";
 import { Handle } from "../../components/CustomHandle";
-import { useMigrationData } from "../../../../../hooks/platform/migration";
+import { useMetadataData } from "../../../../../hooks/platform/metadata";
 export function DefineNode({ id, data, selected }) {
-const { data: metaData=[], isLoading: isMetadataLoading, error: MetadataError } = useMigrationData();
+const { data: metaData=[], isLoading: isMetadataLoading, error: MetadataError } = useMetadataData();
 const [nodeData, setNodeData] = useState({
     name: data.define?.name || "",
     description: data.define?.description || "",
@@ -28,7 +28,7 @@ const [nodeData, setNodeData] = useState({
 
 useEffect(() => {
   const metadataAutoNames = metaData.map(item => item.metadata_auto_name);
-  const sourceData =pipelines[ID]?.data?.source 
+  const sourceData =pipelines[ID]?.data?.source
     const sourceName = sourceData?.connection && sourceData?.schema
     ? `${sourceData.connection}_${sourceData.schema}`
     : nodeData.name;
@@ -46,16 +46,16 @@ useEffect(() => {
   updateData(ID, isPipelineNode, "define", nodeData);
 
 }, [
-  pipelines[ID]?.data?.define?.name, 
-  pipelines[ID]?.data?.source, 
-  data?.source, 
-  isPipelineNode, 
-  nodeData?.name, 
-  nodeData?.description, 
+  pipelines[ID]?.data?.define?.name,
+  pipelines[ID]?.data?.source,
+  data?.source,
+  isPipelineNode,
+  nodeData?.name,
+  nodeData?.description,
 
 ]);
 
-  
+
 
 
   return (

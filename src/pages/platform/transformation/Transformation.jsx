@@ -1,12 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
-  Plus,
   RefreshCcw,
   Search,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  RotateCw,
   X,
   ChevronLeft,
   ChevronRight,
@@ -20,6 +15,7 @@ import axios from "axios";
 import Breadcrumb from "../../../components/Breadcrumb";
 import { useAuth } from "../../../context/AuthContext";
 import DataTable from "../../../components/DataTable";
+import CardGrid from "../../../components/CardGrid";
 import {
   LineChart,
   Line,
@@ -76,30 +72,30 @@ function Transformation() {
 
   const metricsData = [
     {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#8d77ba] bg-opacity-25",
+      icon: "material-symbols:dataset-outline",
+      bgcolor: "bg-[#8d77ba] bg-opacity-30",
       iconcolor: "text-[#8d77ba]",
       title: "Total",
       count: dashboardData.cards.total,
     },
     {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#8d77ba] bg-opacity-25",
-      iconcolor: "text-[#8d77ba]",
+      icon: "material-symbols:check-circle-outline",
+      bgcolor: "bg-[#55aa55] bg-opacity-20",
+      iconcolor: "text-[#55aa55]",
       title: "Successful",
       count: dashboardData.cards.success,
     },
     {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#8d77ba] bg-opacity-25",
-      iconcolor: "text-[#8d77ba]",
+      icon: "material-symbols:error-outline",
+      bgcolor: "bg-[#ff5555] bg-opacity-20",
+      iconcolor: "text-[#ff5555]",
       title: "Failed",
       count: dashboardData.cards.failed,
     },
     {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#8d77ba] bg-opacity-25",
-      iconcolor: "text-[#8d77ba]",
+      icon: "material-symbols:schedule-outline",
+      bgcolor: "bg-[#fbbf24] bg-opacity-20",
+      iconcolor: "text-[#fbbf24]",
       title: "Average Duration",
       count: dashboardData.cards.average_duration,
     },
@@ -942,38 +938,11 @@ function Transformation() {
 
       {viewMode !== "list" && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {metricsData.map((metric, index) => (
-              <div
-                key={index}
-                className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <div
-                    className={`flex items-center justify-center w-10 h-10 ${metric.bgcolor} rounded-full ${metric.iconcolor}`}
-                  >
-                    <Icon icon={metric.icon} className="w-5 h-5" />
-                  </div>
-                  <h3 className="text-sm font-medium text-gray-700 leading-tight">
-                    {metric.title}
-                  </h3>
-                </div>
-                <p
-                  className={`text-gray-900 text-3xl font-bold leading-none ${
-                    metric.title === "Total"
-                      ? "text-gray-700"
-                      : metric.title === "Successful"
-                      ? "text-gray-700"
-                      : metric.title === "Failed"
-                      ? "text-gray-700"
-                      : "text-gray-700"
-                  }`}
-                >
-                  {metric.count}
-                </p>
-              </div>
-            ))}
-          </div>
+          <CardGrid
+            cards={metricsData}
+            isLoading={isLoading}
+            showDetails={false}
+          />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
             <MovementChart />
