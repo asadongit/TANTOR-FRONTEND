@@ -14,9 +14,14 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { CreateProjectModal } from './modals/Dashboard/CreateProjectModal';
+import { DatasetDescriptionModal } from './modals/Dashboard/DatasetDescriptionModal';
+import { SelectDataViewModal } from './modals/Dashboard/SelectDataViewModal';
+import { ResetProjectModal } from './modals/Dashboard/ResetProjectModal';
 
 // Import Modal Components
-import { CreateProjectModal, DatasetDescriptionModal, SelectDataViewModal, ResetProjectModal } from './modals/AIPlaygroundModal';
+// import { CreateProjectModal, DatasetDescriptionModal, SelectDataViewModal, ResetProjectModal } from './modals/AIPlaygroundModal';
+
 
 // Constants
 const EXPERIMENT_OPTIONS = [
