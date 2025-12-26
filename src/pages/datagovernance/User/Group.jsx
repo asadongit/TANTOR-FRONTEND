@@ -719,16 +719,16 @@ function Group() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {displayedGroups.map((group, index) => (
                       <div
-  key={index}
-  className="bg-white rounded-lg border border-gray-100 transform transition-all duration-300 hover:shadow-md hover:-translate-y-1 overflow-hidden"
->
-                        <div className="p-4">
-                          <div className="flex items-start justify-between gap-2 min-w-0">
-  <div className="flex items-center gap-2 min-w-0 flex-1">
-                              <div
-  className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 ${group.bgcolor} rounded-full ${group.iconcolor} flex-shrink-0`}
-  aria-hidden="true"
->
+                          key={index}
+                          className="bg-white rounded-lg border border-gray-100 transform transition-all duration-300 hover:shadow-md hover:-translate-y-1 overflow-hidden"
+                        >
+                                                <div className="p-4">
+                                                  <div className="flex items-start justify-between gap-2 min-w-0">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                      <div
+                          className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 ${group.bgcolor} rounded-full ${group.iconcolor} flex-shrink-0`}
+                          aria-hidden="true"
+                        >
                                 <span className="text-sm md:text-base font-semibold">
                                   {getInitial(group)}
                                 </span>
@@ -737,10 +737,10 @@ function Group() {
                             </div>
 
                             <div className="relative flex-shrink-0">
-  <button
-    onClick={() => setActiveMenu(activeMenu === `card-${index}` ? null : `card-${index}`)}
-    className="p-1.5 rounded-full hover:bg-gray-100"
-  >
+                              <button
+                                onClick={() => setActiveMenu(activeMenu === `card-${index}` ? null : `card-${index}`)}
+                                className="p-1.5 rounded-full hover:bg-gray-100"
+                              >
                                 <MoreVertical className="h-5 w-5 text-gray-600" />
                               </button>
                               {activeMenu === `card-${index}` && (
@@ -903,9 +903,8 @@ function Group() {
 
       {viewMode === 'list' && (
         <>
-          <div className="bg-white rounded-lg shadow mt-0" style={{ overflow: 'visible' }}>
-
-          <table className="w-full">
+          <div className="bg-white rounded-lg shadow mt-0 overflow-x-auto" style={{ overflowY: 'visible' }}>
+        <table className="w-full min-w-[900px]">
             <thead>
               <tr className="bg-[#29304a] text-white text-sm">
                 {/* enforce 19.75px horizontal spacing between cells */}

@@ -5,7 +5,7 @@ import { Upload, X } from "lucide-react";
 import { useStateContext } from "../../react-flow/context/ContextProvider";
 
 export function DefineNodePurge({ id, data }) {
-  const { handleDefineNodeName, handleDefineNodeDesc } = useStateContext("");
+  const { handleDefineNodeName, handleDefineNodeDesc, defineNodeName, defineNodeDesc } = useStateContext("");
 
   useEffect(() => {
     if (data) {
@@ -37,8 +37,9 @@ export function DefineNodePurge({ id, data }) {
             type="text"
             placeholder="Source Name"
             onChange={(e) => handleDefineNodeName(e.target.value)}
-            className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-            defaultValue={data?.name || ""}
+            className={`w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 ${data?.isEdit ? "cursor-not-allowed bg-gray-100" : ""}`}
+            value={defineNodeName || ""}
+            disabled={data?.isEdit}
           />
         </div>
         <div>
@@ -50,7 +51,7 @@ export function DefineNodePurge({ id, data }) {
             placeholder="Add Description"
             onChange={(e) => handleDefineNodeDesc(e.target.value)}
             className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-            defaultValue={data?.desc || ""}
+            value={defineNodeDesc || ""}
           />
         </div>
       </div>

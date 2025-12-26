@@ -75,96 +75,157 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
     }
     return [];
   };
+  const handleRemovePolicy = (policyIdToRemove) => {
+  // Remove from both policy arrays
+  const updatedExisting = existingPolicies.filter(
+    policy => String(policy.id) !== String(policyIdToRemove)
+  );
+  const updatedNew = newPolicies.filter(
+    policy => String(policy.id) !== String(policyIdToRemove)
+  );
 
-  const fetchPolicyNames = async (policyIds) => {
-    if (!policyIds || policyIds.length === 0) return;
+  // Update UI
+  setExistingPolicies(updatedExisting);
+  setNewPolicies(updatedNew);
 
-    setIsFetchingPolicyNames(true);
-    try {
-      const policyIdsAsNumbers = policyIds.map(id => parseInt(id));
-
-      const response = await fetch(`${window._env_?.VITE_FAST_API}/policy_name`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(policyIdsAsNumbers)
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch policy names');
-      }
-
-      const data = await response.json();
-
-      const policies = data.map(policy => ({
-        id: String(policy.id),
-        name: policy.policy_name || `Policy ${policy.id}`
-      }));
-
-      setExistingPolicies(prev => {
-        const existingMap = new Map(prev.map(p => [String(p.id), p]));
-        policies.forEach(p => existingMap.set(String(p.id), p));
-        return Array.from(existingMap.values());
-      });
-    } catch (error) {
-      console.error('Error fetching policy names:', error);
-      const fallbackPolicies = policyIds.map(policyId => ({
-        id: String(policyId),
-        name: `Policy ${policyId}`
-      }));
-      setExistingPolicies(prev => {
-        const existingMap = new Map(prev.map(p => [String(p.id), p]));
-        fallbackPolicies.forEach(p => existingMap.set(String(p.id), p));
-        return Array.from(existingMap.values());
-      });
-    } finally {
-      setIsFetchingPolicyNames(false);
-    }
-  };
-
-  // Fetch policy names when allPolicies changes (from modal selection or new policy creation)
-  useEffect(() => {
-    if (allPolicies.length > 0) {
-      const policyIds = allPolicies.map(p => String(p.id));
-      // Remove duplicates
-      const uniquePolicyIds = [...new Set(policyIds)];
-      fetchPolicyNames(uniquePolicyIds);
-    }
-  }, [allPolicies.length]);
-
-  const updateFormDataFromPolicies = (policies) => {
-    const combinedRoles = new Set();
-    const combinedPersonas = new Set();
-    const combinedGroups = new Set();
-    const combinedSubgroups = new Set();
-    const dataPolicyIds = [...new Set(policies.map(policy => String(policy.id)))];
-
-    policies.forEach(policy => {
-      const addItemsToSet = (data, set) => {
-        if (Array.isArray(data)) {
-          data.forEach(item => item && set.add(item));
-        } else if (typeof data === 'string' && data) {
-          set.add(data);
-        }
-      };
-
-      addItemsToSet(policy.roles, combinedRoles);
-      addItemsToSet(policy.persona, combinedPersonas);
-      addItemsToSet(policy.groups, combinedGroups);
-      addItemsToSet(policy.subgroups, combinedSubgroups);
-    });
-
-
+  // IMPORTANT: Rebuild formData from remaining policies
+  const remainingPolicies = [...updatedExisting, ...updatedNew];
+  
+  if (remainingPolicies.length === 0) {
+    // If no policies left, clear everything
     setFormData(prev => ({
       ...prev,
-      roles: Array.from(combinedRoles),
-      persona: Array.from(combinedPersonas),
-      groups: Array.from(combinedGroups),
-      subgroups: Array.from(combinedSubgroups),
-      datapolicy: dataPolicyIds
+      roles: [],
+      persona: [],
+      groups: [],
+      subgroups: [],
+      datapolicy: []
     }));
+  } else {
+    // Rebuild from remaining policies
+    updateFormDataFromPolicies(remainingPolicies);
+  }
+};
+
+  const fetchPolicyNames = async (policyIds) => {
+  if (!policyIds || policyIds.length === 0) return [];
+
+  setIsFetchingPolicyNames(true);
+  try {
+    const policyIdsAsNumbers = policyIds.map(id => parseInt(id));
+
+    const response = await fetch(`${window._env_?.VITE_FAST_API}/policy_name`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(policyIdsAsNumbers)
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch policy names');
+    }
+
+    const data = await response.json();
+    
+
+
+    const policies = data.map(policy => {
+       
+
+  const toArray = (value) => {
+    if (!value || value === "" || value === null) {
+      return [];
+    }
+    if (Array.isArray(value)) {
+      return value;
+    }
+    return [value];
+  };
+  
+  return {
+    id: String(policy.id),
+    name: policy.policy_name || `Policy ${policy.id}`,
+    roles: toArray(policy.role || policy.roles),
+    persona: toArray(policy.persona || policy.personas),
+    groups: toArray(policy.group || policy.groups),
+    subgroups: toArray(policy.subgroup || policy.subGroup || policy.subgroups)
+  };
+});
+
+    
+    setExistingPolicies(prev => {
+      const existingMap = new Map(prev.map(p => [String(p.id), p]));
+      policies.forEach(p => existingMap.set(String(p.id), p));
+      return Array.from(existingMap.values());
+    });
+
+    return policies;  
+  } catch (error) {
+    console.error('Error fetching policy names:', error);
+    const fallbackPolicies = policyIds.map(policyId => ({
+      id: String(policyId),
+      name: `Policy ${policyId}`
+    }));
+    setExistingPolicies(prev => {
+      const existingMap = new Map(prev.map(p => [String(p.id), p]));
+      fallbackPolicies.forEach(p => existingMap.set(String(p.id), p));
+      return Array.from(existingMap.values());
+    });
+
+    return fallbackPolicies;  // ← ADD THIS RETURN
+  } finally {
+    setIsFetchingPolicyNames(false);
+  }
+};
+
+  // Fetch policy names when allPolicies changes (from modal selection or new policy creation)
+  // useEffect(() => {
+  //   if (allPolicies.length > 0) {
+  //     const policyIds = allPolicies.map(p => String(p.id));
+  //     // Remove duplicates
+  //     const uniquePolicyIds = [...new Set(policyIds)];
+  //     fetchPolicyNames(uniquePolicyIds);
+  //   }
+  // }, [allPolicies.length]);
+
+  const updateFormDataFromPolicies = (policies) => {
+  
+  
+  const combinedRoles = new Set();
+  const combinedPersonas = new Set();
+  const combinedGroups = new Set();
+  const combinedSubgroups = new Set();
+  const dataPolicyIds = [...new Set(policies.map(policy => policy.id))];
+
+  policies.forEach(policy => {
+    
+    
+    const addItemsToSet = (data, set) => {
+      if (Array.isArray(data)) {
+        data.forEach(item => item && set.add(item));
+      } else if (typeof data === 'string' && data) {
+        set.add(data);
+      }
+    };
+
+    addItemsToSet(policy.roles, combinedRoles);
+    addItemsToSet(policy.persona, combinedPersonas);
+    addItemsToSet(policy.groups, combinedGroups);
+    addItemsToSet(policy.subgroups, combinedSubgroups);
+  });
+
+  
+
+  setFormData(prev => ({
+    ...prev,
+    roles: Array.from(combinedRoles),
+    persona: Array.from(combinedPersonas),
+    groups: Array.from(combinedGroups),
+    subgroups: Array.from(combinedSubgroups),
+    datapolicy: dataPolicyIds
+  }));
 
     setErrors(prev => ({
       ...prev,
@@ -173,21 +234,50 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
     }));
   };
 
-  const handleApplyPoliciesFromModal = (appliedData) => {
-    const newExistingPolicies = appliedData.datapolicy.map(id => ({
-      id: String(id),
-      name: appliedData.sub_policy_name || `Policy ${id}`,
-      roles: appliedData.roles || [],
-      persona: appliedData.persona || [],
-      groups: appliedData.groups || [],
-      subgroups: appliedData.subgroups || []
-    }));
+  const handleApplyPoliciesFromModal = async (appliedData) => {
+  
 
-    setExistingPolicies(newExistingPolicies);
-    updateFormDataFromPolicies(newExistingPolicies);
-    setIsPolicyModalOpen(false);
+  const policyIds = appliedData.datapolicy;
+  const fetchedPolicies = await fetchPolicyNames(policyIds);
+
+  // helper to normalize values to arrays
+  const toArray = (value) => {
+    if (value === null || value === undefined || value === "") return [];
+    if (Array.isArray(value)) return value;
+    return [value];
   };
 
+  const newExistingPolicies = policyIds.map((policyId) => {
+    const policyName = fetchedPolicies.find(p => p.id === String(policyId))?.name || `Policy ${policyId}`;
+
+    const policyIndividualData = appliedData.policiesData?.[policyId];
+    
+
+    // normalize group/subgroup/role keys from modal payload
+    const roles = policyIndividualData?.role ?? policyIndividualData?.roles ?? [];
+    const persona = policyIndividualData?.persona ?? policyIndividualData?.personas ?? [];
+    const groups = policyIndividualData?.group ?? policyIndividualData?.groups ?? [];
+    const subgroups = policyIndividualData?.subGroup ?? policyIndividualData?.subgroup ?? policyIndividualData?.subgroups ?? [];
+    
+
+    return {
+      id: String(policyId),
+      name: policyName,
+      roles: Array.isArray(roles) ? roles : (roles ? [roles] : []),
+      persona: Array.isArray(persona) ? persona : (persona ? [persona] : []),
+      groups: Array.isArray(groups) ? groups : (groups ? [groups] : []),
+      subgroups: Array.isArray(subgroups) ? subgroups : (subgroups ? [subgroups] : [])
+    };
+  });
+
+  
+  newExistingPolicies.forEach(policy => {
+  });
+  
+  setExistingPolicies(newExistingPolicies);
+  updateFormDataFromPolicies(newExistingPolicies);
+  setIsPolicyModalOpen(false);
+};
   const handlePolicyComplete = (policyDetails) => {
     const newPolicy = {
       id: String(policyDetails.id),
@@ -256,12 +346,15 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
         lastName: formData.lastName,
         email: formData.email,
         roles_assigned: formData.roles,
-        persona: formData.persona.length === 0 ? [""] : formData.persona,
+        // send empty array if no persona selected (avoid sending [""])
+        persona: formData.persona && formData.persona.length > 0 ? formData.persona : [],
         group: formData.groups,
         subgroup: formData.subgroups,
         datapolicy: formData.datapolicy
       };
 
+      
+      
       const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/users/${userData.id}`, {
         method: 'PATCH',
         headers: {
@@ -406,34 +499,42 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
                 </button>
 
                 {allPolicies.length > 0 && (
-                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <p className="text-sm font-medium mb-3 text-gray-700">Assigned Policies:</p>
-                    {isFetchingPolicyNames ? (
-                      <div className="flex items-center justify-center py-6">
-                        <Loader className="h-5 w-5 animate-spin text-[#8e78b7]" />
-                        <span className="ml-2 text-sm text-gray-600">Loading policy names...</span>
-                      </div>
-                    ) : (
-                      <div className="max-h-64 overflow-y-auto space-y-2 pr-2">
-                        {allPolicies.map((policy, index) => (
-                          <div key={policy.id} className="bg-white p-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors">
-                            <div className="flex items-start gap-2">
-                              <span className="text-sm text-gray-500 flex-shrink-0">{index + 1}.</span>
-                              <div className="flex-1 min-w-0">
-                                <p
-                                  className="text-sm font-medium text-gray-900 truncate"
-                                  title={policy.name}
-                                >
-                                  {policy.name}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+    <p className="text-sm font-medium mb-3 text-gray-700">Assigned Policies:</p>
+    {isFetchingPolicyNames ? (
+      <div className="flex items-center justify-center py-6">
+        <Loader className="h-5 w-5 animate-spin text-[#8e78b7]" />
+        <span className="ml-2 text-sm text-gray-600">Loading policy names...</span>
+      </div>
+    ) : (
+      <div className="max-h-64 overflow-y-auto space-y-2 pr-2">
+        {allPolicies.map((policy, index) => (
+          <div 
+            key={policy.id} 
+            className="bg-white p-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors flex items-center justify-between group"
+          >
+            <div className="flex items-start gap-2 flex-1">
+              <span className="text-sm text-gray-500 flex-shrink-0">{index + 1}.</span>
+              <p className="text-sm font-medium text-gray-900 truncate" title={policy.name}>
+                {policy.name}
+              </p>
+            </div>
+            
+            {/* Remove button - visible on hover */}
+            <button
+              onClick={() => handleRemovePolicy(policy.id)}
+              className="ml-2 text-gray-500 hover:text-red-600 hover:bg-red-100 p-1.5 rounded-md transition-all"
+              type="button"
+              title="Remove policy"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
 
                 {errors.policyAssignment && (
                   <p className="mt-2 text-sm text-red-500">{errors.policyAssignment}</p>

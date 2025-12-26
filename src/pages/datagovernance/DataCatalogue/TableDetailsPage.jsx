@@ -737,6 +737,7 @@ function TableDetailsPage() {
                                         : businessView === 'Table Detail View' ? (
                                             <>
                                                 {Object.values(businessData.schema).some(arr => arr.length > 0) ? (
+                                                    
                                                     <div className="overflow-x-auto rounded-lg shadow border">
                                                         <table className="min-w-full">
                                                             <tbody className="bg-white divide-y divide-gray-200">

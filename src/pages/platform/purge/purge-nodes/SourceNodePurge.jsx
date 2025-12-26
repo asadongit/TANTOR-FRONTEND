@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { Upload, X, Search, Pencil } from "lucide-react";
@@ -39,8 +39,9 @@ export function SourceNode({ id, data }) {
     handleSourceSelectedTable,
     handleSourceBulkSelectedObjects,
   } = useStateContext("");
-  const { saveSourceData } = usePurgeContext("");
-  const [selectedTables, setSelectedTables] = useState("");
+  const { saveSourceData, setFilters, setDropPartitions, dropPartitions, saveDropPartitions } = usePurgeContext("");
+  const [selectedTables, setSelectedTables] = useState([]);
+  const isInitialized = useRef(false);
 
   let connectionsData;
   let schemacount;
@@ -177,10 +178,15 @@ export function SourceNode({ id, data }) {
       }
 
       metadatalist = await metaDataResponse.json();
+      console.log("METADATA LIST ==> ", metadatalist);
       setMetaData(metadatalist);
+      
+      return metadatalist;
     } catch (error) {
       console.error("Error fetching tables:", error);
       setMetaData([]);
+      
+      return [];
     } finally {
       setLoading(false);
     }
@@ -303,10 +309,51 @@ export function SourceNode({ id, data }) {
       return;
     } else {
       saveNode();
+
+      // NEW CODE Remove partitions if source tablename doesn't match source partition table name
+      
+      if (selectedPurgeScope === "subset") {
+        const { table_name: sourcePartitionTable } = dropPartitions?.source || {};
+        const sourceTableName = selectedTables[0];
+
+        console.log("SOURCE TABLE ==> ", sourceTableName);
+        console.log("sourcePartitionTable ==> ", sourcePartitionTable);
+        
+        if (sourcePartitionTable) {
+          const cleanSourcePartitionTable = sourcePartitionTable.split(".")[1] || sourcePartitionTable;
+
+          console.log("Comparing sourcePartitionTable with sourceTableName", cleanSourcePartitionTable, sourceTableName);
+
+          if (sourceTableName !== cleanSourcePartitionTable) {
+            setDropPartitions({source: {}, target: {}});
+            console.log("REMOVED SOURCE and target PARTITIONS");
+          } else {
+            console.log("Source partition table matches, no action needed");
+          }
+        } else {
+          console.log("sourcePartitionTable is empty");
+          setDropPartitions({source: {}, target: {}});
+        }
+      }
+
       toast.success("Table updated successfully");
-    }
+}
+
   };
 
+  const checkIfTableHasOnlyOnePartition = (table, scopeType) =>{
+    console.log("checkIfTableHasOnlyOnePartition ==> ", table);
+    console.log("Scope ==> ", scopeType);
+
+    if(scopeType === "bulk"){
+      return table?.metadatas?.partition_json ? table.metadatas.partition_json.length == 1 : false;
+    }
+
+    if(scopeType === "subset"){
+      return table?.partition_json ? table.partition_json.length == 1 : false;
+    }
+
+  }
   const getFirstPartitionNameFromTable = (table) => {
     if (!table?.partition_json) return null;
 
@@ -319,36 +366,118 @@ export function SourceNode({ id, data }) {
     return sortedPartitions[0]?.partition_name || null;
   };
 
+  
+  useEffect(() => {
+    if (tables.length > 0 && selectedTables.length > 0 && selectedPurgeScope === 'subset') {
+      const tableName = selectedTables[0];
+      const tableObj = tables.find(t => t.table_name === tableName);
+
+      if (tableObj) {
+        handleSourceSelectedTable(tableObj);
+        handleFirstSourcePartitionName(getFirstPartitionNameFromTable(tableObj));
+        handleSelectedDataSetName([tableName]);
+      }
+    }
+  }, [tables, selectedTables, selectedPurgeScope]);
+
   // Pre-populate state from data prop on mount (edit mode)
   useEffect(() => {
-    if (data) {
+    if (data && !isInitialized.current) {
+      isInitialized.current = true;
+
       if (data.connectionName) setSelectedConnection(data.connectionName);
       if (data.schemaName) {
         setSelectedSchema(data.schemaName);
         fetchschema(data.connectionName);
       }
-      // Fix: select tableName if present in data
-      if (data.tableName) setSelectedTables([data.tableName]);
+
+      // Fix: Handle tableName as array or string
+      if (data.tableName) {
+        setSelectedTables(Array.isArray(data.tableName) ? data.tableName : [data.tableName]);
+      } else if (data.selectedTables) {
+        setSelectedTables(data.selectedTables);
+      }
+
       if (data.selectedItems) setSelectedItems(data.selectedItems);
       if (data.selectedBulkSourceTables) setSelectedBulkSourceTables(data.selectedBulkSourceTables);
-      if (data.tableName) setTables(data.tableName);
+
+      // Removed incorrect setTables(data.tableName) which was breaking the table list
+
       if (data.schemas) setSchema(data.schemas);
       if (data.searchTerm) setSearchTerm(data.searchTerm);
+
       if (data.scope) setSelectedPurgeScope(data.scope);
       else if (data.selectedPurgeScope) setSelectedPurgeScope(data.selectedPurgeScope);
+      else if (data.purge_scope) setSelectedPurgeScope(data.purge_scope);
+
       if (data.connectionName && data.schemaName) {
         fetchTables(data.connectionName, data.schemaName);
+        
+        
+        if (data.scope === 'bulk' || data.selectedPurgeScope === 'bulk') {
+          let sourceTableNames = [];
+          
+          if(data.bulk){
+           sourceTableNames = data.bulk.selectedBulkTargetTablesPayload.map(t => t.source_table);
+           setSelectedItems(prev => [...sourceTableNames]);
+          }
+
+          fetchMetadata(data.connectionName, data.schemaName).then(m => {
+            let selectedSourceTableMetadatas = m.filter(e => sourceTableNames.includes(e.source_table));
+            setSelectedBulkSourceTables([...selectedSourceTableMetadatas]);
+          });
+        }
       }
-      // Add more fields as needed for full pre-population
+
+      // Restore filters and partitions
+      if (data.filters && setFilters) {
+        setFilters(prev => ({ ...prev, source: data.filters }));
+      }
+      if (data.dropPartitions && setDropPartitions) {
+        setDropPartitions(prev => ({ ...prev, source: data.dropPartitions }));
+      }
     }
-  }, [data]);
+  }, [data, fetchschema, fetchTables, fetchMetadata, setFilters, setDropPartitions]);
+
+
+const fetchTablePartitionJson = async (connectionName, tableSchema, tableName) => {
+  try {
+    const res = await fetch(
+      `${hostname}/connection-master-metadata/${connectionName}/${tableName}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!res.ok) throw new Error(`Failed to fetch partition info`);
+    const result = await res.json();
+
+    if (!Array.isArray(result) || result.length === 0) {
+      return [];
+    }
+
+    const partitionJSON = result
+      .map(r => r?.partition_json)
+      .flat();
+
+    return partitionJSON;
+  } catch (err) {
+    console.error("Error fetching table info:", err);
+    toast.error("Failed to fetch table details");
+    return [];
+  }
+};
 
   return (
     <div
-      className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] 
-                             w-fit min-w-min max-w-[90vw] 
-                             relative group 
-                             grid grid-cols-[repeat(auto-fit,minmax(min-content,1fr))] 
+      className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB]
+                             w-fit min-w-min max-w-[90vw]
+                             relative group
+                             grid grid-cols-[repeat(auto-fit,minmax(min-content,1fr))]
                              "
     >
       <button
@@ -441,6 +570,7 @@ export function SourceNode({ id, data }) {
               id="table-bulk"
               name="table"
               value="bulk"
+              checked={selectedPurgeScope === "bulk"}
               onChange={(e) => {
                 const scopeName = e.target.value;
                 setSelectedPurgeScope(scopeName);
@@ -458,6 +588,7 @@ export function SourceNode({ id, data }) {
               id="table-subset"
               name="table"
               value="subset"
+              checked={selectedPurgeScope === "subset"}
               onChange={(e) => {
                 const scopeName = e.target.value;
                 setSelectedPurgeScope(scopeName);
@@ -631,8 +762,17 @@ export function SourceNode({ id, data }) {
                                 </label>
                               </div>
                               <button
-                                onClick={() => {
-                                  openDrawer(id, table);
+                                onClick={async () => {
+                                  const tablePartitionJson = await fetchTablePartitionJson(table.source_conn_name, table.source_schema, table.source_table);
+                                  if (!tablePartitionJson) return;
+
+                                  const updatedTable = {
+                                    ...table,
+                                    metadatas: {...table.metadatas, partition_json: tablePartitionJson},
+                                  };
+                                  
+                                  console.log("updatedTable ==> ", updatedTable)
+                                  openDrawer(id, updatedTable);
                                   handlePurgeNode("Source Node");
                                 }}
                                 className="text-purple-600 hover:text-purple-700"
