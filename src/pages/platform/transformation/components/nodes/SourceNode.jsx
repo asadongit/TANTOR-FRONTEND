@@ -748,6 +748,58 @@ export const SourceNode = ({ id, data }) => {
   }, [preProcedureDropdownOpen, postProcedureDropdownOpen]);
 
   const getNextAlias = useCallback(() => {
+    if (sourceType === "file") {
+      const baseAlias = fileName ? `df_${fileName.replace(/\.[^/.]+$/, "")}` : `unnamed_source_${id}`;
+      const sourceNodesFromWindow = window.allNodes ?
+        window.allNodes.filter(n => n.type === "source") : [];
+
+      const usedAliases = sourceNodesFromWindow
+        .filter(node =>
+          node.id !== id &&
+          node.data &&
+          typeof node.data.alias === "string"
+        )
+        .map(node => node.data.alias);
+
+      if (!usedAliases.includes(baseAlias)) {
+        return baseAlias;
+      }
+
+      let suffix = 1;
+      let aliasWithSuffix = `${baseAlias}_${suffix}`;
+      while (usedAliases.includes(aliasWithSuffix)) {
+        suffix += 1;
+        aliasWithSuffix = `${baseAlias}_${suffix}`;
+      }
+      return aliasWithSuffix;
+    }
+
+    if (sourceType === "database" && selectedObjectType === "source-query") {
+      const baseAlias = `unnamed_source_${id}`;
+      const sourceNodesFromWindow = window.allNodes ?
+        window.allNodes.filter(n => n.type === "source") : [];
+
+      const usedAliases = sourceNodesFromWindow
+        .filter(node =>
+          node.id !== id &&
+          node.data &&
+          typeof node.data.alias === "string"
+        )
+        .map(node => node.data.alias);
+
+      if (!usedAliases.includes(baseAlias)) {
+        return baseAlias;
+      }
+
+      let suffix = 1;
+      let aliasWithSuffix = `${baseAlias}_${suffix}`;
+      while (usedAliases.includes(aliasWithSuffix)) {
+        suffix += 1;
+        aliasWithSuffix = `${baseAlias}_${suffix}`;
+      }
+      return aliasWithSuffix;
+    }
+
     if (!selectedTable) return "";
 
     const baseAlias = `df_${selectedTable}`;
@@ -774,13 +826,19 @@ export const SourceNode = ({ id, data }) => {
       aliasWithSuffix = `${baseAlias}_${suffix}`;
     }
     return aliasWithSuffix;
-  }, [id, selectedTable]);
+  }, [id, selectedTable, sourceType, fileName, selectedObjectType]);
 
   useEffect(() => {
-    if (selectedTable && !alias) {
+    if (sourceType === "database" && selectedObjectType === "source-query" && !alias) {
       setAlias(getNextAlias());
     }
-  }, [selectedTable, alias, getNextAlias]);
+    if (sourceType === "database" && selectedTable && !alias && selectedObjectType !== "source-query") {
+      setAlias(getNextAlias());
+    }
+    if (sourceType === "file" && !alias) {
+      setAlias(getNextAlias());
+    }
+  }, [selectedTable, alias, getNextAlias, sourceType, selectedObjectType]);
 
   const handleObjectTypeChange = useCallback((newObjectType) => {
     if (newObjectType === selectedObjectType) return;

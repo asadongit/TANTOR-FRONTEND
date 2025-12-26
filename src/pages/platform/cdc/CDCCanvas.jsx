@@ -10,10 +10,6 @@ import { SchedulerNode } from "./nodes/SchedulerNode";
 import { DefineNode as MetadataDefineNode } from "./nodes/metadataNodes/DefineNode";
 import { SourceNode as MetadataSourceNode } from "./nodes/metadataNodes/SourceNode";
 import { TargetNode as MetadataTargetNode } from "./nodes/metadataNodes/TargetNode";
-import { DefineNode as MigrationDefineNode } from "./nodes/migrationNodes/DefineNode";
-import { SourceNode as MigrationSourceNode } from "./nodes/migrationNodes/SourceNode";
-import { TargetNode as MigrationTargetNode } from "./nodes/migrationNodes/TargetNode";
-import { SchedulerNode as MigrationSchedulerNode } from "./nodes/migrationNodes/SchedulerNode";
 import { DefineNode as PurgeDefineNode } from "./nodes/purgeNodes/DefineNode";
 import { SourceNode as PurgeSourceNode } from "./nodes/purgeNodes/SourceNode";
 import { TargetNode as PurgeTargetNode } from "./nodes/purgeNodes/TargetNode";
@@ -26,10 +22,6 @@ const nodeTypes = {
   metadataDefine: MetadataDefineNode,
   metadataSource: MetadataSourceNode,
   metadataTarget: MetadataTargetNode,
-  migrationDefine: MigrationDefineNode,
-  migrationSource: MigrationSourceNode,
-  migrationTarget: MigrationTargetNode,
-  migrationSchedule: MigrationSchedulerNode,
   purgeDefine: PurgeDefineNode,
   purgeSource: PurgeSourceNode,
   purgeTarget: PurgeTargetNode,
@@ -40,7 +32,7 @@ const Canvas = () => {
   const [isSelectable, setIsSelectable] = useState(true);
   const location = useLocation();
   const nodeJson = location.state?.nodeJson;
-  
+
   const {
     nodes,
     setNodes,
@@ -64,10 +56,10 @@ const Canvas = () => {
       setEditMode(true);
       try {
         const parsed = typeof nodeJson === "string" ? JSON.parse(nodeJson) : nodeJson;
-        
+
         // If nodeJson contains both nodes and edges
         if (parsed.nodes && parsed.edges) {
-          
+
           // If there's pipelineData, use it to enhance the node data
           if (parsed.pipelineData) {
             const enhancedNodes = parsed.nodes.map(node => ({
@@ -85,14 +77,14 @@ const Canvas = () => {
           } else {
             setNodes(parsed.nodes);
           }
-          
+
           setEdges(parsed.edges);
         } else if (parsed.nodes) {
           setNodes(parsed.nodes);
         } else {
           setNodes(parsed);
         }
-        
+
         // Fit view after nodes are loaded
         setTimeout(() => {
           fitView({ padding: 0.2, duration: 800 });
@@ -106,7 +98,7 @@ const Canvas = () => {
   const onDrop = useCallback(
     (event) => {
       if (editMode) return; // Disable dropping in edit mode
-      
+
       event.preventDefault();
 
       const nodeData = event.dataTransfer.getData("application/reactflow");
@@ -151,7 +143,7 @@ const Canvas = () => {
     };
   }, [onNodeDelete]);
 
-  
+
 const onConnect = useCallback(
   (connection) => {
     setEdges((prevEdges) => addEdge(connection, prevEdges));
@@ -203,8 +195,8 @@ const onConnect = useCallback(
   [setNodes, setEdges]
 );
 
-  
-  
+
+
   return (
     <div className="w-full h-full" ref={reactFlowWrapper}>
       {editMode && (

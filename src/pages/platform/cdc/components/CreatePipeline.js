@@ -2,7 +2,7 @@ const PIPELINE_CONFIG = {
   cdc: ["define", "source", "target", "schedule"],
   metadata: ["metadataDefine", "metadataSource", "metadataTarget"],
   migration: ["migrationDefine", "migrationSource", "migrationTarget","migrationSchedule"],
-  purge: ["define", "source", "target", "schedule"],
+  purge: ["define", "source", "target"],
   default: ["define", "source", "target", "schedule"]
 };
 

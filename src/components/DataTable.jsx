@@ -24,6 +24,7 @@ const DataTable = ({
   isLoading = false,
   isError = false,
   refetch = () => {},
+  resetSortTrigger,
 }) => {
   const [sortConfig, setSortConfig] = useState({ key: "", direction: "asc" });
   const [searchTerm, setSearchTerm] = useState("");
@@ -44,6 +45,12 @@ const DataTable = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    if (resetSortTrigger !== undefined) {
+      setSortConfig({ key: "", direction: "asc" });
+    }
+  }, [resetSortTrigger]);
 
   useEffect(() => {
     setPage(1);
@@ -442,11 +449,12 @@ const getStatusStyles = (status) => {
 
   if (status === "active" || status === "completed" || status === "created") {
     return "bg-green-100 text-green-600";
-  } else if (status === "pending" || status === "in progress") {
+  } else if (status === "pending" || status === "in progress" || status === "orphan") {
     return "bg-yellow-100 text-yellow-600";
   } else if (status === "inactive" || status === "failed") {
     return "bg-red-100 text-red-600";
-  } else {
+  }
+  else {
     return "bg-gray-100 text-gray-600";
   }
 };

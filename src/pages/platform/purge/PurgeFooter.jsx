@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 
-const PurgeFooter = ({ onCancel }) => {
+const PurgeFooter = ({ onCancel, isEditMode = false}) => {
 
   const hostname = window._env_?.VITE_FAST_API;
   const hostnameV2 = window._env_?.VITE_FAST_API_V2;
@@ -19,7 +19,7 @@ const PurgeFooter = ({ onCancel }) => {
 
   const {sourceData, targetData, filters, dropPartitions, selectedBulkTargetTablesPayload, bulkFiltersAndPartitions} = usePurgeContext("");
 
-  const { defineNodeName, defineNodeDesc, selectedScope } = useStateContext("");  
+  const { defineNodeName, defineNodeDesc, selectedScope } = useStateContext("");
 
   const sourceList = Array.isArray(bulkFiltersAndPartitions?.source)
   ? bulkFiltersAndPartitions.source
@@ -65,7 +65,7 @@ const PurgeFooter = ({ onCancel }) => {
     const hasTargetPartition =
       targetMatch?.target_partition &&
       Object.keys(targetMatch.target_partition).length > 0;
-    
+
     if (isDropPartitionsSelected && hasTargetPartition) {
       entry.source_partition = sourceMatch?.source_partition || {};
     } else {
@@ -86,41 +86,66 @@ const PurgeFooter = ({ onCancel }) => {
     return formattedDate;
   }
 
-  const buildPurgeSubsetSavePayload = () => {
-    const isValidDropPartition = (partition) => {
-      return partition &&
-        partition.partitionName !== null &&
-        partition.columnName !== null &&
-        partition.highValue !== null &&
-        partition.partitionType !== null &&
-        partition.tableName !== null;
+  const buildUiJson = () => {
+    let flowGraph = {};
+    if (window.getPurgeFlowGraph) {
+      flowGraph = window.getPurgeFlowGraph();
+    }
+
+    const getNodePosition = (id) => {
+      const node = flowGraph?.nodes?.find((n) => n.id === id);
+      return node ? node.position : undefined;
     };
 
-    // Collect all node UI state for ui_json
-    // For full React Flow graph, include all nodes and edges with their data and positions
-    const ui_json = {
+    const hasScheduleNode = flowGraph?.nodes?.some((n) => n.id === "schedule");
+
+    const json = {
       defineNode: {
         name: defineNodeName,
         desc: defineNodeDesc,
+        position: getNodePosition("define"),
       },
       sourceNode: {
         ...sourceData,
         filters: filters?.source,
         dropPartitions: dropPartitions?.source,
-        scope: selectedScope, // Add selected scope
+        scope: selectedScope,
+        position: getNodePosition("source"),
       },
       targetNode: {
         ...targetData,
         filters: filters?.target,
         dropPartitions: dropPartitions?.target,
-        scope: selectedScope, // Add selected scope
+        scope: selectedScope,
+        position: getNodePosition("target"),
       },
       bulk: {
         selectedBulkTargetTablesPayload,
         bulkFiltersAndPartitions,
       },
-      // Add more node details as needed
     };
+
+    if (hasScheduleNode) {
+      json.scheduleNode = {
+        position: getNodePosition("schedule"),
+      };
+    }
+
+    return json;
+  };
+
+  const buildPurgeSubsetSavePayload = () => {
+    const isValidDropPartition = (partition) => {
+      return partition &&
+        partition.partition_name !== null &&
+        partition.column_name !== null &&
+        partition.high_value !== null &&
+        partition.partition_type !== null &&
+        partition.table_name !== null;
+    };
+
+    // Collect all node UI state for ui_json
+    const ui_json = buildUiJson();
 
     return {
       created_by: decodedToken.preferred_username,
@@ -177,7 +202,7 @@ const PurgeFooter = ({ onCancel }) => {
         targetObjectName: targetData.tableName,
         targetPath: "",
         targetType: targetData.targetType,
-        targetschema: targetData.schemaName,
+        targetSchemaName: targetData.schemaName,
       },
       target_table: targetData.tableName,
       transformation: {},
@@ -199,14 +224,18 @@ const PurgeFooter = ({ onCancel }) => {
         //target_conn_type: targetData.connectionType,
         source_schema:sourceData.schemaName,
         target_schema:targetData.schemaName,
-        purge_list: purgeList
+        purge_list: purgeList,
+        ui_json: buildUiJson()
     }
   }
 
   const createBulkPurge = async () => {
+    const url = `${hostnameV2}/${isEditMode ? "update-purge" : "create-purge"}`;
+    const method = isEditMode ? "PUT" : "POST";
+
     try {
-      const res = await fetch(`${hostnameV2}/create-purge`, {
-        method: "POST",
+      const res = await fetch(url, {
+        method: method,
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -217,7 +246,7 @@ const PurgeFooter = ({ onCancel }) => {
       if (!res.ok) throw new Error('Failed to post data');
 
       const data = await res.json();
-      toast.success("Purge fow submitted successfully!", 
+      toast.success(`Purge job ${isEditMode ? "updated" : "saved"} successfully!`,
         {
           duration: 2000,
           position: "top-right",
@@ -235,8 +264,11 @@ const PurgeFooter = ({ onCancel }) => {
 
   const createPurge = async () => {
     try {
-      const res = await fetch(`${hostname}/purges`, {
-        method: "POST",
+      const url = `${hostname}/${isEditMode ? "edit-purges" : "purges"}`;
+      const method = isEditMode ? "PUT" : "POST";
+      
+      const res = await fetch(url, {
+        method: method,
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -246,7 +278,7 @@ const PurgeFooter = ({ onCancel }) => {
       if (!res.ok) throw new Error('Failed to post data');
 
       const data = await res.json();
-      toast.success("Purge fow submitted successfully!", 
+      toast.success(`Purge job ${isEditMode ? "updated" : "saved"} successfully!`,
         {
           duration: 2000,
           position: "top-right",
@@ -346,7 +378,7 @@ const PurgeFooter = ({ onCancel }) => {
                   No
                 </button>
                 <button
-                  onClick={() => 
+                  onClick={() =>
                   {
                     //createPurge()
                     handleCreatePurge();

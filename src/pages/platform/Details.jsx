@@ -1,15 +1,7 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import  { useState, useMemo, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { usePlatform } from "../../context/platformContext";
 import {
-  ChevronLeft,
-  ChevronRight,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  Play,
   RefreshCcw,
-  ArrowUpDown,
   Search,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -18,8 +10,8 @@ import { useConnectionData } from "../../hooks/platform/connection";
 import { usePurgeData } from "../../hooks/platform/purge";
 import { useReportData } from "../../hooks/platform/report";
 import { useCDCData } from "../../hooks/platform/cdc";
-import { useArchivalData } from "../../hooks/platform/archival";
 import { useMigrationData } from "../../hooks/platform/migration";
+import { useMetadataData } from "../../hooks/platform/metadata";
 import { useProjectData } from "../../hooks/platform/project";
 import { useRuleData } from "../../hooks/platform/reportingframework/rules";
 import DataTable from "../../components/DataTable";
@@ -28,32 +20,19 @@ import columnConfigurations from "../../components/columnsConfig";
 import { useAuth } from "../../context/AuthContext";
 
 const useDynamicData = (componentType) => {
-  
+
   const hookMap = {
     cdc: useCDCData,
-    migration: useArchivalData,
+    migration: useMigrationData,
     purge: usePurgeData,
     project: useProjectData,
     connections: useConnectionData,
-    metadata: useMigrationData,
+    metadata: useMetadataData,
     report: useReportData,
     rules: useRuleData,
     //   federation: useFederationData,
   };
 
-
-
-  //   const hookMap = {
-  //   cdc: useCDCData,
-  //   migration: useMigrationData,
-  //   purge: usePurgeData,
-  //   project: useProjectData,
-  //   connections: useConnectionData,
-  //   transformation: useArchivalData,
-  //   report: useReportData,
-  //   rules: useRuleData,
-  //   //   federation: useFederationData,
-  // };
 
   return hookMap[componentType] ? hookMap[componentType]() : [];
 };
@@ -80,9 +59,9 @@ const Details = () => {
     "metadata-archivals": "migration",
   };
 
-  
+
   const selectedType = cardType || componentType;
-  
+
   const { data = [], isLoading, isError, refetch } = useDynamicData(selectedType);
 
   const [page, setPage] = useState(1);
@@ -90,6 +69,7 @@ const Details = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [activeMenu, setActiveMenu] = useState(null);
+  const [resetSortTrigger, setResetSortTrigger] = useState(0);
 
   const getColumnConfiguration = useCallback((type) => {
     const resolvedType = columnAliases[type] || type;
@@ -149,9 +129,8 @@ const processedData = useMemo(() => {
           {[
             { label: "Platform", path: "/" },
             {
-              label:
-                componentType?.charAt(0).toUpperCase() + componentType.slice(1),
-              path: `/${componentType}`,
+              label: componentType === "metadata" ? "Migration" : componentType?.charAt(0).toUpperCase() + componentType.slice(1),
+              path: componentType === "metadata" ? '/migration' : `/${componentType}`,
             },
             { label: "Details", path: null },
           ].map((item, index) => (
@@ -207,8 +186,11 @@ const processedData = useMemo(() => {
           <button
             type="button"
             className="text-[#818181] shadow-lg border hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5"
-            onClick={()=>{refetch()
-              toast.success('Refreshed sucessfully!')
+            onClick={() => {
+              setSearchTerm("");
+              setResetSortTrigger((prev) => prev + 1);
+              refetch();
+              toast.success("Refreshed sucessfully!");
             }}
           >
             <RefreshCcw className="h-5 w-5" />
@@ -223,6 +205,7 @@ const processedData = useMemo(() => {
         isLoading={isLoading}
         isError={isError}
         refetch={refetch}
+        resetSortTrigger={resetSortTrigger}
       />
     </div>
   );

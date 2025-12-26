@@ -118,14 +118,27 @@ const AssignPolicyModal = ({ isOpen, onClose, onApplyPolicies, initialSelectedPo
             }
             dataPolicyIds.push(policy.id);
         });
+        
 
-        onApplyPolicies({
-            roles: Array.from(combinedRoles),
-            persona: Array.from(combinedPersonas),
-            datapolicy: dataPolicyIds,
-            groups: Array.from(combinedGroups),
-            subgroups: Array.from(combinedSubgroups),
-        });
+        const policiesData = {};  // ← Create object to store individual policy data
+
+selectedPoliciesData.forEach((policy) => {
+  policiesData[policy.id] = {
+    role: policy.user_selections?.role || '',
+    persona: policy.user_selections?.persona || [],
+    group: policy.user_selections?.group || '',
+    subGroup: policy.user_selections?.subGroup || ''
+  };
+});
+
+onApplyPolicies({
+  roles: Array.from(combinedRoles),
+  persona: Array.from(combinedPersonas),
+  datapolicy: dataPolicyIds,
+  groups: Array.from(combinedGroups),
+  subgroups: Array.from(combinedSubgroups),
+  policiesData: policiesData  // ← ADD THIS
+});
 
         setNewPolicies((prev) => prev.filter((policy) => selectedPolicyIds.includes(policy.id)));
         

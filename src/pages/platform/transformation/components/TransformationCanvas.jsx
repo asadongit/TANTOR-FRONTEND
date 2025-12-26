@@ -54,15 +54,62 @@ const initialNodes = [
     },
     deletable: false,
   },
+  {
+    id: "node_1",
+    type: "source",
+    position: { x: 400, y: 200 },
+    data: {
+      connection: "",
+      schema: "",
+      tables: [],
+      onDataChange: () => {},
+    },
+  },
+  {
+    id: "node_2",
+    type: "transformation",
+    position: { x: 800, y: 200 },
+    data: {
+      type: "",
+      function: "",
+      onDataChange: () => {},
+    },
+  },
+  {
+    id: "node_3",
+    type: "target",
+    position: { x: 1200, y: 200 },
+    data: {
+      connection: "",
+      schema: "",
+      onDataChange: () => {},
+    },
+  },
 ];
 
-const initialEdges = [];
+const initialEdges = [
+  {
+    id: "edge_0",
+    source: "node_0",
+    target: "node_1",
+  },
+  {
+    id: "edge_1",
+    source: "node_1",
+    target: "node_2",
+  },
+  {
+    id: "edge_2",
+    source: "node_2",
+    target: "node_3",
+  },
+];
 
 function TransformationCanvasContent() {
   const navigate = useNavigate();
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const nodeIdRef = useRef(1);
+  const nodeIdRef = useRef(4);
   const { generateTransformationJson, dispatch, ACTION_TYPES } =
     useTransformation();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -1078,28 +1125,7 @@ function TransformationCanvasContent() {
     updateTransformationNodesData();
   }, [nodes.length, updateTransformationNodesData]);
 
-  /*===============================================================================================
-                        Commenting it becox we will use Master
-    =============================================================================================*/
-  // useEffect(() => {
-  //   setNodes((nds) =>
-  //     nds.map((node) => ({
-  //       ...node,
-  //       data: {
-  //         ...node.data,
-  //         onDataChange: (newData) => {
-  //           setNodes((prevNodes) => {
-  //             const updatedNodes = prevNodes.map((n) =>
-  //               n.id === node.id ? { ...n, data: { ...n.data, ...newData } } : n
-  //             );
 
-  //             return updatedNodes;
-  //           });
-  //         },
-  //       },
-  //     }))
-  //   );
-  // }, [setNodes]);
 
   useEffect(() => {
     const defineNode = nodes.find((node) => node.type === "define");
@@ -1294,12 +1320,6 @@ function TransformationCanvasContent() {
       </ReactFlow>
 
       <div className="fixed bottom-8 right-8 flex space-x-4">
-        {/* <button
-          onClick={handleNewFlow}
-          className="bg-white rounded-md border-2 border-[#8E77BB] shadow-md px-6 py-2 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-        >
-          New Flow
-        </button> */}
         <button
           onClick={handleCancel}
           className="bg-white rounded-md border-2 border-[#8E77BB] shadow-md px-6 py-2 text-gray-700 font-medium hover:bg-gray-50 transition-colors"

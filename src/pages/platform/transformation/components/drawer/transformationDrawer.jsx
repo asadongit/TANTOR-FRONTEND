@@ -492,11 +492,17 @@ export const TransformationDrawer = ({
 }, []);
 
 	const syncDataframeColumnsFromNodes = useCallback(() => {
-		if (!window.allNodes || !window.allEdges) return;
+		if (!window.allNodes || !window.allEdges) {
+			setColumnsLoaded(true);
+			return;
+		}
 
 
 		const targetNodeId = activeNodeId;
-		if (!targetNodeId) return;
+		if (!targetNodeId) {
+			setColumnsLoaded(true);
+			return;
+		}
 
 		const incomingEdges = window.allEdges.filter(edge => edge.target === targetNodeId);
 
@@ -1599,7 +1605,7 @@ useEffect(() => {
 				}, 100);
 			}
 		}
-	}, [isOpen, activeNode, columnsLoaded]);
+	}, [isOpen, activeNodeId]);
 
 	// Use initialTransformations for drawer state if in edit mode - wait for columns to be loaded
 	useEffect(() => {

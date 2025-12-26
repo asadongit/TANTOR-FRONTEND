@@ -62,8 +62,8 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     { name: 'Dashboard', icon: ChartBarIcon, path: '/dashboard' },
     { name: 'Project', icon: CubeIcon, path: '/project' },
     { name: 'Connections', icon: LinkIcon, path: '/connections' },
-    { name: 'Jobs', icon: BriefcaseIcon, path: '/jobs' },
-    { name: 'Pipeline', icon: ArrowPathIcon, path: '/pipeline' },
+    // { name: 'Jobs', icon: BriefcaseIcon, path: '/jobs' },
+    // { name: 'Pipeline', icon: ArrowPathIcon, path: '/pipeline' },
     {
       name: 'Reports',
       icon: DocumentTextIcon,

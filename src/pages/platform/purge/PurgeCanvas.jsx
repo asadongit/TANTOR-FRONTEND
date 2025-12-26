@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import ReactFlow, { addEdge, Controls, Panel, useEdgesState, useNodesState } from "reactflow";
 import { DefineNodePurge } from "../purge/purge-nodes/DefineNodePurge";
@@ -9,9 +9,9 @@ import { DrawerContainer } from "../react-flow/drawers/DrawerContainer";
 import PurgeDrawer from "../react-flow/dialog/PurgeDrawer"
 import PurgeSidebar from "./PurgeSidebar";
 import PurgeFooter from "./PurgeFooter";
+import { createPipeline } from "../cdc/components/CreatePipeline";
 import { useStateContext } from "../react-flow/context/ContextProvider";
 import toast from "react-hot-toast";
-
 
 const nodeTypes = {
   define : DefineNodePurge,
@@ -47,9 +47,11 @@ function PurgeCanvas() {
   const location = useLocation();
   const ui_json = location.state?.ui_json;
 
+
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const {isVisibleFooter, handleIsVisibleFooter, handleDefineNodeName, handleDefineNodeDesc, handleSourceConnectionName, handleSourceSchemaName, handleSelectedTables, handleTargetConnectionName} = useStateContext("");
+  const {isVisibleFooter, handleIsVisibleFooter} = useStateContext("");
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Pre-populate nodes from ui_json on mount (edit flow)
   useEffect(() => {
@@ -64,10 +66,11 @@ function PurgeCanvas() {
           id: 'define',
           type: 'define',
           position: ui_json.defineNode.position || { x: 100, y },
-          data: { ...ui_json.defineNode },
+          data: { ...ui_json.defineNode, isEdit: true },
         });
-        if (ui_json.defineNode.name) handleDefineNodeName(ui_json.defineNode.name);
-        if (ui_json.defineNode.desc) handleDefineNodeDesc(ui_json.defineNode.desc);
+        // Removed manual context updates; nodes handle this via data prop
+        // if (ui_json.defineNode.name) handleDefineNodeName(ui_json.defineNode.name);
+        // if (ui_json.defineNode.desc) handleDefineNodeDesc(ui_json.defineNode.desc);
         y += 120;
       }
       // Source node
@@ -76,12 +79,12 @@ function PurgeCanvas() {
           id: 'source',
           type: 'source',
           position: ui_json.sourceNode.position || { x: 350, y: 50 },
-          data: { ...ui_json.sourceNode },
+          data: { ...ui_json.sourceNode, bulk: ui_json?.bulk || {} },
         });
-        // Pre-populate context for Source node
-        if (ui_json.sourceNode.connectionName) handleSourceConnectionName(ui_json.sourceNode.connectionName);
-        if (ui_json.sourceNode.schemaName) handleSourceSchemaName(ui_json.sourceNode.schemaName);
-        if (ui_json.sourceNode.selectedTables) handleSelectedTables(ui_json.sourceNode.selectedTables);
+        // Removed manual context updates; nodes handle this via data prop
+        // if (ui_json.sourceNode.connectionName) handleSourceConnectionName(ui_json.sourceNode.connectionName);
+        // if (ui_json.sourceNode.schemaName) handleSourceSchemaName(ui_json.sourceNode.schemaName);
+        // if (ui_json.sourceNode.selectedTables) handleSelectedTables(ui_json.sourceNode.selectedTables);
         y += 120;
       }
       // Target node
@@ -90,10 +93,10 @@ function PurgeCanvas() {
           id: 'target',
           type: 'target',
           position: ui_json.targetNode.position || { x: 600, y: 50 },
-          data: { ...ui_json.targetNode },
+          data: { ...ui_json.targetNode, bulk: ui_json?.bulk || {} },
         });
-        // Pre-populate context for Target node
-        if (ui_json.targetNode.connectionName) handleTargetConnectionName(ui_json.targetNode.connectionName);
+        // Removed manual context updates; nodes handle this via data prop
+        // if (ui_json.targetNode.connectionName) handleTargetConnectionName(ui_json.targetNode.connectionName);
         y += 120;
       }
       // Scheduler node (if present)
@@ -123,7 +126,29 @@ function PurgeCanvas() {
         }
       }, 300);
     }
-  }, [ui_json, setNodes, setEdges, handleDefineNodeName, handleDefineNodeDesc, handleSourceConnectionName, handleSourceSchemaName, handleSelectedTables, handleTargetConnectionName])
+  }, [ui_json, setNodes, setEdges, handleIsVisibleFooter])
+
+   useEffect(() => {
+    if (ui_json) {
+      setIsEditMode(true);
+      return;
+    }
+
+    const { nodes: autoNodes, edges: autoEdges } = createPipeline("purge", "purge_1");
+
+    setNodes(autoNodes);
+    setEdges(autoEdges);
+  }, [ui_json, setNodes, setEdges]);
+
+
+  useEffect(() => {
+  if (ui_json) return;
+
+  const { nodes: autoNodes, edges: autoEdges } = createPipeline("purge", "purge_1");
+
+  setNodes(autoNodes);
+  setEdges(autoEdges);
+}, [ui_json, setNodes, setEdges]);
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
@@ -150,7 +175,7 @@ function PurgeCanvas() {
       id : getId(),
       type,
       position,
-      data : { 
+      data : {
         lable : type,
         tables : []
       }
@@ -208,7 +233,7 @@ function PurgeCanvas() {
             {
               duration: 2000,
               position: "top-center",
-              icon: "✅", 
+              icon: "✅",
             }
           );
           return "";
@@ -269,7 +294,7 @@ function PurgeCanvas() {
           <PurgeSidebar />
         </Panel>
         {isVisibleFooter && (<Panel position="bottom-right" className="w-full">
-          <PurgeFooter onCancel = {() => handleIsVisibleFooter(false)}/>
+          <PurgeFooter onCancel = {() => handleIsVisibleFooter(false)} isEditMode={isEditMode} />
         </Panel>)}
       </ReactFlow>
       <DrawerContainer />
