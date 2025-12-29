@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, RefreshCcw, ArrowUp, ArrowDown, Info } from 'lucide-react';
+import { RefreshCcw, ArrowUp, ArrowDown, Info, Sparkles, Search, Archive, Trash2, Rocket, Palette, BookOpen, Gauge } from 'lucide-react';
 import { Icon } from '@iconify-icon/react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import DataTable from '../../../components/DataTable';
 import { StatCard, StatsContainer, StatsGrid } from './Components/StatsCard';
+import QuickPredictModal from './Components/Models/QuickPredictModal';
 
 function Models() {
   const navigate = useNavigate();
@@ -12,6 +13,8 @@ function Models() {
   const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState('both');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isQuickPredictOpen, setIsQuickPredictOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(null);
 
   const metricsData = [
     {
@@ -143,37 +146,46 @@ function Models() {
   const actions = [
     {
       label: 'Library',
-      icon: <Icon icon="material-symbols:library-books-outline" className="w-5 h-5" />,
+      icon: <BookOpen className="w-4 h-4" />,
       onClick: (row) => navigate('/ai/hub/models/library', { state: { modelData: row } }),
       tooltip: 'Library',
     },
     {
       label: 'F1 Mode',
-      icon: <Icon icon="material-symbols:speed-outline" className="w-5 h-5" />,
+      icon: <Gauge className="w-4 h-4" />,
       onClick: (row) => console.log('F1 Mode:', row),
       tooltip: 'F1 Mode',
     },
     {
       label: 'AI Canvas',
-      icon: <Icon icon="material-symbols:draw-outline" className="w-5 h-5" />,
+      icon: <Palette className="w-4 h-4" />,
       onClick: (row) => console.log('AI Canvas:', row),
       tooltip: 'AI Canvas',
     },
     {
       label: 'Deploy',
-      icon: <Icon icon="material-symbols:rocket-launch-outline" className="w-5 h-5" />,
+      icon: <Rocket className="w-4 h-4" />,
       onClick: (row) => console.log('Deploy:', row),
       tooltip: 'Deploy',
     },
     {
       label: 'Archive',
-      icon: <Icon icon="material-symbols:archive-outline" className="w-5 h-5" />,
+      icon: <Archive className="w-4 h-4" />,
       onClick: (row) => console.log('Archive:', row),
       tooltip: 'Archive',
     },
     {
+      label: 'Quick Predict',
+      icon: <Sparkles className="w-4 h-4" />,
+      onClick: (row) => {
+        setSelectedModel(row);
+        setIsQuickPredictOpen(true);
+      },
+      tooltip: 'Quick Predict',
+    },
+    {
       label: 'Delete',
-      icon: <Icon icon="material-symbols:delete-outline" className="w-5 h-5" />,
+      icon: <Trash2 className="w-4 h-4" />,
       onClick: (row) => console.log('Delete:', row),
       tooltip: 'Delete',
     },
@@ -404,14 +416,12 @@ function Models() {
           {alertsData.map((alert, index) => (
             <div key={index} className="flex justify-between items-center">
               <div className="flex items-center gap-2">
-                <div className={`w-2.5 h-2.5 rounded-full ${
-                  alert.type === 'drift' ? 'bg-orange-400' : 'bg-blue-400'
-                }`} />
+                <div className={`w-2.5 h-2.5 rounded-full ${alert.type === 'drift' ? 'bg-orange-400' : 'bg-blue-400'
+                  }`} />
                 <span className="text-sm text-gray-700">{alert.name}</span>
               </div>
-              <span className={`text-xs flex items-center gap-1 ${
-                alert.trend === 'up' ? 'text-green-500' : 'text-orange-500'
-              }`}>
+              <span className={`text-xs flex items-center gap-1 ${alert.trend === 'up' ? 'text-green-500' : 'text-orange-500'
+                }`}>
                 {alert.issue}
                 {alert.trend === 'up' ? (
                   <ArrowUp className="w-3 h-3" />
@@ -446,9 +456,8 @@ function Models() {
           </div>
 
           <button
-            className={`p-1.5 rounded-lg border ${
-              viewMode === 'list' ? 'bg-gray-100 border-gray-500' : 'border-gray-300'
-            } hover:bg-gray-50`}
+            className={`p-1.5 rounded-lg border ${viewMode === 'list' ? 'bg-gray-100 border-gray-500' : 'border-gray-300'
+              } hover:bg-gray-50`}
             onClick={() => setViewMode(viewMode === 'list' ? 'both' : 'list')}
             title={viewMode === 'list' ? 'Show All Views' : 'Show List Only'}
           >
@@ -509,7 +518,13 @@ function Models() {
         refetch={handleRefresh}
         resetSortTrigger={refreshTrigger}
       />
+      <QuickPredictModal
+        isOpen={isQuickPredictOpen}
+        onClose={() => setIsQuickPredictOpen(false)}
+        modelData={selectedModel}
+      />
     </div>
+
   );
 }
 
