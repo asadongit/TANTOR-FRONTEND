@@ -3,12 +3,14 @@ import { PieChart, Pie, Cell } from 'recharts';
 import { useState, useMemo } from 'react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import DataTable from '../../../components/DataTable';
+import { useNavigate } from 'react-router-dom';
 
 
 const Data = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
   const statsData = [
     { label: 'Sources', value: '07', icon: FileText },
@@ -170,7 +172,11 @@ const Data = () => {
     {
       label: 'Library',
       icon: <BookOpen className="w-4 h-4" />,
-      onClick: (row) => console.log('Library:', row),
+      onClick: (row) => {
+        navigate(`/ai/hub/data/library/${row.name}`, {
+          state: { datasetData: row }
+        });
+      },
       tooltip: 'Library',
     },
     {

@@ -1,3 +1,4 @@
+import { Info, X } from "lucide-react";
 import { useState } from "react";
 
 function ConfigurationModal({ isOpen, onClose, onGenerate, initialConfig }) {
@@ -23,18 +24,15 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, initialConfig }) {
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">Configurations</h3>
           <div className="flex items-center gap-2">
-            <div className="relative">
-              <button 
+            <div className="relative mt-1">
+              <button
                 className="text-gray-400 hover:text-gray-600"
                 onMouseEnter={() => setShowInfoTooltip(true)}
                 onMouseLeave={() => setShowInfoTooltip(false)}
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="10" strokeWidth="2"/>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 16v-4m0-4h.01"/>
-                </svg>
+                <Info size={20} />
               </button>
-              
+
               {showInfoTooltip && (
                 <div className="absolute right-0 top-8 w-96 bg-gray-800 text-white text-xs p-3 rounded-lg shadow-xl z-50 space-y-1">
                   <p><strong>SHAP:</strong> Shows feature importance and contribution to predictions.</p>
@@ -46,9 +44,7 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, initialConfig }) {
               )}
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
+              <X size={20} />
             </button>
           </div>
         </div>

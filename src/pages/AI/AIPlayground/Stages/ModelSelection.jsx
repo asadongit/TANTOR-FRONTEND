@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AIPlaygroundLayout } from '../AIPlaygroundLayout';
-import { GripVertical } from 'lucide-react';
+import { ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
 
 function ModelSelection() {
     const [algorithms, setAlgorithms] = useState([
@@ -103,9 +103,11 @@ function ModelSelection() {
                                             onClick={() => toggleExpanded(algo.id)}
                                             className="text-gray-400 hover:text-gray-600"
                                         >
-                                            <svg className={`w-5 h-5 transition-transform ${algo.expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                            </svg>
+                                            {algo.expanded ? (
+                                                <ChevronUp className='w-5 h-5' />
+                                            ) : (
+                                                <ChevronDown className='w-5 h-5' />
+                                            )}
                                         </button>
                                     </div>
                                 </div>
@@ -197,9 +199,11 @@ function ModelSelection() {
                                 onClick={() => setMetricsExpanded(!metricsExpanded)}
                                 className="text-gray-400 hover:text-gray-600 ml-4"
                             >
-                                <svg className={`w-5 h-5 transition-transform ${metricsExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
+                                {metricsExpanded ? (
+                                    <ChevronUp className='w-5 h-5' />
+                                ) : (
+                                    <ChevronDown className='w-5 h-5' />
+                                )}
                             </button>
                         </div>
 
