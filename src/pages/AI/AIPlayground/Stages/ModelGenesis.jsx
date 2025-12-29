@@ -1,15 +1,21 @@
 import React, { useState } from 'react';
 import { AIPlaygroundLayout } from '../AIPlaygroundLayout';
 import { X } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
-const RadioButton = ({ label, checked, onChange, name }) => (
-  <label className="flex items-center gap-2 cursor-pointer group">
+const RadioButton = ({ label, checked, onChange, name, readonly }) => (
+  <label
+    className={`flex items-center gap-2 group ${
+      readonly ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
+    }`}
+  >
     <div className="relative">
       <input
         type="radio"
         name={name}
         checked={checked}
-        onChange={onChange}
+        disabled={readonly}
+        onChange={readonly ? undefined : onChange}
         className="sr-only peer"
       />
       <div className="w-4 h-4 border-2 border-gray-300 rounded-full peer-checked:border-[#8e78b7] transition-colors">
@@ -22,38 +28,32 @@ const RadioButton = ({ label, checked, onChange, name }) => (
   </label>
 );
 
-const Section = ({ title, children, className = '' }) => (
+const Section = ({ title, children, className = '', readonly }) => (
   <div className={`bg-white rounded-lg border border-gray-200 p-6 ${className}`}>
     <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
-    {children}
+    {/* keeps the look disabled and blocks mouse, but we ALSO disable inputs + guard handlers below */}
+    <div className={readonly ? 'pointer-events-none opacity-60' : ''}>{children}</div>
   </div>
 );
 
-const NotebookModeModal = ({ isOpen, onCancel, onContinue }) => {
-  if (!isOpen) return null;
+const NotebookModeModal = ({ isOpen, onCancel, onContinue, readonly }) => {
+  if (!isOpen || readonly) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black bg-opacity-50" onClick={onCancel}></div>
 
       <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-        <button
-          onClick={onCancel}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-        >
+        <button onClick={onCancel} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
           <X className="w-5 h-5" />
         </button>
 
         <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">
-            Switch to Notebook Mode?
-          </h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-3">Switch to Notebook Mode?</h3>
           <p className="text-sm text-gray-600 leading-relaxed">
             In Notebook mode, all pipeline setup and execution must be done through code instead of the visual workflow.
           </p>
-          <p className="text-sm text-gray-600 leading-relaxed mt-2">
-            Do you want to continue?
-          </p>
+          <p className="text-sm text-gray-600 leading-relaxed mt-2">Do you want to continue?</p>
         </div>
 
         <div className="flex justify-end gap-3">
@@ -75,11 +75,13 @@ const NotebookModeModal = ({ isOpen, onCancel, onContinue }) => {
   );
 };
 
-const ModeSelection = ({ config, setConfig }) => {
+const ModeSelection = ({ config, setConfig, readonly }) => {
   const [showModal, setShowModal] = useState(false);
   const [pendingNotebookState, setPendingNotebookState] = useState(false);
 
   const handleNotebookToggle = (checked) => {
+    if (readonly) return;
+
     if (checked) {
       setPendingNotebookState(true);
       setShowModal(true);
@@ -89,6 +91,7 @@ const ModeSelection = ({ config, setConfig }) => {
   };
 
   const handleModalContinue = () => {
+    if (readonly) return;
     setConfig({ ...config, notebookMode: pendingNotebookState });
     setShowModal(false);
   };
@@ -100,7 +103,7 @@ const ModeSelection = ({ config, setConfig }) => {
 
   return (
     <>
-      <Section title="Mode Selection">
+      <Section title="Mode Selection" readonly={readonly}>
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_auto_1fr] gap-4">
           <div className="border border-gray-200 rounded-lg overflow-hidden">
             <div className="grid grid-cols-[1fr_1fr_1fr] bg-gray-50 border-b border-gray-200">
@@ -110,41 +113,45 @@ const ModeSelection = ({ config, setConfig }) => {
               <div className="px-4 py-3 text-sm font-medium text-gray-700 border-r border-gray-200">
                 Auto
               </div>
-              <div className="px-4 py-3 text-sm font-medium text-gray-700">
-                Manual
-              </div>
+              <div className="px-4 py-3 text-sm font-medium text-gray-700">Manual</div>
             </div>
 
             <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-gray-200">
               <div className="px-4 bg-gray-50 py-4 text-sm text-gray-700 border-r border-gray-200 flex items-center">
                 Data Pre-processing
               </div>
+
               <div className="px-4 py-4 flex flex-col gap-2 border-r border-gray-200">
                 <RadioButton
                   label="Swift"
                   checked={config.dataPreprocessing === 'Swift'}
                   onChange={() => setConfig({ ...config, dataPreprocessing: 'Swift' })}
                   name="dataPreprocessing-auto"
+                  readonly={readonly}
                 />
                 <RadioButton
                   label="Standard"
                   checked={config.dataPreprocessing === 'Standard'}
                   onChange={() => setConfig({ ...config, dataPreprocessing: 'Standard' })}
                   name="dataPreprocessing-auto"
+                  readonly={readonly}
                 />
                 <RadioButton
                   label="Comprehensive"
                   checked={config.dataPreprocessing === 'Comprehensive'}
                   onChange={() => setConfig({ ...config, dataPreprocessing: 'Comprehensive' })}
                   name="dataPreprocessing-auto"
+                  readonly={readonly}
                 />
               </div>
+
               <div className="px-4 py-4 flex items-center">
                 <RadioButton
                   label="Manual"
                   checked={config.dataPreprocessing === 'Manual'}
                   onChange={() => setConfig({ ...config, dataPreprocessing: 'Manual' })}
                   name="dataPreprocessing-manual"
+                  readonly={readonly}
                 />
               </div>
             </div>
@@ -153,32 +160,38 @@ const ModeSelection = ({ config, setConfig }) => {
               <div className="px-4 bg-gray-50 py-4 text-sm text-gray-700 border-r border-gray-200 flex items-center">
                 Example detail seven
               </div>
+
               <div className="px-4 py-4 flex flex-col gap-2 border-r border-gray-200">
                 <RadioButton
                   label="Swift"
                   checked={config.exampleDetail === 'Swift'}
                   onChange={() => setConfig({ ...config, exampleDetail: 'Swift' })}
                   name="exampleDetail-auto"
+                  readonly={readonly}
                 />
                 <RadioButton
                   label="Standard"
                   checked={config.exampleDetail === 'Standard'}
                   onChange={() => setConfig({ ...config, exampleDetail: 'Standard' })}
                   name="exampleDetail-auto"
+                  readonly={readonly}
                 />
                 <RadioButton
                   label="Comprehensive"
                   checked={config.exampleDetail === 'Comprehensive'}
                   onChange={() => setConfig({ ...config, exampleDetail: 'Comprehensive' })}
                   name="exampleDetail-auto"
+                  readonly={readonly}
                 />
               </div>
+
               <div className="px-4 py-4 flex items-center">
                 <RadioButton
                   label="Manual"
                   checked={config.exampleDetail === 'Manual'}
                   onChange={() => setConfig({ ...config, exampleDetail: 'Manual' })}
                   name="exampleDetail-manual"
+                  readonly={readonly}
                 />
               </div>
             </div>
@@ -196,11 +209,13 @@ const ModeSelection = ({ config, setConfig }) => {
                 <div className="text-sm font-medium text-gray-700 mb-4">Notebook Mode</div>
                 <div className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-4 py-3">
                   <span className="text-sm text-gray-700">Notebook</span>
-                  <label className="relative inline-flex items-center cursor-pointer">
+
+                  <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                     <input
                       type="checkbox"
                       checked={config.notebookMode}
-                      onChange={(e) => handleNotebookToggle(e.target.checked)}
+                      disabled={readonly}
+                      onChange={readonly ? undefined : (e) => handleNotebookToggle(e.target.checked)}
                       className="sr-only peer"
                     />
                     <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
@@ -227,33 +242,37 @@ const ModeSelection = ({ config, setConfig }) => {
         isOpen={showModal}
         onCancel={handleModalCancel}
         onContinue={handleModalContinue}
+        readonly={readonly}
       />
     </>
   );
 };
 
-const PredictionType = ({ config, setConfig, isValidated, onValidate }) => {
+const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly }) => {
   const tabs = ['Supervised', 'Unsupervised', 'Time Series', 'Anomaly Detection'];
 
   const handleValidate = () => {
-    if (config.classification && config.targetFeature) {
-      onValidate();
-    }
+    if (readonly) return;
+    if (config.classification && config.targetFeature) onValidate();
   };
 
   const isValidateDisabled = !config.classification || !config.targetFeature;
 
   return (
-    <Section title="Prediction Type" className="bg-gray-50">
+    <Section title="Prediction Type" className="bg-gray-50" readonly={readonly}>
       <div className="flex gap-1 border-b border-gray-300 mb-6 -mx-6 px-6">
         {tabs.map((tab) => (
           <button
             key={tab}
-            onClick={() => setConfig({ ...config, predictionType: tab })}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${config.predictionType === tab
-                ? 'text-[#8e78b7] bg-white'
-                : 'text-gray-600 hover:text-gray-900'
-              }`}
+            disabled={readonly}
+            onClick={
+              readonly
+                ? undefined
+                : () => setConfig({ ...config, predictionType: tab })
+            }
+            className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
+              config.predictionType === tab ? 'text-[#8e78b7] bg-white' : 'text-gray-600 hover:text-gray-900'
+            } ${readonly ? 'cursor-not-allowed opacity-60' : ''}`}
           >
             {tab}
             {config.predictionType === tab && (
@@ -264,7 +283,7 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate }) => {
       </div>
 
       {config.predictionType === 'Supervised' && (
-        <div className="bg-white border border-gray-200 rounded-lg p-6 -mx-6 mx-6">
+        <div className="bg-white border border-gray-200 rounded-lg p-6 mx-6">
           <h4 className="text-sm font-semibold text-gray-900 mb-5">Supervised Learning Configuration</h4>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -276,18 +295,21 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate }) => {
                   checked={config.classification === 'Binary'}
                   onChange={() => setConfig({ ...config, classification: 'Binary' })}
                   name="classification"
+                  readonly={readonly}
                 />
                 <RadioButton
                   label="Multiclass"
                   checked={config.classification === 'Multiclass'}
                   onChange={() => setConfig({ ...config, classification: 'Multiclass' })}
                   name="classification"
+                  readonly={readonly}
                 />
                 <RadioButton
                   label="Regression"
                   checked={config.classification === 'Regression'}
                   onChange={() => setConfig({ ...config, classification: 'Regression' })}
                   name="classification"
+                  readonly={readonly}
                 />
               </div>
             </div>
@@ -297,8 +319,15 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate }) => {
               <div className="relative">
                 <select
                   value={config.targetFeature}
-                  onChange={(e) => setConfig({ ...config, targetFeature: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent appearance-none bg-white"
+                  disabled={readonly}
+                  onChange={
+                    readonly
+                      ? undefined
+                      : (e) => setConfig({ ...config, targetFeature: e.target.value })
+                  }
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent appearance-none bg-white ${
+                    readonly ? 'opacity-60 cursor-not-allowed' : ''
+                  }`}
                 >
                   <option value="">Select</option>
                   <option value="feature1">Feature 1</option>
@@ -317,13 +346,13 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate }) => {
           <div className="mt-6 flex justify-end">
             <button
               onClick={handleValidate}
-              disabled={isValidateDisabled || isValidated}
+              disabled={readonly || isValidateDisabled || isValidated}
               className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
                 isValidated
                   ? 'bg-green-100 text-green-700 cursor-default'
-                  : isValidateDisabled
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-[#8e78b7] text-white hover:bg-[#7d67a6]'
+                  : readonly || isValidateDisabled
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-[#8e78b7] text-white hover:bg-[#7d67a6]'
               }`}
             >
               {isValidated ? 'Validated ✓' : 'Validate'}
@@ -335,8 +364,10 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate }) => {
   );
 };
 
-const SplitSetting = ({ config, setConfig }) => {
+const SplitSetting = ({ config, setConfig, readonly }) => {
   const handleSliderChange = (type, value) => {
+    if (readonly) return;
+
     const newConfig = { ...config };
     const total = 100;
 
@@ -368,7 +399,7 @@ const SplitSetting = ({ config, setConfig }) => {
   };
 
   return (
-    <Section title="Split Setting">
+    <Section title="Split Setting" readonly={readonly}>
       <div className="space-y-6">
         <div>
           <div className="flex justify-between items-center mb-2">
@@ -377,18 +408,9 @@ const SplitSetting = ({ config, setConfig }) => {
           </div>
 
           <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden flex">
-            <div
-              style={{ width: `${config.trainSplit}%` }}
-              className="bg-[#8e78b7] h-full"
-            />
-            <div
-              style={{ width: `${config.testSplit}%` }}
-              className="bg-orange-400 h-full"
-            />
-            <div
-              style={{ width: `${config.validationSplit}%` }}
-              className="bg-teal-500 h-full"
-            />
+            <div style={{ width: `${config.trainSplit}%` }} className="bg-[#8e78b7] h-full" />
+            <div style={{ width: `${config.testSplit}%` }} className="bg-orange-400 h-full" />
+            <div style={{ width: `${config.validationSplit}%` }} className="bg-teal-500 h-full" />
           </div>
         </div>
 
@@ -403,8 +425,15 @@ const SplitSetting = ({ config, setConfig }) => {
                 min="0"
                 max="100"
                 value={config.trainSplit}
-                onChange={(e) => handleSliderChange('train', parseInt(e.target.value))}
-                className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-purple"
+                disabled={readonly}
+                onChange={
+                  readonly
+                    ? undefined
+                    : (e) => handleSliderChange('train', parseInt(e.target.value))
+                }
+                className={`flex-1 h-2 bg-gray-200 rounded-lg appearance-none ${
+                  readonly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                }`}
                 style={{
                   background: `linear-gradient(to right, #8e78b7 0%, #8e78b7 ${config.trainSplit}%, #e5e7eb ${config.trainSplit}%, #e5e7eb 100%)`
                 }}
@@ -423,8 +452,15 @@ const SplitSetting = ({ config, setConfig }) => {
                 min="0"
                 max="100"
                 value={config.testSplit}
-                onChange={(e) => handleSliderChange('test', parseInt(e.target.value))}
-                className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                disabled={readonly}
+                onChange={
+                  readonly
+                    ? undefined
+                    : (e) => handleSliderChange('test', parseInt(e.target.value))
+                }
+                className={`flex-1 h-2 bg-gray-200 rounded-lg appearance-none ${
+                  readonly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                }`}
                 style={{
                   background: `linear-gradient(to right, #fc842eff 0%, #fc842eff ${config.testSplit}%, #e5e7eb ${config.testSplit}%, #e5e7eb 100%)`
                 }}
@@ -443,8 +479,15 @@ const SplitSetting = ({ config, setConfig }) => {
                 min="0"
                 max="100"
                 value={config.validationSplit}
-                onChange={(e) => handleSliderChange('validation', parseInt(e.target.value))}
-                className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                disabled={readonly}
+                onChange={
+                  readonly
+                    ? undefined
+                    : (e) => handleSliderChange('validation', parseInt(e.target.value))
+                }
+                className={`flex-1 h-2 bg-gray-200 rounded-lg appearance-none ${
+                  readonly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                }`}
                 style={{
                   background: `linear-gradient(to right, #14b8a6 0%, #14b8a6 ${config.validationSplit}%, #e5e7eb ${config.validationSplit}%, #e5e7eb 100%)`
                 }}
@@ -456,7 +499,8 @@ const SplitSetting = ({ config, setConfig }) => {
 
         <div className="bg-gray-50 border border-[#8e78b7] rounded-md p-2">
           <p className="text-sm ">
-            <span className="font-medium text-[#8e78b7]">Note:</span> To proceed, make sure the Train, Test, and Validation percentages together equal 100%. You can adjust the sliders to balance the data as needed.
+            <span className="font-medium text-[#8e78b7]">Note:</span> To proceed, make sure the Train, Test, and
+            Validation percentages together equal 100%. You can adjust the sliders to balance the data as needed.
           </p>
         </div>
       </div>
@@ -464,19 +508,22 @@ const SplitSetting = ({ config, setConfig }) => {
   );
 };
 
-const FairnessAttribute = ({ config, setConfig }) => {
+const FairnessAttribute = ({ config, setConfig, readonly }) => {
   const [showMore, setShowMore] = useState(false);
-  
+
   const allOptions = [
     'Option 1', 'Option 2', 'Option 3', 'Option 4',
-    'Option 5', 'Option 6', 'Option 7', 'Option 8', 'Option 9', 'Option 10', 'Option 12', 'Option 13', 'Option 14',
-    'Option 15', 'Option 16', 'Option 17', 'Option 18', 'Option 19'
+    'Option 5', 'Option 6', 'Option 7', 'Option 8', 'Option 9', 'Option 10',
+    'Option 12', 'Option 13', 'Option 14', 'Option 15', 'Option 16', 'Option 17', 'Option 18', 'Option 19'
   ];
 
   const toggleOption = (option) => {
+    if (readonly) return;
+
     const newSelected = config.fairnessAttributes.includes(option)
       ? config.fairnessAttributes.filter(o => o !== option)
       : [...config.fairnessAttributes, option];
+
     setConfig({ ...config, fairnessAttributes: newSelected });
   };
 
@@ -484,15 +531,22 @@ const FairnessAttribute = ({ config, setConfig }) => {
   const remainingCount = config.fairnessAttributes.length - 8;
 
   return (
-    <Section title="Fairness Attribute">
+    <Section title="Fairness Attribute" readonly={readonly}>
       <div className="space-y-3">
         <div className="relative">
           <select
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
+            disabled={readonly}
+            className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none ${
+              readonly ? 'opacity-60 cursor-not-allowed' : ''
+            }`}
             value=""
-            onChange={(e) => {
-              if (e.target.value) toggleOption(e.target.value);
-            }}
+            onChange={
+              readonly
+                ? undefined
+                : (e) => {
+                    if (e.target.value) toggleOption(e.target.value);
+                  }
+            }
           >
             <option value="">{config.fairnessAttributes.length} Options Selected</option>
             {allOptions.map(option => (
@@ -514,8 +568,9 @@ const FairnessAttribute = ({ config, setConfig }) => {
             >
               {option}
               <button
-                onClick={() => toggleOption(option)}
-                className="ml-1 text-gray-500 hover:text-gray-700"
+                disabled={readonly}
+                onClick={readonly ? undefined : () => toggleOption(option)}
+                className={`ml-1 ${readonly ? 'cursor-not-allowed opacity-60' : 'text-gray-500 hover:text-gray-700'}`}
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -523,18 +578,26 @@ const FairnessAttribute = ({ config, setConfig }) => {
               </button>
             </span>
           ))}
+
           {!showMore && remainingCount > 0 && (
-            <button 
-              onClick={() => setShowMore(true)}
-              className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200"
+            <button
+              disabled={readonly}
+              onClick={readonly ? undefined : () => setShowMore(true)}
+              className={`inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-md ${
+                readonly ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-200'
+              }`}
             >
               +{remainingCount} More
             </button>
           )}
+
           {showMore && config.fairnessAttributes.length > 8 && (
-            <button 
-              onClick={() => setShowMore(false)}
-              className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200"
+            <button
+              disabled={readonly}
+              onClick={readonly ? undefined : () => setShowMore(false)}
+              className={`inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-md ${
+                readonly ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-200'
+              }`}
             >
               Show Less
             </button>
@@ -546,6 +609,10 @@ const FairnessAttribute = ({ config, setConfig }) => {
 };
 
 function ModelGenesis() {
+  const location = useLocation();
+  const mode = location.state?.mode ?? 'edit';
+  const readonly = mode === 'view';
+
   const [config, setConfig] = useState({
     dataPreprocessing: 'Standard',
     exampleDetail: 'Manual',
@@ -559,27 +626,35 @@ function ModelGenesis() {
     testSplit: 20,
     validationSplit: 10,
 
-    fairnessAttributes: ['Option 1', 'Option 2', 'Option 3', 'Option 4', 'Option 5', 'Option 6', 'Option 7', 'Option 8', 'Option 9', 'Option 10', 'Option 12', 'Option 13', 'Option 14']
+    fairnessAttributes: [
+      'Option 1', 'Option 2', 'Option 3', 'Option 4', 'Option 5', 'Option 6', 'Option 7', 'Option 8',
+      'Option 9', 'Option 10', 'Option 12', 'Option 13', 'Option 14'
+    ]
   });
 
   const [isValidated, setIsValidated] = useState(false);
 
   const handleValidate = () => {
+    if (readonly) return;
     setIsValidated(true);
   };
 
   return (
-    <AIPlaygroundLayout isNextDisabled={!isValidated}>
+    <AIPlaygroundLayout isNextDisabled={!isValidated} mode={mode} readonly={readonly}>
       <div className="space-y-6">
-        <ModeSelection config={config} setConfig={setConfig} />
-        <PredictionType 
-          config={config} 
+        <ModeSelection config={config} setConfig={setConfig} readonly={readonly} />
+
+        <PredictionType
+          config={config}
           setConfig={setConfig}
           isValidated={isValidated}
           onValidate={handleValidate}
+          readonly={readonly}
         />
-        <SplitSetting config={config} setConfig={setConfig} />
-        <FairnessAttribute config={config} setConfig={setConfig} />
+
+        <SplitSetting config={config} setConfig={setConfig} readonly={readonly} />
+
+        <FairnessAttribute config={config} setConfig={setConfig} readonly={readonly} />
       </div>
 
       <style jsx>{`
@@ -593,7 +668,7 @@ function ModelGenesis() {
           cursor: pointer;
           box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        
+
         input[type="range"]::-moz-range-thumb {
           width: 18px;
           height: 18px;

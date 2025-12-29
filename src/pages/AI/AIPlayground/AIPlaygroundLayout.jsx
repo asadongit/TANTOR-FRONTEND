@@ -31,7 +31,9 @@ export function AIPlaygroundLayout({
     onPreprocessingStepChange,
     isStep7Preview,
     onPreviewData,
-    isNextDisabled: isNextDisabledProp
+    isNextDisabled: isNextDisabledProp,
+  mode = 'edit',
+  readonly = false,
 }) {
     const navigate = useNavigate();
     const location = useLocation();
@@ -130,6 +132,24 @@ export function AIPlaygroundLayout({
                         </button>
                         <h1 className="text-xl font-semibold text-gray-900">Build Machine Learning</h1>
                     </div>
+                    {readonly ? (
+  <div className="flex items-center gap-3">
+    <span className="text-sm text-gray-600 bg-gray-50 px-3 py-1 rounded-md">
+      Note: Read-only view. Click edit configuration to modify.
+    </span>
+
+    <button
+      onClick={() =>
+        navigate(location.pathname, {
+          state: { ...location.state, mode: 'edit' },
+        })
+      }
+      className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium hover:bg-[#7d67a6]"
+    >
+      Edit Configuration
+    </button>
+  </div>
+) : (
                     <div className="flex items-center gap-3">
                         <div className="bg-gray-50 px-4 py-2 rounded-lg flex items-center gap-3">
                             <span className="text-sm text-gray-600">Progress</span>
@@ -148,6 +168,7 @@ export function AIPlaygroundLayout({
                             <Image size={20} />
                         </button>
                     </div>
+)}
                 </div>
             </div>
 
