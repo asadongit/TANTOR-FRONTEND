@@ -32,8 +32,8 @@ export function AIPlaygroundLayout({
     isStep7Preview,
     onPreviewData,
     isNextDisabled: isNextDisabledProp,
-  mode = 'edit',
-  readonly = false,
+    mode = 'edit',
+    readonly = false,
 }) {
     const navigate = useNavigate();
     const location = useLocation();
@@ -48,10 +48,8 @@ export function AIPlaygroundLayout({
     const isPreprocessingPage = location.pathname === '/ai/playground/data-preprocessing';
     const isOnStep7 = isPreprocessingPage && currentPreprocessingStep === totalPreprocessingSteps;
 
-    // Determine if current stage should show Cancel button
-    const shouldShowCancel = currentStageIndex >= 0 && currentStageIndex <= 3; // model-genesis through model-inferencing
-    
-    // Check if we're on the last stage (Model Deployment)
+    const shouldShowCancel = currentStageIndex >= 0 && currentStageIndex <= 3;
+
     const isLastStage = currentStageIndex === workflowStages.length - 1;
 
     const calculateProgress = () => {
@@ -83,14 +81,18 @@ export function AIPlaygroundLayout({
         }
         if (isOnStep7 && isStep7Preview) {
             if (currentStageIndex < workflowStages.length - 1) {
-                navigate(workflowStages[currentStageIndex + 1].path);
+                navigate(workflowStages[currentStageIndex + 1].path, {
+                    state: { mode: readonly ? 'view' : 'edit' }
+                });
             }
             return;
         }
         if (isPreprocessingPage && currentPreprocessingStep < totalPreprocessingSteps) {
             onPreprocessingStepChange(currentPreprocessingStep + 1);
         } else if (currentStageIndex < workflowStages.length - 1) {
-            navigate(workflowStages[currentStageIndex + 1].path);
+            navigate(workflowStages[currentStageIndex + 1].path, {
+                state: { mode: readonly ? 'view' : 'edit' }
+            });
         }
     };
 
@@ -98,7 +100,9 @@ export function AIPlaygroundLayout({
         if (isPreprocessingPage && currentPreprocessingStep > 1) {
             onPreprocessingStepChange(currentPreprocessingStep - 1);
         } else if (currentStageIndex > 0) {
-            navigate(previousStage.path);
+            navigate(previousStage.path, {
+                state: { mode: readonly ? 'view' : 'edit' }
+            });
         } else {
             navigate('/ai/playground');
         }
@@ -133,42 +137,42 @@ export function AIPlaygroundLayout({
                         <h1 className="text-xl font-semibold text-gray-900">Build Machine Learning</h1>
                     </div>
                     {readonly ? (
-  <div className="flex items-center gap-3">
-    <span className="text-sm text-gray-600 bg-gray-50 px-3 py-1 rounded-md">
-      Note: Read-only view. Click edit configuration to modify.
-    </span>
+                        <div className="flex items-center gap-3">
+                            <span className="text-sm text-gray-600 bg-gray-50 px-3 py-1 rounded-md">
+                                Note: Read-only view. Click edit configuration to modify.
+                            </span>
 
-    <button
-      onClick={() =>
-        navigate(location.pathname, {
-          state: { ...location.state, mode: 'edit' },
-        })
-      }
-      className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium hover:bg-[#7d67a6]"
-    >
-      Edit Configuration
-    </button>
-  </div>
-) : (
-                    <div className="flex items-center gap-3">
-                        <div className="bg-gray-50 px-4 py-2 rounded-lg flex items-center gap-3">
-                            <span className="text-sm text-gray-600">Progress</span>
-                            <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-[#8e78b7] transition-all duration-300"
-                                    style={{ width: `${progressPercentage}%` }}
-                                />
-                            </div>
-                            <span className="text-sm font-medium text-gray-700">{Math.round(progressPercentage)}%</span>
+                            <button
+                                onClick={() =>
+                                    navigate(location.pathname, {
+                                        state: { ...location.state, mode: 'edit' },
+                                    })
+                                }
+                                className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium hover:bg-[#7d67a6]"
+                            >
+                                Edit Configuration
+                            </button>
                         </div>
-                        <button className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center text-[#8e78b7] hover:bg-purple-100 transition-colors">
-                            <Bot size={20} />
-                        </button>
-                        <button className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center text-[#8e78b7] hover:bg-purple-100 transition-colors">
-                            <Image size={20} />
-                        </button>
-                    </div>
-)}
+                    ) : (
+                        <div className="flex items-center gap-3">
+                            <div className="bg-gray-50 px-4 py-2 rounded-lg flex items-center gap-3">
+                                <span className="text-sm text-gray-600">Progress</span>
+                                <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-[#8e78b7] transition-all duration-300"
+                                        style={{ width: `${progressPercentage}%` }}
+                                    />
+                                </div>
+                                <span className="text-sm font-medium text-gray-700">{Math.round(progressPercentage)}%</span>
+                            </div>
+                            <button className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center text-[#8e78b7] hover:bg-purple-100 transition-colors">
+                                <Bot size={20} />
+                            </button>
+                            <button className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center text-[#8e78b7] hover:bg-purple-100 transition-colors">
+                                <Image size={20} />
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -178,7 +182,7 @@ export function AIPlaygroundLayout({
                         {workflowStages.map((stage, index) => {
                             const IconComponent = stage.icon;
                             const isActive = index === currentStageIndex;
-                            const isPast = index < currentStageIndex;
+                            const isPast = readonly ? index !== currentStageIndex : index < currentStageIndex;
 
                             return (
                                 <React.Fragment key={stage.id}>

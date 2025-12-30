@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
 
-function FeatureSelection() {
+function FeatureSelection({ readonly = false }) {
   const [toggles, setToggles] = useState({
     dropLowValue: false,
     handleMissing: false,
@@ -62,6 +62,7 @@ function FeatureSelection() {
   ];
 
   const toggleSwitch = (key) => {
+    if (readonly) return;
     setToggles(prev => ({ ...prev, [key]: !prev[key] }));
     
     if (!toggles[key]) {
@@ -78,6 +79,7 @@ function FeatureSelection() {
   };
 
   const toggleSection = (section) => {
+    if (readonly) return;
     setExpandedSections(prev => ({
       dropLowValue: false,
       handleMissing: false,
@@ -88,6 +90,7 @@ function FeatureSelection() {
   };
 
   const handleSelectAll = () => {
+    if (readonly) return;
     const newSelectAll = !selectAll;
     setSelectAll(newSelectAll);
     const newSelectedColumns = {};
@@ -98,24 +101,29 @@ function FeatureSelection() {
   };
 
   const handleColumnToggle = (columnKey) => {
+    if (readonly) return;
     setSelectedColumns(prev => ({ ...prev, [columnKey]: !prev[columnKey] }));
   };
 
   const addColumnOverride = () => {
+    if (readonly) return;
     setColumnOverrides(prev => [...prev, { id: Date.now(), column: '', method: '' }]);
   };
 
   const removeColumnOverride = (id) => {
+    if (readonly) return;
     setColumnOverrides(prev => prev.filter(override => override.id !== id));
   };
 
   const updateColumnOverride = (id, field, value) => {
+    if (readonly) return;
     setColumnOverrides(prev => prev.map(override =>
       override.id === id ? { ...override, [field]: value } : override
     ));
   };
 
   const addBasicFeature = () => {
+    if (readonly) return;
     setBasicFeatures(prev => [...prev, {
       id: Date.now(),
       column1: '',
@@ -126,10 +134,12 @@ function FeatureSelection() {
   };
 
   const removeBasicFeature = (id) => {
+    if (readonly) return;
     setBasicFeatures(prev => prev.filter(feature => feature.id !== id));
   };
 
   const updateBasicFeature = (id, field, value) => {
+    if (readonly) return;
     setBasicFeatures(prev => prev.map(feature =>
       feature.id === id ? { ...feature, [field]: value } : feature
     ));
@@ -137,14 +147,24 @@ function FeatureSelection() {
 
   // Reusable Components
   const ToggleSwitch = ({ checked, onChange }) => (
-    <label className="relative inline-flex items-center cursor-pointer">
-      <input type="checkbox" checked={checked} onChange={onChange} className="sr-only peer" />
+    <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+      <input 
+        type="checkbox" 
+        checked={checked} 
+        onChange={onChange}
+        disabled={readonly}
+        className="sr-only peer" 
+      />
       <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
     </label>
   );
 
   const ExpandButton = ({ expanded, onClick }) => (
-    <button onClick={onClick} className="text-gray-400 hover:text-gray-600">
+    <button 
+      onClick={onClick}
+      disabled={readonly}
+      className="text-gray-400 hover:text-gray-600"
+    >
       {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
     </button>
   );
@@ -153,6 +173,7 @@ function FeatureSelection() {
     <select
       value={value}
       onChange={onChange}
+      disabled={readonly}
       className={`px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent text-sm ${className}`}
     >
       <option value="">{placeholder}</option>
@@ -199,6 +220,7 @@ function FeatureSelection() {
                 type="checkbox"
                 checked={selectAll}
                 onChange={handleSelectAll}
+                disabled={readonly}
                 className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded"
               />
               Select All
@@ -217,6 +239,7 @@ function FeatureSelection() {
                     type="checkbox"
                     checked={selectedColumns[columnKey] || false}
                     onChange={() => handleColumnToggle(columnKey)}
+                    disabled={readonly}
                     className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded mt-0.5"
                   />
                   <div className="flex-1">
@@ -240,7 +263,8 @@ function FeatureSelection() {
             {['dropColumns', 'imputation'].map(tab => (
               <button
                 key={tab}
-                onClick={() => setMissingValuesTab(tab)}
+                onClick={() => !readonly && setMissingValuesTab(tab)}
+                disabled={readonly}
                 className={`px-4 py-1 text-sm rounded-lg transition-colors ${
                   missingValuesTab === tab
                     ? 'bg-[#8e78b7] text-white font-medium shadow-sm'
@@ -259,7 +283,8 @@ function FeatureSelection() {
                 <input
                   type="number"
                   value={threshold}
-                  onChange={(e) => setThreshold(e.target.value)}
+                  onChange={(e) => !readonly && setThreshold(e.target.value)}
+                  disabled={readonly}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
                   placeholder="70"
                 />
@@ -277,7 +302,7 @@ function FeatureSelection() {
                   <label className="block text-sm text-gray-600 mb-2">Numerical Imputation</label>
                   <SelectInput
                     value={numericalImputation}
-                    onChange={(e) => setNumericalImputation(e.target.value)}
+                    onChange={(e) => !readonly && setNumericalImputation(e.target.value)}
                     options={['MEAN', 'MEDIAN', 'MODE', 'FORWARD_FILL']}
                     placeholder="Select"
                     className="w-full"
@@ -288,7 +313,7 @@ function FeatureSelection() {
                   <label className="block text-sm text-gray-600 mb-2">Categorical Imputation</label>
                   <SelectInput
                     value={categoricalImputation}
-                    onChange={(e) => setCategoricalImputation(e.target.value)}
+                    onChange={(e) => !readonly && setCategoricalImputation(e.target.value)}
                     options={['MODE', 'FORWARD_FILL', 'BACKWARD_FILL']}
                     placeholder="Select"
                     className="w-full"
@@ -299,7 +324,7 @@ function FeatureSelection() {
                   <label className="block text-sm text-gray-600 mb-2">Time Series</label>
                   <SelectInput
                     value={timeSeriesImputation}
-                    onChange={(e) => setTimeSeriesImputation(e.target.value)}
+                    onChange={(e) => !readonly && setTimeSeriesImputation(e.target.value)}
                     options={['FORWARD_FILL', 'BACKWARD_FILL', 'INTERPOLATE']}
                     placeholder="Select"
                     className="w-full"
@@ -335,6 +360,7 @@ function FeatureSelection() {
                         </div>
                         <button
                           onClick={() => removeColumnOverride(override.id)}
+                          disabled={readonly}
                           className="mt-5 p-2 text-gray-400 hover:text-red-500 transition-colors"
                         >
                           <X size={16} />
@@ -345,6 +371,7 @@ function FeatureSelection() {
 
                   <button
                     onClick={addColumnOverride}
+                    disabled={readonly}
                     className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-[#8e78b7] hover:text-[#8e78b7] transition-colors flex items-center justify-center gap-2"
                   >
                     <Plus size={16} />
@@ -396,12 +423,14 @@ function FeatureSelection() {
                     type="text"
                     value={feature.newColumnName}
                     onChange={(e) => updateBasicFeature(feature.id, 'newColumnName', e.target.value)}
+                    disabled={readonly}
                     placeholder="New Column Name"
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent text-sm"
                   />
 
                   <button
                     onClick={() => removeBasicFeature(feature.id)}
+                    disabled={readonly}
                     className="p-2 text-gray-400 hover:text-red-500 transition-colors"
                   >
                     <X size={16} />
@@ -413,6 +442,7 @@ function FeatureSelection() {
 
           <button
             onClick={addBasicFeature}
+            disabled={readonly}
             className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-[#8e78b7] hover:text-[#8e78b7] transition-colors flex items-center justify-center gap-2"
           >
             <Plus size={16} />
@@ -428,13 +458,14 @@ function FeatureSelection() {
       >
         <div className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3">
           {outlierMethods.map(method => (
-            <label key={method.value} className="flex items-center gap-2 cursor-pointer group">
+            <label key={method.value} className={`flex items-center gap-2 group ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
               <input
                 type="radio"
                 name="outlierMethod"
                 value={method.value}
                 checked={outlierMethod === method.value}
-                onChange={(e) => setOutlierMethod(e.target.value)}
+                onChange={(e) => !readonly && setOutlierMethod(e.target.value)}
+                disabled={readonly}
                 className="w-4 h-4 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7]"
               />
               <span className="text-sm text-gray-700 group-hover:text-gray-900">{method.label}</span>

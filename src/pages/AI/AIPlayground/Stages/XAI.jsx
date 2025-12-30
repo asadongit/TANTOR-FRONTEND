@@ -5,10 +5,13 @@ import ConfigurationModal from '../modals/XAI/ConfigurationModal';
 import SaveModelModal from '../modals/XAI/SaveModelModal';
 import GovernanceReportModal from '../modals/XAI/GovernanceReportModal';
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import DataTable from '../../../../components/DataTable';
 
 function XAI() {
-  const [selectedModel, setSelectedModel] = useState('');
+  const location = useLocation();
+  const readonly = location.state?.mode === 'view';
+  const [selectedModel, setSelectedModel] = useState('model1');
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showMenuDropdown, setShowMenuDropdown] = useState(false);
   const [reportGenerated, setReportGenerated] = useState(false);
@@ -168,6 +171,10 @@ function XAI() {
   };
 
   const handleGenerateReport = (config) => {
+    if (readonly) {
+      setShowConfigModal(false);
+      return;
+    }
     console.log('Generating report with config:', config);
     setConfigData(config);
     setShowConfigModal(false);
@@ -289,7 +296,7 @@ function XAI() {
   );
 
   return (
-    <AIPlaygroundLayout>
+    <AIPlaygroundLayout readonly={readonly}>
       <div className="max-w-7xl mx-auto bg-gray-50 rounded-lg p-6">
         <div className="flex items-start justify-between">
           {/* Header Section */}
@@ -306,7 +313,8 @@ function XAI() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Model Selection</label>
               <select
                 value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
+                onChange={(e) => !readonly && setSelectedModel(e.target.value)}
+                disabled={readonly}
                 className="w-56 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:border-transparent"
               >
                 <option value="">Select</option>
@@ -494,12 +502,14 @@ function XAI() {
         onClose={() => setShowConfigModal(false)}
         onGenerate={handleGenerateReport}
         initialConfig={configData}
+        readonly={readonly}
       />
 
       <SaveModelModal
         isOpen={showSaveModal}
         onClose={() => setShowSaveModal(false)}
         onSave={handleSaveModel}
+        readonly={readonly}
       />
 
       <GovernanceReportModal

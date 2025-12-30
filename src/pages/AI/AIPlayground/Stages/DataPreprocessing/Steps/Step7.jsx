@@ -1,26 +1,29 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, Scale, Download, Table, CircleCheckBig } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
-const ToggleSwitch = ({ checked, onChange }) => (
-    <label className="relative inline-flex items-center cursor-pointer">
+const ToggleSwitch = ({ checked, onChange, readonly }) => (
+    <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
         <input
             type="checkbox"
             checked={checked}
             onChange={onChange}
+            disabled={readonly}
             className="sr-only peer"
         />
         <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
     </label>
 );
 
-const RadioOption = ({ name, value, checked, onChange, label, description }) => (
-    <label className="flex items-start gap-3 cursor-pointer group p-3 rounded-lg hover:bg-gray-50 transition-colors">
+const RadioOption = ({ name, value, checked, onChange, label, description, readonly }) => (
+    <label className={`flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'} group`}>
         <input
             type="radio"
             name={name}
             value={value}
             checked={checked}
             onChange={onChange}
+            disabled={readonly}
             className="w-4 h-4 mt-0.5 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7]"
         />
         <div className="flex-1">
@@ -42,7 +45,8 @@ const FeatureSection = ({
     onToggle,
     onExpand,
     children,
-    icon: Icon
+    icon: Icon,
+    readonly
 }) => (
     <div className="bg-gray-50 rounded-lg border border-gray-200">
         <div className="p-4 flex items-center justify-between">
@@ -53,8 +57,12 @@ const FeatureSection = ({
                 </div>
             </div>
             <div className="flex items-center gap-3">
-                <ToggleSwitch checked={isToggled} onChange={onToggle} />
-                <button onClick={onExpand} className="text-gray-400 hover:text-gray-600">
+                <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
+                <button 
+                    onClick={onExpand}
+                    disabled={readonly}
+                    className="text-gray-400 hover:text-gray-600"
+                >
                     {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                 </button>
             </div>
@@ -82,12 +90,15 @@ const sampleData = [
 ];
 
 function Step7({ onShowPreview, showPreview }) {
+    const location = useLocation();
+    const readonly = location.state?.mode === 'view';
+    
     const [toggles, setToggles] = useState({
-        imbalancedData: false,
+        imbalancedData: true,
     });
 
     const [expandedSections, setExpandedSections] = useState({
-        imbalancedData: false,
+        imbalancedData: true,
     });
 
     const [samplingMethod, setSamplingMethod] = useState('smote');
@@ -136,6 +147,7 @@ function Step7({ onShowPreview, showPreview }) {
     ];
 
     const toggleSwitch = (key) => {
+        if (readonly) return;
         setToggles(prev => {
             const newValue = !prev[key];
             setExpandedSections(prevExpanded => ({ ...prevExpanded, [key]: newValue }));
@@ -144,6 +156,7 @@ function Step7({ onShowPreview, showPreview }) {
     };
 
     const toggleSection = (section) => {
+        if (readonly) return;
         setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
     };
 
@@ -229,6 +242,7 @@ function Step7({ onShowPreview, showPreview }) {
                 onToggle={() => toggleSwitch('imbalancedData')}
                 onExpand={() => toggleSection('imbalancedData')}
                 icon={Scale}
+                readonly={readonly}
             >
                 <div className="space-y-2">
                     <div className="flex items-center justify-between mb-4">
@@ -245,9 +259,10 @@ function Step7({ onShowPreview, showPreview }) {
                                 name="samplingMethod"
                                 value={method.value}
                                 checked={samplingMethod === method.value}
-                                onChange={(e) => setSamplingMethod(e.target.value)}
+                                onChange={(e) => !readonly && setSamplingMethod(e.target.value)}
                                 label={method.label}
                                 description={method.description}
+                                readonly={readonly}
                             />
                         ))}
                     </div>

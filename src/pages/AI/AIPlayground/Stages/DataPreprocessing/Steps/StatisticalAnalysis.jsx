@@ -1,9 +1,15 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, CircleCheckBig, CircleX, Info, TriangleAlert } from 'lucide-react';
 
-const ToggleSwitch = ({ checked, onChange }) => (
-    <label className="relative inline-flex items-center cursor-pointer">
-        <input type="checkbox" checked={checked} onChange={onChange} className="sr-only peer" />
+const ToggleSwitch = ({ checked, onChange, readonly }) => (
+    <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+        <input 
+            type="checkbox" 
+            checked={checked} 
+            onChange={onChange}
+            disabled={readonly}
+            className="sr-only peer" 
+        />
         <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
     </label>
 );
@@ -65,7 +71,7 @@ const RiskCard = ({ icon, label, count, bgColor, textColor, iconBg }) => (
     </div>
 );
 
-function StatisticalAnalysis() {
+function StatisticalAnalysis({ readonly = false }) {
     const [isCorrelationExpanded, setIsCorrelationExpanded] = useState(false);
     const [isVIFExpanded, setIsVIFExpanded] = useState(false);
     const [correlationToggled, setCorrelationToggled] = useState(false);
@@ -92,22 +98,26 @@ function StatisticalAnalysis() {
     };
 
     const toggleCorrelation = () => {
+        if (readonly) return;
         setCorrelationToggled(!correlationToggled);
         setIsCorrelationExpanded(!correlationToggled);
     };
 
     const toggleVIF = () => {
+        if (readonly) return;
         setVifToggled(!vifToggled);
         setIsVIFExpanded(!vifToggled);
     };
 
     const toggleFeatureSelection = (index) => {
+        if (readonly) return;
         setSelectedFeatures(prev =>
             prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
         );
     };
 
     const toggleAllFeatures = () => {
+        if (readonly) return;
         setSelectedFeatures(selectedFeatures.length === vifData.length ? [] : vifData.map((_, i) => i));
     };
 
@@ -119,8 +129,12 @@ function StatisticalAnalysis() {
                     <p className="text-xs text-gray-400 mt-0.5">{description}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <ToggleSwitch checked={isToggled} onChange={onToggle} />
-                    <button onClick={onExpand} className="text-gray-400 hover:text-gray-600">
+                    <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
+                    <button 
+                        onClick={onExpand}
+                        disabled={readonly}
+                        className="text-gray-400 hover:text-gray-600"
+                    >
                         {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                     </button>
                 </div>
@@ -156,7 +170,7 @@ function StatisticalAnalysis() {
                 isExpanded={isCorrelationExpanded}
                 isToggled={correlationToggled}
                 onToggle={toggleCorrelation}
-                onExpand={() => setIsCorrelationExpanded(!isCorrelationExpanded)}
+                onExpand={() => !readonly && setIsCorrelationExpanded(!isCorrelationExpanded)}
             >
                 <div className="grid grid-cols-2 gap-4">
                     {chartData.map((data, i) => (
@@ -171,7 +185,7 @@ function StatisticalAnalysis() {
                 isExpanded={isVIFExpanded}
                 isToggled={vifToggled}
                 onToggle={toggleVIF}
-                onExpand={() => setIsVIFExpanded(!isVIFExpanded)}
+                onExpand={() => !readonly && setIsVIFExpanded(!isVIFExpanded)}
             >
                 <div className="grid grid-cols-3 gap-4 mb-6">
                     <RiskCard icon={riskIcons.low} label="Low Risk" count="10" bgColor="bg-green-50 border-green-200" textColor="text-green-600" iconBg="bg-green-100" />
@@ -182,7 +196,11 @@ function StatisticalAnalysis() {
                 <div className="flex items-center justify-between mb-2 pb-4">
                     <div className="flex items-center gap-4">
                         <span className="text-sm font-medium text-gray-700">VIF Column Dropper</span>
-                        <ToggleSwitch checked={vifDropperEnabled} onChange={() => setVifDropperEnabled(!vifDropperEnabled)} />
+                        <ToggleSwitch 
+                            checked={vifDropperEnabled} 
+                            onChange={() => !readonly && setVifDropperEnabled(!vifDropperEnabled)}
+                            readonly={readonly}
+                        />
                     </div>
                     {vifDropperEnabled && (
                         <div className="flex items-center gap-4 text-sm text-gray-600">
@@ -191,6 +209,7 @@ function StatisticalAnalysis() {
                                     type="checkbox"
                                     checked={selectedFeatures.length === vifData.length}
                                     onChange={toggleAllFeatures}
+                                    disabled={readonly}
                                     className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded focus:ring-[#8e78b7]"
                                 />
                                 <span className="text-[#8e78b7] font-medium">Select All</span>
@@ -226,6 +245,7 @@ function StatisticalAnalysis() {
                                                 type="checkbox"
                                                 checked={selectedFeatures.includes(i)}
                                                 onChange={() => toggleFeatureSelection(i)}
+                                                disabled={readonly}
                                                 className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded focus:ring-[#8e78b7]"
                                             />
                                         ) : (

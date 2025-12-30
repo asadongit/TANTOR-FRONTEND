@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { TrendingUp, Lightbulb, Search, RefreshCw, Info, Award } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { AIPlaygroundLayout } from '../AIPlaygroundLayout';
+import { useLocation } from 'react-router-dom';
 
 const ModelInferencing = () => {
+  const location = useLocation();
+  const readonly = location.state?.mode === 'view';
   const [selectedModel, setSelectedModel] = useState('GradientBoostingClassifier');
   const [searchTerm, setSearchTerm] = useState('');
   const [showInfo, setShowInfo] = useState(false);
@@ -86,7 +89,7 @@ const ModelInferencing = () => {
   };
 
   return (
-    <AIPlaygroundLayout>
+    <AIPlaygroundLayout readonly={readonly}>
       <div className="min-h-screen">
         <div className='px-4 py-2'>
           <div className="mb-4">

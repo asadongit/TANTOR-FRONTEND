@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
 
-function DataCleaning() {
+function DataCleaning({ readonly = false }) {
   const [expandedSections, setExpandedSections] = useState({
-    changeDataType: false,
+    changeDataType: true,
     dropDuplicates: false,
-    uniquenessRatio: false,
+    uniquenessRatio: true,
     missingValue: false,
   });
 
   const [toggles, setToggles] = useState({
-    changeDataType: false,
+    changeDataType: true,
     dropDuplicates: false,
-    uniquenessRatio: false,
+    uniquenessRatio: true,
     missingValue: false,
   });
 
@@ -25,6 +25,7 @@ function DataCleaning() {
   ]);
 
   const toggleSection = (section) => {
+    if (readonly) return;
     setExpandedSections(prev => ({
       changeDataType: false,
       dropDuplicates: false,
@@ -35,6 +36,7 @@ function DataCleaning() {
   };
 
   const toggleSwitch = (key) => {
+    if (readonly) return;
     setToggles(prev => ({
       ...prev,
       [key]: !prev[key]
@@ -59,20 +61,24 @@ function DataCleaning() {
   };
 
   const addColumn = () => {
+    if (readonly) return;
     setDataTypeColumns([...dataTypeColumns, { columnName: '', oldDataType: '', newDataType: '' }]);
   };
 
   const removeDataTypeColumn = (index) => {
+    if (readonly) return;
     if (dataTypeColumns.length > 1) {
       setDataTypeColumns(dataTypeColumns.filter((_, i) => i !== index));
     }
   };
 
   const addMissingValueColumn = () => {
+    if (readonly) return;
     setMissingValueColumns([...missingValueColumns, { columnName: '' }]);
   };
 
   const removeMissingValueColumn = (index) => {
+    if (readonly) return;
     if (missingValueColumns.length > 1) {
       setMissingValueColumns(missingValueColumns.filter((_, i) => i !== index));
     }
@@ -88,17 +94,19 @@ function DataCleaning() {
             <p className="text-xs text-gray-500 mt-1">Modify column data types for accurate analysis.</p>
           </div>
           <div className="flex items-center gap-3">
-            <label className="relative inline-flex items-center cursor-pointer">
+            <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
               <input
                 type="checkbox"
                 checked={toggles.changeDataType}
                 onChange={() => toggleSwitch('changeDataType')}
+                disabled={readonly}
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
             </label>
             <button
               onClick={() => toggleSection('changeDataType')}
+              disabled={readonly}
               className="text-gray-400 hover:text-gray-600"
             >
               {expandedSections.changeDataType ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -118,18 +126,28 @@ function DataCleaning() {
 
               {dataTypeColumns.map((column, index) => (
                 <div key={index} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center">
-                  <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
+                  <select 
+                    disabled={readonly}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700"
+                  >
                     <option>Select</option>
                   </select>
-                  <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
+                  <select 
+                    disabled={readonly}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700"
+                  >
                     <option>Select</option>
                   </select>
-                  <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">
+                  <select 
+                    disabled={readonly}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700"
+                  >
                     <option>Select</option>
                   </select>
                   {dataTypeColumns.length > 1 && (
                     <button
                       onClick={() => removeDataTypeColumn(index)}
+                      disabled={readonly}
                       className="text-gray-400 hover:text-red-500 transition-colors p-1"
                       title="Remove column"
                     >
@@ -143,6 +161,7 @@ function DataCleaning() {
 
               <button
                 onClick={addColumn}
+                disabled={readonly}
                 className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-[#8e78b7] hover:text-[#8e78b7] transition-colors flex items-center justify-center gap-2"
               >
                 <Plus size={16} />
@@ -160,11 +179,12 @@ function DataCleaning() {
             <p className="text-xs text-gray-500 mt-1">Remove duplicated entries from your dataset.</p>
           </div>
           <div className="flex items-center gap-3">
-            <label className="relative inline-flex items-center cursor-pointer">
+            <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
               <input
                 type="checkbox"
                 checked={toggles.dropDuplicates}
                 onChange={() => toggleSwitch('dropDuplicates')}
+                disabled={readonly}
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
@@ -180,11 +200,12 @@ function DataCleaning() {
             <p className="text-xs text-gray-500 mt-1">Set threshold limits to evaluate column uniqueness.</p>
           </div>
           <div className="flex items-center gap-3">
-            <label className="relative inline-flex items-center cursor-pointer">
+            <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
               <input
                 type="checkbox"
                 checked={toggles.uniquenessRatio}
                 onChange={() => toggleSwitch('uniquenessRatio')}
+                disabled={readonly}
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
@@ -200,17 +221,19 @@ function DataCleaning() {
             <p className="text-xs text-gray-500 mt-1">Create indicator columns for missing values.</p>
           </div>
           <div className="flex items-center gap-3">
-            <label className="relative inline-flex items-center cursor-pointer">
+            <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
               <input
                 type="checkbox"
                 checked={toggles.missingValue}
                 onChange={() => toggleSwitch('missingValue')}
+                disabled={readonly}
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
             </label>
             <button
               onClick={() => toggleSection('missingValue')}
+              disabled={readonly}
               className="text-gray-400 hover:text-gray-600"
             >
               {expandedSections.missingValue ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -225,12 +248,16 @@ function DataCleaning() {
 
               {missingValueColumns.map((column, index) => (
                 <div key={index} className="flex items-center gap-3">
-                  <select className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent">
+                  <select 
+                    disabled={readonly}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
+                  >
                     <option>Select column</option>
                   </select>
                   {missingValueColumns.length > 1 && (
                     <button
                       onClick={() => removeMissingValueColumn(index)}
+                      disabled={readonly}
                       className="text-gray-400 hover:text-red-500 transition-colors p-1"
                       title="Remove column"
                     >
@@ -244,6 +271,7 @@ function DataCleaning() {
 
               <button
                 onClick={addMissingValueColumn}
+                disabled={readonly}
                 className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-400 hover:border-[#8e78b7] hover:text-[#8e78b7] transition-colors flex items-center justify-center gap-2"
               >
                 <Plus size={16} />

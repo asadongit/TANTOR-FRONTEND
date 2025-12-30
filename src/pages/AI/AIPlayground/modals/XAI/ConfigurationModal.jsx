@@ -1,13 +1,14 @@
 import { Info, X } from "lucide-react";
 import { useState } from "react";
 
-function ConfigurationModal({ isOpen, onClose, onGenerate, initialConfig }) {
+function ConfigurationModal({ isOpen, onClose, onGenerate, initialConfig, readonly = false }) {
   const [showInfoTooltip, setShowInfoTooltip] = useState(false);
   const [configData, setConfigData] = useState(initialConfig);
 
   const pdpFeatureOptions = ['Option 1', 'Option 2', 'Option 3', 'Option 4', 'Option 5'];
 
   const toggleFeature = (feature) => {
+    if (readonly) return;
     setConfigData(prev => ({
       ...prev,
       pdpFeatures: prev.pdpFeatures.includes(feature)
@@ -55,8 +56,11 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, initialConfig }) {
               <label className="block text-sm font-medium text-gray-900 mb-2">Model Alias</label>
               <select
                 value={configData.modelAlias}
-                onChange={(e) => setConfigData({ ...configData, modelAlias: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                onChange={(e) => !readonly && setConfigData({ ...configData, modelAlias: e.target.value })}
+                disabled={readonly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${
+                  readonly ? 'bg-gray-50 cursor-not-allowed' : ''
+                }`}
               >
                 <option value="">Select</option>
                 <option value="alias1">Alias 1</option>
@@ -68,8 +72,11 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, initialConfig }) {
               <label className="block text-sm font-medium text-gray-900 mb-2">PDP Target Class</label>
               <select
                 value={configData.pdpTargetClass}
-                onChange={(e) => setConfigData({ ...configData, pdpTargetClass: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                onChange={(e) => !readonly && setConfigData({ ...configData, pdpTargetClass: e.target.value })}
+                disabled={readonly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${
+                  readonly ? 'bg-gray-50 cursor-not-allowed' : ''
+                }`}
               >
                 <option value="">Select</option>
                 <option value="class1">Class 1</option>
@@ -83,8 +90,11 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, initialConfig }) {
               <label className="block text-sm font-medium text-gray-900 mb-2">CS Desired Class</label>
               <select
                 value={configData.cbDesiredClass}
-                onChange={(e) => setConfigData({ ...configData, cbDesiredClass: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                onChange={(e) => !readonly && setConfigData({ ...configData, cbDesiredClass: e.target.value })}
+                disabled={readonly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${
+                  readonly ? 'bg-gray-50 cursor-not-allowed' : ''
+                }`}
               >
                 <option value="">Select</option>
                 <option value="class1">Class 1</option>
@@ -96,8 +106,11 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, initialConfig }) {
               <label className="block text-sm font-medium text-gray-900 mb-2">CF Instance Index</label>
               <select
                 value={configData.cfInstanceIndex}
-                onChange={(e) => setConfigData({ ...configData, cfInstanceIndex: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                onChange={(e) => !readonly && setConfigData({ ...configData, cfInstanceIndex: e.target.value })}
+                disabled={readonly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${
+                  readonly ? 'bg-gray-50 cursor-not-allowed' : ''
+                }`}
               >
                 <option value="">Select</option>
                 <option value="index1">Index 1</option>
@@ -114,11 +127,12 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, initialConfig }) {
 
             <div className="grid grid-cols-3 gap-x-8 gap-y-3">
               {pdpFeatureOptions.map((option, idx) => (
-                <label key={idx} className="flex items-center gap-2 cursor-pointer">
+                <label key={idx} className={`flex items-center gap-2 ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                   <input
                     type="checkbox"
                     checked={configData.pdpFeatures.includes(option)}
                     onChange={() => toggleFeature(option)}
+                    disabled={readonly}
                     className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded"
                   />
                   <span className="text-sm text-gray-700">{option}</span>
@@ -135,11 +149,12 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, initialConfig }) {
                   Enable to generate a summary of how flipping key features affects the model predictions
                 </p>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
+              <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                 <input
                   type="checkbox"
                   checked={configData.featureFlipSummary}
-                  onChange={(e) => setConfigData({ ...configData, featureFlipSummary: e.target.checked })}
+                  onChange={(e) => !readonly && setConfigData({ ...configData, featureFlipSummary: e.target.checked })}
+                  disabled={readonly}
                   className="sr-only peer"
                 />
                 <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
@@ -187,7 +202,8 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, initialConfig }) {
           </button>
           <button
             onClick={() => onGenerate(configData)}
-            className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors"
+            disabled={readonly}
+            className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors hover:bg-[#7d67a6] disabled:cursor-not-allowed"
           >
             Generate Model
           </button>

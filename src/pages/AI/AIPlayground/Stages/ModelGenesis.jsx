@@ -6,7 +6,7 @@ import { useLocation } from 'react-router-dom';
 const RadioButton = ({ label, checked, onChange, name, readonly }) => (
   <label
     className={`flex items-center gap-2 group ${
-      readonly ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
+      readonly ? 'cursor-not-allowed' : 'cursor-pointer'
     }`}
   >
     <div className="relative">
@@ -28,11 +28,10 @@ const RadioButton = ({ label, checked, onChange, name, readonly }) => (
   </label>
 );
 
-const Section = ({ title, children, className = '', readonly }) => (
+const Section = ({ title, children, className = '' }) => (
   <div className={`bg-white rounded-lg border border-gray-200 p-6 ${className}`}>
     <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
-    {/* keeps the look disabled and blocks mouse, but we ALSO disable inputs + guard handlers below */}
-    <div className={readonly ? 'pointer-events-none opacity-60' : ''}>{children}</div>
+    {children}
   </div>
 );
 
@@ -103,7 +102,7 @@ const ModeSelection = ({ config, setConfig, readonly }) => {
 
   return (
     <>
-      <Section title="Mode Selection" readonly={readonly}>
+      <Section title="Mode Selection">
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_auto_1fr] gap-4">
           <div className="border border-gray-200 rounded-lg overflow-hidden">
             <div className="grid grid-cols-[1fr_1fr_1fr] bg-gray-50 border-b border-gray-200">
@@ -259,20 +258,15 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly }
   const isValidateDisabled = !config.classification || !config.targetFeature;
 
   return (
-    <Section title="Prediction Type" className="bg-gray-50" readonly={readonly}>
+    <Section title="Prediction Type" className="bg-gray-50">
       <div className="flex gap-1 border-b border-gray-300 mb-6 -mx-6 px-6">
         {tabs.map((tab) => (
           <button
             key={tab}
-            disabled={readonly}
-            onClick={
-              readonly
-                ? undefined
-                : () => setConfig({ ...config, predictionType: tab })
-            }
+            onClick={() => setConfig({ ...config, predictionType: tab })}
             className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
               config.predictionType === tab ? 'text-[#8e78b7] bg-white' : 'text-gray-600 hover:text-gray-900'
-            } ${readonly ? 'cursor-not-allowed opacity-60' : ''}`}
+            }`}
           >
             {tab}
             {config.predictionType === tab && (
@@ -326,7 +320,7 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly }
                       : (e) => setConfig({ ...config, targetFeature: e.target.value })
                   }
                   className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent appearance-none bg-white ${
-                    readonly ? 'opacity-60 cursor-not-allowed' : ''
+                    readonly ? 'cursor-not-allowed' : ''
                   }`}
                 >
                   <option value="">Select</option>
@@ -399,7 +393,7 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
   };
 
   return (
-    <Section title="Split Setting" readonly={readonly}>
+    <Section title="Split Setting">
       <div className="space-y-6">
         <div>
           <div className="flex justify-between items-center mb-2">
@@ -432,7 +426,7 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
                     : (e) => handleSliderChange('train', parseInt(e.target.value))
                 }
                 className={`flex-1 h-2 bg-gray-200 rounded-lg appearance-none ${
-                  readonly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                  readonly ? 'cursor-not-allowed' : 'cursor-pointer'
                 }`}
                 style={{
                   background: `linear-gradient(to right, #8e78b7 0%, #8e78b7 ${config.trainSplit}%, #e5e7eb ${config.trainSplit}%, #e5e7eb 100%)`
@@ -459,7 +453,7 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
                     : (e) => handleSliderChange('test', parseInt(e.target.value))
                 }
                 className={`flex-1 h-2 bg-gray-200 rounded-lg appearance-none ${
-                  readonly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                  readonly ? 'cursor-not-allowed' : 'cursor-pointer'
                 }`}
                 style={{
                   background: `linear-gradient(to right, #fc842eff 0%, #fc842eff ${config.testSplit}%, #e5e7eb ${config.testSplit}%, #e5e7eb 100%)`
@@ -486,7 +480,7 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
                     : (e) => handleSliderChange('validation', parseInt(e.target.value))
                 }
                 className={`flex-1 h-2 bg-gray-200 rounded-lg appearance-none ${
-                  readonly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                  readonly ? 'cursor-not-allowed' : 'cursor-pointer'
                 }`}
                 style={{
                   background: `linear-gradient(to right, #14b8a6 0%, #14b8a6 ${config.validationSplit}%, #e5e7eb ${config.validationSplit}%, #e5e7eb 100%)`
@@ -531,13 +525,13 @@ const FairnessAttribute = ({ config, setConfig, readonly }) => {
   const remainingCount = config.fairnessAttributes.length - 8;
 
   return (
-    <Section title="Fairness Attribute" readonly={readonly}>
+    <Section title="Fairness Attribute">
       <div className="space-y-3">
         <div className="relative">
           <select
             disabled={readonly}
             className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none ${
-              readonly ? 'opacity-60 cursor-not-allowed' : ''
+              readonly ? 'cursor-not-allowed' : ''
             }`}
             value=""
             onChange={
@@ -570,7 +564,7 @@ const FairnessAttribute = ({ config, setConfig, readonly }) => {
               <button
                 disabled={readonly}
                 onClick={readonly ? undefined : () => toggleOption(option)}
-                className={`ml-1 ${readonly ? 'cursor-not-allowed opacity-60' : 'text-gray-500 hover:text-gray-700'}`}
+                className={`ml-1 ${readonly ? 'cursor-not-allowed' : 'text-gray-500 hover:text-gray-700'}`}
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -584,7 +578,7 @@ const FairnessAttribute = ({ config, setConfig, readonly }) => {
               disabled={readonly}
               onClick={readonly ? undefined : () => setShowMore(true)}
               className={`inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-md ${
-                readonly ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-200'
+                readonly ? 'cursor-not-allowed' : 'hover:bg-gray-200'
               }`}
             >
               +{remainingCount} More
@@ -596,7 +590,7 @@ const FairnessAttribute = ({ config, setConfig, readonly }) => {
               disabled={readonly}
               onClick={readonly ? undefined : () => setShowMore(false)}
               className={`inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-md ${
-                readonly ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-200'
+                readonly ? 'cursor-not-allowed' : 'hover:bg-gray-200'
               }`}
             >
               Show Less
@@ -620,7 +614,7 @@ function ModelGenesis() {
 
     predictionType: 'Supervised',
     classification: 'Multiclass',
-    targetFeature: '',
+    targetFeature: 'feature1',
 
     trainSplit: 70,
     testSplit: 20,
@@ -632,7 +626,7 @@ function ModelGenesis() {
     ]
   });
 
-  const [isValidated, setIsValidated] = useState(false);
+  const [isValidated, setIsValidated] = useState(true);
 
   const handleValidate = () => {
     if (readonly) return;

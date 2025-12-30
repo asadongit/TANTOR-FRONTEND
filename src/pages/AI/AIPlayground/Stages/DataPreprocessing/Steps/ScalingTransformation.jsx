@@ -1,26 +1,28 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
-const ToggleSwitch = ({ checked, onChange }) => (
-    <label className="relative inline-flex items-center cursor-pointer">
+const ToggleSwitch = ({ checked, onChange, readonly }) => (
+    <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
         <input
             type="checkbox"
             checked={checked}
             onChange={onChange}
+            disabled={readonly}
             className="sr-only peer"
         />
         <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
     </label>
 );
 
-const RadioOption = ({ name, value, checked, onChange, label }) => (
-    <label className="flex items-center gap-2 cursor-pointer group">
+const RadioOption = ({ name, value, checked, onChange, label, readonly }) => (
+    <label className={`flex items-center gap-2 group ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
         <input
             type="radio"
             name={name}
             value={value}
             checked={checked}
             onChange={onChange}
+            disabled={readonly}
             className="w-4 h-4 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7]"
         />
         <span className="text-sm text-gray-700 group-hover:text-gray-900">{label}</span>
@@ -35,7 +37,8 @@ const FeatureSection = ({
     onToggle,
     onExpand,
     showExpandButton = true,
-    children
+    children,
+    readonly
 }) => (
     <div className="bg-gray-50 rounded-lg border border-gray-200">
         <div className="p-4 flex items-center justify-between">
@@ -44,9 +47,13 @@ const FeatureSection = ({
                 <p className="text-xs text-gray-400 mt-0.5">{description}</p>
             </div>
             <div className="flex items-center gap-3">
-                <ToggleSwitch checked={isToggled} onChange={onToggle} />
+                <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
                 {showExpandButton && (
-                    <button onClick={onExpand} className="text-gray-400 hover:text-gray-600">
+                    <button 
+                        onClick={onExpand}
+                        disabled={readonly}
+                        className="text-gray-400 hover:text-gray-600"
+                    >
                         {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                     </button>
                 )}
@@ -61,7 +68,7 @@ const FeatureSection = ({
     </div>
 );
 
-function ScalingTransformation() {
+function ScalingTransformation({ readonly = false }) {
     const [toggles, setToggles] = useState({
         advancedTransformation: false,
         nearZeroVariance: false,
@@ -105,15 +112,18 @@ function ScalingTransformation() {
     ];
 
     const toggleSwitch = (key) => {
+        if (readonly) return;
         setToggles(prev => ({ ...prev, [key]: !prev[key] }));
         setExpandedSections(prev => ({ ...prev, [key]: !toggles[key] }));
     };
 
     const toggleSection = (section) => {
+        if (readonly) return;
         setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
     };
 
     const toggleColumnSelection = (columnName) => {
+        if (readonly) return;
         setSelectedColumns(prev =>
             prev.includes(columnName)
                 ? prev.filter(col => col !== columnName)
@@ -131,6 +141,7 @@ function ScalingTransformation() {
                 isExpanded={expandedSections.advancedTransformation}
                 onToggle={() => toggleSwitch('advancedTransformation')}
                 onExpand={() => toggleSection('advancedTransformation')}
+                readonly={readonly}
             >
                 <div className="space-y-4">
                     <div>
@@ -148,6 +159,7 @@ function ScalingTransformation() {
                                             type="checkbox"
                                             checked={selectedColumns.includes(column.name)}
                                             onChange={() => toggleColumnSelection(column.name)}
+                                            disabled={readonly}
                                             className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded focus:ring-[#8e78b7]"
                                         />
                                         <span className="text-sm text-gray-700">{column.name}</span>
@@ -167,7 +179,8 @@ function ScalingTransformation() {
                         <h5 className="text-sm font-medium text-gray-700 mb-3">Transformation Method</h5>
                         <select
                             value={transformationMethod}
-                            onChange={(e) => setTransformationMethod(e.target.value)}
+                            onChange={(e) => !readonly && setTransformationMethod(e.target.value)}
+                            disabled={readonly}
                             className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
                         >
                             {transformationOptions.map(option => (
@@ -191,6 +204,7 @@ function ScalingTransformation() {
                 onToggle={() => toggleSwitch('nearZeroVariance')}
                 onExpand={() => { }}
                 showExpandButton={false}
+                readonly={readonly}
             >
             </FeatureSection>
 
@@ -201,6 +215,7 @@ function ScalingTransformation() {
                 isExpanded={expandedSections.featureScaler}
                 onToggle={() => toggleSwitch('featureScaler')}
                 onExpand={() => toggleSection('featureScaler')}
+                readonly={readonly}
             >
                 <div>
                     <h5 className="text-sm font-medium text-gray-700 mb-3">Scaler Method</h5>
@@ -214,8 +229,9 @@ function ScalingTransformation() {
                                     name="scalerMethod"
                                     value={option.value}
                                     checked={scalerMethod === option.value}
-                                    onChange={(e) => setScalerMethod(e.target.value)}
+                                    onChange={(e) => !readonly && setScalerMethod(e.target.value)}
                                     label={option.label}
+                                    readonly={readonly}
                                 />
                             </div>
                         ))}
