@@ -35,7 +35,8 @@ import {
   Store,
   Activity,
   Users,
-  Moon
+  Moon,
+  Workflow
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -189,6 +190,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
       ]
     },
     { name: 'AI Playground', icon: Sparkles, path: `${AI_PREFIX}/playground` },
+    { name: 'Orchestration', icon: Workflow, path: `${AI_PREFIX}/orchestration`},
     { name: 'Agent Mesh', icon: GitBranch, path: `${AI_PREFIX}/agent-mesh` },
     { name: 'Marketplace', icon: Store, path: `${AI_PREFIX}/marketplace` },
     { name: 'Observability', icon: Activity, path: `${AI_PREFIX}/observability` },
