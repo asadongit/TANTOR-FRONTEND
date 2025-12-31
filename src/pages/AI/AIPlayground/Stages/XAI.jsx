@@ -296,7 +296,7 @@ function XAI() {
   );
 
   return (
-    <AIPlaygroundLayout readonly={readonly}>
+    <AIPlaygroundLayout>
       <div className="max-w-7xl mx-auto bg-gray-50 rounded-lg p-6">
         <div className="flex items-start justify-between">
           {/* Header Section */}

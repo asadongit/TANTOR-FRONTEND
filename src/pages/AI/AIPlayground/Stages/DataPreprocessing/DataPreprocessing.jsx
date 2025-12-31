@@ -48,8 +48,6 @@ function DataPreprocessing() {
       onPreprocessingStepChange={setCurrentStep}
       isStep7Preview={isStep7Preview}
       onPreviewData={setIsStep7Preview}
-      mode={mode}
-      readonly={readonly}
     >
       <div className={currentStep === 7 && isStep7Preview ? 'w-full' : 'max-w-7xl mx-auto w-full'}>
         <div className={`

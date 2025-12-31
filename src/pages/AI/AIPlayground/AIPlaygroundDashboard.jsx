@@ -19,10 +19,7 @@ import { CreateProjectModal } from './modals/Dashboard/CreateProjectModal';
 import { DatasetDescriptionModal } from './modals/Dashboard/DatasetDescriptionModal';
 import { SelectDataViewModal } from './modals/Dashboard/SelectDataViewModal';
 import { ResetProjectModal } from './modals/Dashboard/ResetProjectModal';
-
-// Import Modal Components
-// import { CreateProjectModal, DatasetDescriptionModal, SelectDataViewModal, ResetProjectModal } from './modals/AIPlaygroundModal';
-
+import { ChooseBuildMethodModal } from './modals/Dashboard/ChooseBuildMethodModal';
 
 // Constants
 const EXPERIMENT_OPTIONS = [
@@ -89,7 +86,8 @@ const AIPlayground = () => {
     createProject: false,
     datasetDescription: false,
     selectView: false,
-    resetProject: false
+    resetProject: false,
+    chooseBuildMethod: false
   });
 
   // Helper Functions
@@ -182,10 +180,21 @@ const AIPlayground = () => {
     toggleModal('resetProject', false);
   };
 
-  const handleCapabilityClick = (path) => {
+  const handleCapabilityClick = (path, title) => {
     if (!isDisabled) {
-      navigate(path);
+      if (title === 'Build Machine Learning') {
+        toggleModal('chooseBuildMethod', true);
+      } else {
+        navigate(path);
+      }
     }
+  };
+
+  const handleBuildMethodSelected = (method, ensembleCount) => {
+    const isEnsemble = method === 'ensemble';
+    navigate('/ai/playground/model-genesis', {
+      state: { isEnsemble, ensembleCount } 
+    });
   };
 
   return (
@@ -408,7 +417,7 @@ const AIPlayground = () => {
               {CAPABILITIES.map((cap, idx) => (
                 <div
                   key={idx}
-                  onClick={() => handleCapabilityClick(cap.path)}
+                  onClick={() => handleCapabilityClick(cap.path, cap.title)}
                   className="bg-white border border-slate-200 p-5 rounded-lg shadow-sm transition-all hover:shadow-md hover:border-violet-300 cursor-pointer hover:scale-105"
                 >
                   <div
@@ -451,6 +460,12 @@ const AIPlayground = () => {
         isOpen={modals.resetProject}
         onConfirm={handleConfirmReset}
         onCancel={() => toggleModal('resetProject', false)}
+      />
+
+      <ChooseBuildMethodModal
+        isOpen={modals.chooseBuildMethod}
+        onClose={() => toggleModal('chooseBuildMethod', false)}
+        onProceed={handleBuildMethodSelected}
       />
     </div>
   );

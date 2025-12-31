@@ -5,11 +5,6 @@ import { AIPlaygroundLayout } from '../AIPlaygroundLayout';
 import { useLocation } from 'react-router-dom';
 
 const ModelInferencing = () => {
-  const location = useLocation();
-  const readonly = location.state?.mode === 'view';
-  const [selectedModel, setSelectedModel] = useState('GradientBoostingClassifier');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showInfo, setShowInfo] = useState(false);
   const [activeTab, setActiveTab] = useState('performance');
 
   const bestModel = {
@@ -89,7 +84,7 @@ const ModelInferencing = () => {
   };
 
   return (
-    <AIPlaygroundLayout readonly={readonly}>
+    <AIPlaygroundLayout>
       <div className="min-h-screen">
         <div className='px-4 py-2'>
           <div className="mb-4">

@@ -634,7 +634,7 @@ function ModelGenesis() {
   };
 
   return (
-    <AIPlaygroundLayout isNextDisabled={!isValidated} mode={mode} readonly={readonly}>
+    <AIPlaygroundLayout isNextDisabled={!isValidated}>
       <div className="space-y-6">
         <ModeSelection config={config} setConfig={setConfig} readonly={readonly} />
 
