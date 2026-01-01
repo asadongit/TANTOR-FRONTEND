@@ -34,7 +34,7 @@ import { BusinessHeader } from "./pages/platform/Federation/BusinessView/Busines
 import TransformationCanvas from "./pages/platform/transformation/components/TransformationCanvas";
 import { DatabotProvider } from "./pages/datagovernance/Databot/context/DatabotContext";
 import MigrationCanvas from "./pages/platform/migration/components/MigrationCanvas";
-import { AIRoutes } from "./routes/AiRoutes";
+import { AIRoutes } from "./routes/AiMainRoutes";
 
 function App() {
   const [activeSection, setActiveSection] = useState("platform");
