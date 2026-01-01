@@ -227,7 +227,7 @@ export default function Source({ id }) {
         </div>
       </div>
 
-      {(migrationData[id]?.scope === "bulk" || migrationData[id]?.scope === "subset") && tables && tables.length > 0 && (
+      {(migrationData[id]?.scope === "bulk" || migrationData[id]?.scope === "subset") && (
         <div className="mt-3">
           <label className="block text-sm font-semibold text-gray-700 mb-1">
             Search Tables

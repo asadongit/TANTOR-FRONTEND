@@ -78,11 +78,12 @@ function MigrationCanvasInner() {
   const reactFlowWrapper = useRef(null);
   const navigate = useNavigate();
   const { migrationData, setMigrationData } = useMigrationContext();
-  const { metadataData } = useMetadata();
+  const { metadataData, setMetadataData } = useMetadata();
   const { token, decodedToken, project, hostnameV1, hostnameV2 } = useAuth();
   const { openModal, closeModal } = useModal();
 
   const [isEditMode, setIsEditMode] = useState(false);
+  const [reactFlowInstance, setReactFlowInstance] = useState(null);
 
   useEffect(() => {
     const state = location.state;
@@ -105,7 +106,14 @@ function MigrationCanvasInner() {
   const deleteNode = useCallback((id) => {
     setNodes((nds) => nds.filter((n) => n.id !== id));
     setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
-  }, []);
+    if (mode === "metadata") {
+      setMetadataData((prev) => {
+        const newData = { ...prev };
+        delete newData[id];
+        return newData;
+      });
+    }
+  }, [mode, setMetadataData]);
 
   // Expose deleteNode globally for node components
   useEffect(() => {
@@ -138,17 +146,17 @@ function MigrationCanvasInner() {
   const onDrop = useCallback(
     (event) => {
       event.preventDefault();
-      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
+      if (!reactFlowInstance) return;
       const data = JSON.parse(event.dataTransfer.getData('application/reactflow'));
       if (!data?.type) return;
 
       // Prevent adding more than one node of each type
       if (presentNodeTypes[data.type]) return;
 
-      const position = {
-        x: event.clientX - reactFlowBounds.left,
-        y: event.clientY - reactFlowBounds.top,
-      };
+      const position = reactFlowInstance.screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
 
       const newNode = {
         id: `${data.type}`,
@@ -158,7 +166,7 @@ function MigrationCanvasInner() {
       };
       setNodes((nds) => nds.concat(newNode));
     },
-    [presentNodeTypes],
+    [presentNodeTypes, reactFlowInstance],
   );
 
   const onDragOver = useCallback((event) => {
@@ -168,6 +176,8 @@ function MigrationCanvasInner() {
 
   const handleModeChange = useCallback((newMode) => {
     setMode(newMode);
+    setMigrationData({});
+    setMetadataData({});
     if (newMode === "migration") {
       setNodes(migrationInitialNodes);
       setEdges(migrationInitialEdges);
@@ -421,6 +431,11 @@ function MigrationCanvasInner() {
         return;
       }
 
+      if(!metadataData.source?.bulk_list || metadataData.source?.bulk_list.length === 0) {
+        toast.error("Source node must have at least one table selected.");
+        return;
+      }
+
       if (!metadataData.target?.connection || !metadataData.target?.schema) {
         toast.error("Target node must have a connection and schema selected.");
         return;
@@ -458,6 +473,7 @@ function MigrationCanvasInner() {
           nodeTypes={nodeTypes}
           onDrop={onDrop}
           onDragOver={onDragOver}
+          onInit={setReactFlowInstance}
           className="bg-gray-50"
           style={{ width: "100%", height: "100%" }}
         >
