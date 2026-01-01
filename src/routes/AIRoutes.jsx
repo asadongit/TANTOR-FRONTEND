@@ -4,7 +4,7 @@ import {AIPlaygroundRoutes} from '../pages/AI/AIPlayground/AIPlaygroundRoutes';
 import { OrchestrationRoutes } from '../pages/AI/Orchestration/OrchestrationRoutes';
 
 
-export const AIGovernanceRoutes = (
+export const AIRoutes = (
   <>
     {HubRoutes}
     {AIPlaygroundRoutes}
