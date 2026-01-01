@@ -264,6 +264,47 @@ function MigrationCanvasInner() {
     }));
   };
 
+  const isMigrationPayloadValid = (payload) => {
+
+    if(!payload?.source_conn_name || !payload?.source_conn_id){
+      toast.error("Source connection can't be empty!");
+      return false;
+    }
+
+    if(!payload?.source_schema){
+      toast.error("Source schema can't be empty!");
+      return false;
+    }
+
+     if(!payload?.target_conn_name || !payload?.target_conn_id){
+      toast.error("Target connection can't be empty!");
+      return false;
+    }
+
+    if(!payload?.target_schema){
+      toast.error("Target schema can't be empty!");
+      return false;
+    }
+
+    if(!payload?.migration_list || payload?.migration_list?.length === 0){
+      toast.error("Source and target table(s) can't be empty!");
+      return false;
+    }
+
+    if(!payload?.migration_auto_name){
+      toast.error("Migration name can't be empty!");
+      return false;
+    };
+
+    const migrationList = payload?.migration_list || [];
+    const invalidMigrations = migrationList.some(m => !m?.source_table || !m?.target_table);
+    if(invalidMigrations){
+      toast.error("Either source or target table is missing!");
+      return false;
+    }
+
+    return true;
+  }
 
   const migrationSave = async () => {
     const scope = migrationData?.source?.scope;
@@ -342,7 +383,10 @@ function MigrationCanvasInner() {
       ui_json: migrationData
     };
 
-    console.log("Payload ==> ", payload);
+    if(!isMigrationPayloadValid(payload))
+      return;
+
+    // console.log("Payload ==> ", payload);
 
     const config = {
       headers: {
