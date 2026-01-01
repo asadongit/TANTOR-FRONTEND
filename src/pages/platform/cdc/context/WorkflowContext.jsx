@@ -182,6 +182,8 @@ export const WorkflowProvider = ({ children }) => {
           }
         };
       }
+      
+      const existingNodeData = prevPipelines[pipelineId]?.data?.[nodeType] || {};
 
       const updatedPipelines = {
         ...prevPipelines,
@@ -190,6 +192,7 @@ export const WorkflowProvider = ({ children }) => {
           data: {
             ...prevPipelines[pipelineId].data,
             [nodeType]: {
+              ...existingNodeData,
               ...nodeData, // Replace entirely to ensure new bulk_list is used
             },
           },

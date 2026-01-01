@@ -2,12 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useAuth } from "../../context/AuthContext";
 
-
-const fetchArchivalData = async (token,project,hostnameV1) => {
+const fetchMetadataData = async (token, project, hostnameV1) => {
   if (!token) throw new Error("Token is missing");
 
   try {
-
     const headers = {
       Authorization: `Bearer ${token}`,
     };
@@ -15,8 +13,7 @@ const fetchArchivalData = async (token,project,hostnameV1) => {
     //   headers["x-project"] = project;
     // }
 
-    
-    const response = await axios.get(`${hostnameV1}/migrations`, {
+    const response = await axios.get(`${hostnameV1}/metadata-archivals`, {
       headers,
     });
 
@@ -27,12 +24,12 @@ const fetchArchivalData = async (token,project,hostnameV1) => {
   }
 };
 
-export const useArchivalData = () => {
-  const { token,project,hostnameV1 } = useAuth();
+export const useMetadataData = () => {
+  const { token, project, hostnameV1 } = useAuth();
 
   return useQuery({
-    queryKey: ["ArchivalData"],
-    queryFn: () => fetchArchivalData(token, project, hostnameV1),
+    queryKey: ["migrationData", project],
+    queryFn: () => fetchMetadataData(token, project, hostnameV1),
     enabled: !!token,
     staleTime: 30 * 1000,
     retry: 2,

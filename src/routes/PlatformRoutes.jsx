@@ -15,9 +15,6 @@ import RulesReportsLinks from '../pages/platform/reports-config/RulesReportsLink
 import LineItemsPage from '../pages/platform/reports-config/LineItemsPage';
 import ReportViewer from '../pages/platform/reports-config/ReportViewer';
 
-import Metadata from '../pages/platform/metadata/Metadata';
-import Archival from '../pages/platform/archival/Archival';
-import ArchivalCanvas from '../pages/platform/archival/ArchivalCanvas';
 import Purge from '../pages/platform/purge/Purge';
 import CDC from '../pages/platform/cdc/CDC'
 import Source from '../pages/platform/Federation/BaseView/Source';
@@ -38,10 +35,14 @@ import { MonitoringProvider } from '../pages/platform/monitoring/context/Monitor
 
 import Audit from '../pages/platform/Audit/Audit';
 
+//newmigration screens
+import Migration from '../pages/platform/migration/Migration';
+
 
 export function PlatformRoutes() {
   return (
       <Routes>
+        <Route path="/audit" element={<Audit />} />
         <Route path="/project" element={<Project />} />
         <Route path="/connections" element={<Connections />} />
         <Route path="/jobs" element={<Jobs />} />
@@ -49,18 +50,26 @@ export function PlatformRoutes() {
         <Route path="/report" element={<Reports />} />
         <Route path="/generateReport" element={<GenerateReport />} />
         <Route path="/reports/viewer" element={<ReportViewer />} />
-        <Route path="/migration" element={<Archival />} />
-        <Route path="/dataview" element={<DataView />} />
-        <Route path="/metadata" element={<Metadata />} />
+
+        {/* migration routes */}
+        <Route path="/migration" element={<Migration />} />
+
+        {/* purge routes */}
         <Route path="/purge" element={<Purge />} />
+        <Route path="/PurgeCanvas" element={<PurgeCanvas />} />
+
+
+        {/* cdc routes */}
         <Route path="/cdc" element={<CDC />} />
         <Route path="/cdc/editcdc/:cdcId" element={<EditCDC />} />
         <Route path="/cdc/Viewcdc/:cdcId" element={<ViewCDC />} />
+
+        {/* federation routes */}
         <Route path="/editor" element={<Editor />} />
         <Route path="/federation" element={<FederationDashBoard />} />
         <Route path="/federation/view/source" element={<Source />} />
-        <Route path="/createMigration" element={<ArchivalCanvas />} />
-        <Route path="/PurgeCanvas" element={<PurgeCanvas />} />
+
+        {/* rules routes */}
         <Route path="/config/rule" element={<RuleDashboard />} />
         <Route path="/config/rule/create-rule" element={<RuleCanvas />} />
         <Route path="/config/rule/edit-rule" element={<RuleCanvas />} />
@@ -68,16 +77,23 @@ export function PlatformRoutes() {
         <Route path="/config/report/ruleLinks" element={<RulesReportsLinks />} />
         <Route path="/config/report/lineItems" element={<LineItemsPage />} />
         <Route path="/config/editReport" element={<LineItemsPage />} />
-        <Route path="/details" element={<Details />}/>
         <Route path="/reporting/lineItems" element={<LineItemsPage />} />
+
+
+        {/* transformation routes */}
         <Route path="/transformation" element={<Transformation />} />
+
+
+    {/* additional routes */}
+
+        <Route path="/details" element={<Details />}/>
+        <Route path="/dataview" element={<DataView />} />
         <Route path="/cdc/kafka-dashboard" element={<KafkaDashboard />} />
         <Route path="/monitoring" element={
           <MonitoringProvider>
             <MonitoringDashboard />
           </MonitoringProvider>
           } />
-        <Route path="/audit" element={<Audit />} />
       </Routes>
   );
 }
