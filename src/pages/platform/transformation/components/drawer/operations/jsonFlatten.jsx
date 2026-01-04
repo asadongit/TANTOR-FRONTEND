@@ -6,7 +6,7 @@ const isNonEmpty = (s) => typeof s === "string" && s.trim().length > 0;
 const getColName = (c) => (typeof c === "object" && c ? c.name : c);
 const getColType = (c) => (typeof c === "object" && c ? c.datatype : "");
 
-const buildSchemaFromSourceCols = (sourceCols, jsonColName) => {
+const buildSchemaFromSourceCols = (sourceCols, jsonColName, columnFormat) => {
   const schema = {};
   (Array.isArray(sourceCols) ? sourceCols : []).forEach((c) => {
     const name = (getColName(c) || "").trim();
@@ -15,7 +15,11 @@ const buildSchemaFromSourceCols = (sourceCols, jsonColName) => {
 
     const dtRaw = getColType(c);
     const dt = normalizeType(dtRaw) || "STRING";
-    schema[name] = dt;
+    let format = null;
+    if (Array.isArray(columnFormat) && columnFormat.length > 0 && columnFormat[0][name]) {
+      format = columnFormat[0][name];
+    }
+    schema[name] = format ? `${dt}(${format})` : dt;
   });
   return schema;
 };
@@ -26,14 +30,15 @@ export const getJsonFlattenParams = (t) => {
   return { jsonColumns };
 };
 
-const JsonFlattenOperationFields = ({ transformation, updateTransformation, setTransformationValidity, sourceCols }) => {
+const JsonFlattenOperationFields = ({ transformation, updateTransformation, setTransformationValidity, sourceCols, columnFormat }) => {
+
   const jsonColName = transformation?.source_column?.[0] || "";
   const selectableCols = Array.isArray(sourceCols) ? sourceCols : [];
 
   const writeParamsForJsonColumn = React.useCallback(
     (nextJsonColName) => {
       const key = (nextJsonColName || "").trim();
-      const schema = key ? buildSchemaFromSourceCols(selectableCols, key) : {};
+      const schema = key ? buildSchemaFromSourceCols(selectableCols, key, columnFormat) : {};
 
       const nextParams = key ? { jsonColumns: { [key]: { schema } } } : { jsonColumns: {} };
       updateTransformation(transformation.id, "params", nextParams);
@@ -42,7 +47,7 @@ const JsonFlattenOperationFields = ({ transformation, updateTransformation, setT
         setTransformationValidity(transformation.id, Boolean(key) && Object.keys(schema).length > 0);
       }
     },
-    [selectableCols, setTransformationValidity, transformation.id, updateTransformation]
+    [selectableCols, columnFormat, setTransformationValidity, transformation.id, updateTransformation]
   );
 
   React.useEffect(() => {

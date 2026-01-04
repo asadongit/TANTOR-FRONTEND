@@ -154,7 +154,7 @@ const TransformationItem = memo(({
 
   const renderTransformationFields = () => {
     const { transformation_operation, source_dataframe, target_dataframe } = transformation;
-    const sourceCols = dataframeColumns[source_dataframe] || [];
+    const sourceCols = dataframeColumns[source_dataframe]?.columns || [];
     const targetCols = sourceCols;
 
     const commonProps = {
@@ -290,6 +290,7 @@ const TransformationItem = memo(({
 		return (
 			<JsonFlattenOperationFields
 				{...commonProps}
+				columnFormat={dataframeColumns[transformation.source_dataframe]?.column_format || {}}
 				setTransformationValidity={setTransformationValidity}
 			/>
 		);
@@ -404,7 +405,7 @@ export const TransformationDrawer = ({
 
     previousStates[idx] = JSON.parse(JSON.stringify(dfCols));
 
-    let cols = Array.isArray(dfCols[dfId]) ? [...dfCols[dfId]] : [];
+    let cols = Array.isArray(dfCols[dfId]?.columns) ? [...dfCols[dfId].columns] : [];
 
     switch (t.transformation_operation) {
       case "constantcopy":
@@ -478,7 +479,7 @@ export const TransformationDrawer = ({
 
       case "join":
         if (t.params?.right_dataframe && dfCols[t.params.right_dataframe]) {
-          const rightCols = dfCols[t.params.right_dataframe];
+          const rightCols = dfCols[t.params.right_dataframe].columns;
           const droppedLeft = new Set(t.params.drop_left_dataframe_collist || []);
           const droppedRight = new Set(t.params.drop_right_dataframe_collist || []);
 
@@ -494,7 +495,7 @@ export const TransformationDrawer = ({
         break;
     }
 
-    dfCols[dfId] = cols;
+    dfCols[dfId].columns = cols;
   });
 
   window.transformationReplayHistory = previousStates;
@@ -527,6 +528,7 @@ export const TransformationDrawer = ({
 				return {
 					id: alias,
 					columns: node.data?.columns || [],
+					column_format: node.data?.column_format || {},
 					label: alias,
 					nodeId: node.id
 				};
@@ -542,19 +544,25 @@ export const TransformationDrawer = ({
 
 		const dfCols = {};
 		allDfs.forEach(df => {
-			dfCols[df.id] = Array.isArray(df.columns) ? df.columns : [];
+			dfCols[df.id] = {
+				columns: Array.isArray(df.columns) ? df.columns : [],
+				column_format: df.column_format || {}
+			};
 		});
 
 		if (isEditMode && window.replayedDataframeColumns && hasReplayedRef.current) {
 			Object.keys(window.replayedDataframeColumns).forEach(dfId => {
-				if (window.replayedDataframeColumns[dfId] && window.replayedDataframeColumns[dfId].length > 0) {
-					dfCols[dfId] = [...window.replayedDataframeColumns[dfId]];
+				if (window.replayedDataframeColumns[dfId] && window.replayedDataframeColumns[dfId].columns && window.replayedDataframeColumns[dfId].columns.length > 0) {
+					dfCols[dfId] = {
+						columns: [...window.replayedDataframeColumns[dfId].columns],
+						column_format: window.replayedDataframeColumns[dfId].column_format || {}
+					};
 
 					const sourceNode = window.allNodes.find(node =>
 						(node.type === "source" && (node.data?.alias === dfId || node.id === dfId))
 					);
 					if (sourceNode && typeof sourceNode.data.onDataChange === "function") {
-						sourceNode.data.onDataChange({ columns: [...window.replayedDataframeColumns[dfId]] });
+						sourceNode.data.onDataChange({ columns: [...window.replayedDataframeColumns[dfId].columns] });
 					}
 				}
 			});
@@ -1129,26 +1137,29 @@ export const TransformationDrawer = ({
 
 	const appendColumnToDataframe = useCallback((dataframeId, columnName, datatype) => {
 		setDataframeColumns(prev => {
-			const prevCols = prev[dataframeId] || [];
-			const existingColIndex = prevCols.findIndex(col =>
+			const prevCols = prev[dataframeId] || { columns: [], column_format: {} };
+			const existingColIndex = prevCols.columns.findIndex(col =>
 				(typeof col === "object" ? col.name : col) === columnName
 			);
 
 			let newCols;
 			if (existingColIndex !== -1) {
-				newCols = [...prevCols];
+				newCols = [...prevCols.columns];
 				if (typeof newCols[existingColIndex] === "object") {
 					newCols[existingColIndex] = { ...newCols[existingColIndex], datatype };
 				} else {
 					newCols[existingColIndex] = { name: columnName, datatype };
 				}
 			} else {
-				newCols = [...prevCols, { name: columnName, datatype }];
+				newCols = [...prevCols.columns, { name: columnName, datatype }];
 			}
 
 			return {
 				...prev,
-				[dataframeId]: newCols
+				[dataframeId]: {
+					columns: newCols,
+					column_format: prevCols.column_format
+				}
 			};
 		});
 	}, []);
@@ -1253,33 +1264,36 @@ export const TransformationDrawer = ({
   if (operationType === "restrictcolumns" && restrictedColumns !== null &&
      (restrictType === "select" || restrictType === "drop" || restrictType === "restore")) {
     setDataframeColumns(prev => {
-      const prevCols = prev[actualDfId] || [];
+      const prevCols = prev[actualDfId] || { columns: [], column_format: {} };
       let newCols;
 
       if (restrictType === "restore") {
         // Restore original columns from context
         const { state } = window.transformationContext || {};
         const originalColumns = state?.originalSourceColumns?.[actualDfId];
-        newCols = originalColumns ? [...originalColumns] : prevCols;
+        newCols = originalColumns ? [...originalColumns] : prevCols.columns;
       } else if (restrictType === "select") {
         // Keep only selected columns
-        newCols = prevCols.filter(col => {
+        newCols = prevCols.columns.filter(col => {
           const colName = typeof col === "object" ? col.name : col;
           return restrictedColumns.includes(colName);
         });
       } else if (restrictType === "drop") {
         // Remove selected columns (keep all others)
-        newCols = prevCols.filter(col => {
+        newCols = prevCols.columns.filter(col => {
           const colName = typeof col === "object" ? col.name : col;
           return !restrictedColumns.includes(colName);
         });
       } else {
-        newCols = prevCols;
+        newCols = prevCols.columns;
       }
 
       return {
         ...prev,
-        [actualDfId]: newCols
+        [actualDfId]: {
+          columns: newCols,
+          column_format: prevCols.column_format
+        }
       };
     });
 
@@ -1329,8 +1343,8 @@ export const TransformationDrawer = ({
   if (operationType === "rename" && oldColumnName) {
     // Update local state - replace old column with new one
     setDataframeColumns(prev => {
-      const prevCols = prev[actualDfId] || [];
-      const newCols = prevCols.map(col => {
+      const prevCols = prev[actualDfId] || { columns: [], column_format: {} };
+      const newCols = prevCols.columns.map(col => {
         const colName = typeof col === "object" ? col.name : col;
         if (colName === oldColumnName) {
           return typeof col === "object"
@@ -1341,7 +1355,10 @@ export const TransformationDrawer = ({
       });
       return {
         ...prev,
-        [actualDfId]: newCols
+        [actualDfId]: {
+          columns: newCols,
+          column_format: prevCols.column_format
+        }
       };
     });
 
@@ -1393,15 +1410,15 @@ export const TransformationDrawer = ({
     }
     if (isEditMode && window.replayedDataframeColumns) {
       if (!window.replayedDataframeColumns[dataframeId]) {
-        window.replayedDataframeColumns[dataframeId] = [];
+        window.replayedDataframeColumns[dataframeId] = { columns: [], column_format: {} };
       }
 
-      const existsInReplayed = window.replayedDataframeColumns[dataframeId].some(col =>
+      const existsInReplayed = window.replayedDataframeColumns[dataframeId].columns.some(col =>
         (typeof col === "object" ? col.name : col) === columnName
       );
 
       if (!existsInReplayed) {
-        window.replayedDataframeColumns[dataframeId].push({ name: columnName, datatype: datatype });
+        window.replayedDataframeColumns[dataframeId].columns.push({ name: columnName, datatype: datatype });
       }
     }
   }
@@ -1656,12 +1673,12 @@ useEffect(() => {
 
 				// Force update nodes with new columns
 				if (window.allNodes) {
-					Object.entries(updatedDfCols).forEach(([dfId, columns]) => {
+					Object.entries(updatedDfCols).forEach(([dfId, dfData]) => {
 						const node = window.allNodes.find(n =>
 							n.data?.alias === dfId || n.id === dfId
 						);
 						if (node && typeof node.data.onDataChange === "function") {
-							node.data.onDataChange({ columns: [...columns] });
+							node.data.onDataChange({ columns: [...dfData.columns] });
 						}
 					});
 				}
@@ -1701,7 +1718,10 @@ useEffect(() => {
 
         sources.forEach(node => {
           const alias = node.data?.alias || `unnamed_source_${node.id}`;
-          initialDfCols[alias] = Array.isArray(node.data?.columns) ? [...node.data.columns] : [];
+          initialDfCols[alias] = {
+            columns: Array.isArray(node.data?.columns) ? [...node.data.columns] : [],
+            column_format: node.data?.column_format || {}
+          };
         });
       }
 
@@ -1710,12 +1730,12 @@ useEffect(() => {
       setDataframeColumns(updatedDfCols);
 
       if (window.allNodes) {
-        Object.entries(updatedDfCols).forEach(([dfId, columns]) => {
+        Object.entries(updatedDfCols).forEach(([dfId, dfData]) => {
           const node = window.allNodes.find(n =>
             n.data?.alias === dfId || n.id === dfId
           );
           if (node && typeof node.data.onDataChange === "function") {
-            node.data.onDataChange({ columns: [...columns] });
+            node.data.onDataChange({ columns: [...dfData.columns] });
           }
         });
       }
