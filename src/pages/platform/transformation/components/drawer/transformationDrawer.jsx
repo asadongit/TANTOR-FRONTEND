@@ -14,6 +14,7 @@ import TypecastOperationFields, { getTypecastParams } from "./operations/typecas
 import SortOperationFields, { getSortParams } from "./operations/sort";
 import RankingOperationFields, { getRankingParams } from "./operations/ranking";
 import ExpressionOperationFields, { getExpressionParams, validatePySparkExpression } from "./operations/expression";
+import JsonFlattenOperationFields, { getJsonFlattenParams } from "./operations/jsonFlatten";
 
 const transformationOperations = [
 	{
@@ -66,6 +67,10 @@ const transformationOperations = [
 	{
 		id: "expression",
 		name: "Expression"
+	},
+	{
+		id: "json_flatten",
+		name: "JSON Flatten"
 	}
 ];
 
@@ -281,6 +286,13 @@ const TransformationItem = memo(({
           onAddNewTargetColumn={onAddNewTargetColumn}
           setTransformationValidity={setTransformationValidity}
         />;
+	  case 'json_flatten':
+		return (
+			<JsonFlattenOperationFields
+				{...commonProps}
+				setTransformationValidity={setTransformationValidity}
+			/>
+		);
       default:
         return null;
     }
@@ -815,6 +827,10 @@ export const TransformationDrawer = ({
 			};
 			transformation_operator = "";
 			break;
+		case "json_flatten":
+			params = getJsonFlattenParams({ params: { jsonColumns: {} } });
+			transformation_operator = "";
+			break;
 		}
 
 		return {
@@ -983,11 +999,14 @@ export const TransformationDrawer = ({
 			if (
 				(t.transformation_operation === "arithmetic" && transformationsValidity[t.id] === false) ||
 				(t.transformation_operation === "string" && transformationsValidity[t.id] === false) ||
-				(t.transformation_operation === "expression" && transformationsValidity[t.id] === false)
+				(t.transformation_operation === "expression" && transformationsValidity[t.id] === false) ||
+				(t.transformation_operation === "json_flatten" && transformationsValidity[t.id] === false)
 			) {
 				allValid = false;
 				if (t.transformation_operation === "expression") {
 					invalidReason = "Expression contains potentially unsafe code patterns.";
+				} else if (t.transformation_operation === "json_flatten") {
+					invalidReason = "Please complete JSON Flatten configuration (JSON column, schema fields, and datatypes).";
 				} else {
 					invalidReason = "Please fill all required fields before applying transformations.";
 				}
@@ -1072,6 +1091,9 @@ export const TransformationDrawer = ({
 					break;
 				case 'expression':
 					transformationData.params = getExpressionParams(t);
+					break;
+				case 'json_flatten':
+					transformationData.params = getJsonFlattenParams(t);
 					break;
 				default:
 					transformationData.params = {};
@@ -1575,6 +1597,13 @@ useEffect(() => {
 						datatype: params.datatype || "string"
 					};
 				}
+
+				// NEW: normalize json_flatten params for edit mode
+				if (op.transformation_operation === "json_flatten") {
+					const jsonColumns =
+						params?.jsonColumns && typeof params.jsonColumns === "object" ? params.jsonColumns : {};
+					params = { jsonColumns };
+				}
 				return {
 					...op,
 					id: op.id || `transformation_${idx + 1}`,
@@ -1618,12 +1647,9 @@ useEffect(() => {
 			!hasReplayedRef.current
 		) {
 			try {
-				// Add debugging info
-				console.log('Starting transformation replay with initial columns:', dataframeColumns);
 
 				const updatedDfCols = replayTransformationsForColumns(initialTransformations, dataframeColumns);
 
-				console.log('Columns after replay:', updatedDfCols);
 
 				setDataframeColumns(updatedDfCols);
 				setTransformations(initialTransformations);
@@ -1835,7 +1861,8 @@ useEffect(() => {
 						disabled={!isDataLoaded || !columnsLoaded || transformations.some(t =>
 							(t.transformation_operation === "arithmetic" && transformationsValidity[t.id] === false) ||
 							(t.transformation_operation === "string" && transformationsValidity[t.id] === false) ||
-							(t.transformation_operation === "expression" && transformationsValidity[t.id] === false)
+							(t.transformation_operation === "expression" && transformationsValidity[t.id] === false) ||
+							(t.transformation_operation === "json_flatten" && transformationsValidity[t.id] === false)
 						)}
 					>
 						Apply
