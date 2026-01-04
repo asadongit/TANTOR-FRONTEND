@@ -93,6 +93,16 @@ export const SourceFileType = ({
               >
                 CSV
               </div>
+
+              <div
+                className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${fileType === "JSON" ? "bg-gray-100" : ""}`}
+                onClick={() => {
+                  setFileType("JSON");
+                  setFileTypeDropdownOpen(false);
+                }}
+              >
+                JSON
+              </div>
             </div>
           )}
         </div>
