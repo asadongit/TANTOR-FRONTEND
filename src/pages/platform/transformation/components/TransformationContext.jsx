@@ -615,6 +615,7 @@ export function TransformationProvider({ children }) {
           const sourceKey = sourceData.alias || `source_${sourceId}`;
           const originalColumns = state.originalSourceColumns[sourceId] || [];
 
+
           if (sourceData.sourceType === "file") {
             const fileColumns = sourceData.fileColumns || [];
             const columnMapping = {};
@@ -833,6 +834,36 @@ export function TransformationProvider({ children }) {
             return patchedOp;
           });
           result.transformation = patchedOps;
+        }
+      });
+
+      const aliasToSourceId = {};
+      Object.entries(state.sources).forEach(([id, src]) => {
+        aliasToSourceId[src.alias || `source_${id}`] = id;
+      });
+
+      result.transformation.forEach((op) => {
+        if (op.transformation_operation === 'json_flatten') {
+          const sourceAlias = op.source_dataframe;
+          const sourceId = aliasToSourceId[sourceAlias];
+          if (sourceId) {
+            const originalColumns = state.originalSourceColumns[sourceId] || [];
+            const originalColumnSet = new Set(originalColumns);
+            const jsonColumns = op.params?.jsonColumns || {};
+            Object.keys(jsonColumns).forEach((jsonColKey) => {
+              const schema = jsonColumns[jsonColKey]?.schema || {};
+              const filteredSchema = {};
+              Object.keys(schema).forEach((colName) => {
+                if (originalColumnSet.has(colName)) {
+                  filteredSchema[colName] = schema[colName];
+                }
+              });
+              jsonColumns[jsonColKey].schema = filteredSchema;
+            });
+            if (op.params) {
+              op.params.jsonColumns = jsonColumns;
+            }
+          }
         }
       });
 
