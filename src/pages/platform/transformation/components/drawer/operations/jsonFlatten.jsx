@@ -69,25 +69,13 @@ const JsonFlattenOperationFields = ({ transformation, updateTransformation, setT
     <>
       <div className="mb-3">
         <label className="block text-xs text-gray-700 mb-1">JSON Column</label>
-        <select
+        <input
+          type="text"
           className="w-full p-2 text-black text-xs border border-gray-300 rounded bg-white"
           value={jsonColName}
           onChange={(e) => handleJsonColumnChange(e.target.value)}
-        >
-          <option value="">Select JSON column</option>
-          {selectableCols.map((c) => {
-            const name = getColName(c);
-            if (!name) return null;
-            return (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            );
-          })}
-        </select>
-        <p className="mt-1 text-[11px] text-gray-600">
-          Selecting a JSON column will auto-map all source columns (excluding the JSON column) into the flatten schema.
-        </p>
+          placeholder="Enter JSON column name"
+        />
       </div>
     </>
   );
