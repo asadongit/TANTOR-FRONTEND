@@ -1,6 +1,6 @@
 import { Handle, Position } from '@xyflow/react';
 import { FilePlus } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMetadata } from "../../MetadataContext";
 import { useAuth } from '../../../../../../context/AuthContext';
 import axios from "axios";
@@ -10,17 +10,18 @@ export default function Define({ id }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const { decodedToken, token, hostnameV1, hostnameV2 } = useAuth();
-  const [isAutoFilled, setIsAutoFilled] = useState(false);
+  const [baseName, setBaseName] = useState("");
+  const prevSourceInfoRef = useRef(null);
 
-  const fetchUniqueName = async (baseName) => {
+  const fetchUniqueName = async (baseNameToUse) => {
     try {
       const response = await axios.get(`${hostnameV2}/autonamePrefill`, {
-        params: { name: baseName, type: 'metadata' },
+        params: { name: baseNameToUse, type: 'metadata' },
         headers: { Authorization: `Bearer ${token}` },
       });
       const uniqueName = response.data.name;
       setName(uniqueName);
-      updateMetadataNodeData(id, { name: uniqueName });
+      updateMetadataNodeData(id, { name: uniqueName, baseName: baseNameToUse });
     } catch (error) {
       console.error("Error fetching unique metadata name:", error);
     }
@@ -28,35 +29,48 @@ export default function Define({ id }) {
 
   useEffect(() => {
     const nodeData = metadataData[id] || {};
-    if (!nodeData.name) {
-      const sourceNode = Object.values(metadataData).find((node) => node.type === "source");
-      if (sourceNode && sourceNode.connection && sourceNode.schema) {
-        const autoName = `${sourceNode.connection}_${sourceNode.schema}`;
-        setIsAutoFilled(true);
-        fetchUniqueName(autoName);
+    const sourceNode = Object.values(metadataData).find((node) => node.type === "source");
+    
+    const currentSourceInfo = sourceNode && sourceNode.connection && sourceNode.schema
+      ? `${sourceNode.connection}_${sourceNode.schema}`
+      : null;
+
+    if (currentSourceInfo) {
+      if (prevSourceInfoRef.current !== currentSourceInfo) {
+        prevSourceInfoRef.current = currentSourceInfo;
+        setBaseName(currentSourceInfo);
+        fetchUniqueName(currentSourceInfo);
+        return;
       }
-    } else {
-      setName(nodeData.name);
-      setDescription(nodeData.description || "");
     }
-  }, [metadataData, id, updateMetadataNodeData]);
+
+    if (nodeData.name && !name) {
+      setName(nodeData.name);
+      setBaseName(nodeData.baseName || nodeData.name);
+    }
+    
+    if (nodeData.description && !description) {
+      setDescription(nodeData.description);
+    }
+  }, [metadataData, id]);
 
   useEffect(() => {
     const nodeData = metadataData[id] || {};
-    if (nodeData.name !== name || nodeData.description !== description) {
-      const updatedData = { type: "define", name, description };
-      updateMetadataNodeData(id, updatedData);
+    if (nodeData.description !== description) {
+      updateMetadataNodeData(id, { description });
     }
-  }, [id, name, description, updateMetadataNodeData]);
+  }, [description, id, updateMetadataNodeData]);
 
   const handleNameChange = (e) => {
     const newName = e.target.value;
     setName(newName);
-    setIsAutoFilled(false);
+    setBaseName(newName);
   };
 
   const handleBlur = () => {
-    fetchUniqueName(name);
+    if (baseName && baseName.trim()) {
+      fetchUniqueName(baseName);
+    }
   };
 
   return (

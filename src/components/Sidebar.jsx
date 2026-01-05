@@ -24,6 +24,20 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
 } from '@heroicons/react/24/outline';
+import { 
+  LayoutDashboard,
+  Network,
+  Database,
+  FolderKanban,
+  Box,
+  Sparkles,
+  GitBranch,
+  Store,
+  Activity,
+  Users,
+  Moon,
+  Workflow
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
@@ -161,7 +175,41 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     })
     .filter(route => route !== null);
 
-  const currentRoutes = currentActiveSection === 'platform' ? platformRoutes : dataGovernanceRoutes;
+  const AI_PREFIX = '/ai';
+
+  const aiRoutes = [
+    { name: 'Dashboard', icon: LayoutDashboard, path: `/dashboard` },
+    {
+      name: 'Hub',
+      icon: Network,
+      path: `${AI_PREFIX}/hub/data`,
+      subItems: [
+        { name: 'Data', path: `${AI_PREFIX}/hub/data` },
+        { name: 'Projects', path: `${AI_PREFIX}/hub/projects` },
+        { name: 'Models', path: `${AI_PREFIX}/hub/models` },
+      ]
+    },
+    { name: 'AI Playground', icon: Sparkles, path: `${AI_PREFIX}/playground` },
+    { name: 'Orchestration', icon: Workflow, path: `${AI_PREFIX}/orchestration`},
+    { name: 'Agent Mesh', icon: GitBranch, path: `${AI_PREFIX}/agent-mesh` },
+    { name: 'Marketplace', icon: Store, path: `${AI_PREFIX}/marketplace` },
+    { name: 'Observability', icon: Activity, path: `${AI_PREFIX}/observability` },
+    { type: 'divider' },
+    { name: 'Collaboration', icon: Users, path: `${AI_PREFIX}/collaboration` },
+    { name: 'Neo Mode', icon: Moon, path: `${AI_PREFIX}/neo-mode` },
+  ];
+
+  const currentRoutes = 
+    currentActiveSection === 'platform' ? platformRoutes :
+    currentActiveSection === 'ai' ? aiRoutes :
+    dataGovernanceRoutes;
+
+  const renderIcon = (IconComponent) => {
+    if (typeof IconComponent === 'function') {
+      return <IconComponent className="h-5 w-5 flex-shrink-0" />;
+    }
+    return <IconComponent className="h-5 w-5 flex-shrink-0" />;
+  };
 
   const renderNavItem = (route) => {
     if (route.type === 'divider') {
@@ -183,7 +231,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
             }`
           }
         >
-          <route.icon className="h-5 w-5 flex-shrink-0" />
+          {renderIcon(route.icon)}
           {!isCollapsed && (
             <>
               <span className="truncate flex-grow">{route.name}</span>

@@ -131,7 +131,7 @@ const Source = ({ id, data, selected }) => {
           />
         </div>
 
-        {filteredTables.length > 0 ? (
+        {selectedConnection && selectedSchema ? (
           <div>
             <div className="my-2">
               <div className="text-sm font-medium text-black mb-2">Data Set</div>
@@ -143,48 +143,50 @@ const Source = ({ id, data, selected }) => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {isLoadingTables ? (
-                <div>Loading tables...</div>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="select-all"
-                        className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                        checked={areAllSelected}
-                        onChange={(e) => handleSelectAll(e.target.checked)}
-                      />
-                      <label htmlFor="select-all" className="text-sm font-semibold text-black">
-                        Select all
-                      </label>
-                    </div>
-                  </div>
-                  {filteredTables.map((table, idx) => (
-                    <div key={idx} className="flex items-center justify-between py-1">
-                      <div className="flex items-center space-x-3">
+            {filteredTables.length > 0 ? (
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {isLoadingTables ? (
+                  <div>Loading tables...</div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
                         <input
                           type="checkbox"
-                          id={`table-${idx}`}
-                          checked={selectedItems.includes(table.source_table)}
-                          onChange={(e) => handleItemSelection(e.target.checked, table.source_table)}
+                          id="select-all"
                           className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          checked={areAllSelected}
+                          onChange={(e) => handleSelectAll(e.target.checked)}
                         />
-                        <label htmlFor={`table-${idx}`} className="text-sm font-semibold text-black">
-                          {table.source_table}
+                        <label htmlFor="select-all" className="text-sm font-semibold text-black">
+                          Select all
                         </label>
                       </div>
                     </div>
-                  ))}
-                </>
-              )}
-            </div>
+                    {filteredTables.map((table, idx) => (
+                      <div key={idx} className="flex items-center justify-between py-1">
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            id={`table-${idx}`}
+                            checked={selectedItems.includes(table.source_table)}
+                            onChange={(e) => handleItemSelection(e.target.checked, table.source_table)}
+                            className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          />
+                          <label htmlFor={`table-${idx}`} className="text-sm font-semibold text-black">
+                            {table.source_table}
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500">No datasets found.</div>
+            )}
           </div>
-        ) : (
-          <div className="text-sm text-gray-500">No datasets found.</div>
-        )}
+        ) : null}
       </div>
     </div>
   );

@@ -1,8 +1,14 @@
-import React, { useCallback, useState, useRef, useEffect } from "react";
-import ReactFlow, { Background, Controls, useReactFlow } from "reactflow";
+import React, { useCallback, useState, useEffect } from "react";
+import {
+  ReactFlow,
+  Controls,
+  applyNodeChanges,
+  applyEdgeChanges,
+  addEdge as addXyflowEdge,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 import { useLocation } from "react-router-dom";
 import { useWorkflow } from "./context/WorkflowContext";
-import "reactflow/dist/style.css";
 import { DefineNode } from "./nodes/DefineNode";
 import { SourceNode } from "./nodes/SourceNode";
 import { TargetNode } from "./nodes/TargetNode";
@@ -10,10 +16,7 @@ import { SchedulerNode } from "./nodes/SchedulerNode";
 import { DefineNode as MetadataDefineNode } from "./nodes/metadataNodes/DefineNode";
 import { SourceNode as MetadataSourceNode } from "./nodes/metadataNodes/SourceNode";
 import { TargetNode as MetadataTargetNode } from "./nodes/metadataNodes/TargetNode";
-import { DefineNode as PurgeDefineNode } from "./nodes/purgeNodes/DefineNode";
-import { SourceNode as PurgeSourceNode } from "./nodes/purgeNodes/SourceNode";
-import { TargetNode as PurgeTargetNode } from "./nodes/purgeNodes/TargetNode";
-import { SchedulerNode as PurgeSchedulerNode } from "./nodes/purgeNodes/SchedulerNode";
+
 const nodeTypes = {
   define: DefineNode,
   source: SourceNode,
@@ -22,10 +25,6 @@ const nodeTypes = {
   metadataDefine: MetadataDefineNode,
   metadataSource: MetadataSourceNode,
   metadataTarget: MetadataTargetNode,
-  purgeDefine: PurgeDefineNode,
-  purgeSource: PurgeSourceNode,
-  purgeTarget: PurgeTargetNode,
-  purgeSchedule: PurgeSchedulerNode,
 };
 
 const Canvas = () => {
@@ -38,10 +37,10 @@ const Canvas = () => {
     setNodes,
     edges,
     setEdges,
-    addEdge,
+    addEdge: addWorkflowEdge, // alias to avoid name collision
     addPipeline,
-    onNodesChange,
-    onEdgesChange,
+    onNodesChange: _onNodesChangeFromContext, // keep but don't rely on reactflow impl
+    onEdgesChange: _onEdgesChangeFromContext,
     reactFlowWrapper,
     addNode,
     reactFlowInstance,
@@ -50,6 +49,17 @@ const Canvas = () => {
     setEditMode,
   } = useWorkflow();
 
+  // Use XYFlow change helpers (same pattern as MigrationCanvas)
+  const onNodesChange = useCallback(
+    (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
+    [setNodes]
+  );
+
+  const onEdgesChange = useCallback(
+    (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)),
+    [setEdges]
+  );
+
   // Initialize canvas with nodeJson data when in edit mode
   useEffect(() => {
     if (nodeJson) {
@@ -57,21 +67,17 @@ const Canvas = () => {
       try {
         const parsed = typeof nodeJson === "string" ? JSON.parse(nodeJson) : nodeJson;
 
-        // If nodeJson contains both nodes and edges
         if (parsed.nodes && parsed.edges) {
-
-          // If there's pipelineData, use it to enhance the node data
           if (parsed.pipelineData) {
-            const enhancedNodes = parsed.nodes.map(node => ({
+            const enhancedNodes = parsed.nodes.map((node) => ({
               ...node,
               data: {
                 ...node.data,
-                // Merge the pipeline data into each node for better pre-population
                 define: parsed.pipelineData.define || node.data?.define,
                 source: parsed.pipelineData.source || node.data?.source,
                 target: parsed.pipelineData.target || node.data?.target,
                 scheduler: parsed.pipelineData.scheduler || node.data?.scheduler,
-              }
+              },
             }));
             setNodes(enhancedNodes);
           } else {
@@ -85,7 +91,6 @@ const Canvas = () => {
           setNodes(parsed);
         }
 
-        // Fit view after nodes are loaded
         setTimeout(() => {
           fitView({ padding: 0.2, duration: 800 });
         }, 100);
@@ -97,19 +102,17 @@ const Canvas = () => {
 
   const onDrop = useCallback(
     (event) => {
-      if (editMode) return; // Disable dropping in edit mode
+      if (editMode) return;
 
       event.preventDefault();
-
       const nodeData = event.dataTransfer.getData("application/reactflow");
       if (!nodeData) return;
 
       try {
         const data = JSON.parse(nodeData);
         const { category, type, isPipeline } = data;
-        isPipeline
-          ? addPipeline(category)
-          : addNode(type.toLowerCase(), category);
+
+        isPipeline ? addPipeline(category) : addNode(type.toLowerCase(), category);
 
         setTimeout(() => {
           fitView({ padding: 0.2, duration: 800 });
@@ -118,7 +121,7 @@ const Canvas = () => {
         console.error("Error parsing dropped node data:", error);
       }
     },
-    [addPipeline, fitView, reactFlowInstance, reactFlowWrapper, setNodes, editMode]
+    [addPipeline, addNode, fitView, editMode]
   );
 
   const onDragOver = useCallback((event) => {
@@ -129,9 +132,7 @@ const Canvas = () => {
   const onNodeDelete = useCallback(
     (nodeId) => {
       setNodes((nds) => nds.filter((node) => node.id !== nodeId));
-      setEdges((eds) =>
-        eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId)
-      );
+      setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
     },
     [setNodes, setEdges]
   );
@@ -143,59 +144,51 @@ const Canvas = () => {
     };
   }, [onNodeDelete]);
 
+  const onConnect = useCallback(
+    (connection) => {
+      // keep your existing store addEdge behavior, but use XYFlow helper for edge object creation
+      setEdges((prevEdges) => addWorkflowEdge(addXyflowEdge(connection, prevEdges), prevEdges));
 
-const onConnect = useCallback(
-  (connection) => {
-    setEdges((prevEdges) => addEdge(connection, prevEdges));
+      setNodes((prevNodes) => {
+        const sourceNode = prevNodes.find((n) => n.id === connection.source);
+        const targetNode = prevNodes.find((n) => n.id === connection.target);
+        if (!sourceNode || !targetNode) return prevNodes;
 
-    setNodes((prevNodes) => {
-      const sourceNode = prevNodes.find((n) => n.id === connection.source);
-      const targetNode = prevNodes.find((n) => n.id === connection.target);
-      if (!sourceNode || !targetNode) {
-        return prevNodes;
-      }
+        const sourceType = sourceNode.type;
+        const targetType = targetNode.type;
 
-      const sourceType = sourceNode.type;
-      const targetType = targetNode.type;
-      const sourceData = sourceNode.data[sourceType]|| sourceNode;
-      const targetData =  targetNode.data[targetType]|| targetNode;
+        const sourceData = sourceNode.data?.[sourceType] || sourceNode;
+        const targetData = targetNode.data?.[targetType] || targetNode;
 
+        if (!sourceData || !targetData) return prevNodes;
 
-      if (!sourceData || !targetData) {
-        return prevNodes;
-      }
+        return prevNodes.map((node) => {
+          if (node.id === connection.target) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                [sourceType]: [...(node.data?.[sourceType] || []), sourceData],
+              },
+            };
+          }
 
-      const updatedNodes = prevNodes.map((node) => {
-        if (node.id === connection.target) {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              [sourceType]: [...(node.data[sourceType] || []), sourceData],
-            },
-          };
-        }
+          if (node.id === connection.source) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                [targetType]: [...(node.data?.[targetType] || []), targetData],
+              },
+            };
+          }
 
-        if (node.id === connection.source) {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              [targetType]: [...(node.data[targetType] || []), targetData],
-            },
-          };
-        }
-
-        return node;
+          return node;
+        });
       });
-
-      return updatedNodes;
-    });
-  },
-  [setNodes, setEdges]
-);
-
-
+    },
+    [setNodes, setEdges, addWorkflowEdge]
+  );
 
   return (
     <div className="w-full h-full" ref={reactFlowWrapper}>
@@ -209,6 +202,7 @@ const onConnect = useCallback(
           </div>
         </div>
       )}
+
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -217,15 +211,12 @@ const onConnect = useCallback(
         onConnect={onConnect}
         onDragOver={onDragOver}
         onDrop={onDrop}
-        // onEdgeDoubleClick={handleEdgeDoubleClick}
         nodeTypes={nodeTypes}
         fitView
         selectionOnDrag
-        // isValidConnection={isValidConnection}
         elementsSelectable={isSelectable}
-        // nodeDragThreshold={10}
-
         className="bg-gray-50"
+        style={{ width: "100%", height: "100%" }}
       >
         <Controls className="fill-white stroke-black" />
       </ReactFlow>
