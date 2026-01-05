@@ -185,11 +185,12 @@ export const JoinsOperationFields = ({
   useEffect(() => {
     if (
       transformation.source_dataframe &&
-      dataframeColumns[transformation.source_dataframe]
+      dataframeColumns[transformation.source_dataframe] &&
+      dataframeColumns[transformation.source_dataframe].columns
     ) {
       const sourceColumns = dataframeColumns[
         transformation.source_dataframe
-      ].map((col) =>
+      ].columns.map((col) =>
         typeof col === "object" && col !== null
           ? col
           : { name: col, datatype: "string" }
@@ -198,7 +199,6 @@ export const JoinsOperationFields = ({
       setOriginalLeftColumns(sourceColumns);
       setFilteredLeftColumns(sourceColumns);
 
-      // Only set if not already captured for this dataframe
       setOriginalSourceColumnsForDropdown((prev) => {
         if (!prev[transformation.source_dataframe]) {
           return {
@@ -217,11 +217,12 @@ export const JoinsOperationFields = ({
   useEffect(() => {
     if (
       transformation.params.right_dataframe &&
-      dataframeColumns[transformation.params.right_dataframe]
+      dataframeColumns[transformation.params.right_dataframe] &&
+      dataframeColumns[transformation.params.right_dataframe].columns
     ) {
       const rightColumns = dataframeColumns[
         transformation.params.right_dataframe
-      ].map((col) =>
+      ].columns.map((col) =>
         typeof col === "object" && col !== null
           ? col
           : { name: col, datatype: "string" }
@@ -358,8 +359,8 @@ export const JoinsOperationFields = ({
   };
 
   const getColumnOptions = (dfId) => {
-    if (!dfId || !dataframeColumns[dfId]) return [];
-    return dataframeColumns[dfId].map((col) => {
+    if (!dfId || !dataframeColumns[dfId] || !dataframeColumns[dfId].columns) return [];
+    return dataframeColumns[dfId].columns.map((col) => {
       if (typeof col === "object" && col !== null) {
         return {
           value: col.name,

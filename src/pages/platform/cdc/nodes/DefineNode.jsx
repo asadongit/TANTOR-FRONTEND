@@ -29,8 +29,8 @@ const { data: CDCData=[], isLoading: isCDCLoading, error: CDCError } = useCDCDat
 
 useEffect(() => {
   const cdcAutoNames = CDCData.map(item => item.cdc_auto_name);
-  const sourceData = isPipelineNode 
-    ? pipelines[ID]?.data?.source 
+  const sourceData = isPipelineNode
+    ? pipelines[ID]?.data?.source
     : data?.source;
 
   const firstSource = sourceData
@@ -66,72 +66,60 @@ useEffect(() => {
   updateData(ID, isPipelineNode, "define", nodeData);
 
 }, [
-  pipelines[ID]?.data?.define?.name, 
-  pipelines[ID]?.data?.source, 
-  data?.source, 
-  isPipelineNode, 
-  nodeData.name, 
+  pipelines[ID]?.data?.define?.name,
+  pipelines[ID]?.data?.source,
+  data?.source,
+  isPipelineNode,
+  nodeData.name,
 ]);
 
-  
+
 
 
   return (
-    <div
-      className={`bg-white rounded-lg p-3 pt-2 shadow-md border-2 ${
-        selected ? "border-[#8E77BB]" : "border-gray-300"
-      } w-fit min-w-[18vw] max-w-[90vw] relative group grid grid-cols-[repeat(auto-fit,minmax(min-content,1fr))]`}
-    >
-      <div className="flex justify-between items-center mb-2">
-        <div className="flex items-center gap-1">
+    <div className="bg-white text-black rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[300px] max-w-[380px] relative group">
+      <div className="flex justify-between items-center mb-3">
+        <div className="flex items-center space-x-3">
           <iconify-icon
             icon="material-symbols-light:contract-outline"
             style={{ color: "#8e78b7" }}
-            width="24"
-            height="24"
+            width="22"
+            height="22"
           ></iconify-icon>
-
-          <h3 className="text-black font-medium">Define CDC</h3>
+          <h3 className="text-black font-medium">Define</h3>
         </div>
 
         {!isPipelineNode && (
-          <div className="flex space-x-2">
-            <button className="p-1">
-              <Minus className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-            </button>
-            <button onClick={() => window.deleteNode?.(id)} className="p-1">
-              <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-            </button>
-          </div>
+          <button onClick={() => window.deleteNode?.(id)} className="p-1">
+            <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+          </button>
         )}
       </div>
 
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Right} style={{ width: 10, height: 10 }} />
 
-      <div>
-        <label className="text-xs font-semibold text-black mb-0.5 block">
-          Name
+      <div className="mb-3 w-full">
+        <label className="block text-sm font-semibold text-gray-700 mb-1">
+          Name<span className="text-red-500">*</span>
         </label>
         <input
+          className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
           type="text"
           value={nodeData.name}
-          placeholder={`${data.category} Name`}
+          placeholder="Enter CDC name"
           onChange={(e) => handleInputChange(e, "name")}
-          // onBlur={() => handleBlur("name")}
-          className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
         />
       </div>
 
-      <div className="mt-2">
-        <label className="text-xs font-semibold text-black mb-0.5 block">
+      <div className="mb-1 w-full">
+        <label className="block text-sm font-semibold text-gray-700 mb-1">
           Description
         </label>
         <textarea
+          className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm resize-y min-h-[48px] focus:outline-none focus:ring-2 focus:ring-purple-300"
           value={nodeData.description}
-          placeholder="Enter description..."
+          placeholder="Enter description"
           onChange={(e) => handleInputChange(e, "description")}
-          // onBlur={() => handleBlur("description")}
-          className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
         />
       </div>
     </div>

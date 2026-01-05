@@ -1,5 +1,6 @@
 import PlatformDashboard from './platform/Dashboard';
 import DataGovernanceDashboard from './datagovernance/Dashboard';
+import AIDashboard from './AI/dashboard';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 
@@ -55,6 +56,8 @@ const Dashboard = ({ activeSection, setActiveSection }) => {
         <PlatformDashboard />
       ) : activeSection === 'datagovernance' ? (
         <DataGovernanceDashboard />
+      ) : activeSection === 'ai' ? (
+        <AIDashboard />
       ) : null}
     </div>
   );

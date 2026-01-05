@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useConnections, useSchemas } from '../../../../cdc/hooks/DataFetch';
 import { useMetadata } from '../../MetadataContext';
 import SelectWithSearch from '../../shared/SelectWithSearch';
+import { toast } from 'react-hot-toast';
 
 const Target = ({ id }) => {
   const { metadataData, updateMetadataNodeData } = useMetadata();
@@ -72,7 +73,32 @@ const Target = ({ id }) => {
   };
 
   const handleSettingsValueChange = (event) => {
-    setSettingsValue(event.target.value);
+    const newValue = event.target.value;
+    if (newValue.length > 8) {
+      toast.error("Prefix/Suffix length cannot exceed 8 characters.");
+      return;
+    }
+    if (settings === 'Prefix' || settings === 'Suffix') {
+      if (/^\d/.test(newValue)) {
+        const corrected = 'T' + newValue.substring(1);
+        setSettingsValue(corrected);
+        toast.error("Prefix cannot start with a number. Changed first character to 'T'.");
+        return;
+      }
+      if (/^\s/.test(newValue)) {
+        toast.error("Prefix/Suffix cannot start with spaces.");
+        return;
+      }
+      if (/^[^a-zA-Z0-9_]/.test(newValue)) {
+        toast.error("Prefix/Suffix cannot start with special characters.");
+        return;
+      }
+      if (/[^a-zA-Z0-9_]/.test(newValue)) {
+        toast.error("Prefix/Suffix cannot contain special characters.");
+        return;
+      }
+    }
+    setSettingsValue(newValue);
   };
 
   return (
@@ -137,13 +163,14 @@ const Target = ({ id }) => {
 
         {settings !== 'As is' && (
           <div>
-            <label className="text-xs font-medium text-black mb-1 block">Value</label>
+            <label className="text-xs font-medium text-black mb-2 block">Value <span className='text-gray-500'>(Max Length 8 Characters)</span> </label>
             <input
               type="text"
               className="w-full p-1 text-sm bg-white rounded border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-300"
               value={settingsValue}
               onChange={handleSettingsValueChange}
               placeholder="Enter value"
+              maxLength="8"
             />
           </div>
         )}
