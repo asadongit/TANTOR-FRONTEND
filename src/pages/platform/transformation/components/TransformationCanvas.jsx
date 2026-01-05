@@ -1294,7 +1294,7 @@ function TransformationCanvasContent() {
   );
 
   return (
-    <div style={{ width: "100%", height: "100vh" }} className="relative">
+    <div style={{ width: "100%", height: "90vh" }} className="relative">
       <ReactFlow
         nodes={nodes}
         edges={edges}

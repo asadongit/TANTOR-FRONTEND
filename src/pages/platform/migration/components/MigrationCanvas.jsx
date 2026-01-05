@@ -506,7 +506,7 @@ function MigrationCanvasInner() {
 
   return (
     <div>
-      <div style={{ width: '100vw', height: '100vh' }} ref={reactFlowWrapper}>
+      <div style={{ width: '100vw', height: '90vh' }} ref={reactFlowWrapper}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
