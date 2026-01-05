@@ -6,183 +6,107 @@ import {
   PanelLeftOpen,
   Layers,
   Plus,
-  ChevronDown
+  ArrowRightLeft,
 } from "lucide-react";
 import { useWorkflow } from "./context/WorkflowContext";
 
 export function CDCSidebar({ initialCanvasType }) {
-   const { addPipeline, addNode, setNodes, setPipelines, editMode } = useWorkflow();
-   const [collapsed, setCollapsed] = useState(false);
-   const [isHovering, setIsHovering] = useState(null);
-   const hasRun = useRef(false);
-   const [canvasType, setCanvasType] = useState(initialCanvasType || "cdc");
-   const [dropdownOpen, setDropdownOpen] = useState(false);
-   const dropdownRef = useRef(null);
- 
-   const icons = {
-     migration: Network,
-     cdc: Workflow,
-     metadata: Workflow
-   };
- 
-   const nodesByType = {
-     cdc: [
-       {
-         type: "Define",
-         label: "Define",
-         iconType: "iconify",
-         icon: "material-symbols:contract-outline",
-         color: "purple",
-       },
-       {
-         type: "source",
-         label: "Source",
-         iconType: "iconify",
-         icon: "material-symbols:analytics-outline",
-         color: "purple",
-       },
-       {
-         type: "target",
-         label: "Target",
-         iconType: "iconify",
-         icon: "material-symbols:ads-click",
-         color: "purple",
-       },
-       {
-         type: "schedule",
-         label: "Schedule",
-         iconType: "iconify",
-         icon: "material-symbols:alarm-outline",
-         color: "purple",
-       }
-     ],
-     migration: [
-       {
-         type: "Define",
-         label: "Define",
-         iconType: "iconify",
-         icon: "material-symbols:contract-outline",
-         color: "purple",
-       },
-       {
-         type: "source",
-         label: "Source",
-         iconType: "iconify",
-         icon: "material-symbols:analytics-outline",
-         color: "purple",
-       },
-       {
-         type: "target",
-         label: "Target",
-         iconType: "iconify",
-         icon: "material-symbols:ads-click",
-         color: "purple",
-       },
-       {
-         type: "schedule",
-         label: "Schedule",
-         iconType: "iconify",
-         icon: "material-symbols:alarm-outline",
-         color: "purple",
-       }
-     ],
-     metadata: [
-       {
-         type: "Define",
-         label: "Define",
-         iconType: "iconify",
-         icon: "material-symbols:contract-outline",
-         color: "purple",
-       },
-       {
-         type: "source",
-         label: "Source",
-         iconType: "iconify",
-         icon: "material-symbols:analytics-outline",
-         color: "purple",
-       },
-       {
-         type: "target",
-         label: "Target",
-         iconType: "iconify",
-         icon: "material-symbols:ads-click",
-         color: "purple",
-       }
-     ]
-   };
- 
-   const nodes = nodesByType[canvasType] || nodesByType.cdc;
- 
-   const getCanvasOptions = () => {
-     const options = [];
-     
-     if (canvasType === "cdc") {
-       options.push({ value: "cdc", label: "CDC" });
-     } else if (canvasType === "migration") {
-       options.push({ value: "migration", label: "Migration" });
-     }
-     
-     if (canvasType !== "metadata") {
-       options.push({ value: "metadata", label: "Metadata" });
-     } else {
-       if (initialCanvasType === "cdc") {
-         options.push({ value: "cdc", label: "CDC" });
-       } else if (initialCanvasType === "migration") {
-         options.push({ value: "migration", label: "Migration" });
-       }
-     }
-     
-     return options;
-   };
- 
-   const canvasOptions = getCanvasOptions();
-   const IconComponent = icons[canvasType] || Workflow;
- 
-   useEffect(() => {
-     if (!hasRun.current && canvasType) {
-       setNodes([])
-       setPipelines({})
-       addPipeline(canvasType);
-       hasRun.current = true;
-     }
-   }, [canvasType, addPipeline]);
- 
-   useEffect(() => {
-     if (initialCanvasType && initialCanvasType !== canvasType) {
-       setCanvasType(initialCanvasType);
-     }
-   }, [initialCanvasType]);
+  const { addPipeline, addNode, setNodes, setPipelines, editMode } = useWorkflow();
+  const [collapsed, setCollapsed] = useState(false);
+  const [isHovering, setIsHovering] = useState(null);
+  const hasRun = useRef(false);
+  const [canvasType, setCanvasType] = useState(initialCanvasType || "cdc");
 
-   useEffect(() => {
-     function handleClickOutside(event) {
-       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-         setDropdownOpen(false);
-       }
-     }
-     
-     document.addEventListener("mousedown", handleClickOutside);
-     return () => {
-       document.removeEventListener("mousedown", handleClickOutside);
-     };
-   }, [dropdownRef]);
- 
-   const handleCanvasTypeChange = (newType) => {
-     setCanvasType(newType);
-     hasRun.current = false; 
-     setDropdownOpen(false);
-   };
- 
-   const handleNodeDrag = (nodeType) => (e) => {
-     e.dataTransfer.setData(
-       "application/reactflow",
-       JSON.stringify({
-         type: nodeType,
-         category: canvasType || "default",
-         isPipeline: false,
-       })
-     );
-     e.dataTransfer.effectAllowed = "move";
-   };
+  const handleModeToggle = () => {
+    const newType = canvasType === "cdc" ? "metadata" : "cdc";
+    setCanvasType(newType);
+    hasRun.current = false;
+  };
+
+  const cdcNodes = [
+    {
+      type: "define",
+      label: "Define",
+      iconType: "iconify",
+      icon: "material-symbols:contract-outline",
+      color: "purple",
+    },
+    {
+      type: "source",
+      label: "Source",
+      iconType: "iconify",
+      icon: "material-symbols:analytics-outline",
+      color: "purple",
+    },
+    {
+      type: "target",
+      label: "Target",
+      iconType: "iconify",
+      icon: "material-symbols:ads-click",
+      color: "purple",
+    },
+    {
+      type: "schedule",
+      label: "Schedule",
+      iconType: "iconify",
+      icon: "material-symbols:alarm-outline",
+      color: "purple",
+    }
+  ];
+
+  const metadataNodes = [
+    {
+      type: "metadataDefine",
+      label: "Define",
+      iconType: "iconify",
+      icon: "material-symbols:contract-outline",
+      color: "purple",
+    },
+    {
+      type: "metadataSource",
+      label: "Source",
+      iconType: "iconify",
+      icon: "material-symbols:analytics-outline",
+      color: "purple",
+    },
+    {
+      type: "metadataTarget",
+      label: "Target",
+      iconType: "iconify",
+      icon: "material-symbols:ads-click",
+      color: "purple",
+    }
+  ];
+
+  const nodes = canvasType === "metadata" ? metadataNodes : cdcNodes;
+
+  useEffect(() => {
+    if (!hasRun.current && canvasType) {
+      setNodes([]);
+      setPipelines({});
+      addPipeline(canvasType);
+      hasRun.current = true;
+    }
+  }, [canvasType, addPipeline]);
+
+  useEffect(() => {
+    if (initialCanvasType && initialCanvasType !== canvasType) {
+      setCanvasType(initialCanvasType);
+    }
+  }, [initialCanvasType]);
+
+  const handleNodeDrag = (nodeType) => (e) => {
+    e.dataTransfer.setData(
+      "application/reactflow",
+      JSON.stringify({
+        type: nodeType,
+        category: canvasType || "default",
+        isPipeline: false,
+      })
+    );
+    e.dataTransfer.effectAllowed = "move";
+  };
+
   return (
     <aside
       className={`
@@ -198,48 +122,42 @@ export function CDCSidebar({ initialCanvasType }) {
       shadow-lg
       rounded-lg
       bg-white
-      ${collapsed ? "w-20" : "w-[225px]"} 
+      ${collapsed ? "w-20" : "w-[225px]"}
     `}
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
         {!collapsed && (
-          <div className="flex items-center space-x-3 relative" ref={dropdownRef}>
-            <div 
-              className="flex items-center space-x-2 cursor-pointer" 
-              onClick={() => setDropdownOpen(!dropdownOpen)}
-            >
-              <IconComponent className="w-5 h-5 text-purple-600" />
-              <span className="text-gray-800 text-lg font-bold">
-                {canvasType?.toUpperCase() || "UNKNOWN"}
-              </span>
-              <ChevronDown className="w-4 h-4 text-gray-600" />
-            </div>
-
-            {dropdownOpen && canvasOptions.length > 0 && (
-              <div className="absolute left-0 top-10 w-full bg-white border border-gray-300 rounded-md shadow-lg z-50">
-                {canvasOptions.map((option) => (
-                  <div 
-                    key={option.value}
-                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-800"
-                    onClick={() => handleCanvasTypeChange(option.value)}
-                  >
-                    {option.label}
-                  </div>
-                ))}
-              </div>
+          <div className="flex items-center space-x-3">
+            <Workflow className="w-5 h-5 text-purple-600" />
+            <span className="text-gray-800 text-md font-bold">
+              {canvasType === "metadata" ? "METADATA" : "CDC"}
+            </span>
+            {editMode && (
+              <span className="text-sm font-medium text-gray-500">(Edit Mode)</span>
             )}
           </div>
         )}
-        <button
-          className="p-1 rounded-md hover:bg-gray-200 transition"
-          onClick={() => setCollapsed(!collapsed)}
-        >
-          {collapsed ? (
-            <PanelLeftOpen className="w-5 h-5 text-gray-600" />
-          ) : (
-            <PanelLeftClose className="w-5 h-5 text-gray-600" />
+        <div className="flex items-center space-x-2">
+          {!editMode && (
+            <button
+              className="p-1 rounded-md hover:bg-gray-200 transition"
+              onClick={handleModeToggle}
+              title="Toggle Mode"
+            >
+              <ArrowRightLeft className="w-5 h-5 text-gray-600" />
+            </button>
           )}
-        </button>
+          <button
+            className="p-1 rounded-md hover:bg-gray-200 transition"
+            onClick={() => setCollapsed(!collapsed)}
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="w-5 h-5 text-gray-600" />
+            ) : (
+              <PanelLeftClose className="w-5 h-5 text-gray-600" />
+            )}
+          </button>
+        </div>
       </div>
 
       <div
@@ -313,7 +231,7 @@ export function CDCSidebar({ initialCanvasType }) {
             <div className="relative flex justify-center w-full mt-2 mb-4">
               <div className="w-12 h-px bg-gray-300 mt-3"></div>
               <div
-                className="absolute w-6 h-6 rounded-full hover:bg-[#a2ebae] bg-gray-100 flex items-center justify-center 
+                className="absolute w-6 h-6 rounded-full hover:bg-[#a2ebae] bg-gray-100 flex items-center justify-center
                    border border-gray-300 mb-2 transition-transform duration-200 ease-in-out hover:scale-125"
                 onMouseEnter={() => setIsHovering("nodes-label")}
                 onMouseLeave={() => setIsHovering(null)}

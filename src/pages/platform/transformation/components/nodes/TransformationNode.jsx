@@ -181,20 +181,6 @@ export const TransformationNode = ({ id, data }) => {
         </div>
       </div>
 
-      {data.sourceNodes && data.sourceNodes.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-gray-200">
-          <span className="text-[10px] text-gray-500">
-            Sources: {data.sourceNodes.map(node => node.dfId).join(', ')}
-          </span>
-        </div>
-      )}
-      {data.targetNodes && data.targetNodes.length > 0 && (
-        <div className="mt-1">
-          <span className="text-[10px] text-gray-500">
-            Targets: {data.targetNodes.map(node => node.dfId).join(', ')}
-          </span>
-        </div>
-      )}
     </div>
   );
 };

@@ -10,6 +10,10 @@ const Breadcrumb = ({ title, link }) => {
       return "Data Governance";
     }
 
+    if (str === "ai") {
+      return "AI";
+    }
+
 
     const withSpaces = str.replace(/-/g, ' ');
     return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1);
@@ -31,7 +35,9 @@ const Breadcrumb = ({ title, link }) => {
           </li>
         )}
         {pathSegments.map((segment, index) => {
-          const to = "/" + pathSegments.slice(0, index + 1).join("/");
+          const to = segment.toLowerCase() === "ai"
+            ? "/"
+            : "/" + pathSegments.slice(0, index + 1).join("/");
           return (
             <li key={index} style={styles.breadcrumbItem}>
               {index > 0 && <span style={styles.separator}>&gt;</span>}
