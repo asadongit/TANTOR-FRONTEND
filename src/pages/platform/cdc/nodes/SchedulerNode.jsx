@@ -145,119 +145,99 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
     }, 800)
       }
 
+  const handleCancel =()=>{
+    deletePipeline(ID);
+    navigate('/cdc');
+  }
+
+
   return (
-<div
-  className={`bg-white rounded-lg p-3 pt-2 shadow-md border-2 ${
-    selected ? "border-[#8E77BB]" : "border-gray-300"
-  } w-fit min-w-[18vw] max-w-[90vw] relative group grid grid-cols-[repeat(auto-fit,minmax(min-content,1fr))]`}
->
+    <div className="bg-white rounded-lg text-black p-4 shadow-md border-2 border-[#8E77BB] min-w-[320px] max-w-[320px] relative group">
+      <div className="flex justify-between items-center mb-3">
+        <div className="flex items-center space-x-3">
+          <iconify-icon
+            icon="material-symbols-light:alarm-outline"
+            style={{ color: "#8e78b7" }}
+            width="22"
+            height="22"
+          ></iconify-icon>
+          <h3 className="text-black font-medium">Scheduler</h3>
+        </div>
 
-    <div className="flex justify-between items-center mb-2">
-      <div className="flex items-center gap-1">
-      <iconify-icon icon="material-symbols-light:alarm-outline" style={{ color: "#8e78b7" }}  width="24" height="24"></iconify-icon>
-        <h3 className="text-black font-medium">Scheduler</h3>
-      </div>
-
-      <div className="flex space-x-2">
-        <button className="p-1">
-          <Minus className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-        </button>
-        <button onClick={() => isPipelineNode ? deletePipeline(pipelineId) : window.deleteNode?.(id)} className="p-1">
+        <button
+          onClick={() => (isPipelineNode ? deletePipeline(pipelineId) : window.deleteNode?.(id))}
+          className="p-1"
+        >
           <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
         </button>
       </div>
-    </div>
 
-    <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Left} style={{ width: 10, height: 10 }} />
 
-
-
-      <div className="space-y-1.5">
-        <div className="flex gap-4 items-center">
+      <div className="mb-3">
+        <label className="block text-sm font-semibold text-gray-700 mb-1">Mode</label>
+        <div className="flex space-x-4">
           <div className="flex items-center">
             <input
               type="radio"
-              id="manual"
-              name="scheduleMode"
+              id={`manual-${id}`}
+              name={`scheduleMode-${id}`}
               value="manual"
               checked={selectedOption === "manual"}
               onChange={handleOptionChange}
-              className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500"
             />
-            <label htmlFor="manual" className="ml-2 text-xs text-gray-700">
-              Manual
-            </label>
-          </div>
-          <div className="flex items-center">
-            {/* <input
-              type="radio"
-              id="auto"
-              name="scheduleMode"
-              value="auto"
-              checked={selectedOption === "auto"}
-              onChange={handleOptionChange}
-              className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <label htmlFor="auto" className="ml-2 text-xs text-gray-700">
-              Auto
-            </label> */}
+            <label htmlFor={`manual-${id}`} className="ml-1">Manual</label>
           </div>
         </div>
       </div>
 
       {selectedOption === "manual" && (
-        <div className="space-y-4 mt-4 w-full">
-          <div className="w-full">
-            <label
-              htmlFor="start-date"
-              className="block text-xs text-black font-semibold mb-1"
-            >
-              Start Load Date
-            </label>
+        <>
+          <div className="mb-3">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Start Date &amp; Time</label>
             <input
               type="datetime-local"
-              id="start-date"
-              className="w-full border border-gray-700 rounded px-3 py-1.5 text-xs text-gray-700 focus:ring-2 focus:ring-[#8e78b7]"
+              className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
               value={startDate}
-              onChange={e => setStartDate(e.target.value)}
+              onChange={(e) => setStartDate(e.target.value)}
             />
           </div>
-          <div className="w-full">
-            <label
-              htmlFor="end-date"
-              className="block text-xs text-black font-semibold mb-1"
-            >
-              End Load Date
-            </label>
+
+          <div className="mb-3">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">End Date &amp; Time</label>
             <input
               type="datetime-local"
-              id="end-date"
-              className="w-full border border-gray-700 rounded px-3 py-1.5 text-xs text-gray-700 focus:ring-2 focus:ring-[#8e78b7]"
+              className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
               value={endDate}
-              onChange={e => setEndDate(e.target.value)}
+              onChange={(e) => setEndDate(e.target.value)}
               min={startDate}
             />
           </div>
-        </div>
+        </>
       )}
 
-      <div className="flex space-x-2 mt-4">
-        <button className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
+      <div className="flex space-x-4 mt-4">
+        <button
+          className="bg-white rounded-md border border-gray-300 px-6 py-2 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+          onClick={handleCancel}
+        >
           Cancel
         </button>
-        <button
-  className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded"
-  onClick={() => openModal({
-    title: "Save Confirmation",
-    message: "Are you sure you want to save this CDC?",
-    type: "question",
-    confirmText: "Yes",
-    onConfirm: () => handleSave(),
-  })}
->
-  SAVE
-</button>
 
+        <button
+          className="bg-[#8E77BB] rounded-md border-2 border-[#8E77BB] px-6 py-2 text-white font-medium hover:bg-[#7d68a5] transition-colors"
+          onClick={() =>
+            openModal({
+              title: "Save Confirmation",
+              message: "Are you sure you want to save this CDC?",
+              type: "question",
+              confirmText: "Yes",
+              onConfirm: () => handleSave(),
+            })
+          }
+        >
+          SAVE
+        </button>
       </div>
     </div>
   );
