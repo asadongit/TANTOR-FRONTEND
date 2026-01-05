@@ -32,7 +32,8 @@ export function AIPlaygroundLayout({
     onPreprocessingStepChange,
     isStep7Preview,
     onPreviewData,
-    isNextDisabled: isNextDisabledProp
+    isNextDisabled: isNextDisabledProp,
+    onSaveModel
 }) {
     const navigate = useNavigate();
     const location = useLocation();
@@ -99,6 +100,13 @@ export function AIPlaygroundLayout({
     const progressPercentage = calculateProgress();
 
     const handleNext = () => {
+        const isXAIPage = location.pathname === '/ai/playground/xai';
+        
+        if (isXAIPage && onSaveModel) {
+            onSaveModel();
+            return;
+        }
+        
         if (isOnStep7 && !isStep7Preview) {
             if (onPreviewData) onPreviewData(true);
             return;
@@ -202,6 +210,12 @@ export function AIPlaygroundLayout({
     };
 
     const getNextButtonLabel = () => {
+        const isXAIPage = location.pathname === '/ai/playground/xai';
+        
+        if (isXAIPage) {
+            return 'Save Model';
+        }
+        
         if (isOnStep7 && !isStep7Preview) return 'Preview Data';
         if (isOnStep7 && isStep7Preview) return `Continue to ${nextStage.label}`;
         if (isDeploymentStage && isEnsemble && activeModelIndex < models.length - 1) {

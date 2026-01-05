@@ -2,14 +2,15 @@ import { MoreVertical } from 'lucide-react';
 import { AIPlaygroundLayout } from '../AIPlaygroundLayout';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ScatterChart, Scatter, LineChart, Line, Cell } from 'recharts';
 import ConfigurationModal from '../modals/XAI/ConfigurationModal';
-import SaveModelModal from '../modals/XAI/SaveModelModal';
+import { SaveModelSelectionModal } from '../modals/XAI/SaveModelSelectionModal';
 import GovernanceReportModal from '../modals/XAI/GovernanceReportModal';
 import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import DataTable from '../../../../components/DataTable';
 
 function XAI() {
   const location = useLocation();
+  const navigate = useNavigate();
   const readonly = location.state?.mode === 'view';
   const [selectedModel, setSelectedModel] = useState('model1');
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -181,9 +182,21 @@ function XAI() {
     setReportGenerated(true);
   };
 
-  const handleSaveModel = (description) => {
-    console.log('Saving model with description:', description);
+  const handleSaveModelFromLayout = () => {
+    setShowSaveModal(true);
+  };
+
+  const handleSaveModel = (modelsToSave) => {
     setShowSaveModal(false);
+    navigate('/ai/playground/model-deployment', {
+      state: {
+        mode: readonly ? 'view' : 'edit',
+        savedModels: modelsToSave,
+        isEnsemble: location.state?.isEnsemble,
+        ensembleCount: location.state?.ensembleCount,
+        activeModelIndex: location.state?.activeModelIndex
+      }
+    });
   };
 
   // Table columns for Feature Flip Summary
@@ -296,7 +309,7 @@ function XAI() {
   );
 
   return (
-    <AIPlaygroundLayout>
+    <AIPlaygroundLayout onSaveModel={handleSaveModelFromLayout}>
       <div className="max-w-7xl mx-auto bg-gray-50 rounded-lg p-6">
         <div className="flex items-start justify-between">
           {/* Header Section */}
@@ -350,15 +363,6 @@ function XAI() {
                     className="w-full px-4 py-3 text-left text-sm text-[#8e78b7] hover:bg-gray-50 transition-colors"
                   >
                     Download Governance Report
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setShowMenuDropdown(false);
-                      setShowSaveModal(true);
-                    }}
-                    className="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors border-t border-gray-200"
-                  >
-                    Save Model
                   </button>
                 </div>
               )}
@@ -505,7 +509,7 @@ function XAI() {
         readonly={readonly}
       />
 
-      <SaveModelModal
+      <SaveModelSelectionModal
         isOpen={showSaveModal}
         onClose={() => setShowSaveModal(false)}
         onSave={handleSaveModel}
