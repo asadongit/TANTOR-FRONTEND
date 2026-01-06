@@ -31,6 +31,64 @@ export const SourceFileType = ({
   const [selectedFormat, setSelectedFormat] = React.useState("");
   const [customFormatInput, setCustomFormatInput] = React.useState("");
 
+  const fileInputRef = React.useRef(null);
+  const nlpTxtFile = data?.nlpTxtFile || null;
+
+  const handleTxtUploadClick = () => fileInputRef.current?.click();
+
+  const handleTxtFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    e.target.value = "";
+
+    data?.onDataChange?.({ nlpTxtFile: file });
+  };
+
+  const handleUseData = (data) => {
+    const pathParts = data.output_json_file.split('/');
+    const fileNameFromPath = pathParts.pop();
+    const directoryPath = pathParts.join('/') + '/';
+
+    setFilePath(directoryPath);
+    const baseName = data.file_name.replace(/\.[^/.]+$/, "");
+    const newFileName = baseName + ".json";
+    setFileName(newFileName);
+    const newColumns = data.columns.map((col, idx) => ({
+      id: Date.now() + idx,
+      name: col,
+      datatype: 'string',
+      format: '',
+      customDatatype: ''
+    }));
+    setFileColumns(newColumns);
+    data?.onDataChange?.({
+      filePath: directoryPath,
+      fileName: newFileName,
+      fileColumns: newColumns
+    });
+    dispatch({
+      type: ACTION_TYPES.UPDATE_SOURCE,
+      payload: {
+        id: id,
+        data: {
+          filePath: directoryPath,
+          fileName: newFileName,
+          fileColumns: newColumns
+        }
+      }
+    });
+    window.allNodesLastUpdate = Date.now();
+    if (window.triggerSidebarUpdate) {
+      window.triggerSidebarUpdate();
+    }
+  };
+
+  const handleOpenNlp = () => {
+    window.onUseData = handleUseData;
+    window.openUnstructuredDataPrepModal?.({ file: nlpTxtFile });
+  };
+
   const handleDatatypeChange = (columnId, value) => {
     updateFileColumn(columnId, 'datatype', value);
     if (['date', 'datetime', 'timestamp'].includes(value)) {
@@ -107,6 +165,48 @@ export const SourceFileType = ({
           )}
         </div>
       </div>
+
+      {fileType === "JSON" && (
+        <div className="mb-2">
+          <label className="text-xs font-semibold text-black mb-0.5 block">
+            Upload File
+          </label>
+
+          <div className="flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".txt,text/plain"
+              className="hidden"
+              onChange={handleTxtFileChange}
+            />
+
+            <button
+              type="button"
+              onClick={handleTxtUploadClick}
+              className="px-2 py-1.5 text-[11px] bg-[#8E77BB] text-white rounded-sm hover:bg-[#7A6BA3] focus:outline-none"
+            >
+              Upload
+            </button>
+
+            {nlpTxtFile && (
+              <button
+                type="button"
+                onClick={handleOpenNlp}
+                className="px-2 py-1.5 text-[11px] bg-white text-[#8E77BB] border border-[#8E77BB] rounded-sm hover:bg-gray-50 focus:outline-none"
+              >
+                Data Preparation
+              </button>
+            )}
+          </div>
+
+          {nlpTxtFile && (
+            <div className="mt-1 text-[10px] text-gray-600 truncate">
+              {nlpTxtFile.name}
+            </div>
+          )}
+        </div>
+      )}
 
       <div>
         <label className="text-xs font-semibold text-black mb-0.5 block">
