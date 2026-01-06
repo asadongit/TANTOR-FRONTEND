@@ -851,14 +851,14 @@ export function TransformationProvider({ children }) {
             const originalColumnSet = new Set(originalColumns);
             const jsonColumns = op.params?.jsonColumns || {};
             Object.keys(jsonColumns).forEach((jsonColKey) => {
-              const schema = jsonColumns[jsonColKey]?.schema || {};
+              const schema = jsonColumns[jsonColKey] || {};
               const filteredSchema = {};
               Object.keys(schema).forEach((colName) => {
                 if (originalColumnSet.has(colName)) {
                   filteredSchema[colName] = schema[colName];
                 }
               });
-              jsonColumns[jsonColKey].schema = filteredSchema;
+              jsonColumns[jsonColKey] = filteredSchema;
             });
             if (op.params) {
               op.params.jsonColumns = jsonColumns;
@@ -867,24 +867,24 @@ export function TransformationProvider({ children }) {
         }
       });
 
-      Object.keys(result.source).forEach(sourceKey => {
-        const hasJsonFlatten = result.transformation.some(op =>
-          op.transformation_operation === 'json_flatten' && op.source_dataframe === sourceKey
-        );
-        if (hasJsonFlatten) {
-          const jsonFlattenOp = result.transformation.find(op =>
-            op.transformation_operation === 'json_flatten' && op.source_dataframe === sourceKey
-          );
-          const jsonColumns = jsonFlattenOp?.params?.jsonColumns || {};
-          const columnName = Object.keys(jsonColumns)[0];
-          if (columnName) {
-            result.source[sourceKey].readParameters = {
-              ...result.source[sourceKey].readParameters,
-              rootArrayColumn: columnName
-            };
-          }
-        }
-      });
+      // Object.keys(result.source).forEach(sourceKey => {
+      //   const hasJsonFlatten = result.transformation.some(op =>
+      //     op.transformation_operation === 'json_flatten' && op.source_dataframe === sourceKey
+      //   );
+      //   if (hasJsonFlatten) {
+      //     const jsonFlattenOp = result.transformation.find(op =>
+      //       op.transformation_operation === 'json_flatten' && op.source_dataframe === sourceKey
+      //     );
+      //     const jsonColumns = jsonFlattenOp?.params?.jsonColumns || {};
+      //     const columnName = Object.keys(jsonColumns)[0];
+      //     if (columnName) {
+      //       result.source[sourceKey].readParameters = {
+      //         ...result.source[sourceKey].readParameters,
+      //         rootArrayColumn: columnName
+      //       };
+      //     }
+      //   }
+      // });
     }
 
     return result;

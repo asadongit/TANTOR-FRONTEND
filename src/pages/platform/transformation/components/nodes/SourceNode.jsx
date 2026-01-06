@@ -126,6 +126,7 @@ export const SourceNode = ({ id, data }) => {
   }, [hostnamev1, token, decodedToken]);
 
   const fetchSchemas = useCallback(async (connectionName) => {
+    if (sourceType !== "database") return;
     if (!connectionName) return;
 
     try {
@@ -152,9 +153,10 @@ export const SourceNode = ({ id, data }) => {
     } finally {
       setLoading(prev => ({ ...prev, schemas: false }));
     }
-  }, [hostnamev1, token]);
+  }, [hostnamev1, token, sourceType]);
 
   const fetchTablesAndColumns = useCallback(async (connectionName, schemaName) => {
+    if (sourceType !== "database") return;
     if (!connectionName || !schemaName) return;
 
     try {
@@ -184,9 +186,10 @@ export const SourceNode = ({ id, data }) => {
     } finally {
       setLoading(prev => ({ ...prev, tables: false }));
     }
-  }, [hostnamev1, token]);
+  }, [hostnamev1, token, sourceType]);
 
   const fetchProcedures = useCallback(async (connectionName) => {
+    if (sourceType !== "database") return;
     if (!connectionName) return;
 
     try {
@@ -210,7 +213,7 @@ export const SourceNode = ({ id, data }) => {
     } finally {
       setLoading(prev => ({ ...prev, procedures: false }));
     }
-  }, [hostnamev1, token]);
+  }, [hostnamev1, token, sourceType]);
 
   const addPreProcedureDropdown = () => {
     const newId = Math.max(...selectedPreProcedures.map(p => p.id), 0) + 1;
@@ -1374,6 +1377,7 @@ useEffect(() => {
               {sourceType === "database" ? "Database" : sourceType === "file" ? "File" : "Select source type"}
               <span className="ml-auto pl-2">&#9662;</span>
             </button>
+
             {sourceTypeDropdownOpen && (
               <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1">
                 <div
@@ -1381,6 +1385,7 @@ useEffect(() => {
                   onClick={() => {
                     setSourceType("database");
                     setSourceTypeDropdownOpen(false);
+
                     // Reset file-specific states when switching to database
                     setFileType("CSV");
                     setFilePath("");
@@ -1390,17 +1395,31 @@ useEffect(() => {
                 >
                   Database
                 </div>
+
                 <div
                   className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${sourceType === "file" ? "bg-gray-100" : ""}`}
                   onClick={() => {
                     setSourceType("file");
                     setSourceTypeDropdownOpen(false);
-                    // Reset database-specific states when switching to file
                     setSelectedConnection({ name: "", id: "", type: "" });
                     setSelectedSchema("");
                     setSelectedTable("");
                     setSelectedColumns([]);
                     setSelectedObjectType("");
+
+                    setSchemas([]);
+                    setTables([]);
+                    setColumns([]);
+                    setProcedures([]);
+
+                    setConnectionDropdownOpen(false);
+                    setSchemaDropdownOpen(false);
+                    setTableDropdownOpen(false);
+
+                    setConnectionSearch("");
+                    setSchemaSearch("");
+                    setTableSearch("");
+                    setColumnSearch("");
                   }}
                 >
                   File

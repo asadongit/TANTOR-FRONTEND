@@ -29,6 +29,7 @@ import {
   validateEditFlowData,
   restoreNodesAndEdgesFromEditData,
 } from "../utils/editFlowUtils";
+import UnStructureDataPrep from "./nodes/components/UnstructuredDataPrepModal"; // <-- add
 
 const nodeTypes = {
   define: DefineNode,
@@ -122,6 +123,26 @@ function TransformationCanvasContent() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editTransformationId, setEditTransformationId] = useState(null);
   const [isRestorationComplete, setIsRestorationComplete] = useState(false);
+
+  const [nlpModalOpen, setNlpModalOpen] = useState(false);
+  const [nlpTxtFile, setNlpTxtFile] = useState(null);
+
+  useEffect(() => {
+    window.openUnstructuredDataPrepModal = ({ file } = {}) => {
+      setNlpTxtFile(file || null);
+      setNlpModalOpen(true);
+    };
+
+    window.closeUnstructuredDataPrepModal = () => {
+      setNlpModalOpen(false);
+      setNlpTxtFile(null);
+    };
+
+    return () => {
+      window.openUnstructuredDataPrepModal = undefined;
+      window.closeUnstructuredDataPrepModal = undefined;
+    };
+  }, []);
 
   useTrackConnections(nodes, edges);
 
@@ -279,8 +300,6 @@ function TransformationCanvasContent() {
     [setNodes]
   );
 
-
-
   useEffect(() => {
     if (!isRestorationComplete) return;
 
@@ -311,12 +330,9 @@ function TransformationCanvasContent() {
     );
   }, [setNodes, isRestorationComplete]);
 
-
   useEffect(() => {
     id = nodeIdRef.current;
   }, []);
-
-
 
   useEffect(() => {
     const hasDefineNode = nodes.some((node) => node.type === "define");
@@ -547,7 +563,6 @@ function TransformationCanvasContent() {
           nodes[defineNodeIndex].data = { ...liveDefine.data };
         }
       }
-
 
       const defineNode = nodes.find((node) => node.type === "define");
       try {
@@ -1125,8 +1140,6 @@ function TransformationCanvasContent() {
     updateTransformationNodesData();
   }, [nodes.length, updateTransformationNodesData]);
 
-
-
   useEffect(() => {
     const defineNode = nodes.find((node) => node.type === "define");
     if (!defineNode) return;
@@ -1383,6 +1396,12 @@ function TransformationCanvasContent() {
           {...arthDrawerProps}
         />
       )}
+
+      <UnStructureDataPrep
+        open={nlpModalOpen}
+        onClose={() => window.closeUnstructuredDataPrepModal?.()}
+        txtFile={nlpTxtFile}
+      />
     </div>
   );
 }
