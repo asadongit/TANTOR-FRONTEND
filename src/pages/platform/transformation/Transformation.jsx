@@ -504,21 +504,29 @@ function Transformation() {
   };
 
   const columns = [
-    { key: "transformation_name", label: "Name", sortable: true },
-    { key: "description", label: "Description", sortable: true },
+    {
+      key: "transformation_name",
+      label: "Name",
+      sortable: true,
+      width: "250px",
+      // render: (row) => (
+      //   <div className="break-words max-w-[250px]">{row.transformation_name}</div>
+      // ),
+    },
+    { key: "description", width: "250px", label: "Description", sortable: true },
     {
       key: "created_at",
       label: "Created",
       sortable: true,
       render: (row) => formatDate(row.created_at),
     },
-    {
-      key: "updated_at",
-      label: "Updated",
-      sortable: true,
-      render: (row) => formatDate(row.updated_at),
-    },
-    { key: "created_by", label: "Owner", sortable: true },
+    // {
+    //   key: "updated_at",
+    //   label: "Updated",
+    //   sortable: true,
+    //   render: (row) => formatDate(row.updated_at),
+    // },
+    // { key: "created_by", label: "Owner", sortable: true },
     { key: "status", label: "Status", sortable: true },
     {
       key: "source_count",
