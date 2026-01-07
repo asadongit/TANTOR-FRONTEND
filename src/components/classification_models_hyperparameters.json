@@ -1,0 +1,521 @@
+{
+  "Logistic Regression": {
+    "category": "Linear",
+    "hyperparameters": {
+      "penalty": "l1, l2, elasticnet, none",
+      "C": {
+        "low": "0.0001",
+        "high": "100"
+      },
+      "solver": "liblinear, lbfgs, saga, newton-cg",
+      "max_iter":{
+        "low": "100",
+        "high": "5000"
+      }
+    }
+  },
+  "Ridge Classifier": {
+    "category": "Linear",
+    "hyperparameters": {
+      "alpha": {
+        "low":"0.0001",
+        "high":"100"
+      },
+      "solver": "auto, svd, cholesky, sag"
+    }
+  },
+  "Perceptron": {
+    "category": "Linear",
+    "hyperparameters": {
+      "penalty": "l2, l1, elasticnet, none",
+      "alpha": {
+        "low":"0.0001",
+        "high":"1"
+      },
+      "max_iter": {
+        "low":"100",
+        "high":"5000"
+      }
+    }
+  },
+  "Passive Aggressive Classifier": {
+    "category": "Linear",
+    "hyperparameters": {
+      "C": {
+        "low":"0.01",
+        "high":"10"
+      },
+      "loss": "hinge, squared_hinge",
+      "max_iter": {
+        "low":"100",
+        "high":"5000"
+      }
+    }
+  },
+  "SGD Classifier": {
+    "category": "Linear",
+    "hyperparameters": {
+      "loss": "log_loss, hinge, modified_huber",
+      "penalty": "l2, l1, elasticnet",
+      "alpha": {
+        "low":"1e-6",
+        "high":"1e-1"
+      },
+      "max_iter": {
+        "low":"100",
+        "high":"5000"
+      }
+    }
+  },
+  "Linear SVC": {
+    "category": "Linear",
+    "hyperparameters": {
+      "C": {
+        "low":"0.01",
+        "high":"100"
+      },
+      "loss": "hinge, squared_hinge",
+      "max_iter": {
+        "low":"1000",
+        "high":"5000"
+      }
+    }
+  },
+  "SVC (RBF)": {
+    "category": "Kernel-based",
+    "hyperparameters": {
+      "C": {
+        "low":"0.01",
+        "high":"100"
+      },
+      "gamma": {
+        "low":"0.0001",
+        "high":"10",
+        "special":["scale","auto"]
+      },
+      "kernel": "rbf"
+    }
+  },
+  "Nu-SVC": {
+    "category": "Kernel-based",
+    "hyperparameters": {
+      "nu": {
+        "low":"0.1",
+        "high":"0.9"
+      },
+      "kernel": "rbf, poly, sigmoid",
+      "gamma": "scale, auto"
+    }
+  },
+  "Linear Discriminant Analysis": {
+    "category": "Linear",
+    "hyperparameters": {
+      "solver": "svd, lsqr, eigen",
+      "shrinkage": {
+        "low":"0",
+        "high":"1",
+        "special": ["None", "auto"]
+      }
+    }
+  },
+  "Quadratic Discriminant Analysis": {
+    "category": "Linear",
+    "hyperparameters": {
+      "reg_param": {
+        "low":"0",
+        "high":"1"
+      }
+    }
+  },
+  "Gaussian Naive Bayes": {
+    "category": "Probabilistic",
+    "hyperparameters": {
+      "alpha": {
+        "low":"0",
+        "high":"10"
+      }
+    }
+  },
+  "Multinomial Naive Bayes": {
+    "category": "Probabilistic",
+    "hyperparameters": {
+      "alpha": {
+        "low":"0",
+        "high":"10"
+      }
+    }
+  },
+  "Complement Naive Bayes": {
+    "category": "Probabilistic",
+    "hyperparameters": {
+      "alpha": {
+        "low":"0",
+        "high":"10"
+      }
+    }
+  },
+  "Bernoulli Naive Bayes": {
+    "category": "Probabilistic",
+    "hyperparameters": {
+      "alpha": {
+        "low":"0",
+        "high":"10"
+      }
+    }
+  },
+  "Categorical Naive Bayes": {
+    "category": "Probabilistic",
+    "hyperparameters": {
+      "alpha": {
+        "low":"0",
+        "high":"10"
+      }
+    }
+  },
+  "Decision Tree Classifier": {
+    "category": "Tree-based",
+    "hyperparameters": {
+      "max_depth": {
+        "low":"3",
+        "high":"50",
+        "special": ["None"]
+      },
+      "min_samples_split": {
+        "low":"2",
+        "high":"20"
+      },
+      "criterion": "gini, entropy, log_loss"
+    }
+  },
+  "Extra Tree Classifier": {
+    "category": "Tree-based",
+    "hyperparameters": {
+      "max_depth": {
+        "low":"3",
+        "high":"50",
+        "special": ["None"]
+      },
+      "min_samples_split": {
+        "low":"2",
+        "high":"20"
+      }
+    }
+  },
+  "Random Forest Classifier": {
+    "category": "Ensemble (Tree)",
+    "hyperparameters": {
+      "n_estimators": {
+        "low":"50",
+        "high":"1000"
+      },
+      "max_depth": {
+        "low":"5",
+        "high":"50",
+        "special": ["None"]
+      },
+      "max_features": "sqrt, log2"
+    }
+  },
+  "Extra Trees Classifier": {
+    "category": "Ensemble (Tree)",
+    "hyperparameters": {
+      "n_estimators": {
+        "low":"50",
+        "high":"1000"
+      },
+      "max_depth": {
+        "low":"5",
+        "high":"50",
+        "special": ["None"]
+      }
+    }
+  },
+  "Gradient Boosting Classifier": {
+    "category": "Ensemble (Boosting)",
+    "hyperparameters": {
+      "learning_rate": {
+        "low":"0.01",
+        "high":"0.3"
+      },
+      "n_estimators": {
+        "low":"50",
+        "high":"500"
+      },
+      "max_depth": {
+        "low":"3",
+        "high":"10"
+      }
+    }
+  },
+  "Histogram Gradient Boosting Classifier": {
+    "category": "Ensemble (Boosting)",
+    "hyperparameters": {
+      "learning_rate": {
+        "low":"0.01",
+        "high":"0.3"
+      },
+      "max_iter": {
+        "low":"50",
+        "high":"500"
+      },
+      "max_depth": {
+        "low":"3",
+        "high":"10"
+      }
+    }
+  },
+  "XGBoost Classifier": {
+    "category": "Ensemble (Boosting)",
+    "hyperparameters": {
+      "n_estimators": {
+        "low":"100",
+        "high":"1000"
+      },
+      "learning_rate": {
+        "low":"0.01",
+        "high":"0.3"
+      },
+      "max_depth": {
+        "low":"3",
+        "high":"15"
+      },
+      "subsample": {
+        "low":"0.5",
+        "high":"1.0"
+      }
+    }
+  },
+  "LightGBM Classifier": {
+    "category": "Ensemble (Boosting)",
+    "hyperparameters": {
+      "num_leaves": {
+        "low":"15",
+        "high":"255"
+      },
+      "learning_rate": {
+        "low":"0.01",
+        "high":"0.3"
+      },
+      "n_estimators": {
+        "low":"100",
+        "high":"1000"
+      }
+    }
+  },
+  "CatBoost Classifier": {
+    "category": "Ensemble (Boosting)",
+    "hyperparameters": {
+      "depth": {
+        "low":"4",
+        "high":"10"
+      },
+      "learning_rate": {
+        "low":"0.01",
+        "high":"0.3"
+      },
+      "iterations": {
+        "low":"100",
+        "high":"1000"
+      }
+    }
+  },
+  "AdaBoost Classifier": {
+    "category": "Ensemble (Boosting)",
+    "hyperparameters": {
+      "n_estimators": {
+        "low":"50",
+        "high":"500"
+      },
+      "learning_rate": {
+        "low":"0.01",
+        "high":"1"
+      }
+    }
+  },
+  "Bagging Classifier": {
+    "category": "Ensemble",
+    "hyperparameters": {
+      "n_estimators": {
+        "low":"10",
+        "high":"500"
+      },
+      "max_samples": {
+        "low":"0.5",
+        "high":"1.0"
+      }
+    }
+  },
+  "Voting Classifier": {
+    "category": "Ensemble",
+    "hyperparameters": {
+      "voting": "hard, soft",
+      "weights": "None or list"
+    }
+  },
+  "Stacking Classifier": {
+    "category": "Ensemble",
+    "hyperparameters": {
+      "final_estimator": "Any classifier",
+      "cv": {
+        "low":"3",
+        "high":"10"
+      }
+    }
+  },
+  "K-Nearest Neighbors": {
+    "category": "Distance-based",
+    "hyperparameters": {
+      "n_neighbors": {
+        "low":"3",
+        "high":"50"
+      },
+      "weights": "uniform, distance",
+      "metric": "euclidean, manhattan"
+    }
+  },
+  "Radius Neighbors Classifier": {
+    "category": "Distance-based",
+    "hyperparameters": {
+      "radius": {
+        "low":"0.5",
+        "high":"5"
+      },
+      "weights": "uniform, distance"
+    }
+  },
+  "Nearest Centroid": {
+    "category": "Distance-based",
+    "hyperparameters": {
+      "metric": "euclidean, manhattan"
+    }
+  },
+  "Multi-layer Perceptron": {
+    "category": "Neural Network",
+    "hyperparameters": {
+      "hidden_layer_sizes": "(50,), (100,), (100,50)",
+      "activation": "relu, tanh",
+      "alpha": {
+        "low":"0.0001",
+        "high":"0.1"
+      },
+      "max_iter": {
+        "low":"200",
+        "high":"5000"
+      }
+    }
+  },
+  "Label Propagation": {
+    "category": "Graph-based",
+    "hyperparameters": {
+      "kernel": "rbf, knn",
+      "gamma": {
+        "low":"0.1",
+        "high":"20"
+      }
+    }
+  },
+  "Label Spreading": {
+    "category": "Graph-based",
+    "hyperparameters": {
+      "kernel": "rbf, knn",
+      "gamma": {
+        "low":"0.1",
+        "high":"20"
+      },
+      "alpha": {
+        "low":"0.1",
+        "high":"0.9"
+      }
+    }
+  },
+  "One-vs-Rest Classifier": {
+    "category": "Meta-estimator",
+    "hyperparameters": {
+      "estimator": "Any base classifier"
+    }
+  },
+  "One-vs-One Classifier": {
+    "category": "Meta-estimator",
+    "hyperparameters": {
+      "estimator": "Any base classifier"
+    }
+  },
+  "Output Code Classifier": {
+    "category": "Meta-estimator",
+    "hyperparameters": {
+      "estimator": "Any base classifier",
+      "code_size": {
+        "low":"1",
+        "high":"5"
+      }
+    }
+  },
+  "Calibrated Classifier CV": {
+    "category": "Meta-estimator",
+    "hyperparameters": {
+      "method": "sigmoid, isotonic",
+      "cv": {
+        "low":"3",
+        "high":"10"
+      }
+    }
+  },
+  "Balanced Random Forest": {
+    "category": "Ensemble (Imbalanced)",
+    "hyperparameters": {
+      "n_estimators": {
+        "low":"100",
+        "high":"500"
+      },
+      "max_depth": {
+        "low":"3",
+        "high":"30",
+        "special": ["None"]
+      }
+    }
+  },
+  "Balanced Bagging Classifier": {
+    "category": "Ensemble (Imbalanced)",
+    "hyperparameters": {
+      "n_estimators": {
+        "low":"50",
+        "high":"500"
+      }
+    }
+  },
+  "Easy Ensemble Classifier": {
+    "category": "Ensemble (Imbalanced)",
+    "hyperparameters": {
+      "n_estimators": {
+        "low":"10",
+        "high":"200"
+      }
+    }
+  },
+  "RUSBoost Classifier": {
+    "category": "Ensemble (Imbalanced)",
+    "hyperparameters": {
+      "n_estimators": {
+        "low":"50",
+        "high":"500"
+      },
+      "learning_rate": {
+        "low":"0.01",
+        "high":"1"
+      }
+    }
+  },
+  "SAMME Classifier": {
+    "category": "Ensemble (Boosting)",
+    "hyperparameters": {
+      "n_estimators": {
+        "low":"50",
+        "high":"500"
+      },
+      "learning_rate": {
+        "low":"0.01",
+        "high":"1"
+      }
+    }
+  }
+}
