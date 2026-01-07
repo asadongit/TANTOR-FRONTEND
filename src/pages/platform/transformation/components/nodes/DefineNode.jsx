@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Handle, Position } from "reactflow";
 import { FilePlus, Loader } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
+import toast from "react-hot-toast";
 
 const hostname = window._env_?.VITE_FAST_API;
 
@@ -150,20 +151,26 @@ export const DefineNode = ({ id, data }) => {
   );
 
   const handleNameChange = (e) => {
-    const value = e.target.value;
-    setLocalName(value);
+    const rawValue = e.target.value;
+    const sanitizedValue = rawValue.replace(/[^a-zA-Z0-9_]/g, "");
+    if (rawValue !== sanitizedValue) {
+      toast.error(
+        "Only letters, numbers, and underscores are allowed in the name."
+      );
+    }
+    setLocalName(sanitizedValue);
 
     if (typeof data.onDataChange === "function") {
-      data.onDataChange({ name: value });
+      data.onDataChange({ name: sanitizedValue });
     } else {
       console.warn("onDataChange is missing or not a function");
     }
     if (attemptedSave) setNameError("");
     clearTimeout(nameCheckTimeout.current);
 
-    if (value) {
+    if (sanitizedValue) {
       nameCheckTimeout.current = setTimeout(() => {
-        validateName(value);
+        validateName(sanitizedValue);
       }, 500);
     } else {
       setNameError("Name is required");
@@ -184,7 +191,6 @@ export const DefineNode = ({ id, data }) => {
       else setDescriptionError("");
     }
   };
-
 
   useEffect(() => {
     setLocalName(data.name || "");
