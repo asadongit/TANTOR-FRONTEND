@@ -2,11 +2,13 @@ import { FileText, Clock, RotateCcw, AlertTriangle, TrendingUp, Search, Plus } f
 import { useState } from 'react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import DataTable from '../../../components/DataTable';
+import { useNavigate } from 'react-router-dom';
+
 
 const Orchestration = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('Recent Activity');
-    const [itemsPerPage, setItemsPerPage] = useState(10);
+    const navigate = useNavigate();
 
     const statsData = [
         {
@@ -151,7 +153,9 @@ const Orchestration = () => {
                             className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm"
                         />
                     </div>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7d6aa3] transition-colors">
+                    <button
+                        onClick={() => navigate('/ai/orchestration/new')}
+                        className="flex items-center gap-2 px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7d6aa3] transition-colors">
                         <Plus className="w-4 h-4" />
                         <span className="text-sm font-medium">New Schedule</span>
                     </button>
@@ -255,8 +259,8 @@ const Orchestration = () => {
                                                 <div className="w-full bg-gray-200 rounded-full h-2 relative overflow-hidden">
                                                     <div
                                                         className={`absolute top-0 left-0 h-full rounded-full ${intervention.drift_current > intervention.drift_threshold
-                                                                ? 'bg-red-400'
-                                                                : 'bg-green-400'
+                                                            ? 'bg-red-400'
+                                                            : 'bg-green-400'
                                                             }`}
                                                         style={{ width: `${Math.min((intervention.drift_current / 1) * 100, 100)}%` }}
                                                     ></div>
