@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { AIPlaygroundLayout } from '../AIPlaygroundLayout';
-import { X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
 const RadioButton = ({ label, checked, onChange, name, readonly }) => (
   <label
-    className={`flex items-center gap-2 group ${
-      readonly ? 'cursor-not-allowed' : 'cursor-pointer'
-    }`}
+    className={`flex items-center gap-2 group ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'
+      }`}
   >
     <div className="relative">
       <input
@@ -29,7 +28,7 @@ const RadioButton = ({ label, checked, onChange, name, readonly }) => (
 );
 
 const Section = ({ title, children, className = '' }) => (
-  <div className={`bg-white rounded-lg border border-gray-200 p-6 ${className}`}>
+  <div className={`bg-white ${className}`}>
     <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
     {children}
   </div>
@@ -104,7 +103,7 @@ const ModeSelection = ({ config, setConfig, readonly }) => {
     <>
       <Section title="Mode Selection">
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_auto_1fr] gap-4">
-          <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
             <div className="grid grid-cols-[1fr_1fr_1fr] bg-gray-50 border-b border-gray-200">
               <div className="px-4 py-3 text-sm font-medium text-gray-700 border-r border-gray-200">
                 Feature Type
@@ -120,7 +119,7 @@ const ModeSelection = ({ config, setConfig, readonly }) => {
                 Data Pre-processing
               </div>
 
-              <div className="px-4 py-4 flex flex-col gap-2 border-r border-gray-200">
+              <div className="px-4 py-4 flex flex-col gap-2 border-r border-gray-200 bg-white">
                 <RadioButton
                   label="Swift"
                   checked={config.dataPreprocessing === 'Swift'}
@@ -144,7 +143,7 @@ const ModeSelection = ({ config, setConfig, readonly }) => {
                 />
               </div>
 
-              <div className="px-4 py-4 flex items-center">
+              <div className="px-4 py-4 flex items-center bg-white">
                 <RadioButton
                   label="Manual"
                   checked={config.dataPreprocessing === 'Manual'}
@@ -160,7 +159,7 @@ const ModeSelection = ({ config, setConfig, readonly }) => {
                 Example detail seven
               </div>
 
-              <div className="px-4 py-4 flex flex-col gap-2 border-r border-gray-200">
+              <div className="px-4 py-4 flex flex-col gap-2 border-r border-gray-200 bg-white">
                 <RadioButton
                   label="Swift"
                   checked={config.exampleDetail === 'Swift'}
@@ -184,7 +183,7 @@ const ModeSelection = ({ config, setConfig, readonly }) => {
                 />
               </div>
 
-              <div className="px-4 py-4 flex items-center">
+              <div className="px-4 py-4 flex items-center bg-white">
                 <RadioButton
                   label="Manual"
                   checked={config.exampleDetail === 'Manual'}
@@ -203,10 +202,10 @@ const ModeSelection = ({ config, setConfig, readonly }) => {
           </div>
 
           <div className="flex items-stretch">
-            <div className="border border-gray-200 rounded-lg p-5 w-full bg-gray-50">
+            <div className="border border-gray-200 rounded-lg p-5 w-full bg-white">
               <div className="mb-4">
                 <div className="text-sm font-medium text-gray-700 mb-4">Notebook Mode</div>
-                <div className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-4 py-3">
+                <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
                   <span className="text-sm text-gray-700">Notebook</span>
 
                   <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -258,15 +257,14 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly }
   const isValidateDisabled = !config.classification || !config.targetFeature;
 
   return (
-    <Section title="Prediction Type" className="bg-gray-50">
-      <div className="flex gap-1 border-b border-gray-300 mb-6 -mx-6 px-6">
+    <Section title="Prediction Type" className="!bg-gray-50 p-6 rounded-lg border border-gray-200">
+      <div className="flex gap-1 border-b border-gray-300 -mx-6 px-6">
         {tabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setConfig({ ...config, predictionType: tab })}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
-              config.predictionType === tab ? 'text-[#8e78b7] bg-white' : 'text-gray-600 hover:text-gray-900'
-            }`}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors relative rounded-md ${config.predictionType === tab ? 'text-[#8e78b7] bg-purple-50' : 'text-gray-600 hover:text-gray-900'
+              }`}
           >
             {tab}
             {config.predictionType === tab && (
@@ -277,38 +275,48 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly }
       </div>
 
       {config.predictionType === 'Supervised' && (
-        <div className="bg-white border border-gray-200 rounded-lg p-6 mx-6">
+        <div className="bg-gray-50 rounded-lg p-6 -mx-6 -mb-6 mt-0 pt-6">
           <h4 className="text-sm font-semibold text-gray-900 mb-5">Supervised Learning Configuration</h4>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">Classification</label>
-              <div className="space-y-2.5">
-                <RadioButton
-                  label="Binary"
-                  checked={config.classification === 'Binary'}
-                  onChange={() => setConfig({ ...config, classification: 'Binary' })}
-                  name="classification"
-                  readonly={readonly}
-                />
-                <RadioButton
-                  label="Multiclass"
-                  checked={config.classification === 'Multiclass'}
-                  onChange={() => setConfig({ ...config, classification: 'Multiclass' })}
-                  name="classification"
-                  readonly={readonly}
-                />
-                <RadioButton
-                  label="Regression"
-                  checked={config.classification === 'Regression'}
-                  onChange={() => setConfig({ ...config, classification: 'Regression' })}
-                  name="classification"
-                  readonly={readonly}
-                />
+          <div className="grid grid-cols-1 md:grid-cols-[60%_40%] gap-3">
+            <div className="bg-white border border-gray-200 rounded-lg p-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Classification</label>
+                  <div className="space-y-2.5">
+                    <RadioButton
+                      label="Binary"
+                      checked={config.classification === 'Binary'}
+                      onChange={() => setConfig({ ...config, classification: 'Binary' })}
+                      name="learning-type"
+                      readonly={readonly}
+                    />
+                    <RadioButton
+                      label="Multiclass"
+                      checked={config.classification === 'Multiclass'}
+                      onChange={() => setConfig({ ...config, classification: 'Multiclass' })}
+                      name="learning-type"
+                      readonly={readonly}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Regression</label>
+                  <div className="space-y-2.5">
+                    <RadioButton
+                      label="Regression"
+                      checked={config.classification === 'Regression'}
+                      onChange={() => setConfig({ ...config, classification: 'Regression' })}
+                      name="learning-type"
+                      readonly={readonly}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div>
+            <div className="bg-white border border-gray-200 rounded-lg p-5">
               <label className="block text-sm font-medium text-gray-700 mb-3">Target Feature</label>
               <div className="relative">
                 <select
@@ -319,11 +327,10 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly }
                       ? undefined
                       : (e) => setConfig({ ...config, targetFeature: e.target.value })
                   }
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent appearance-none bg-white ${
-                    readonly ? 'cursor-not-allowed' : ''
-                  }`}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent appearance-none bg-white ${readonly ? 'cursor-not-allowed' : ''
+                    }`}
                 >
-                  <option value="">Select</option>
+                  <option value="">Select...</option>
                   <option value="feature1">Feature 1</option>
                   <option value="feature2">Feature 2</option>
                   <option value="feature3">Feature 3</option>
@@ -341,15 +348,20 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly }
             <button
               onClick={handleValidate}
               disabled={readonly || isValidateDisabled || isValidated}
-              className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
-                isValidated
-                  ? 'bg-green-100 text-green-700 cursor-default'
+              className={`px-8 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${isValidated
+                  ? 'bg-green-100 text-green-700 cursor-default border border-green-400'
                   : readonly || isValidateDisabled
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     : 'bg-[#8e78b7] text-white hover:bg-[#7d67a6]'
-              }`}
+                }`}
             >
-              {isValidated ? 'Validated ✓' : 'Validate'}
+              {isValidated ? (
+                <>
+                  Validated <Check className="w-5 h-5" />
+                </>
+              ) : (
+                'Validate'
+              )}
             </button>
           </div>
         </div>
@@ -393,7 +405,7 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
   };
 
   return (
-    <Section title="Split Setting">
+    <Section title="Split Setting" className="!bg-gray-50 p-6 rounded-lg border border-gray-200">
       <div className="space-y-6">
         <div>
           <div className="flex justify-between items-center mb-2">
@@ -425,9 +437,8 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
                     ? undefined
                     : (e) => handleSliderChange('train', parseInt(e.target.value))
                 }
-                className={`flex-1 h-2 bg-gray-200 rounded-lg appearance-none ${
-                  readonly ? 'cursor-not-allowed' : 'cursor-pointer'
-                }`}
+                className={`flex-1 h-2 bg-gray-200 rounded-lg appearance-none ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'
+                  }`}
                 style={{
                   background: `linear-gradient(to right, #8e78b7 0%, #8e78b7 ${config.trainSplit}%, #e5e7eb ${config.trainSplit}%, #e5e7eb 100%)`
                 }}
@@ -452,9 +463,8 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
                     ? undefined
                     : (e) => handleSliderChange('test', parseInt(e.target.value))
                 }
-                className={`flex-1 h-2 bg-gray-200 rounded-lg appearance-none ${
-                  readonly ? 'cursor-not-allowed' : 'cursor-pointer'
-                }`}
+                className={`flex-1 h-2 bg-gray-200 rounded-lg appearance-none ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'
+                  }`}
                 style={{
                   background: `linear-gradient(to right, #fc842eff 0%, #fc842eff ${config.testSplit}%, #e5e7eb ${config.testSplit}%, #e5e7eb 100%)`
                 }}
@@ -479,9 +489,8 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
                     ? undefined
                     : (e) => handleSliderChange('validation', parseInt(e.target.value))
                 }
-                className={`flex-1 h-2 bg-gray-200 rounded-lg appearance-none ${
-                  readonly ? 'cursor-not-allowed' : 'cursor-pointer'
-                }`}
+                className={`flex-1 h-2 bg-gray-200 rounded-lg appearance-none ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'
+                  }`}
                 style={{
                   background: `linear-gradient(to right, #14b8a6 0%, #14b8a6 ${config.validationSplit}%, #e5e7eb ${config.validationSplit}%, #e5e7eb 100%)`
                 }}
@@ -491,7 +500,7 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
           </div>
         </div>
 
-        <div className="bg-gray-50 border border-[#8e78b7] rounded-md p-2">
+        <div className="bg-white border border-[#8e78b7] rounded-md p-2">
           <p className="text-sm ">
             <span className="font-medium text-[#8e78b7]">Note:</span> To proceed, make sure the Train, Test, and
             Validation percentages together equal 100%. You can adjust the sliders to balance the data as needed.
@@ -516,36 +525,39 @@ const FairnessAttribute = ({ config, setConfig, readonly }) => {
 
     const newSelected = config.fairnessAttributes.includes(option)
       ? config.fairnessAttributes.filter(o => o !== option)
-      : [...config.fairnessAttributes, option];
+      : config.fairnessAttributes.length < 3
+        ? [...config.fairnessAttributes, option]
+        : config.fairnessAttributes;
 
     setConfig({ ...config, fairnessAttributes: newSelected });
   };
 
-  const displayedOptions = showMore ? config.fairnessAttributes : config.fairnessAttributes.slice(0, 8);
-  const remainingCount = config.fairnessAttributes.length - 8;
+  const displayedOptions = showMore ? config.fairnessAttributes : config.fairnessAttributes.slice(0, 3);
+  const remainingCount = config.fairnessAttributes.length - 3;
 
   return (
-    <Section title="Fairness Attribute">
+    <Section title="Fairness Attribute" className="!bg-gray-50 p-6 rounded-lg border border-gray-200">
       <div className="space-y-3">
         <div className="relative">
           <select
-            disabled={readonly}
-            className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none ${
-              readonly ? 'cursor-not-allowed' : ''
-            }`}
+            disabled={readonly || config.fairnessAttributes.length >= 3}
+            className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white ${readonly || config.fairnessAttributes.length >= 3 ? 'cursor-not-allowed opacity-50' : ''
+              }`}
             value=""
             onChange={
-              readonly
+              readonly || config.fairnessAttributes.length >= 3
                 ? undefined
                 : (e) => {
-                    if (e.target.value) toggleOption(e.target.value);
-                  }
+                  if (e.target.value) toggleOption(e.target.value);
+                }
             }
           >
-            <option value="">{config.fairnessAttributes.length} Options Selected</option>
-            {allOptions.map(option => (
-              <option key={option} value={option}>{option}</option>
-            ))}
+            <option value="">{config.fairnessAttributes.length}/3 Options Selected</option>
+            {allOptions
+              .filter(option => !config.fairnessAttributes.includes(option))
+              .map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
           </select>
           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
             <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -554,49 +566,49 @@ const FairnessAttribute = ({ config, setConfig, readonly }) => {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {displayedOptions.map(option => (
-            <span
-              key={option}
-              className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-md"
-            >
-              {option}
+        {config.fairnessAttributes.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {displayedOptions.map(option => (
+              <span
+                key={option}
+                className="inline-flex items-center gap-1 px-3 py-1 bg-white border border-gray-300 text-gray-700 text-sm rounded-md"
+              >
+                {option}
+                <button
+                  disabled={readonly}
+                  onClick={readonly ? undefined : () => toggleOption(option)}
+                  className={`ml-1 ${readonly ? 'cursor-not-allowed' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </span>
+            ))}
+
+            {!showMore && remainingCount > 0 && (
               <button
                 disabled={readonly}
-                onClick={readonly ? undefined : () => toggleOption(option)}
-                className={`ml-1 ${readonly ? 'cursor-not-allowed' : 'text-gray-500 hover:text-gray-700'}`}
+                onClick={readonly ? undefined : () => setShowMore(true)}
+                className={`inline-flex items-center gap-1 px-3 py-1 bg-white border border-gray-300 text-gray-700 text-sm rounded-md ${readonly ? 'cursor-not-allowed' : 'hover:bg-gray-50'
+                  }`}
               >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                +{remainingCount} More
               </button>
-            </span>
-          ))}
+            )}
 
-          {!showMore && remainingCount > 0 && (
-            <button
-              disabled={readonly}
-              onClick={readonly ? undefined : () => setShowMore(true)}
-              className={`inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-md ${
-                readonly ? 'cursor-not-allowed' : 'hover:bg-gray-200'
-              }`}
-            >
-              +{remainingCount} More
-            </button>
-          )}
-
-          {showMore && config.fairnessAttributes.length > 8 && (
-            <button
-              disabled={readonly}
-              onClick={readonly ? undefined : () => setShowMore(false)}
-              className={`inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-md ${
-                readonly ? 'cursor-not-allowed' : 'hover:bg-gray-200'
-              }`}
-            >
-              Show Less
-            </button>
-          )}
-        </div>
+            {showMore && config.fairnessAttributes.length > 3 && (
+              <button
+                disabled={readonly}
+                onClick={readonly ? undefined : () => setShowMore(false)}
+                className={`inline-flex items-center gap-1 px-3 py-1 bg-white border border-gray-300 text-gray-700 text-sm rounded-md ${readonly ? 'cursor-not-allowed' : 'hover:bg-gray-50'
+                  }`}
+              >
+                Show Less
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </Section>
   );
@@ -614,19 +626,16 @@ function ModelGenesis() {
 
     predictionType: 'Supervised',
     classification: 'Multiclass',
-    targetFeature: 'feature1',
+    targetFeature: 'feature3',
 
     trainSplit: 70,
     testSplit: 20,
     validationSplit: 10,
 
-    fairnessAttributes: [
-      'Option 1', 'Option 2', 'Option 3', 'Option 4', 'Option 5', 'Option 6', 'Option 7', 'Option 8',
-      'Option 9', 'Option 10', 'Option 12', 'Option 13', 'Option 14'
-    ]
+    fairnessAttributes: []
   });
 
-  const [isValidated, setIsValidated] = useState(true);
+  const [isValidated, setIsValidated] = useState(false);
 
   const handleValidate = () => {
     if (readonly) return;

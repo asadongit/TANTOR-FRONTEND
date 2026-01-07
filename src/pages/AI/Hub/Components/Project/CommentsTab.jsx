@@ -1,20 +1,268 @@
-// tabs/CommentsTab.jsx
+import { useState } from 'react';
 import { Search, EllipsisVertical } from 'lucide-react';
 import DataTable from '../../../../../components/DataTable';
+import AddCommentModal from './AddCommentModal';
+import CommentDetailModal from './CommentDetailModal';
 
 const CommentsTab = () => {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isSideModalOpen, setIsSideModalOpen] = useState(false);
+    const [selectedRow, setSelectedRow] = useState(null);
+    const [replyText, setReplyText] = useState('');
+    const [formData, setFormData] = useState({
+        componentType: '',
+        componentName: '',
+        category: '',
+        subject: '',
+        comment: ''
+    });
+
     const commentsData = [
-        { sno: 1, component: 'Data Upload', subject: 'CSV file validation issue', post_date: '01/02/2025', last_date: '03/10/2025', pins: '---' },
-        { sno: 2, component: 'User Registration', subject: 'Email verification pending', post_date: '02/10/2025', last_date: '04/10/2025', pins: '---' },
-        { sno: 3, component: 'Payment Processing', subject: 'Payment gateway timeout', post_date: '03/10/2025', last_date: '05/10/2025', pins: '---' },
-        { sno: 4, component: 'Account Setup', subject: 'Incomplete profile information', post_date: '04/10/2025', last_date: '06/10/2025', pins: '---' },
-        { sno: 5, component: 'Feature Deployment', subject: 'New feature rollout delayed', post_date: '05/10/2025', last_date: '07/10/2025', pins: '---' },
-        { sno: 6, component: 'System Maintenance', subject: 'Scheduled downtime', post_date: '06/10/2025', last_date: '08/10/2025', pins: '---' },
-        { sno: 7, component: 'Data Backup', subject: 'Backup failure', post_date: '07/10/2025', last_date: '09/10/2025', pins: '---' },
-        { sno: 8, component: 'Security Audit', subject: 'Vulnerability detected', post_date: '08/10/2025', last_date: '10/10/2025', pins: '---' },
-        { sno: 9, component: 'Software Update', subject: 'Update installation error', post_date: '09/10/2025', last_date: '11/10/2025', pins: '---' }
+        {
+            sno: 1,
+            userName: 'Oliver',
+            componentType: 'Data Upload',
+            componentName: 'Data Upload',
+            subject: 'CSV file validation iss...',
+            fullSubject: 'CSV file validation issue',
+            comment: 'CSV file validation iss...',
+            fullComment: 'CSV file validation issue',
+            postDate: '02/10/2025',
+            lastDate: '04/10/2025',
+            pins: '---',
+            replies: '12 Replies',
+            totalReplies: 5,
+            newComments: 3,
+            data: 'Data.CSV',
+            thread: [
+                {
+                    userName: 'Jacob Jones',
+                    initial: 'J',
+                    date: '22 Aug 2022 at 12:00 PM',
+                    message: 'The updated CSV has been uploaded. Please confirm if the validation passes now.',
+                    repliesCount: 5
+                },
+                {
+                    userName: 'Brooklyn Simmons',
+                    initial: 'B',
+                    date: '22 Aug 2022 at 12:00 PM',
+                    message: 'Thanks for confirming. Closing this thread from our side.'
+                },
+                {
+                    userName: 'Jacob Jones',
+                    initial: 'J',
+                    date: '22 Aug 2022 at 12:00 PM',
+                    message: 'Appreciate the quick turnaround on this.'
+                },
+                {
+                    userName: 'Cameron Williamson',
+                    initial: 'C',
+                    date: '22 Aug 2022 at 12:00 PM',
+                    message: 'Noted. Please reach out if the issue reoccurs.'
+                },
+                {
+                    userName: 'Leslie Alexander',
+                    initial: 'L',
+                    date: '22 Aug 2022 at 12:00 PM',
+                    message: 'Marking this as resolved and archived for reference.'
+                },
+                {
+                    userName: 'Courtney Henry',
+                    initial: 'C',
+                    date: '22 Aug 2022 at 12:00 PM',
+                    message: 'All good now. No further action required.'
+                }
+            ]
+        },
+        {
+            sno: 2,
+            userName: 'Sophia',
+            componentType: 'User Registration',
+            componentName: 'User Registration',
+            subject: 'Email verification pen...',
+            fullSubject: 'Email verification pending',
+            comment: 'Email verification pen...',
+            fullComment: 'Email verification pending',
+            postDate: '02/10/2025',
+            lastDate: '04/10/2025',
+            pins: '---',
+            replies: '12 Replies',
+            totalReplies: 8,
+            newComments: 2,
+            data: 'User.CSV',
+            thread: [
+                {
+                    userName: 'John Doe',
+                    initial: 'J',
+                    date: '23 Aug 2022 at 10:00 AM',
+                    message: 'Working on the email verification issue.'
+                }
+            ]
+        },
+        {
+            sno: 3,
+            userName: 'Liam',
+            componentType: 'Payment Processing',
+            componentName: 'Payment Processing',
+            subject: 'Payment gateway tim...',
+            fullSubject: 'Payment gateway timeout',
+            comment: 'Payment gateway tim...',
+            fullComment: 'Payment gateway timeout',
+            postDate: '03/10/2025',
+            lastDate: '05/10/2025',
+            pins: '---',
+            replies: '08 Replies',
+            totalReplies: 8,
+            newComments: 1,
+            data: 'Payment.CSV',
+            thread: []
+        },
+        {
+            sno: 4,
+            userName: 'Ava',
+            componentType: 'Account Setup',
+            componentName: 'Account Setup',
+            subject: 'Incomplete profile inf...',
+            fullSubject: 'Incomplete profile information',
+            comment: 'Incomplete profile inf...',
+            fullComment: 'Incomplete profile information',
+            postDate: '04/10/2025',
+            lastDate: '06/10/2025',
+            pins: '---',
+            replies: '23 Replies',
+            totalReplies: 23,
+            newComments: 5,
+            data: 'Account.CSV',
+            thread: []
+        },
+        {
+            sno: 5,
+            userName: 'Noah',
+            componentType: 'Feature Deployment',
+            componentName: 'Feature Deployment',
+            subject: 'New feature rollout d...',
+            fullSubject: 'New feature rollout delayed',
+            comment: 'New feature rollout d...',
+            fullComment: 'New feature rollout delayed',
+            postDate: '05/10/2025',
+            lastDate: '07/10/2025',
+            pins: '---',
+            replies: '05 Replies',
+            totalReplies: 5,
+            newComments: 0,
+            data: 'Feature.CSV',
+            thread: []
+        },
+        {
+            sno: 6,
+            userName: 'Liam',
+            componentType: 'System Maintenance',
+            componentName: 'System Maintenance',
+            subject: 'Scheduled downtime',
+            fullSubject: 'Scheduled downtime',
+            comment: 'Scheduled downtime',
+            fullComment: 'Scheduled downtime',
+            postDate: '06/10/2025',
+            lastDate: '08/10/2025',
+            pins: '---',
+            replies: '09 Replies',
+            totalReplies: 9,
+            newComments: 2,
+            data: 'System.CSV',
+            thread: []
+        },
+        {
+            sno: 7,
+            userName: 'Ethan',
+            componentType: 'Data Backup',
+            componentName: 'Data Backup',
+            subject: 'Backup failure',
+            fullSubject: 'Backup failure',
+            comment: 'Backup failure',
+            fullComment: 'Backup failure',
+            postDate: '07/10/2025',
+            lastDate: '09/10/2025',
+            pins: '---',
+            replies: '12 Replies',
+            totalReplies: 12,
+            newComments: 3,
+            data: 'Backup.CSV',
+            thread: []
+        },
+        {
+            sno: 8,
+            userName: 'Isabella',
+            componentType: 'Security Audit',
+            componentName: 'Security Audit',
+            subject: 'Vulnerability detected',
+            fullSubject: 'Vulnerability detected',
+            comment: 'Vulnerability detected',
+            fullComment: 'Vulnerability detected',
+            postDate: '08/10/2025',
+            lastDate: '10/10/2025',
+            pins: '---',
+            replies: '16 Replies',
+            totalReplies: 16,
+            newComments: 4,
+            data: 'Security.CSV',
+            thread: []
+        },
+        {
+            sno: 9,
+            userName: 'Lucas',
+            componentType: 'Software Update',
+            componentName: 'Software Update',
+            subject: 'Update installation er...',
+            fullSubject: 'Update installation error',
+            comment: 'Update installation er...',
+            fullComment: 'Update installation error',
+            postDate: '09/10/2025',
+            lastDate: '11/10/2025',
+            pins: '---',
+            replies: '05 Replies',
+            totalReplies: 5,
+            newComments: 0,
+            data: 'Update.CSV',
+            thread: []
+        }
     ];
 
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    const handleSubmit = () => {
+        console.log('Form submitted:', formData);
+        setIsModalOpen(false);
+        setFormData({
+            componentType: '',
+            componentName: '',
+            category: '',
+            subject: '',
+            comment: ''
+        });
+    };
+
+    const handleRowClick = (row) => {
+        setSelectedRow(row);
+        setIsSideModalOpen(true);
+    };
+
+    const handleCloseSideModal = () => {
+        setIsSideModalOpen(false);
+        setSelectedRow(null);
+        setReplyText('');
+    };
+
+    const handleSendReply = () => {
+        console.log('Reply sent:', replyText);
+        // Add logic to send reply
+        setReplyText('');
+    };
 
     return (
         <>
@@ -35,7 +283,7 @@ const CommentsTab = () => {
                         <input
                             type="date"
                             defaultValue="2025-01-02"
-                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm  min-w-[160px]"
+                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm min-w-[160px]"
                         />
                     </div>
 
@@ -68,28 +316,70 @@ const CommentsTab = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <button className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-purple-700 transition-colors text-sm flex items-center gap-2 whitespace-nowrap">
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7d6ba3] transition-colors text-sm flex items-center gap-2 whitespace-nowrap"
+                    >
                         + Comment
-                    </button>
-                    <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                        <EllipsisVertical className="w-5 h-5 text-gray-600" />
                     </button>
                 </div>
             </div>
 
             <DataTable
                 columns={[
-                    { key: 'sno', label: 'Sno', sortable: true, width: '80px' },
-                    { key: 'component', label: 'Component', sortable: true },
+                    { key: 'userName', label: 'User Name', sortable: true, width: '120px' },
+                    { 
+                        key: 'componentType', 
+                        label: 'Component Type', 
+                        sortable: true,
+                        render: (row) => (
+                            <span className="text-[#8e78b7] underline cursor-pointer hover:text-[#7d6ba3]">
+                                {row.componentType}
+                            </span>
+                        )
+                    },
+                    { key: 'componentName', label: 'Component Name', sortable: true },
                     { key: 'subject', label: 'Subject', sortable: true },
-                    { key: 'post_date', label: 'Post Date', sortable: true },
-                    { key: 'last_date', label: 'Last Date', sortable: true },
+                    { key: 'comment', label: 'Comment', sortable: true },
+                    { key: 'postDate', label: 'Post Date', sortable: true },
+                    { key: 'lastDate', label: 'Last Date', sortable: true },
                     { key: 'pins', label: 'Pins', sortable: true },
+                    { 
+                        key: 'replies', 
+                        label: '', 
+                        sortable: false,
+                        render: (row) => (
+                            <span className="text-[#8e78b7] cursor-pointer hover:text-[#7d6ba3]">
+                                {row.replies}
+                            </span>
+                        )
+                    }
                 ]}
                 data={commentsData}
                 actions={[]}
                 isLoading={false}
                 isError={false}
+                onRowClick={handleRowClick}
+                selectedRowId={selectedRow?.sno}
+            />
+
+            {/* Add Comment Modal */}
+            <AddCommentModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                formData={formData}
+                onInputChange={handleInputChange}
+                onSubmit={handleSubmit}
+            />
+
+            {/* Comment Detail Side Modal */}
+            <CommentDetailModal
+                isOpen={isSideModalOpen}
+                onClose={handleCloseSideModal}
+                selectedRow={selectedRow}
+                replyText={replyText}
+                onReplyChange={setReplyText}
+                onSendReply={handleSendReply}
             />
         </>
     );
