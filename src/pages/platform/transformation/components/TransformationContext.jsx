@@ -616,6 +616,7 @@ export function TransformationProvider({ children }) {
           const originalColumns = state.originalSourceColumns[sourceId] || [];
 
 
+
           if (sourceData.sourceType === "file") {
             const fileColumns = sourceData.fileColumns || [];
             const columnMapping = {};
