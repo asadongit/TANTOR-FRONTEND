@@ -19,12 +19,10 @@ import {
   ClipboardDocumentListIcon,
   ArrowsPointingInIcon,
   ArrowsPointingOutIcon,
-  ChevronDoubleLeftIcon,
-  ChevronDoubleRightIcon,
   ChevronDownIcon,
   ChevronRightIcon,
 } from '@heroicons/react/24/outline';
-import { 
+import {
   LayoutDashboard,
   Network,
   Database,
@@ -36,7 +34,9 @@ import {
   Activity,
   Users,
   Moon,
-  Workflow
+  Workflow,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -199,7 +199,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     { name: 'Neo Mode', icon: Moon, path: `${AI_PREFIX}/neo-mode` },
   ];
 
-  const currentRoutes = 
+  const currentRoutes =
     currentActiveSection === 'platform' ? platformRoutes :
     currentActiveSection === 'ai' ? aiRoutes :
     dataGovernanceRoutes;
@@ -346,23 +346,31 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     <aside
       className={`bg-white border-r border-gray-200 h-[calc(100vh-64px)] transition-all duration-300 ${
         isCollapsed ? 'w-16' : 'w-64'
-      } fixed`}
+      } fixed flex flex-col`}
     >
-      <div className="flex justify-end p-2">
+
+      <nav className="px-2 py-2 flex-1 overflow-y-auto">
+        {currentRoutes.map(renderNavItem)}
+      </nav>
+
+      <div
+        className={`mt-auto p-2 border-t border-gray-100 flex ${
+          isCollapsed ? 'justify-center' : 'justify-end'
+        }`}
+      >
         <button
           onClick={toggleSidebar}
           className="p-2 hover:bg-gray-100 rounded-full"
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={isCollapsed ? 'Expand' : 'Collapse'}
         >
           {isCollapsed ? (
-            <ChevronDoubleRightIcon className="h-5 w-5" />
+            <PanelLeftOpen className="h-5 w-5" />
           ) : (
-            <ChevronDoubleLeftIcon className="h-5 w-5" />
+            <PanelLeftClose className="h-5 w-5" />
           )}
         </button>
       </div>
-      <nav className="px-2">
-        {currentRoutes.map(renderNavItem)}
-      </nav>
     </aside>
   );
 };

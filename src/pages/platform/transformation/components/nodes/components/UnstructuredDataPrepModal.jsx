@@ -122,49 +122,7 @@ const UnStructureDataPrep = ({ open, onClose, txtFile }) => {
                     </tbody>
                   </table>
                 </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="rounded-lg border border-gray-200 bg-white p-4">
-                    <h4 className="text-sm font-medium text-gray-900 mb-3">
-                      Sentiment Analysis
-                    </h4>
-                    {preparedData.metadata?.sentiment_analysis ? (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-600">Positive</span>
-                          <span className="text-sm font-semibold text-green-600">{(preparedData.metadata.sentiment_analysis.pos * 100).toFixed(1)}%</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-600">Neutral</span>
-                          <span className="text-sm font-semibold text-gray-600">{(preparedData.metadata.sentiment_analysis.neu * 100).toFixed(1)}%</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-600">Negative</span>
-                          <span className="text-sm font-semibold text-red-600">{(preparedData.metadata.sentiment_analysis.neg * 100).toFixed(1)}%</span>
-                        </div>
-                        {/* <div className="mt-3 pt-3 border-t border-gray-200">
-                          <span className="text-xs text-gray-600">Overall: </span>
-                          <span className="text-sm font-semibold text-gray-900">{preparedData.metadata.sentiment_analysis.compound}</span>
-                        </div> */}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500">N/A</p>
-                    )}
-                  </div>
-                  <div className="rounded-lg border border-gray-200 bg-white p-4">
-                    <h4 className="text-sm font-medium text-gray-900 mb-3">Wordcloud</h4>
-                    {preparedData.metadata?.word_cloud ? (
-                      <img
-                        src={`data:image/png;base64,${preparedData.metadata.word_cloud}`}
-                        alt="Wordcloud"
-                        className="mt-2 max-w-full h-auto rounded"
-                      />
-                    ) : (
-                      <p className="mt-2 text-sm text-gray-500">
-                        No wordcloud available
-                      </p>
-                    )}
-                  </div>
-                </div>
+
               </div>
             ) : (
               <div className="rounded-lg border border-gray-200 bg-gray-50">
