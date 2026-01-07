@@ -1,4 +1,4 @@
-import { FileText, Database, FolderKanban, Box, Scale, ArrowUp, ArrowDown, Info, Activity, Search, List, RefreshCw, BookOpenText, Archive, Trash2, Rocket, Palette, BookOpen, Gauge } from 'lucide-react';
+import { FileText, Database, FolderKanban, Box, Scale, ArrowUp, ArrowDown, Info, Activity, Search, List, RefreshCw, BookOpenText, Archive, Trash2, Rocket, Palette, BookOpen, Gauge, LayoutGrid } from 'lucide-react';
 import { PieChart, Pie, Cell } from 'recharts';
 import { useState, useMemo } from 'react';
 import Breadcrumb from '../../../components/Breadcrumb';
@@ -10,6 +10,7 @@ const Data = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isTableView, setIsTableView] = useState(false);
   const navigate = useNavigate();
 
   const statsData = [
@@ -137,6 +138,10 @@ const Data = () => {
     setIsLoading(true);
     setRefreshTrigger(prev => prev + 1);
     setTimeout(() => setIsLoading(false), 1000);
+  };
+
+  const toggleView = () => {
+    setIsTableView(prev => !prev);
   };
 
   const getQualityStyle = (quality) => {
@@ -282,8 +287,16 @@ const Data = () => {
               className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm"
             />
           </div>
-          <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-            <List className="w-5 h-5 text-gray-600" />
+          <button 
+            className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            onClick={toggleView}
+            title={isTableView ? "Grid View" : "List View"}
+          >
+            {isTableView ? (
+              <LayoutGrid className="w-5 h-5 text-gray-600" />
+            ) : (
+              <List className="w-5 h-5 text-gray-600" />
+            )}
           </button>
           <button
             className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
@@ -296,78 +309,82 @@ const Data = () => {
       </div>
 
       <div className="space-y-6">
-        <div className="bg-gradient-to-r from-[#8e78b7] via-purple-300 to-purple-100 rounded-xl p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {statsData.map((stat, index) => (
-              <StatCard key={index} {...stat} />
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <ChartCard
-            title="Quality"
-            icon={Scale}
-            infoText="Data quality distribution across all datasets"
-          >
-            <div className="flex flex-col items-center">
-              <PieChart width={350} height={170}>
-                <Pie
-                  data={qualityData}
-                  cx={170}
-                  cy={170}
-                  startAngle={180}
-                  endAngle={0}
-                  innerRadius={150}
-                  outerRadius={160}
-                  dataKey="value"
-                >
-                  {qualityData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-              </PieChart>
-              <div className="flex items-end justify-center">
-                <div className="text-center mb-10">
-                  <div className="bg-[#8e78b7] text-white px-7 py-1 rounded-full text-xs font-medium">
-                    Good Quality
-                  </div>
-                </div>
-              </div>
-              <div className="flex justify-center gap-6">
-                {qualityData.map((item, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
-                    <span className="text-xs text-gray-600">{item.name}</span>
-                  </div>
+        {!isTableView && (
+          <>
+            <div className="bg-gradient-to-r from-[#8e78b7] via-purple-300 to-purple-100 rounded-xl p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {statsData.map((stat, index) => (
+                  <StatCard key={index} {...stat} />
                 ))}
               </div>
             </div>
-          </ChartCard>
 
-          <ChartCard
-            title="Last Accessed"
-            icon={Activity}
-            infoText="Recently accessed datasets and their frequency"
-          >
-            <div className="max-h-[240px] overflow-y-auto">
-              {lastAccessedData.map((item, index) => (
-                <div key={index}>
-                  <div className="flex items-center justify-between py-3 px-2 hover:bg-gray-50">
-                    <span className="text-sm text-gray-700 flex-1">{item.name}</span>
-                    <span className="text-sm font-medium text-gray-900 mx-8">{item.count}</span>
-                    <button className="p-1 hover:bg-gray-100 rounded">
-                      <BookOpenText className="w-4 h-4 text-[#8e78b7]" />
-                    </button>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <ChartCard
+                title="Quality"
+                icon={Scale}
+                infoText="Data quality distribution across all datasets"
+              >
+                <div className="flex flex-col items-center">
+                  <PieChart width={350} height={170}>
+                    <Pie
+                      data={qualityData}
+                      cx={170}
+                      cy={170}
+                      startAngle={180}
+                      endAngle={0}
+                      innerRadius={150}
+                      outerRadius={160}
+                      dataKey="value"
+                    >
+                      {qualityData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                  <div className="flex items-end justify-center">
+                    <div className="text-center mb-10">
+                      <div className="bg-[#8e78b7] text-white px-7 py-1 rounded-full text-xs font-medium">
+                        Good Quality
+                      </div>
+                    </div>
                   </div>
-                  {index < lastAccessedData.length - 1 && (
-                    <div className="border-b border-gray-200"></div>
-                  )}
+                  <div className="flex justify-center gap-6">
+                    {qualityData.map((item, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
+                        <span className="text-xs text-gray-600">{item.name}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
+              </ChartCard>
+
+              <ChartCard
+                title="Last Accessed"
+                icon={Activity}
+                infoText="Recently accessed datasets and their frequency"
+              >
+                <div className="max-h-[240px] overflow-y-auto">
+                  {lastAccessedData.map((item, index) => (
+                    <div key={index}>
+                      <div className="flex items-center justify-between py-3 px-2 hover:bg-gray-50">
+                        <span className="text-sm text-gray-700 flex-1">{item.name}</span>
+                        <span className="text-sm font-medium text-gray-900 mx-8">{item.count}</span>
+                        <button className="p-1 hover:bg-gray-100 rounded">
+                          <BookOpenText className="w-4 h-4 text-[#8e78b7]" />
+                        </button>
+                      </div>
+                      {index < lastAccessedData.length - 1 && (
+                        <div className="border-b border-gray-200"></div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </ChartCard>
             </div>
-          </ChartCard>
-        </div>
+          </>
+        )}
 
         <DataTable
           columns={columns}

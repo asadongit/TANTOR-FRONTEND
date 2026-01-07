@@ -16,6 +16,7 @@ import {
   Search,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+
 const DataTable = ({
   columns,
   data = [],
@@ -25,6 +26,8 @@ const DataTable = ({
   isError = false,
   refetch = () => {},
   resetSortTrigger,
+  onRowClick,
+  selectedRowId,
 }) => {
   const [sortConfig, setSortConfig] = useState({ key: "", direction: "asc" });
   const [searchTerm, setSearchTerm] = useState("");
@@ -34,6 +37,7 @@ const DataTable = ({
   const [hoveredAction, setHoveredAction] = useState(null);
   const menuRef = useRef(null);
   const { project } = useAuth();
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -66,10 +70,6 @@ const DataTable = ({
 
   const processedData = useMemo(() => {
     let result = [...data];
-    // tbr
-    // if (project && !["none","default"].includes(project)) {
-    //   result = result.filter(row => row.project === project);
-    // }
 
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase();
@@ -136,6 +136,19 @@ const DataTable = ({
     if (page < maxPage) setPage(page + 1);
   };
 
+  const handleRowClickInternal = (row, e) => {
+    if (
+      e.target.closest('button') ||
+      e.target.closest('.action-menu')
+    ) {
+      return;
+    }
+    
+    if (onRowClick) {
+      onRowClick(row);
+    }
+  };
+
   const totalItems = processedData.length;
   const startItem = totalItems === 0 ? 0 : (page - 1) * itemsPerPage + 1;
   const endItem = Math.min(page * itemsPerPage, totalItems);
@@ -166,23 +179,6 @@ const DataTable = ({
 
   return (
     <div className="w-full mt-6">
-      {/* <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
-        {title && <h2 className="text-xl font-bold mb-2 md:mb-0">{title}</h2>}
-        <div className="relative w-full md:w-64">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search size={18} className="text-gray-400" />
-          </div>
-          <input
-            type="text"
-            placeholder="Search..."
-            className="pl-10 pr-4 py-2 border rounded-lg w-full"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            aria-label="Search records"
-          />
-        </div>
-      </div> */}
-
       <div
         className="overflow-auto border rounded-lg mb-4"
         style={{ maxHeight: "calc(100vh - 240px)" }}
@@ -258,13 +254,23 @@ const DataTable = ({
               </tr>
             ) : (
               paginatedData.map((row, rowIndex) => (
-                <tr key={rowIndex} className="border-b hover:bg-gray-50">
+                <tr
+                  key={rowIndex}
+                  className={`border-b transition-colors ${
+                    onRowClick ? 'cursor-pointer' : ''
+                  } ${
+                    selectedRowId && row.sno === selectedRowId
+                      ? 'bg-[#f3f0f8] border-l-4 border-l-[#8e78b7]'
+                      : 'hover:bg-gray-50'
+                  }`}
+                  onClick={(e) => handleRowClickInternal(row, e)}
+                >
                   {columns.map((column, cellIndex) => {
                     if (column.label === "Action") {
                       return (
                         <td
                           key={cellIndex}
-                          className="py-3 px-4 text-center relative"
+                          className="py-3 px-4 text-center relative action-menu"
                         >
                           <button
                             className="p-2 text-gray-600 hover:text-gray-800 rounded-full hover:bg-gray-100"
@@ -438,9 +444,6 @@ const DataTable = ({
             >
               <ChevronLeft size={20} />
             </button>
-            {/* <span className="px-3 border-t border-b">
-              Page {page} of {totalPages || 1}
-            </span> */}
             <button
               onClick={handleNextPage}
               className="p-1 border rounded-r border-l-0 hover:bg-gray-100 disabled:opacity-50"
