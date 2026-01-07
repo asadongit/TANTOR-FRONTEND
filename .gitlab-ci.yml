@@ -5,7 +5,7 @@ variables:
   DEPLOYMENT_REPO: "https://$GITLAB_USERNAME:$GITLAB_TOKEN@gitlab.tantor.io/root/tantor2-0_frontend_deployment.git"
   DEPLOYMENT_DIR: "tantor-front-2-0"
   REGISTRY: "registry.tantor.io:443/tantor"
-  IMAGE_NAME: "tantorfront2-0-dev"
+  IMAGE_NAME: "tantorfront2-0-test"
   GIT_USER: "root"
   GIT_EMAIL: "your-email@example.com"
   HARBOR_USER: "admin"
