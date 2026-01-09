@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, LayoutDashboard } from 'lucide-react';
 import { Icon } from '@iconify-icon/react';
 import {
   Overview,
@@ -67,9 +67,10 @@ function Library() {
               Model Library - <span className="text-purple-600">{modelName}</span>
             </h1>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200">
-            <Icon icon="mdi:cloud-outline" className="w-5 h-5" />
-            <span className="font-medium">AI/ML</span>
+          <button className="px-3 py-1.5 rounded bg-purple-100 text-[#8e78b7] font-medium text-sm flex items-center gap-1.5 hover:bg-purple-200 transition-colors"
+            onClick={() => navigate('/ai/hub/models')}>
+            <LayoutDashboard className="w-4 h-4" />
+            AI/ML
           </button>
         </div>
 
@@ -79,11 +80,10 @@ function Library() {
               <button
                 key={tab.name}
                 onClick={() => setActiveTab(index)}
-                className={`px-3 py-2 text-sm font-medium transition-colors ${
-                  activeTab === index
+                className={`px-3 py-2 text-sm font-medium transition-colors ${activeTab === index
                     ? 'border-b-2 border-purple-600 text-purple-600'
                     : 'text-gray-500 hover:text-gray-700'
-                }`}
+                  }`}
               >
                 {tab.name}
               </button>
