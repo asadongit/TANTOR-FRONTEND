@@ -1,4 +1,4 @@
-import { Search, List, RefreshCw, CheckCircle, TrendingUp, TrendingDown, Target, BookOpenText, Trash2 } from 'lucide-react';
+import { Search, List, RefreshCw, CheckCircle, TrendingUp, TrendingDown, Target, BookOpenText, Trash2, Plus, LayoutGrid } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Breadcrumb from '../../../components/Breadcrumb';
@@ -247,13 +247,16 @@ const Projects = () => {
                         />
                     </div>
                     <button
-                        className={`p-2 rounded-lg border ${
-                            viewMode === 'list' ? 'bg-gray-100 border-gray-500' : 'border-gray-300'
-                        } hover:bg-gray-50`}
+                        className={`p-2 rounded-lg border ${viewMode === 'list' ? 'bg-gray-100 border-gray-500' : 'border-gray-300'
+                            } hover:bg-gray-50`}
                         onClick={() => setViewMode(viewMode === 'list' ? 'both' : 'list')}
                         title={viewMode === 'list' ? 'Show All Views' : 'Show List Only'}
                     >
-                        <List className="w-5 h-5 text-gray-600" />
+                        {viewMode === 'list' ? (
+                            <LayoutGrid className="w-5 h-5 text-gray-600" />
+                        ) : (
+                            <List className="w-5 h-5 text-gray-600" />
+                        )}
                     </button>
                     <button
                         className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
@@ -261,6 +264,11 @@ const Projects = () => {
                         disabled={isLoading}
                     >
                         <RefreshCw className={`w-5 h-5 text-gray-600 ${isLoading ? 'animate-spin' : ''}`} />
+                    </button>
+                    <button
+                        className="flex items-center gap-2 px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7d6aa3] transition-colors">
+                        <Plus className="w-4 h-4" />
+                        <span className="text-sm font-medium">Create Project</span>
                     </button>
                 </div>
             </div>

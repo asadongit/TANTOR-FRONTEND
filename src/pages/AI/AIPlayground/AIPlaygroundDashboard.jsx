@@ -1,5 +1,5 @@
 // AIPlayground.jsx
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Network,
   Bot,
@@ -12,7 +12,8 @@ import {
   MoveRight,
   ChartColumnDecreasing,
   RotateCcw,
-  Search
+  Search,
+  Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CreateProjectModal } from './modals/Dashboard/CreateProjectModal';
@@ -20,24 +21,7 @@ import { DatasetDescriptionModal } from './modals/Dashboard/DatasetDescriptionMo
 import { SelectDataViewModal } from './modals/Dashboard/SelectDataViewModal';
 import { ResetProjectModal } from './modals/Dashboard/ResetProjectModal';
 import { ChooseBuildMethodModal } from './modals/Dashboard/ChooseBuildMethodModal';
-
-// Constants
-const EXPERIMENT_OPTIONS = [
-  { value: 'exp1', label: 'List 1' },
-  { value: 'exp2', label: 'List 2' },
-  { value: 'exp3', label: 'List 3' },
-  { value: 'exp4', label: 'List 4' },
-];
-
-const OWNER_OPTIONS = [
-  { value: 'abc', label: 'ABC' },
-  { value: 'xyz', label: 'XYZ' },
-];
-
-const MEMBER_OPTIONS = [
-  { value: 'member1', label: 'Member 1' },
-  { value: 'member2', label: 'Member 2' },
-];
+import { useAuth } from '../../../context/AuthContext';
 
 const CAPABILITIES = [
   {
@@ -73,8 +57,11 @@ const CAPABILITIES = [
 const AIPlayground = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const { token, hostnameV2 } = useAuth();
 
   // State Management
+  const [projects, setProjects] = useState([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [selectedExperiment, setSelectedExperiment] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -90,13 +77,42 @@ const AIPlayground = () => {
     chooseBuildMethod: false
   });
 
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  const fetchProjects = async () => {
+    setIsLoadingProjects(true);
+    try {
+      const response = await fetch(`${hostnameV2}/projects/listing`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch projects');
+      }
+
+      const data = await response.json();
+      setProjects(data || []);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      setProjects([]);
+    } finally {
+      setIsLoadingProjects(false);
+    }
+  };
+
   // Helper Functions
   const toggleModal = (modalName, isOpen) => {
     setModals(prev => ({ ...prev, [modalName]: isOpen }));
   };
 
-  const filteredOptions = EXPERIMENT_OPTIONS.filter(opt =>
-    opt.label.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredOptions = projects.filter(project =>
+    project.project.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const isDisabled = !selectedExperiment;
@@ -108,9 +124,12 @@ const AIPlayground = () => {
     setSearchQuery('');
   };
 
-  const handleCreateProject = (formData) => {
-    console.log('Creating project:', formData);
-    // Add your project creation logic here
+  const handleCreateProject = () => {
+    toggleModal('createProject', true);
+  };
+
+  const handleProjectCreated = () => {
+    fetchProjects();
   };
 
   const validateFile = (file) => {
@@ -221,17 +240,25 @@ const AIPlayground = () => {
               <div className="relative w-80">
                 <button
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="w-full h-10 px-3 rounded-md border border-slate-200 bg-white text-sm text-left focus:outline-none focus:ring-2 focus:ring-violet-500/20 transition-all flex items-center justify-between"
+                  disabled={isLoadingProjects}
+                  className="w-full h-10 px-3 rounded-md border border-slate-200 bg-white text-sm text-left focus:outline-none focus:ring-2 focus:ring-violet-500/20 transition-all flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span className={selectedExperiment ? 'text-slate-900' : 'text-slate-400'}>
-                    {selectedExperiment
-                      ? EXPERIMENT_OPTIONS.find(opt => opt.value === selectedExperiment)?.label
-                      : 'Select'}
-                  </span>
+                  {isLoadingProjects ? (
+                    <span className="flex items-center gap-2 text-slate-400">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Loading projects...
+                    </span>
+                  ) : (
+                    <span className={selectedExperiment ? 'text-slate-900' : 'text-slate-400'}>
+                      {selectedExperiment
+                        ? projects.find(opt => opt.project_id === selectedExperiment)?.project
+                        : 'Select'}
+                    </span>
+                  )}
                   <ChevronDown className="w-4 h-4 text-slate-400" />
                 </button>
 
-                {isDropdownOpen && (
+                {isDropdownOpen && !isLoadingProjects && (
                   <div className="absolute top-full mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg z-10">
                     <div className="p-2 border-b border-slate-200">
                       <div className="relative">
@@ -246,20 +273,26 @@ const AIPlayground = () => {
                       </div>
                     </div>
                     <div className="max-h-48 overflow-y-auto">
-                      {filteredOptions.map((opt) => (
-                        <button
-                          key={opt.value}
-                          onClick={() => handleSelectExperiment(opt.value)}
-                          className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
+                      {filteredOptions.length > 0 ? (
+                        filteredOptions.map((project) => (
+                          <button
+                            key={project.project_id}
+                            onClick={() => handleSelectExperiment(project.project_id)}
+                            className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                          >
+                            {project.project}
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-3 py-2 text-sm text-slate-400 text-center">
+                          No projects found
+                        </div>
+                      )}
                     </div>
                     <button
                       onClick={() => {
                         setIsDropdownOpen(false);
-                        toggleModal('createProject', true);
+                        handleCreateProject();
                       }}
                       className="w-full px-3 py-2 text-left text-sm text-[#8e78b7] hover:bg-violet-50 transition-colors border-t border-slate-200 flex items-center gap-2"
                     >
@@ -362,7 +395,7 @@ const AIPlayground = () => {
               <div className="text-md text-slate-500">
                 Project Name:{' '}
                 <span className="text-slate-900 font-medium">
-                  {EXPERIMENT_OPTIONS.find(opt => opt.value === selectedExperiment)?.label}
+                  {projects.find(opt => opt.project_id === selectedExperiment)?.project}
                 </span>
               </div>
             </div>
@@ -438,9 +471,7 @@ const AIPlayground = () => {
       <CreateProjectModal
         isOpen={modals.createProject}
         onClose={() => toggleModal('createProject', false)}
-        onSubmit={handleCreateProject}
-        ownerOptions={OWNER_OPTIONS}
-        memberOptions={MEMBER_OPTIONS}
+        onProjectCreated={handleProjectCreated}
       />
 
       <DatasetDescriptionModal

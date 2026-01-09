@@ -1,165 +1,288 @@
-import { useState } from 'react';
-import { Info, X, Plus, ChevronDown } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Search, AlertCircle, BadgeCheck } from 'lucide-react';
+import { Icon } from '@iconify-icon/react';
+import { useAuth } from "../../../../../context/AuthContext";
+import successBackground from "../../../../../assets/green.png";
 
-export const CreateProjectModal = ({ isOpen, onClose, onSubmit, ownerOptions, memberOptions }) => {
-  const [formData, setFormData] = useState({
-    projectName: '',
-    owner: '',
-    members: [],
-    description: ''
-  });
-  const [isMemberDropdownOpen, setIsMemberDropdownOpen] = useState(false);
-  const [memberSearchQuery, setMemberSearchQuery] = useState('');
-
-  const filteredMembers = memberOptions.filter(member =>
-    member.label.toLowerCase().includes(memberSearchQuery.toLowerCase())
-  );
-
-  const toggleMember = (value) => {
-    setFormData(prev => ({
-      ...prev,
-      members: prev.members.includes(value)
-        ? prev.members.filter(m => m !== value)
-        : [...prev.members, value]
-    }));
+export const CreateProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
+  const {token, decodedToken, hostnameV1} = useAuth();
+  const initialFormState = {
+    project: "",
+    description: "",
+    assigned_users: { assigned_users: "" },
+    created_by: decodedToken?.preferred_username || ""
   };
 
-  const handleSubmit = () => {
-    onSubmit(formData);
-    handleClose();
+  const [formData, setFormData] = useState(initialFormState);
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    
+    setFormData((prev) => {
+      if (name === "assigned_users") {
+        return {
+          ...prev,
+          assigned_users: {
+            ...prev.assigned_users,
+            assigned_users: value,
+          },
+        };
+      }
+      return {
+        ...prev,
+        [name]: value,
+      };
+    });
+
+    if (errors[name]) {
+      setErrors({
+        ...errors,
+        [name]: ""
+      });
+    }
+  };
+
+  const validateForm = () => {
+    let formErrors = {};
+    let isValid = true;
+
+    if (!formData.project.trim()) {
+      formErrors.project = "Project name is required";
+      isValid = false;
+    }
+
+    const email = formData.assigned_users.assigned_users;
+    if (!email.trim()) {
+      formErrors.assigned_users = "Manager email is required";
+      isValid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      formErrors.assigned_users = "Please enter a valid email address";
+      isValid = false;
+    }
+
+    setErrors(formErrors);
+    return isValid;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+    
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`${hostnameV1}/projects`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || "Failed to create project");
+      }
+
+      const result = await response.json();
+
+      setShowSuccessModal(true);
+      
+      if (onProjectCreated) {
+        onProjectCreated();
+      }
+    } catch (error) {
+      setErrors({ 
+        ...errors, 
+        api: error.message || "Failed to create project. Please try again." 
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
-    setFormData({ projectName: '', owner: '', members: [], description: '' });
-    setIsMemberDropdownOpen(false);
-    setMemberSearchQuery('');
+    setFormData(initialFormState);
+    setErrors({});
+    setShowSuccessModal(false);
+    onClose();
+  };
+
+  const handleSuccessClose = () => {
+    setFormData(initialFormState);
+    setErrors({});
+    setShowSuccessModal(false);
     onClose();
   };
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 relative">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-slate-900">Create New Project</h2>
-          <div className="flex items-center gap-2">
-            <button className="text-slate-400 hover:text-slate-600">
-              <Info className="w-5 h-5" />
-            </button>
-            <button onClick={handleClose} className="text-slate-400 hover:text-slate-600">
-              <X className="w-5 h-5" />
-            </button>
+  if (showSuccessModal) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl w-[600px] overflow-hidden shadow-xl">
+          <div className="relative h-24">
+            <div
+              className="absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: `url(${successBackground})` }}
+            >
+              <button
+                onClick={handleSuccessClose}
+                className="absolute top-4 right-4 text-black p-1 hover:bg-white hover:bg-opacity-20 rounded-full"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+          </div>
+
+          <div className="p-8">
+            <div className="flex items-center space-x-4 mb-4">
+              <BadgeCheck className="w-8 h-8 text-green-500" />
+              <h2 className="text-2xl font-bold">Congratulations!</h2>
+            </div>
+            <p className="text-lg text-gray-800 mb-2">
+              You have successfully created a project "{formData.project}".
+            </p>
+
+            <div className="flex justify-start gap-4 mt-8">
+              <button
+                onClick={handleSuccessClose}
+                className="px-6 py-3 text-lg bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a66a3] transition-colors"
+              >
+                Alright
+              </button>
+            </div>
           </div>
         </div>
+      </div>
+    );
+  }
 
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl w-[1000px] p-8 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-2">
             <div>
-              <label className="text-sm font-medium text-slate-700 mb-1 flex items-center gap-1">
-                Project Name
-              </label>
-              <input
-                type="text"
-                placeholder="Enter Project Name"
-                value={formData.projectName}
-                onChange={(e) => setFormData({ ...formData, projectName: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+              <Icon
+                className="h-5 w-5 text-[#8e78b7]"
+                icon="material-symbols:tactic-rounded"
+                width="24"
+                height="24"
               />
             </div>
+            <h2 className="text-xl font-bold text-[#8e78b7]">
+              Create a Project
+            </h2>
+          </div>
+          <button
+            onClick={handleClose}
+            className="text-gray-400 hover:text-gray-600"
+            disabled={isSubmitting}
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
-            <div>
-              <label className="text-sm font-medium text-slate-700 mb-1 block">Owner</label>
-              <select
-                value={formData.owner}
-                onChange={(e) => setFormData({ ...formData, owner: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500/20 bg-white"
-              >
-                <option value="">Select</option>
-                {ownerOptions.map((owner) => (
-                  <option key={owner.value} value={owner.value}>{owner.label}</option>
-                ))}
-              </select>
+        {errors.api && (
+          <div className="mb-6 p-3 bg-red-100 text-red-700 rounded-lg flex items-center">
+            <AlertCircle className="mr-2 h-5 w-5" />
+            {errors.api}
+          </div>
+        )}
+
+        <div className="grid grid-cols-3 gap-8">
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-black mb-1.5">
+                  Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="project"
+                  value={formData.project}
+                  onChange={handleInputChange}
+                  placeholder="Name"
+                  disabled={isSubmitting}
+                  className={`w-full p-2.5 border ${errors.project ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
+                />
+                {errors.project && (
+                  <p className="mt-1 text-sm text-red-500">{errors.project}</p>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="relative">
-            <label className="text-sm font-medium text-slate-700 mb-1 block">Member</label>
-            <button
-              onClick={() => setIsMemberDropdownOpen(!isMemberDropdownOpen)}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500/20 bg-white text-left flex items-center justify-between"
-            >
-              <span className="text-slate-400">Select</span>
-              <ChevronDown className="w-4 h-4 text-slate-400" />
-            </button>
-
-            {isMemberDropdownOpen && (
-              <div className="absolute top-full mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg z-10">
-                <div className="p-2 border-b border-slate-200">
-                  <div className="relative">
-                    <svg className="w-4 h-4 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                    <input
-                      type="text"
-                      placeholder="Search"
-                      value={memberSearchQuery}
-                      onChange={(e) => setMemberSearchQuery(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-violet-500/20"
-                    />
-                  </div>
-                </div>
-                <div className="max-h-40 overflow-y-auto p-2">
-                  {filteredMembers.map((member) => (
-                    <label
-                      key={member.value}
-                      className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={formData.members.includes(member.value)}
-                        onChange={() => toggleMember(member.value)}
-                        className="w-4 h-4 text-[#8e78b7] border-slate-300 rounded focus:ring-violet-500"
-                      />
-                      <span className="text-sm text-slate-700">{member.label}</span>
-                    </label>
-                  ))}
-                </div>
-                <button
-                  onClick={() => setIsMemberDropdownOpen(false)}
-                  className="w-full px-3 py-2 text-left text-sm text-[#8e78b7] hover:bg-violet-50 transition-colors border-t border-slate-200 flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Create</span>
-                </button>
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-black mb-1.5">
+                  Description
+                </label>
+                <input
+                  name="description"
+                  type="text"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  placeholder="Description"
+                  disabled={isSubmitting}
+                  className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]"
+                />
               </div>
-            )}
+            </div>
           </div>
 
-          <div>
-            <label className="text-sm font-medium text-slate-700 mb-1 block">Description</label>
-            <textarea
-              placeholder="Description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={4}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500/20 resize-none"
-            />
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <div>
+                <div className="relative">
+                  <label className="block text-sm text-black mb-1.5">
+                    Manager <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    name="assigned_users"
+                    value={formData.assigned_users.assigned_users}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        assigned_users: { assigned_users: e.target.value },
+                      }))
+                    }
+                    placeholder="Manager"
+                    disabled={isSubmitting}
+                    className={`w-full p-2.5 border ${errors.assigned_users ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
+                  />
+                  <Search
+                    className="absolute right-3 top-10 pointer-events-none text-gray-500"
+                    size={18}
+                  />
+                  {errors.assigned_users && (
+                    <p className="mt-1 text-sm text-red-500">{errors.assigned_users}</p>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 mt-6">
+        <div className="flex justify-start gap-4 mt-8">
           <button
             onClick={handleClose}
-            className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors"
+            className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-gray-100 transition-colors"
+            disabled={isSubmitting}
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
-            className="px-4 py-2 text-sm font-medium text-white bg-[#8e78b7] rounded-md transition-colors"
+            disabled={isSubmitting}
+            className={`px-6 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a66a3] transition-colors ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
           >
-            Create
+            {isSubmitting ? 'Creating...' : 'Create'}
           </button>
         </div>
       </div>
