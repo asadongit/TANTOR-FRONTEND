@@ -47,17 +47,19 @@ const FeatureSection = ({
             </div>
             <div className="flex items-center gap-3">
                 <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
-                <button 
-                    onClick={onExpand}
-                    disabled={readonly}
-                    className="text-gray-400 hover:text-gray-600"
-                >
-                    {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                </button>
+                {isToggled && (
+                    <button 
+                        onClick={onExpand}
+                        disabled={readonly}
+                        className="text-gray-400 hover:text-gray-600"
+                    >
+                        {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                    </button>
+                )}
             </div>
         </div>
 
-        {isExpanded && (
+        {isToggled && isExpanded && (
             <div className="px-4 pb-4 border-t border-gray-100">
                 <div className="mt-4">{children}</div>
             </div>
@@ -65,7 +67,7 @@ const FeatureSection = ({
     </div>
 );
 
-function FeatureImportance({ readonly = false }) {
+function FeatureImportance({ readonly = false, maxFeatures = 100 }) {
     const [toggles, setToggles] = useState({
         featureImportance: false,
         dimensionalityReduction: false,
@@ -78,7 +80,7 @@ function FeatureImportance({ readonly = false }) {
 
     const [methodCategory, setMethodCategory] = useState('random-forest');
     const [subMethod, setSubMethod] = useState('random-forest');
-    const [numFeatures, setNumFeatures] = useState('60');
+    const [numFeatures, setNumFeatures] = useState(Math.min(60, maxFeatures));
     const [reductionMethod, setReductionMethod] = useState('pca');
 
     const methodCategories = [
@@ -98,16 +100,28 @@ function FeatureImportance({ readonly = false }) {
 
     const toggleSwitch = (key) => {
         if (readonly) return;
-        setToggles(prev => {
-            const newValue = !prev[key];
-            setExpandedSections(prevExpanded => ({ ...prevExpanded, [key]: newValue }));
-            return { ...prev, [key]: newValue };
-        });
+        const newToggleState = !toggles[key];
+        
+        setToggles(prev => ({ ...prev, [key]: newToggleState }));
+
+        if (newToggleState) {
+            setExpandedSections({
+                featureImportance: false,
+                dimensionalityReduction: false,
+                [key]: true
+            });
+        } else {
+            setExpandedSections(prev => ({ ...prev, [key]: false }));
+        }
     };
 
     const toggleSection = (section) => {
         if (readonly) return;
-        setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+        setExpandedSections({
+            featureImportance: false,
+            dimensionalityReduction: false,
+            [section]: !expandedSections[section]
+        });
     };
 
     return (
@@ -162,14 +176,25 @@ function FeatureImportance({ readonly = false }) {
 
                     <div className="pt-2">
                         <h5 className="text-sm font-medium text-gray-700 mb-2">Number of Features to Select</h5>
-                        <input
-                            type="text"
-                            value={numFeatures}
-                            onChange={(e) => !readonly && setNumFeatures(e.target.value)}
-                            disabled={readonly}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
-                            placeholder="60"
-                        />
+                        <div className="space-y-2">
+                            <input
+                                type="range"
+                                min="1"
+                                max={maxFeatures}
+                                value={numFeatures}
+                                onChange={(e) => !readonly && setNumFeatures(parseInt(e.target.value))}
+                                disabled={readonly}
+                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#8e78b7] disabled:cursor-not-allowed"
+                                style={{
+                                    background: `linear-gradient(to right, #8e78b7 0%, #8e78b7 ${((numFeatures - 1) / (maxFeatures - 1)) * 100}%, #e5e7eb ${((numFeatures - 1) / (maxFeatures - 1)) * 100}%, #e5e7eb 100%)`
+                                }}
+                            />
+                            <div className="flex justify-between items-center text-xs text-gray-500">
+                                <span>1</span>
+                                <span className="text-sm font-medium text-gray-700">{numFeatures}</span>
+                                <span>{maxFeatures}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </FeatureSection>

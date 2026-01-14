@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { useState, useEffect } from "react";
-import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip } from 'recharts';
+import { RadarChart, PolarGrid, PolarAngleAxis, Radar } from 'recharts';
 import { useAuth } from "../../context/AuthContext";
 
 const Dashboard = () => {
@@ -9,12 +9,10 @@ const Dashboard = () => {
   const [connectionTypes, setConnectionTypes] = useState({});
   const [connectorAssets, setConnectorAssets] = useState([]);
   const [repositoryData, setRepositoryData] = useState([]);
-  const [maturityModelData, setMaturityModelData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [technicalLoading, setTechnicalLoading] = useState(true);
   const [connectorLoading, setConnectorLoading] = useState(true);
   const [repositoryLoading, setRepositoryLoading] = useState(true);
-  const [maturityLoading, setMaturityLoading] = useState(true);
   const [error, setError] = useState(null);
   const { token, decodedToken } = useAuth();
 
@@ -89,70 +87,6 @@ const Dashboard = () => {
       return transformedData;
     } catch (err) {
       console.error('Error fetching repository data:', err);
-      return [];
-    }
-  };
-
-  const fetchMaturityModel = async (policyIds) => {
-    try {
-      const response = await fetch(
-        `${window._env_?.VITE_FAST_API}/governance/dashboard/maturity_model`,
-        {
-          method: 'POST',
-          headers: {
-            'accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            owner: decodedToken.preferred_username,
-            policy_id: policyIds
-          })
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch maturity model data');
-      }
-
-      const data = await response.json();
-      
-      const transformedData = [
-        { 
-          subject: 'Data Quality', 
-          value: Math.min(data['Data Quality']?.dmm_data_quality_score || 0, 5),
-          fullScore: data['Data Quality']?.quality_score || 0,
-          details: data['Data Quality']
-        },
-        { 
-          subject: 'Catalog', 
-          value: Math.min(data['Catalog']?.dmm_catalog_score || 0, 5),
-          details: data['Catalog']
-        },
-        { 
-          subject: 'Business Definition', 
-          value: Math.min(data['Business Definition']?.dmm_business_definition_score || 0, 5),
-          details: data['Business Definition']
-        },
-        { 
-          subject: 'Security', 
-          value: Math.min(data['Security']?.dmm_security_score || 0, 5),
-          details: data['Security']
-        },
-        { 
-          subject: 'Validation', 
-          value: Math.min(data['Validation']?.dmm_validation_score || 0, 5),
-          details: data['Validation']
-        },
-        { 
-          subject: 'Stewardship', 
-          value: Math.min(data['Stewardship']?.dmm_stewardship_score || 0, 5),
-          details: data['Stewardship']
-        }
-      ];
-
-      return transformedData;
-    } catch (err) {
-      console.error('Error fetching maturity model:', err);
       return [];
     }
   };
@@ -236,7 +170,6 @@ const Dashboard = () => {
               tables: 0,
               columns: 0
             });
-            setMaturityModelData([]);
           } else {
             const secureQueryData = await secureQueryResponse.json();
             const policyIds = secureQueryData.matched_policy_ids || [];
@@ -296,13 +229,9 @@ const Dashboard = () => {
 
                   const repoData = await fetchRepositoryData(policyIds);
                   setRepositoryData(repoData);
-
-                  const maturityData = await fetchMaturityModel(policyIds);
-                  setMaturityModelData(maturityData);
                 } else {
                   setConnectorAssets([]);
                   setRepositoryData([]);
-                  setMaturityModelData([]);
                 }
               }
             } else {
@@ -314,7 +243,6 @@ const Dashboard = () => {
               });
               setConnectorAssets([]);
               setRepositoryData([]);
-              setMaturityModelData([]);
             }
           }
         } catch (technicalErr) {
@@ -326,12 +254,10 @@ const Dashboard = () => {
           });
           setConnectorAssets([]);
           setRepositoryData([]);
-          setMaturityModelData([]);
         } finally {
           setTechnicalLoading(false);
           setConnectorLoading(false);
           setRepositoryLoading(false);
-          setMaturityLoading(false);
         }
 
         setLoading(false);
@@ -341,7 +267,6 @@ const Dashboard = () => {
         setTechnicalLoading(false);
         setConnectorLoading(false);
         setRepositoryLoading(false);
-        setMaturityLoading(false);
         if (!technicalCounts) {
           setTechnicalCounts({
             connectors: 0,
@@ -352,7 +277,6 @@ const Dashboard = () => {
         }
         setConnectorAssets([]);
         setRepositoryData([]);
-        setMaturityModelData([]);
       }
     };
 
@@ -394,14 +318,6 @@ const Dashboard = () => {
             <div className="h-4 bg-gray-200 rounded w-20 animate-pulse mb-1"></div>
           </div>
         ))}
-      </div>
-    </div>
-  );
-
-  const MaturityModelLoadingSkeleton = () => (
-    <div className="flex justify-center">
-      <div className="w-full max-w-xs sm:max-w-sm lg:max-w-md">
-        <div className="w-[300px] h-[250px] bg-gray-200 rounded-lg animate-pulse mx-auto"></div>
       </div>
     </div>
   );
@@ -454,6 +370,15 @@ const Dashboard = () => {
     { title: "History", content: "Your history list is empty." }
   ];
 
+  const governanceData = [
+    { subject: 'Security', value: 78 },
+    { subject: 'Quality', value: 85 },
+    { subject: 'Business definition', value: 65 },
+    { subject: 'Steward', value: 70 },
+    { subject: 'Validation', value: 75 },
+    { subject: 'Catalog', value: 80 }
+  ];
+
   const RepositoryBar = ({ data, loading }) => {
     if (loading) {
       return (
@@ -472,11 +397,7 @@ const Dashboard = () => {
 
     if (!data || data.length === 0) {
       return (
-        <div className="flex flex-col items-center justify-center py-12">
-          <div className="bg-gray-50 rounded-full p-4 mb-4">
-            <Icon icon="material-symbols:database-outline" className="text-gray-400" width="48" height="48" />
-          </div>
-          <p className="text-gray-500 font-medium mb-1">No data repository found</p>
+        <div className="text-center py-8 text-gray-500">
         </div>
       );
     }
@@ -677,73 +598,6 @@ const Dashboard = () => {
     );
   };
 
-  const MaturityModelChart = () => {
-    if (maturityLoading) {
-      return <MaturityModelLoadingSkeleton />;
-    }
-
-    if (!maturityModelData || maturityModelData.length === 0) {
-      return (
-        <div className="flex flex-col items-center justify-center py-12">
-          <div className="bg-gray-50 rounded-full p-4 mb-4">
-            <Icon icon="material-symbols:pie-chart-outline" className="text-gray-400" width="48" height="48" />
-          </div>
-          <p className="text-gray-500 font-medium mb-1">No policy data available</p>
-          <p className="text-gray-400 text-sm">Maturity model requires active policies to display data</p>
-        </div>
-      );
-    }
-
-    const CustomTooltip = ({ active, payload }) => {
-      if (active && payload && payload.length) {
-        const data = payload[0].payload;
-        return (
-          <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-            <p className="font-semibold text-gray-800 mb-1 text-sm">{data.subject}</p>
-            <div className="flex items-center gap-2">
-              <span className="text-gray-600 text-xs">Score:</span>
-              <span className="font-bold text-[#AF52DE] text-sm">{data.value.toFixed(2)} / 5</span>
-            </div>
-          </div>
-        );
-      }
-      return null;
-    };
-
-    return (
-      <div className="flex justify-center">
-        <div className="w-full max-w-xs sm:max-w-sm lg:max-w-md">
-          <RadarChart 
-            width={300} 
-            height={250} 
-            data={maturityModelData}
-            className="mx-auto"
-          >
-            <PolarGrid />
-            <PolarAngleAxis 
-              dataKey="subject" 
-              tick={{ fontSize: 10 }}
-            />
-            <PolarRadiusAxis 
-              angle={90} 
-              domain={[0, 5]}
-              tickCount={6}
-              tick={false}
-            />
-            <Radar
-              name="Maturity"
-              dataKey="value"
-              stroke="#AF52DE"
-              fill="#AF52DE"
-              fillOpacity={0.2}
-            />
-            <Tooltip content={<CustomTooltip />} />
-          </RadarChart>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4">
       {error && (
@@ -793,31 +647,51 @@ const Dashboard = () => {
         <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm">
           <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">Data repository by sensitivity</h2>
           <RepositoryBar data={repositoryData} loading={repositoryLoading} />
-          {repositoryData && repositoryData.length > 0 && (
-            <div className="flex flex-wrap justify-start gap-3 sm:gap-6 mt-4">
-              <div className="flex items-center">
-                <div className="w-3 h-3 sm:w-4 sm:h-4 bg-[#ff9500] rounded-sm mr-2" />
-                <span className="text-xs sm:text-sm text-gray-600">Sensitive</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 sm:w-4 sm:h-4 bg-[#ffcf57] rounded-sm mr-2" />
-                <span className="text-xs sm:text-sm text-gray-600">Non-Sensitive</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 sm:w-4 sm:h-4 bg-[#268ede] rounded-sm mr-2" />
-                <span className="text-xs sm:text-sm text-gray-600">Personal</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 sm:w-4 sm:h-4 bg-gray-300 rounded-sm mr-2" />
-                <span className="text-xs sm:text-sm text-gray-600">Others</span>
-              </div>
+          <div className="flex flex-wrap justify-start gap-3 sm:gap-6 mt-4">
+            <div className="flex items-center">
+              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-[#ff9500] rounded-sm mr-2" />
+              <span className="text-xs sm:text-sm text-gray-600">Sensitive</span>
             </div>
-          )}
+            <div className="flex items-center">
+              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-[#ffcf57] rounded-sm mr-2" />
+              <span className="text-xs sm:text-sm text-gray-600">Non-Sensitive</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-[#268ede] rounded-sm mr-2" />
+              <span className="text-xs sm:text-sm text-gray-600">Personal</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-gray-300 rounded-sm mr-2" />
+              <span className="text-xs sm:text-sm text-gray-600">Others</span>
+            </div>
+          </div>
         </div>
 
         <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm">
           <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">Data governance maturity model</h2>
-          <MaturityModelChart />
+          <div className="flex justify-center">
+            <div className="w-full max-w-xs sm:max-w-sm lg:max-w-md">
+              <RadarChart 
+                width={300} 
+                height={250} 
+                data={governanceData}
+                className="mx-auto"
+              >
+                <PolarGrid />
+                <PolarAngleAxis 
+                  dataKey="subject" 
+                  tick={{ fontSize: 10 }}
+                />
+                <Radar
+                  name="Maturity"
+                  dataKey="value"
+                  stroke="#AF52DE"
+                  fill="#AF52DE"
+                  fillOpacity={0.2}
+                />
+              </RadarChart>
+            </div>
+          </div>
         </div>
       </div>
 

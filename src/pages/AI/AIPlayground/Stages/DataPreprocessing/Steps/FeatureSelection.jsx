@@ -63,9 +63,11 @@ function FeatureSelection({ readonly = false }) {
 
   const toggleSwitch = (key) => {
     if (readonly) return;
-    setToggles(prev => ({ ...prev, [key]: !prev[key] }));
+    const newToggleState = !toggles[key];
     
-    if (!toggles[key]) {
+    setToggles(prev => ({ ...prev, [key]: newToggleState }));
+    
+    if (newToggleState) {
       setExpandedSections({
         dropLowValue: false,
         handleMissing: false,
@@ -80,13 +82,13 @@ function FeatureSelection({ readonly = false }) {
 
   const toggleSection = (section) => {
     if (readonly) return;
-    setExpandedSections(prev => ({
+    setExpandedSections({
       dropLowValue: false,
       handleMissing: false,
       createBasic: false,
       detectOutliers: false,
-      [section]: !prev[section]
-    }));
+      [section]: !expandedSections[section]
+    });
   };
 
   const handleSelectAll = () => {
@@ -194,10 +196,12 @@ function FeatureSelection({ readonly = false }) {
         </div>
         <div className="flex items-center gap-3">
           <ToggleSwitch checked={toggles[sectionKey]} onChange={() => toggleSwitch(sectionKey)} />
-          <ExpandButton expanded={expandedSections[sectionKey]} onClick={() => toggleSection(sectionKey)} />
+          {toggles[sectionKey] && (
+            <ExpandButton expanded={expandedSections[sectionKey]} onClick={() => toggleSection(sectionKey)} />
+          )}
         </div>
       </div>
-      {expandedSections[sectionKey] && (
+      {toggles[sectionKey] && expandedSections[sectionKey] && (
         <div className="px-4 pb-4 border-t border-gray-100">{children}</div>
       )}
     </div>

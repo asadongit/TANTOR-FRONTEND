@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { useState, useEffect } from "react";
-import { List, RefreshCcw, BarChart3 } from "lucide-react";
+import { List, RefreshCcw } from "lucide-react";
 import Charts from "./components/Charts";
 import { Navigate } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
@@ -10,29 +10,11 @@ import { useCDCData } from "../../../hooks/platform/cdc";
 import { useSourceTypeCounts } from "../../../hooks/platform/cardCounts";
 import CardGrid from "../../../components/CardGrid";
 import { encrypt } from "../../../utils/Crypto";
-import { FeatureFlag, featureFlags } from "../../../components/FeatureFlag";
-
-const rotateAnimation = `
-  @keyframes rotate {
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  .icon-rotate {
-    animation: rotate 1s linear infinite;
-  }
-`;
-
 const CDCDashboard = () => {
-  const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardCounts } = useSourceTypeCounts('cdc');
-  const { data: CDCData = [], isLoading: isCDCLoading, error: CDCError, refetch: refetchCDCData } = useCDCData();
+const { data: cardData, isLoading: isCardLoading, error: cardError } = useSourceTypeCounts('cdc');
+const { data: CDCData=[], isLoading: isCDCLoading, error: CDCError } = useCDCData();
 
-  const navigate = useNavigate();
-  const [isRefreshing, setIsRefreshing] = useState(false);
+const navigate = useNavigate();
 
 
   const cards = [
@@ -74,18 +56,8 @@ const CDCDashboard = () => {
   ];
 
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      if (typeof refetchCardCounts === "function") await refetchCardCounts();
-      if (typeof refetchCDCData === "function") await refetchCDCData();
-      toast.success("refreshed successfully!");
-    } catch (e) {
-      toast.error("Failed to refresh CDC data");
-    }
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 1000);
+  const handleRefresh = () => {
+    toast.success("refreshed successfully!");
   };
 
   const handleCardClick = (card) => {
@@ -98,60 +70,45 @@ const CDCDashboard = () => {
     const encryptedUrl = encodeURIComponent(encrypt(url));
     navigate(`/details?${encryptedUrl}`);
   };
-  const handleMetricsClick = () => {
-    window.open('https://kafbat-ui.tantor.io/', '_blank');
+  const handlekafkaClick = () => {
+    navigate("/cdc/kafka-dashboard");
   };
 
 
   return (
     <div>
-      <style>{rotateAnimation}</style>
       <div className="flex gap-2 mb-6 items-center justify-between">
         <h1 className="text-2xl font-semibold">CDC</h1>
-        <div className="flex items-center gap-2">
-          <FeatureFlag flag={featureFlags.SHOW_KAFKA_METRICS_IN_CDC}>
-          <button
-            type="button"
-            className="flex items-center gap-2 w-auto h-10 px-3 rounded-lg border border-gray-400 hover:bg-gray-50"
-            onClick={handleMetricsClick}
-            title="Metrics Dashboard"
-          >
-            <BarChart3 className="h-5 w-5 text-[#8d77ba]" />
-            <span className="text-[#8d77ba] font-medium">Dashboard</span>
-          </button>
-          </FeatureFlag>
+        <div>
 
+           {/* <button
+            type="button"
+            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+            onClick={handlekafkaClick}
+          > */}
+            {/* <List className="h-5 w-5" /> */}
+            {/* <h1 className="mb5">Kafka Dashboard</h1>
+          </button> */}
           <button
             type="button"
-            className="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-400 hover:bg-gray-50"
-            onClick={handleRefresh}
-            title="Refresh"
-            disabled={isRefreshing}
-          >
-            <RefreshCcw className={`h-5 w-5 text-gray-600 ${isRefreshing ? "icon-rotate" : ""}`} />
-          </button>
-
-          <button
-            type="button"
-            className="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-400 hover:bg-gray-50"
+            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
             onClick={handleListClick}
-            title="Show List"
           >
-            <List className="h-5 w-5 text-[#8d77ba]" />
+            <List className="h-5 w-5" />
           </button>
-
+          <button
+            type="button"
+            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+            onClick={handleRefresh}
+          >
+            <RefreshCcw className="h-5 w-5" />
+          </button>
           <button
             onClick={() => navigate("/canvas/CDCcanvas")}
             type="button"
-            className="px-4 py-2 rounded-lg bg-[#8d77ba] text-white flex items-center gap-2 hover:bg-opacity-90"
+            className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
-            <Icon
-              icon="material-symbols:add"
-              width="20"
-              height="20"
-              className="text-white"
-            />
-            <span>Create CDC</span>
+            + Create CDC
           </button>
         </div>
       </div>

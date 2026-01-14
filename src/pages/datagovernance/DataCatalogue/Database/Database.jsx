@@ -4,13 +4,13 @@ import Breadcrumb from "../../../../components/Breadcrumb.jsx";
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
 import CatalogueChart from "../Components/CatalogueTrend.jsx";
-import Hive from "../../../../assets/connector/hive-connector.png"
-import Oracle from '../../../../assets/connector/Oracle.png';
-import Postgres from '../../../../assets/connector/Postgres.png';
+import Hive from "../Components/Icons/Hive.png"
+import Oracle from '../Components/Icons/Oracle.png';
+// import Snowflake from '../Components/Icons/Snowflake.png';
+import Postgres from '../Components/Icons/Postgres.png';
 import { secureQuery, fetchConnectionDetails } from '../Components/function.js';
 import { useAuth } from "../../../../context/AuthContext.jsx";
-import MySQL from '../../../../assets/connector/mysql-connector.png';
-import MSSQL from '../../../../assets/connector/mssql-connector.png';
+import MySQL from '../Components/Icons/Mysql.png';
 
 const rotateAnimation = `
   @keyframes rotate {
@@ -24,25 +24,6 @@ const rotateAnimation = `
 
   .icon-rotate {
     animation: rotate 1s linear infinite;
-  }
-
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-
-  .fade-overlay {
-    pointer-events: none;
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 120px;
-    background: linear-gradient(to left, rgba(249, 250, 251, 1) 0%, rgba(249, 250, 251, 0) 100%);
   }
 `;
 
@@ -65,7 +46,6 @@ const Database = () => {
     { title: "Oracle", icon: Oracle, count: 0 },
     { title: "Postgres", icon: Postgres, count: 0 },
     { title: "MySQL", icon: MySQL, count: 0 },
-    { title: "MSSQL", icon: MSSQL, count: 0 }, // Add MSSQL card
     { title: "Hive", icon: Hive, count: 0 },
     // { title: "Snowflake", icon: Snowflake, count: 0 },
   ]);
@@ -74,7 +54,7 @@ const Database = () => {
   const navigate = useNavigate();
 
   const processConnectionData = (data) => {
-    const counts = { oracle: 0, hive: 0, postgres: 0, mysql: 0, mssql: 0 }; // Add mssql to counts
+    const counts = { oracle: 0, hive: 0, postgres: 0, mysql: 0 };
     const uniqueConnections = new Set();
     data.forEach(item => {
       const connKey = `${item.connection_type}_${item.connection_id}`;
@@ -392,10 +372,9 @@ const Database = () => {
         </div>
       ) : !isTableView ? (
         <>
-          <div className="mt-2 relative">
-            <div className="overflow-x-auto scrollbar-hide">
-              <div className="flex gap-4 min-w-max">
-                {cards.map((card, index) => (
+          <div className="mt-2 overflow-x-auto">
+            <div className="flex gap-4 min-w-max">
+              {cards.map((card, index) => (
                 <div key={index} className="min-w-[280px] bg-white rounded-lg shadow-sm border border-gray-100">
                   <div className="p-6">
                     <div className="flex items-start justify-between">
@@ -425,9 +404,7 @@ const Database = () => {
                   </div>
                 </div>
               ))}
-              </div>
             </div>
-            <div className="fade-overlay"></div>
           </div>
           <div className="grid lg:grid-cols-3 gap-6 mt-10">
             <div className="lg:col-span-2 relative">
