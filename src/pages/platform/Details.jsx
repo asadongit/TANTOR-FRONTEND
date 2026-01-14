@@ -1,4 +1,4 @@
-import  { useState, useMemo, useCallback, useEffect } from "react";
+import  { useState, useMemo, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   RefreshCcw,
@@ -121,19 +121,6 @@ const processedData = useMemo(() => {
   const actions = useMemo(() => {
     return getActionConfigurations({ token, project, hostnameV2, navigate })[selectedType];
   }, [selectedType]);
-
-  useEffect(() => {
-    refetch();
-
-    const intervalId = setInterval(() => {
-      refetch();
-    }, 5000);
-
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [refetch]);
-
 
   return (
     <div className="flex flex-col h-full p-4">

@@ -72,10 +72,16 @@ const RiskCard = ({ icon, label, count, bgColor, textColor, iconBg }) => (
 );
 
 function StatisticalAnalysis({ readonly = false }) {
-    const [isCorrelationExpanded, setIsCorrelationExpanded] = useState(false);
-    const [isVIFExpanded, setIsVIFExpanded] = useState(false);
-    const [correlationToggled, setCorrelationToggled] = useState(false);
-    const [vifToggled, setVifToggled] = useState(false);
+    const [toggles, setToggles] = useState({
+        correlation: false,
+        vif: false,
+    });
+
+    const [expandedSections, setExpandedSections] = useState({
+        correlation: false,
+        vif: false,
+    });
+
     const [vifDropperEnabled, setVifDropperEnabled] = useState(false);
     const [selectedFeatures, setSelectedFeatures] = useState([]);
 
@@ -97,16 +103,30 @@ function StatisticalAnalysis({ readonly = false }) {
         high: <CircleX className="w-5 h-5 text-red-600" />
     };
 
-    const toggleCorrelation = () => {
+    const toggleSwitch = (key) => {
         if (readonly) return;
-        setCorrelationToggled(!correlationToggled);
-        setIsCorrelationExpanded(!correlationToggled);
+        const newToggleState = !toggles[key];
+        
+        setToggles(prev => ({ ...prev, [key]: newToggleState }));
+        
+        if (newToggleState) {
+            setExpandedSections({
+                correlation: false,
+                vif: false,
+                [key]: true
+            });
+        } else {
+            setExpandedSections(prev => ({ ...prev, [key]: false }));
+        }
     };
 
-    const toggleVIF = () => {
+    const toggleSection = (section) => {
         if (readonly) return;
-        setVifToggled(!vifToggled);
-        setIsVIFExpanded(!vifToggled);
+        setExpandedSections({
+            correlation: false,
+            vif: false,
+            [section]: !expandedSections[section]
+        });
     };
 
     const toggleFeatureSelection = (index) => {
@@ -121,7 +141,7 @@ function StatisticalAnalysis({ readonly = false }) {
         setSelectedFeatures(selectedFeatures.length === vifData.length ? [] : vifData.map((_, i) => i));
     };
 
-    const Section = ({ title, description, isExpanded, isToggled, onToggle, onExpand, children }) => (
+    const Section = ({ title, description, sectionKey, children }) => (
         <div className="bg-gray-50 rounded-lg border border-gray-200">
             <div className="p-4 flex items-center justify-between border-b border-gray-100">
                 <div className="flex-1">
@@ -129,17 +149,25 @@ function StatisticalAnalysis({ readonly = false }) {
                     <p className="text-xs text-gray-400 mt-0.5">{description}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
-                    <button 
-                        onClick={onExpand}
-                        disabled={readonly}
-                        className="text-gray-400 hover:text-gray-600"
-                    >
-                        {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                    </button>
+                    <ToggleSwitch 
+                        checked={toggles[sectionKey]} 
+                        onChange={() => toggleSwitch(sectionKey)} 
+                        readonly={readonly} 
+                    />
+                    {toggles[sectionKey] && (
+                        <button 
+                            onClick={() => toggleSection(sectionKey)}
+                            disabled={readonly}
+                            className="text-gray-400 hover:text-gray-600"
+                        >
+                            {expandedSections[sectionKey] ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                        </button>
+                    )}
                 </div>
             </div>
-            {isExpanded && <div className="p-6">{children}</div>}
+            {toggles[sectionKey] && expandedSections[sectionKey] && (
+                <div className="p-6">{children}</div>
+            )}
         </div>
     );
 
@@ -167,10 +195,7 @@ function StatisticalAnalysis({ readonly = false }) {
             <Section
                 title="Correlation Graphs"
                 description="Feature relationship visualization"
-                isExpanded={isCorrelationExpanded}
-                isToggled={correlationToggled}
-                onToggle={toggleCorrelation}
-                onExpand={() => !readonly && setIsCorrelationExpanded(!isCorrelationExpanded)}
+                sectionKey="correlation"
             >
                 <div className="grid grid-cols-2 gap-4">
                     {chartData.map((data, i) => (
@@ -182,10 +207,7 @@ function StatisticalAnalysis({ readonly = false }) {
             <Section
                 title="VIF Analysis"
                 description="97 features analyzed | 0 selected to drop"
-                isExpanded={isVIFExpanded}
-                isToggled={vifToggled}
-                onToggle={toggleVIF}
-                onExpand={() => !readonly && setIsVIFExpanded(!isVIFExpanded)}
+                sectionKey="vif"
             >
                 <div className="grid grid-cols-3 gap-4 mb-6">
                     <RiskCard icon={riskIcons.low} label="Low Risk" count="10" bgColor="bg-green-50 border-green-200" textColor="text-green-600" iconBg="bg-green-100" />

@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 
 
 const fetchCDCData = async (token, hostnameV2, decodedToken) => {
-  // console.log(decodedToken.preferred_username);
+  console.log(decodedToken.preferred_username);
   if (!token) throw new Error("Token is missing");
 
   try {

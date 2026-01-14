@@ -888,18 +888,20 @@ function Transformation() {
           </div>
 
           <button
-            className="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-400 hover:bg-gray-50"
+            className="p-2 px-2 rounded-lg border border-gray-400 hover:bg-gray-50"
             onClick={handleRefresh}
             title="Refresh data"
             disabled={isLoading}
           >
             <RefreshCcw
-              className={`h-5 w-5 text-gray-600 ${isLoading ? "icon-rotate" : ""}`}
+              className={`h-5 w-5 text-gray-600 ${
+                isLoading ? "icon-rotate" : ""
+              }`}
             />
           </button>
 
           <button
-            className={`w-10 h-10 flex items-center justify-center rounded-lg border ${
+            className={`p-1 px-1.5 rounded-lg border ${
               viewMode === "list"
                 ? "bg-gray-100 border-gray-500"
                 : "border-gray-400"
