@@ -1,30 +1,6 @@
-import { Webhook, ChevronDown, ChevronUp } from 'lucide-react';
-import { useState } from 'react';
+import { Webhook } from 'lucide-react';
 
 const DeliveryAlertsTab = ({ alertFormData, handleAlertInputChange }) => {
-    const [isDataDriftEnabled, setIsDataDriftEnabled] = useState(false);
-    const [isModelDriftEnabled, setIsModelDriftEnabled] = useState(false);
-    const [isDataDriftExpanded, setIsDataDriftExpanded] = useState(false);
-    const [isModelDriftExpanded, setIsModelDriftExpanded] = useState(false);
-
-    const handleDataDriftToggle = (checked) => {
-        setIsDataDriftEnabled(checked);
-        if (checked) {
-            setIsDataDriftExpanded(true);
-        } else {
-            setIsDataDriftExpanded(false);
-        }
-    };
-
-    const handleModelDriftToggle = (checked) => {
-        setIsModelDriftEnabled(checked);
-        if (checked) {
-            setIsModelDriftExpanded(true);
-        } else {
-            setIsModelDriftExpanded(false);
-        }
-    };
-
     const renderSlider = (label, value, color, onChange, max = 1, step = 0.01) => {
         const sliderColor = color === 'orange' ? '#f97316' : color === 'red' ? '#ef4444' : '#8e78b7';
         const percentage = value * (max === 1 ? 100 : 1);
@@ -94,106 +70,48 @@ const DeliveryAlertsTab = ({ alertFormData, handleAlertInputChange }) => {
                 </p>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-white rounded-lg p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={isDataDriftEnabled}
-                                        onChange={(e) => handleDataDriftToggle(e.target.checked)}
-                                        className="sr-only peer"
-                                    />
-                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#8e78b7] rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
-                                </label>
-                                <div>
-                                    <h3 className="text-base font-semibold text-gray-900">
-                                        Global Data Drift Thresholds
-                                    </h3>
-                                    <p className="text-sm text-gray-500 mt-1">
-                                        Set default limits to flag or block model runs based on the Population.
-                                    </p>
-                                </div>
-                            </div>
-                            {isDataDriftEnabled && (
-                                <button 
-                                    onClick={() => setIsDataDriftExpanded(!isDataDriftExpanded)}
-                                    className="text-gray-500 hover:text-gray-700 transition-colors ml-2"
-                                >
-                                    {isDataDriftExpanded ? (
-                                        <ChevronUp className="w-5 h-5" />
-                                    ) : (
-                                        <ChevronDown className="w-5 h-5" />
-                                    )}
-                                </button>
+                    <div className="bg-white rounded-lg p-6 space-y-6">
+                        <div>
+                            <h3 className="text-base font-semibold text-gray-900 mb-1.5">
+                                Global Data Drift Thresholds
+                            </h3>
+                            <p className="text-sm text-gray-500 mb-6">
+                                Set default limits to flag or block model runs based on the Population.
+                            </p>
+                        </div>
+                        <div className="space-y-8">
+                            {renderSlider(
+                                'Warning Threshold', 
+                                alertFormData.warningThreshold, 
+                                'orange', 
+                                (e) => handleAlertInputChange('warningThreshold', parseFloat(e.target.value))
+                            )}
+                            {renderSlider(
+                                'Blocking Threshold (Halt Run)', 
+                                alertFormData.blockingThreshold, 
+                                'red', 
+                                (e) => handleAlertInputChange('blockingThreshold', parseFloat(e.target.value))
                             )}
                         </div>
-
-                        {isDataDriftEnabled && isDataDriftExpanded && (
-                            <div className="space-y-8">
-                                {renderSlider(
-                                    'Warning Threshold', 
-                                    alertFormData.warningThreshold, 
-                                    'orange', 
-                                    (e) => handleAlertInputChange('warningThreshold', parseFloat(e.target.value))
-                                )}
-                                {renderSlider(
-                                    'Blocking Threshold (Halt Run)', 
-                                    alertFormData.blockingThreshold, 
-                                    'red', 
-                                    (e) => handleAlertInputChange('blockingThreshold', parseFloat(e.target.value))
-                                )}
-                            </div>
-                        )}
                     </div>
 
-                    <div className="bg-white rounded-lg p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={isModelDriftEnabled}
-                                        onChange={(e) => handleModelDriftToggle(e.target.checked)}
-                                        className="sr-only peer"
-                                    />
-                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#8e78b7] rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
-                                </label>
-                                <div>
-                                    <h3 className="text-base font-semibold text-gray-900">
-                                        Model Drift Monitor
-                                    </h3>
-                                    <p className="text-sm text-gray-500 mt-1">
-                                        Receive alerts when model performance drops below the baseline.
-                                    </p>
-                                </div>
-                            </div>
-                            {isModelDriftEnabled && (
-                                <button 
-                                    onClick={() => setIsModelDriftExpanded(!isModelDriftExpanded)}
-                                    className="text-gray-500 hover:text-gray-700 transition-colors ml-2"
-                                >
-                                    {isModelDriftExpanded ? (
-                                        <ChevronUp className="w-5 h-5" />
-                                    ) : (
-                                        <ChevronDown className="w-5 h-5" />
-                                    )}
-                                </button>
+                    <div className="bg-white rounded-lg p-6 space-y-6">
+                        <div>
+                            <h3 className="text-base font-semibold text-gray-900 mb-1.5">Model Drift Monitor</h3>
+                            <p className="text-sm text-gray-500 mb-6">
+                                Receive alerts when model performance drops below the baseline.
+                            </p>
+                        </div>
+                        <div>
+                            {renderSlider(
+                                'F1 Score Decay', 
+                                alertFormData.f1ScoreDecay, 
+                                'purple', 
+                                (e) => handleAlertInputChange('f1ScoreDecay', parseInt(e.target.value)), 
+                                100, 
+                                1
                             )}
                         </div>
-
-                        {isModelDriftEnabled && isModelDriftExpanded && (
-                            <div>
-                                {renderSlider(
-                                    'F1 Score Decay', 
-                                    alertFormData.f1ScoreDecay, 
-                                    'purple', 
-                                    (e) => handleAlertInputChange('f1ScoreDecay', parseInt(e.target.value)), 
-                                    100, 
-                                    1
-                                )}
-                            </div>
-                        )}
                     </div>
                 </div>
             </div>
@@ -241,6 +159,19 @@ const DeliveryAlertsTab = ({ alertFormData, handleAlertInputChange }) => {
                     ))}
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {renderSelect('Alert Subject Template', alertFormData.alertSubjectTemplate, [
+                        { value: '', label: 'Select' }, 
+                        { value: 'template1', label: 'Default Template' }, 
+                        { value: 'template2', label: 'Custom Template' }
+                    ], 'alertSubjectTemplate')}
+                    {renderSelect('Report Format', alertFormData.reportFormat, [
+                        { value: '', label: 'Select' }, 
+                        { value: 'pdf', label: 'PDF' }, 
+                        { value: 'html', label: 'HTML' }, 
+                        { value: 'json', label: 'JSON' }
+                    ], 'reportFormat')}
+                </div>
             </div>
         </div>
     );

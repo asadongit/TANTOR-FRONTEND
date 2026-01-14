@@ -36,7 +36,7 @@ const FeatureSection = ({
     isExpanded,
     onToggle,
     onExpand,
-    hasExpandableContent = true,
+    showExpandButton = true,
     children,
     readonly
 }) => (
@@ -48,7 +48,7 @@ const FeatureSection = ({
             </div>
             <div className="flex items-center gap-3">
                 <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
-                {isToggled && hasExpandableContent && (
+                {showExpandButton && (
                     <button 
                         onClick={onExpand}
                         disabled={readonly}
@@ -60,7 +60,7 @@ const FeatureSection = ({
             </div>
         </div>
 
-        {isToggled && isExpanded && children && (
+        {isExpanded && children && (
             <div className="px-4 pb-4 border-t border-gray-100">
                 <div className="mt-4">{children}</div>
             </div>
@@ -113,32 +113,13 @@ function ScalingTransformation({ readonly = false }) {
 
     const toggleSwitch = (key) => {
         if (readonly) return;
-        const newToggleState = !toggles[key];
-        
-        setToggles(prev => ({ ...prev, [key]: newToggleState }));
-        
-        if (newToggleState) {
-            if (key !== 'nearZeroVariance') {
-                setExpandedSections({
-                    advancedTransformation: false,
-                    nearZeroVariance: false,
-                    featureScaler: false,
-                    [key]: true
-                });
-            }
-        } else {
-            setExpandedSections(prev => ({ ...prev, [key]: false }));
-        }
+        setToggles(prev => ({ ...prev, [key]: !prev[key] }));
+        setExpandedSections(prev => ({ ...prev, [key]: !toggles[key] }));
     };
 
     const toggleSection = (section) => {
         if (readonly) return;
-        setExpandedSections({
-            advancedTransformation: false,
-            nearZeroVariance: false,
-            featureScaler: false,
-            [section]: !expandedSections[section]
-        });
+        setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
     };
 
     const toggleColumnSelection = (columnName) => {
@@ -160,7 +141,6 @@ function ScalingTransformation({ readonly = false }) {
                 isExpanded={expandedSections.advancedTransformation}
                 onToggle={() => toggleSwitch('advancedTransformation')}
                 onExpand={() => toggleSection('advancedTransformation')}
-                hasExpandableContent={true}
                 readonly={readonly}
             >
                 <div className="space-y-4">
@@ -223,7 +203,7 @@ function ScalingTransformation({ readonly = false }) {
                 isExpanded={false}
                 onToggle={() => toggleSwitch('nearZeroVariance')}
                 onExpand={() => { }}
-                hasExpandableContent={false}
+                showExpandButton={false}
                 readonly={readonly}
             >
             </FeatureSection>
@@ -235,7 +215,6 @@ function ScalingTransformation({ readonly = false }) {
                 isExpanded={expandedSections.featureScaler}
                 onToggle={() => toggleSwitch('featureScaler')}
                 onExpand={() => toggleSection('featureScaler')}
-                hasExpandableContent={true}
                 readonly={readonly}
             >
                 <div>

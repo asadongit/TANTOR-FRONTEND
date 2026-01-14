@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Pin } from 'lucide-react';
+import { Search, EllipsisVertical } from 'lucide-react';
 import DataTable from '../../../../../components/DataTable';
 import AddCommentModal from './AddCommentModal';
 import CommentDetailModal from './CommentDetailModal';
@@ -16,7 +16,6 @@ const CommentsTab = () => {
         subject: '',
         comment: ''
     });
-    const [pinnedComments, setPinnedComments] = useState(new Set());
 
     const commentsData = [
         {
@@ -248,16 +247,6 @@ const CommentsTab = () => {
         });
     };
 
-    const handleReset = () => {
-        setFormData({
-            componentType: '',
-            componentName: '',
-            category: '',
-            subject: '',
-            comment: ''
-        });
-    };
-
     const handleRowClick = (row) => {
         setSelectedRow(row);
         setIsSideModalOpen(true);
@@ -273,22 +262,6 @@ const CommentsTab = () => {
         console.log('Reply sent:', replyText);
         // Add logic to send reply
         setReplyText('');
-    };
-
-    const handleTogglePin = (row, e) => {
-        e.stopPropagation();
-        
-        setPinnedComments(prev => {
-            const newPinned = new Set(prev);
-            if (newPinned.has(row.sno)) {
-                newPinned.delete(row.sno);
-                console.log('Unpinned comment:', row.sno);
-            } else {
-                newPinned.add(row.sno);
-                console.log('Pinned comment:', row.sno);
-            }
-            return newPinned;
-        });
     };
 
     return (
@@ -323,12 +296,21 @@ const CommentsTab = () => {
                         />
                     </div>
 
+                    <div className="flex flex-col">
+                        <label className="text-xs text-gray-600 mb-1">Sort by</label>
+                        <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white min-w-[140px]">
+                            <option>Date</option>
+                            <option>Component</option>
+                            <option>Subject</option>
+                        </select>
+                    </div>
+
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
                             type="text"
                             placeholder="Search Comments"
-                            className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm min-w-[400px]"
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm"
                         />
                     </div>
                 </div>
@@ -371,36 +353,10 @@ const CommentsTab = () => {
                                 {row.replies}
                             </span>
                         )
-                    },
-                    {
-                        key: 'pinAction',
-                        label: '',
-                        sortable: false,
-                        width: '80px',
-                        render: (row) => (
-                            <div className="flex justify-center">
-                                <button
-                                    onClick={(e) => handleTogglePin(row, e)}
-                                    className={`p-2 rounded-full transition-all duration-200 ${
-                                        pinnedComments.has(row.sno)
-                                            ? 'text-[#8e78b7] bg-[#f3f0f8] hover:bg-[#e8e3f0]'
-                                            : 'text-gray-400 hover:text-[#8e78b7] hover:bg-gray-100'
-                                    }`}
-                                    title={pinnedComments.has(row.sno) ? 'Unpin comment' : 'Pin comment'}
-                                    aria-label={pinnedComments.has(row.sno) ? 'Unpin comment' : 'Pin comment'}
-                                >
-                                    <Pin 
-                                        size={18} 
-                                        className={`transition-transform duration-200 ${
-                                            pinnedComments.has(row.sno) ? 'fill-current' : ''
-                                        }`}
-                                    />
-                                </button>
-                            </div>
-                        )
                     }
                 ]}
                 data={commentsData}
+                actions={[]}
                 isLoading={false}
                 isError={false}
                 onRowClick={handleRowClick}
@@ -414,7 +370,6 @@ const CommentsTab = () => {
                 formData={formData}
                 onInputChange={handleInputChange}
                 onSubmit={handleSubmit}
-                onReset={handleReset}
             />
 
             {/* Comment Detail Side Modal */}

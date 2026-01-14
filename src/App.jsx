@@ -35,7 +35,6 @@ import TransformationCanvas from "./pages/platform/transformation/components/Tra
 import { DatabotProvider } from "./pages/datagovernance/Databot/context/DatabotContext";
 import MigrationCanvas from "./pages/platform/migration/components/MigrationCanvas";
 import { AIRoutes } from "./routes/AiMainRoutes";
-import { AIPlaygroundProvider } from "./context/AIPlaygroundContext";
 
 function App() {
   const [activeSection, setActiveSection] = useState("platform");
@@ -58,7 +57,6 @@ function App() {
                 path="/*"
                 element={
                   <DatabotProvider>
-                  <AIPlaygroundProvider>
                   <div className="min-h-screen bg-gray-50">
                     <Header
                      activeSection={activeSection}
@@ -93,7 +91,6 @@ function App() {
                       </main>
                     </div>
                   </div>
-                  </AIPlaygroundProvider>
                   </DatabotProvider>
                 }
               />

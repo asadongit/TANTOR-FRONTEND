@@ -4,7 +4,7 @@ import { useAuth } from '../../../context/AuthContext';
 import axios from 'axios';
 import DataTable from '../../../components/DataTable';
 import { Search, RefreshCw, Maximize2, X, ArrowRight, ArrowLeft, SplitSquareVertical, Download, ChevronDown } from "lucide-react";
-import * as XLSX from 'xlsx'; // You'll need to install this package: npm install xlsx
+import * as XLSX from 'xlsx';
 
 function Audit() {
     const hostname = window._env_?.VITE_FAST_API;
@@ -17,7 +17,6 @@ function Audit() {
     const [selectedRow, setSelectedRow] = useState(null);
     const [viewMode, setViewMode] = useState('single');
 
-    // Filter states
     const [userId, setUserId] = useState("");
     const [module, setModule] = useState("");
     const [action, setAction] = useState("");
@@ -26,24 +25,27 @@ function Audit() {
     const [showPreviousState, setShowPreviousState] = useState(true);
     const [showNewState, setShowNewState] = useState(true);
 
-    // New limit state
     const [limit, setLimit] = useState("50");
     const [customLimit, setCustomLimit] = useState("");
     const [isCustomLimit, setIsCustomLimit] = useState(false);
 
-    // Download dropdown state
     const [showDownloadOptions, setShowDownloadOptions] = useState(false);
     const downloadRef = useRef(null);
 
     const moduleOptions = [
         { value: "connection", label: "Connection" },
-        { value: "project", label: "Project" }
+        { value: "project", label: "Project" },
+        { value: "transformation", label: "Transformation" },
+        { value: "migration", label: "Migration" },
+        { value: "cdc", label: "CDC" },
+        { value: "reports", label: "Reports" },
     ];
 
     const actionOptions = [
         { value: "CREATE", label: "Create" },
         { value: "UPDATE", label: "Update" },
-        { value: "DELETE", label: "Delete" }
+        { value: "DELETE", label: "Delete" },
+        { value: "TRIGGER", label: "Trigger" },
     ];
 
     const limitOptions = [
@@ -55,9 +57,6 @@ function Audit() {
         { value: "custom", label: "Custom limit..." }
     ];
 
-    const isAnyFilterApplied = useMemo(() => {
-        return !!(userId || module || action || startDate || endDate);
-    }, [userId, module, action, startDate, endDate]);
 
     const openStateModal = (row, type) => {
         setSelectedRow(row);
@@ -150,7 +149,10 @@ function Audit() {
 
             const params = new URLSearchParams();
 
-            const userIdToUse = initialUsername || userId;
+            let userIdToUse = initialUsername || userId;
+            if (!userIdToUse) {
+                userIdToUse = decodedToken?.preferred_username;
+            }
             if (userIdToUse) params.append("user_id", userIdToUse);
 
             if (module) params.append("module", module);
@@ -159,6 +161,7 @@ function Audit() {
             if (endDate) params.append("end_date", new Date(endDate).toISOString());
             params.append("show_previous_state", showPreviousState);
             params.append("show_new_state", showNewState);
+            params.append("reports_details", module === "reports");
 
             if (limit !== "none") {
                 if (!isCustomLimit) {
@@ -175,7 +178,7 @@ function Audit() {
                 }
             });
 
-            setAuditData(response.data);
+            setAuditData(response.data.sort((a, b) => new Date(b.performed_at) - new Date(a.performed_at)));
         } catch (error) {
             console.error("Error fetching audit data:", error);
         } finally {
@@ -459,8 +462,6 @@ function Audit() {
                             <button
                                 type="submit"
                                 className="px-4 py-2 bg-[#8e78b7] text-white rounded hover:bg-[#8e78b7] flex items-center"
-                                disabled={!isAnyFilterApplied}
-                                style={{ opacity: isAnyFilterApplied ? 1 : 0.5 }}
                             >
                                 <Search size={16} className="mr-1" /> Search
                             </button>

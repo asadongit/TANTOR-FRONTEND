@@ -12,7 +12,8 @@ import {
   MoveRight,
   ChartColumnDecreasing,
   RotateCcw,
-  Search
+  Search,
+  Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CreateProjectModal } from './modals/Dashboard/CreateProjectModal';
@@ -20,18 +21,7 @@ import { DatasetDescriptionModal } from './modals/Dashboard/DatasetDescriptionMo
 import { SelectDataViewModal } from './modals/Dashboard/SelectDataViewModal';
 import { ResetProjectModal } from './modals/Dashboard/ResetProjectModal';
 import { ChooseBuildMethodModal } from './modals/Dashboard/ChooseBuildMethodModal';
-import { useAIPlayground } from '../../../context/AIPlaygroundContext';
-
-// Constants
-const OWNER_OPTIONS = [
-  { value: 'abc', label: 'ABC' },
-  { value: 'xyz', label: 'XYZ' },
-];
-
-const MEMBER_OPTIONS = [
-  { value: 'member1', label: 'Member 1' },
-  { value: 'member2', label: 'Member 2' },
-];
+import { useAuth } from '../../../context/AuthContext';
 
 const CAPABILITIES = [
   {
@@ -66,24 +56,23 @@ const CAPABILITIES = [
 
 const AIPlayground = () => {
   const navigate = useNavigate();
-  const hostnameAI = window._env_?.VITE_AI_API;
   const fileInputRef = useRef(null);
+  const { token, hostnameV2 } = useAuth();
 
-  const { projectState, setProjectState, datasetState, setDatasetState } = useAIPlayground();
-  console.log("project state is @@@ ",projectState)
-
+  // State Management
   const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
+  const [selectedExperiment, setSelectedExperiment] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
   const [tempFile, setTempFile] = useState(null);
 
+  // Modal States
   const [modals, setModals] = useState({
     createProject: false,
     datasetDescription: false,
-    selectTable: false,
+    selectView: false,
     resetProject: false,
     chooseBuildMethod: false
   });
@@ -93,59 +82,54 @@ const AIPlayground = () => {
   }, []);
 
   const fetchProjects = async () => {
+    setIsLoadingProjects(true);
     try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await fetch(`${hostnameAI}/model/list_projects`, {
+      const response = await fetch(`${hostnameV2}/projects/listing`, {
         method: 'GET',
         headers: {
-          'accept': 'application/json'
-        }
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch projects: ${response.status}`);
+        throw new Error('Failed to fetch projects');
       }
 
       const data = await response.json();
-      
-      const transformedProjects = data.projects.map(project => ({
-        value: project.id,
-        label: project.name,
-        description: project.description,
-        status: project.status
-      }));
-
-      setProjects(transformedProjects);
-    } catch (err) {
-      console.error('Error fetching projects:', err);
-      setError(err.message);
+      setProjects(data || []);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      setProjects([]);
     } finally {
-      setLoading(false);
+      setIsLoadingProjects(false);
     }
   };
 
+  // Helper Functions
   const toggleModal = (modalName, isOpen) => {
     setModals(prev => ({ ...prev, [modalName]: isOpen }));
   };
 
-  const filteredOptions = projects.filter(opt =>
-    opt.label.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredOptions = projects.filter(project =>
+    project.project.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const isDisabled = !projectState.selectedProject;
+  const isDisabled = !selectedExperiment;
 
+  // Event Handlers
   const handleSelectExperiment = (value) => {
-    console.log("project value is @@@ ",value)
-    setProjectState(prev => ({ ...prev, selectedProject: value }));
+    setSelectedExperiment(value);
     setIsDropdownOpen(false);
     setSearchQuery('');
   };
 
-  const handleCreateProject = async (formData) => {
-    console.log('Creating project:', formData);
-    await fetchProjects();
+  const handleCreateProject = () => {
+    toggleModal('createProject', true);
+  };
+
+  const handleProjectCreated = () => {
+    fetchProjects();
   };
 
   const validateFile = (file) => {
@@ -183,16 +167,16 @@ const AIPlayground = () => {
   };
 
   const handleFetchData = () => {
-    toggleModal('selectTable', true);
+    toggleModal('selectView', true);
   };
 
-  const handleDataTableSelected = (tableData) => {
-    setUploadedFile({
-      name: tableData.label,
+  const handleDataViewSelected = (viewData) => {
+    setTempFile({
+      name: viewData.label,
       type: 'database',
-      TableId: tableData.value,
-      displayName: tableData.label
+      viewId: viewData.value
     });
+    toggleModal('datasetDescription', true);
   };
 
   const handleSaveDescription = (description) => {
@@ -211,13 +195,7 @@ const AIPlayground = () => {
 
   const handleConfirmReset = () => {
     setUploadedFile(null);
-    setProjectState(prev => ({ ...prev, selectedProject: '' }));
-    setDatasetState({
-      tableName: '',
-      sessionId: '',
-      columnNames: [],
-      profileReportHtml: ''
-    });
+    setSelectedExperiment('');
     toggleModal('resetProject', false);
   };
 
@@ -252,7 +230,7 @@ const AIPlayground = () => {
             <div className="mb-8">
               <h2 className="text-base font-semibold mb-2">Inject Your Data to Get Started</h2>
               <p className="text-sm text-slate-500 max-w-3xl">
-                Select an experiment and upload a dataset—or fetch data from tables—to begin machine learning, GenAI, analytics, and observability workflows.
+                Select an experiment and upload a dataset—or fetch data from views—to begin machine learning, GenAI, analytics, and observability workflows.
               </p>
             </div>
 
@@ -262,22 +240,25 @@ const AIPlayground = () => {
               <div className="relative w-80">
                 <button
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="w-full h-10 px-3 rounded-md border border-slate-200 bg-white text-sm text-left focus:outline-none focus:ring-2 focus:ring-violet-500/20 transition-all flex items-center justify-between"
-                  disabled={loading}
+                  disabled={isLoadingProjects}
+                  className="w-full h-10 px-3 rounded-md border border-slate-200 bg-white text-sm text-left focus:outline-none focus:ring-2 focus:ring-violet-500/20 transition-all flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span className={projectState.selectedProject ? 'text-slate-900' : 'text-slate-400'}>
-                    {loading 
-                      ? 'Loading projects...'
-                      : error
-                      ? 'Error loading projects'
-                      : projectState.selectedProject
-                      ? projects.find(opt => opt.label === projectState.selectedProject)?.label
-                      : 'Select'}
-                  </span>
+                  {isLoadingProjects ? (
+                    <span className="flex items-center gap-2 text-slate-400">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Loading projects...
+                    </span>
+                  ) : (
+                    <span className={selectedExperiment ? 'text-slate-900' : 'text-slate-400'}>
+                      {selectedExperiment
+                        ? projects.find(opt => opt.project_id === selectedExperiment)?.project
+                        : 'Select'}
+                    </span>
+                  )}
                   <ChevronDown className="w-4 h-4 text-slate-400" />
                 </button>
 
-                {isDropdownOpen && !loading && !error && (
+                {isDropdownOpen && !isLoadingProjects && (
                   <div className="absolute top-full mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg z-10">
                     <div className="p-2 border-b border-slate-200">
                       <div className="relative">
@@ -293,17 +274,17 @@ const AIPlayground = () => {
                     </div>
                     <div className="max-h-48 overflow-y-auto">
                       {filteredOptions.length > 0 ? (
-                        filteredOptions.map((opt) => (
+                        filteredOptions.map((project) => (
                           <button
-                            key={opt.value}
-                            onClick={() => handleSelectExperiment(opt.label)}
+                            key={project.project_id}
+                            onClick={() => handleSelectExperiment(project.project_id)}
                             className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
                           >
-                            {opt.label}
+                            {project.project}
                           </button>
                         ))
                       ) : (
-                        <div className="px-3 py-2 text-sm text-slate-400">
+                        <div className="px-3 py-2 text-sm text-slate-400 text-center">
                           No projects found
                         </div>
                       )}
@@ -311,24 +292,12 @@ const AIPlayground = () => {
                     <button
                       onClick={() => {
                         setIsDropdownOpen(false);
-                        toggleModal('createProject', true);
+                        handleCreateProject();
                       }}
                       className="w-full px-3 py-2 text-left text-sm text-[#8e78b7] hover:bg-violet-50 transition-colors border-t border-slate-200 flex items-center gap-2"
                     >
                       <span className="text-lg leading-none">+</span>
                       <span>Create</span>
-                    </button>
-                  </div>
-                )}
-
-                {error && (
-                  <div className="mt-2 text-xs text-red-500 flex items-center gap-1">
-                    <span>Failed to load projects.</span>
-                    <button 
-                      onClick={fetchProjects}
-                      className="text-[#8e78b7] hover:underline"
-                    >
-                      Retry
                     </button>
                   </div>
                 )}
@@ -383,10 +352,10 @@ const AIPlayground = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="text-sm font-medium text-slate-700 mb-1">
-                      Fetch Data from Table
+                      Fetch Data from Views
                     </div>
                     <div className="text-xs text-slate-400">
-                      Load data directly from available database tables.
+                      Load data directly from available database views.
                     </div>
                   </div>
                   <button
@@ -426,14 +395,9 @@ const AIPlayground = () => {
               <div className="text-md text-slate-500">
                 Project Name:{' '}
                 <span className="text-slate-900 font-medium">
-                  {projectState.selectedProject}
+                  {projects.find(opt => opt.project_id === selectedExperiment)?.project}
                 </span>
               </div>
-              {datasetState.sessionId && (
-                <div className="text-sm text-slate-400 mt-1">
-                  Session ID: {datasetState.sessionId}
-                </div>
-              )}
             </div>
 
             <div className="flex items-center gap-3">
@@ -446,20 +410,13 @@ const AIPlayground = () => {
 
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-medium text-slate-900 mb-0.5">
-                      {uploadedFile.type === 'database' 
-                        ? uploadedFile.displayName || uploadedFile.name
-                        : uploadedFile.name}
+                      {uploadedFile.type === 'database' ? 'Data from Views' : uploadedFile.name}
                     </div>
                     <div className="text-xs text-slate-400">
                       {uploadedFile.type === 'database'
-                        ? 'Table • Fetched just now'
+                        ? 'Database • Fetched just now'
                         : `CSV • ${(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB`}
                     </div>
-                    {datasetState.columnNames.length > 0 && (
-                      <div className="text-xs text-slate-400 mt-1">
-                        {datasetState.columnNames.length} columns detected
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -514,9 +471,7 @@ const AIPlayground = () => {
       <CreateProjectModal
         isOpen={modals.createProject}
         onClose={() => toggleModal('createProject', false)}
-        onSubmit={handleCreateProject}
-        ownerOptions={OWNER_OPTIONS}
-        memberOptions={MEMBER_OPTIONS}
+        onProjectCreated={handleProjectCreated}
       />
 
       <DatasetDescriptionModal
@@ -527,9 +482,9 @@ const AIPlayground = () => {
       />
 
       <SelectDataViewModal
-        isOpen={modals.selectTable}
-        onClose={() => toggleModal('selectTable', false)}
-        onProceed={handleDataTableSelected}
+        isOpen={modals.selectView}
+        onClose={() => toggleModal('selectView', false)}
+        onProceed={handleDataViewSelected}
       />
 
       <ResetProjectModal
