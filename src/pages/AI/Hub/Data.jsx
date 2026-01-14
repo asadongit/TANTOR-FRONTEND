@@ -197,6 +197,12 @@ const Data = () => {
       tooltip: 'AI Canvas',
     },
     {
+      label: 'Deploy',
+      icon: <Rocket className="w-4 h-4" />,
+      onClick: (row) => console.log('Deploy:', row),
+      tooltip: 'Deploy',
+    },
+    {
       label: 'Archive',
       icon: <Archive className="w-4 h-4" />,
       onClick: (row) => console.log('Archive:', row),

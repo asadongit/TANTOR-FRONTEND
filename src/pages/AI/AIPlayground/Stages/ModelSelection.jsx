@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AIPlaygroundLayout } from '../AIPlaygroundLayout';
-import { ChevronDown, ChevronUp, GripVertical, Search, X, Plus, Info } from 'lucide-react';
+import { ChevronDown, ChevronUp, GripVertical, Search, X, Plus } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import algorithmsData from '../../../../components/classification_models_hyperparameters.json';
 
@@ -15,12 +15,12 @@ function ModelSelection() {
             const algo = {
                 name,
                 category: data.category,
-                info: data.info || '',
                 hyperparameters: data.hyperparameters,
                 enabled: false,
                 expanded: false,
                 hyperparameterValues: {},
-                gridSearchValues: {},
+                gridSearchValues: {}, // For storing multiple values per parameter
+                errors: {},
                 gridSearchErrors: {}
             };
 
@@ -61,30 +61,10 @@ function ModelSelection() {
     const [draggedItem, setDraggedItem] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
 
+    // Filter algorithms based on search query
     const filteredAlgorithms = algorithms.filter(algo =>
         algo.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
-
-
-    const filteredCategories = allCategories.filter(category => {
-        const categorized = categorizeAlgorithms();
-        return categorized[category].some(algo =>
-            algo.name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-    });
-
-    useEffect(() => {
-        if (searchQuery && filteredCategories.length > 0) {
-            if (!filteredCategories.includes(selectedTab)) {
-                setSelectedTab(filteredCategories[0]);
-                const categorized = categorizeAlgorithms();
-                setAlgorithms(categorized[filteredCategories[0]].map((algo, index) => ({
-                    ...algo,
-                    id: index + 1
-                })));
-            }
-        }
-    }, [searchQuery, filteredCategories, selectedTab]);
 
     // Check if model inferencing should be enabled
     useEffect(() => {
@@ -425,15 +405,9 @@ function ModelSelection() {
 
     const toggleMetric = (index) => {
         if (readonly) return;
-        
-        const newMetrics = metrics.map((metric, i) =>
+        setMetrics(metrics.map((metric, i) =>
             i === index ? { ...metric, enabled: !metric.enabled } : metric
-        );
-        
-        const enabledMetrics = newMetrics.filter(m => m.enabled);
-        const disabledMetrics = newMetrics.filter(m => !m.enabled);
-        
-        setMetrics([...enabledMetrics, ...disabledMetrics]);
+        ));
     };
 
     const handleDragStart = (e, index) => {
@@ -713,52 +687,39 @@ function ModelSelection() {
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                             </div>
                         </div>
-                        {filteredCategories.length > 0 && (
-                            <div className="relative">
-                                <div className="overflow-x-auto scrollbar-hide">
-                                    <div className="flex gap-4 min-w-max border-b border-gray-200">
-                                        {filteredCategories.map((category) => (
-                                            <button
-                                                key={category}
-                                                disabled={readonly}
-                                                onClick={() => handleTabChange(category)}
-                                                className={`px-4 py-2 font-medium whitespace-nowrap ${selectedTab === category
-                                                    ? 'text-[#8e78b7] border-b-4 border-[#8e78b7]'
-                                                    : 'text-gray-600 hover:text-gray-900'
-                                                    }`}
-                                            >
-                                                {category}
-                                            </button>
-                                        ))}
-                                    </div>
+                        <div className="relative">
+                            <div className="overflow-x-auto scrollbar-hide">
+                                <div className="flex gap-4 min-w-max border-b border-gray-200">
+                                    {allCategories.map((category) => (
+                                        <button
+                                            key={category}
+                                            disabled={readonly}
+                                            onClick={() => handleTabChange(category)}
+                                            className={`px-4 py-2 font-medium whitespace-nowrap ${selectedTab === category
+                                                ? 'text-[#8e78b7] border-b-4 border-[#8e78b7]'
+                                                : 'text-gray-600 hover:text-gray-900'
+                                                }`}
+                                        >
+                                            {category}
+                                        </button>
+                                    ))}
                                 </div>
-                                <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-white to-transparent pointer-events-none"></div>
                             </div>
-                        )}
+                            <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-white to-transparent pointer-events-none"></div>
+                        </div>
                     </div>
 
                     {/* Algorithm List */}
                     <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-2 custom-scrollbar">
                         {filteredAlgorithms.length === 0 ? (
                             <div className="text-center py-12">
-                                <p className="text-gray-500 text-sm">No algorithms found matching "{searchQuery}"</p>
+                                <p className="text-gray-500 text-sm">No algorithms found matching "{searchQuery}" in {selectedTab}</p>
                             </div>
                         ) : (
                             filteredAlgorithms.map((algo) => (
                                 <div key={algo.id} className="bg-gray-50 border border-gray-200 rounded-lg">
                                     <div className="flex items-center justify-between p-4">
-                                        <div className="flex items-center gap-2 flex-1">
-                                            <span className="font-medium text-gray-900">{algo.name}</span>
-                                            {algo.info && (
-                                                <div className="relative group">
-                                                    <Info className="w-4 h-4 text-gray-400 hover:text-[#8e78b7] cursor-help transition-colors" />
-                                                    <div className="absolute left-0 top-6 w-80 z-1000 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 pointer-events-none">
-                                                        <div className="absolute -top-1 left-2 w-2 h-2 bg-gray-900 transform rotate-45"></div>
-                                                        {algo.info}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
+                                        <span className="font-medium text-gray-900">{algo.name}</span>
                                         <div className="flex items-center gap-3">
                                             <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                                                 <input

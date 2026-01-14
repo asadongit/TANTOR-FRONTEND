@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, Scale, Download, Table, CircleCheckBig } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 const ToggleSwitch = ({ checked, onChange, readonly }) => (
     <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -57,19 +58,17 @@ const FeatureSection = ({
             </div>
             <div className="flex items-center gap-3">
                 <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
-                {isToggled && (
-                    <button 
-                        onClick={onExpand}
-                        disabled={readonly}
-                        className="text-gray-400 hover:text-gray-600"
-                    >
-                        {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                    </button>
-                )}
+                <button 
+                    onClick={onExpand}
+                    disabled={readonly}
+                    className="text-gray-400 hover:text-gray-600"
+                >
+                    {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                </button>
             </div>
         </div>
 
-        {isToggled && isExpanded && (
+        {isExpanded && (
             <div className="px-4 pb-4 border-t border-gray-100">
                 <div className="mt-4">{children}</div>
             </div>
@@ -90,7 +89,10 @@ const sampleData = [
     { id: 10, purchase_likelihood: 1, annual_income: 0.8705, age: 0.0920, vehicle_count: 0.6250, life_event_recent_Home_Purchase: 0, total_premium_amount: 0.4049, avg_premium_per_product: 0.2388, has_health_insurance: 0, life_event_recent_Job_Change: 0, credit_score: 0.2809, years_at_current_job: 0.4950 },
 ];
 
-function Step7({ onShowPreview, showPreview, readonly = false }) {
+function Step7({ onShowPreview, showPreview }) {
+    const location = useLocation();
+    const readonly = location.state?.mode === 'view';
+    
     const [toggles, setToggles] = useState({
         imbalancedData: true,
     });
@@ -146,15 +148,11 @@ function Step7({ onShowPreview, showPreview, readonly = false }) {
 
     const toggleSwitch = (key) => {
         if (readonly) return;
-        const newToggleState = !toggles[key];
-        
-        setToggles(prev => ({ ...prev, [key]: newToggleState }));
-        
-        if (newToggleState) {
-            setExpandedSections(prev => ({ ...prev, [key]: true }));
-        } else {
-            setExpandedSections(prev => ({ ...prev, [key]: false }));
-        }
+        setToggles(prev => {
+            const newValue = !prev[key];
+            setExpandedSections(prevExpanded => ({ ...prevExpanded, [key]: newValue }));
+            return { ...prev, [key]: newValue };
+        });
     };
 
     const toggleSection = (section) => {
