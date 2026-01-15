@@ -1,4 +1,4 @@
-import { X, Send, MoreHorizontal } from 'lucide-react';
+import { X, Send } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const CommentDetailModal = ({ isOpen, onClose, selectedRow, replyText, onReplyChange, onSendReply }) => {
@@ -87,18 +87,13 @@ const CommentDetailModal = ({ isOpen, onClose, selectedRow, replyText, onReplyCh
 
                                             {/* Comment Content */}
                                             <div className="flex-1">
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <div>
-                                                        <span className="text-sm font-medium text-gray-900">
-                                                            {comment.userName}
-                                                        </span>
-                                                        <span className="text-xs text-gray-500 ml-2">
-                                                            {comment.date}
-                                                        </span>
-                                                    </div>
-                                                    <button className="text-gray-400 hover:text-gray-600">
-                                                        <MoreHorizontal className="w-4 h-4" />
-                                                    </button>
+                                                <div className="flex items-center mb-1">
+                                                    <span className="text-sm font-medium text-gray-900">
+                                                        {comment.userName}
+                                                    </span>
+                                                    <span className="text-xs text-gray-500 ml-2">
+                                                        {comment.date}
+                                                    </span>
                                                 </div>
                                                 <p className="text-sm text-gray-700">
                                                     {comment.message}
@@ -123,18 +118,13 @@ const CommentDetailModal = ({ isOpen, onClose, selectedRow, replyText, onReplyCh
 
                                                 {/* Comment Content */}
                                                 <div className="flex-1">
-                                                    <div className="flex items-center justify-between mb-1">
-                                                        <div>
-                                                            <span className="text-sm font-medium text-gray-900">
-                                                                {comment.userName}
-                                                            </span>
-                                                            <span className="text-xs text-gray-500 ml-2">
-                                                                {comment.date}
-                                                            </span>
-                                                        </div>
-                                                        <button className="text-gray-400 hover:text-gray-600">
-                                                            <MoreHorizontal className="w-4 h-4" />
-                                                        </button>
+                                                    <div className="flex items-center mb-1">
+                                                        <span className="text-sm font-medium text-gray-900">
+                                                            {comment.userName}
+                                                        </span>
+                                                        <span className="text-xs text-gray-500 ml-2">
+                                                            {comment.date}
+                                                        </span>
                                                     </div>
                                                     <p className="text-sm text-gray-700">
                                                         {comment.message}
@@ -163,7 +153,6 @@ const CommentDetailModal = ({ isOpen, onClose, selectedRow, replyText, onReplyCh
                                     onClick={handleRemoveMention}
                                     className="ml-1 text-gray-400 hover:text-gray-600"
                                 >
-                                    <X className="w-3 h-3" />
                                 </button>
                             </span>
                         </div>

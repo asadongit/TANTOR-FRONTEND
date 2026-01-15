@@ -1,288 +1,368 @@
-import React, { useState } from 'react';
-import { X, Search, AlertCircle, BadgeCheck } from 'lucide-react';
-import { Icon } from '@iconify-icon/react';
-import { useAuth } from "../../../../../context/AuthContext";
-import successBackground from "../../../../../assets/green.png";
+import { useState, useEffect, useRef } from 'react';
+import { Info, X, Plus, ChevronDown, Loader2 } from 'lucide-react';
+import { useAuth } from '../../../../../context/AuthContext';
 
-export const CreateProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
-  const {token, decodedToken, hostnameV1} = useAuth();
-  const initialFormState = {
-    project: "",
-    description: "",
-    assigned_users: { assigned_users: "" },
-    created_by: decodedToken?.preferred_username || ""
-  };
-
-  const [formData, setFormData] = useState(initialFormState);
-  const [errors, setErrors] = useState({});
+export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
+  const hostnameAI = window._env_?.VITE_AI_API;
+  const { token, decodedToken } = useAuth();
+  const [formData, setFormData] = useState({
+    projectName: '',
+    members: [],
+    description: ''
+  });
+  const [isMemberDropdownOpen, setIsMemberDropdownOpen] = useState(false);
+  const [memberSearchQuery, setMemberSearchQuery] = useState('');
+  const [memberOptions, setMemberOptions] = useState([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [memberSkip, setMemberSkip] = useState(0);
+  const [hasMoreMembers, setHasMoreMembers] = useState(false);
+  const [totalMembers, setTotalMembers] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [selectedMembersData, setSelectedMembersData] = useState([]);
+  const searchTimeoutRef = useRef(null);
+  const MEMBERS_LIMIT = 12;
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    
-    setFormData((prev) => {
-      if (name === "assigned_users") {
-        return {
-          ...prev,
-          assigned_users: {
-            ...prev.assigned_users,
-            assigned_users: value,
-          },
-        };
-      }
-      return {
-        ...prev,
-        [name]: value,
-      };
-    });
-
-    if (errors[name]) {
-      setErrors({
-        ...errors,
-        [name]: ""
-      });
-    }
-  };
-
-  const validateForm = () => {
-    let formErrors = {};
-    let isValid = true;
-
-    if (!formData.project.trim()) {
-      formErrors.project = "Project name is required";
-      isValid = false;
-    }
-
-    const email = formData.assigned_users.assigned_users;
-    if (!email.trim()) {
-      formErrors.assigned_users = "Manager email is required";
-      isValid = false;
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      formErrors.assigned_users = "Please enter a valid email address";
-      isValid = false;
-    }
-
-    setErrors(formErrors);
-    return isValid;
-  };
-
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
-    
-    setIsSubmitting(true);
+  const fetchMembers = async (skip = 0, search = '', isLoadMore = false) => {
+    setIsLoadingMembers(true);
     try {
-      const response = await fetch(`${hostnameV1}/projects`, {
-        method: "POST",
+      let url = `${window._env_?.VITE_FAST_API}/auth/users?skip=${skip}&limit=${MEMBERS_LIMIT}`;
+      if (search.trim()) {
+        url += `&search=${encodeURIComponent(search.trim())}`;
+      }
+
+      const response = await fetch(url, {
+        method: 'GET',
         headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.message || "Failed to create project");
+        throw new Error('Failed to fetch users');
       }
 
-      const result = await response.json();
+      const data = await response.json();
 
-      setShowSuccessModal(true);
-      
-      if (onProjectCreated) {
-        onProjectCreated();
+      const formattedMembers = data.users.map(user => ({
+        value: user.id,
+        label: user.username,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName
+      }));
+
+      if (isLoadMore) {
+        setMemberOptions(prev => [...prev, ...formattedMembers]);
+      } else {
+        setMemberOptions(formattedMembers);
       }
+
+      setHasMoreMembers(data.has_more);
+      setTotalMembers(data.total);
+      setMemberSkip(skip);
     } catch (error) {
-      setErrors({ 
-        ...errors, 
-        api: error.message || "Failed to create project. Please try again." 
-      });
+      console.error('Error fetching members:', error);
+    } finally {
+      setIsLoadingMembers(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isMemberDropdownOpen && memberOptions.length === 0) {
+      fetchMembers(0, '');
+    }
+  }, [isMemberDropdownOpen]);
+
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (isMemberDropdownOpen) {
+      searchTimeoutRef.current = setTimeout(() => {
+        fetchMembers(0, memberSearchQuery);
+      }, 500);
+    }
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [memberSearchQuery, isMemberDropdownOpen]);
+
+  const handleLoadMore = () => {
+    if (!isLoadingMembers && hasMoreMembers) {
+      const newSkip = memberSkip + MEMBERS_LIMIT;
+      fetchMembers(newSkip, memberSearchQuery, true);
+    }
+  };
+
+  const toggleMember = (value) => {
+    const isCurrentlySelected = formData.members.includes(value);
+
+    if (isCurrentlySelected) {
+      setFormData(prev => ({
+        ...prev,
+        members: prev.members.filter(m => m !== value)
+      }));
+      setSelectedMembersData(prev => prev.filter(m => m.value !== value));
+    } else {
+      const memberData = memberOptions.find(m => m.value === value);
+      if (memberData) {
+        setFormData(prev => ({
+          ...prev,
+          members: [...prev.members, value]
+        }));
+        setSelectedMembersData(prev => [...prev, memberData]);
+      }
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.projectName.trim()) {
+      alert('Please enter a project name');
+      return;
+    }
+
+    if (!decodedToken?.preferred_username) {
+      alert('Unable to identify current user');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const userIdResponse = await fetch(
+        `${hostnameAI}/users/users/get-id?username=${decodedToken.preferred_username}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'accept': 'application/json'
+          }
+        }
+      );
+
+      if (!userIdResponse.ok) {
+        throw new Error('Failed to get user ID');
+      }
+
+      const userIdData = await userIdResponse.json();
+      const ownerId = userIdData.user_id;
+
+      const selectedMemberUsernames = selectedMembersData.map(m => m.label);
+
+      const createProjectResponse = await fetch(
+        `${hostnameAI}/model/projects`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: formData.projectName.trim(),
+            description: formData.description.trim() || '',
+            owner_id: ownerId,
+            team_members: selectedMemberUsernames
+          })
+        }
+      );
+
+      if (!createProjectResponse.ok) {
+        const errorData = await createProjectResponse.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to create project');
+      }
+
+      const result = await createProjectResponse.json();
+
+      if (onSubmit) {
+        onSubmit(result);
+      }
+
+      handleClose();
+    } catch (error) {
+      console.error('Error creating project:', error);
+      alert(error.message || 'Failed to create project. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleClose = () => {
-    setFormData(initialFormState);
-    setErrors({});
-    setShowSuccessModal(false);
-    onClose();
-  };
-
-  const handleSuccessClose = () => {
-    setFormData(initialFormState);
-    setErrors({});
-    setShowSuccessModal(false);
+    setFormData({ projectName: '', members: [], description: '' });
+    setIsMemberDropdownOpen(false);
+    setMemberSearchQuery('');
+    setMemberOptions([]);
+    setSelectedMembersData([]);
+    setMemberSkip(0);
+    setHasMoreMembers(false);
+    setTotalMembers(0);
     onClose();
   };
 
   if (!isOpen) return null;
 
-  if (showSuccessModal) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-2xl w-[600px] overflow-hidden shadow-xl">
-          <div className="relative h-24">
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${successBackground})` }}
-            >
-              <button
-                onClick={handleSuccessClose}
-                className="absolute top-4 right-4 text-black p-1 hover:bg-white hover:bg-opacity-20 rounded-full"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-          </div>
-
-          <div className="p-8">
-            <div className="flex items-center space-x-4 mb-4">
-              <BadgeCheck className="w-8 h-8 text-green-500" />
-              <h2 className="text-2xl font-bold">Congratulations!</h2>
-            </div>
-            <p className="text-lg text-gray-800 mb-2">
-              You have successfully created a project "{formData.project}".
-            </p>
-
-            <div className="flex justify-start gap-4 mt-8">
-              <button
-                onClick={handleSuccessClose}
-                className="px-6 py-3 text-lg bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a66a3] transition-colors"
-              >
-                Alright
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const selectedMemberLabels = selectedMembersData.map(m => m.label);
+  const allSelectedMembersText = selectedMemberLabels.join(', ');
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl w-[1000px] p-8 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-8">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 relative">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold text-slate-900">Create New Project</h2>
           <div className="flex items-center gap-2">
-            <div>
-              <Icon
-                className="h-5 w-5 text-[#8e78b7]"
-                icon="material-symbols:tactic-rounded"
-                width="24"
-                height="24"
-              />
-            </div>
-            <h2 className="text-xl font-bold text-[#8e78b7]">
-              Create a Project
-            </h2>
+            <button className="text-slate-400 hover:text-slate-600">
+              <Info className="w-5 h-5" />
+            </button>
+            <button onClick={handleClose} className="text-slate-400 hover:text-slate-600">
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600"
-            disabled={isSubmitting}
-          >
-            <X className="h-5 w-5" />
-          </button>
         </div>
 
-        {errors.api && (
-          <div className="mb-6 p-3 bg-red-100 text-red-700 rounded-lg flex items-center">
-            <AlertCircle className="mr-2 h-5 w-5" />
-            {errors.api}
-          </div>
-        )}
-
-        <div className="grid grid-cols-3 gap-8">
-          <div className="space-y-6">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-black mb-1.5">
-                  Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="project"
-                  value={formData.project}
-                  onChange={handleInputChange}
-                  placeholder="Name"
-                  disabled={isSubmitting}
-                  className={`w-full p-2.5 border ${errors.project ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
-                />
-                {errors.project && (
-                  <p className="mt-1 text-sm text-red-500">{errors.project}</p>
-                )}
-              </div>
-            </div>
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-slate-700 mb-1 flex items-center gap-1">
+              Project Name
+            </label>
+            <input
+              type="text"
+              placeholder="Enter Project Name"
+              value={formData.projectName}
+              onChange={(e) => setFormData({ ...formData, projectName: e.target.value })}
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+            />
           </div>
 
-          <div className="space-y-6">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-black mb-1.5">
-                  Description
-                </label>
-                <input
-                  name="description"
-                  type="text"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  placeholder="Description"
-                  disabled={isSubmitting}
-                  className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]"
-                />
-              </div>
-            </div>
-          </div>
+          <div className="relative">
+            <label className="text-sm font-medium text-slate-700 mb-1 block">
+              Member {formData.members.length > 0 && `(${formData.members.length} selected)`}
+            </label>
+            <button
+              onClick={() => setIsMemberDropdownOpen(!isMemberDropdownOpen)}
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500/20 bg-white text-left flex items-center justify-between"
+              title={formData.members.length > 0 ? allSelectedMembersText : ''}
+            >
+              <span className={formData.members.length > 0 ? "text-slate-700" : "text-slate-400"}>
+                {formData.members.length > 0
+                  ? selectedMemberLabels.slice(0, 2).join(', ') + (formData.members.length > 2 ? ` +${formData.members.length - 2}` : '')
+                  : "Select"
+                }
+              </span>
+              <ChevronDown className="w-4 h-4 text-slate-400" />
+            </button>
 
-          <div className="space-y-6">
-            <div className="space-y-4">
-              <div>
-                <div className="relative">
-                  <label className="block text-sm text-black mb-1.5">
-                    Manager <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    name="assigned_users"
-                    value={formData.assigned_users.assigned_users}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        assigned_users: { assigned_users: e.target.value },
-                      }))
-                    }
-                    placeholder="Manager"
-                    disabled={isSubmitting}
-                    className={`w-full p-2.5 border ${errors.assigned_users ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
-                  />
-                  <Search
-                    className="absolute right-3 top-10 pointer-events-none text-gray-500"
-                    size={18}
-                  />
-                  {errors.assigned_users && (
-                    <p className="mt-1 text-sm text-red-500">{errors.assigned_users}</p>
+            {isMemberDropdownOpen && (
+              <div className="absolute top-full mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg z-10">
+                <div className="p-2 border-b border-slate-200">
+                  <div className="relative">
+                    <svg className="w-4 h-4 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input
+                      type="text"
+                      placeholder="Search members..."
+                      value={memberSearchQuery}
+                      onChange={(e) => setMemberSearchQuery(e.target.value)}
+                      className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+                    />
+                  </div>
+                </div>
+
+                <div className="max-h-60 overflow-y-auto">
+                  {isLoadingMembers && memberOptions.length === 0 ? (
+                    <div className="flex items-center justify-center gap-2 p-4">
+                      <Loader2 className="w-4 h-4 animate-spin text-violet-500" />
+                      <span className="text-sm text-slate-500">Loading members...</span>
+                    </div>
+                  ) : memberOptions.length === 0 ? (
+                    <div className="p-4 text-center text-sm text-slate-500">
+                      No members found
+                    </div>
+                  ) : (
+                    <div className="p-2">
+                      {memberOptions.map((member) => (
+                        <label
+                          key={member.value}
+                          className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.members.includes(member.value)}
+                            onChange={() => toggleMember(member.value)}
+                            className="w-4 h-4 text-[#8e78b7] border-slate-300 rounded focus:ring-violet-500"
+                          />
+                          <div className="flex-1">
+                            <span className="text-sm text-slate-700">{member.label}</span>
+                            {member.email && (
+                              <span className="text-xs text-slate-400 ml-2">({member.email})</span>
+                            )}
+                          </div>
+                        </label>
+                      ))}
+
+                      {hasMoreMembers && (
+                        <button
+                          onClick={handleLoadMore}
+                          disabled={isLoadingMembers}
+                          className="w-full mt-2 px-3 py-2 text-sm text-violet-600 hover:bg-violet-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                          {isLoadingMembers ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Loading...
+                            </>
+                          ) : (
+                            <>
+                              Load More ({memberOptions.length} of {totalMembers})
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
-            </div>
+            )}
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-slate-700 mb-1 block">Description</label>
+            <textarea
+              placeholder="Description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              rows={4}
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500/20 resize-none"
+            />
           </div>
         </div>
 
-        <div className="flex justify-start gap-4 mt-8">
+        <div className="flex justify-end gap-3 mt-6">
           <button
             onClick={handleClose}
-            className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-gray-100 transition-colors"
             disabled={isSubmitting}
+            className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className={`px-6 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a66a3] transition-colors ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+            className="px-4 py-2 text-sm font-medium text-white bg-[#8e78b7] rounded-md hover:bg-[#7d69a6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            {isSubmitting ? 'Creating...' : 'Create'}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              'Create'
+            )}
           </button>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { AIPlaygroundLayout } from '../../AIPlaygroundLayout';
 import { Check } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
@@ -27,17 +27,114 @@ function DataPreprocessing() {
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isStep7Preview, setIsStep7Preview] = useState(false);
+  const [isStep1Valid, setIsStep1Valid] = useState(true);
+  
+  const step1ApiCallRef = useRef(null);
+  const step2ApiCallRef = useRef(null);
+  const step3ApiCallRef = useRef(null);
+  const step4ApiCallRef = useRef(null);
+  const step5ApiCallRef = useRef(null);
+  const step6ApiCallRef = useRef(null);
+  const step7ApiCallRef = useRef(null);
+
+  const handleNextClick = async () => {
+    let apiCallFn = null;
+    
+    switch(currentStep) {
+      case 1:
+        apiCallFn = step1ApiCallRef.current;
+        break;
+      case 2:
+        apiCallFn = step2ApiCallRef.current;
+        break;
+      case 3:
+        apiCallFn = step3ApiCallRef.current;
+        break;
+      case 4:
+        apiCallFn = step4ApiCallRef.current;
+        break;
+      case 5:
+        apiCallFn = step5ApiCallRef.current;
+        break;
+      case 6:
+        apiCallFn = step6ApiCallRef.current;
+        break;
+      case 7:
+        apiCallFn = step7ApiCallRef.current;
+        break;
+      default:
+        break;
+    }
+
+    if (apiCallFn) {
+      const success = await apiCallFn();
+      return success;
+    }
+    
+    return true;
+  };
 
   const renderStepContent = () => {
     switch (currentStep) {
-      case 1: return <DataCleaning readonly={readonly} />;
-      case 2: return <FeatureSelection readonly={readonly} />;
-      case 3: return <FeatureEngineering readonly={readonly} />;
-      case 4: return <ScalingTransformation readonly={readonly} />;
-      case 5: return <StatisticalAnalysis readonly={readonly} />;
-      case 6: return <FeatureImportance readonly={readonly} />;
-      case 7: return <Step7 showPreview={isStep7Preview} readonly={readonly} />;
-      default: return <DataCleaning readonly={readonly} />;
+      case 1: 
+        return (
+          <DataCleaning 
+            readonly={readonly} 
+            onValidationChange={setIsStep1Valid}
+            onApiCall={(fn) => step1ApiCallRef.current = fn}
+          />
+        );
+      case 2: 
+        return (
+          <FeatureSelection 
+            readonly={readonly}
+            onApiCall={(fn) => step2ApiCallRef.current = fn}
+          />
+        );
+      case 3: 
+        return (
+          <FeatureEngineering 
+            readonly={readonly}
+            onApiCall={(fn) => step3ApiCallRef.current = fn}
+          />
+        );
+      case 4: 
+        return (
+          <ScalingTransformation 
+            readonly={readonly}
+            onApiCall={(fn) => step4ApiCallRef.current = fn}
+          />
+        );
+      case 5: 
+        return (
+          <StatisticalAnalysis 
+            readonly={readonly}
+            onApiCall={(fn) => step5ApiCallRef.current = fn}
+          />
+        );
+      case 6: 
+        return (
+          <FeatureImportance 
+            readonly={readonly}
+            onApiCall={(fn) => step6ApiCallRef.current = fn}
+          />
+        );
+      case 7: 
+        return (
+          <Step7 
+            showPreview={isStep7Preview} 
+            readonly={readonly}
+            onApiCall={(fn) => step7ApiCallRef.current = fn}
+          />
+        );
+      default: 
+        return (
+          <DataCleaning 
+            readonly={readonly} 
+            onValidationChange={setIsStep1Valid}
+            onApiCall={(fn) => step1ApiCallRef.current = fn}
+          />
+        );
     }
   };
 
@@ -48,6 +145,8 @@ function DataPreprocessing() {
       onPreprocessingStepChange={setCurrentStep}
       isStep7Preview={isStep7Preview}
       onPreviewData={setIsStep7Preview}
+      onNextClick={handleNextClick}
+      isNextDisabled={currentStep === 1 && !isStep1Valid}
     >
       <div className={currentStep === 7 && isStep7Preview ? 'w-full' : 'max-w-7xl mx-auto w-full'}>
         <div className={`
@@ -106,4 +205,4 @@ function DataPreprocessing() {
   );
 }
 
-export default DataPreprocessing
+export default DataPreprocessing;

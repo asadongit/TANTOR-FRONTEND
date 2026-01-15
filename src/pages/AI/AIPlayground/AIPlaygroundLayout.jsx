@@ -33,7 +33,8 @@ export function AIPlaygroundLayout({
     isStep7Preview,
     onPreviewData,
     isNextDisabled: isNextDisabledProp,
-    onSaveModel
+    onSaveModel,
+    onNextClick
 }) {
     const navigate = useNavigate();
     const location = useLocation();
@@ -46,6 +47,7 @@ export function AIPlaygroundLayout({
     const [models, setModels] = useState([]);
     const [activeModelIndex, setActiveModelIndex] = useState(0);
     const [hoveredModelIndex, setHoveredModelIndex] = useState(null);
+    const [isNavigating, setIsNavigating] = useState(false);
 
     useEffect(() => {
         if (isEnsemble) {
@@ -99,8 +101,24 @@ export function AIPlaygroundLayout({
 
     const progressPercentage = calculateProgress();
 
-    const handleNext = () => {
+    const handleNext = async () => {
         const isXAIPage = location.pathname === '/ai/playground/xai';
+        
+        if (onNextClick) {
+            setIsNavigating(true);
+            try {
+                const canProceed = await onNextClick();
+                if (!canProceed) {
+                    setIsNavigating(false);
+                    return;
+                }
+            } catch (error) {
+                console.error('Error in onNextClick:', error);
+                setIsNavigating(false);
+                return;
+            }
+            setIsNavigating(false);
+        }
         
         if (isXAIPage && onSaveModel) {
             onSaveModel();
@@ -212,6 +230,8 @@ export function AIPlaygroundLayout({
     const getNextButtonLabel = () => {
         const isXAIPage = location.pathname === '/ai/playground/xai';
         
+        if (isNavigating) return 'Processing...';
+        
         if (isXAIPage) {
             return 'Save Model';
         }
@@ -226,6 +246,7 @@ export function AIPlaygroundLayout({
     };
 
     const isNextDisabled = () => {
+        if (isNavigating) return true;
         if (isNextDisabledProp !== undefined) {
             return isNextDisabledProp;
         }
@@ -410,7 +431,8 @@ export function AIPlaygroundLayout({
                             shouldShowCancel ? (
                                 <button
                                     onClick={handleCancel}
-                                    className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors inline-flex items-center gap-2"
+                                    disabled={isNavigating}
+                                    className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <X size={16} />
                                     Cancel
@@ -418,7 +440,8 @@ export function AIPlaygroundLayout({
                             ) : (
                                 <button
                                     onClick={handlePrevious}
-                                    className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors inline-flex items-center gap-2"
+                                    disabled={isNavigating}
+                                    className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <ChevronLeft size={16} />
                                     Previous
@@ -433,7 +456,11 @@ export function AIPlaygroundLayout({
                                 className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#7d67a6] disabled:hover:bg-[#8e78b7]"
                             >
                                 {getNextButtonLabel()}
-                                <ArrowRight size={16} />
+                                {isNavigating ? (
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                    <ArrowRight size={16} />
+                                )}
                             </button>
                         )}
 
@@ -444,7 +471,11 @@ export function AIPlaygroundLayout({
                                 className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#7d67a6] disabled:hover:bg-[#8e78b7]"
                             >
                                 {getNextButtonLabel()}
-                                <ArrowRight size={16} />
+                                {isNavigating ? (
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                    <ArrowRight size={16} />
+                                )}
                             </button>
                         )}
                     </div>
