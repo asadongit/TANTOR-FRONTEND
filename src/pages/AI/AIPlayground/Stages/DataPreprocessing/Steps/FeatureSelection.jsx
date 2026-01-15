@@ -1,7 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
+import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
+import { toast } from 'react-hot-toast';
 
-function FeatureSelection({ readonly = false }) {
+function FeatureSelection({ readonly = false, onApiCall }) {
+  const hostnameAI = window._env_?.VITE_AI_API;
+  const { workflowState, updatePreprocessingStep, datasetState } = useAIPlayground();
+
   const [toggles, setToggles] = useState({
     dropLowValue: false,
     handleMissing: false,
@@ -25,47 +30,167 @@ function FeatureSelection({ readonly = false }) {
   const [timeSeriesImputation, setTimeSeriesImputation] = useState('');
   const [columnOverrides, setColumnOverrides] = useState([]);
   const [basicFeatures, setBasicFeatures] = useState([]);
-  const [outlierMethod, setOutlierMethod] = useState('z-score');
+  const [outlierMethod, setOutlierMethod] = useState('zscore');
 
-  const columns = [
-    { name: 'Customer', uniqueness: '100.00%' },
-    { name: 'Customer', uniqueness: '100.00%' },
-    { name: 'Customer', uniqueness: '100.00%' },
-    { name: 'Annual_Income', uniqueness: '100.00%' },
-    { name: 'Annual_Income', uniqueness: '100.00%' },
-    { name: 'Annual_Income', uniqueness: '100.00%' },
-    { name: 'Customer_Satisfaction', uniqueness: '96.50%' },
-    { name: 'Customer_Satisfaction', uniqueness: '96.50%' },
-    { name: 'Customer_Satisfaction', uniqueness: '96.50%' },
-    { name: 'Monthly_Spending', uniqueness: '75.20%' },
-    { name: 'Monthly_Spending', uniqueness: '75.20%' },
-    { name: 'Monthly_Spending', uniqueness: '75.20%' },
-    { name: 'Customer_Retention', uniqueness: '85.30%' },
-    { name: 'Customer_Retention', uniqueness: '85.30%' },
-    { name: 'Customer_Retention', uniqueness: '85.30%' },
-    { name: 'Market_Share', uniqueness: '60.00%' },
-    { name: 'Market_Share', uniqueness: '60.00%' },
-    { name: 'Market_Share', uniqueness: '60.00%' },
-  ];
+  const columns = workflowState?.dataPreprocessing?.step1?.apiResponse?.filtered_uniqueness_report?.map(item => ({
+    name: item.column,
+    uniqueness: `${(item.uniqueness_ratio * 100).toFixed(2)}%`
+  })) || [];
 
-  const columnNames = ['age', 'income', 'score', 'category', 'timestamp', 'value'];
-  const imputationMethods = ['MEAN', 'MEDIAN', 'MODE', 'FORWARD_FILL', 'BACKWARD_FILL', 'INTERPOLATE'];
+  const numericalColumns = workflowState?.dataPreprocessing?.step1?.apiResponse?.numerical_columns || [];
+  const categoricalColumns = workflowState?.dataPreprocessing?.step1?.apiResponse?.categorical_columns || [];
+  const datetimeColumns = workflowState?.dataPreprocessing?.step1?.apiResponse?.datetime_columns || [];
+  
+  const allColumns = [...numericalColumns, ...categoricalColumns, ...datetimeColumns];
+  
+  const numericalImputationMethods = ['knn', 'mice', 'mean', 'median', 'constant', 'ffill', 'bfill', 'interpolate', 'mice_bayes', 'simple_cv'];
+  const categoricalImputationMethods = ['mode', 'constant', 'ffill', 'bfill'];
+  const timeSeriesImputationMethods = ['mode', 'constant', 'ffill', 'bfill'];
+  
   const operators = ['+', '-', '*', '/', '%'];
   
   const outlierMethods = [
-    { value: 'z-score', label: 'Z-Score' },
-    { value: 'modified-z-score', label: 'Modified Z-Score' },
+    { value: 'zscore', label: 'Z-Score' },
+    { value: 'modified_zscore', label: 'Modified Z-Score' },
     { value: 'iqr', label: 'IQR' },
-    { value: 'isolation-forest', label: 'Isolation Forest' },
+    { value: 'isolation_forest', label: 'Isolation Forest' },
     { value: 'lof', label: 'LOF' },
-    { value: 'one-class-svm', label: 'One Class SVM' }
+    { value: 'one_class_svm', label: 'One Class SVM' },
+    { value: 'elliptic_envelope', label: 'Elliptic Envelope' },
+    { value: 'dbscan', label: 'DBSCAN' }
   ];
+
+  const makeApiCall = async () => {
+    try {
+      const columnsToDropManually = Object.entries(selectedColumns)
+        .filter(([_, isSelected]) => isSelected)
+        .map(([key]) => {
+          const columnName = key.substring(0, key.lastIndexOf('-'));
+          return columnName;
+        });
+
+      const imputationStrategyByType = {};
+      if (categoricalImputation) {
+        imputationStrategyByType.categorical = categoricalImputation;
+      }
+      if (numericalImputation) {
+        imputationStrategyByType.numeric = numericalImputation;
+      }
+      if (timeSeriesImputation) {
+        imputationStrategyByType.datetime = timeSeriesImputation;
+      }
+
+      const imputationStrategyByColumn = {};
+      columnOverrides.forEach(override => {
+        if (override.column && override.method) {
+          imputationStrategyByColumn[override.column] = override.method;
+        }
+      });
+
+      const mathOps = basicFeatures
+        .filter(f => f.column1 && f.column2 && f.operator && f.newColumnName)
+        .map(f => ({
+          operation: f.operator === '+' ? 'add' : 
+                     f.operator === '-' ? 'subtract' : 
+                     f.operator === '*' ? 'multiply' : 
+                     f.operator === '/' ? 'divide' : 
+                     f.operator === '%' ? 'modulo' : 'add',
+          col1: f.column1,
+          col2: f.column2,
+          new_col: f.newColumnName
+        }));
+
+      const requestBody = {
+        session_id: datasetState.sessionId,
+        drop_high_uniqueness_active: toggles.dropLowValue,
+        columns_to_drop_manually: columnsToDropManually,
+        drop_high_null_active: missingValuesTab === 'dropColumns' && toggles.handleMissing,
+        null_threshold: parseFloat(threshold) / 100,
+        imputation_active: missingValuesTab === 'imputation' && toggles.handleMissing,
+        imputation_strategy_by_type: imputationStrategyByType,
+        imputation_strategy_by_column: imputationStrategyByColumn,
+        feature_creation_active: toggles.createBasic,
+        math_ops: mathOps,
+        outlier_detection_active: toggles.detectOutliers,
+        outlier_detection_method: outlierMethod
+      };
+
+      const currentConfig = {
+        toggles,
+        selectedColumns,
+        missingValuesTab,
+        threshold,
+        numericalImputation,
+        categoricalImputation,
+        timeSeriesImputation,
+        columnOverrides,
+        basicFeatures,
+        outlierMethod
+      };
+
+      const response = await fetch(`${hostnameAI}/data/preprocess/feature_selection`, {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `API request failed with status ${response.status}`);
+      }
+
+      const apiResponse = await response.json();
+
+      updatePreprocessingStep('step2', {
+        config: currentConfig,
+        apiResponse: apiResponse
+      });
+
+      
+      toast.success('Feature selection completed successfully!', {
+        duration: 3000,
+        position: 'top-right',
+      });
+      return true;
+
+    } catch (error) {
+      console.error('API call failed:', error);
+      toast.error(error.message || 'Feature selection failed. Please try again.', {
+        duration: 4000,
+        position: 'top-right',
+      });
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    if (onApiCall) {
+      onApiCall(makeApiCall);
+    }
+  }, [onApiCall, toggles, selectedColumns, missingValuesTab, threshold, numericalImputation, 
+      categoricalImputation, timeSeriesImputation, columnOverrides, basicFeatures, outlierMethod]);
+
+  const getImputationMethodsForColumn = (columnName) => {
+    if (numericalColumns.includes(columnName)) {
+      return numericalImputationMethods;
+    } else if (categoricalColumns.includes(columnName)) {
+      return categoricalImputationMethods;
+    } else if (datetimeColumns.includes(columnName)) {
+      return timeSeriesImputationMethods;
+    }
+    return [];
+  };
 
   const toggleSwitch = (key) => {
     if (readonly) return;
-    setToggles(prev => ({ ...prev, [key]: !prev[key] }));
+    const newToggleState = !toggles[key];
     
-    if (!toggles[key]) {
+    setToggles(prev => ({ ...prev, [key]: newToggleState }));
+    
+    if (newToggleState) {
       setExpandedSections({
         dropLowValue: false,
         handleMissing: false,
@@ -80,13 +205,13 @@ function FeatureSelection({ readonly = false }) {
 
   const toggleSection = (section) => {
     if (readonly) return;
-    setExpandedSections(prev => ({
+    setExpandedSections({
       dropLowValue: false,
       handleMissing: false,
       createBasic: false,
       detectOutliers: false,
-      [section]: !prev[section]
-    }));
+      [section]: !expandedSections[section]
+    });
   };
 
   const handleSelectAll = () => {
@@ -127,7 +252,7 @@ function FeatureSelection({ readonly = false }) {
     setBasicFeatures(prev => [...prev, {
       id: Date.now(),
       column1: '',
-      operator: '',
+      operator: '+',
       column2: '',
       newColumnName: ''
     }]);
@@ -194,17 +319,19 @@ function FeatureSelection({ readonly = false }) {
         </div>
         <div className="flex items-center gap-3">
           <ToggleSwitch checked={toggles[sectionKey]} onChange={() => toggleSwitch(sectionKey)} />
-          <ExpandButton expanded={expandedSections[sectionKey]} onClick={() => toggleSection(sectionKey)} />
+          {toggles[sectionKey] && (
+            <ExpandButton expanded={expandedSections[sectionKey]} onClick={() => toggleSection(sectionKey)} />
+          )}
         </div>
       </div>
-      {expandedSections[sectionKey] && (
+      {toggles[sectionKey] && expandedSections[sectionKey] && (
         <div className="px-4 pb-4 border-t border-gray-100">{children}</div>
       )}
     </div>
   );
 
   const selectedCount = Object.values(selectedColumns).filter(Boolean).length;
-  const totalFields = 80;
+  const totalFields = columns.length;
 
   return (
     <div className="space-y-4">
@@ -230,7 +357,7 @@ function FeatureSelection({ readonly = false }) {
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-x-8 gap-y-4">
+          <div className="grid grid-cols-3 gap-x-8 gap-y-4 max-h-96 overflow-y-auto pr-2">
             {columns.map((column, idx) => {
               const columnKey = `${column.name}-${idx}`;
               return (
@@ -303,7 +430,7 @@ function FeatureSelection({ readonly = false }) {
                   <SelectInput
                     value={numericalImputation}
                     onChange={(e) => !readonly && setNumericalImputation(e.target.value)}
-                    options={['MEAN', 'MEDIAN', 'MODE', 'FORWARD_FILL']}
+                    options={numericalImputationMethods}
                     placeholder="Select"
                     className="w-full"
                   />
@@ -314,7 +441,7 @@ function FeatureSelection({ readonly = false }) {
                   <SelectInput
                     value={categoricalImputation}
                     onChange={(e) => !readonly && setCategoricalImputation(e.target.value)}
-                    options={['MODE', 'FORWARD_FILL', 'BACKWARD_FILL']}
+                    options={categoricalImputationMethods}
                     placeholder="Select"
                     className="w-full"
                   />
@@ -325,7 +452,7 @@ function FeatureSelection({ readonly = false }) {
                   <SelectInput
                     value={timeSeriesImputation}
                     onChange={(e) => !readonly && setTimeSeriesImputation(e.target.value)}
-                    options={['FORWARD_FILL', 'BACKWARD_FILL', 'INTERPOLATE']}
+                    options={timeSeriesImputationMethods}
                     placeholder="Select"
                     className="w-full"
                   />
@@ -343,7 +470,7 @@ function FeatureSelection({ readonly = false }) {
                           <SelectInput
                             value={override.column}
                             onChange={(e) => updateColumnOverride(override.id, 'column', e.target.value)}
-                            options={columnNames}
+                            options={allColumns}
                             placeholder="Column"
                             className="w-full"
                           />
@@ -353,7 +480,7 @@ function FeatureSelection({ readonly = false }) {
                           <SelectInput
                             value={override.method}
                             onChange={(e) => updateColumnOverride(override.id, 'method', e.target.value)}
-                            options={imputationMethods}
+                            options={getImputationMethodsForColumn(override.column)}
                             placeholder="Strategy"
                             className="w-full"
                           />
@@ -390,63 +517,98 @@ function FeatureSelection({ readonly = false }) {
         sectionKey="createBasic"
       >
         <div className="mt-4 space-y-3">
-          {basicFeatures.map((feature, index) => (
-            <div key={feature.id}>
-              <label className="block text-xs text-gray-500 mb-2">Operation {index + 1}</label>
-              <div className="bg-white rounded-lg p-3 border border-gray-200">
-                <div className="flex items-center gap-3">
-                  <SelectInput
-                    value={feature.column1}
-                    onChange={(e) => updateBasicFeature(feature.id, 'column1', e.target.value)}
-                    options={columnNames}
-                    placeholder="Column 1"
-                    className="flex-1"
-                  />
-
-                  <SelectInput
-                    value={feature.operator}
-                    onChange={(e) => updateBasicFeature(feature.id, 'operator', e.target.value)}
-                    options={operators}
-                    placeholder="+"
-                    className="w-20 text-center"
-                  />
-
-                  <SelectInput
-                    value={feature.column2}
-                    onChange={(e) => updateBasicFeature(feature.id, 'column2', e.target.value)}
-                    options={columnNames}
-                    placeholder="Column 2"
-                    className="flex-1"
-                  />
-
-                  <input
-                    type="text"
-                    value={feature.newColumnName}
-                    onChange={(e) => updateBasicFeature(feature.id, 'newColumnName', e.target.value)}
-                    disabled={readonly}
-                    placeholder="New Column Name"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent text-sm"
-                  />
-
+          {basicFeatures.length === 0 ? (
+            <div className="text-center py-4">
+              <p className="text-sm text-gray-500 mb-3">No operations added yet</p>
+            </div>
+          ) : (
+            basicFeatures.map((feature, index) => (
+              <div key={feature.id} className="bg-white rounded-lg p-4 border border-gray-200">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-sm font-medium text-gray-700">Operation {index + 1}</label>
                   <button
                     onClick={() => removeBasicFeature(feature.id)}
                     disabled={readonly}
-                    className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                    className="p-1 text-gray-400 hover:text-red-500 transition-colors rounded hover:bg-red-50"
                   >
-                    <X size={16} />
+                    <X size={18} />
                   </button>
                 </div>
+                
+                <div className="grid grid-cols-12 gap-3 items-start">
+                  <div className="col-span-3">
+                    <label className="block text-xs text-gray-500 mb-1.5">First Column</label>
+                    <select
+                      value={feature.column1}
+                      onChange={(e) => updateBasicFeature(feature.id, 'column1', e.target.value)}
+                      disabled={readonly}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent text-sm bg-white"
+                    >
+                      <option value="">Select Column</option>
+                      {numericalColumns.map(col => (
+                        <option key={col} value={col}>{col}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="block text-xs text-gray-500 mb-1.5">Operator</label>
+                    <select
+                      value={feature.operator}
+                      onChange={(e) => updateBasicFeature(feature.id, 'operator', e.target.value)}
+                      disabled={readonly}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent text-sm bg-white text-center font-medium"
+                    >
+                      {operators.map(op => (
+                        <option key={op} value={op}>{op}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="col-span-3">
+                    <label className="block text-xs text-gray-500 mb-1.5">Second Column</label>
+                    <select
+                      value={feature.column2}
+                      onChange={(e) => updateBasicFeature(feature.id, 'column2', e.target.value)}
+                      disabled={readonly}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent text-sm bg-white"
+                    >
+                      <option value="">Select Column</option>
+                      {numericalColumns.map(col => (
+                        <option key={col} value={col}>{col}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="col-span-4">
+                    <label className="block text-xs text-gray-500 mb-1.5">New Column Name</label>
+                    <input
+                      type="text"
+                      value={feature.newColumnName}
+                      onChange={(e) => updateBasicFeature(feature.id, 'newColumnName', e.target.value)}
+                      onKeyDown={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                      disabled={readonly}
+                      placeholder="e.g., total_amount"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent text-sm"
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
 
           <button
             onClick={addBasicFeature}
             disabled={readonly}
-            className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-[#8e78b7] hover:text-[#8e78b7] transition-colors flex items-center justify-center gap-2"
+            className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-[#8e78b7] hover:text-[#8e78b7] hover:bg-purple-50 transition-all flex items-center justify-center gap-2 font-medium"
           >
-            <Plus size={16} />
-            Add Operation
+            <Plus size={18} />
+            Add New Operation
           </button>
         </div>
       </SectionCard>

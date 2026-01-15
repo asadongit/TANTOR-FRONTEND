@@ -47,17 +47,19 @@ const FeatureSection = ({
             </div>
             <div className="flex items-center gap-3">
                 <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
-                <button 
-                    onClick={onExpand} 
-                    disabled={readonly}
-                    className="text-gray-400 hover:text-gray-600"
-                >
-                    {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                </button>
+                {isToggled && (
+                    <button 
+                        onClick={onExpand} 
+                        disabled={readonly}
+                        className="text-gray-400 hover:text-gray-600"
+                    >
+                        {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                    </button>
+                )}
             </div>
         </div>
 
-        {isExpanded && (
+        {isToggled && isExpanded && (
             <div className="px-4 pb-4 border-t border-gray-100">
                 <div className="mt-4">{children}</div>
             </div>
@@ -77,6 +79,7 @@ function FeatureEngineering({ readonly = false }) {
     });
 
     const [outlierStrategy, setOutlierStrategy] = useState('');
+    const [encodingStrategy, setEncodingStrategy] = useState('');
 
     const categoricalColumns = [
         'Gender', 'Marital_status', 'Education_level', 'Occupation', 'Home_ownership',
@@ -101,16 +104,30 @@ function FeatureEngineering({ readonly = false }) {
         { value: 'frequency', label: 'Frequency' },
     ];
 
-
     const toggleSwitch = (key) => {
         if (readonly) return;
-        setToggles(prev => ({ ...prev, [key]: !prev[key] }));
-        setExpandedSections(prev => ({ ...prev, [key]: !toggles[key] }));
+        const newToggleState = !toggles[key];
+        
+        setToggles(prev => ({ ...prev, [key]: newToggleState }));
+        
+        if (newToggleState) {
+            setExpandedSections({
+                outlierTreatment: false,
+                categoricalEncoding: false,
+                [key]: true
+            });
+        } else {
+            setExpandedSections(prev => ({ ...prev, [key]: false }));
+        }
     };
 
     const toggleSection = (section) => {
         if (readonly) return;
-        setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+        setExpandedSections({
+            outlierTreatment: false,
+            categoricalEncoding: false,
+            [section]: !expandedSections[section]
+        });
     };
 
     return (
@@ -141,7 +158,7 @@ function FeatureEngineering({ readonly = false }) {
                                 name="outlierStrategy"
                                 value={option.value}
                                 checked={outlierStrategy === option.value}
-                                onChange={(e) => setOutlierStrategy(e.target.value)}
+                                onChange={(e) => !readonly && setOutlierStrategy(e.target.value)}
                                 label={option.label}
                                 readonly={readonly}
                             />
@@ -184,8 +201,8 @@ function FeatureEngineering({ readonly = false }) {
                                 <RadioOption
                                     name="encodingStrategy"
                                     value={option.value}
-                                    checked={outlierStrategy === option.value}
-                                    onChange={(e) => setOutlierStrategy(e.target.value)}
+                                    checked={encodingStrategy === option.value}
+                                    onChange={(e) => !readonly && setEncodingStrategy(e.target.value)}
                                     label={option.label}
                                     readonly={readonly}
                                 />
