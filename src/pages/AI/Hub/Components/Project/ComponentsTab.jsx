@@ -1,14 +1,18 @@
-import { ChevronDown, ChevronRight, EllipsisVertical, Search } from "lucide-react"
+import { ChevronDown, ChevronRight, Search, BookOpen, Gauge, Palette, Archive, Trash2, Rocket, Sparkles } from "lucide-react"
 import DataTable from "../../../../../components/DataTable"
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const ComponentsTab = () => {
+    const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedSections, setExpandedSections] = useState({
         datasets: false,
         models: false,
         notebook: false
     });
+    const [selectedModel, setSelectedModel] = useState(null);
+    const [isQuickPredictOpen, setIsQuickPredictOpen] = useState(false);
 
     const datasetsData = [
         { sno: 1, name: 'Project - Churn', description: 'Churn', created_date: '01/10/2025', size: '23 MB', rows: 23, features: 'Swifts' },
@@ -48,6 +52,100 @@ const ComponentsTab = () => {
         { sno: 10, name: 'Performance Monitoring', description: 'Monitor model performance', created_date: '20/11/2025', last_run: '22/11/2025', status: 'Active' }
     ];
 
+    // Dataset actions
+    const datasetActions = [
+        {
+            label: 'Library',
+            icon: <BookOpen className="w-4 h-4" />,
+            onClick: (row) => {
+                navigate(`/ai/hub/data/library/${row.name}`, {
+                    state: { datasetData: row }
+                });
+            },
+            tooltip: 'Library',
+        },
+        {
+            label: 'F1 Mode',
+            icon: <Gauge className="w-4 h-4" />,
+            onClick: (row) => console.log('F1 Mode:', row),
+            tooltip: 'F1 Mode',
+        },
+        {
+            label: 'AI Canvas',
+            icon: <Palette className="w-4 h-4" />,
+            onClick: (row) => console.log('AI Canvas:', row),
+            tooltip: 'AI Canvas',
+        },
+        {
+            label: 'Archive',
+            icon: <Archive className="w-4 h-4" />,
+            onClick: (row) => console.log('Archive:', row),
+            tooltip: 'Archive',
+        },
+        {
+            label: 'Delete',
+            icon: <Trash2 className="w-4 h-4" />,
+            onClick: (row) => console.log('Delete:', row),
+            tooltip: 'Delete',
+        },
+    ];
+
+    // Model actions
+    const modelActions = [
+        {
+            label: "Library",
+            icon: <BookOpen className="w-4 h-4" />,
+            onClick: (row) =>
+                navigate("/ai/hub/models/library", { state: { modelData: row } }),
+            tooltip: "Library",
+        },
+        {
+            label: "F1 Mode",
+            icon: <Gauge className="w-4 h-4" />,
+            onClick: (row) => console.log("F1 Mode:", row),
+            tooltip: "F1 Mode",
+        },
+        {
+            label: "AI Canvas",
+            icon: <Palette className="w-4 h-4" />,
+            onClick: (row) =>
+                navigate("/ai/playground/model-genesis", {
+                    state: {
+                        mode: "view",
+                        model: row,
+                    },
+                }),
+            tooltip: "AI Canvas",
+        },
+        {
+            label: "Deploy",
+            icon: <Rocket className="w-4 h-4" />,
+            onClick: (row) => console.log("Deploy:", row),
+            tooltip: "Deploy",
+        },
+        {
+            label: "Archive",
+            icon: <Archive className="w-4 h-4" />,
+            onClick: (row) => console.log("Archive:", row),
+            tooltip: "Archive",
+        },
+        {
+            label: "Quick Predict",
+            icon: <Sparkles className="w-4 h-4" />,
+            onClick: (row) => {
+                setSelectedModel(row);
+                setIsQuickPredictOpen(true);
+            },
+            tooltip: "Quick Predict",
+        },
+        {
+            label: "Delete",
+            icon: <Trash2 className="w-4 h-4" />,
+            onClick: (row) => console.log("Delete:", row),
+            tooltip: "Delete",
+        },
+    ];
+
     const toggleSection = (section) => {
         setExpandedSections(prev => ({
             ...prev,
@@ -63,10 +161,9 @@ const ComponentsTab = () => {
                     type="text"
                     placeholder="Search Components"
                     className="w-full sm:w-80 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                <button className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                    <EllipsisVertical className="w-5 h-5 text-gray-600" />
-                </button>
             </div>
 
             <div className="border border-gray-200 rounded-lg">
@@ -101,9 +198,10 @@ const ComponentsTab = () => {
                                 { key: 'size', label: 'Size', sortable: true },
                                 { key: 'rows', label: 'Rows', sortable: true },
                                 { key: 'features', label: 'Features', sortable: true },
+                                { label: 'Action', sortable: false, width: '100px' },
                             ]}
                             data={datasetsData}
-                            actions={[]}
+                            actions={datasetActions}
                             isLoading={false}
                             isError={false}
                         />
@@ -142,9 +240,10 @@ const ComponentsTab = () => {
                                 { key: 'created_date', label: 'Created Date', sortable: true },
                                 { key: 'accuracy', label: 'Accuracy', sortable: true },
                                 { key: 'type', label: 'Type', sortable: true },
+                                { label: 'Action', sortable: false, width: '100px' },
                             ]}
                             data={modelsData}
-                            actions={[]}
+                            actions={modelActions}
                             isLoading={false}
                             isError={false}
                         />
