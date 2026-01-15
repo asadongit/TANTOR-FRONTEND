@@ -163,7 +163,7 @@ function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
     if (onApiCall) {
       onApiCall(callInitialCleanApi);
     }
-  }, [toggles, dataTypeColumns, dropColumnsData, missingValueColumns, uniquenessThresholds, datasetState.sessionId]);
+  }, [toggles, dataTypeColumns, dropColumnsData, missingValueColumns, datasetState.sessionId]);
 
   const toggleSection = (section) => {
     if (readonly) return;
