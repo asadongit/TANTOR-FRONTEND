@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback } from "react";
+import React, { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   RefreshCcw,
@@ -19,6 +19,7 @@ import Breadcrumb from "../../../components/Breadcrumb";
 import DataTable from "../../../components/DataTable";
 import { StatCard, StatsContainer, StatsGrid } from "./Components/StatsCard";
 import QuickPredictModal from "./Components/Models/QuickPredictModal";
+import { useAuth } from "../../../context/AuthContext";
 
 function Models() {
   const navigate = useNavigate();
@@ -28,6 +29,43 @@ function Models() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isQuickPredictOpen, setIsQuickPredictOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
+  const [modelsData, setModelsData] = useState([]);
+  const [error, setError] = useState(null);
+  const hostnameAI = window._env_?.VITE_AI_API;
+  const { token, decodedToken } = useAuth();
+
+  useEffect(() => {
+    const fetchModels = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`${hostnameAI}/canvas/model_list`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch models");
+        }
+        const data = await response.json();
+        const mappedData = data.map((item, index) => ({
+          sno: index + 1,
+          name: item.algorith_name,
+          description: item.target_variable || item.usecase || '',
+          created_date: new Date(item.created_at).toLocaleDateString('en-GB'),
+          type: item.modeling_type,
+          status: item.status || 'Unknown',
+        }));
+        setModelsData(mappedData);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchModels();
+  }, [hostnameAI, token, refreshTrigger]);
 
   const metricsData = [
     {
@@ -127,89 +165,6 @@ function Models() {
     },
     output: { id: "output", label: "Output", x: 660, y: 100 },
   };
-
-  const projectsData = [
-    {
-      sno: 1,
-      name: "Project - Churn",
-      description: "Churn",
-      created_date: "01/10/2025",
-      type: "Salish",
-      status: "Deployed",
-    },
-    {
-      sno: 2,
-      name: "Project - Analysis",
-      description: "Churn",
-      created_date: "01/10/2025",
-      type: "Salish",
-      status: "Archived",
-    },
-    {
-      sno: 3,
-      name: "Project - Retention",
-      description: "Retention",
-      created_date: "15/11/2025",
-      type: "Mekong",
-      status: "Deployed",
-    },
-    {
-      sno: 4,
-      name: "Project - Acquisition",
-      description: "Acquisition",
-      created_date: "01/12/2025",
-      type: "Amazon",
-      status: "Deployed",
-    },
-    {
-      sno: 5,
-      name: "Project - Engagement",
-      description: "Engagement",
-      created_date: "20/12/2025",
-      type: "Nile",
-      status: "In progress",
-    },
-    {
-      sno: 6,
-      name: "Project - Onboarding",
-      description: "Onboarding",
-      created_date: "05/01/2026",
-      type: "Yangtze",
-      status: "Inactive",
-    },
-    {
-      sno: 7,
-      name: "Project - Feedback",
-      description: "Feedback",
-      created_date: "30/01/2026",
-      type: "Danube",
-      status: "Deployed",
-    },
-    {
-      sno: 8,
-      name: "Project - Analysis",
-      description: "Analysis",
-      created_date: "15/02/2026",
-      type: "Thames",
-      status: "Archived",
-    },
-    {
-      sno: 9,
-      name: "Project - Strategy",
-      description: "Strategy",
-      created_date: "01/03/2026",
-      type: "Seine",
-      status: "Deployed",
-    },
-    {
-      sno: 10,
-      name: "Project - Optimization",
-      description: "Optimization",
-      created_date: "15/03/2026",
-      type: "Mississippi",
-      status: "Archived",
-    },
-  ];
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -324,16 +279,16 @@ function Models() {
   ];
 
   const filteredData = useMemo(() => {
-    if (!searchTerm.trim()) return projectsData;
+    if (!searchTerm.trim()) return modelsData;
     const q = searchTerm.toLowerCase();
-    return projectsData.filter((row) =>
+    return modelsData.filter((row) =>
       Object.values(row || {}).some((val) =>
         String(val ?? "")
           .toLowerCase()
           .includes(q)
       )
     );
-  }, [searchTerm, projectsData]);
+  }, [searchTerm, modelsData]);
 
   const ModelFlowDiagram = ({ data }) => {
     const svgRef = useRef(null);
@@ -801,7 +756,7 @@ function Models() {
         data={filteredData}
         actions={actions}
         isLoading={isLoading}
-        isError={false}
+        isError={!!error}
         refetch={handleRefresh}
         resetSortTrigger={refreshTrigger}
       />
