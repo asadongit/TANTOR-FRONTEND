@@ -1,56 +1,57 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
-export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly }) {
-  const [models] = useState([
-    { id: 1, name: 'Model 1', type: 'Random Forest' },
-    { id: 2, name: 'Model 2', type: 'XGBoost' },
-    { id: 3, name: 'Model 3', type: 'Neural Network' },
-  ]);
-  
+export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, modelsList = [] }) {
   const [selectedModels, setSelectedModels] = useState({});
   const [descriptions, setDescriptions] = useState({});
   const [showConfirmation, setShowConfirmation] = useState(false);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedModels({});
+      setDescriptions({});
+      setShowConfirmation(false);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  const handleCheckboxChange = (modelId) => {
+  const handleCheckboxChange = (modelRunName) => {
     if (readonly) return;
     setSelectedModels(prev => ({
       ...prev,
-      [modelId]: !prev[modelId]
+      [modelRunName]: !prev[modelRunName]
     }));
   };
 
-  const handleDescriptionChange = (modelId, value) => {
+  const handleDescriptionChange = (modelRunName, value) => {
     if (readonly) return;
     setDescriptions(prev => ({
       ...prev,
-      [modelId]: value
+      [modelRunName]: value
     }));
   };
 
   const handleSaveClick = () => {
     const selectedCount = Object.values(selectedModels).filter(Boolean).length;
     if (selectedCount === 0) {
-      alert('Please select at least one model to save');
       return;
     }
     setShowConfirmation(true);
   };
 
   const handleConfirmSave = () => {
-    const modelsToSave = models
-      .filter(model => selectedModels[model.id])
+    const modelsToSave = modelsList
+      .filter(model => selectedModels[model.run_name])
       .map(model => ({
-        ...model,
-        description: descriptions[model.id] || ''
+        run_name: model.run_name,
+        run_id: model.run_id,
+        description: descriptions[model.run_name] || ''
       }));
     
     onSave(modelsToSave);
     setShowConfirmation(false);
-    setSelectedModels({});
-    setDescriptions({});
   };
 
   const handleCancel = () => {
@@ -65,7 +66,7 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly }) {
   };
 
   const selectedCount = Object.values(selectedModels).filter(Boolean).length;
-  const discardedCount = models.length - selectedCount;
+  const discardedCount = modelsList.length - selectedCount;
 
   return (
     <>
@@ -84,58 +85,71 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly }) {
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-6">
-            <p className="text-sm text-gray-600 mb-6">
+            <p className="text-sm text-gray-600 mb-2">
               Select the models you want to save and provide descriptions for each selected model.
             </p>
+            
+            {selectedCount === 0 && (
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm text-amber-800">
+                  Please select at least one model to save.
+                </p>
+              </div>
+            )}
 
-            <div className="space-y-4">
-              {models.map((model) => (
-                <div
-                  key={model.id}
-                  className={`border rounded-lg p-4 transition-all ${
-                    selectedModels[model.id]
-                      ? 'border-[#8e78b7] bg-purple-50'
-                      : 'border-gray-200 bg-white'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      id={`model-${model.id}`}
-                      checked={selectedModels[model.id] || false}
-                      onChange={() => handleCheckboxChange(model.id)}
-                      disabled={readonly}
-                      className="mt-1 w-4 h-4 text-[#8e78b7] border-gray-300 rounded focus:ring-[#8e78b7] cursor-pointer"
-                    />
-                    <div className="flex-1">
-                      <label
-                        htmlFor={`model-${model.id}`}
-                        className="block text-sm font-medium text-gray-900 cursor-pointer"
-                      >
-                        {model.name}
-                      </label>
-                      <p className="text-xs text-gray-500 mt-1">{model.type}</p>
+            {modelsList.length === 0 ? (
+              <div className="py-8 text-center">
+                <p className="text-sm text-gray-500">No models available to save.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {modelsList.map((model) => (
+                  <div
+                    key={model.run_id}
+                    className={`border rounded-lg p-4 transition-all ${
+                      selectedModels[model.run_name]
+                        ? 'border-[#8e78b7] bg-purple-50'
+                        : 'border-gray-200 bg-white'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        id={`model-${model.run_id}`}
+                        checked={selectedModels[model.run_name] || false}
+                        onChange={() => handleCheckboxChange(model.run_name)}
+                        disabled={readonly}
+                        className="mt-1 w-4 h-4 text-[#8e78b7] border-gray-300 rounded focus:ring-[#8e78b7] cursor-pointer"
+                      />
+                      <div className="flex-1">
+                        <label
+                          htmlFor={`model-${model.run_id}`}
+                          className="block text-sm font-medium text-gray-900 cursor-pointer"
+                        >
+                          {model.run_name}
+                        </label>
 
-                      {selectedModels[model.id] && (
-                        <div className="mt-3">
-                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Description
-                          </label>
-                          <textarea
-                            value={descriptions[model.id] || ''}
-                            onChange={(e) => handleDescriptionChange(model.id, e.target.value)}
-                            disabled={readonly}
-                            placeholder="Enter model description..."
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent resize-none"
-                            rows={3}
-                          />
-                        </div>
-                      )}
+                        {selectedModels[model.run_name] && (
+                          <div className="mt-3">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Description
+                            </label>
+                            <textarea
+                              value={descriptions[model.run_name] || ''}
+                              onChange={(e) => handleDescriptionChange(model.run_name, e.target.value)}
+                              disabled={readonly}
+                              placeholder="Enter model description..."
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent resize-none"
+                              rows={3}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
             {selectedCount > 0 && (
               <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -156,10 +170,10 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly }) {
             </button>
             <button
               onClick={handleSaveClick}
-              disabled={readonly}
+              disabled={readonly || selectedCount === 0}
               className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium hover:bg-[#7d67a6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Save Model
+              Save Model{selectedCount > 1 ? 's' : ''}
             </button>
           </div>
         </div>
