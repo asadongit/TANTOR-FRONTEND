@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
+import toast from 'react-hot-toast';
 
 const ToggleSwitch = ({ checked, onChange, readonly }) => (
     <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -68,7 +70,10 @@ const FeatureSection = ({
     </div>
 );
 
-function ScalingTransformation({ readonly = false }) {
+function ScalingTransformation({ readonly = false, onApiCall }) {
+    const hostnameAI = window._env_?.VITE_AI_API;
+    const { workflowState, datasetState, updatePreprocessingStep } = useAIPlayground();
+
     const [toggles, setToggles] = useState({
         advancedTransformation: false,
         nearZeroVariance: false,
@@ -83,23 +88,29 @@ function ScalingTransformation({ readonly = false }) {
 
     const [transformationMethod, setTransformationMethod] = useState('yeo-johnson');
     const [scalerMethod, setScalerMethod] = useState('standard');
-    const [selectedColumns, setSelectedColumns] = useState(['has_umbrella_policy', 'health_condition_flag']);
+    const [selectedColumns, setSelectedColumns] = useState([]);
 
-    const skewedColumns = [
-        { name: 'has_umbrella_policy', skewness: 4.9533 },
-        { name: 'health_condition_flag', skewness: 1.9869 },
-        { name: 'has_travel_insurance', skewness: 1.9537 },
-        { name: 'has_disability_insurance', skewness: 1.9094 },
-        { name: 'avg_premium_per_product', skewness: 1.8254 },
-    ];
+    const skewedColumns = React.useMemo(() => {
+        const skewnessReport = workflowState?.dataPreprocessing?.step3?.apiResponse?.skewness_report;
+        
+        if (!skewnessReport) return [];
+
+        return Object.entries(skewnessReport)
+            .map(([name, skewness]) => ({
+                name,
+                skewness: Math.abs(skewness)
+            }))
+            .sort((a, b) => b.skewness - a.skewness);
+    }, [workflowState]);
 
     const transformationOptions = [
-        { value: 'yeo-johnson', label: 'Yeo-Johnson' },
         { value: 'box-cox', label: 'Box-Cox' },
+        { value: 'yeo-johnson', label: 'Yeo-Johnson' },
         { value: 'log', label: 'Log' },
-        { value: 'square-root', label: 'Square Root' },
-        { value: 'cube-root', label: 'Cube Root' },
-        { value: 'reciprocal', label: 'Reciprocal' },
+        { value: 'sqrt', label: 'Square Root' },
+        { value: 'quantile_uniform', label: 'Quantile Uniform' },
+        { value: 'quantile_normal', label: 'Quantile Normal' },
+        { value: 'power', label: 'Power' },
     ];
 
     const scalerOptions = [
@@ -109,7 +120,68 @@ function ScalingTransformation({ readonly = false }) {
         { value: 'maxabs', label: 'MaxAbs' },
         { value: 'quantile', label: 'Quantile' },
         { value: 'power', label: 'Power' },
+        { value: 'normalizer', label: 'Normalizer' },
     ];
+
+    const handleApiCall = async () => {
+        try {
+            const requestBody = {
+                session_id: datasetState?.sessionId,
+                advanced_transformation: toggles.advancedTransformation,
+                columns_to_transform: toggles.advancedTransformation ? selectedColumns : [],
+                transformation_method: transformationMethod,
+                near_zero_variance_filter: toggles.nearZeroVariance,
+                feature_scaler: toggles.featureScaler,
+                feature_scaler_method: scalerMethod
+            };
+
+            const response = await fetch(`${hostnameAI}/data/preprocess/advanced_transformation`, {
+                method: 'POST',
+                headers: {
+                    'accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'API request failed');
+            }
+
+            const data = await response.json();
+
+            updatePreprocessingStep('step4', {
+                config: {
+                    toggles,
+                    transformationMethod,
+                    scalerMethod,
+                    selectedColumns
+                },
+                apiResponse: data
+            });
+
+            toast.success('Scaling & Transformation completed successfully!', {
+                duration: 3000,
+                position: 'top-right',
+            });
+
+            return true;
+        } catch (error) {
+            console.error('Error in Scaling & Transformation:', error);
+            toast.error(error.message || 'Scaling & Transformation failed. Please try again.', {
+                duration: 4000,
+                position: 'top-right',
+            });
+            return false;
+        }
+    };
+
+    useEffect(() => {
+        if (onApiCall) {
+            onApiCall(handleApiCall);
+        }
+    }, [toggles, transformationMethod, scalerMethod, selectedColumns, onApiCall]);
 
     const toggleSwitch = (key) => {
         if (readonly) return;
@@ -188,7 +260,7 @@ function ScalingTransformation({ readonly = false }) {
                                         <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                                         </svg>
-                                        <span className="text-xs text-gray-500">Skewness: {column.skewness}</span>
+                                        <span className="text-xs text-gray-500">Skewness: {column.skewness.toFixed(4)}</span>
                                     </div>
                                 </div>
                             ))}

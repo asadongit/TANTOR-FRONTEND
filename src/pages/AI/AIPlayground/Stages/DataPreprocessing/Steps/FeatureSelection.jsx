@@ -40,15 +40,15 @@ function FeatureSelection({ readonly = false, onApiCall }) {
   const numericalColumns = workflowState?.dataPreprocessing?.step1?.apiResponse?.numerical_columns || [];
   const categoricalColumns = workflowState?.dataPreprocessing?.step1?.apiResponse?.categorical_columns || [];
   const datetimeColumns = workflowState?.dataPreprocessing?.step1?.apiResponse?.datetime_columns || [];
-  
+
   const allColumns = [...numericalColumns, ...categoricalColumns, ...datetimeColumns];
-  
+
   const numericalImputationMethods = ['knn', 'mice', 'mean', 'median', 'constant', 'ffill', 'bfill', 'interpolate', 'mice_bayes', 'simple_cv'];
   const categoricalImputationMethods = ['mode', 'constant', 'ffill', 'bfill'];
   const timeSeriesImputationMethods = ['mode', 'constant', 'ffill', 'bfill'];
-  
+
   const operators = ['+', '-', '*', '/', '%'];
-  
+
   const outlierMethods = [
     { value: 'zscore', label: 'Z-Score' },
     { value: 'modified_zscore', label: 'Modified Z-Score' },
@@ -62,12 +62,79 @@ function FeatureSelection({ readonly = false, onApiCall }) {
 
   const makeApiCall = async () => {
     try {
+      // Get columns to drop manually from Drop Low-Value Columns section
       const columnsToDropManually = Object.entries(selectedColumns)
         .filter(([_, isSelected]) => isSelected)
         .map(([key]) => {
           const columnName = key.substring(0, key.lastIndexOf('-'));
           return columnName;
         });
+
+      // Get missing value data from step1
+      const missingNumeric = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_numeric_column || {};
+      const missingCategorical = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_categorical_column || {};
+      const missingDatetime = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_datetime_column || {};
+
+      // Check if any numerical column (not in drop list) has missing values (value = 1)
+      const hasNumericMissing = Object.entries(missingNumeric).some(
+        ([col, val]) => val === 1 && !columnsToDropManually.includes(col)
+      );
+
+      // Check if any categorical column (not in drop list) has missing values (value = 1)
+      const hasCategoricalMissing = Object.entries(missingCategorical).some(
+        ([col, val]) => val === 1 && !columnsToDropManually.includes(col)
+      );
+
+      // Check if any datetime column (not in drop list) has missing values (value = 1)
+      const hasDatetimeMissing = Object.entries(missingDatetime).some(
+        ([col, val]) => val === 1 && !columnsToDropManually.includes(col)
+      );
+
+      // If there are any columns with missing values (after excluding dropped columns)
+      if (hasNumericMissing || hasCategoricalMissing || hasDatetimeMissing) {
+        // Handle Missing Values toggle must be enabled
+        if (!toggles.handleMissing) {
+          toast.error('Handle Missing Values must be enabled as there are columns with missing values.', {
+            duration: 4000,
+            position: 'top-right',
+          });
+          return false;
+        }
+
+        // Imputation tab MUST be selected (not Drop Columns tab)
+        if (missingValuesTab !== 'imputation') {
+          toast.error('Please select the Imputation tab to handle missing values in your columns.', {
+            duration: 4000,
+            position: 'top-right',
+          });
+          return false;
+        }
+
+        // Validate mandatory imputation methods based on remaining columns with missing values
+        if (hasNumericMissing && !numericalImputation) {
+          toast.error('Numerical Imputation is mandatory as there are numerical columns with missing values.', {
+            duration: 4000,
+            position: 'top-right',
+          });
+          return false;
+        }
+
+        if (hasCategoricalMissing && !categoricalImputation) {
+          toast.error('Categorical Imputation is mandatory as there are categorical columns with missing values.', {
+            duration: 4000,
+            position: 'top-right',
+          });
+          return false;
+        }
+
+        if (hasDatetimeMissing && !timeSeriesImputation) {
+          toast.error('Time Series Imputation is mandatory as there are datetime columns with missing values.', {
+            duration: 4000,
+            position: 'top-right',
+          });
+          return false;
+        }
+      }
 
       const imputationStrategyByType = {};
       if (categoricalImputation) {
@@ -90,11 +157,11 @@ function FeatureSelection({ readonly = false, onApiCall }) {
       const mathOps = basicFeatures
         .filter(f => f.column1 && f.column2 && f.operator && f.newColumnName)
         .map(f => ({
-          operation: f.operator === '+' ? 'add' : 
-                     f.operator === '-' ? 'subtract' : 
-                     f.operator === '*' ? 'multiply' : 
-                     f.operator === '/' ? 'divide' : 
-                     f.operator === '%' ? 'modulo' : 'add',
+          operation: f.operator === '+' ? 'add' :
+            f.operator === '-' ? 'subtract' :
+              f.operator === '*' ? 'multiply' :
+                f.operator === '/' ? 'divide' :
+                  f.operator === '%' ? 'modulo' : 'add',
           col1: f.column1,
           col2: f.column2,
           new_col: f.newColumnName
@@ -104,9 +171,8 @@ function FeatureSelection({ readonly = false, onApiCall }) {
         session_id: datasetState.sessionId,
         drop_high_uniqueness_active: toggles.dropLowValue,
         columns_to_drop_manually: columnsToDropManually,
-        drop_high_null_active: missingValuesTab === 'dropColumns' && toggles.handleMissing,
+        drop_high_null_active: toggles.handleMissing,
         null_threshold: parseFloat(threshold) / 100,
-        imputation_active: missingValuesTab === 'imputation' && toggles.handleMissing,
         imputation_strategy_by_type: imputationStrategyByType,
         imputation_strategy_by_column: imputationStrategyByColumn,
         feature_creation_active: toggles.createBasic,
@@ -149,7 +215,6 @@ function FeatureSelection({ readonly = false, onApiCall }) {
         apiResponse: apiResponse
       });
 
-      
       toast.success('Feature selection completed successfully!', {
         duration: 3000,
         position: 'top-right',
@@ -170,8 +235,8 @@ function FeatureSelection({ readonly = false, onApiCall }) {
     if (onApiCall) {
       onApiCall(makeApiCall);
     }
-  }, [onApiCall, toggles, selectedColumns, missingValuesTab, threshold, numericalImputation, 
-      categoricalImputation, timeSeriesImputation, columnOverrides, basicFeatures, outlierMethod]);
+  }, [onApiCall, toggles, selectedColumns, missingValuesTab, threshold, numericalImputation,
+    categoricalImputation, timeSeriesImputation, columnOverrides, basicFeatures, outlierMethod]);
 
   const getImputationMethodsForColumn = (columnName) => {
     if (numericalColumns.includes(columnName)) {
@@ -187,9 +252,9 @@ function FeatureSelection({ readonly = false, onApiCall }) {
   const toggleSwitch = (key) => {
     if (readonly) return;
     const newToggleState = !toggles[key];
-    
+
     setToggles(prev => ({ ...prev, [key]: newToggleState }));
-    
+
     if (newToggleState) {
       setExpandedSections({
         dropLowValue: false,
@@ -273,19 +338,19 @@ function FeatureSelection({ readonly = false, onApiCall }) {
   // Reusable Components
   const ToggleSwitch = ({ checked, onChange }) => (
     <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-      <input 
-        type="checkbox" 
-        checked={checked} 
+      <input
+        type="checkbox"
+        checked={checked}
         onChange={onChange}
         disabled={readonly}
-        className="sr-only peer" 
+        className="sr-only peer"
       />
       <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
     </label>
   );
 
   const ExpandButton = ({ expanded, onClick }) => (
-    <button 
+    <button
       onClick={onClick}
       disabled={readonly}
       className="text-gray-400 hover:text-gray-600"
@@ -335,50 +400,52 @@ function FeatureSelection({ readonly = false, onApiCall }) {
 
   return (
     <div className="space-y-4">
-      <SectionCard
-        title="Drop Low-Value Columns"
-        description="Remove columns with zero or excessively high uniqueness."
-        sectionKey="dropLowValue"
-      >
-        <div className="mt-4">
-          <div className="flex items-center justify-between mb-4">
-            <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={selectAll}
-                onChange={handleSelectAll}
-                disabled={readonly}
-                className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded"
-              />
-              Select All
-            </label>
-            <span className="text-xs text-gray-400">
-              Total Fields: {totalFields} | Selected: {selectedCount}
-            </span>
-          </div>
+      {workflowState?.dataPreprocessing?.step1?.config?.toggles?.uniquenessRatio && (
+        <SectionCard
+          title="Drop Low-Value Columns"
+          description="Remove columns with zero or excessively high uniqueness."
+          sectionKey="dropLowValue"
+        >
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-4">
+              <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectAll}
+                  onChange={handleSelectAll}
+                  disabled={readonly}
+                  className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded"
+                />
+                Select All
+              </label>
+              <span className="text-xs text-gray-400">
+                Total Fields: {totalFields} | Selected: {selectedCount}
+              </span>
+            </div>
 
-          <div className="grid grid-cols-3 gap-x-8 gap-y-4 max-h-96 overflow-y-auto pr-2">
-            {columns.map((column, idx) => {
-              const columnKey = `${column.name}-${idx}`;
-              return (
-                <div key={columnKey} className="flex items-center gap-2 bg-white p-2 rounded">
-                  <input
-                    type="checkbox"
-                    checked={selectedColumns[columnKey] || false}
-                    onChange={() => handleColumnToggle(columnKey)}
-                    disabled={readonly}
-                    className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded mt-0.5"
-                  />
-                  <div className="flex-1">
-                    <div className="text-sm text-gray-700">{column.name}</div>
-                    <div className="text-xs text-gray-400">{column.uniqueness}</div>
+            <div className="grid grid-cols-3 gap-x-8 gap-y-4 max-h-96 overflow-y-auto pr-2">
+              {columns.map((column, idx) => {
+                const columnKey = `${column.name}-${idx}`;
+                return (
+                  <div key={columnKey} className="flex items-center gap-2 bg-white p-2 rounded">
+                    <input
+                      type="checkbox"
+                      checked={selectedColumns[columnKey] || false}
+                      onChange={() => handleColumnToggle(columnKey)}
+                      disabled={readonly}
+                      className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded mt-0.5"
+                    />
+                    <div className="flex-1">
+                      <div className="text-sm text-gray-700">{column.name}</div>
+                      <div className="text-xs text-gray-400">{column.uniqueness}</div>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
-      </SectionCard>
+        </SectionCard>
+      )}
 
       <SectionCard
         title="Handle Missing Values"
@@ -392,11 +459,10 @@ function FeatureSelection({ readonly = false, onApiCall }) {
                 key={tab}
                 onClick={() => !readonly && setMissingValuesTab(tab)}
                 disabled={readonly}
-                className={`px-4 py-1 text-sm rounded-lg transition-colors ${
-                  missingValuesTab === tab
-                    ? 'bg-[#8e78b7] text-white font-medium shadow-sm'
-                    : 'text-gray-500 bg-gray-300 hover:text-gray-700'
-                }`}
+                className={`px-4 py-1 text-sm rounded-lg transition-colors ${missingValuesTab === tab
+                  ? 'bg-[#8e78b7] text-white font-medium shadow-sm'
+                  : 'text-gray-500 bg-gray-300 hover:text-gray-700'
+                  }`}
               >
                 {tab === 'dropColumns' ? 'Drop Columns' : 'Imputation'}
               </button>
@@ -534,7 +600,7 @@ function FeatureSelection({ readonly = false, onApiCall }) {
                     <X size={18} />
                   </button>
                 </div>
-                
+
                 <div className="grid grid-cols-12 gap-3 items-start">
                   <div className="col-span-3">
                     <label className="block text-xs text-gray-500 mb-1.5">First Column</label>

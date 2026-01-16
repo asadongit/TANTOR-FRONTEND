@@ -80,6 +80,7 @@ function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
       drop_duplicates_rows: toggles.dropDuplicates,
       missing_value_indicator: toggles.missingValue,
       missing_value_indicator_cols: [],
+      uniqueness_filter_active: toggles.uniquenessRatio,
       uniqueness_lower_threshold: 0.02,
       uniqueness_upper_threshold: 0.98
     };

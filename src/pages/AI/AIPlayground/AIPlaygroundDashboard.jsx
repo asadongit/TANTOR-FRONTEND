@@ -69,9 +69,10 @@ const AIPlayground = () => {
   const hostnameAI = window._env_?.VITE_AI_API;
   const fileInputRef = useRef(null);
 
-  const { projectState, setProjectState, datasetState, setDatasetState } = useAIPlayground();
-  console.log("project state is @@@ ",projectState)
+  const {projectState, setProjectState, datasetState, setDatasetState } = useAIPlayground();
 
+  const [selectedProject, setSelectedProject] = useState('');
+  
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -134,10 +135,10 @@ const AIPlayground = () => {
     opt.label.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const isDisabled = !projectState.selectedProject;
+  const isDisabled = !selectedProject;
 
   const handleSelectExperiment = (value) => {
-    console.log("project value is @@@ ",value)
+    setSelectedProject(value);
     setProjectState(prev => ({ ...prev, selectedProject: value }));
     setIsDropdownOpen(false);
     setSearchQuery('');
@@ -211,6 +212,7 @@ const AIPlayground = () => {
 
   const handleConfirmReset = () => {
     setUploadedFile(null);
+    setSelectedProject('');
     setProjectState(prev => ({ ...prev, selectedProject: '' }));
     setDatasetState({
       tableName: '',
@@ -265,13 +267,13 @@ const AIPlayground = () => {
                   className="w-full h-10 px-3 rounded-md border border-slate-200 bg-white text-sm text-left focus:outline-none focus:ring-2 focus:ring-violet-500/20 transition-all flex items-center justify-between"
                   disabled={loading}
                 >
-                  <span className={projectState.selectedProject ? 'text-slate-900' : 'text-slate-400'}>
+                  <span className={selectedProject ? 'text-slate-900' : 'text-slate-400'}>
                     {loading 
                       ? 'Loading projects...'
                       : error
                       ? 'Error loading projects'
-                      : projectState.selectedProject
-                      ? projects.find(opt => opt.label === projectState.selectedProject)?.label
+                      : selectedProject
+                      ? projects.find(opt => opt.label === selectedProject)?.label
                       : 'Select'}
                   </span>
                   <ChevronDown className="w-4 h-4 text-slate-400" />
@@ -426,7 +428,7 @@ const AIPlayground = () => {
               <div className="text-md text-slate-500">
                 Project Name:{' '}
                 <span className="text-slate-900 font-medium">
-                  {projectState.selectedProject}
+                  {selectedProject}
                 </span>
               </div>
             </div>

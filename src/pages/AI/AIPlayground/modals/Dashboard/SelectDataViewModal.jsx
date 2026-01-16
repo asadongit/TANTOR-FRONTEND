@@ -56,7 +56,7 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
 
     try {
       // Get the selected project name
-      const projectName = projectState.selectedProject || 'default_project';
+      const projectName = projectState.selectedProject
       
       // Prepare form data
       const formData = new URLSearchParams();
