@@ -1,63 +1,20 @@
-import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, CircleCheckBig, CircleX, Info, TriangleAlert } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronDown, ChevronUp, CircleCheckBig, CircleX, TriangleAlert, Image as ImageIcon } from 'lucide-react';
+import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
+import { toast } from 'react-hot-toast';
 
 const ToggleSwitch = ({ checked, onChange, readonly }) => (
     <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-        <input 
-            type="checkbox" 
-            checked={checked} 
+        <input
+            type="checkbox"
+            checked={checked}
             onChange={onChange}
             disabled={readonly}
-            className="sr-only peer" 
+            className="sr-only peer"
         />
         <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
     </label>
 );
-
-const BarChart = ({ data, title }) => {
-    const maxValue = Math.max(...data);
-
-    return (
-        <div className="bg-white p-4 rounded border border-gray-200">
-            <p className="text-xs text-gray-500 mb-1 text-center">next_product</p>
-            <p className="text-sm font-medium text-gray-700 mb-4 text-center">{title}</p>
-
-            <div className="relative h-64 border-l border-b border-gray-300 ml-8 mr-4 mb-8">
-                {/* Y-axis labels */}
-                <div className="absolute -left-8 top-0 bottom-0 flex flex-col justify-between text-xs text-gray-600">
-                    <span>1.0</span>
-                    <span>0.8</span>
-                    <span>0.6</span>
-                    <span>0.4</span>
-                    <span>0.2</span>
-                    <span>0.0</span>
-                </div>
-
-                {/* Bars */}
-                <div className="h-full flex items-end justify-around px-2">
-                    {data.map((value, i) => {
-                        const heightPercent = (value / 1.0) * 100;
-                        return (
-                            <div key={i} className="flex-1 flex flex-col items-center justify-end h-full px-1">
-                                <div
-                                    className="w-full bg-blue-600 rounded-t"
-                                    style={{ height: `${heightPercent}%` }}
-                                />
-                            </div>
-                        );
-                    })}
-                </div>
-
-                {/* X-axis labels */}
-                <div className="absolute -bottom-6 left-0 right-0 flex justify-around text-xs text-gray-600">
-                    {data.map((_, i) => (
-                        <span key={i}>{i}</span>
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
-};
 
 const RiskCard = ({ icon, label, count, bgColor, textColor, iconBg }) => (
     <div className={`${bgColor} border rounded-lg px-4 py-3 flex items-center justify-between`}>
@@ -71,7 +28,14 @@ const RiskCard = ({ icon, label, count, bgColor, textColor, iconBg }) => (
     </div>
 );
 
-function StatisticalAnalysis({ readonly = false }) {
+function StatisticalAnalysis({ readonly = false, onApiCall }) {
+    const hostnameAI = window._env_?.VITE_AI_API;
+    const { workflowState, datasetState, updatePreprocessingStep } = useAIPlayground();
+
+    const step4Response = workflowState?.dataPreprocessing?.step4?.apiResponse;
+    const correlationPlot = step4Response?.correlation_plot;
+    const vifReport = step4Response?.vif_report || [];
+
     const [toggles, setToggles] = useState({
         correlation: false,
         vif: false,
@@ -85,17 +49,13 @@ function StatisticalAnalysis({ readonly = false }) {
     const [vifDropperEnabled, setVifDropperEnabled] = useState(false);
     const [selectedFeatures, setSelectedFeatures] = useState([]);
 
-    const vifData = [
-        { feature: 'Const', vifScore: '0.000', riskLevel: 'Low' },
-        { feature: 'Const', vifScore: '0.000', riskLevel: 'High' },
-        { feature: 'Const', vifScore: 'N/A', riskLevel: 'Low' },
-        { feature: 'Const', vifScore: 'N/A', riskLevel: 'High' },
-    ];
-
-    const chartData = [
-        [0.7, 0.68, 0.65, 0.72, 0.69, 0.7, 0.71, 0.67],
-        [0.68, 0.66, 0.64, 0.7, 0.67, 0.69, 0.71, 0.65]
-    ];
+    const riskCounts = vifReport.reduce((acc, curr) => {
+        const risk = curr.Multicollinearity_Risk?.toLowerCase();
+        if (risk?.includes('high')) acc.high++;
+        else if (risk?.includes('moderate')) acc.moderate++;
+        else acc.low++;
+        return acc;
+    }, { low: 0, moderate: 0, high: 0 });
 
     const riskIcons = {
         low: <CircleCheckBig className="w-5 h-5 text-green-600" />,
@@ -106,15 +66,9 @@ function StatisticalAnalysis({ readonly = false }) {
     const toggleSwitch = (key) => {
         if (readonly) return;
         const newToggleState = !toggles[key];
-        
         setToggles(prev => ({ ...prev, [key]: newToggleState }));
-        
         if (newToggleState) {
-            setExpandedSections({
-                correlation: false,
-                vif: false,
-                [key]: true
-            });
+            setExpandedSections({ correlation: false, vif: false, [key]: true });
         } else {
             setExpandedSections(prev => ({ ...prev, [key]: false }));
         }
@@ -129,17 +83,71 @@ function StatisticalAnalysis({ readonly = false }) {
         });
     };
 
-    const toggleFeatureSelection = (index) => {
+    const toggleFeatureSelection = (featureName) => {
         if (readonly) return;
         setSelectedFeatures(prev =>
-            prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
+            prev.includes(featureName) ? prev.filter(f => f !== featureName) : [...prev, featureName]
         );
     };
 
     const toggleAllFeatures = () => {
         if (readonly) return;
-        setSelectedFeatures(selectedFeatures.length === vifData.length ? [] : vifData.map((_, i) => i));
+        setSelectedFeatures(selectedFeatures.length === vifReport.length ? [] : vifReport.map(row => row.Feature));
     };
+
+    const handleStatisticalAnalysis = async () => {
+        try {
+            const requestBody = {
+                session_id: datasetState.sessionId,
+                vif_column_dropper: vifDropperEnabled,
+                vif_columns_to_drop: vifDropperEnabled ? selectedFeatures : []
+            };
+
+            const response = await fetch(`${hostnameAI}/data/preprocess/statistical_analysis`, {
+                method: 'POST',
+                headers: {
+                    'accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            updatePreprocessingStep('step5', {
+                config: {
+                    vif_column_dropper: vifDropperEnabled,
+                    vif_columns_to_drop: vifDropperEnabled ? selectedFeatures : [],
+                    toggles: toggles,
+                    expandedSections: expandedSections
+                },
+                apiResponse: data
+            });
+
+            toast.success('Statistical analysis completed successfully!', {
+                duration: 3000,
+                position: 'top-right',
+            });
+
+            return true;
+        } catch (error) {
+            console.error('Statistical analysis error:', error);
+            toast.error(error.message || 'Statistical analysis failed. Please try again.', {
+                duration: 4000,
+                position: 'top-right',
+            });
+            return false;
+        }
+    };
+
+    useEffect(() => {
+        if (onApiCall) {
+            onApiCall(handleStatisticalAnalysis);
+        }
+    }, [vifDropperEnabled, selectedFeatures, toggles, expandedSections, datasetState.sessionId]);
 
     const Section = ({ title, description, sectionKey, children }) => (
         <div className="bg-gray-50 rounded-lg border border-gray-200">
@@ -149,13 +157,13 @@ function StatisticalAnalysis({ readonly = false }) {
                     <p className="text-xs text-gray-400 mt-0.5">{description}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <ToggleSwitch 
-                        checked={toggles[sectionKey]} 
-                        onChange={() => toggleSwitch(sectionKey)} 
-                        readonly={readonly} 
+                    <ToggleSwitch
+                        checked={toggles[sectionKey]}
+                        onChange={() => toggleSwitch(sectionKey)}
+                        readonly={readonly}
                     />
                     {toggles[sectionKey] && (
-                        <button 
+                        <button
                             onClick={() => toggleSection(sectionKey)}
                             disabled={readonly}
                             className="text-gray-400 hover:text-gray-600"
@@ -197,29 +205,40 @@ function StatisticalAnalysis({ readonly = false }) {
                 description="Feature relationship visualization"
                 sectionKey="correlation"
             >
-                <div className="grid grid-cols-2 gap-4">
-                    {chartData.map((data, i) => (
-                        <BarChart key={i} data={data} title="years_as_customer Distribution by next_product" />
-                    ))}
+                <div className="bg-white p-4 rounded border border-gray-200 flex flex-col items-center justify-center min-h-[300px]">
+                    {correlationPlot ? (
+                        <div className="w-full text-center">
+                            <img
+                                src={correlationPlot.startsWith('data:') ? correlationPlot : `data:image/png;base64,${correlationPlot}`}
+                                alt="Correlation Plot"
+                                className="max-w-full h-auto rounded shadow-sm inline-block"
+                            />
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center text-gray-400 py-10">
+                            <ImageIcon size={48} strokeWidth={1} className="mb-2" />
+                            <p className="text-sm">No correlation plot data available.</p>
+                        </div>
+                    )}
                 </div>
             </Section>
 
             <Section
                 title="VIF Analysis"
-                description="97 features analyzed | 0 selected to drop"
+                description={`${vifReport.length} features analyzed | ${selectedFeatures.length} selected to drop`}
                 sectionKey="vif"
             >
                 <div className="grid grid-cols-3 gap-4 mb-6">
-                    <RiskCard icon={riskIcons.low} label="Low Risk" count="10" bgColor="bg-green-50 border-green-200" textColor="text-green-600" iconBg="bg-green-100" />
-                    <RiskCard icon={riskIcons.moderate} label="Moderate Risk" count="10" bgColor="bg-orange-50 border-orange-200" textColor="text-orange-600" iconBg="bg-orange-100" />
-                    <RiskCard icon={riskIcons.high} label="High Risk" count="10" bgColor="bg-red-50 border-red-200" textColor="text-red-600" iconBg="bg-red-100" />
+                    <RiskCard icon={riskIcons.low} label="Low Risk" count={riskCounts.low} bgColor="bg-green-50 border-green-200" textColor="text-green-600" iconBg="bg-green-100" />
+                    <RiskCard icon={riskIcons.moderate} label="Moderate Risk" count={riskCounts.moderate} bgColor="bg-orange-50 border-orange-200" textColor="text-orange-600" iconBg="bg-orange-100" />
+                    <RiskCard icon={riskIcons.high} label="High Risk" count={riskCounts.high} bgColor="bg-red-50 border-red-200" textColor="text-red-600" iconBg="bg-red-100" />
                 </div>
 
                 <div className="flex items-center justify-between mb-2 pb-4">
                     <div className="flex items-center gap-4">
                         <span className="text-sm font-medium text-gray-700">VIF Column Dropper</span>
-                        <ToggleSwitch 
-                            checked={vifDropperEnabled} 
+                        <ToggleSwitch
+                            checked={vifDropperEnabled}
                             onChange={() => !readonly && setVifDropperEnabled(!vifDropperEnabled)}
                             readonly={readonly}
                         />
@@ -229,21 +248,21 @@ function StatisticalAnalysis({ readonly = false }) {
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <input
                                     type="checkbox"
-                                    checked={selectedFeatures.length === vifData.length}
+                                    checked={vifReport.length > 0 && selectedFeatures.length === vifReport.length}
                                     onChange={toggleAllFeatures}
                                     disabled={readonly}
                                     className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded focus:ring-[#8e78b7]"
                                 />
                                 <span className="text-[#8e78b7] font-medium">Select All</span>
                             </label>
-                            <span>Total Rows: 4 | Selected: {selectedFeatures.length}</span>
+                            <span>Total Rows: {vifReport.length} | Selected: {selectedFeatures.length}</span>
                         </div>
                     )}
                 </div>
 
-                <div className="border border-gray-300 rounded-lg overflow-hidden">
+                <div className="border border-gray-300 rounded-lg overflow-hidden max-h-96 overflow-y-auto">
                     <table className="w-full">
-                        <thead className="bg-gray-50">
+                        <thead className="bg-gray-50 sticky top-0 z-10">
                             <tr>
                                 {['Feature', 'VIF Score', 'Risk Level', vifDropperEnabled ? 'Drop?' : 'Enabled Dropper'].map(h => (
                                     <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-600">{h}</th>
@@ -251,31 +270,39 @@ function StatisticalAnalysis({ readonly = false }) {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-100">
-                            {vifData.map((row, i) => (
+                            {vifReport.length > 0 ? vifReport.map((row, i) => (
                                 <tr key={i} className="hover:bg-gray-50">
-                                    <td className="px-4 py-3 text-sm text-gray-700">{row.feature}</td>
-                                    <td className="px-4 py-3 text-sm text-gray-700">{row.vifScore}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-700 font-medium">{row.Feature}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-700">{typeof row.VIF === 'number' ? row.VIF.toFixed(4) : row.VIF}</td>
                                     <td className="px-4 py-3">
-                                        <span className={`inline-block px-4 py-1 rounded-md text-xs font-medium ${row.riskLevel === 'Low' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                        <span className={`inline-block px-4 py-1 rounded-md text-xs font-medium ${row.Multicollinearity_Risk?.toLowerCase().includes('high')
+                                                ? 'bg-red-100 text-red-700'
+                                                : row.Multicollinearity_Risk?.toLowerCase().includes('moderate')
+                                                    ? 'bg-orange-100 text-orange-700'
+                                                    : 'bg-green-100 text-green-700'
                                             }`}>
-                                            {row.riskLevel}
+                                            {row.Multicollinearity_Risk}
                                         </span>
                                     </td>
                                     <td className="px-4 py-3">
                                         {vifDropperEnabled ? (
                                             <input
                                                 type="checkbox"
-                                                checked={selectedFeatures.includes(i)}
-                                                onChange={() => toggleFeatureSelection(i)}
+                                                checked={selectedFeatures.includes(row.Feature)}
+                                                onChange={() => toggleFeatureSelection(row.Feature)}
                                                 disabled={readonly}
                                                 className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded focus:ring-[#8e78b7]"
                                             />
                                         ) : (
-                                            <span className="text-sm text-gray-500">Enabled Dropper</span>
+                                            <span className="text-sm text-gray-400 italic">Enable switch to drop</span>
                                         )}
                                     </td>
                                 </tr>
-                            ))}
+                            )) : (
+                                <tr>
+                                    <td colSpan="4" className="px-4 py-10 text-center text-gray-400 text-sm">No VIF data found in workflow state.</td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>

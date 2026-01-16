@@ -40,6 +40,10 @@ function DataPreprocessing() {
   const handleNextClick = async () => {
     let apiCallFn = null;
     
+    if (currentStep === 7 && isStep7Preview) {
+      return true;
+    }
+    
     switch(currentStep) {
       case 1:
         apiCallFn = step1ApiCallRef.current;
