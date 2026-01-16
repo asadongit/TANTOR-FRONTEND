@@ -89,15 +89,6 @@ function FeatureEngineering({ readonly = false, onApiCall }) {
 
     const categoricalColumns = workflowState?.dataPreprocessing?.step2?.apiResponse?.categorical_columns || [];
 
-    useEffect(() => {
-        const savedConfig = workflowState?.dataPreprocessing?.step3?.config;
-        if (savedConfig) {
-            setToggles(savedConfig.toggles || { outlierTreatment: false, categoricalEncoding: false });
-            setOutlierStrategy(savedConfig.outlierStrategy || '');
-            setEncodingStrategy(savedConfig.encodingStrategy || '');
-        }
-    }, []);
-
     const handleApiCall = async () => {
         try {
             setIsLoading(true);
