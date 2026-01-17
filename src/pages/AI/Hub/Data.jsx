@@ -14,6 +14,9 @@ const Data = () => {
   const [isTableView, setIsTableView] = useState(false);
   const [tableData, setTableData] = useState([]);
   const [error, setError] = useState(null);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardError, setDashboardError] = useState(null);
   const navigate = useNavigate();
   const { token, decodedToken } = useAuth();
   const hostnameAI = window._env_?.VITE_AI_API;
@@ -44,23 +47,61 @@ const Data = () => {
     fetchData();
   }, [hostnameAI, token, refreshTrigger]);
 
-  const statsData = [
-    { label: 'Sources', value: '07', icon: FileText },
-    { label: 'Datasets', value: '70', icon: Database },
-    { label: 'Size (GB)', value: '61', icon: Box },
-    { label: 'Additions (1week)', value: '61', icon: FolderKanban },
-  ];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      setDashboardLoading(true);
+      setDashboardError(null);
+      try {
+        const response = await fetch(`${hostnameAI}/canvas/data_dashboard/summary?user_id=${decodedToken.sub}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch dashboard data');
+        }
+        const data = await response.json();
+        setDashboardData(data);
+      } catch (err) {
+        setDashboardError(err.message);
+      } finally {
+        setDashboardLoading(false);
+      }
+    };
 
-  const lastAccessedData = [
-    { name: 'Churn', count: 2, trend: 'up' },
-    { name: 'NPA', count: 3, trend: 'up' },
-    { name: 'CS', count: 4, trend: 'down' },
-    { name: 'Fraud', count: 4, trend: 'up' },
-    { name: 'NPA', count: 3, trend: 'down' },
-    { name: 'Fraud', count: 4, trend: 'up' },
-    { name: 'Campaign', count: 2, trend: 'down' },
-    { name: 'M_risk', count: 6, trend: 'up' },
-  ];
+    if (decodedToken.sub) {
+      fetchDashboardData();
+    }
+  }, [hostnameAI, token, decodedToken.sub]);
+
+  const statsData = useMemo(() => {
+    if (!dashboardData) return [
+      { label: 'Sources', value: '07', icon: FileText },
+      { label: 'Datasets', value: '70', icon: Database },
+      { label: 'Size (GB)', value: '61', icon: Box },
+      { label: 'Additions (1week)', value: '61', icon: FolderKanban },
+    ];
+    const getTrendIcon = (trend) => trend === 'increased' ? <ArrowUp className="w-4 h-4 text-green-500" /> : trend === 'decreased' ? <ArrowDown className="w-4 h-4 text-red-500" /> : null;
+    return [
+      { label: 'Sources', value: dashboardData.counts.sources.current.toString(), icon: FileText, trend: dashboardData.counts.sources.trend },
+      { label: 'Datasets', value: dashboardData.counts.datasets.current.toString(), icon: Database, trend: dashboardData.counts.datasets.trend },
+      { label: 'Size (GB)', value: dashboardData.metrics.dataset_size_gb.current.toString(), icon: Box, trend: dashboardData.metrics.dataset_size_gb.trend },
+      { label: 'Change (1week)', value: `${dashboardData.counts.datasets.percentage_change}%`, icon: FolderKanban, trend: dashboardData.counts.datasets.trend },
+    ];
+  }, [dashboardData]);
+
+  const lastAccessedData = useMemo(() => {
+    return dashboardData?.recently_accessed_datasets || [
+      { name: 'Churn', count: 2, trend: 'up' },
+      { name: 'NPA', count: 3, trend: 'up' },
+      { name: 'CS', count: 4, trend: 'down' },
+      { name: 'Fraud', count: 4, trend: 'up' },
+      { name: 'NPA', count: 3, trend: 'down' },
+      { name: 'Fraud', count: 4, trend: 'up' },
+      { name: 'Campaign', count: 2, trend: 'down' },
+      { name: 'M_risk', count: 6, trend: 'up' },
+    ];
+  }, [dashboardData]);
 
   const qualityData = [
     { name: 'Good', value: 45, color: '#10B981' },
@@ -118,7 +159,7 @@ const Data = () => {
       icon: <BookOpen className="w-4 h-4" />,
       onClick: (row) => {
         navigate(`/ai/hub/data/library/${row.file_name}`, {
-          state: { datasetData: row }
+          state: { datasetData: row } // send the complete row data
         });
       },
       tooltip: 'Library',
@@ -159,7 +200,7 @@ const Data = () => {
     );
   }, [searchTerm, tableData]);
 
-  const StatCard = ({ label, value, icon: Icon }) => (
+  const StatCard = ({ label, value, icon: Icon, trend }) => (
     <div className="bg-white rounded-lg px-4 py-1 border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -170,6 +211,8 @@ const Data = () => {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-lg sm:text-xl font-bold text-gray-800">{value}</span>
+          {trend === 'increased' && <ArrowUp className="w-4 h-4 text-green-500" />}
+          {trend === 'decreased' && <ArrowDown className="w-4 h-4 text-red-500" />}
         </div>
       </div>
     </div>
@@ -298,22 +341,28 @@ const Data = () => {
                 icon={Activity}
                 infoText="Recently accessed datasets and their frequency"
               >
-                <div className="max-h-[240px] overflow-y-auto">
-                  {lastAccessedData.map((item, index) => (
-                    <div key={index}>
-                      <div className="flex items-center justify-between py-3 px-2 hover:bg-gray-50">
-                        <span className="text-sm text-gray-700 flex-1">{item.name}</span>
-                        <span className="text-sm font-medium text-gray-900 mx-8">{item.count}</span>
-                        <button className="p-1 hover:bg-gray-100 rounded">
-                          <BookOpenText className="w-4 h-4 text-[#8e78b7]" />
-                        </button>
+                {lastAccessedData.length > 0 ? (
+                  <div className="max-h-[240px] overflow-y-auto">
+                    {lastAccessedData.map((item, index) => (
+                      <div key={index}>
+                        <div className="flex items-center justify-between py-3 px-2 hover:bg-gray-50">
+                          <span className="text-sm text-gray-700 flex-1">{item.name}</span>
+                          <span className="text-sm font-medium text-gray-900 mx-8">{item.count}</span>
+                          <button className="p-1 hover:bg-gray-100 rounded">
+                            <BookOpenText className="w-4 h-4 text-[#8e78b7]" />
+                          </button>
+                        </div>
+                        {index < lastAccessedData.length - 1 && (
+                          <div className="border-b border-gray-200"></div>
+                        )}
                       </div>
-                      {index < lastAccessedData.length - 1 && (
-                        <div className="border-b border-gray-200"></div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    No recently accessed datasets
+                  </div>
+                )}
               </ChartCard>
             </div>
           </>

@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { Search, EllipsisVerticalIcon } from 'lucide-react';
 import DataTable from '../../../../../../../components/DataTable';
 
-const XAI = () => {
+const XAI = (modelData) => {
+    console.log(modelData.modelData.run_name)
     const [searchTerm, setSearchTerm] = useState('');
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [isLoading, setIsLoading] = useState(false);

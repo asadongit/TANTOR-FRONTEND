@@ -2,10 +2,11 @@ import React, { useState, useMemo } from 'react';
 import { Search, EllipsisVerticalIcon } from 'lucide-react';
 import DataTable from '../../../../../../../components/DataTable';
 
-const Comments = () => {
+const Comments = (modelData) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
+    console.log(modelData.modelData.id)
 
     const handleSearchChange = (e) => {
         setSearchTerm(e.target.value);
