@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronLeft, LayoutDashboard } from 'lucide-react';
 import { Icon } from '@iconify-icon/react';
@@ -16,7 +16,23 @@ import {
 function Library() {
   const location = useLocation();
   const navigate = useNavigate();
-  const modelData = location.state?.modelData;
+  const rawModelData = location.state?.modelData;
+
+  const modelData = useMemo(() => {
+    if (!rawModelData) return null;
+    // Normalize possible shapes (Models.jsx sends run_name/created_date/type/status/etc)
+    return {
+      ...rawModelData,
+      name: rawModelData.name ?? rawModelData.run_name ?? '',
+      run_name: rawModelData.run_name ?? rawModelData.name ?? '',
+      description: rawModelData.description ?? '',
+      created_date: rawModelData.created_date ?? rawModelData.createdDate ?? '',
+      createdDate: rawModelData.createdDate ?? rawModelData.created_date ?? '',
+      type: rawModelData.type ?? '',
+      status: rawModelData.status ?? '',
+      id: rawModelData.id,
+    };
+  }, [rawModelData]);
 
   const [activeTab, setActiveTab] = useState(0);
 
@@ -28,11 +44,11 @@ function Library() {
     { name: 'Overview', component: Overview },
     { name: 'Features', component: Features },
     { name: 'Performance Timeline', component: PerformanceTimeline },
-    { name: 'Parameters', component: Parameters },
+    // { name: 'Parameters', component: Parameters },
     { name: 'XAI', component: XAI },
     { name: 'Comments', component: Comments },
     { name: 'Access', component: Access },
-    { name: 'Quick Predict', component: QuickPredict },
+    // { name: 'Quick Predict', component: QuickPredict },
   ];
 
   const handleBack = () => {
@@ -50,7 +66,9 @@ function Library() {
   };
 
   const ActiveTabComponent = tabs[activeTab].component;
-  const modelName = modelData?.name?.replace('Project - ', '') || 'Churn';
+  const modelName =
+    (modelData?.name || modelData?.run_name || '')
+      ?.replace('Project - ', '') || 'Model';
 
   return (
     <div className="p-6 space-y-4">

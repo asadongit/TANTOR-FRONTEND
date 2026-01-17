@@ -478,7 +478,7 @@ export function AIPlaygroundLayout({
 
                 <div className="bg-white border-t border-gray-200 px-6 py-4">
                     <div className="max-w-7xl mx-auto flex justify-between items-center">
-                        {!(isOnStep7 && isStep7Preview) ? (
+                        {!(isOnStep7 && isStep7Preview) && !isDeploymentStage ? (
                             shouldShowCancel ? (
                                 <button
                                     onClick={handleCancel}

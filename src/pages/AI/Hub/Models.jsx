@@ -31,6 +31,7 @@ function Models() {
   const [selectedModel, setSelectedModel] = useState(null);
   const [modelsData, setModelsData] = useState([]);
   const [error, setError] = useState(null);
+  const [dashboardSummary, setDashboardSummary] = useState(null);
   const hostnameAI = window._env_?.VITE_AI_API;
   const { token, decodedToken } = useAuth();
 
@@ -48,14 +49,19 @@ function Models() {
           throw new Error("Failed to fetch models");
         }
         const data = await response.json();
-        const mappedData = data.map((item, index) => ({
+
+        const mappedData = (Array.isArray(data) ? data : []).map((item, index) => ({
+          id: item.id,
           sno: index + 1,
-          name: item.algorith_name,
-          description: item.target_variable || item.usecase || '',
-          created_date: new Date(item.created_at).toLocaleDateString('en-GB'),
+          run_name: item.run_name,
+          description: item.target_variable || item.usecase || "",
+          created_date: item.created_at
+            ? new Date(item.created_at).toLocaleDateString("en-GB")
+            : "",
           type: item.modeling_type,
-          status: item.status || 'Unknown',
+          status: item.status ?? "Unknown",
         }));
+
         setModelsData(mappedData);
       } catch (err) {
         setError(err.message);
@@ -67,104 +73,137 @@ function Models() {
     fetchModels();
   }, [hostnameAI, token, refreshTrigger]);
 
-  const metricsData = [
-    {
-      title: "Projects",
-      value: 39,
-      trend: "up",
-      trendValue: "10%",
-      icon: "material-symbols:check-circle-outline",
-    },
-    {
-      title: "Projects",
-      value: 15,
-      trend: "up",
-      trendValue: "6%",
-      icon: "material-symbols:check-circle-outline",
-    },
-    {
-      title: "Projects",
-      value: "82%",
-      trend: "up",
-      trendValue: "2%",
-      icon: "material-symbols:check-circle-outline",
-    },
-    {
-      title: "Projects",
-      value: 9,
-      trend: "down",
-      trendValue: "2%",
-      icon: "material-symbols:check-circle-outline",
-    },
-    {
-      title: "Projects",
-      value: "17sec",
-      trend: "down",
-      trendValue: "2%",
-      icon: "material-symbols:check-circle-outline",
-    },
-  ];
+  useEffect(() => {
+    const fetchDashboardSummary = async () => {
+      try {
+        const response = await fetch(`${hostnameAI}/canvas/model_dashboard/summary`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) throw new Error("Failed to fetch dashboard summary");
+        const data = await response.json();
+        setDashboardSummary(data);
+      } catch (err) {
+        setDashboardSummary(null);
+      }
+    };
 
-  const alertsData = [
-    { name: "M_credit", issue: "Drift 5%", trend: "down", type: "drift" },
-    { name: "M_CS", issue: "Latency 3s", trend: "down", type: "latency" },
-    { name: "M_churn", issue: "Drift 4%", trend: "down", type: "drift" },
-    { name: "M_risk", issue: "Latency 2s", trend: "up", type: "latency" },
-    { name: "M_campaign", issue: "Drift 3%", trend: "down", type: "drift" },
-    { name: "M_risk", issue: "Latency 2s", trend: "up", type: "latency" },
-  ];
+    fetchDashboardSummary();
+  }, [hostnameAI, token, refreshTrigger]);
 
-  const modelFlowData = {
-    aiModel: {
-      id: "ai-model",
-      label: "564",
-      sublabel: "All Models",
-      x: 30,
-      y: 100,
-    },
-    classificationAgents: [
-      { id: "class-1", label: "Classification\nAgent", x: 180, y: 60 },
-      { id: "class-2", label: "Classification\nAgent", x: 180, y: 140 },
-    ],
-    middleAgents: [
+  const formatPct = (n) => {
+    const num = Number(n);
+    if (!Number.isFinite(num)) return "0%";
+    const rounded =
+      Math.abs(num) >= 10 ? Math.round(num) : Math.round(num * 10) / 10;
+    return `${rounded}%`;
+  };
+
+  const formatLatency = (ms) => {
+    const num = Number(ms);
+    if (!Number.isFinite(num)) return "0 ms";
+    if (num >= 1000) return `${Math.round((num / 1000) * 10) / 10}s`;
+    return `${Math.round(num)}ms`;
+  };
+
+  const metricsData = useMemo(() => {
+    const models = dashboardSummary?.counts?.models;
+    const deployed = dashboardSummary?.counts?.deployed_models;
+    const acc = dashboardSummary?.metrics?.avg_model_accuracy;
+    const lat = dashboardSummary?.metrics?.avg_model_latency;
+
+    const toTrend = (t, pct) => {
+      if (t === "increased") return "up";
+      if (t === "decreased") return "down";
+      const num = Number(pct);
+      if (!Number.isFinite(num)) return "up";
+      return num >= 0 ? "up" : "down";
+    };
+
+    return [
       {
-        id: "loan-agent",
-        label: "Loan Agent",
-        color: "#FB923C",
-        x: 320,
-        y: 20,
+        title: "Models",
+        value: models?.current ?? 0,
+        trend: toTrend(models?.trend, models?.percentage_change),
+        trendValue: formatPct(models?.percentage_change),
+        icon: "material-symbols:check-circle-outline",
       },
-      { id: "gst-agent", label: "GST Agent", color: "#FB923C", x: 320, y: 60 },
       {
-        id: "loan-agent-1",
-        label: "Loan Agent 1",
-        color: "#FB923C",
-        x: 320,
+        title: "Deployed Models",
+        value: deployed?.current ?? 0,
+        trend: toTrend(deployed?.trend, deployed?.percentage_change),
+        trendValue: formatPct(deployed?.percentage_change),
+        icon: "material-symbols:check-circle-outline",
+      },
+      {
+        title: "Avg Accuracy",
+        value:
+          acc?.current == null
+            ? "0%"
+            : `${Math.round(Number(acc.current) * 1000) / 10}%`,
+        trend: toTrend(acc?.trend, acc?.percentage_change),
+        trendValue: formatPct(acc?.percentage_change),
+        icon: "material-symbols:check-circle-outline",
+      },
+      {
+        title: "Avg Latency",
+        value: formatLatency(lat?.current),
+        trend: toTrend(lat?.trend, lat?.percentage_change),
+        trendValue: formatPct(lat?.percentage_change),
+        icon: "material-symbols:check-circle-outline",
+      },
+      {
+        title: "Active Models",
+        value: dashboardSummary?.model_status_counts?.active ?? 0,
+        trend: "up",
+        trendValue: "",
+        icon: "material-symbols:check-circle-outline",
+      },
+    ];
+  }, [dashboardSummary]);
+
+  const alertsData = useMemo(() => {
+    const rows = dashboardSummary?.recent_alerted_runs_per_schedule;
+    if (!Array.isArray(rows)) return [];
+    return rows.slice(0, 6).map((r) => ({
+      name: r.model_run_name || r.schedule_name || "Run",
+      issue: r.schedule_name ? `Schedule: ${r.schedule_name}` : "Alert",
+      trend: "down",
+      type: "drift",
+    }));
+  }, [dashboardSummary]);
+
+  const modelFlowData = useMemo(() => {
+    const count = dashboardSummary?.counts?.models?.current;
+    return {
+      aiModel: {
+        id: "ai-model",
+        label: String(count ?? 0),
+        sublabel: "All Models",
+        x: 30,
         y: 100,
       },
-      {
-        id: "multi-agent",
-        label: "Multi Agent",
-        color: "#FB923C",
-        x: 320,
-        y: 140,
+      classificationAgents: [
+        { id: "class-1", label: "Classification\nAgent", x: 180, y: 60 },
+        { id: "class-2", label: "Classification\nAgent", x: 180, y: 140 },
+      ],
+      middleAgents: [
+        { id: "loan-agent", label: "Loan Agent", color: "#FB923C", x: 320, y: 20 },
+        { id: "gst-agent", label: "GST Agent", color: "#FB923C", x: 320, y: 60 },
+        { id: "loan-agent-1", label: "Loan Agent 1", color: "#FB923C", x: 320, y: 100 },
+        { id: "multi-agent", label: "Multi Agent", color: "#FB923C", x: 320, y: 140 },
+        { id: "gst-agent-1", label: "GST Agent 1", color: "#FB923C", x: 320, y: 180 },
+      ],
+      orchestrationLayer: {
+        id: "orchestration",
+        label: "Orchestration Agent",
+        x: 500,
+        y: 90,
       },
-      {
-        id: "gst-agent-1",
-        label: "GST Agent 1",
-        color: "#FB923C",
-        x: 320,
-        y: 180,
-      },
-    ],
-    orchestrationLayer: {
-      id: "orchestration",
-      label: "Orchestration Agent",
-      x: 500,
-      y: 90,
-    },
-    output: { id: "output", label: "Output", x: 660, y: 100 },
-  };
+      output: { id: "output", label: "Output", x: 660, y: 100 },
+    };
+  }, [dashboardSummary]);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -194,12 +233,12 @@ function Models() {
   const columns = [
     { key: "sno", label: "Sno", sortable: true, width: "90px" },
     {
-      key: "name",
+      key: "run_name",
       label: "Name",
       sortable: true,
       render: (row) => (
-        <span className="text-purple-600 hover:underline cursor-pointer">
-          {row.name}
+        <span className="text-purple-600 hover:underline cursor-pointer whitespace-normal break-words break-all">
+          {row.run_name}
         </span>
       ),
     },
@@ -658,11 +697,11 @@ function Models() {
                 }`}
               >
                 {alert.issue}
-                {alert.trend === "up" ? (
+                {/* {alert.trend === "up" ? (
                   <ArrowUp className="w-3 h-3" />
                 ) : (
                   <ArrowDown className="w-3 h-3" />
-                )}
+                )} */}
               </span>
             </div>
           ))}
@@ -740,8 +779,8 @@ function Models() {
             </StatsGrid>
           </StatsContainer>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-2">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-1">
               <ModelFlowDiagram data={modelFlowData} />
             </div>
             <div>

@@ -52,17 +52,19 @@ function Overview({ modelData }) {
   }, [searchTerm]);
 
   const overviewData = {
-    name: modelData?.name || 'Project - Churn',
-    description: modelData?.description || 'Predict churn risk',
-    marketplaceId: '#1234',
-    useCase: 'Use Case 1',
-    owner: 'Salish',
-    createdDate: '01/10/2025',
-    updatedDate: '05/10/2025',
-    lastRunDate: '05/10/2025',
-    type: 'Analytics',
-    targetVariable: 'Churn Model',
-    projects: 'Projects',
+    name: modelData?.name || modelData?.run_name || '—',
+    description: modelData?.description || '—',
+    marketplaceId: modelData?.marketplaceId || '—',
+    useCase: modelData?.useCase || '—',
+    owner: modelData?.owner || '—',
+    createdDate: modelData?.createdDate || modelData?.created_date || '—',
+    updatedDate: modelData?.updatedDate || '—',
+    lastRunDate: modelData?.lastRunDate || '—',
+    type: modelData?.type || '—',
+    targetVariable: modelData?.targetVariable || modelData?.target || '—',
+    projects: modelData?.projects || '—',
+    status: modelData?.status || '—',
+    modelId: modelData?.id ?? '—',
   };
 
   const InfoCard = ({ label, value }) => (
@@ -74,36 +76,25 @@ function Overview({ modelData }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search"
-            className="pl-10 pr-4 py-2 w-[300px] border border-gray-300 rounded-lg focus:outline-none focus:border-purple-400"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-        </div>
-        <button className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50">
-          <Icon icon="mdi:dots-vertical" className="w-5 h-5 text-gray-600" />
-        </button>
-      </div>
+
 
       <div className="grid grid-cols-3 gap-4">
         <InfoCard label="Name" value={overviewData.name} />
         <InfoCard label="Description" value={overviewData.description} />
-        <InfoCard label="Marketplace ID" value={overviewData.marketplaceId} />
+        <InfoCard label="Model ID" value={overviewData.modelId} />
+
+        <InfoCard label="Status" value={overviewData.status} />
+        <InfoCard label="Created Date" value={overviewData.createdDate} />
+        <InfoCard label="Type" value={overviewData.type} />
 
         <InfoCard label="Use Case" value={overviewData.useCase} />
         <InfoCard label="Owner" value={overviewData.owner} />
-        <InfoCard label="Created Date" value={overviewData.createdDate} />
+        <InfoCard label="Marketplace ID" value={overviewData.marketplaceId} />
 
         <InfoCard label="Updated Date" value={overviewData.updatedDate} />
         <InfoCard label="Last Run Date" value={overviewData.lastRunDate} />
-        <InfoCard label="Type" value={overviewData.type} />
-
         <InfoCard label="Target Variable" value={overviewData.targetVariable} />
+
         <InfoCard label="Projects" value={overviewData.projects} />
       </div>
     </div>
