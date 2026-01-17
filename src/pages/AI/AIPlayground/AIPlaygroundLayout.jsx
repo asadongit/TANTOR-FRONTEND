@@ -15,6 +15,7 @@ import {
     Plus
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 
 export const workflowStages = [
     { id: 'model-genesis', label: 'Model Genesis', icon: Boxes, path: '/ai/playground/model-genesis' },
@@ -38,11 +39,21 @@ export function AIPlaygroundLayout({
 }) {
     const navigate = useNavigate();
     const location = useLocation();
+    const { workflowState } = useAIPlayground();
     const mode = location.state?.mode ?? 'edit';
     const readonly = mode === 'view';
     const ensembleCount = location.state?.ensembleCount ?? 1;
-    const isEnsemble = location.state?.isEnsemble
-    const initialEnsembleCount = ensembleCount
+    const isEnsemble = location.state?.isEnsemble;
+    const initialEnsembleCount = ensembleCount;
+
+    const modelGenesisConfig = workflowState?.modelGenesis?.config;
+    const dataPreprocessingMode = modelGenesisConfig?.dataPreprocessing;
+    const modelSelectionMode = modelGenesisConfig?.modelSelection;
+
+    const isDataPreprocessingAuto = dataPreprocessingMode &&
+        ['Swift', 'Standard', 'Comprehensive'].includes(dataPreprocessingMode);
+    const isModelSelectionAuto = modelSelectionMode &&
+        ['Swift', 'Standard', 'Comprehensive'].includes(modelSelectionMode);
 
     const [models, setModels] = useState([]);
     const [activeModelIndex, setActiveModelIndex] = useState(0);
@@ -68,7 +79,22 @@ export function AIPlaygroundLayout({
         stage => stage.path === location.pathname
     );
 
-    const nextStage = workflowStages[Math.min(currentStageIndex + 1, workflowStages.length - 1)];
+    const getNextStage = () => {
+        const isPreprocessingPage = location.pathname === '/ai/playground/data-preprocessing';
+        const isModelSelectionPage = location.pathname === '/ai/playground/model-selection';
+
+        if (isPreprocessingPage && !isDataPreprocessingAuto && isModelSelectionAuto) {
+            return workflowStages.find(stage => stage.id === 'model-inferencing');
+        }
+
+        if (isPreprocessingPage && isDataPreprocessingAuto && isModelSelectionAuto) {
+            return workflowStages.find(stage => stage.id === 'model-inferencing');
+        }
+
+        return workflowStages[Math.min(currentStageIndex + 1, workflowStages.length - 1)];
+    };
+
+    const nextStage = getNextStage();
     const previousStage = workflowStages[Math.max(currentStageIndex - 1, 0)];
 
     const isPreprocessingPage = location.pathname === '/ai/playground/data-preprocessing';
@@ -103,7 +129,7 @@ export function AIPlaygroundLayout({
 
     const handleNext = async () => {
         const isXAIPage = location.pathname === '/ai/playground/xai';
-        
+
         if (onNextClick) {
             setIsNavigating(true);
             try {
@@ -119,19 +145,20 @@ export function AIPlaygroundLayout({
             }
             setIsNavigating(false);
         }
-        
+
         if (isXAIPage && onSaveModel) {
             onSaveModel();
             return;
         }
-        
+
         if (isOnStep7 && !isStep7Preview) {
             if (onPreviewData) onPreviewData(true);
             return;
         }
+
         if (isOnStep7 && isStep7Preview) {
-            if (currentStageIndex < workflowStages.length - 1) {
-                navigate(workflowStages[currentStageIndex + 1].path, {
+            if (nextStage) {
+                navigate(nextStage.path, {
                     state: {
                         mode: readonly ? 'view' : 'edit',
                         isEnsemble,
@@ -142,6 +169,7 @@ export function AIPlaygroundLayout({
             }
             return;
         }
+
         if (isDeploymentStage && isEnsemble && activeModelIndex < models.length - 1) {
             setActiveModelIndex(activeModelIndex + 1);
             navigate('/ai/playground/model-genesis', {
@@ -155,10 +183,11 @@ export function AIPlaygroundLayout({
             });
             return;
         }
+
         if (isPreprocessingPage && currentPreprocessingStep < totalPreprocessingSteps) {
             onPreprocessingStepChange(currentPreprocessingStep + 1);
-        } else if (currentStageIndex < workflowStages.length - 1) {
-            navigate(workflowStages[currentStageIndex + 1].path, {
+        } else if (nextStage) {
+            navigate(nextStage.path, {
                 state: {
                     mode: readonly ? 'view' : 'edit',
                     isEnsemble,
@@ -229,20 +258,20 @@ export function AIPlaygroundLayout({
 
     const getNextButtonLabel = () => {
         const isXAIPage = location.pathname === '/ai/playground/xai';
-        
+
         if (isNavigating) return 'Processing...';
-        
+
         if (isXAIPage) {
             return 'Save Model';
         }
-        
+
         if (isOnStep7 && !isStep7Preview) return 'Preview Data';
-        if (isOnStep7 && isStep7Preview) return `Continue to ${nextStage.label}`;
+        if (isOnStep7 && isStep7Preview) return `Continue to ${nextStage?.label || 'Next Stage'}`;
         if (isDeploymentStage && isEnsemble && activeModelIndex < models.length - 1) {
             return `Continue to ${models[activeModelIndex + 1].label}`;
         }
         if (isPreprocessingPage && currentPreprocessingStep < totalPreprocessingSteps) return 'Next Step';
-        return `Continue to ${nextStage.label}`;
+        return `Continue to ${nextStage?.label || 'Next Stage'}`;
     };
 
     const isNextDisabled = () => {
@@ -255,6 +284,27 @@ export function AIPlaygroundLayout({
         }
         return !isPreprocessingPage && currentStageIndex === workflowStages.length - 1 && !(isOnStep7 && !isStep7Preview);
     };
+
+    const getVisibleStages = () => {
+        if (isDataPreprocessingAuto && isModelSelectionAuto) {
+            return workflowStages.filter(stage =>
+                stage.id !== 'model-selection'
+            );
+        }
+
+        if (!isDataPreprocessingAuto && isModelSelectionAuto) {
+            return workflowStages.filter(stage =>
+                stage.id !== 'model-selection'
+            );
+        }
+
+        return workflowStages;
+    };
+
+    const visibleStages = getVisibleStages();
+    const visibleCurrentStageIndex = visibleStages.findIndex(
+        stage => stage.path === location.pathname
+    );
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col gap-2">
@@ -321,13 +371,13 @@ export function AIPlaygroundLayout({
                                 >
                                     <button
                                         className={`flex items-center gap-3 px-6 py-2 rounded-lg text-sm font-medium transition-all ${activeModelIndex === index
-                                                ? 'bg-[#8e78b7] text-white'
-                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                            ? 'bg-[#8e78b7] text-white'
+                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                             }`}
                                     >
                                         <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${activeModelIndex === index
-                                                ? 'bg-white text-[#8e78b7]'
-                                                : 'bg-white text-gray-700'
+                                            ? 'bg-white text-[#8e78b7]'
+                                            : 'bg-white text-gray-700'
                                             }`}>
                                             {index + 1}
                                         </span>
@@ -340,8 +390,8 @@ export function AIPlaygroundLayout({
                                                     handleDeleteModel(index);
                                                 }}
                                                 className={`ml-1 p-0.5 rounded transition-colors ${activeModelIndex === index
-                                                        ? 'hover:bg-[#7d67a6]'
-                                                        : 'hover:bg-gray-300'
+                                                    ? 'hover:bg-[#7d67a6]'
+                                                    : 'hover:bg-gray-300'
                                                     }`}
                                             >
                                                 <X size={14} />
@@ -368,10 +418,11 @@ export function AIPlaygroundLayout({
             <div className="bg-white rounded-md px-6 pt-3 pb-4 relative overflow-hidden">
                 <div className="max-w-7xl mx-auto">
                     <div className="flex items-center justify-between">
-                        {workflowStages.map((stage, index) => {
+                        {visibleStages.map((stage, index) => {
                             const IconComponent = stage.icon;
-                            const isActive = index === currentStageIndex;
-                            const isPast = readonly ? index !== currentStageIndex : index < currentStageIndex;
+                            const isActive = stage.path === location.pathname;
+                            const actualStageIndex = workflowStages.findIndex(s => s.id === stage.id);
+                            const isPast = readonly ? !isActive : actualStageIndex < currentStageIndex;
 
                             return (
                                 <React.Fragment key={stage.id}>
@@ -399,7 +450,7 @@ export function AIPlaygroundLayout({
                                         </span>
                                     </div>
 
-                                    {index < workflowStages.length - 1 && (
+                                    {index < visibleStages.length - 1 && (
                                         <div className="flex-1 flex items-center justify-center px-2">
                                             <div className="w-full border-t border-dashed border-gray-300 relative flex items-center justify-end">
                                                 <div className="absolute right-0 w-1.5 h-1.5 border-t border-r border-dashed border-gray-300 rotate-45 -mr-0.5" />

@@ -60,7 +60,7 @@ const FeatureSection = ({
             <div className="flex items-center gap-3">
                 <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
                 {isToggled && (
-                    <button 
+                    <button
                         onClick={onExpand}
                         disabled={readonly}
                         className="text-gray-400 hover:text-gray-600"
@@ -79,10 +79,65 @@ const FeatureSection = ({
     </div>
 );
 
+const VariantDataTable = ({ variantKey, displayData, message }) => {
+    if (!displayData || displayData.length === 0) {
+        return null;
+    }
+
+    const rowCount = displayData.length;
+    const columnCount = Object.keys(displayData[0]).length;
+
+    return (
+        <div className="space-y-3">
+            <div className="bg-white rounded-lg border border-gray-200">
+                <div className="p-4 flex items-center justify-between border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                        <div>
+                            <h3 className="text-base font-semibold text-gray-900">
+                                {variantKey.toUpperCase()} - Cleaned Data Preview
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                                Showing 1-{Math.min(10, rowCount)} of {rowCount} rows • {columnCount} columns
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                        <thead className="bg-purple-100">
+                            <tr>
+                                <th className="px-3 py-2 text-left font-medium text-gray-700 sticky left-0 bg-purple-100 z-10">#</th>
+                                {Object.keys(displayData[0]).map(key => (
+                                    <th key={key} className="px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">
+                                        {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {displayData.slice(0, 10).map((row, index) => (
+                                <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                    <td className="px-3 py-2 text-gray-700 sticky left-0 bg-inherit font-medium z-10">{index + 1}</td>
+                                    {Object.entries(row).map(([key, value]) => (
+                                        <td key={key} className="px-3 py-2 text-gray-600 whitespace-nowrap">
+                                            {typeof value === 'number' ? value.toFixed(4) : value}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 function Step7({ onShowPreview, showPreview, readonly = false, onApiCall }) {
     const hostnameAI = window._env_?.VITE_AI_API;
     const { workflowState, datasetState, updatePreprocessingStep, updateWorkflowStage } = useAIPlayground();
-    
+
     const [toggles, setToggles] = useState({
         imbalancedData: true,
     });
@@ -148,6 +203,15 @@ function Step7({ onShowPreview, showPreview, readonly = false, onApiCall }) {
         },
     ];
 
+    const modelGenesisConfig = workflowState?.modelGenesis?.config;
+    const dataPreprocessingMode = modelGenesisConfig?.dataPreprocessing;
+    const modelSelectionMode = modelGenesisConfig?.modelSelection;
+
+    const isDataPreprocessingAuto = dataPreprocessingMode &&
+        ['Swift', 'Standard', 'Comprehensive'].includes(dataPreprocessingMode);
+    const isModelSelectionAuto = modelSelectionMode &&
+        ['Swift', 'Standard', 'Comprehensive'].includes(modelSelectionMode);
+
     const handleImbalanceHandling = async () => {
         if (readonly) return false;
 
@@ -155,7 +219,7 @@ function Step7({ onShowPreview, showPreview, readonly = false, onApiCall }) {
 
         try {
             const sessionId = datasetState?.sessionId
-            
+
             if (!sessionId) {
                 throw new Error('Session ID not found');
             }
@@ -185,9 +249,11 @@ function Step7({ onShowPreview, showPreview, readonly = false, onApiCall }) {
             const data = await response.json();
 
             updatePreprocessingStep('step7', {
-                imbalance_handling: toggles.imbalancedData,
-                imbalance_handling_method: samplingMethod,
-                response: data
+                config: {
+                    imbalance_handling: toggles.imbalancedData,
+                    imbalance_handling_method: samplingMethod
+                },
+                apiResponse: data
             });
 
             setPreviewData(data);
@@ -219,9 +285,9 @@ function Step7({ onShowPreview, showPreview, readonly = false, onApiCall }) {
     const toggleSwitch = (key) => {
         if (readonly) return;
         const newToggleState = !toggles[key];
-        
+
         setToggles(prev => ({ ...prev, [key]: newToggleState }));
-        
+
         if (newToggleState) {
             setExpandedSections(prev => ({ ...prev, [key]: true }));
         } else {
@@ -235,9 +301,20 @@ function Step7({ onShowPreview, showPreview, readonly = false, onApiCall }) {
     };
 
     if (showPreview) {
-        const displayData = previewData?.cleaned_df_preview;
-        
-        if (!displayData || displayData.length === 0) {
+        const shouldUseAutoData = isDataPreprocessingAuto;
+
+        let displayDataSource;
+        let messageText;
+
+        if (shouldUseAutoData && workflowState?.modelGenesis?.apiResponse) {
+            displayDataSource = workflowState.modelGenesis.apiResponse;
+            messageText = displayDataSource.message || 'Genesis preprocessing complete.';
+        } else {
+            displayDataSource = previewData;
+            messageText = previewData?.message || 'Imbalance handling processed. Class weights calculated. Cleaned data and pipeline saved.';
+        }
+
+        if (!displayDataSource?.cleaned_df_preview) {
             return (
                 <div className="space-y-4">
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex gap-3">
@@ -252,8 +329,108 @@ function Step7({ onShowPreview, showPreview, readonly = false, onApiCall }) {
             );
         }
 
-        const rowCount = displayData.length;
-        const columnCount = Object.keys(displayData[0]).length;
+        const cleanedDfPreview = displayDataSource.cleaned_df_preview;
+        const variantKeys = Object.keys(cleanedDfPreview);
+        const isMultiVariant = variantKeys.length > 0 &&
+            variantKeys.some(key => key.match(/^p\d+$/)) &&
+            Array.isArray(cleanedDfPreview[variantKeys[0]]);
+
+        if (!isMultiVariant) {
+            const displayData = Array.isArray(cleanedDfPreview) ? cleanedDfPreview : [];
+
+            if (displayData.length === 0) {
+                return (
+                    <div className="space-y-4">
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex gap-3">
+                            <div className="flex-1">
+                                <h3 className="text-sm font-medium text-yellow-800">No Data Available</h3>
+                                <p className="text-xs text-yellow-600 mt-1">
+                                    No cleaned data preview is available.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            const rowCount = displayData.length;
+            const columnCount = Object.keys(displayData[0]).length;
+
+            return (
+                <div className="space-y-4">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex gap-3">
+                        <div className="rounded-full flex items-center justify-center">
+                            <CircleCheckBig className="w-5 h-5 text-green-600" />
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="text-sm font-medium text-green-800">Processing Complete!</h3>
+                            <p className="text-xs text-green-600 mt-1">
+                                {messageText}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg border border-gray-200">
+                        <div className="p-4 flex items-center justify-between border-b border-gray-200">
+                            <div className="flex items-center gap-3">
+                                <div>
+                                    <h3 className="text-base font-semibold text-gray-900">Cleaned Data Preview</h3>
+                                    <p className="text-xs text-gray-500 mt-0.5">
+                                        Showing 1-{Math.min(10, rowCount)} of {rowCount} rows • {columnCount} columns
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                                <thead className="bg-purple-100">
+                                    <tr>
+                                        <th className="px-3 py-2 text-left font-medium text-gray-700 sticky left-0 bg-purple-100 z-10">#</th>
+                                        {Object.keys(displayData[0]).map(key => (
+                                            <th key={key} className="px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">
+                                                {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {displayData.slice(0, 10).map((row, index) => (
+                                        <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                            <td className="px-3 py-2 text-gray-700 sticky left-0 bg-inherit font-medium z-10">{index + 1}</td>
+                                            {Object.entries(row).map(([key, value]) => (
+                                                <td key={key} className="px-3 py-2 text-gray-600 whitespace-nowrap">
+                                                    {typeof value === 'number' ? value.toFixed(4) : value}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const validVariants = variantKeys.filter(key =>
+            key.match(/^p\d+$/) && Array.isArray(cleanedDfPreview[key]) && cleanedDfPreview[key].length > 0
+        );
+
+        if (validVariants.length === 0) {
+            return (
+                <div className="space-y-4">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex gap-3">
+                        <div className="flex-1">
+                            <h3 className="text-sm font-medium text-yellow-800">No Valid Variants</h3>
+                            <p className="text-xs text-yellow-600 mt-1">
+                                No valid variant data found in the cleaned preview.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
 
         return (
             <div className="space-y-4">
@@ -264,54 +441,22 @@ function Step7({ onShowPreview, showPreview, readonly = false, onApiCall }) {
                     <div className="flex-1">
                         <h3 className="text-sm font-medium text-green-800">Processing Complete!</h3>
                         <p className="text-xs text-green-600 mt-1">
-                            {previewData?.message || 'Imbalance handling processed. Class weights calculated. Cleaned data and pipeline saved.'}
+                            {messageText}
+                        </p>
+                        <p className="text-xs text-green-600 mt-1">
+                            Found {validVariants.length} variant{validVariants.length > 1 ? 's' : ''}: {validVariants.join(', ').toUpperCase()}
                         </p>
                     </div>
                 </div>
 
-                <div className="bg-white rounded-lg border border-gray-200">
-                    <div className="p-4 flex items-center justify-between border-b border-gray-200">
-                        <div className="flex items-center gap-3">
-                            <div>
-                                <h3 className="text-base font-semibold text-gray-900">Cleaned Data Preview</h3>
-                                <p className="text-xs text-gray-500 mt-0.5">
-                                    Showing 1-{Math.min(10, rowCount)} of {rowCount} rows • {columnCount} columns
-                                </p>
-                            </div>
-                        </div>
-                        <button className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                            <Download size={16} />
-                            Download All Data
-                        </button>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-xs">
-                            <thead className="bg-purple-100">
-                                <tr>
-                                    <th className="px-3 py-2 text-left font-medium text-gray-700 sticky left-0 bg-purple-100 z-10">#</th>
-                                    {Object.keys(displayData[0]).map(key => (
-                                        <th key={key} className="px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">
-                                            {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {displayData.slice(0, 10).map((row, index) => (
-                                    <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                        <td className="px-3 py-2 text-gray-700 sticky left-0 bg-inherit font-medium z-10">{index + 1}</td>
-                                        {Object.entries(row).map(([key, value]) => (
-                                            <td key={key} className="px-3 py-2 text-gray-600 whitespace-nowrap">
-                                                {typeof value === 'number' ? value.toFixed(4) : value}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                {validVariants.map(variantKey => (
+                    <VariantDataTable
+                        key={variantKey}
+                        variantKey={variantKey}
+                        displayData={cleanedDfPreview[variantKey]}
+                        message={messageText}
+                    />
+                ))}
             </div>
         );
     }

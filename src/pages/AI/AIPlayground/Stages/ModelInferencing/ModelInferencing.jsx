@@ -10,7 +10,7 @@ import { FairnessTab, ChartsTab } from './Fairnesschartstab'
 
 const ModelInferencing = () => {
   const hostnameAI = window._env_?.VITE_AI_API;
-  const { workflowState, datasetState  } = useAIPlayground();
+  const { workflowState, datasetState } = useAIPlayground();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState('performance');
   const [selectedFairnessModel, setSelectedFairnessModel] = useState('');
@@ -23,12 +23,32 @@ const ModelInferencing = () => {
     return name.substring(0, maxLength) + '...';
   };
 
-  const apiResults = workflowState?.modelSelection?.apiResponse?.results || [];
+  const modelGenesisConfig = workflowState?.modelGenesis?.config;
+  const dataPreprocessingMode = modelGenesisConfig?.dataPreprocessing;
+  const modelSelectionMode = modelGenesisConfig?.modelSelection;
+
+  const isDataPreprocessingAuto = dataPreprocessingMode &&
+    ['Swift', 'Standard', 'Comprehensive'].includes(dataPreprocessingMode);
+  const isModelSelectionAuto = modelSelectionMode &&
+    ['Swift', 'Standard', 'Comprehensive'].includes(modelSelectionMode);
+
+  const apiResults = useMemo(() => {
+    // When both data preprocessing and model selection are auto
+    if (isDataPreprocessingAuto && isModelSelectionAuto) {
+      return workflowState?.modelGenesis?.apiResponse?.training_results || [];
+    }
+    // When data preprocessing is manual and model selection is auto
+    if (!isDataPreprocessingAuto && isModelSelectionAuto) {
+      return workflowState?.dataPreprocessing?.step7?.apiResponse?.training_results || [];
+    }
+    // Default case
+    return workflowState?.modelSelection?.apiResponse?.results || [];
+  }, [isDataPreprocessingAuto, isModelSelectionAuto, workflowState]);
 
   const legendTruncateLength = useMemo(() => {
     const modelCount = apiResults.length;
     if (modelCount <= 2) return 60;
-    if (modelCount <= 4) return 40; 
+    if (modelCount <= 4) return 40;
     return 30;
   }, [apiResults]);
 
@@ -49,10 +69,34 @@ const ModelInferencing = () => {
         value: '0%',
       };
     }
-    
+
+    // When both are auto OR when data preprocessing is manual and model selection is auto
+    // Use accuracy for best model calculation
+    if ((isDataPreprocessingAuto && isModelSelectionAuto) ||
+      (!isDataPreprocessingAuto && isModelSelectionAuto)) {
+      const metricKey = 'train_accuracy';
+
+      const best = apiResults.reduce((prev, current) => {
+        const prevValue = prev.metrics?.[metricKey] || 0;
+        const currValue = current.metrics?.[metricKey] || 0;
+
+        return currValue > prevValue ? current : prev;
+      });
+
+      const bestValue = best.metrics?.[metricKey] || 0;
+      const formattedValue = `${(bestValue * 100).toFixed(2)}%`;
+
+      return {
+        metricName: 'Accuracy',
+        name: best.run_name,
+        value: formattedValue,
+      };
+    }
+
+    // Original logic for other cases
     const metricsConfig = workflowState?.modelSelection?.config?.metrics || [];
     const firstEnabledMetric = metricsConfig.find(metric => metric.enabled);
-    
+
     if (!firstEnabledMetric) {
       return {
         metricName: 'N/A',
@@ -70,16 +114,16 @@ const ModelInferencing = () => {
     };
 
     const metricKey = metricNameMap[firstEnabledMetric.name];
-    
+
     const best = apiResults.reduce((prev, current) => {
       const prevValue = prev.metrics?.[metricKey] || 0;
       const currValue = current.metrics?.[metricKey] || 0;
-      
+
       return currValue > prevValue ? current : prev;
     });
 
     const bestValue = best.metrics?.[metricKey] || 0;
-    
+
     let formattedValue;
     if (firstEnabledMetric.name === 'Log Loss') {
       formattedValue = bestValue.toFixed(4);
@@ -92,12 +136,12 @@ const ModelInferencing = () => {
       name: best.run_name,
       value: formattedValue,
     };
-  }, [apiResults, workflowState]);
+  }, [apiResults, workflowState, isDataPreprocessingAuto, isModelSelectionAuto]);
 
   const algorithmData = useMemo(() => {
     return apiResults.map((result) => {
       const metrics = result.metrics || {};
-      
+
       return {
         name: result.run_name,
         fullName: result.run_name,
@@ -118,10 +162,10 @@ const ModelInferencing = () => {
 
   const availableMetrics = useMemo(() => {
     if (apiResults.length === 0) return [];
-    
+
     const firstResult = apiResults[0];
     const metrics = firstResult.metrics || {};
-    
+
     const allPossibleMetrics = [
       { name: 'Accuracy', key: 'accuracy' },
       { name: 'Precision', key: 'precision' },
@@ -129,7 +173,7 @@ const ModelInferencing = () => {
       { name: 'F1 Score', key: 'f1' },
       { name: 'Log Loss', key: 'log_loss' }
     ];
-    
+
     return allPossibleMetrics.filter(metric => {
       const trainKey = `train_${metric.key}`;
       const testKey = `test_${metric.key}`;
@@ -139,22 +183,22 @@ const ModelInferencing = () => {
 
   const metricsData = useMemo(() => {
     if (availableMetrics.length === 0) return [];
-    
+
     return availableMetrics.map(metricObj => {
       const dataPoint = { metric: metricObj.name };
-      
+
       apiResults.forEach((result, index) => {
         const modelName = `${truncateName(result.run_name, legendTruncateLength)}_${index}`;
-        
+
         const metricValue = result.metrics?.[`train_${metricObj.key}`];
-        
+
         if (metricValue !== undefined && metricValue !== null && !isNaN(metricValue)) {
           dataPoint[modelName] = parseFloat((metricValue * 100).toFixed(2));
         } else {
           dataPoint[modelName] = 0;
         }
       });
-      
+
       return dataPoint;
     });
   }, [apiResults, availableMetrics, legendTruncateLength]);
@@ -164,7 +208,7 @@ const ModelInferencing = () => {
     if (!selectedModel) return null;
 
     const metrics = selectedModel.metrics || {};
-    
+
     const demographics = ['age', 'gender'];
     const fairnessData = {};
 
@@ -198,8 +242,8 @@ const ModelInferencing = () => {
   const chartColors = ['#9ca3af', '#a78bfa', '#6ee7b7', '#fb923c', '#f472b6', '#60a5fa'];
 
   const fetchModelRuns = async () => {
-     const sessionId = datasetState?.sessionId;
-    
+    const sessionId = datasetState?.sessionId;
+
     if (!sessionId) {
       toast.error('Session ID not found', {
         duration: 4000,
@@ -209,7 +253,7 @@ const ModelInferencing = () => {
     }
 
     setIsLoading(true);
-    
+
     try {
       const response = await fetch(
         `${hostnameAI}/model/runs_logged/${sessionId}`,
@@ -226,12 +270,12 @@ const ModelInferencing = () => {
       }
 
       const data = await response.json();
-      
+
       toast.success('Model Inferencing completed successfully!', {
         duration: 3000,
         position: 'top-right',
       });
-      
+
       setIsLoading(false);
       return true;
     } catch (error) {
@@ -261,14 +305,14 @@ const ModelInferencing = () => {
           <BestModelCard bestModel={bestModel} truncateName={truncateName} />
         </div>
 
-        <MetricsChart 
+        <MetricsChart
           metricsData={metricsData}
           apiResults={apiResults}
           truncateName={truncateName}
           legendTruncateLength={legendTruncateLength}
           chartColors={chartColors}
         />
-        
+
         <div className='p-2'>
           <div className="bg-white rounded-t-lg border-b border-gray-200">
             <div className="flex gap-6 px-4">
@@ -308,7 +352,7 @@ const ModelInferencing = () => {
             )}
 
             {activeTab === 'fairness' && (
-              <FairnessTab 
+              <FairnessTab
                 selectedFairnessModel={selectedFairnessModel}
                 setSelectedFairnessModel={setSelectedFairnessModel}
                 apiResults={apiResults}
@@ -317,7 +361,7 @@ const ModelInferencing = () => {
             )}
 
             {activeTab === 'charts' && (
-              <ChartsTab 
+              <ChartsTab
                 selectedChartsModel={selectedChartsModel}
                 setSelectedChartsModel={setSelectedChartsModel}
                 selectedChartDemographic={selectedChartDemographic}

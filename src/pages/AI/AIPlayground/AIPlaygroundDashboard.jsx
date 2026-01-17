@@ -69,10 +69,10 @@ const AIPlayground = () => {
   const hostnameAI = window._env_?.VITE_AI_API;
   const fileInputRef = useRef(null);
 
-  const {projectState, setProjectState, datasetState, setDatasetState } = useAIPlayground();
+  const { projectState, setProjectState, datasetState, setDatasetState, setWorkflowState } = useAIPlayground();
 
   const [selectedProject, setSelectedProject] = useState('');
-  
+
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -93,11 +93,40 @@ const AIPlayground = () => {
     fetchProjects();
   }, []);
 
+  useEffect(() => {
+    setProjectState({ selectedProject: '' });
+    setDatasetState({
+      tableName: '',
+      sessionId: '',
+      columnNames: [],
+      profileReportHtml: ''
+    });
+    setWorkflowState({
+      modelGenesis: {
+        config: null,
+        apiResponse: null
+      },
+      dataPreprocessing: {
+        step1: { config: null, apiResponse: null },
+        step2: { config: null, apiResponse: null },
+        step3: { config: null, apiResponse: null },
+        step4: { config: null, apiResponse: null },
+        step5: { config: null, apiResponse: null },
+        step6: { config: null, apiResponse: null },
+        step7: { config: null, apiResponse: null }
+      },
+      modelSelection: { config: null, apiResponse: null },
+      modelInferencing: { config: null, apiResponse: null },
+      xai: { config: null, apiResponse: null },
+      modelDeployment: { config: null, apiResponse: null }
+    });
+  }, []);
+
   const fetchProjects = async () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await fetch(`${hostnameAI}/model/list_projects`, {
         method: 'GET',
         headers: {
@@ -110,7 +139,7 @@ const AIPlayground = () => {
       }
 
       const data = await response.json();
-      
+
       const transformedProjects = data.projects.map(project => ({
         value: project.id,
         label: project.name,
@@ -236,7 +265,7 @@ const AIPlayground = () => {
   const handleBuildMethodSelected = (method, ensembleCount) => {
     const isEnsemble = method === 'ensemble';
     navigate('/ai/playground/model-genesis', {
-      state: { isEnsemble, ensembleCount } 
+      state: { isEnsemble, ensembleCount }
     });
   };
 
@@ -268,13 +297,13 @@ const AIPlayground = () => {
                   disabled={loading}
                 >
                   <span className={selectedProject ? 'text-slate-900' : 'text-slate-400'}>
-                    {loading 
+                    {loading
                       ? 'Loading projects...'
                       : error
-                      ? 'Error loading projects'
-                      : selectedProject
-                      ? projects.find(opt => opt.label === selectedProject)?.label
-                      : 'Select'}
+                        ? 'Error loading projects'
+                        : selectedProject
+                          ? projects.find(opt => opt.label === selectedProject)?.label
+                          : 'Select'}
                   </span>
                   <ChevronDown className="w-4 h-4 text-slate-400" />
                 </button>
@@ -283,7 +312,7 @@ const AIPlayground = () => {
                   <div className="absolute top-full mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg z-10">
                     <div className="p-2 border-b border-slate-200">
                       <div className="relative">
-                        <Search className='w-4 h-4 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2'/>
+                        <Search className='w-4 h-4 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2' />
                         <input
                           type="text"
                           placeholder="Search"
@@ -326,7 +355,7 @@ const AIPlayground = () => {
                 {error && (
                   <div className="mt-2 text-xs text-red-500 flex items-center gap-1">
                     <span>Failed to load projects.</span>
-                    <button 
+                    <button
                       onClick={fetchProjects}
                       className="text-[#8e78b7] hover:underline"
                     >
@@ -350,9 +379,8 @@ const AIPlayground = () => {
 
               {/* Upload Box */}
               <div
-                className={`flex-1 border-2 border-dashed border-slate-200 rounded-lg p-4 transition-opacity ${
-                  isDisabled ? 'opacity-50 bg-slate-50' : 'bg-white'
-                }`}
+                className={`flex-1 border-2 border-dashed border-slate-200 rounded-lg p-4 transition-opacity ${isDisabled ? 'opacity-50 bg-slate-50' : 'bg-white'
+                  }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
@@ -378,9 +406,8 @@ const AIPlayground = () => {
 
               {/* Fetch Data Box */}
               <div
-                className={`flex-1 border border-slate-200 rounded-lg p-4 transition-opacity ${
-                  isDisabled ? 'opacity-50 bg-slate-50' : 'bg-white'
-                }`}
+                className={`flex-1 border border-slate-200 rounded-lg p-4 transition-opacity ${isDisabled ? 'opacity-50 bg-slate-50' : 'bg-white'
+                  }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
@@ -443,7 +470,7 @@ const AIPlayground = () => {
 
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-medium text-slate-900 mb-0.5">
-                      {uploadedFile.type === 'database' 
+                      {uploadedFile.type === 'database'
                         ? uploadedFile.displayName || uploadedFile.name
                         : uploadedFile.name}
                     </div>
