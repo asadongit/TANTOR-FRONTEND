@@ -217,12 +217,14 @@ const AIPlayground = () => {
   };
 
   const handleDataTableSelected = (tableData) => {
-    setUploadedFile({
+    setTempFile({
       name: tableData.label,
       type: 'database',
       TableId: tableData.value,
       displayName: tableData.label
     });
+
+    toggleModal('datasetDescription', true);
   };
 
   const handleSaveDescription = (description) => {
@@ -231,7 +233,6 @@ const AIPlayground = () => {
       setTempFile(null);
     }
   };
-
   const handleSkipDescription = () => {
     if (tempFile) {
       setUploadedFile(tempFile);

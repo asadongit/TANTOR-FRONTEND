@@ -91,19 +91,13 @@ function FeatureSelection({ readonly = false, onValidationChange, onApiCall }) {
     }
 
     if (toggles.handleMissing) {
-      if (dropColumnsEnabled && (!threshold || threshold.trim() === '')) {
+      if (!threshold || threshold.trim() === '') {
         errors.handleMissing = 'Please enter a threshold value for dropping columns.';
         isValid = false;
       }
-      if (imputationEnabled) {
-        const hasImputationMethod = numericalImputation || categoricalImputation || timeSeriesImputation;
-        if (!hasImputationMethod) {
-          errors.handleMissing = 'Please select at least one imputation method';
-          isValid = false;
-        }
-      }
-      if (!dropColumnsEnabled && !imputationEnabled) {
-        errors.handleMissing = 'Please enable at least one method (Drop Columns or Imputation)';
+      const hasImputationMethod = numericalImputation || categoricalImputation || timeSeriesImputation;
+      if (!hasImputationMethod) {
+        errors.handleMissing = 'Please select at least one imputation method';
         isValid = false;
       }
     }
@@ -314,6 +308,15 @@ function FeatureSelection({ readonly = false, onValidationChange, onApiCall }) {
       });
     }
 
+    // Set default values when Handle Missing Values is enabled
+    if (key === 'handleMissing' && newToggleState) {
+      setDropColumnsEnabled(true);
+      setImputationEnabled(true);
+      if (!threshold || threshold === '') {
+        setThreshold('70');
+      }
+    }
+
     if (!newToggleState) {
       setExpandedSections(prev => ({
         ...prev,
@@ -502,167 +505,145 @@ function FeatureSelection({ readonly = false, onValidationChange, onApiCall }) {
             <div className="mt-4 space-y-6">
               {/* Drop Columns Section */}
               <div className="bg-white rounded-lg border border-gray-200 p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={dropColumnsEnabled}
-                      onChange={(e) => !readonly && setDropColumnsEnabled(e.target.checked)}
-                      disabled={readonly}
-                      className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded"
-                    />
-                    <div>
-                      <h5 className="text-sm font-medium text-gray-900">Drop Columns</h5>
-                      <p className="text-xs text-gray-500">Remove columns exceeding missing value threshold</p>
-                    </div>
+                <div className="mb-3">
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-900">Drop Columns</h5>
+                    <p className="text-xs text-gray-500">Remove columns exceeding missing value threshold</p>
                   </div>
                 </div>
 
-                {dropColumnsEnabled && (
-                  <div className="mt-3 pl-7">
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-2">Threshold (%)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="1"
-                        value={threshold}
-                        onChange={(e) => !readonly && setThreshold(e.target.value)}
-                        disabled={readonly}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
-                        placeholder="70"
-                      />
-                      <p className="text-xs text-gray-400 mt-1">Drop columns with more than {threshold || 0}% missing values</p>
-                    </div>
+                <div className="mt-3">
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-2">Threshold (%)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={threshold}
+                      onChange={(e) => !readonly && setThreshold(e.target.value)}
+                      disabled={readonly}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
+                      placeholder="70"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Drop columns with more than {threshold || 0}% missing values</p>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Imputation Section */}
               <div className="bg-white rounded-lg border border-gray-200 p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={imputationEnabled}
-                      onChange={(e) => !readonly && setImputationEnabled(e.target.checked)}
-                      disabled={readonly}
-                      className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded"
-                    />
-                    <div>
-                      <h5 className="text-sm font-medium text-gray-900">Imputation</h5>
-                      <p className="text-xs text-gray-500">Fill missing values using statistical methods</p>
-                    </div>
+                <div className="mb-3">
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-900">Imputation</h5>
+                    <p className="text-xs text-gray-500">Fill missing values using statistical methods</p>
                   </div>
                 </div>
 
-                {imputationEnabled && (
-                  <div className="mt-3 pl-7 space-y-6">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-2">Numerical Imputation</label>
-                        <select
-                          value={numericalImputation}
-                          onChange={(e) => !readonly && setNumericalImputation(e.target.value)}
-                          disabled={readonly}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
-                        >
-                          <option value="">Select</option>
-                          {numericalImputationMethods.map(method => (
-                            <option key={method} value={method}>{method}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-2">Categorical Imputation</label>
-                        <select
-                          value={categoricalImputation}
-                          onChange={(e) => !readonly && setCategoricalImputation(e.target.value)}
-                          disabled={readonly}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
-                        >
-                          <option value="">Select</option>
-                          {categoricalImputationMethods.map(method => (
-                            <option key={method} value={method}>{method}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-2">Time Series</label>
-                        <select
-                          value={timeSeriesImputation}
-                          onChange={(e) => !readonly && setTimeSeriesImputation(e.target.value)}
-                          disabled={readonly}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
-                        >
-                          <option value="">Select</option>
-                          {timeSeriesImputationMethods.map(method => (
-                            <option key={method} value={method}>{method}</option>
-                          ))}
-                        </select>
-                      </div>
+                <div className="mt-3 space-y-6">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-2">Numerical Imputation</label>
+                      <select
+                        value={numericalImputation}
+                        onChange={(e) => !readonly && setNumericalImputation(e.target.value)}
+                        disabled={readonly}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
+                      >
+                        <option value="">Select</option>
+                        {numericalImputationMethods.map(method => (
+                          <option key={method} value={method}>{method}</option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>
-                      <label className="block text-sm text-gray-600 mb-3">Column Overrides</label>
-                      <div className="space-y-3">
-                        {columnOverrides.map((override, index) => (
-                          <div key={override.id} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                            <div className="flex items-center gap-3">
-                              <div className="flex-1">
-                                <label className="block text-xs text-gray-500 mb-1">Override {index + 1}</label>
-                                <select
-                                  value={override.column}
-                                  onChange={(e) => updateColumnOverride(override.id, 'column', e.target.value)}
-                                  disabled={readonly}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
-                                >
-                                  <option value="">Column</option>
-                                  {allColumns.map(col => (
-                                    <option key={col} value={col}>{col}</option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div className="flex-1">
-                                <label className="block text-xs text-gray-500 mb-1">&nbsp;</label>
-                                <select
-                                  value={override.method}
-                                  onChange={(e) => updateColumnOverride(override.id, 'method', e.target.value)}
-                                  disabled={readonly}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
-                                >
-                                  <option value="">Strategy</option>
-                                  {getImputationMethodsForColumn(override.column).map(method => (
-                                    <option key={method} value={method}>{method}</option>
-                                  ))}
-                                </select>
-                              </div>
-                              <button
-                                onClick={() => removeColumnOverride(override.id)}
-                                disabled={readonly}
-                                className="mt-5 p-2 text-gray-400 hover:text-red-500 transition-colors"
-                              >
-                                <X size={16} />
-                              </button>
-                            </div>
-                          </div>
+                      <label className="block text-sm text-gray-600 mb-2">Categorical Imputation</label>
+                      <select
+                        value={categoricalImputation}
+                        onChange={(e) => !readonly && setCategoricalImputation(e.target.value)}
+                        disabled={readonly}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
+                      >
+                        <option value="">Select</option>
+                        {categoricalImputationMethods.map(method => (
+                          <option key={method} value={method}>{method}</option>
                         ))}
+                      </select>
+                    </div>
 
-                        <button
-                          onClick={addColumnOverride}
-                          disabled={readonly}
-                          className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-[#8e78b7] hover:text-[#8e78b7] transition-colors flex items-center justify-center gap-2"
-                        >
-                          <Plus size={16} />
-                          Add Override
-                        </button>
-                      </div>
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-2">Time Series</label>
+                      <select
+                        value={timeSeriesImputation}
+                        onChange={(e) => !readonly && setTimeSeriesImputation(e.target.value)}
+                        disabled={readonly}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
+                      >
+                        <option value="">Select</option>
+                        {timeSeriesImputationMethods.map(method => (
+                          <option key={method} value={method}>{method}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
-                )}
+
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-3">Column Overrides</label>
+                    <div className="space-y-3">
+                      {columnOverrides.map((override, index) => (
+                        <div key={override.id} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1">
+                              <label className="block text-xs text-gray-500 mb-1">Override {index + 1}</label>
+                              <select
+                                value={override.column}
+                                onChange={(e) => updateColumnOverride(override.id, 'column', e.target.value)}
+                                disabled={readonly}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
+                              >
+                                <option value="">Column</option>
+                                {allColumns.map(col => (
+                                  <option key={col} value={col}>{col}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="flex-1">
+                              <label className="block text-xs text-gray-500 mb-1">&nbsp;</label>
+                              <select
+                                value={override.method}
+                                onChange={(e) => updateColumnOverride(override.id, 'method', e.target.value)}
+                                disabled={readonly}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
+                              >
+                                <option value="">Strategy</option>
+                                {getImputationMethodsForColumn(override.column).map(method => (
+                                  <option key={method} value={method}>{method}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <button
+                              onClick={() => removeColumnOverride(override.id)}
+                              disabled={readonly}
+                              className="mt-5 p-2 text-gray-400 hover:text-red-500 transition-colors"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      <button
+                        onClick={addColumnOverride}
+                        disabled={readonly}
+                        className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-[#8e78b7] hover:text-[#8e78b7] transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Plus size={16} />
+                        Add Override
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

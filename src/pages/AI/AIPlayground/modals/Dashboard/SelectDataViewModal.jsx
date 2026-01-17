@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Info, X, Plus, ChevronDown } from 'lucide-react';
+import { X, ChevronDown } from 'lucide-react';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 import { useAuth } from '../../../../../context/AuthContext';
 
@@ -93,11 +93,10 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
         profileReportHtml: data.profile_report_html || ''
       });
 
-      // Find the selected table data
       const selectedTableData = availableTables.find(v => v.value === selectedTable);
       
-      // Call the parent's onProceed callback
       onProceed(selectedTableData);
+      
       handleClose();
     } catch (err) {
       setError(err.message);
