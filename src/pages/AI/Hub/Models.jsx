@@ -63,9 +63,16 @@ function Models() {
           created_date: item.created_at
             ? new Date(item.created_at).toLocaleDateString("en-GB")
             : "",
+          run_name: item.run_name,
+          description: item.target_variable || item.usecase || "",
+          created_date: item.created_at
+            ? new Date(item.created_at).toLocaleDateString("en-GB")
+            : "",
           type: item.modeling_type,
           status: item.status ?? "Unknown",
+          status: item.status ?? "Unknown",
         }));
+
 
         setModelsData(mappedData);
       } catch (err) {
