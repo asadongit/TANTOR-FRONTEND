@@ -207,11 +207,6 @@ function FeatureSelection({ readonly = false, onValidationChange, onApiCall }) {
               f.operator === '*' ? 'multiply' :
                 f.operator === '/' ? 'divide' :
                   f.operator === '%' ? 'modulo' : 'add',
-          operation: f.operator === '+' ? 'add' :
-            f.operator === '-' ? 'subtract' :
-              f.operator === '*' ? 'multiply' :
-                f.operator === '/' ? 'divide' :
-                  f.operator === '%' ? 'modulo' : 'add',
           col1: f.column1,
           col2: f.column2,
           new_col: f.newColumnName
@@ -395,12 +390,8 @@ function FeatureSelection({ readonly = false, onValidationChange, onApiCall }) {
       <input
         type="checkbox"
         checked={checked}
-      <input
-        type="checkbox"
-        checked={checked}
         onChange={onChange}
         disabled={readonly}
-        className="sr-only peer"
         className="sr-only peer"
       />
       <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
