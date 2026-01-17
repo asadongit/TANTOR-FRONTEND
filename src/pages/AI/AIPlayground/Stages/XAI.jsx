@@ -14,7 +14,7 @@ function XAI() {
   const hostnameAI = window._env_?.VITE_AI_API;
   const location = useLocation();
   const navigate = useNavigate();
-  const { workflowState, datasetState } = useAIPlayground();
+  const { projectState, workflowState, datasetState, setProjectState } = useAIPlayground();
   const sessionId = datasetState?.sessionId;
   const readonly = location.state?.mode === 'view';
 
@@ -31,14 +31,6 @@ function XAI() {
   const [generatingReport, setGeneratingReport] = useState(false);
   const [reportData, setReportData] = useState(null);
   const [configuredModel, setConfiguredModel] = useState(''); // Track which model's config we have
-
-  // Counterfactual Data - hardcoded for now
-  const counterfactualData = [
-    { id: 1, feature: 'purchase_likelihood', original: '0.2000000001490162', counterfactual: '0.987178314', change: '0.787178313509884' },
-    { id: 2, feature: 'days_since_last_quote', original: '140.99999701976776', counterfactual: '19.545776431999997', change: '-121.45422058776776' },
-    { id: 3, feature: 'has_auto_insurance', original: '1', counterfactual: '0.5', change: '-0.5' },
-    { id: 4, feature: 'marital_status_Married', original: '1', counterfactual: '0.1', change: '-0.9' }
-  ];
 
   // Fetch logged models on component mount
   useEffect(() => {
@@ -213,7 +205,6 @@ function XAI() {
       };
 
       const response = await fetch(
-        
         `${hostnameAI}/model/save-models`,
         {
           method: 'POST',
@@ -228,15 +219,53 @@ function XAI() {
       if (response.ok) {
         const result = await response.json();
         console.log('Models saved successfully:', result);
-        
+
         toast.success('Models saved successfully!', {
           duration: 3000,
           position: 'top-right',
         });
 
         setShowSaveModal(false);
-        
-        // Navigate to next step
+
+        if (projectState?.selectedProject) {
+          try {
+            const experimentResponse = await fetch(
+              `${hostnameAI}/model/projects/${projectState.selectedProject}/experiment`,
+              {
+                method: 'GET',
+                headers: {
+                  'accept': 'application/json'
+                }
+              }
+            );
+
+            if (experimentResponse.ok) {
+              const experimentData = await experimentResponse.json();
+
+              setProjectState(prev => ({
+                ...prev,
+                mlflowExperimentId: experimentData.mlflow_experiment_id,
+                projectId: experimentData.project_id,
+                projectName: experimentData.project_name
+              }));
+
+              console.log('Stored MLflow experiment ID in context:', experimentData.mlflow_experiment_id);
+            } else {
+              console.error('Failed to fetch experiment ID');
+              toast.error('Failed to fetch MLflow experiment details', {
+                duration: 4000,
+                position: 'top-right',
+              });
+            }
+          } catch (error) {
+            console.error('Error fetching experiment ID:', error);
+            toast.error('Error fetching MLflow experiment details', {
+              duration: 4000,
+              position: 'top-right',
+            });
+          }
+        }
+
         navigate('/ai/playground/model-deployment', {
           state: {
             mode: readonly ? 'view' : 'edit',
@@ -290,7 +319,7 @@ function XAI() {
   // Transform API data for Feature Flip Summary
   const getFeatureFlipData = () => {
     if (!reportData?.feature_flip_summary) return [];
-    
+
     return reportData.feature_flip_summary.map((item, index) => ({
       id: index + 1,
       feature: item.Feature,
@@ -300,10 +329,23 @@ function XAI() {
     }));
   };
 
+  // Transform API data for Counterfactual Report
+  const getCounterfactualData = () => {
+    if (!reportData?.counterfactual_report) return [];
+
+    return reportData.counterfactual_report.map((item, index) => ({
+      id: index + 1,
+      feature: item.Feature,
+      original: typeof item.Original === 'number' ? item.Original.toFixed(6) : item.Original,
+      counterfactual: typeof item.Counterfactual === 'number' ? item.Counterfactual.toFixed(6) : item.Counterfactual,
+      change: typeof item.Change === 'number' ? item.Change.toFixed(6) : item.Change
+    }));
+  };
+
   // Transform API data for LIME Report
   const getLimeData = () => {
     if (!reportData?.lime_report?.explanation_for_class) return [];
-    
+
     return reportData.lime_report.explanation_for_class.map((item, index) => ({
       id: index + 1,
       rule: item[0],
@@ -316,8 +358,8 @@ function XAI() {
     <div className="bg-white border border-gray-200 rounded p-4">
       <h4 className="text-sm font-medium text-gray-900 mb-3">{title}</h4>
       <div className="w-full flex items-center justify-center" style={{ minHeight: '300px' }}>
-        <img 
-          src={`data:image/png;base64,${imageData}`} 
+        <img
+          src={`data:image/png;base64,${imageData}`}
           alt={title}
           className="w-full h-auto object-contain"
           style={{ maxHeight: '400px' }}
@@ -376,7 +418,7 @@ function XAI() {
             </button>
 
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setShowMenuDropdown(!showMenuDropdown)}
                 className="w-10 h-10 bg-white border border-gray-300 rounded-lg flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors"
               >
@@ -385,7 +427,7 @@ function XAI() {
 
               {showMenuDropdown && (
                 <div className="absolute right-0 top-12 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                  <button 
+                  <button
                     onClick={() => {
                       setShowMenuDropdown(false);
                       setShowGovernanceModal(true);
@@ -413,139 +455,104 @@ function XAI() {
           ) : (
             <>
               {/* SHAP Summary Plot */}
-              <div className="bg-white rounded-lg p-6 border border-gray-200">
-                <h3 className="text-base font-semibold text-gray-900 mb-4">Feature Importance (SHAP Summary Plot)</h3>
-                <div className="bg-white border border-gray-200 rounded p-4 flex justify-center items-center min-h-[400px]">
-                  {reportData.shap_summary_plot ? (
-                    <img 
-                      src={`data:image/png;base64,${reportData.shap_summary_plot}`} 
+              {reportData.shap_summary_plot && (
+                <div className="bg-white rounded-lg p-6 border border-gray-200">
+                  <h3 className="text-base font-semibold text-gray-900 mb-4">Feature Importance (SHAP Summary Plot)</h3>
+                  <div className="bg-white border border-gray-200 rounded p-4 flex justify-center items-center min-h-[400px]">
+                    <img
+                      src={`data:image/png;base64,${reportData.shap_summary_plot}`}
                       alt="SHAP Summary Plot"
                       className="w-full h-auto object-contain"
                       style={{ maxHeight: '600px' }}
                     />
-                  ) : (
-                    <div className="py-12 text-center">
-                      <p className="text-gray-500 text-sm">SHAP Summary Plot not available</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-          {/* SHAP Beeswarm Plot */}
-          <div className="bg-white rounded-lg p-6 border border-gray-200">
-            <h3 className="text-base font-semibold text-gray-900 mb-4">Feature Importance (SHAP Beeswarm Plot)</h3>
-            <div className="bg-white border border-gray-200 rounded p-4 flex justify-center items-center min-h-[400px]">
-              {reportData.shap_beeswarm_plot ? (
-                <img 
-                  src={`data:image/png;base64,${reportData.shap_beeswarm_plot}`} 
-                  alt="SHAP Beeswarm Plot"
-                  className="w-full h-auto object-contain"
-                  style={{ maxHeight: '600px' }}
-                />
-              ) : (
-                <div className="py-12 text-center">
-                  <p className="text-gray-500 text-sm">SHAP Beeswarm Plot not available</p>
+                  </div>
                 </div>
               )}
-            </div>
-          </div>
 
-          {/* PDP Plots */}
-          <div className="bg-white rounded-lg p-6 border border-gray-200">
-            <h3 className="text-base font-semibold text-gray-900 mb-4">PDP Plots</h3>
-            {reportData.pdp_plots && Object.keys(reportData.pdp_plots).length > 0 ? (
-              <div className={`grid gap-4 ${
-                Object.keys(reportData.pdp_plots).length === 1 
-                  ? 'grid-cols-1' 
-                  : Object.keys(reportData.pdp_plots).length === 2 
-                    ? 'grid-cols-2' 
-                    : 'grid-cols-2 xl:grid-cols-3'
-              }`}>
-                {Object.entries(reportData.pdp_plots).map(([featureName, imageData]) => (
-                  <PDPChart 
-                    key={featureName} 
-                    imageData={imageData} 
-                    title={featureName} 
+              {/* SHAP Beeswarm Plot */}
+              {reportData.shap_beeswarm_plot && (
+                <div className="bg-white rounded-lg p-6 border border-gray-200">
+                  <h3 className="text-base font-semibold text-gray-900 mb-4">Feature Importance (SHAP Beeswarm Plot)</h3>
+                  <div className="bg-white border border-gray-200 rounded p-4 flex justify-center items-center min-h-[400px]">
+                    <img
+                      src={`data:image/png;base64,${reportData.shap_beeswarm_plot}`}
+                      alt="SHAP Beeswarm Plot"
+                      className="w-full h-auto object-contain"
+                      style={{ maxHeight: '600px' }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* PDP Plots */}
+              {reportData.pdp_plots && Object.keys(reportData.pdp_plots).length > 0 && (
+                <div className="bg-white rounded-lg p-6 border border-gray-200">
+                  <h3 className="text-base font-semibold text-gray-900 mb-4">PDP Plots</h3>
+                  <div className={`grid gap-4 ${Object.keys(reportData.pdp_plots).length === 1
+                    ? 'grid-cols-1'
+                    : Object.keys(reportData.pdp_plots).length === 2
+                      ? 'grid-cols-2'
+                      : 'grid-cols-2 xl:grid-cols-3'
+                    }`}>
+                    {Object.entries(reportData.pdp_plots).map(([featureName, imageData]) => (
+                      <PDPChart
+                        key={featureName}
+                        imageData={imageData}
+                        title={featureName}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Feature Flip Summary */}
+              {reportData.feature_flip_summary && reportData.feature_flip_summary.length > 0 && (
+                <div className="bg-white rounded-lg p-6 border border-gray-200">
+                  <h3 className="text-base font-semibold text-gray-900 mb-4">Feature Flip Summary</h3>
+                  <DataTable
+                    columns={featureFlipColumns}
+                    data={getFeatureFlipData()}
+                    isLoading={false}
+                    isError={false}
                   />
-                ))}
-              </div>
-            ) : (
-              <div className="bg-white border border-gray-200 rounded p-4">
-                <div className="py-12 text-center">
-                  <p className="text-gray-500 text-sm">PDP Plots not available</p>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
 
-          {/* Feature Flip Summary */}
-          <div className="bg-white rounded-lg p-6 border border-gray-200">
-            <h3 className="text-base font-semibold text-gray-900 mb-4">Feature Flip Summary</h3>
-            {reportData.feature_flip_summary && reportData.feature_flip_summary.length > 0 ? (
-              <DataTable
-                columns={featureFlipColumns}
-                data={getFeatureFlipData()}
-                isLoading={false}
-                isError={false}
-              />
-            ) : (
-              <div className="bg-white border border-gray-200 rounded p-4">
-                <div className="py-12 text-center">
-                  <p className="text-gray-500 text-sm">Feature Flip Summary not available</p>
+              {/* Counterfactual Report */}
+              {reportData.counterfactual_report && reportData.counterfactual_report.length > 0 && (
+                <div className="bg-white rounded-lg p-6 border border-gray-200">
+                  <h3 className="text-base font-semibold text-gray-900 mb-4">Counterfactual Report</h3>
+                  <DataTable
+                    columns={counterfactualColumns}
+                    data={getCounterfactualData()}
+                    isLoading={false}
+                    isError={false}
+                  />
                 </div>
-              </div>
-            )}
-          </div>
+              )}
 
-          {/* Counterfactual Report - Hardcoded for now */}
-          <div className="bg-white rounded-lg p-6 border border-gray-200">
-            <h3 className="text-base font-semibold text-gray-900 mb-4">Counterfactual Report</h3>
-            <DataTable
-              columns={counterfactualColumns}
-              data={counterfactualData}
-              isLoading={false}
-              isError={false}
-            />
-          </div>
-
-          {/* LIME Report */}
-          <div className="bg-white rounded-lg p-6 border border-gray-200">
-            <h3 className="text-base font-semibold text-gray-900 mb-4">LIME Report</h3>
-            {reportData.lime_report ? (
-              <>
-                <div className="mb-4 space-y-1">
-                  <p className="text-sm text-gray-700">
-                    <strong>Predicted Class:</strong> {reportData.lime_report.predicted_class_name || 'N/A'}
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    <strong>Intercept:</strong> {reportData.lime_report.intercept !== undefined && reportData.lime_report.intercept !== null 
-                      ? reportData.lime_report.intercept.toFixed(10) 
-                      : 'N/A'}
-                  </p>
-                </div>
-                {reportData.lime_report.explanation_for_class && reportData.lime_report.explanation_for_class.length > 0 ? (
+              {/* LIME Report */}
+              {reportData.lime_report && reportData.lime_report.explanation_for_class && reportData.lime_report.explanation_for_class.length > 0 && (
+                <div className="bg-white rounded-lg p-6 border border-gray-200">
+                  <h3 className="text-base font-semibold text-gray-900 mb-4">LIME Report</h3>
+                  <div className="mb-4 space-y-1">
+                    <p className="text-sm text-gray-700">
+                      <strong>Predicted Class:</strong> {reportData.lime_report.predicted_class_name || 'N/A'}
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      <strong>Intercept:</strong> {reportData.lime_report.intercept !== undefined && reportData.lime_report.intercept !== null
+                        ? reportData.lime_report.intercept.toFixed(10)
+                        : 'N/A'}
+                    </p>
+                  </div>
                   <DataTable
                     columns={limeColumns}
                     data={getLimeData()}
                     isLoading={false}
                     isError={false}
                   />
-                ) : (
-                  <div className="bg-white border border-gray-200 rounded p-4">
-                    <div className="py-8 text-center">
-                      <p className="text-gray-500 text-sm">LIME explanation data not available</p>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="bg-white border border-gray-200 rounded p-4">
-                <div className="py-12 text-center">
-                  <p className="text-gray-500 text-sm">LIME Report not available</p>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
             </>
           )}
         </div>
