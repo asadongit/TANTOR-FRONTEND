@@ -1,14 +1,30 @@
 import { Info, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-function ConfigurationModal({ isOpen, onClose, onGenerate, initialConfig, readonly = false }) {
+function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly = false, isGenerating = false }) {
   const [showInfoTooltip, setShowInfoTooltip] = useState(false);
-  const [configData, setConfigData] = useState(initialConfig);
+  const [configData, setConfigData] = useState({
+    pdpTargetClass: '',
+    cfDesiredClass: '',
+    cfInstanceIndex: 0,
+    limeInstanceIndex: 0,
+    pdpFeatures: []
+  });
 
-  const pdpFeatureOptions = ['Option 1', 'Option 2', 'Option 3', 'Option 4', 'Option 5'];
+  useEffect(() => {
+    if (xaiConfig) {
+      setConfigData({
+        pdpTargetClass: '',
+        cfDesiredClass: '',
+        cfInstanceIndex: 0,
+        limeInstanceIndex: 0,
+        pdpFeatures: []
+      });
+    }
+  }, [xaiConfig]);
 
   const toggleFeature = (feature) => {
-    if (readonly) return;
+    if (readonly || isGenerating) return;
     setConfigData(prev => ({
       ...prev,
       pdpFeatures: prev.pdpFeatures.includes(feature)
@@ -17,7 +33,12 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, initialConfig, readon
     }));
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !xaiConfig) return null;
+
+  const featuresList = Object.keys(xaiConfig.feature_metadata || {});
+  const maxIndex = xaiConfig.indices?.max_index || 0;
+  const pdpTargetClasses = xaiConfig.pdp_target_classes || [];
+  const cfDesiredClasses = xaiConfig.cf_desired_classes || [];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -44,151 +65,133 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, initialConfig, readon
                 </div>
               )}
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button 
+              onClick={onClose} 
+              className="text-gray-400 hover:text-gray-600"
+              disabled={isGenerating}
+            >
               <X size={20} />
             </button>
           </div>
         </div>
 
         <div className="p-6 space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">Model Alias</label>
-              <select
-                value={configData.modelAlias}
-                onChange={(e) => !readonly && setConfigData({ ...configData, modelAlias: e.target.value })}
-                disabled={readonly}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${
-                  readonly ? 'bg-gray-50 cursor-not-allowed' : ''
-                }`}
-              >
-                <option value="">Select</option>
-                <option value="alias1">Alias 1</option>
-                <option value="alias2">Alias 2</option>
-              </select>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-2">Model Name</label>
+            <input
+              type="text"
+              value={xaiConfig.model_name || ''}
+              readOnly
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 cursor-not-allowed"
+            />
+          </div>
 
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-2">PDP Target Class</label>
               <select
                 value={configData.pdpTargetClass}
-                onChange={(e) => !readonly && setConfigData({ ...configData, pdpTargetClass: e.target.value })}
-                disabled={readonly}
+                onChange={(e) => !readonly && !isGenerating && setConfigData({ ...configData, pdpTargetClass: e.target.value })}
+                disabled={readonly || isGenerating}
                 className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${
-                  readonly ? 'bg-gray-50 cursor-not-allowed' : ''
+                  readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''
                 }`}
               >
                 <option value="">Select</option>
-                <option value="class1">Class 1</option>
-                <option value="class2">Class 2</option>
+                {pdpTargetClasses.map((cls) => (
+                  <option key={cls} value={cls.toString()}>
+                    Class {cls}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">CF Desired Class</label>
+              <select
+                value={configData.cfDesiredClass}
+                onChange={(e) => !readonly && !isGenerating && setConfigData({ ...configData, cfDesiredClass: e.target.value })}
+                disabled={readonly || isGenerating}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${
+                  readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''
+                }`}
+              >
+                <option value="">Select</option>
+                {cfDesiredClasses.map((cls) => (
+                  <option key={cls} value={cls.toString()}>
+                    Class {cls}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">CS Desired Class</label>
-              <select
-                value={configData.cbDesiredClass}
-                onChange={(e) => !readonly && setConfigData({ ...configData, cbDesiredClass: e.target.value })}
-                disabled={readonly}
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                CF Instance Index (0-{maxIndex})
+              </label>
+              <input
+                type="number"
+                min="0"
+                max={maxIndex}
+                value={configData.cfInstanceIndex}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value);
+                  if (!readonly && !isGenerating && value >= 0 && value <= maxIndex) {
+                    setConfigData({ ...configData, cfInstanceIndex: value });
+                  }
+                }}
+                disabled={readonly || isGenerating}
                 className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${
-                  readonly ? 'bg-gray-50 cursor-not-allowed' : ''
+                  readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''
                 }`}
-              >
-                <option value="">Select</option>
-                <option value="class1">Class 1</option>
-                <option value="class2">Class 2</option>
-              </select>
+              />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">CF Instance Index</label>
-              <select
-                value={configData.cfInstanceIndex}
-                onChange={(e) => !readonly && setConfigData({ ...configData, cfInstanceIndex: e.target.value })}
-                disabled={readonly}
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                LIME Instance Index (0-{maxIndex})
+              </label>
+              <input
+                type="number"
+                min="0"
+                max={maxIndex}
+                value={configData.limeInstanceIndex}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value);
+                  if (!readonly && !isGenerating && value >= 0 && value <= maxIndex) {
+                    setConfigData({ ...configData, limeInstanceIndex: value });
+                  }
+                }}
+                disabled={readonly || isGenerating}
                 className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${
-                  readonly ? 'bg-gray-50 cursor-not-allowed' : ''
+                  readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''
                 }`}
-              >
-                <option value="">Select</option>
-                <option value="index1">Index 1</option>
-                <option value="index2">Index 2</option>
-              </select>
+              />
             </div>
           </div>
 
+          {/* PDP Features */}
           <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
             <label className="block text-sm font-medium text-gray-900 mb-2">PDP Features</label>
             <p className="text-xs text-gray-500 mb-3">
               Select features to include in the PDP analysis. If none are selected, all features will be used.
             </p>
 
-            <div className="grid grid-cols-3 gap-x-8 gap-y-3">
-              {pdpFeatureOptions.map((option, idx) => (
-                <label key={idx} className={`flex items-center gap-2 ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+            <div className="grid grid-cols-3 gap-x-8 gap-y-3 max-h-80 overflow-y-auto">
+              {featuresList.map((feature) => (
+                <label key={feature} className={`flex items-center gap-2 ${readonly || isGenerating ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                   <input
                     type="checkbox"
-                    checked={configData.pdpFeatures.includes(option)}
-                    onChange={() => toggleFeature(option)}
-                    disabled={readonly}
+                    checked={configData.pdpFeatures.includes(feature)}
+                    onChange={() => toggleFeature(feature)}
+                    disabled={readonly || isGenerating}
                     className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded"
                   />
-                  <span className="text-sm text-gray-700">{option}</span>
+                  <span className="text-sm text-gray-700 break-words">{feature}</span>
                 </label>
               ))}
-            </div>
-          </div>
-
-          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <div className="flex items-start gap-3">
-              <div className="flex-1">
-                <h4 className="text-sm font-medium text-gray-900 mb-1">Feature Flip Summary</h4>
-                <p className="text-xs text-gray-500">
-                  Enable to generate a summary of how flipping key features affects the model predictions
-                </p>
-              </div>
-              <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-                <input
-                  type="checkbox"
-                  checked={configData.featureFlipSummary}
-                  onChange={(e) => !readonly && setConfigData({ ...configData, featureFlipSummary: e.target.checked })}
-                  disabled={readonly}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
-              </label>
-            </div>
-          </div>
-
-          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <h4 className="text-sm font-medium text-gray-900 mb-3">Configuration Summary</h4>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Model Type</span>
-                <span className="text-gray-900 font-medium">Multi class</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">CF Instance</span>
-                <span className="text-gray-900 font-medium">0</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Target Column</span>
-                <span className="text-gray-900 font-medium">Next_product</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">PDP Features</span>
-                <span className="text-gray-900 font-medium">49 selected</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">LIME Instance</span>
-                <span className="text-gray-900 font-medium">0</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">XAI Methods</span>
-                <span className="text-gray-900 font-medium">Enabled</span>
-              </div>
             </div>
           </div>
         </div>
@@ -196,16 +199,23 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, initialConfig, readon
         <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            disabled={isGenerating}
+            className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
           <button
             onClick={() => onGenerate(configData)}
-            disabled={readonly}
-            className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors hover:bg-[#7d67a6] disabled:cursor-not-allowed"
+            disabled={readonly || isGenerating}
+            className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors hover:bg-[#7d67a6] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            Generate Model
+            {isGenerating && (
+              <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            )}
+            {isGenerating ? 'Processing...' : 'Generate Report'}
           </button>
         </div>
       </div>

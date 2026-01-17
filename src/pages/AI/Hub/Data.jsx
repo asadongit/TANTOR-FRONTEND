@@ -1,9 +1,10 @@
 import { FileText, Database, FolderKanban, Box, Scale, ArrowUp, ArrowDown, Info, Activity, Search, List, RefreshCw, BookOpenText, Archive, Trash2, Rocket, Palette, BookOpen, Gauge, LayoutGrid } from 'lucide-react';
 import { PieChart, Pie, Cell } from 'recharts';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import DataTable from '../../../components/DataTable';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
 
 
 const Data = () => {
@@ -11,7 +12,37 @@ const Data = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isTableView, setIsTableView] = useState(false);
+  const [tableData, setTableData] = useState([]);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const { token, decodedToken } = useAuth();
+  const hostnameAI = window._env_?.VITE_AI_API;
+  console.log(decodedToken.sub)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`${hostnameAI}/canvas/list_data_info`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch data');
+        }
+        const data = await response.json();
+        setTableData(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [hostnameAI, token, refreshTrigger]);
 
   const statsData = [
     { label: 'Sources', value: '07', icon: FileText },
@@ -35,99 +66,6 @@ const Data = () => {
     { name: 'Good', value: 45, color: '#10B981' },
     { name: 'Average', value: 30, color: '#FBBF24' },
     { name: 'Poor', value: 25, color: '#EF4444' },
-  ];
-
-  const tableData = [
-    {
-      id: 1,
-      name: 'Project - Churn',
-      createdDate: '01/10/2025',
-      lastUsedDate: '07/10/2025',
-      size: '23 MB',
-      rows: 23,
-      features: 'Salah'
-    },
-    {
-      id: 2,
-      name: 'Project - Analysis',
-      createdDate: '01/10/2025',
-      lastUsedDate: '01/10/2025',
-      size: '23 MB',
-      rows: 23,
-      features: 'Salad'
-    },
-    {
-      id: 3,
-      name: 'Project - Retention',
-      createdDate: '15/11/2025',
-      lastUsedDate: '15/11/2025',
-      size: '23 MB',
-      rows: 23,
-      features: 'Moki'
-    },
-    {
-      id: 4,
-      name: 'Project - Acquisition',
-      createdDate: '01/12/2025',
-      lastUsedDate: '01/12/2025',
-      size: '23 MB',
-      rows: 23,
-      features: 'And'
-    },
-    {
-      id: 5,
-      name: 'Project - Engagement',
-      createdDate: '20/10/2025',
-      lastUsedDate: '20/12/2025',
-      size: '23 MB',
-      rows: 23,
-      features: 'Niko'
-    },
-    {
-      id: 6,
-      name: 'Project - Onboarding',
-      createdDate: '05/01/2025',
-      lastUsedDate: '05/01/2026',
-      size: '23 MB',
-      rows: 23,
-      features: 'Yang'
-    },
-    {
-      id: 7,
-      name: 'Project - Feedback',
-      createdDate: '30/01/2026',
-      lastUsedDate: '30/01/2026',
-      size: '23 MB',
-      rows: 23,
-      features: 'Darubu'
-    },
-    {
-      id: 8,
-      name: 'Project - Analysis',
-      createdDate: '18/02/2026',
-      lastUsedDate: '16/03/2026',
-      size: '23 MB',
-      rows: 23,
-      features: 'Thames'
-    },
-    {
-      id: 9,
-      name: 'Project - Strategy',
-      createdDate: '01/03/2026',
-      lastUsedDate: '01/03/2026',
-      size: '23 MB',
-      rows: 23,
-      features: 'Sethi'
-    },
-    {
-      id: 10,
-      name: 'Project - Optimization',
-      createdDate: '16/03/2026',
-      lastUsedDate: '16/03/2026',
-      size: '23 MB',
-      rows: 23,
-      features: 'Mississippi'
-    }
   ];
 
   const handleSearchChange = (e) => {
@@ -158,18 +96,19 @@ const Data = () => {
   };
 
   const columns = [
-    { key: 'id', label: 'Sno', sortable: true, width: '90px' },
+    { key: 'sno', label: 'Sno', sortable: true, width: '90px', render: (row, index) => index + 1 },
     {
-      key: 'name',
-      label: 'Name',
+      key: 'file_name',
+      label: 'File Name',
       sortable: true,
-      render: (row) => <span className="text-[#8e78b7] hover:underline cursor-pointer">{row.name}</span>,
+      width: '250px',
+      render: (row) => <span className="text-[#8e78b7] hover:underline cursor-pointer">{row.file_name}</span>,
     },
-    { key: 'createdDate', label: 'Created Date', sortable: true },
-    { key: 'lastUsedDate', label: 'Last Used Date', sortable: true },
+    { key: 'row_count', label: 'Rows', sortable: true },
+    { key: 'column_count', label: 'Columns', sortable: true },
+    { key: 'status', label: 'Status', sortable: true },
+    { key: 'created_at', label: 'Created Date', sortable: true, render: (row) => new Date(row.created_at).toLocaleDateString('en-GB') },
     { key: 'size', label: 'Size', sortable: true },
-    { key: 'rows', label: 'Rows', sortable: true },
-    { key: 'features', label: 'Features', sortable: true },
     { label: 'Action', sortable: false },
   ];
 
@@ -178,7 +117,7 @@ const Data = () => {
       label: 'Library',
       icon: <BookOpen className="w-4 h-4" />,
       onClick: (row) => {
-        navigate(`/ai/hub/data/library/${row.name}`, {
+        navigate(`/ai/hub/data/library/${row.file_name}`, {
           state: { datasetData: row }
         });
       },
@@ -218,7 +157,7 @@ const Data = () => {
         String(val ?? '').toLowerCase().includes(q)
       )
     );
-  }, [searchTerm]);
+  }, [searchTerm, tableData]);
 
   const StatCard = ({ label, value, icon: Icon }) => (
     <div className="bg-white rounded-lg px-4 py-1 border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
@@ -281,7 +220,7 @@ const Data = () => {
               className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm"
             />
           </div>
-          <button 
+          <button
             className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
             onClick={toggleView}
             title={isTableView ? "Grid View" : "List View"}
@@ -385,7 +324,7 @@ const Data = () => {
           data={filteredData}
           actions={actions}
           isLoading={isLoading}
-          isError={false}
+          isError={!!error}
           refetch={handleRefresh}
           resetSortTrigger={refreshTrigger}
         />
