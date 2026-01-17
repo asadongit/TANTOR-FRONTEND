@@ -19,6 +19,7 @@ import Breadcrumb from "../../../components/Breadcrumb";
 import DataTable from "../../../components/DataTable";
 import { StatCard, StatsContainer, StatsGrid } from "./Components/StatsCard";
 import QuickPredictModal from "./Components/Models/QuickPredictModal";
+import DeleteModal from "./Components/DeleteModal";
 import { useAuth } from "../../../context/AuthContext";
 
 function Models() {
@@ -32,6 +33,9 @@ function Models() {
   const [modelsData, setModelsData] = useState([]);
   const [error, setError] = useState(null);
   const [dashboardSummary, setDashboardSummary] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const hostnameAI = window._env_?.VITE_AI_API;
   const { token, decodedToken } = useAuth();
 
@@ -51,6 +55,7 @@ function Models() {
         const data = await response.json();
 
         const mappedData = (Array.isArray(data) ? data : []).map((item, index) => ({
+          _raw: item, // keep full backend payload for downstream pages
           id: item.id,
           sno: index + 1,
           run_name: item.run_name,
@@ -262,12 +267,43 @@ function Models() {
     { label: "Action", sortable: false },
   ];
 
+  const handleDelete = (row) => {
+    setDeleteTarget(row);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      const id = deleteTarget.id || deleteTarget._raw?.id;
+      const url = `${hostnameAI}/canvas/model/${id}/delete`;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          accept: "application/json",
+        },
+      });
+      if (!resp.ok) throw new Error("Failed to delete model");
+      setDeleteModalOpen(false);
+      setDeleteTarget(null);
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (err) {
+      alert(err.message || "Delete failed");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   const actions = [
     {
       label: "Library",
       icon: <BookOpen className="w-4 h-4" />,
       onClick: (row) =>
-        navigate("/ai/hub/models/library", { state: { modelData: row } }),
+        navigate("/ai/hub/models/library", {
+          state: { modelData: row?._raw ?? row },
+        }),
       tooltip: "Library",
     },
     {
@@ -312,21 +348,25 @@ function Models() {
     {
       label: "Delete",
       icon: <Trash2 className="w-4 h-4" />,
-      onClick: (row) => console.log("Delete:", row),
+      onClick: handleDelete,
       tooltip: "Delete",
     },
   ];
 
   const filteredData = useMemo(() => {
-    if (!searchTerm.trim()) return modelsData;
+    if (!searchTerm.trim()) {
+      return modelsData.filter(row => String(row.status).toLowerCase() !== "deleted");
+    }
     const q = searchTerm.toLowerCase();
-    return modelsData.filter((row) =>
-      Object.values(row || {}).some((val) =>
-        String(val ?? "")
-          .toLowerCase()
-          .includes(q)
-      )
-    );
+    return modelsData
+      .filter(row => String(row.status).toLowerCase() !== "deleted")
+      .filter((row) =>
+        Object.values(row || {}).some((val) =>
+          String(val ?? "")
+            .toLowerCase()
+            .includes(q)
+        )
+      );
   }, [searchTerm, modelsData]);
 
   const ModelFlowDiagram = ({ data }) => {
@@ -803,6 +843,15 @@ function Models() {
         isOpen={isQuickPredictOpen}
         onClose={() => setIsQuickPredictOpen(false)}
         modelData={selectedModel}
+      />
+      <DeleteModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Model"
+        description={`Are you sure you want to delete "${deleteTarget?.run_name || deleteTarget?.id || ''}"? This action cannot be undone.`}
+        loading={deleteLoading}
+        confirmText="Delete"
       />
     </div>
   );
