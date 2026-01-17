@@ -83,8 +83,8 @@ function FeatureEngineering({ readonly = false, onApiCall }) {
         categoricalEncoding: false,
     });
 
-    const [outlierStrategy, setOutlierStrategy] = useState('');
-    const [encodingStrategy, setEncodingStrategy] = useState('');
+    const [outlierStrategy, setOutlierStrategy] = useState('remove');
+    const [encodingStrategy, setEncodingStrategy] = useState('onehot');
     const [isLoading, setIsLoading] = useState(false);
 
     const categoricalColumns = workflowState?.dataPreprocessing?.step2?.apiResponse?.categorical_columns || [];
@@ -236,12 +236,6 @@ function FeatureEngineering({ readonly = false, onApiCall }) {
             >
                 <div className="mb-4">
                     <h5 className="text-sm font-medium text-gray-700 mb-3">Treatment Strategy</h5>
-                    <div className="inline-flex w-full items-center gap-2 px-3 py-1.5 bg-orange-50 rounded text-sm">
-                        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-orange-400 text-orange-600 text-xs font-medium">
-                            !
-                        </span>
-                        <span className="text-orange-700">363 outliers Detected</span>
-                    </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-x-8 gap-y-3">
@@ -277,7 +271,7 @@ function FeatureEngineering({ readonly = false, onApiCall }) {
                                 categoricalColumns.map((column) => (
                                     <span
                                         key={column}
-                                        className="px-3 py-1.5 bg-white border border-gray-300 rounded-md text-sm text-gray-500 hover:border-[#8e78b7] hover:bg-purple-50 transition-colors cursor-default"
+                                        className="px-3 py-1.5 bg-white border border-gray-300 rounded-md text-sm text-gray-500 hover:border-[#8e78b7] hover:bg-purple-50 transition-colors"
                                     >
                                         {column}
                                     </span>

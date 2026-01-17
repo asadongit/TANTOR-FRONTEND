@@ -139,11 +139,11 @@ function Step7({ onShowPreview, showPreview, readonly = false, onApiCall }) {
     const { workflowState, datasetState, updatePreprocessingStep, updateWorkflowStage } = useAIPlayground();
 
     const [toggles, setToggles] = useState({
-        imbalancedData: true,
+        imbalancedData: false,
     });
 
     const [expandedSections, setExpandedSections] = useState({
-        imbalancedData: true,
+        imbalancedData: false,
     });
 
     const [samplingMethod, setSamplingMethod] = useState('smote');
@@ -364,9 +364,9 @@ function Step7({ onShowPreview, showPreview, readonly = false, onApiCall }) {
                         </div>
                         <div className="flex-1">
                             <h3 className="text-sm font-medium text-green-800">Processing Complete!</h3>
-                            <p className="text-xs text-green-600 mt-1">
+                            {/* <p className="text-xs text-green-600 mt-1">
                                 {messageText}
-                            </p>
+                            </p> */}
                         </div>
                     </div>
 
@@ -440,12 +440,12 @@ function Step7({ onShowPreview, showPreview, readonly = false, onApiCall }) {
                     </div>
                     <div className="flex-1">
                         <h3 className="text-sm font-medium text-green-800">Processing Complete!</h3>
-                        <p className="text-xs text-green-600 mt-1">
+                        {/* <p className="text-xs text-green-600 mt-1">
                             {messageText}
                         </p>
                         <p className="text-xs text-green-600 mt-1">
                             Found {validVariants.length} variant{validVariants.length > 1 ? 's' : ''}: {validVariants.join(', ').toUpperCase()}
-                        </p>
+                        </p> */}
                     </div>
                 </div>
 

@@ -37,6 +37,9 @@ function DataPreprocessing() {
   const [currentStep, setCurrentStep] = useState(isDataPreprocessingAuto ? 7 : 1);
   const [isStep7Preview, setIsStep7Preview] = useState(isDataPreprocessingAuto);
   const [isStep1Valid, setIsStep1Valid] = useState(true);
+  const [isStep2Valid, setIsStep2Valid] = useState(true);
+  const [isStep4Valid, setIsStep4Valid] = useState(true);
+  const [isStep5Valid, setIsStep5Valid] = useState(true);
 
   const step1ApiCallRef = useRef(null);
   const step2ApiCallRef = useRef(null);
@@ -105,6 +108,7 @@ function DataPreprocessing() {
         return (
           <FeatureSelection
             readonly={readonly}
+            onValidationChange={setIsStep2Valid}
             onApiCall={(fn) => step2ApiCallRef.current = fn}
           />
         );
@@ -119,6 +123,7 @@ function DataPreprocessing() {
         return (
           <ScalingTransformation
             readonly={readonly}
+            onValidationChange={setIsStep4Valid}
             onApiCall={(fn) => step4ApiCallRef.current = fn}
           />
         );
@@ -126,6 +131,7 @@ function DataPreprocessing() {
         return (
           <StatisticalAnalysis
             readonly={readonly}
+            onValidationChange={setIsStep5Valid}
             onApiCall={(fn) => step5ApiCallRef.current = fn}
           />
         );
@@ -155,6 +161,14 @@ function DataPreprocessing() {
     }
   };
 
+  const getIsNextDisabled = () => {
+    if (currentStep === 1 && !isStep1Valid) return true;
+    if (currentStep === 2 && !isStep2Valid) return true;
+    if (currentStep === 4 && !isStep4Valid) return true;
+    if (currentStep === 5 && !isStep5Valid) return true;
+    return false;
+  };
+
   return (
     <AIPlaygroundLayout
       currentPreprocessingStep={currentStep}
@@ -163,7 +177,7 @@ function DataPreprocessing() {
       isStep7Preview={isStep7Preview}
       onPreviewData={setIsStep7Preview}
       onNextClick={handleNextClick}
-      isNextDisabled={currentStep === 1 && !isStep1Valid}
+      isNextDisabled={getIsNextDisabled()}
     >
       <div className={currentStep === 7 && isStep7Preview ? 'w-full' : 'max-w-7xl mx-auto w-full'}>
         <div className={`

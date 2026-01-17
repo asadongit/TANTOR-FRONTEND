@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, AlertCircle } from 'lucide-react';
 import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 
@@ -38,36 +38,70 @@ function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
     { columnName: '' }
   ]);
 
+  const [validationErrors, setValidationErrors] = useState({
+    changeDataType: '',
+    dropColumns: '',
+    missingValue: ''
+  });
 
   useEffect(() => {
-    const isValid = validateStep();
+    const { isValid, errors } = validateStep();
+    setValidationErrors(errors);
     if (onValidationChange) {
       onValidationChange(isValid);
     }
   }, [toggles, dataTypeColumns, dropColumnsData, missingValueColumns]);
 
   const validateStep = () => {
-    // If change data type is enabled, ensure all selected rows have both column and new data type
+    const errors = {
+      changeDataType: '',
+      dropColumns: '',
+      missingValue: ''
+    };
+    let isValid = true;
+
     if (toggles.changeDataType) {
+      const hasAnyValidEntry = dataTypeColumns.some(col => col.columnName && col.newDataType);
       const hasInvalidDataType = dataTypeColumns.some(col =>
         (col.columnName && !col.newDataType) || (!col.columnName && col.newDataType)
       );
-      if (hasInvalidDataType) return false;
+      
+      if (!hasAnyValidEntry) {
+        errors.changeDataType = 'Please select at least one column and its new data type';
+        isValid = false;
+      } else if (hasInvalidDataType) {
+        errors.changeDataType = 'Please complete all selected rows with both column and new data type';
+        isValid = false;
+      }
     }
 
-    // If drop columns is enabled, ensure all rows have a column selected
     if (toggles.dropColumns) {
+      const hasAnyColumn = dropColumnsData.some(col => col.columnName);
       const hasEmptyDropColumn = dropColumnsData.some(col => !col.columnName);
-      if (hasEmptyDropColumn) return false;
+      
+      if (!hasAnyColumn) {
+        errors.dropColumns = 'Please select at least one column to drop';
+        isValid = false;
+      } else if (hasEmptyDropColumn && dropColumnsData.length > 1) {
+        errors.dropColumns = 'Please complete all rows or remove empty ones';
+        isValid = false;
+      }
     }
 
-    // If missing value is enabled, ensure all rows have a column selected
     if (toggles.missingValue) {
+      const hasAnyColumn = missingValueColumns.some(col => col.columnName);
       const hasEmptyMissingValue = missingValueColumns.some(col => !col.columnName);
-      if (hasEmptyMissingValue) return false;
+      
+      if (!hasAnyColumn) {
+        errors.missingValue = 'Please select at least one column for missing value indicator';
+        isValid = false;
+      } else if (hasEmptyMissingValue && missingValueColumns.length > 1) {
+        errors.missingValue = 'Please complete all rows or remove empty ones';
+        isValid = false;
+      }
     }
 
-    return true;
+    return { isValid, errors };
   };
 
   const buildApiPayload = () => {
@@ -113,7 +147,7 @@ function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
 
     try {
       const payload = buildApiPayload();
-
+      
       const response = await fetch(`${hostnameAI}/data/preprocess/initial_clean`, {
         method: 'POST',
         headers: {
@@ -130,7 +164,6 @@ function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
 
       const data = await response.json();
 
-
       updatePreprocessingStep('step1', {
         config: {
           toggles,
@@ -145,17 +178,13 @@ function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
         duration: 3000,
         position: 'top-right',
       });
-
-      console.log('Initial clean API response:', data);
       return true;
     } catch (error) {
       console.error('Error calling initial_clean API:', error);
-
       toast.error(error.message || 'Failed to process data. Please try again.', {
         duration: 4000,
         position: 'top-right',
       });
-
       return false;
     }
   };
@@ -324,6 +353,15 @@ function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
           </div>
         </div>
 
+        {toggles.changeDataType && validationErrors.changeDataType && (
+          <div className="px-4 pb-2">
+            <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <AlertCircle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-amber-800">{validationErrors.changeDataType}</p>
+            </div>
+          </div>
+        )}
+
         {toggles.changeDataType && expandedSections.changeDataType && (
           <div className="px-4 pb-4 border-t border-gray-100">
             <div className="mt-4 space-y-3">
@@ -420,6 +458,15 @@ function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
             )}
           </div>
         </div>
+
+        {toggles.dropColumns && validationErrors.dropColumns && (
+          <div className="px-4 pb-2">
+            <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <AlertCircle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-amber-800">{validationErrors.dropColumns}</p>
+            </div>
+          </div>
+        )}
 
         {toggles.dropColumns && expandedSections.dropColumns && (
           <div className="px-4 pb-4 border-t border-gray-100">
@@ -540,6 +587,15 @@ function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
             )}
           </div>
         </div>
+
+        {toggles.missingValue && validationErrors.missingValue && (
+          <div className="px-4 pb-2">
+            <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <AlertCircle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-amber-800">{validationErrors.missingValue}</p>
+            </div>
+          </div>
+        )}
 
         {toggles.missingValue && expandedSections.missingValue && (
           <div className="px-4 pb-4 border-t border-gray-100">
