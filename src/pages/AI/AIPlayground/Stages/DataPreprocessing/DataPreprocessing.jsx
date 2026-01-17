@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { AIPlaygroundLayout } from '../../AIPlaygroundLayout';
 import { Check } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 import DataCleaning from './Steps/DataCleaning';
 import FeatureSelection from './Steps/FeatureSelection';
 import FeatureEngineering from './Steps/FeatureEngineering';
@@ -24,11 +25,22 @@ function DataPreprocessing() {
   const location = useLocation();
   const mode = location.state?.mode ?? 'edit';
   const readonly = mode === 'view';
+  const { workflowState } = useAIPlayground();
 
-  const [currentStep, setCurrentStep] = useState(1);
-  const [isStep7Preview, setIsStep7Preview] = useState(false);
+  const modelGenesisConfig = workflowState?.modelGenesis?.config;
+  const dataPreprocessingMode = modelGenesisConfig?.dataPreprocessing;
+  const modelSelectionMode = modelGenesisConfig?.modelSelection;
+
+  const isDataPreprocessingAuto = dataPreprocessingMode &&
+    ['Swift', 'Standard', 'Comprehensive'].includes(dataPreprocessingMode);
+
+  const [currentStep, setCurrentStep] = useState(isDataPreprocessingAuto ? 7 : 1);
+  const [isStep7Preview, setIsStep7Preview] = useState(isDataPreprocessingAuto);
   const [isStep1Valid, setIsStep1Valid] = useState(true);
-  
+  const [isStep2Valid, setIsStep2Valid] = useState(true);
+  const [isStep4Valid, setIsStep4Valid] = useState(true);
+  const [isStep5Valid, setIsStep5Valid] = useState(true);
+
   const step1ApiCallRef = useRef(null);
   const step2ApiCallRef = useRef(null);
   const step3ApiCallRef = useRef(null);
@@ -39,12 +51,16 @@ function DataPreprocessing() {
 
   const handleNextClick = async () => {
     let apiCallFn = null;
-    
+
+    if (currentStep === 7 && isStep7Preview && isDataPreprocessingAuto) {
+      return true;
+    }
+
     if (currentStep === 7 && isStep7Preview) {
       return true;
     }
-    
-    switch(currentStep) {
+
+    switch (currentStep) {
       case 1:
         apiCallFn = step1ApiCallRef.current;
         break;
@@ -74,72 +90,83 @@ function DataPreprocessing() {
       const success = await apiCallFn();
       return success;
     }
-    
+
     return true;
   };
 
   const renderStepContent = () => {
     switch (currentStep) {
-      case 1: 
+      case 1:
         return (
-          <DataCleaning 
-            readonly={readonly} 
+          <DataCleaning
+            readonly={readonly}
             onValidationChange={setIsStep1Valid}
             onApiCall={(fn) => step1ApiCallRef.current = fn}
           />
         );
-      case 2: 
+      case 2:
         return (
-          <FeatureSelection 
+          <FeatureSelection
             readonly={readonly}
+            onValidationChange={setIsStep2Valid}
             onApiCall={(fn) => step2ApiCallRef.current = fn}
           />
         );
-      case 3: 
+      case 3:
         return (
-          <FeatureEngineering 
+          <FeatureEngineering
             readonly={readonly}
             onApiCall={(fn) => step3ApiCallRef.current = fn}
           />
         );
-      case 4: 
+      case 4:
         return (
-          <ScalingTransformation 
+          <ScalingTransformation
             readonly={readonly}
+            onValidationChange={setIsStep4Valid}
             onApiCall={(fn) => step4ApiCallRef.current = fn}
           />
         );
-      case 5: 
+      case 5:
         return (
-          <StatisticalAnalysis 
+          <StatisticalAnalysis
             readonly={readonly}
+            onValidationChange={setIsStep5Valid}
             onApiCall={(fn) => step5ApiCallRef.current = fn}
           />
         );
-      case 6: 
+      case 6:
         return (
-          <FeatureImportance 
+          <FeatureImportance
             readonly={readonly}
             onApiCall={(fn) => step6ApiCallRef.current = fn}
           />
         );
-      case 7: 
+      case 7:
         return (
-          <Step7 
-            showPreview={isStep7Preview} 
+          <Step7
+            showPreview={isStep7Preview}
             readonly={readonly}
             onApiCall={(fn) => step7ApiCallRef.current = fn}
           />
         );
-      default: 
+      default:
         return (
-          <DataCleaning 
-            readonly={readonly} 
+          <DataCleaning
+            readonly={readonly}
             onValidationChange={setIsStep1Valid}
             onApiCall={(fn) => step1ApiCallRef.current = fn}
           />
         );
     }
+  };
+
+  const getIsNextDisabled = () => {
+    if (currentStep === 1 && !isStep1Valid) return true;
+    if (currentStep === 2 && !isStep2Valid) return true;
+    if (currentStep === 4 && !isStep4Valid) return true;
+    if (currentStep === 5 && !isStep5Valid) return true;
+    return false;
   };
 
   return (
@@ -150,7 +177,7 @@ function DataPreprocessing() {
       isStep7Preview={isStep7Preview}
       onPreviewData={setIsStep7Preview}
       onNextClick={handleNextClick}
-      isNextDisabled={currentStep === 1 && !isStep1Valid}
+      isNextDisabled={getIsNextDisabled()}
     >
       <div className={currentStep === 7 && isStep7Preview ? 'w-full' : 'max-w-7xl mx-auto w-full'}>
         <div className={`
@@ -168,7 +195,7 @@ function DataPreprocessing() {
                 <div className="relative flex lg:block overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 gap-4 lg:gap-0">
                   {preprocessingSteps.map((step, index) => {
                     const isCompleted = readonly ? step.id !== currentStep : step.id < currentStep;
-                    
+
                     return (
                       <div key={step.id} className="relative flex-shrink-0 lg:w-full">
                         {index < preprocessingSteps.length - 1 && (
