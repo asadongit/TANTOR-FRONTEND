@@ -52,7 +52,6 @@ const FeatureSection = ({
                 {isToggled && (
                     <button
                         onClick={onExpand}
-                        disabled={readonly}
                         className="text-gray-400 hover:text-gray-600"
                     >
                         {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -69,9 +68,10 @@ const FeatureSection = ({
     </div>
 );
 
-function FeatureEngineering({ readonly = false, onApiCall }) {
+function FeatureEngineering({ onApiCall }) {
     const hostnameAI = window._env_?.VITE_AI_API;
-    const { workflowState, datasetState, updatePreprocessingStep } = useAIPlayground();
+    const { workflowState, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
+    const readonly = mode === 'view';
 
     const [toggles, setToggles] = useState({
         outlierTreatment: false,
@@ -89,7 +89,28 @@ function FeatureEngineering({ readonly = false, onApiCall }) {
 
     const categoricalColumns = workflowState?.dataPreprocessing?.step2?.apiResponse?.categorical_columns || [];
 
+    useEffect(() => {
+        const step3Config = workflowState?.dataPreprocessing?.step3?.config;
+
+        if (step3Config && (mode === 'view' || mode === 'edit')) {
+            setToggles({
+                outlierTreatment: step3Config.outlier_treatment || false,
+                categoricalEncoding: step3Config.categorical_encoding || false,
+            });
+
+            if (step3Config.outlier_treatment_strategy) {
+                setOutlierStrategy(step3Config.outlier_treatment_strategy);
+            }
+
+            if (step3Config.categorical_encoding_method) {
+                setEncodingStrategy(step3Config.categorical_encoding_method);
+            }
+
+        }
+    }, [workflowState?.dataPreprocessing?.step3, mode]);
+
     const handleApiCall = async () => {
+        if (readonly) return true;
         try {
             setIsLoading(true);
 
@@ -214,7 +235,6 @@ function FeatureEngineering({ readonly = false, onApiCall }) {
     };
 
     const toggleSection = (section) => {
-        if (readonly) return;
         setExpandedSections({
             outlierTreatment: false,
             categoricalEncoding: false,

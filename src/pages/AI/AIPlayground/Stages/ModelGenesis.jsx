@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AIPlaygroundLayout } from '../AIPlaygroundLayout';
 import { Check, X } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
@@ -255,7 +255,7 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
   const tabs = ['Supervised', 'Unsupervised', 'Time Series', 'Anomaly Detection'];
 
   const handleValidate = async () => {
-    if (readonly || !config.classification || !config.targetFeature) return;
+    if (!config.classification || !config.targetFeature) return;
 
     setIsValidating(true);
 
@@ -574,8 +574,8 @@ const FairnessAttribute = ({ config, setConfig, readonly, columnNames = [] }) =>
           <select
             disabled={readonly || config.fairnessAttributes.length >= 3 || allOptions.length === 0}
             className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white ${readonly || config.fairnessAttributes.length >= 3 || allOptions.length === 0
-                ? 'cursor-not-allowed opacity-50 bg-gray-50'
-                : ''
+              ? 'cursor-not-allowed opacity-50 bg-gray-50'
+              : ''
               }`}
             value=""
             onChange={(e) => {
@@ -631,46 +631,152 @@ const FairnessAttribute = ({ config, setConfig, readonly, columnNames = [] }) =>
 function ModelGenesis() {
   const hostnameAI = window._env_?.VITE_AI_API;
   const location = useLocation();
-  const mode = location.state?.mode ?? 'edit';
+
+  const { datasetState, updateWorkflowStage, workflowState, mode } = useAIPlayground();
   const readonly = mode === 'view';
 
-  const { datasetState, updateWorkflowStage } = useAIPlayground();
+  const getInitialConfig = () => {
+    if (mode === 'view' && workflowState.modelGenesis?.config) {
+      const savedConfig = workflowState.modelGenesis.config;
+      return {
+        dataPreprocessing: savedConfig.data_preprocessing_mode || 'Manual',
+        modelSelection: savedConfig.model_mode || 'Manual',
+        notebookMode: false,
 
-  const [config, setConfig] = useState({
-    dataPreprocessing: 'Manual',
-    modelSelection: 'Manual',
-    notebookMode: false,
+        predictionType: 'Supervised',
+        classification: 'Multiclass',
+        targetFeature: 'next_product',
 
-    predictionType: 'Supervised',
-    classification: 'Multiclass',
-    targetFeature: '',
+        trainSplit: Math.round((savedConfig.train_size || 0.7) * 100),
+        testSplit: Math.round((savedConfig.test_size || 0.3) * 100),
 
-    trainSplit: 70,
-    testSplit: 30,
+        fairnessAttributes: savedConfig.fairness_columns || []
+      };
+    }
 
-    fairnessAttributes: []
-  });
+    return {
+      dataPreprocessing: 'Manual',
+      modelSelection: 'Manual',
+      notebookMode: false,
 
-  const [isValidated, setIsValidated] = useState(false);
+      predictionType: 'Supervised',
+      classification: 'Multiclass',
+      targetFeature: '',
+
+      trainSplit: 90,
+      testSplit: 10,
+
+      fairnessAttributes: []
+    };
+  };
+
+
+
+  const [config, setConfig] = useState(getInitialConfig);
+  const [isValidated, setIsValidated] = useState(mode === 'view' && workflowState.modelGenesis?.config);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+   useEffect(() => {
+     if(mode === 'edit'){
+      setIsValidated(false)
+     }
+   }, [mode]);
+
+  const modellingTypeMap = {
+        'Binary': 'binary',
+        'Multiclass': 'multiclass',
+        'Regression': 'regression'
+      };
 
   const handleValidate = () => {
     if (readonly) return;
     setIsValidated(!isValidated);
   };
 
-  const handleNextClick = async () => {
-    if (readonly || !isValidated) return false;
+  const runValidation = async () => {
+    if (!config.classification || !config.targetFeature) {
+      toast.error('Please select classification type and target feature.', {
+        duration: 4000,
+        position: 'top-right',
+      });
+      return false;
+    }
 
+    try {
+
+      const modellingType = modellingTypeMap[config.classification];
+      const sessionId = datasetState.sessionId;
+      const targetColumn = config.targetFeature;
+
+      const apiUrl = `${hostnameAI}/data/validate-targetcolumn-modellingtype?session_id=${sessionId}&target_column=${encodeURIComponent(targetColumn)}&modelling_type=${modellingType}`;
+
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'accept': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        if (data.status === 'success') {
+          return true;
+        } else {
+          toast.error('Unable to validate. Please check your configuration.', {
+            duration: 4000,
+            position: 'top-right',
+          });
+          return false;
+        }
+      } else {
+        toast.error('Unable to validate. Please try again.', {
+          duration: 4000,
+          position: 'top-right',
+        });
+        return false;
+      }
+    } catch (error) {
+      console.error('Validation error:', error);
+      toast.error('Unable to validate. Network error occurred.', {
+        duration: 4000,
+        position: 'top-right',
+      });
+      return false;
+    }
+  };
+
+  const handleNextClick = async () => {
     setIsSubmitting(true);
 
     try {
+      // In view mode, only run validation and skip model genesis API
+      if (mode === 'view') {
+        const validationSuccess = await runValidation();
+        if (!validationSuccess) {
+          setIsSubmitting(false);
+          return false;
+        }
+        setIsValidated(true);
+        setIsSubmitting(false);
+        return true;
+      }
+
+      if (!isValidated) {
+        toast.error('Please validate your configuration before proceeding.', {
+          duration: 4000,
+          position: 'top-right',
+        });
+        setIsSubmitting(false);
+        return false;
+      }
+
       const trainSize = config.trainSplit / 100;
       const testSize = config.testSplit / 100;
 
       const sum = trainSize + testSize;
       if (Math.abs(sum - 1.0) > 0.01) {
-        toast.error('Traina and Test splits must equal 100%', {
+        toast.error('Train and Test splits must equal 100%', {
           duration: 4000,
           position: 'top-right',
         });
@@ -685,7 +791,9 @@ function ModelGenesis() {
         random_state: 42,
         fairness_columns: config.fairnessAttributes,
         data_preprocessing_mode: config.dataPreprocessing,
-        model_mode: config.modelSelection
+        model_mode: config.modelSelection,
+        target_column: config.targetFeature,
+        modelling_type: modellingTypeMap[config.classification]
       };
 
       const response = await fetch(`${hostnameAI}/data/genesis`, {

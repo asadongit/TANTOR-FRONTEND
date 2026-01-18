@@ -3,9 +3,10 @@ import { ChevronDown, ChevronUp, CircleCheckBig, CircleX, TriangleAlert, Image a
 import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 
-function StatisticalAnalysis({ readonly = false, onValidationChange, onApiCall }) {
+function StatisticalAnalysis({ onValidationChange, onApiCall }) {
     const hostnameAI = window._env_?.VITE_AI_API;
-    const { workflowState, datasetState, updatePreprocessingStep } = useAIPlayground();
+    const { workflowState, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
+    const readonly = mode === 'view';
 
     const step4Response = workflowState?.dataPreprocessing?.step4?.apiResponse;
     const correlationPlot = step4Response?.correlation_plot;
@@ -24,6 +25,22 @@ function StatisticalAnalysis({ readonly = false, onValidationChange, onApiCall }
     const [vifDropperEnabled, setVifDropperEnabled] = useState(false);
     const [selectedFeatures, setSelectedFeatures] = useState([]);
     const [validationError, setValidationError] = useState('');
+    useEffect(() => {
+        if ((mode === 'view' || mode === 'edit') && workflowState?.dataPreprocessing?.step5?.config) {
+            const config = workflowState.dataPreprocessing.step5.config;
+
+            setVifDropperEnabled(config.vif_column_dropper || false);
+            setSelectedFeatures(config.vif_columns_to_drop || []);
+
+            if (config.toggles) {
+                setToggles(config.toggles);
+            }
+
+            if (config.expandedSections) {
+                setExpandedSections(config.expandedSections);
+            }
+        }
+    }, [mode, workflowState]);
 
     const riskCounts = vifReport.reduce((acc, curr) => {
         const risk = curr.Multicollinearity_Risk?.toLowerCase();
@@ -60,7 +77,6 @@ function StatisticalAnalysis({ readonly = false, onValidationChange, onApiCall }
     };
 
     const toggleSection = (section) => {
-        if (readonly) return;
         setExpandedSections({
             correlation: false,
             vif: false,
@@ -81,6 +97,7 @@ function StatisticalAnalysis({ readonly = false, onValidationChange, onApiCall }
     };
 
     const handleStatisticalAnalysis = useCallback(async () => {
+        if (readonly) return true;
         if (vifDropperEnabled && selectedFeatures.length === 0) {
             toast.error('Please select at least one feature to drop when VIF Column Dropper is enabled.', {
                 duration: 4000,
@@ -184,7 +201,6 @@ function StatisticalAnalysis({ readonly = false, onValidationChange, onApiCall }
                         {toggles.correlation && (
                             <button
                                 onClick={() => toggleSection('correlation')}
-                                disabled={readonly}
                                 className="text-gray-400 hover:text-gray-600"
                             >
                                 {expandedSections.correlation ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -235,7 +251,6 @@ function StatisticalAnalysis({ readonly = false, onValidationChange, onApiCall }
                         {toggles.vif && (
                             <button
                                 onClick={() => toggleSection('vif')}
-                                disabled={readonly}
                                 className="text-gray-400 hover:text-gray-600"
                             >
                                 {expandedSections.vif ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -338,10 +353,10 @@ function StatisticalAnalysis({ readonly = false, onValidationChange, onApiCall }
                                             <td className="px-4 py-3 text-sm text-gray-700">{row.VIF != null && typeof row.VIF === 'number' ? row.VIF.toFixed(4) : row.VIF != null ? row.VIF : '-'}</td>
                                             <td className="px-4 py-3">
                                                 <span className={`inline-block px-4 py-1 rounded-md text-xs font-medium ${row.Multicollinearity_Risk?.toLowerCase().includes('high')
-                                                        ? 'bg-red-100 text-red-700'
-                                                        : row.Multicollinearity_Risk?.toLowerCase().includes('moderate')
-                                                            ? 'bg-orange-100 text-orange-700'
-                                                            : 'bg-green-100 text-green-700'
+                                                    ? 'bg-red-100 text-red-700'
+                                                    : row.Multicollinearity_Risk?.toLowerCase().includes('moderate')
+                                                        ? 'bg-orange-100 text-orange-700'
+                                                        : 'bg-green-100 text-green-700'
                                                     }`}>
                                                     {row.Multicollinearity_Risk}
                                                 </span>

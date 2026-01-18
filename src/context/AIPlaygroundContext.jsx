@@ -15,6 +15,10 @@ export const AIPlaygroundProvider = ({ children }) => {
         selectedProject: '',
     });
 
+    const [modelState, setModelState] = useState({
+        selectedModel: '',
+    });
+
     const [datasetState, setDatasetState] = useState({
         tableName: '',
         sessionId: '',
@@ -75,10 +79,8 @@ export const AIPlaygroundProvider = ({ children }) => {
         }
     });
 
-    // console.log("work flow state is @@@ ", workflowState)
-    // console.log("DATASET is @@@ ", datasetState)
 
-    const [mode, setMode] = useState('edit');
+    const [mode, setMode] = useState('write');
 
     const updateWorkflowStage = (stage, data) => {
         setWorkflowState(prev => ({
@@ -108,10 +110,12 @@ export const AIPlaygroundProvider = ({ children }) => {
         datasetState,
         workflowState,
         mode,
+        modelState,
         setProjectState,
         setDatasetState,
         setWorkflowState,
         setMode,
+        setModelState,
         updateWorkflowStage,
         updatePreprocessingStep
     };

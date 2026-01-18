@@ -10,8 +10,8 @@ import { FairnessTab, ChartsTab } from './Fairnesschartstab'
 
 const ModelInferencing = () => {
   const hostnameAI = window._env_?.VITE_AI_API;
-  const { workflowState, datasetState } = useAIPlayground();
-  const location = useLocation();
+  const { workflowState, datasetState, mode } = useAIPlayground();
+  const readonly = mode === 'view';
   const [activeTab, setActiveTab] = useState('performance');
   const [selectedFairnessModel, setSelectedFairnessModel] = useState('');
   const [selectedChartsModel, setSelectedChartsModel] = useState('');
@@ -290,6 +290,7 @@ const ModelInferencing = () => {
   };
 
   const handleNextClick = async () => {
+    if (readonly) return true;
     return await fetchModelRuns();
   };
 

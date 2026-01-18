@@ -69,7 +69,7 @@ const AIPlayground = () => {
   const hostnameAI = window._env_?.VITE_AI_API;
   const fileInputRef = useRef(null);
 
-  const { projectState, setProjectState, datasetState, setDatasetState, setWorkflowState } = useAIPlayground();
+  const { projectState, setProjectState, datasetState, setDatasetState, setWorkflowState, setModelState ,setMode } = useAIPlayground();
 
   const [selectedProject, setSelectedProject] = useState('');
 
@@ -95,6 +95,7 @@ const AIPlayground = () => {
 
   useEffect(() => {
     setProjectState({ selectedProject: '' });
+    setModelState({selectedModel: ''})
     setDatasetState({
       tableName: '',
       sessionId: '',
@@ -120,6 +121,8 @@ const AIPlayground = () => {
       xai: { config: null, apiResponse: null },
       modelDeployment: { config: null, apiResponse: null }
     });
+
+    setMode('write')
   }, []);
 
   const fetchProjects = async () => {

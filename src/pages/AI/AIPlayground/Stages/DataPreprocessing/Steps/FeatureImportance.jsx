@@ -41,9 +41,8 @@ const FeatureSection = ({ title, description, isToggled, isExpanded, onToggle, o
             <div className="flex items-center gap-3">
                 <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
                 {isToggled && (
-                    <button 
+                    <button
                         onClick={onExpand}
-                        disabled={readonly}
                         className="text-gray-400 hover:text-gray-600"
                     >
                         {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -59,17 +58,18 @@ const FeatureSection = ({ title, description, isToggled, isExpanded, onToggle, o
     </div>
 );
 
-function FeatureImportance({ readonly = false, onApiCall }) {
+function FeatureImportance({ onApiCall }) {
     const hostnameAI = window._env_?.VITE_AI_API;
-    const { workflowState, datasetState, updatePreprocessingStep } = useAIPlayground();
-    
+    const { workflowState, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
+    const readonly = mode === 'view';
+
     const maxFeatures = workflowState?.dataPreprocessing?.step4?.apiResponse?.column_count || 0;
 
     const sessionId = datasetState?.sessionId;
 
     const [toggles, setToggles] = useState({ featureImportance: false, dimensionalityReduction: false });
     const [expandedSections, setExpandedSections] = useState({ featureImportance: false, dimensionalityReduction: false });
-    
+
     const [methodCategory, setMethodCategory] = useState('filter');
     const [subMethod, setSubMethod] = useState('mutual_info');
     const [numFeatures, setNumFeatures] = useState(0);
@@ -84,24 +84,32 @@ function FeatureImportance({ readonly = false, onApiCall }) {
     };
 
     const reductionMethods = [
-        "pca", "lda", "ica", "tsne", "umap", "autoencoder", "sparse_pca", "factor_analysis", 
-        "nmf", "lsa", "lle", "modified_lle", "hessian_lle", "ltsa", "isomap", "mds", 
-        "spectral_embedding", "random_projection", "truncated_svd", "dictionary_learning", 
+        "pca", "lda", "ica", "tsne", "umap", "autoencoder", "sparse_pca", "factor_analysis",
+        "nmf", "lsa", "lle", "modified_lle", "hessian_lle", "ltsa", "isomap", "mds",
+        "spectral_embedding", "random_projection", "truncated_svd", "dictionary_learning",
         "mini_batch_dictionary_learning", "vae"
     ];
 
     useEffect(() => {
-        const availableSubMethods = subMethodMapping[methodCategory];
-        if (availableSubMethods && availableSubMethods.length > 0) {
-            setSubMethod(availableSubMethods[0]);
-        } else {
-            setSubMethod('');
+        if ((mode === 'view' || mode === 'edit') && workflowState?.dataPreprocessing?.step6?.config) {
+            const config = workflowState.dataPreprocessing.step6.config;
+
+            setToggles({
+                featureImportance: config.feature_importance_selection || false,
+                dimensionalityReduction: config.dimensionality_reduction || false
+            });
+
+            setMethodCategory(config.method);
+            setSubMethod(config.sub_method);
+            setNumFeatures(config.n_features || 0);
+            setReductionMethod(config.dimensionality_reduction_method);
+
         }
-    }, [methodCategory]);
+    }, [mode, workflowState]);
 
 
     const handleApiCall = async () => {
-
+        if (readonly) return true;
         try {
             const requestBody = {
                 session_id: sessionId,
