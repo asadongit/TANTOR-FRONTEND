@@ -357,7 +357,7 @@ function Models() {
           });
 
           const ingestionResponse = await fetch(
-            'http://192.168.3.86:30080/api/v1/data/ingestion',
+            `${hostnameAI}/data/ingestion`,
             {
               method: 'POST',
               headers: {
