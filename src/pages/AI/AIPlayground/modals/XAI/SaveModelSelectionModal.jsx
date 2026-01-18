@@ -1,17 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { X, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, AlertTriangle, Download } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
-export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, modelsList = [] }) {
+export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, modelsList = [], sessionId }) {
+  const hostnameAI = window._env_?.VITE_AI_API;
   const [selectedModels, setSelectedModels] = useState({});
   const [descriptions, setDescriptions] = useState({});
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [downloadingReports, setDownloadingReports] = useState(false);
+  const [currentReportData, setCurrentReportData] = useState(null);
+  const [currentModelName, setCurrentModelName] = useState('');
+  const reportRef = useRef(null);
 
   useEffect(() => {
     if (!isOpen) {
       setSelectedModels({});
       setDescriptions({});
       setShowConfirmation(false);
+      setCurrentReportData(null);
+      setCurrentModelName('');
     }
   }, [isOpen]);
 
@@ -62,7 +71,142 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
     setSelectedModels({});
     setDescriptions({});
     setShowConfirmation(false);
+    setCurrentReportData(null);
+    setCurrentModelName('');
     onClose();
+  };
+
+  const handleDownloadGovernanceReports = async () => {
+    const selectedModelNames = Object.keys(selectedModels).filter(name => selectedModels[name]);
+    
+    if (selectedModelNames.length === 0) {
+      toast.error('Please select at least one model to download reports', {
+        duration: 3000,
+        position: 'top-right',
+      });
+      return;
+    }
+
+    if (!sessionId) {
+      toast.error('Session ID not found. Please try again.', {
+        duration: 4000,
+        position: 'top-right',
+      });
+      return;
+    }
+
+    setDownloadingReports(true);
+
+    try {
+      const response = await fetch(
+        `${hostnameAI}/model/download-governance-report`,
+        {
+          method: 'POST',
+          headers: {
+            'accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            session_id: sessionId,
+            model_names: selectedModelNames
+          })
+        }
+      );
+
+      if (!response.ok) {
+        toast.error('Failed to fetch governance reports');
+        setDownloadingReports(false);
+        return;
+      }
+
+      const reportData = await response.json();
+
+      // Download PDF for each selected model
+      for (const modelName of selectedModelNames) {
+        await generatePDFForModel(modelName, reportData);
+        // Add a small delay between downloads to prevent browser blocking
+        await new Promise(resolve => setTimeout(resolve, 800));
+      }
+
+      toast.success(`${selectedModelNames.length} report${selectedModelNames.length > 1 ? 's' : ''} downloaded successfully`, {
+        duration: 3000,
+        position: 'top-right',
+      });
+    } catch (error) {
+      console.error('Error downloading governance reports:', error);
+      toast.error('Failed to download governance reports', {
+        duration: 4000,
+        position: 'top-right',
+      });
+    } finally {
+      setDownloadingReports(false);
+      setCurrentReportData(null);
+      setCurrentModelName('');
+    }
+  };
+
+  const generatePDFForModel = async (modelName, reportData) => {
+    const modelData = reportData?.models?.[modelName];
+    const projectData = reportData?.project;
+    const datasetData = reportData?.dataset;
+
+    if (!modelData) {
+      console.error(`No data found for model: ${modelName}`);
+      return;
+    }
+
+    // Set the current report data and model name
+    setCurrentReportData({ models: { [modelName]: modelData }, project: projectData, dataset: datasetData });
+    setCurrentModelName(modelName);
+
+    // Wait for React to render the component
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    if (!reportRef.current) {
+      console.error('Report ref not available');
+      return;
+    }
+
+    try {
+      const input = reportRef.current;
+      const canvas = await html2canvas(input, { 
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        windowWidth: input.scrollWidth,
+        windowHeight: input.scrollHeight
+      });
+      
+      const imgData = canvas.toDataURL("image/png");
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      // Add first page
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      // Add additional pages if content is longer
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`governance-report-${modelName}.pdf`);
+    } catch (error) {
+      console.error(`PDF Generation Error for ${modelName}:`, error);
+      throw error;
+    }
   };
 
   const selectedCount = Object.values(selectedModels).filter(Boolean).length;
@@ -161,23 +305,218 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+          <div className="flex items-center justify-between gap-3 p-6 border-t border-gray-200">
             <button
-              onClick={handleClose}
-              className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              onClick={handleDownloadGovernanceReports}
+              disabled={readonly || selectedCount === 0 || downloadingReports}
+              className="px-6 py-2 bg-white border border-[#8e78b7] text-[#8e78b7] rounded-lg text-sm font-medium hover:bg-purple-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              Cancel
+              <Download size={16} />
+              {downloadingReports ? 'Downloading...' : `Download Governance Report${selectedCount > 1 ? 's' : ''}`}
             </button>
-            <button
-              onClick={handleSaveClick}
-              disabled={readonly || selectedCount === 0}
-              className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium hover:bg-[#7d67a6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Save Model{selectedCount > 1 ? 's' : ''}
-            </button>
+            
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleClose}
+                className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveClick}
+                disabled={readonly || selectedCount === 0}
+                className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium hover:bg-[#7d67a6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Save Model{selectedCount > 1 ? 's' : ''}
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Hidden Report Container for PDF Generation */}
+      {currentReportData && currentModelName && (
+        <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+          <div ref={reportRef} className="p-6 space-y-6 bg-white" style={{ width: '800px' }}>
+            {/* AI Use Case Section */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-blue-500">
+                AI use case
+              </h4>
+              <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-3">
+                <p className="text-sm text-gray-700">
+                  This Model is not yet associated with any AI use case
+                </p>
+              </div>
+            </div>
+
+            {/* Model Section */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-blue-500">
+                Model
+              </h4>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500 mb-1">Name</p>
+                    <p className="text-sm font-medium text-gray-900 break-words">{currentModelName || 'N/A'}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500 mb-1">ID</p>
+                    <p className="text-sm font-medium text-gray-900 break-all">{currentReportData.models[currentModelName]?.run_id || 'N/A'}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Last modified</p>
+                    <p className="text-sm font-medium text-gray-900">{currentReportData.models[currentModelName]?.created_at || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Created</p>
+                    <p className="text-sm font-medium text-gray-900">{currentReportData.models[currentModelName]?.created_at || 'N/A'}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Created by</p>
+                    <p className="text-sm font-medium text-gray-900">{currentReportData.models[currentModelName]?.created_by || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Label/prediction column</p>
+                    <p className="text-sm font-medium text-gray-900">{currentReportData.models[currentModelName]?.target_column || 'N/A'}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Model type</p>
+                    <p className="text-sm font-medium text-gray-900">{currentReportData.models[currentModelName]?.model_type || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Algorithm</p>
+                    <p className="text-sm font-medium text-gray-900">{currentReportData.models[currentModelName]?.algorithm || 'N/A'}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Prediction Type</p>
+                  <p className="text-sm font-medium text-gray-900">{currentReportData.models[currentModelName]?.prediction_type || 'N/A'}</p>
+                </div>
+              </div>
+
+              {/* General Training Information */}
+              <div className="mt-6 pt-4 border-t border-gray-300">
+                <h5 className="text-sm font-semibold text-gray-900 mb-3 bg-gray-100 px-3 py-2 rounded">General Training Information</h5>
+                <div className="space-y-3 px-3">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Features</p>
+                    <p className="text-sm font-medium text-gray-900">{currentReportData.models[currentModelName]?.data_summary?.num_features || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Input Schema */}
+              {currentReportData.dataset?.source_schema && (
+                <div className="mt-6 pt-4 border-t border-gray-300">
+                  <h5 className="text-sm font-semibold text-gray-900 mb-3 bg-gray-100 px-3 py-2 rounded">Input Schema</h5>
+                  <div className="overflow-x-auto px-3">
+                    <table className="min-w-full border border-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 border-b">Name</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 border-b">Type</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentReportData.dataset.source_schema.map((field, index) => (
+                          <tr key={index} className="border-b">
+                            <td className="px-4 py-2 text-sm text-gray-900">{field.column_name}</td>
+                            <td className="px-4 py-2 text-sm text-gray-900">{field.data_type}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Evaluation Section */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-blue-500">
+                Evaluation
+              </h4>
+              
+              {/* Development - Project Info */}
+              <div className="mb-4 pt-4 border-t border-gray-300">
+                <h5 className="text-sm font-semibold text-gray-900 mb-3 bg-gray-100 px-3 py-2 rounded">Development</h5>
+                <div className="bg-gray-50 border border-gray-200 rounded p-4 space-y-3 mx-3">
+                  <div>
+                    <p className="text-xs font-semibold text-gray-700 mb-1">Project name: <span className="font-normal">{currentReportData.project?.project_name || 'N/A'}</span></p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Project ID</p>
+                      <p className="text-sm text-gray-900">{currentReportData.project?.project_id || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Created by</p>
+                      <p className="text-sm text-gray-900">{currentReportData.project?.owner_name || 'N/A'}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-500 mb-1">Date</p>
+                      <p className="text-sm text-gray-900">{currentReportData.project?.created_at || 'N/A'}</p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-500 mb-1">Asset name</p>
+                      <p className="text-sm text-gray-900 break-words">{currentModelName || 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Training Metrics */}
+              {currentReportData.models[currentModelName]?.training_metrics && (
+                <div className="mt-6 pt-4 border-t border-gray-300">
+                  <h5 className="text-sm font-semibold text-gray-900 mb-3 bg-gray-100 px-3 py-2 rounded">Training Metrics</h5>
+                  <div className="overflow-x-auto px-3">
+                    <table className="min-w-full border border-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 border-b">Name</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 border-b">Training</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 border-b">Testing</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.keys(currentReportData.models[currentModelName].training_metrics.train || {}).map((metric, index) => (
+                          <tr key={index} className="border-b">
+                            <td className="px-4 py-2 text-sm text-gray-900 capitalize">{metric}</td>
+                            <td className="px-4 py-2 text-sm text-gray-900">
+                              {typeof currentReportData.models[currentModelName].training_metrics.train[metric] === 'number' 
+                                ? currentReportData.models[currentModelName].training_metrics.train[metric].toFixed(6)
+                                : currentReportData.models[currentModelName].training_metrics.train[metric]}
+                            </td>
+                            <td className="px-4 py-2 text-sm text-gray-900">
+                              {typeof currentReportData.models[currentModelName].training_metrics.test?.[metric] === 'number'
+                                ? currentReportData.models[currentModelName].training_metrics.test[metric].toFixed(6)
+                                : currentReportData.models[currentModelName].training_metrics.test?.[metric] || 'N/A'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Modal */}
       {showConfirmation && (

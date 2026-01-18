@@ -5,6 +5,7 @@ import Breadcrumb from '../../../components/Breadcrumb';
 import DataTable from '../../../components/DataTable';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
+import DeleteModal from './Components/DeleteModal';
 
 
 const Data = () => {
@@ -17,6 +18,9 @@ const Data = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const navigate = useNavigate();
   const { token, decodedToken } = useAuth();
   const hostnameAI = window._env_?.VITE_AI_API;
@@ -153,6 +157,36 @@ const Data = () => {
     { label: 'Action', sortable: false },
   ];
 
+  const handleDelete = (row) => {
+    setDeleteTarget(row);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      const id = deleteTarget.id || deleteTarget.dataset_id || deleteTarget.uuid || deleteTarget.file_id || deleteTarget.file_name;
+      // fallback to file_name if id not present
+      const url = `${hostnameAI}/canvas/dataset/${id}/delete`;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          accept: "application/json",
+        },
+      });
+      if (!resp.ok) throw new Error("Failed to delete dataset");
+      setDeleteModalOpen(false);
+      setDeleteTarget(null);
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (err) {
+      alert(err.message || "Delete failed");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   const actions = [
     {
       label: 'Library',
@@ -185,19 +219,23 @@ const Data = () => {
     {
       label: 'Delete',
       icon: <Trash2 className="w-4 h-4" />,
-      onClick: (row) => console.log('Delete:', row),
+      onClick: handleDelete,
       tooltip: 'Delete',
     },
   ];
 
   const filteredData = useMemo(() => {
-    if (!searchTerm.trim()) return tableData;
+    if (!searchTerm.trim()) {
+      return tableData.filter(row => String(row.status).toLowerCase() !== "deleted");
+    }
     const q = searchTerm.toLowerCase();
-    return tableData.filter((row) =>
-      Object.values(row || {}).some((val) =>
-        String(val ?? '').toLowerCase().includes(q)
-      )
-    );
+    return tableData
+      .filter(row => String(row.status).toLowerCase() !== "deleted")
+      .filter((row) =>
+        Object.values(row || {}).some((val) =>
+          String(val ?? '').toLowerCase().includes(q)
+        )
+      );
   }, [searchTerm, tableData]);
 
   const StatCard = ({ label, value, icon: Icon, trend }) => (
@@ -378,6 +416,15 @@ const Data = () => {
           resetSortTrigger={refreshTrigger}
         />
       </div>
+      <DeleteModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Dataset"
+        description={`Are you sure you want to delete "${deleteTarget?.file_name || deleteTarget?.id || ''}"? This action cannot be undone.`}
+        loading={deleteLoading}
+        confirmText="Delete"
+      />
     </div>
   );
 };

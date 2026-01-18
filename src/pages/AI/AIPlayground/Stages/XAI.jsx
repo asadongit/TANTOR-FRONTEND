@@ -420,7 +420,8 @@ function XAI() {
             <div className="relative">
               <button
                 onClick={() => setShowMenuDropdown(!showMenuDropdown)}
-                className="w-10 h-10 bg-white border border-gray-300 rounded-lg flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors"
+                disabled={!selectedModel}
+                className="w-10 h-10 bg-white border border-gray-300 rounded-lg flex items-center justify-center text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
               >
                 <MoreVertical size={20} />
               </button>
@@ -580,6 +581,8 @@ function XAI() {
       <GovernanceReportModal
         isOpen={showGovernanceModal}
         onClose={() => setShowGovernanceModal(false)}
+        selectedModel={selectedModel}
+        sessionId={sessionId}
       />
     </AIPlaygroundLayout>
   );

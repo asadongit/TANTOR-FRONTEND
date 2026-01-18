@@ -5,6 +5,8 @@ import Breadcrumb from '../../../components/Breadcrumb';
 import DataTable from '../../../components/DataTable';
 import { useAuth } from '../../../context/AuthContext';
 import { CreateProjectModal } from '../AIPlayground/modals/Dashboard/CreateProjectModal';
+import DeleteModal from './Components/DeleteModal';
+
 const Projects = () => {
     const navigate = useNavigate();
     const { token, decodedToken } = useAuth();
@@ -15,9 +17,12 @@ const Projects = () => {
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [viewMode, setViewMode] = useState('both');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
     const [tableData, setTableData] = useState([]);
     const [error, setError] = useState(null);
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [deleteLoading, setDeleteLoading] = useState(false);
 
     const [dashboardData, setDashboardData] = useState(null);
     const [dashboardLoading, setDashboardLoading] = useState(false);
@@ -146,7 +151,32 @@ const Projects = () => {
     };
 
     const handleDelete = (row) => {
-        console.log('Delete:', row);
+        setDeleteTarget(row);
+        setDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteTarget) return;
+        setDeleteLoading(true);
+        try {
+            const id = deleteTarget.id;
+            const url = `${hostnameAI}/canvas/project/${id}/delete`;
+            const resp = await fetch(url, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    accept: "application/json",
+                },
+            });
+            if (!resp.ok) throw new Error("Failed to delete project");
+            setDeleteModalOpen(false);
+            setDeleteTarget(null);
+            setRefreshTrigger((prev) => prev + 1);
+        } catch (err) {
+            alert(err.message || "Delete failed");
+        } finally {
+            setDeleteLoading(false);
+        }
     };
 
     const columns = [
@@ -199,11 +229,15 @@ const Projects = () => {
     ];
 
     const filteredData = useMemo(() => {
-        if (!searchTerm.trim()) return tableData;
+        if (!searchTerm.trim()) {
+            return tableData.filter(row => String(row.status).toLowerCase() !== "deleted");
+        }
         const q = searchTerm.toLowerCase();
-        return tableData.filter((row) =>
-            Object.values(row || {}).some((val) => String(val ?? '').toLowerCase().includes(q))
-        );
+        return tableData
+            .filter(row => String(row.status).toLowerCase() !== "deleted")
+            .filter((row) =>
+                Object.values(row || {}).some((val) => String(val ?? '').toLowerCase().includes(q))
+            );
     }, [searchTerm, tableData]);
 
     const StatCard = ({ label, value, trend, trendUp }) => (
@@ -323,6 +357,15 @@ const Projects = () => {
                     setIsCreateModalOpen(false);
                     setRefreshTrigger((prev) => prev + 1); // refresh table + stats
                 }}
+            />
+            <DeleteModal
+                isOpen={deleteModalOpen}
+                onClose={() => setDeleteModalOpen(false)}
+                onConfirm={confirmDelete}
+                title="Delete Project"
+                description={`Are you sure you want to delete "${deleteTarget?.name || deleteTarget?.id || ''}"? This action cannot be undone.`}
+                loading={deleteLoading}
+                confirmText="Delete"
             />
         </div>
     );
