@@ -69,7 +69,7 @@ const AIPlayground = () => {
   const hostnameAI = window._env_?.VITE_AI_API;
   const fileInputRef = useRef(null);
 
-  const { projectState, setProjectState, datasetState, setDatasetState, setWorkflowState, setModelState ,setMode } = useAIPlayground();
+  const { projectState, setProjectState, datasetState, setDatasetState, setWorkflowState, setModelState, setMode, mode } = useAIPlayground();
 
   const [selectedProject, setSelectedProject] = useState('');
 
@@ -94,14 +94,32 @@ const AIPlayground = () => {
   }, []);
 
   useEffect(() => {
-    setProjectState({ selectedProject: '' });
-    setModelState({selectedModel: ''})
-    setDatasetState({
-      tableName: '',
-      sessionId: '',
-      columnNames: [],
-      profileReportHtml: ''
-    });
+    if (mode === "dataset") {
+      if (projectState?.selectedProject) {
+        setSelectedProject(projectState.selectedProject);
+      }
+      if (datasetState?.tableName) {
+        setUploadedFile({
+          name: datasetState.tableName,
+          type: 'database',
+          TableId: datasetState.tableName,
+          displayName: datasetState.tableName
+        });
+      }
+    } else {
+      setProjectState({ selectedProject: '' });
+      setModelState({ selectedModel: '' })
+      setDatasetState({
+        tableName: '',
+        sessionId: '',
+        columnNames: [],
+        profileReportHtml: ''
+      });
+      setSelectedProject('');
+      setUploadedFile(null);
+      setMode('write')
+    }
+
     setWorkflowState({
       modelGenesis: {
         config: null,
@@ -121,10 +139,7 @@ const AIPlayground = () => {
       xai: { config: null, apiResponse: null },
       modelDeployment: { config: null, apiResponse: null }
     });
-
-    setMode('write')
-  }, []);
-
+  }, [mode]);
   const fetchProjects = async () => {
     try {
       setLoading(true);

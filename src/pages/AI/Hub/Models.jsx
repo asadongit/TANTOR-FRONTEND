@@ -13,6 +13,7 @@ import {
   Palette,
   BookOpen,
   Gauge,
+  Loader2,
 } from "lucide-react";
 import { Icon } from "@iconify-icon/react";
 import Breadcrumb from "../../../components/Breadcrumb";
@@ -982,10 +983,12 @@ function Models() {
       />
       {isCanvasLoading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-xl flex flex-col items-center gap-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
-            <p className="text-gray-700 font-medium">Loading model details...</p>
-            <p className="text-sm text-gray-500">Please wait while we prepare your workspace</p>
+          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div className="flex flex-col items-center">
+              <Loader2 className="w-16 h-16 text-[#8e78b7] animate-spin mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading AI Canvas</h3>
+              <p className="text-gray-600 text-center">Please wait while we prepare your workspace</p>
+            </div>
           </div>
         </div>
       )}
