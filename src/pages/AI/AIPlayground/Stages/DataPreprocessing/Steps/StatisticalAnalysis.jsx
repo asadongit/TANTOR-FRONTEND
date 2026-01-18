@@ -31,14 +31,11 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
 
             setVifDropperEnabled(config.vif_column_dropper || false);
             setSelectedFeatures(config.vif_columns_to_drop || []);
+            setToggles({
+                correlation: true,
+                vif: config.vif_column_dropper
+            });
 
-            if (config.toggles) {
-                setToggles(config.toggles);
-            }
-
-            if (config.expandedSections) {
-                setExpandedSections(config.expandedSections);
-            }
         }
     }, [mode, workflowState]);
 

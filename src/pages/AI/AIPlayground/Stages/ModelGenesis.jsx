@@ -636,7 +636,7 @@ function ModelGenesis() {
   const readonly = mode === 'view';
 
   const getInitialConfig = () => {
-    if (mode === 'view' && workflowState.modelGenesis?.config) {
+    if ((mode === 'view' || mode === 'edit') && workflowState.modelGenesis?.config) {
       const savedConfig = workflowState.modelGenesis.config;
       return {
         dataPreprocessing: savedConfig.data_preprocessing_mode || 'Manual',

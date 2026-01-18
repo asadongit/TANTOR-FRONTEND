@@ -111,7 +111,7 @@ function ModelSelection() {
     const filteredCategories = allCategories.filter(category => {
         const categorized = categorizeAlgorithms();
         const categoryAlgorithms = categorized[category];
-        
+
         if (readonly) {
             return categoryAlgorithms.some(algo => {
                 const matchesSearch = algo.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -127,7 +127,7 @@ function ModelSelection() {
 
     useEffect(() => {
         const savedConfig = workflowState?.modelSelection?.config;
-        
+
         if (!savedConfig) return;
 
         if (savedConfig.normalize !== undefined) {
@@ -135,14 +135,26 @@ function ModelSelection() {
         }
 
         if (savedConfig.performance_metrics && Array.isArray(savedConfig.performance_metrics)) {
-            setMetrics(prevMetrics => 
-                prevMetrics.map(metric => ({
-                    ...metric,
-                    enabled: savedConfig.performance_metrics.includes(
-                        METRIC_NAME_MAPPING[metric.name]
-                    )
-                }))
-            );
+            const backendToDisplay = savedConfig.performance_metrics.map(
+                backendName => REVERSE_METRIC_MAPPING[backendName]
+            ).filter(Boolean);
+
+            const orderedMetrics = [];
+
+            backendToDisplay.forEach(displayName => {
+                const metric = metrics.find(m => m.name === displayName);
+                if (metric) {
+                    orderedMetrics.push({ ...metric, enabled: true });
+                }
+            });
+
+            metrics.forEach(metric => {
+                if (!backendToDisplay.includes(metric.name)) {
+                    orderedMetrics.push({ ...metric, enabled: false });
+                }
+            });
+
+            setMetrics(orderedMetrics);
         }
 
         if (savedConfig.algorithms && Array.isArray(savedConfig.algorithms)) {
@@ -164,10 +176,10 @@ function ModelSelection() {
 
                     if (algoEntry) {
                         const [algoId, algo] = algoEntry;
-                        
+
                         let configMode = 'Base';
                         const hyperparameterMode = savedConfig.hyperparameter_modes?.[algoBackendKey];
-                        
+
                         if (hyperparameterMode === 'user_params') {
                             configMode = 'Hyper Parameter';
                         } else if (hyperparameterMode === 'grid_search') {
@@ -175,7 +187,7 @@ function ModelSelection() {
                         }
 
                         const paramGridValues = savedConfig.param_grid?.[algoBackendKey] || {};
-                        
+
                         let hyperparameterValues = {};
                         let gridSearchValues = {};
                         let gridSearchErrors = {};
@@ -217,7 +229,7 @@ function ModelSelection() {
             });
 
             if (readonly && savedConfig.algorithms.length > 0) {
-                const firstEnabledAlgo = Object.values(allAlgorithmsState).find(algo => 
+                const firstEnabledAlgo = Object.values(allAlgorithmsState).find(algo =>
                     savedConfig.algorithms.includes(algo.backend_key)
                 );
                 if (firstEnabledAlgo) {
@@ -238,7 +250,7 @@ function ModelSelection() {
     useEffect(() => {
         const enabledAlgos = Object.values(allAlgorithmsState).filter(algo => algo.enabled);
         const hasEnabledMetrics = metrics.some(m => m.enabled);
-        
+
         if (enabledAlgos.length === 0 || !hasEnabledMetrics) {
             setIsModelInferencingEnabled(false);
             return;
@@ -382,7 +394,7 @@ function ModelSelection() {
         const payload = {
             session_id: datasetState?.sessionId,
             algorithms: algorithmNames,
-            hyperparameter_mode: hyperparameterMode,
+            hyperparameter_modes: hyperparameterMode,
             param_grid: finalParamGrid,
             normalize: normalizeData,
             return_metrics: true,
@@ -423,10 +435,11 @@ function ModelSelection() {
 
             updateWorkflowStage('modelSelection', {
                 config: {
-                    algorithms: Object.values(allAlgorithmsState).filter(algo => algo.enabled),
-                    normalizeData,
-                    metrics,
-                    payload
+                    algorithms: payload.algorithms,
+                    normalize: normalizeData,
+                    performance_metrics: payload.performance_metrics,
+                    hyperparameter_modes: payload.hyperparameter_modes,
+                    param_grid: payload.param_grid
                 },
                 apiResponse: result
             });

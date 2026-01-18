@@ -24,8 +24,12 @@ const ModelInferencing = () => {
   };
 
   const modelGenesisConfig = workflowState?.modelGenesis?.config;
-  const dataPreprocessingMode = modelGenesisConfig?.dataPreprocessing;
-  const modelSelectionMode = modelGenesisConfig?.modelSelection;
+  const dataPreprocessingMode = readonly
+    ? modelGenesisConfig?.data_preprocessing_mode
+    : modelGenesisConfig?.dataPreprocessing;
+  const modelSelectionMode = readonly
+    ? modelGenesisConfig?.model_mode
+    : modelGenesisConfig?.modelSelection;
 
   const isDataPreprocessingAuto = dataPreprocessingMode &&
     ['Swift', 'Standard', 'Comprehensive'].includes(dataPreprocessingMode);
@@ -93,15 +97,41 @@ const ModelInferencing = () => {
       };
     }
 
-    // Original logic for other cases
-    const metricsConfig = workflowState?.modelSelection?.config?.metrics || [];
-    const firstEnabledMetric = metricsConfig.find(metric => metric.enabled);
+    // For manual model selection (both edit and readonly mode)
+    // Get performance_metrics array from config
+    const performanceMetrics = workflowState?.modelSelection?.config?.performance_metrics || [];
+
+    let firstEnabledMetric;
+    if (performanceMetrics.length > 0) {
+      const metricNameMap = {
+        'accuracy': 'Accuracy',
+        'precision': 'Precision',
+        'recall': 'Recall',
+        'f1': 'F1 Score',
+        'log_loss': 'Log Loss',
+      };
+
+      firstEnabledMetric = {
+        name: metricNameMap[performanceMetrics[0]] || 'Accuracy'
+      };
+    }
 
     if (!firstEnabledMetric) {
+      // Fallback to accuracy if no enabled metrics found
+      const metricKey = 'train_accuracy';
+      const best = apiResults.reduce((prev, current) => {
+        const prevValue = prev.metrics?.[metricKey] || 0;
+        const currValue = current.metrics?.[metricKey] || 0;
+        return currValue > prevValue ? current : prev;
+      });
+
+      const bestValue = best.metrics?.[metricKey] || 0;
+      const formattedValue = `${(bestValue * 100).toFixed(2)}%`;
+
       return {
-        metricName: 'N/A',
-        name: 'N/A',
-        value: '0%',
+        metricName: 'Accuracy',
+        name: best.run_name,
+        value: formattedValue,
       };
     }
 
