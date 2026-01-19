@@ -145,10 +145,11 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                 type="number"
                 min="0"
                 max={maxIndex}
+                step="1"
                 value={configData.cfInstanceIndex}
                 onChange={(e) => {
                   const value = parseInt(e.target.value);
-                  if (!readonly && !isGenerating && value >= 0 && value <= maxIndex) {
+                  if (!readonly && !isGenerating) {
                     setConfigData({ ...configData, cfInstanceIndex: value });
                   }
                 }}
@@ -156,6 +157,9 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                 className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''
                   }`}
               />
+              {!(configData.cfInstanceIndex >= 0 && configData.cfInstanceIndex <= maxIndex) && (
+                <p className="text-xs text-red-500 mt-1">CF Instance Index should be between 0 and {maxIndex}</p>
+              )}
             </div>
 
             <div>
@@ -169,7 +173,7 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                 value={configData.limeInstanceIndex}
                 onChange={(e) => {
                   const value = parseInt(e.target.value);
-                  if (!readonly && !isGenerating && value >= 0 && value <= maxIndex) {
+                  if (!readonly && !isGenerating) {
                     setConfigData({ ...configData, limeInstanceIndex: value });
                   }
                 }}
@@ -177,6 +181,9 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                 className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''
                   }`}
               />
+              {!(configData.limeInstanceIndex >= 0 && configData.limeInstanceIndex <= maxIndex) && (
+                <p className="text-xs text-red-500 mt-1">LIME Instance Index should be between 0 and {maxIndex}</p>
+              )}
             </div>
           </div>
 
@@ -214,7 +221,7 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
           </button>
           <button
             onClick={() => onGenerate(configData)}
-            disabled={isGenerating || !configData.pdpTargetClass || !configData.cfDesiredClass}
+            disabled={isGenerating || !configData.pdpTargetClass || !configData.cfDesiredClass || !(configData.cfInstanceIndex >= 0 && configData.cfInstanceIndex <= maxIndex) || !(configData.limeInstanceIndex >= 0 && configData.limeInstanceIndex <= maxIndex)}
             className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors hover:bg-[#7d67a6] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isGenerating && (

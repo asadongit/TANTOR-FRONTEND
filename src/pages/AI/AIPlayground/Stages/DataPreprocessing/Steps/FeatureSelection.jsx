@@ -166,13 +166,19 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
     }
 
     if (toggles.handleMissing) {
-      if (!threshold || threshold.trim() === '') {
-        errors.handleMissing = 'Please enter a threshold value for dropping columns.';
-        isValid = false;
-      }
+      const hasDropConfig = threshold && threshold.trim() !== '';
       const hasImputationMethod = numericalImputation || categoricalImputation || timeSeriesImputation;
-      if (!hasImputationMethod) {
-        errors.handleMissing = 'Please select at least one imputation method';
+
+      if (hasDropConfig) {
+        const thresholdValue = parseFloat(threshold);
+        if (isNaN(thresholdValue) || thresholdValue < 1 || thresholdValue > 100) {
+          errors.handleMissing = 'Threshold must be between 1 and 100';
+          isValid = false;
+        }
+      }
+
+      if (!hasDropConfig && !hasImputationMethod) {
+        errors.handleMissing = 'Please configure at least one method: set a threshold for dropping columns or select an imputation method';
         isValid = false;
       }
     }
