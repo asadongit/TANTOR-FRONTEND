@@ -32,6 +32,7 @@ const CommentsTab = ({ projectData }) => {
         type: '',
         pinned: 0,
         comment: '',
+        component: 'Project',
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -146,14 +147,89 @@ const CommentsTab = ({ projectData }) => {
         setReplyText('');
     };
 
+    const [componentType, setComponentType] = useState('Project');
+    const [componentName, setComponentName] = useState('');
+    const [componentOptions, setComponentOptions] = useState([]);
+    const [isComponentNameDisabled, setIsComponentNameDisabled] = useState(true);
+    const [componentId, setComponentId] = useState(projectData?.id || '');
+
+    const wordCount = (str) => {
+        if (!str || !str.trim()) return 0;
+        return str.trim().split(/\s+/).filter(Boolean).length;
+    };
+
+    const trimToWords = (str, maxWords) => {
+        if (!str) return '';
+        const words = str.trim().split(/\s+/).filter(Boolean);
+        return words.slice(0, maxWords).join(' ');
+    };
+
+
+    useEffect(() => {
+        if (!isAddOpen) return;
+        if (componentType === 'Project') {
+            setComponentOptions([]);
+            setComponentName('');
+            setIsComponentNameDisabled(true);
+            setComponentId(projectId);
+        } else if (componentType === 'Data' || componentType === 'Model') {
+            setIsComponentNameDisabled(false);
+            setComponentName('');
+            setComponentOptions([]);
+            setComponentId('');
+            const fetchOptions = async () => {
+                try {
+                    const apiPath =
+                        componentType === 'Data'
+                            ? `/canvas/projects/${encodeURIComponent(projectData?.name)}/datasets`
+                            : `/canvas/projects/${encodeURIComponent(projectData?.name)}/models`;
+                    const url = `${hostnameAI}${apiPath}`;
+                    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+                    if (!res.ok) throw new Error('Failed to fetch component options');
+                    const data = await res.json();
+                    if (componentType === 'Data') {
+                        setComponentOptions(data.datasets || []);
+                    } else {
+                        setComponentOptions(data.models || []);
+                    }
+                } catch (e) {
+                    setComponentOptions([]);
+                }
+            };
+            fetchOptions();
+        }
+    }, [componentType, isAddOpen, projectData, hostnameAI, token, projectId]);
+
+    useEffect(() => {
+        if (componentType === 'Project') {
+            setComponentId(projectId);
+        } else if (componentType === 'Data') {
+            const found = componentOptions.find((d) => d.dataset_name === componentName);
+            setComponentId(found?.dataset_id || '');
+        } else if (componentType === 'Model') {
+            const found = componentOptions.find((m) => m.model_name === componentName);
+            setComponentId(found?.model_id || '');
+        }
+    }, [componentType, componentName, componentOptions, projectId]);
+
     const openAdd = () => {
-        setAddForm({ subject: '', type: '', pinned: 0, comment: '' });
+        setAddForm({ subject: '', type: '', pinned: 0, comment: '', component: 'Project' });
+        setComponentType('Project');
+        setComponentName('');
+        setComponentOptions([]);
+        setIsComponentNameDisabled(true);
+        setComponentId(projectId);
         setIsAddOpen(true);
     };
 
     const closeAdd = () => {
         setIsAddOpen(false);
-        setAddForm({ subject: '', type: '', pinned: 0, comment: '' });
+        setAddForm({ subject: '', type: '', pinned: 0, comment: '', component: 'Project' });
+        setComponentType('Project');
+        setComponentName('');
+        setComponentOptions([]);
+        setIsComponentNameDisabled(true);
+        setComponentId(projectId);
     };
 
     const canCallApis = Boolean(hostnameAI && token && decodedToken?.sub && projectId);
@@ -167,6 +243,18 @@ const CommentsTab = ({ projectData }) => {
             setError('Subject and Comment are required.');
             return;
         }
+        if (wordCount(addForm.subject) > 120) {
+            setError('Subject cannot exceed 120 words.');
+            return;
+        }
+        if (wordCount(addForm.comment) > 500) {
+            setError('Comment cannot exceed 500 words.');
+            return;
+        }
+        if (!componentId) {
+            setError('Please select a valid component name.');
+            return;
+        }
 
         setIsSubmitting(true);
         setError(null);
@@ -174,8 +262,8 @@ const CommentsTab = ({ projectData }) => {
             const payload = {
                 user_id: decodedToken.sub,
                 subject: addForm.subject.trim(),
-                component: 'Project',
-                component_id: projectId,
+                component: componentType,
+                component_id: componentId,
                 pinned: Number(addForm.pinned) ? 1 : 0,
                 comment: addForm.comment.trim(),
                 project_id: projectId,
@@ -316,7 +404,7 @@ const CommentsTab = ({ projectData }) => {
 
     return (
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-            {/* ...same UI as Data CommentsTab... */}
+
             <div className="flex flex-col gap-3 mb-4">
                 <div className="flex items-center justify-between">
                     <div>
@@ -449,33 +537,106 @@ const CommentsTab = ({ projectData }) => {
                         <div className="flex items-center justify-between px-5 py-4 border-b">
                             <div>
                                 <div className="text-base font-semibold text-gray-900">Add Comment</div>
-                                <div className="text-xs text-gray-500">Project: {projectId}</div>
+                                <div className="text-xs text-gray-500">Project: {projectData?.project_name || projectId}</div>
                             </div>
                             <button className="p-2 hover:bg-gray-50 rounded-lg" onClick={closeAdd} title="Close">
                                 <X className="w-4 h-4 text-gray-600" />
                             </button>
                         </div>
-
                         <div className="p-5 space-y-4">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {/* Component Type */}
+                                <div>
+                                    <label className="block text-xs text-gray-600 mb-1">Component Type</label>
+                                    <select
+                                        value={componentType}
+                                        onChange={(e) => {
+                                            setComponentType(e.target.value);
+                                            setAddForm((s) => ({ ...s, component: e.target.value }));
+                                        }}
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+                                    >
+                                        <option value="Project">Project</option>
+                                        <option value="Data">Data</option>
+                                        <option value="Model">Model</option>
+                                    </select>
+                                </div>
+                                {/* Component Name */}
+                                <div>
+                                    <label className="block text-xs text-gray-600 mb-1">Component Name</label>
+                                    <select
+                                        value={componentName}
+                                        onChange={(e) => setComponentName(e.target.value)}
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+                                        disabled={isComponentNameDisabled}
+                                    >
+                                        <option value="">Select</option>
+                                        {componentType === 'Data' &&
+                                            componentOptions.map((d) => (
+                                                <option key={d.dataset_id} value={d.dataset_name}>
+                                                    {d.dataset_name}
+                                                </option>
+                                            ))}
+                                        {componentType === 'Model' &&
+                                            componentOptions.map((m) => (
+                                                <option key={m.model_id} value={m.model_name}>
+                                                    {m.model_name}
+                                                </option>
+                                            ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs text-gray-600 mb-1">Category</label>
+                                    <select
+                                        value={addForm.type}
+                                        onChange={(e) => setAddForm((s) => ({ ...s, type: e.target.value }))}
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+                                    >
+                                        <option value="">Select</option>
+                                        <option value="accuracy">Accuracy</option>
+                                        <option value="data per-processing">Data Pre-Processing</option>
+                                        <option value="modelling">Modelling</option>
+                                        <option value="training data">Training Data</option>
+                                    </select>
+                                </div>
                                 <div>
                                     <label className="block text-xs text-gray-600 mb-1">Subject</label>
                                     <input
                                         value={addForm.subject}
-                                        onChange={(e) => setAddForm((s) => ({ ...s, subject: e.target.value }))}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            if (wordCount(value) <= 120) {
+                                                setAddForm((s) => ({ ...s, subject: value }));
+                                            } else {
+                                                setAddForm((s) => ({ ...s, subject: trimToWords(value, 120) }));
+                                            }
+                                        }}
                                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                                        placeholder="Project status"
+                                        placeholder="Subject"
                                     />
+                                    <div className="text-xs text-gray-400 text-right">{wordCount(addForm.subject)}/120 words</div>
                                 </div>
-                                <div>
-                                    <label className="block text-xs text-gray-600 mb-1">Type</label>
-                                    <input
-                                        value={addForm.type}
-                                        onChange={(e) => setAddForm((s) => ({ ...s, type: e.target.value }))}
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                                        placeholder="general"
-                                    />
-                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs text-gray-600 mb-1">Add Comment</label>
+                                <textarea
+                                    value={addForm.comment}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        if (wordCount(value) <= 500) {
+                                            setAddForm((s) => ({ ...s, comment: value }));
+                                        } else {
+                                            setAddForm((s) => ({ ...s, comment: trimToWords(value, 500) }));
+                                        }
+                                    }}
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[80px]"
+                                    placeholder="Add Comment"
+                                />
+                                <div className="text-xs text-gray-400 text-right">{wordCount(addForm.comment)}/500 words</div>
                             </div>
 
                             <div className="flex items-center gap-2">
@@ -489,18 +650,7 @@ const CommentsTab = ({ projectData }) => {
                                     Pinned
                                 </label>
                             </div>
-
-                            <div>
-                                <label className="block text-xs text-gray-600 mb-1">Comment</label>
-                                <textarea
-                                    value={addForm.comment}
-                                    onChange={(e) => setAddForm((s) => ({ ...s, comment: e.target.value }))}
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[120px]"
-                                    placeholder="Write your comment..."
-                                />
-                            </div>
                         </div>
-
                         <div className="flex justify-end gap-2 px-5 py-4 border-t">
                             <button
                                 className="px-3 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50"

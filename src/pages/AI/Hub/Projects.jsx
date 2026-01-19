@@ -6,6 +6,7 @@ import DataTable from '../../../components/DataTable';
 import { useAuth } from '../../../context/AuthContext';
 import { CreateProjectModal } from '../AIPlayground/modals/Dashboard/CreateProjectModal';
 import DeleteModal from './Components/DeleteModal';
+import { updateRecentAccess } from './Components/Hooks';
 
 const Projects = () => {
     const navigate = useNavigate();
@@ -27,6 +28,11 @@ const Projects = () => {
     const [dashboardData, setDashboardData] = useState(null);
     const [dashboardLoading, setDashboardLoading] = useState(false);
     const [dashboardError, setDashboardError] = useState(null);
+
+    // New state for recent projects
+    const [recentProjects, setRecentProjects] = useState([]);
+    const [recentProjectsLoading, setRecentProjectsLoading] = useState(false);
+    const [recentProjectsError, setRecentProjectsError] = useState(null);
 
     useEffect(() => {
         const fetchProjects = async () => {
@@ -70,6 +76,30 @@ const Projects = () => {
 
         if (hostnameAI && token && decodedToken?.sub) fetchDashboard();
     }, [hostnameAI, token, decodedToken?.sub]);
+
+    // Fetch recent projects from new API
+    useEffect(() => {
+        const fetchRecentProjects = async () => {
+            if (!hostnameAI || !token || !decodedToken?.sub) return;
+            setRecentProjectsLoading(true);
+            setRecentProjectsError(null);
+            try {
+                const url = `${hostnameAI}/canvas/entity/recent_access/list?user_id=${decodedToken.sub}&entity_type=project&limit=2`;
+                const resp = await fetch(url, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (!resp.ok) throw new Error('Failed to fetch recent projects');
+                const data = await resp.json();
+                // Expecting { user_id, recent_entities: [...] }
+                setRecentProjects(Array.isArray(data?.recent_entities) ? data.recent_entities : []);
+            } catch (err) {
+                setRecentProjectsError(err?.message || 'Failed to fetch recent projects');
+            } finally {
+                setRecentProjectsLoading(false);
+            }
+        };
+        fetchRecentProjects();
+    }, [hostnameAI, token, decodedToken?.sub, refreshTrigger]);
 
     const statsCards = useMemo(() => {
         if (!dashboardData?.counts) {
@@ -116,14 +146,6 @@ const Projects = () => {
         ];
     }, [dashboardData]);
 
-    const lastAccessed = useMemo(() => {
-        const recent = dashboardData?.recent_projects;
-        if (Array.isArray(recent) && recent.length) {
-            return recent.slice(0, 6).map((p, idx) => ({ id: p?.id ?? idx, name: p?.name ?? '—' }));
-        }
-        return [];
-    }, [dashboardData]);
-
     const handleSearchChange = (e) => {
         setSearchTerm(e.target.value);
     };
@@ -146,8 +168,18 @@ const Projects = () => {
         }
     };
 
-    const handleProjectLibrary = (row) => {
+    const handleProjectLibrary = async (row) => {
         navigate(`/ai/hub/projects/${row.id}/library`, { state: { ProjectData: row } });
+        await updateRecentAccess({
+            row,
+            entityType: 'project',
+            hostnameAI,
+            token,
+            userId: decodedToken?.sub,
+            setRecentList: setRecentProjects,
+            setRecentLoading: setRecentProjectsLoading,
+            limit: 2,
+        });
     };
 
     const handleDelete = (row) => {
@@ -266,16 +298,19 @@ const Projects = () => {
                 <CheckCircle className="w-5 h-5 text-[#8e78b7]" />
                 <span className="text-gray-600 text-sm">Recent Projects</span>
             </div>
-            {dashboardLoading ? (
+            {recentProjectsLoading ? (
                 <div className="text-sm text-gray-500">Loading…</div>
-            ) : dashboardError ? (
-                <div className="text-sm text-red-600">{dashboardError}</div>
-            ) : lastAccessed.length ? (
-                <div className="flex flex-wrap items-center gap-2">
-                    {lastAccessed.map((project) => (
-                        <div key={project.id} className="flex items-center gap-2 bg-gray-100 px-2 py-1.5 rounded-md">
+            ) : recentProjectsError ? (
+                <div className="text-sm text-red-600">{recentProjectsError}</div>
+            ) : recentProjects.length ? (
+                <div className="flex flex-col gap-2">
+                    {recentProjects.map((project, idx) => (
+                        <div key={project.entity_id ?? idx} className="flex items-center gap-3 bg-gray-100 px-2 py-1.5 rounded-md">
                             <Target className="w-4 h-4 text-gray-500" />
-                            <span className="text-sm text-gray-700">{project.name}</span>
+                            <span className="text-sm text-gray-700 font-medium">{project.entity_name ?? '—'}</span>
+                            <span className="text-xs text-gray-500">
+                                {project.accessed_at ? new Date(project.accessed_at).toLocaleString('en-GB') : ''}
+                            </span>
                         </div>
                     ))}
                 </div>
