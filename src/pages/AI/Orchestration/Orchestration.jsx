@@ -1,5 +1,5 @@
-import { FileText, Clock, RotateCcw, AlertTriangle, TrendingUp, Search, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { FileText, Clock, AlertTriangle, TrendingUp, Search, Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import DataTable from '../../../components/DataTable';
 import { useNavigate } from 'react-router-dom';
@@ -8,70 +8,103 @@ import { useNavigate } from 'react-router-dom';
 const Orchestration = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('Recent Activity');
+    const [summaryData, setSummaryData] = useState(null);
+    const [schedulerData, setSchedulerData] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [schedulerLoading, setSchedulerLoading] = useState(false);
     const navigate = useNavigate();
 
-    const statsData = [
+    useEffect(() => {
+        fetchSummaryData();
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === 'Scheduler') {
+            fetchSchedulerData();
+        }
+    }, [activeTab]);
+
+    const fetchSummaryData = async () => {
+        try {
+            const response = await fetch('http://192.168.3.86:30080/api/v1/orchestration/schedules/dashboard/summary');
+            const data = await response.json();
+            setSummaryData(data);
+            setLoading(false);
+        } catch (error) {
+            console.error('Error fetching summary data:', error);
+            setLoading(false);
+        }
+    };
+
+    const fetchSchedulerData = async () => {
+        setSchedulerLoading(true);
+        try {
+            const response = await fetch('http://192.168.3.86:30080/api/v1/orchestration/schedules/summary');
+            const data = await response.json();
+            
+            // Transform API data to table format
+            const transformedData = data.map((item, index) => ({
+                sno: index + 1,
+                id: item.schedule_id,
+                schedule_name: item.name || '-',
+                frequency: item.frequency || '-',
+                last_drift_check: '-',
+                next_run: item.next_run || '-',
+                status: item.status || '-'
+            }));
+            
+            setSchedulerData(transformedData);
+            setSchedulerLoading(false);
+        } catch (error) {
+            console.error('Error fetching scheduler data:', error);
+            setSchedulerLoading(false);
+        }
+    };
+
+    const formatRuntime = (milliseconds) => {
+        if (!milliseconds) return 'N/A';
+        const seconds = Math.floor(milliseconds / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return `${minutes}m ${remainingSeconds}s`;
+    };
+
+    const statsData = summaryData ? [
         {
             label: 'Active Schedules',
-            value: '24',
+            value: summaryData.active_schedules_count.toString(),
             icon: FileText,
-            subtitle: '4 running now',
-            subtitleColor: 'text-gray-500'
         },
         {
             label: 'Intervention Needed',
-            value: '3',
+            value: summaryData.intervention_needed_count.toString(),
             icon: AlertTriangle,
-            subtitle: 'Drift > threshold',
-            subtitleColor: 'text-red-500'
         },
         {
             label: 'Average Runtime',
-            value: '12m 40s',
+            value: formatRuntime(summaryData.avg_prediction_runtime_ms),
             icon: Clock,
-            subtitle: 'Optimized',
-            subtitleColor: 'text-gray-500'
-        },
-        {
-            label: 'Auto-Retrains',
-            value: '8',
-            icon: RotateCcw,
-            subtitle: 'Last 7 days',
-            subtitleColor: 'text-gray-500'
         },
         {
             label: 'Data Drift Alerts',
-            value: '8',
+            value: summaryData.alert_counts.data_drift.toString(),
             icon: TrendingUp,
-            subtitle: 'Last 24 hours',
-            subtitleColor: 'text-gray-500'
         },
         {
             label: 'Model Drift Alerts',
-            value: '3',
+            value: summaryData.alert_counts.model_drift.toString(),
             icon: AlertTriangle,
-            subtitle: 'Critical',
-            subtitleColor: 'text-red-500'
         },
-    ];
+    ] : [];
 
     const recentActivities = [
         { text: 'Model Credit_Default_v3 ran successfully', icon: Clock },
         { text: 'Data drift detected on Income_Band', icon: AlertTriangle },
         { text: 'Run blocked for Fraud_XGB_v2', icon: AlertTriangle },
         { text: 'Owner approved override — model executed', icon: Clock },
-        { text: 'Retrain scheduled for Retail_PD_LGBM', icon: RotateCcw },
+        { text: 'Retrain scheduled for Retail_PD_LGBM', icon: Clock },
         { text: 'Auto-retrain completed for Fraud_XGB_v2', icon: Clock },
         { text: 'Run blocked for Fraud_XGB_v2', icon: AlertTriangle },
-    ];
-
-    const schedulerData = [
-        { sno: 1, model_name: 'Customer_Churn_v4', frequency: 'Daily at 09:00', last_drift_check: '0.02', drift_status: 'Safe', next_run: 'In 45 minutes', status: 'Running' },
-        { sno: 2, model_name: 'Sales_Report_Q3', frequency: 'Weekly on Mondays at 10:00', last_drift_check: '0.20', drift_status: 'High', next_run: 'In 3 hours', status: 'Blocked' },
-        { sno: 3, model_name: 'Inventory_Analysis', frequency: 'Monthly on the 1st of each month', last_drift_check: '0.02', drift_status: 'Safe', next_run: 'In 2 days', status: 'Waiting' },
-        { sno: 4, model_name: 'User_Engagement_Stats', frequency: 'Daily at 08:30', last_drift_check: '0.02', drift_status: 'Safe', next_run: 'In 30 minutes', status: 'Waiting' },
-        { sno: 5, model_name: 'Market_Research_Update', frequency: 'Bi-weekly on Wednesdays', last_drift_check: '0.20', drift_status: 'High', next_run: 'In 1 day', status: 'Blocked' },
-        { sno: 6, model_name: 'Website_Traffic_Report', frequency: 'Daily at 11:00', last_drift_check: '0.02', drift_status: 'Safe', next_run: 'In 50 minutes', status: 'Running' },
     ];
 
     const interventionsData = [
@@ -82,14 +115,19 @@ const Orchestration = () => {
 
     const tabs = ['Recent Activity', 'Scheduler', 'Interventions'];
 
-    const renderLastDriftCheck = (row) => (
-        <div className="flex items-center gap-2">
-            <span className="text-gray-700">{row.last_drift_check}</span>
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDriftStatusColor(row.drift_status)}`}>
-                • {row.drift_status}
-            </span>
-        </div>
-    );
+    const renderLastDriftCheck = (row) => {
+        if (row.last_drift_check === '-' || row.drift_status === '-') {
+            return <span className="text-gray-500">-</span>;
+        }
+        return (
+            <div className="flex items-center gap-2">
+                <span className="text-gray-700">{row.last_drift_check}</span>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDriftStatusColor(row.drift_status)}`}>
+                    • {row.drift_status}
+                </span>
+            </div>
+        );
+    };
 
     const renderStatus = (row) => (
         <span className={`px-3 py-1 rounded-md text-xs font-medium ${getStatusColor(row.status)}`}>
@@ -97,17 +135,14 @@ const Orchestration = () => {
         </span>
     );
 
-    const StatCard = ({ label, value, icon: Icon, subtitle, subtitleColor }) => (
+    const StatCard = ({ label, value, icon: Icon }) => (
         <div className="bg-white rounded-lg px-4 py-3 border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center gap-2 mb-2">
                 <Icon className="w-5 h-5 text-[#8e78b7]" />
                 <span className="text-gray-700 font-semibold text-md">{label}</span>
             </div>
-            <div className="flex items-end justify-between">
+            <div className="pl-8">
                 <span className="text-xl sm:text-2xl font-bold text-gray-800">{value}</span>
-                {subtitle && (
-                    <span className={`text-sm ${subtitleColor}`}>{subtitle}</span>
-                )}
             </div>
         </div>
     );
@@ -115,6 +150,7 @@ const Orchestration = () => {
     const getStatusColor = (status) => {
         switch (status) {
             case 'Running':
+            case 'Active':
                 return 'bg-green-100 text-green-700';
             case 'Blocked':
                 return 'bg-red-100 text-red-700';
@@ -164,11 +200,15 @@ const Orchestration = () => {
 
             <div className="space-y-6">
                 <div className="bg-gradient-to-r from-[#8e78b7] via-purple-300 to-purple-100 rounded-xl p-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {statsData.map((stat, index) => (
-                            <StatCard key={index} {...stat} />
-                        ))}
-                    </div>
+                    {loading ? (
+                        <div className="text-center py-8 text-white">Loading...</div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                            {statsData.map((stat, index) => (
+                                <StatCard key={index} {...stat} />
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
@@ -208,30 +248,38 @@ const Orchestration = () => {
                         )}
 
                         {activeTab === 'Scheduler' && (
-                            <DataTable
-                                columns={[
-                                    { key: 'sno', label: 'Sno', sortable: true, width: '80px' },
-                                    { key: 'model_name', label: 'Model Name', sortable: true },
-                                    { key: 'frequency', label: 'Frequency', sortable: true },
-                                    {
-                                        key: 'last_drift_check',
-                                        label: 'Last Drift Check',
-                                        sortable: true,
-                                        render: renderLastDriftCheck
-                                    },
-                                    { key: 'next_run', label: 'Next Run', sortable: true },
-                                    {
-                                        key: 'status',
-                                        label: 'Status',
-                                        sortable: true,
-                                        render: renderStatus
-                                    },
-                                ]}
-                                data={schedulerData}
-                                actions={[]}
-                                isLoading={false}
-                                isError={false}
-                            />
+                            <>
+                                {schedulerLoading ? (
+                                    <div className="text-center py-8 text-gray-500">Loading...</div>
+                                ) : schedulerData.length === 0 ? (
+                                    <div className="text-center py-8 text-gray-500">No data present</div>
+                                ) : (
+                                    <DataTable
+                                        columns={[
+                                            { key: 'sno', label: 'Sno', sortable: true, width: '80px' },
+                                            { key: 'schedule_name', label: 'Schedule Name', sortable: true },
+                                            { key: 'frequency', label: 'Frequency', sortable: true },
+                                            {
+                                                key: 'last_drift_check',
+                                                label: 'Last Drift Check',
+                                                sortable: true,
+                                                render: renderLastDriftCheck
+                                            },
+                                            { key: 'next_run', label: 'Next Run', sortable: true },
+                                            {
+                                                key: 'status',
+                                                label: 'Status',
+                                                sortable: true,
+                                                render: renderStatus
+                                            },
+                                        ]}
+                                        data={schedulerData}
+                                        actions={[]}
+                                        isLoading={false}
+                                        isError={false}
+                                    />
+                                )}
+                            </>
                         )}
 
                         {activeTab === 'Interventions' && (

@@ -1,33 +1,17 @@
 import { useState } from "react";
 import DiscardModal from "./modals/DiscardModal";
-import DatePickerModal from "./modals/DatePickerModal";
 import { ChevronLeft } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
 import DeliveryAlertsTab from "./Tabs/DeliveryAlertsTab";
 import ConfigurationTab from "./Tabs/ConfigurationTab";
 import RecipientsTab from "./Tabs/RecipientsTab";
+import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 
 const NewSchedule = () => {
     const navigate = useNavigate();
+    const { schedulerState } = useAIPlayground();
     const [activeTab, setActiveTab] = useState('Configuration');
-    const [scheduleType, setScheduleType] = useState('Single Run');
-    const [showDateModal, setShowDateModal] = useState(false);
     const [showDiscardModal, setShowDiscardModal] = useState(false);
-    const [selectedDate, setSelectedDate] = useState(null);
-    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-    const [summary, setSummary] = useState(null);
-    const [formData, setFormData] = useState({
-        project: 'Project 1', 
-        model: '', 
-        dataSource: '', 
-        destinationTable: '',
-        timeZone: '', 
-        startDate: '', 
-        runTime: '', 
-        frequency: '', 
-        runDays: []
-    });
     const [alertFormData, setAlertFormData] = useState({
         warningThreshold: 0.15, 
         blockingThreshold: 0.24, 
@@ -40,77 +24,20 @@ const NewSchedule = () => {
     });
 
     const tabs = ['Configuration', 'Delivery & Alerts', 'Recipients'];
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'];
 
-    const handleInputChange = (field, value) => setFormData(prev => ({ ...prev, [field]: value }));
     const handleAlertInputChange = (field, value) => setAlertFormData(prev => ({ ...prev, [field]: value }));
 
-    const handleScheduleTypeChange = (newType) => {
-        setScheduleType(newType);
-        setFormData(prev => ({ 
-            ...prev, 
-            frequency: '', 
-            runDays: [], 
-            timeZone: '', 
-            startDate: '', 
-            runTime: '' 
-        }));
-        setSummary(null);
-        setSelectedDate(null);
-    };
-
     const hasUnsavedChanges = () => 
-        formData.model || 
-        formData.dataSource || 
-        formData.destinationTable ||
-        formData.timeZone || 
-        formData.startDate || 
-        formData.runTime || 
-        summary;
+        schedulerState.project || 
+        schedulerState.model || 
+        schedulerState.source.source_table || 
+        schedulerState.target.destination_table ||
+        schedulerState.scheduler.timeZone || 
+        schedulerState.scheduler.startDateTime || 
+        schedulerState.scheduler.frequency;
 
     const handleBackClick = () => 
         hasUnsavedChanges() ? setShowDiscardModal(true) : navigate('/ai/orchestration');
-
-    const handleDateModalAdd = () => {
-        if (selectedDate && formData.runTime) {
-            const today = new Date();
-            const isToday = selectedDate === today.getDate() && 
-                           selectedMonth === today.getMonth() && 
-                           selectedYear === today.getFullYear();
-
-            if (isToday) {
-                const [hours, minutes] = formData.runTime.split(':');
-                const selectedTime = parseInt(hours) * 60 + parseInt(minutes);
-                const currentTime = today.getHours() * 60 + today.getMinutes();
-
-                if (selectedTime <= currentTime) {
-                    alert('Please select a time in the future for today\'s date');
-                    return;
-                }
-            }
-
-            handleInputChange('startDate', 
-                `${String(selectedDate).padStart(2, '0')}/${String(selectedMonth + 1).padStart(2, '0')}/${selectedYear}`
-            );
-            setShowDateModal(false);
-        }
-    };
-
-    const generateSummary = () => {
-        if (!formData.startDate || !formData.runTime || !formData.timeZone) return;
-
-        const formattedDate = `${monthNames[selectedMonth]} ${selectedDate}`;
-        const time = `${formData.runTime} (${formData.timeZone.toUpperCase()})`;
-
-        const summaries = {
-            'Single Run': `• Scheduled to run once on ${formattedDate} at ${time}.\n• One-time execution scheduled for ${formattedDate}, ${time}.`,
-            'Recurring': `• Scheduled to run ${formData.frequency || 'selected frequency'} starting ${formattedDate} at ${time}.\n• Recurring execution on ${formData.frequency || 'selected frequency'} basis.`,
-            'Periodic (Interval)': `• Scheduled to run ${formData.frequency || 'selected interval'} starting ${formattedDate} at ${time}.\n• Periodic execution at ${formData.frequency || 'selected interval'} intervals.`
-        };
-
-        setSummary(summaries[scheduleType]);
-    };
 
     const handleNextFromDeliveryAlerts = () => {
         setActiveTab('Recipients');
@@ -121,7 +48,15 @@ const NewSchedule = () => {
     };
 
     const handleSaveAndContinue = () => {
-        if (summary) {
+        const isConfigurationComplete = 
+            schedulerState.project &&
+            schedulerState.model &&
+            schedulerState.source.source_table &&
+            schedulerState.target.destination_table &&
+            schedulerState.scheduler.timeZone &&
+            schedulerState.scheduler.startDateTime;
+
+        if (isConfigurationComplete) {
             setActiveTab('Delivery & Alerts');
         }
     };
@@ -132,13 +67,19 @@ const NewSchedule = () => {
 
     const handleCreateSchedule = () => {
         console.log('Creating schedule with data:', {
-            formData,
-            alertFormData,
-            scheduleType,
-            summary
+            schedulerState,
+            alertFormData
         });
         navigate('/ai/orchestration');
     };
+
+    const isConfigurationComplete = 
+        schedulerState.project &&
+        schedulerState.model &&
+        schedulerState.source.source_table &&
+        schedulerState.target.destination_table &&
+        schedulerState.scheduler.timeZone &&
+        schedulerState.scheduler.startDateTime;
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -176,19 +117,7 @@ const NewSchedule = () => {
 
             <div className="flex-1 pt-4">
                 <div className="bg-white rounded-lg shadow-sm p-6">
-                    {activeTab === 'Configuration' && (
-                        <ConfigurationTab
-                            formData={formData}
-                            handleInputChange={handleInputChange}
-                            scheduleType={scheduleType}
-                            handleScheduleTypeChange={handleScheduleTypeChange}
-                            setShowDateModal={setShowDateModal}
-                            generateSummary={generateSummary}
-                            summary={summary}
-                            selectedMonth={selectedMonth}
-                            selectedDate={selectedDate}
-                        />
-                    )}
+                    {activeTab === 'Configuration' && <ConfigurationTab />}
 
                     {activeTab === 'Delivery & Alerts' && (
                         <DeliveryAlertsTab
@@ -206,9 +135,9 @@ const NewSchedule = () => {
                     {activeTab === 'Configuration' && (
                         <button 
                             onClick={handleSaveAndContinue} 
-                            disabled={!summary}
+                            disabled={!isConfigurationComplete}
                             className={`px-6 py-2 rounded text-sm font-medium transition-colors ${
-                                summary 
+                                isConfigurationComplete 
                                     ? 'bg-[#8e78b7] text-white hover:bg-[#b5a3cc] cursor-pointer' 
                                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                             }`}
@@ -257,19 +186,6 @@ const NewSchedule = () => {
                 isOpen={showDiscardModal} 
                 onDiscard={() => navigate('/ai/orchestration')} 
                 onStay={() => setShowDiscardModal(false)} 
-            />
-            <DatePickerModal 
-                isOpen={showDateModal} 
-                onClose={() => setShowDateModal(false)} 
-                selectedDate={selectedDate} 
-                setSelectedDate={setSelectedDate}
-                selectedMonth={selectedMonth} 
-                setSelectedMonth={setSelectedMonth} 
-                selectedYear={selectedYear} 
-                setSelectedYear={setSelectedYear}
-                formData={formData} 
-                handleInputChange={handleInputChange} 
-                onAdd={handleDateModalAdd} 
             />
         </div>
     );
