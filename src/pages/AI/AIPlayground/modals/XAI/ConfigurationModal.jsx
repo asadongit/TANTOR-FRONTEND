@@ -65,8 +65,8 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                 </div>
               )}
             </div>
-            <button 
-              onClick={onClose} 
+            <button
+              onClick={onClose}
               className="text-gray-400 hover:text-gray-600"
               disabled={isGenerating}
             >
@@ -88,14 +88,16 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">PDP Target Class</label>
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                PDP Target Class <span className="text-red-500">*</span>
+              </label>
               <select
                 value={configData.pdpTargetClass}
                 onChange={(e) => !readonly && !isGenerating && setConfigData({ ...configData, pdpTargetClass: e.target.value })}
                 disabled={readonly || isGenerating}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${
-                  readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''
-                }`}
+                className={`w-full px-3 py-2 border rounded-lg text-sm ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed border-gray-300' :
+                  !configData.pdpTargetClass ? 'border-red-300' : 'border-gray-300'
+                  }`}
               >
                 <option value="">Select</option>
                 {pdpTargetClasses.map((cls) => (
@@ -104,17 +106,22 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                   </option>
                 ))}
               </select>
+              {!configData.pdpTargetClass && (
+                <p className="text-xs text-red-500 mt-1">Please select at least one value</p>
+              )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">CF Desired Class</label>
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                CF Desired Class <span className="text-red-500">*</span>
+              </label>
               <select
                 value={configData.cfDesiredClass}
                 onChange={(e) => !readonly && !isGenerating && setConfigData({ ...configData, cfDesiredClass: e.target.value })}
                 disabled={readonly || isGenerating}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${
-                  readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''
-                }`}
+                className={`w-full px-3 py-2 border rounded-lg text-sm ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed border-gray-300' :
+                  !configData.cfDesiredClass ? 'border-red-300' : 'border-gray-300'
+                  }`}
               >
                 <option value="">Select</option>
                 {cfDesiredClasses.map((cls) => (
@@ -123,6 +130,9 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                   </option>
                 ))}
               </select>
+              {!configData.cfDesiredClass && (
+                <p className="text-xs text-red-500 mt-1">Please select at least one value</p>
+              )}
             </div>
           </div>
 
@@ -143,9 +153,8 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                   }
                 }}
                 disabled={readonly || isGenerating}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${
-                  readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''
-                }`}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''
+                  }`}
               />
             </div>
 
@@ -165,9 +174,8 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                   }
                 }}
                 disabled={readonly || isGenerating}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${
-                  readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''
-                }`}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''
+                  }`}
               />
             </div>
           </div>
@@ -206,7 +214,7 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
           </button>
           <button
             onClick={() => onGenerate(configData)}
-            disabled={readonly || isGenerating}
+            disabled={isGenerating || !configData.pdpTargetClass || !configData.cfDesiredClass}
             className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors hover:bg-[#7d67a6] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isGenerating && (
