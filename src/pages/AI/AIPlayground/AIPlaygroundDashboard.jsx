@@ -447,60 +447,29 @@ const AIPlayground = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 mb-8">
-                  <input
-                    ref={fileInputRef}
-                    id="file-upload"
-                    type="file"
-                    accept=".pdf,.xls,.xlsx"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-
+                <div className="mb-8">
                   <div
-                    className={`flex-1 border-2 border-dashed border-slate-200 rounded-lg p-4 transition-opacity ${isDisabled ? 'opacity-50 bg-slate-50' : 'bg-white'
+                    className={`border border-slate-200 rounded-lg p-5 transition-opacity ${isDisabled ? 'opacity-50 bg-slate-50' : 'bg-white'
                       }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-slate-700 mb-1">
-                          Drag & Drop or Choose file to Upload
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className="w-12 h-12 bg-cyan-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Database className="w-6 h-6 text-cyan-600" />
                         </div>
-                        <div className="text-xs text-slate-400">
-                          Supported: Pdf, XL, XLSX | Max size: 25 MB
-                        </div>
-                      </div>
-                      <button
-                        disabled={isDisabled}
-                        onClick={() => fileInputRef.current?.click()}
-                        className="px-5 py-2 bg-white text-[#8e78b7] border border-violet-200 rounded-md text-sm font-medium hover:bg-violet-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-                      >
-                        <Upload size={16} />
-                        Upload
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="text-sm font-medium text-slate-400">OR</div>
-
-                  {/* Fetch Data Box */}
-                  <div
-                    className={`flex-1 border border-slate-200 rounded-lg p-4 transition-opacity ${isDisabled ? 'opacity-50 bg-slate-50' : 'bg-white'
-                      }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-slate-700 mb-1">
-                          Fetch Data from Table
-                        </div>
-                        <div className="text-xs text-slate-400">
-                          Load data directly from available database tables.
+                        <div className="flex-1">
+                          <div className="text-sm font-semibold text-slate-700 mb-1">
+                            Fetch Data from Table
+                          </div>
+                          <div className="text-xs text-slate-400">
+                            Load data directly from available database tables
+                          </div>
                         </div>
                       </div>
                       <button
                         disabled={isDisabled}
                         onClick={handleFetchData}
-                        className="px-5 py-2 bg-white text-[#8e78b7] border border-violet-200 rounded-md text-sm font-medium hover:bg-violet-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                        className="px-6 py-2.5 bg-[#8e78b7] text-white rounded-md text-sm font-medium disabled:cursor-not-allowed disabled:bg-slate-300 transition-colors flex items-center gap-2 shadow-sm"
                       >
                         <Database size={16} />
                         Fetch Data
