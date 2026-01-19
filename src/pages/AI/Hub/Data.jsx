@@ -8,6 +8,7 @@ import { useAuth } from '../../../context/AuthContext';
 import DeleteModal from './Components/DeleteModal';
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 import { updateRecentAccess } from './Components/Hooks';
+import { updateRecentAccess } from './Components/Hooks';
 
 const Data = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -356,7 +357,6 @@ const Data = () => {
 
       setMode('dataset');
       navigate('/ai/playground');
-      // Update recent access after successful action
       await updateRecentAccess({
         row,
         entityType: 'data',

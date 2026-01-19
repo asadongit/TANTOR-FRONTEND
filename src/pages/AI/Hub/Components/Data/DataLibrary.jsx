@@ -99,7 +99,7 @@ const DataLibrary = () => {
                     )}
 
                     {activeTab === 'Projects' && (
-                        <ProjectsTab />
+                        <ProjectsTab datasetId={datasetData?.id} />
                     )}
 
                     {activeTab === 'Comments' && (
