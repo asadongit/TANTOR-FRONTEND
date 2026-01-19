@@ -23,12 +23,14 @@ const Data = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [aiCanvasLoading, setAiCanvasLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [recentAccessed, setRecentAccessed] = useState([]);
+  const [recentAccessedLoading, setRecentAccessedLoading] = useState(false);
+  const [recentAccessedError, setRecentAccessedError] = useState(null);
   const { setProjectState, setDatasetState, setMode } = useAIPlayground();
 
   const navigate = useNavigate();
   const { token, decodedToken } = useAuth();
   const hostnameAI = window._env_?.VITE_AI_API;
-  console.log(decodedToken.sub)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -82,6 +84,32 @@ const Data = () => {
     }
   }, [hostnameAI, token, decodedToken.sub]);
 
+  useEffect(() => {
+    const fetchRecentAccessed = async () => {
+      if (!decodedToken?.sub) return;
+      setRecentAccessedLoading(true);
+      setRecentAccessedError(null);
+      try {
+        const resp = await fetch(
+          `${hostnameAI}/canvas/entity/recent_access/list?user_id=${decodedToken.sub}&entity_type=data`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        if (!resp.ok) throw new Error('Failed to fetch recent accessed data');
+        const data = await resp.json();
+        setRecentAccessed(data || []);
+      } catch (err) {
+        setRecentAccessedError(err.message);
+      } finally {
+        setRecentAccessedLoading(false);
+      }
+    };
+    fetchRecentAccessed();
+  }, [hostnameAI, token, decodedToken?.sub]);
+
   const statsData = useMemo(() => {
     if (!dashboardData) return [
       { label: 'Sources', value: '07', icon: FileText },
@@ -99,17 +127,16 @@ const Data = () => {
   }, [dashboardData]);
 
   const lastAccessedData = useMemo(() => {
-    return dashboardData?.recently_accessed_datasets || [
-      { name: 'Churn', count: 2, trend: 'up' },
-      { name: 'NPA', count: 3, trend: 'up' },
-      { name: 'CS', count: 4, trend: 'down' },
-      { name: 'Fraud', count: 4, trend: 'up' },
-      { name: 'NPA', count: 3, trend: 'down' },
-      { name: 'Fraud', count: 4, trend: 'up' },
-      { name: 'Campaign', count: 2, trend: 'down' },
-      { name: 'M_risk', count: 6, trend: 'up' },
-    ];
-  }, [dashboardData]);
+    if (recentAccessed && Array.isArray(recentAccessed) && recentAccessed.length > 0) {
+      // Map API response to expected format: { name, count }
+      return recentAccessed.map(item => ({
+        name: item.entity_name || item.name || 'Unknown',
+        count: item.access_count || item.count || 1,
+        // Optionally, add trend if available
+      }));
+    }
+    return [];
+  }, [recentAccessed]);
 
   const qualityData = [
     { name: 'Good', value: 45, color: '#10B981' },
@@ -466,7 +493,11 @@ const Data = () => {
                 icon={Activity}
                 infoText="Recently accessed datasets and their frequency"
               >
-                {lastAccessedData.length > 0 ? (
+                {recentAccessedLoading ? (
+                  <div className="text-center py-8 text-gray-500">Loading...</div>
+                ) : recentAccessedError ? (
+                  <div className="text-center py-8 text-red-500">{recentAccessedError}</div>
+                ) : lastAccessedData.length > 0 ? (
                   <div className="max-h-[240px] overflow-y-auto">
                     {lastAccessedData.map((item, index) => (
                       <div key={index}>
