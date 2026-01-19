@@ -68,7 +68,7 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
   ];
 
   useEffect(() => {
-    if ((mode === 'view' || mode === 'edit' )&& workflowState?.dataPreprocessing?.step2?.config) {
+    if ((mode === 'view' || mode === 'edit') && workflowState?.dataPreprocessing?.step2?.config) {
       const config = workflowState.dataPreprocessing.step2.config;
 
       const newToggles = {
@@ -478,8 +478,25 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
   const selectedCount = Object.values(selectedColumns).filter(Boolean).length;
   const totalFields = columns.length;
 
+  const highCardinalityDropped = workflowState?.dataPreprocessing?.step1?.apiResponse?.high_cardinality_columns_dropped || [];
+
   return (
     <div className="space-y-4">
+      {highCardinalityDropped.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle size={18} className="text-blue-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm text-blue-900">
+                <span className="font-medium">
+                  {highCardinalityDropped.map(item => item.column).join(', ')}
+                </span>
+                {' '}column{highCardinalityDropped.length > 1 ? 's are' : ' is'} dropped since {highCardinalityDropped.length > 1 ? 'they have' : 'it has'} more than 30 unique values
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       {workflowState?.dataPreprocessing?.step1?.config?.toggles?.uniquenessRatio && (
         <div className="bg-gray-50 rounded-lg border border-gray-200">
           <div className="p-4 flex items-center justify-between">

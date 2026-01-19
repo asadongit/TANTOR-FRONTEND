@@ -363,7 +363,7 @@ function DataCleaning({ onValidationChange, onApiCall }) {
   const dataTypeOptions = ['datetime', 'numeric', 'boolean', 'category', 'string'];
 
   return (
-    <div className="space-y-4 p-6 max-w-5xl mx-auto">
+    <div className="space-y-4 max-w-5xl">
       <div className="bg-gray-50 rounded-lg border border-gray-200">
         <div className="p-4 flex items-center justify-between">
           <div className="flex-1">
