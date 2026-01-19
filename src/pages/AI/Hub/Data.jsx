@@ -1,4 +1,4 @@
-import { FileText, Database, FolderKanban, Box, Scale, ArrowUp, ArrowDown, Info, Activity, Search, List, RefreshCw, BookOpenText, Archive, Trash2, Rocket, Palette, BookOpen, Gauge, LayoutGrid } from 'lucide-react';
+import { FileText, Database, FolderKanban, Box, Scale, ArrowUp, ArrowDown, Info, Activity, Search, List, RefreshCw, BookOpenText, Archive, Trash2, Rocket, Palette, BookOpen, Gauge, LayoutGrid, Loader2 } from 'lucide-react';
 import { PieChart, Pie, Cell } from 'recharts';
 import { useState, useMemo, useEffect } from 'react';
 import Breadcrumb from '../../../components/Breadcrumb';
@@ -6,7 +6,7 @@ import DataTable from '../../../components/DataTable';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import DeleteModal from './Components/DeleteModal';
-
+import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 
 const Data = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,6 +21,10 @@ const Data = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [aiCanvasLoading, setAiCanvasLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
+  const { setProjectState, setDatasetState, setMode } = useAIPlayground();
+
   const navigate = useNavigate();
   const { token, decodedToken } = useAuth();
   const hostnameAI = window._env_?.VITE_AI_API;
@@ -126,7 +130,6 @@ const Data = () => {
   const toggleView = () => {
     setIsTableView(prev => !prev);
   };
-
   const getQualityStyle = (quality) => {
     switch (quality) {
       case 'Good':
@@ -167,7 +170,6 @@ const Data = () => {
     setDeleteLoading(true);
     try {
       const id = deleteTarget.id || deleteTarget.dataset_id || deleteTarget.uuid || deleteTarget.file_id || deleteTarget.file_name;
-      // fallback to file_name if id not present
       const url = `${hostnameAI}/canvas/dataset/${id}/delete`;
       const resp = await fetch(url, {
         method: "POST",
@@ -187,13 +189,98 @@ const Data = () => {
     }
   };
 
+  const handleAICanvas = async (row) => {
+    try {
+      setAiCanvasLoading(true);
+      setLoadingMessage('Fetching dataset information...');
+
+      const datasetResponse = await fetch(
+        `${hostnameAI}/canvas/dataset/${row.id}`,
+        {
+          headers: {
+            'accept': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      if (!datasetResponse.ok) {
+        throw new Error('Failed to fetch dataset information');
+      }
+
+      const datasetData = await datasetResponse.json();
+      const { dataset_name, project_name, profiling_data } = datasetData;
+
+      setProjectState({
+        selectedProject: project_name
+      });
+
+      setDatasetState({
+        tableName: dataset_name,
+        sessionId: '',
+        columnNames: [],
+        profileReportHtml: profiling_data?.profile_report_html || ''
+      });
+
+      const username = decodedToken?.preferred_username || "admin";
+
+      const ingestionParams = new URLSearchParams({
+        domain: '',
+        project_name: project_name,
+        profiling_required: 'false',
+        tag: '',
+        source: '',
+        sub_tag: '',
+        table_name: dataset_name,
+        category: '',
+        user_name: username
+      });
+
+      const ingestionResponse = await fetch(
+        `${hostnameAI}/data/ingestion`,
+        {
+          method: 'POST',
+          headers: {
+            'accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': `Bearer ${token}`
+          },
+          body: ingestionParams.toString()
+        }
+      );
+
+      if (!ingestionResponse.ok) {
+        throw new Error("Failed to ingest data");
+      }
+
+      const ingestionData = await ingestionResponse.json();
+
+      setLoadingMessage('Opening AI Canvas...');
+
+      setDatasetState(prev => ({
+        ...prev,
+        sessionId: ingestionData.session_id || '',
+        columnNames: ingestionData.column_names || []
+      }));
+
+      setMode('dataset');
+      navigate('/ai/playground');
+
+    } catch (err) {
+      console.error('AI Canvas error:', err);
+      alert(err.message || 'Failed to open AI Canvas');
+      setAiCanvasLoading(false);
+    } finally {
+    }
+  };
+
   const actions = [
     {
       label: 'Library',
       icon: <BookOpen className="w-4 h-4" />,
       onClick: (row) => {
         navigate(`/ai/hub/data/library/${row.file_name}`, {
-          state: { datasetData: row } // send the complete row data
+          state: { datasetData: row }
         });
       },
       tooltip: 'Library',
@@ -207,7 +294,7 @@ const Data = () => {
     {
       label: 'AI Canvas',
       icon: <Palette className="w-4 h-4" />,
-      onClick: (row) => console.log('AI Canvas:', row),
+      onClick: handleAICanvas,
       tooltip: 'AI Canvas',
     },
     {
@@ -416,6 +503,7 @@ const Data = () => {
           resetSortTrigger={refreshTrigger}
         />
       </div>
+
       <DeleteModal
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
@@ -425,6 +513,18 @@ const Data = () => {
         loading={deleteLoading}
         confirmText="Delete"
       />
+
+      {aiCanvasLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div className="flex flex-col items-center">
+              <Loader2 className="w-16 h-16 text-[#8e78b7] animate-spin mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading AI Canvas</h3>
+              <p className="text-gray-600 text-center">{loadingMessage}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

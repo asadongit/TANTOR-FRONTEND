@@ -39,16 +39,21 @@ export function AIPlaygroundLayout({
 }) {
     const navigate = useNavigate();
     const location = useLocation();
-    const { workflowState } = useAIPlayground();
-    const mode = location.state?.mode ?? 'edit';
+    const { workflowState, mode, setMode } = useAIPlayground();
     const readonly = mode === 'view';
     const ensembleCount = location.state?.ensembleCount ?? 1;
     const isEnsemble = location.state?.isEnsemble;
     const initialEnsembleCount = ensembleCount;
 
     const modelGenesisConfig = workflowState?.modelGenesis?.config;
-    const dataPreprocessingMode = modelGenesisConfig?.dataPreprocessing;
-    const modelSelectionMode = modelGenesisConfig?.modelSelection;
+
+
+    const dataPreprocessingMode = readonly
+        ? modelGenesisConfig?.data_preprocessing_mode
+        : modelGenesisConfig?.dataPreprocessing;
+    const modelSelectionMode = readonly
+        ? modelGenesisConfig?.model_mode
+        : modelGenesisConfig?.modelSelection;
 
     const isDataPreprocessingAuto = dataPreprocessingMode &&
         ['Swift', 'Standard', 'Comprehensive'].includes(dataPreprocessingMode);
@@ -126,6 +131,18 @@ export function AIPlaygroundLayout({
     };
 
     const progressPercentage = calculateProgress();
+
+    const handleEditConfiguration = () => {
+        setMode('edit')
+        navigate('/ai/playground/model-genesis', {
+            state: {
+                isEnsemble,
+                ensembleCount: models.length,
+                activeModelIndex: activeModelIndex
+            }
+        });
+    }
+
 
     const handleNext = async () => {
         const isXAIPage = location.pathname === '/ai/playground/xai';
@@ -323,11 +340,7 @@ export function AIPlaygroundLayout({
                             </span>
 
                             <button
-                                onClick={() =>
-                                    navigate(location.pathname, {
-                                        state: { ...location.state, mode: 'edit' },
-                                    })
-                                }
+                                onClick={handleEditConfiguration}
                                 className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium hover:bg-[#7d67a6]"
                             >
                                 Edit Configuration

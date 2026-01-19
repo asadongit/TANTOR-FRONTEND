@@ -3,15 +3,19 @@ import { ChevronDown, ChevronUp, Plus, AlertCircle } from 'lucide-react';
 import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 
-function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
+function DataCleaning({ onValidationChange, onApiCall }) {
   const hostnameAI = window._env_?.VITE_AI_API;
-  const { workflowState, datasetState, updatePreprocessingStep } = useAIPlayground();
+  const { workflowState, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
+  const readonly = mode === 'view';
 
   const columnsDataTypes = workflowState?.modelGenesis?.apiResponse?.columns_data_types?.manual || {};
   const columnNames = Object.keys(columnsDataTypes);
 
+  const savedStep1 = workflowState?.dataPreprocessing?.step1;
+  const savedConfig = savedStep1?.config || {};
+
   const [expandedSections, setExpandedSections] = useState({
-    changeDataType: true,
+    changeDataType: false,
     dropColumns: false,
     dropDuplicates: false,
     uniquenessRatio: false,
@@ -45,6 +49,43 @@ function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
   });
 
   useEffect(() => {
+    if (!savedStep1) return;
+    const stepConfig = savedStep1.config;
+
+    if ((mode === 'view' || mode === 'edit') && stepConfig) {
+      const reconstructedToggles = {
+        changeDataType: stepConfig.modify_data_types || false,
+        dropColumns: stepConfig.drop_columns_active || false,
+        dropDuplicates: stepConfig.drop_duplicates_rows || false,
+        uniquenessRatio: stepConfig.uniqueness_filter_active || false,
+        missingValue: stepConfig.missing_value_indicator || false,
+      };
+
+      setToggles(reconstructedToggles);
+
+      if (stepConfig.modify_data_types_map && Object.keys(stepConfig.modify_data_types_map).length > 0) {
+        const reconstructedDataTypes = Object.entries(stepConfig.modify_data_types_map).map(([columnName, newDataType]) => ({
+          columnName,
+          oldDataType: columnsDataTypes[columnName] || '',
+          newDataType
+        }));
+        setDataTypeColumns(reconstructedDataTypes);
+      }
+
+      if (stepConfig.drop_columns && stepConfig.drop_columns.length > 0) {
+        const reconstructedDropColumns = stepConfig.drop_columns.map(columnName => ({ columnName }));
+        setDropColumnsData(reconstructedDropColumns);
+      }
+
+      if (stepConfig.missing_value_indicator_cols && stepConfig.missing_value_indicator_cols.length > 0) {
+        const reconstructedMissingValue = stepConfig.missing_value_indicator_cols.map(columnName => ({ columnName }));
+        setMissingValueColumns(reconstructedMissingValue);
+      }
+
+    }
+  }, [savedStep1, columnsDataTypes]);
+
+  useEffect(() => {
     const { isValid, errors } = validateStep();
     setValidationErrors(errors);
     if (onValidationChange) {
@@ -65,7 +106,7 @@ function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
       const hasInvalidDataType = dataTypeColumns.some(col =>
         (col.columnName && !col.newDataType) || (!col.columnName && col.newDataType)
       );
-      
+
       if (!hasAnyValidEntry) {
         errors.changeDataType = 'Please select at least one column and its new data type';
         isValid = false;
@@ -78,7 +119,7 @@ function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
     if (toggles.dropColumns) {
       const hasAnyColumn = dropColumnsData.some(col => col.columnName);
       const hasEmptyDropColumn = dropColumnsData.some(col => !col.columnName);
-      
+
       if (!hasAnyColumn) {
         errors.dropColumns = 'Please select at least one column to drop';
         isValid = false;
@@ -91,7 +132,7 @@ function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
     if (toggles.missingValue) {
       const hasAnyColumn = missingValueColumns.some(col => col.columnName);
       const hasEmptyMissingValue = missingValueColumns.some(col => !col.columnName);
-      
+
       if (!hasAnyColumn) {
         errors.missingValue = 'Please select at least one column for missing value indicator';
         isValid = false;
@@ -147,7 +188,7 @@ function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
 
     try {
       const payload = buildApiPayload();
-      
+
       const response = await fetch(`${hostnameAI}/data/preprocess/initial_clean`, {
         method: 'POST',
         headers: {
@@ -196,7 +237,6 @@ function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
   }, [toggles, dataTypeColumns, dropColumnsData, missingValueColumns, datasetState.sessionId]);
 
   const toggleSection = (section) => {
-    if (readonly) return;
     setExpandedSections(prev => ({
       changeDataType: false,
       dropColumns: false,
@@ -344,7 +384,6 @@ function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
             {toggles.changeDataType && (
               <button
                 onClick={() => toggleSection('changeDataType')}
-                disabled={readonly}
                 className="text-gray-400 hover:text-gray-600"
               >
                 {expandedSections.changeDataType ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -418,8 +457,8 @@ function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
                 onClick={addColumn}
                 disabled={readonly || !canAddNewRow(dataTypeColumns, true)}
                 className={`w-full py-3 border-2 border-dashed rounded-lg text-sm flex items-center justify-center gap-2 transition-colors ${readonly || !canAddNewRow(dataTypeColumns, true)
-                    ? 'border-gray-200 text-gray-300 cursor-not-allowed'
-                    : 'border-gray-300 text-gray-500 hover:border-[#8e78b7] hover:text-[#8e78b7]'
+                  ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                  : 'border-gray-300 text-gray-500 hover:border-[#8e78b7] hover:text-[#8e78b7]'
                   }`}
               >
                 <Plus size={16} />
@@ -450,7 +489,6 @@ function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
             {toggles.dropColumns && (
               <button
                 onClick={() => toggleSection('dropColumns')}
-                disabled={readonly}
                 className="text-gray-400 hover:text-gray-600"
               >
                 {expandedSections.dropColumns ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -505,8 +543,8 @@ function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
                 onClick={addDropColumn}
                 disabled={readonly || !canAddNewRow(dropColumnsData)}
                 className={`w-full py-3 border-2 border-dashed rounded-lg text-sm flex items-center justify-center gap-2 transition-colors ${readonly || !canAddNewRow(dropColumnsData)
-                    ? 'border-gray-200 text-gray-300 cursor-not-allowed'
-                    : 'border-gray-300 text-gray-400 hover:border-[#8e78b7] hover:text-[#8e78b7]'
+                  ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                  : 'border-gray-300 text-gray-400 hover:border-[#8e78b7] hover:text-[#8e78b7]'
                   }`}
               >
                 <Plus size={16} />
@@ -579,7 +617,6 @@ function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
             {toggles.missingValue && (
               <button
                 onClick={() => toggleSection('missingValue')}
-                disabled={readonly}
                 className="text-gray-400 hover:text-gray-600"
               >
                 {expandedSections.missingValue ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -634,8 +671,8 @@ function DataCleaning({ readonly = false, onValidationChange, onApiCall }) {
                 onClick={addMissingValueColumn}
                 disabled={readonly || !canAddNewRow(missingValueColumns)}
                 className={`w-full py-3 border-2 border-dashed rounded-lg text-sm flex items-center justify-center gap-2 transition-colors ${readonly || !canAddNewRow(missingValueColumns)
-                    ? 'border-gray-200 text-gray-300 cursor-not-allowed'
-                    : 'border-gray-300 text-gray-400 hover:border-[#8e78b7] hover:text-[#8e78b7]'
+                  ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                  : 'border-gray-300 text-gray-400 hover:border-[#8e78b7] hover:text-[#8e78b7]'
                   }`}
               >
                 <Plus size={16} />

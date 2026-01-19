@@ -4,9 +4,10 @@ import { ChevronDown, ChevronUp, Plus, X, AlertCircle } from 'lucide-react';
 import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 
-function FeatureSelection({ readonly = false, onValidationChange, onApiCall }) {
+function FeatureSelection({ onValidationChange, onApiCall }) {
   const hostnameAI = window._env_?.VITE_AI_API;
-  const { workflowState, updatePreprocessingStep, datasetState } = useAIPlayground();
+  const { workflowState, updatePreprocessingStep, datasetState, mode } = useAIPlayground();
+  const readonly = mode === 'view';
 
   const columns = workflowState?.dataPreprocessing?.step1?.apiResponse?.filtered_uniqueness_report?.map(item => ({
     name: item.column,
@@ -65,6 +66,80 @@ function FeatureSelection({ readonly = false, onValidationChange, onApiCall }) {
     { value: 'elliptic_envelope', label: 'Elliptic Envelope' },
     { value: 'dbscan', label: 'DBSCAN' }
   ];
+
+  useEffect(() => {
+    if ((mode === 'view' || mode === 'edit' )&& workflowState?.dataPreprocessing?.step2?.config) {
+      const config = workflowState.dataPreprocessing.step2.config;
+
+      const newToggles = {
+        dropLowValue: config.drop_high_uniqueness_active || false,
+        handleMissing: config.drop_high_null_active || false,
+        createBasic: config.feature_creation_active || false,
+        detectOutliers: config.outlier_detection_active || false,
+      };
+      setToggles(newToggles);
+
+      if (config.columns_to_drop_manually && config.columns_to_drop_manually.length > 0) {
+        const newSelectedColumns = {};
+        config.columns_to_drop_manually.forEach(columnName => {
+          const columnIndex = columns.findIndex(col => col.name === columnName);
+          if (columnIndex !== -1) {
+            newSelectedColumns[`${columnName}-${columnIndex}`] = true;
+          }
+        });
+        setSelectedColumns(newSelectedColumns);
+      }
+
+      if (config.null_threshold !== undefined) {
+        setThreshold(String(Math.round(config.null_threshold * 100)));
+      }
+
+      if (config.imputation_strategy_by_type) {
+        if (config.imputation_strategy_by_type.numeric) {
+          setNumericalImputation(config.imputation_strategy_by_type.numeric);
+        }
+        if (config.imputation_strategy_by_type.categorical) {
+          setCategoricalImputation(config.imputation_strategy_by_type.categorical);
+        }
+        if (config.imputation_strategy_by_type.datetime) {
+          setTimeSeriesImputation(config.imputation_strategy_by_type.datetime);
+        }
+      }
+
+      if (config.imputation_strategy_by_column && Object.keys(config.imputation_strategy_by_column).length > 0) {
+        const overrides = Object.entries(config.imputation_strategy_by_column).map(([column, method], index) => ({
+          id: Date.now() + index,
+          column: column,
+          method: method
+        }));
+        setColumnOverrides(overrides);
+      }
+
+      if (config.math_ops && config.math_ops.length > 0) {
+        const features = config.math_ops.map((op, index) => ({
+          id: Date.now() + index,
+          column1: op.col1 || '',
+          column2: op.col2 || '',
+          operator: op.operation === 'add' ? '+' :
+            op.operation === 'subtract' ? '-' :
+              op.operation === 'multiply' ? '*' :
+                op.operation === 'divide' ? '/' :
+                  op.operation === 'modulo' ? '%' : '+',
+          newColumnName: op.new_col || ''
+        }));
+        setBasicFeatures(features);
+      }
+
+      if (config.outlier_detection_method) {
+        setOutlierMethod(config.outlier_detection_method);
+      }
+
+      if (config.drop_high_null_active) {
+        setDropColumnsEnabled(true);
+        setImputationEnabled(true);
+      }
+    }
+  }, [mode, workflowState?.dataPreprocessing?.step2?.config]);
 
   useEffect(() => {
     const { isValid, errors } = validateStep();
@@ -279,7 +354,6 @@ function FeatureSelection({ readonly = false, onValidationChange, onApiCall }) {
     categoricalImputation, timeSeriesImputation, columnOverrides, basicFeatures, outlierMethod, datasetState.sessionId]);
 
   const toggleSection = (section) => {
-    if (readonly) return;
     setExpandedSections({
       dropLowValue: false,
       handleMissing: false,
@@ -416,7 +490,7 @@ function FeatureSelection({ readonly = false, onValidationChange, onApiCall }) {
             <div className="flex items-center gap-3">
               <ToggleSwitch checked={toggles.dropLowValue} onChange={() => toggleSwitch('dropLowValue')} />
               {toggles.dropLowValue && (
-                <button onClick={() => toggleSection('dropLowValue')} disabled={readonly} className="text-gray-400 hover:text-gray-600">
+                <button onClick={() => toggleSection('dropLowValue')} className="text-gray-400 hover:text-gray-600">
                   {expandedSections.dropLowValue ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                 </button>
               )}
@@ -484,7 +558,7 @@ function FeatureSelection({ readonly = false, onValidationChange, onApiCall }) {
           <div className="flex items-center gap-3">
             <ToggleSwitch checked={toggles.handleMissing} onChange={() => toggleSwitch('handleMissing')} />
             {toggles.handleMissing && (
-              <button onClick={() => toggleSection('handleMissing')} disabled={readonly} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => toggleSection('handleMissing')} className="text-gray-400 hover:text-gray-600">
                 {expandedSections.handleMissing ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
               </button>
             )}
@@ -659,7 +733,7 @@ function FeatureSelection({ readonly = false, onValidationChange, onApiCall }) {
           <div className="flex items-center gap-3">
             <ToggleSwitch checked={toggles.createBasic} onChange={() => toggleSwitch('createBasic')} />
             {toggles.createBasic && (
-              <button onClick={() => toggleSection('createBasic')} disabled={readonly} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => toggleSection('createBasic')} className="text-gray-400 hover:text-gray-600">
                 {expandedSections.createBasic ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
               </button>
             )}
@@ -779,7 +853,7 @@ function FeatureSelection({ readonly = false, onValidationChange, onApiCall }) {
           <div className="flex items-center gap-3">
             <ToggleSwitch checked={toggles.detectOutliers} onChange={() => toggleSwitch('detectOutliers')} />
             {toggles.detectOutliers && (
-              <button onClick={() => toggleSection('detectOutliers')} disabled={readonly} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => toggleSection('detectOutliers')} className="text-gray-400 hover:text-gray-600">
                 {expandedSections.detectOutliers ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
               </button>
             )}

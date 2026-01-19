@@ -55,7 +55,6 @@ const FeatureSection = ({
                 {isToggled && hasExpandableContent && (
                     <button
                         onClick={onExpand}
-                        disabled={readonly}
                         className="text-gray-400 hover:text-gray-600"
                     >
                         {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -81,9 +80,10 @@ const FeatureSection = ({
     </div>
 );
 
-function ScalingTransformation({ readonly = false, onApiCall, onValidationChange }) {
+function ScalingTransformation({ onApiCall, onValidationChange }) {
     const hostnameAI = window._env_?.VITE_AI_API;
-    const { workflowState, datasetState, updatePreprocessingStep } = useAIPlayground();
+    const { workflowState, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
+    const readonly = mode === 'view';
 
     const [toggles, setToggles] = useState({
         advancedTransformation: false,
@@ -136,6 +136,22 @@ function ScalingTransformation({ readonly = false, onApiCall, onValidationChange
     ];
 
     useEffect(() => {
+        if ((mode === 'view' || mode === 'edit') && workflowState?.dataPreprocessing?.step4?.config) {
+            const config = workflowState.dataPreprocessing.step4.config;
+
+            setToggles({
+                advancedTransformation: config.advanced_transformation || false,
+                nearZeroVariance: config.near_zero_variance_filter || false,
+                featureScaler: config.feature_scaler || false,
+            });
+
+            setTransformationMethod(config.transformation_method || 'yeo-johnson');
+            setScalerMethod(config.feature_scaler_method || 'standard');
+            setSelectedColumns(config.columns_to_transform || []);
+        }
+    }, [mode, workflowState]);
+
+    useEffect(() => {
         const isValid = !toggles.advancedTransformation || selectedColumns.length > 0;
         const error = toggles.advancedTransformation && selectedColumns.length === 0
             ? 'Please select at least one column for transformation'
@@ -149,7 +165,7 @@ function ScalingTransformation({ readonly = false, onApiCall, onValidationChange
     }, [toggles.advancedTransformation, selectedColumns, onValidationChange]);
 
     const handleApiCall = async () => {
-
+        if (readonly) return true;
         try {
             const requestBody = {
                 session_id: datasetState?.sessionId,
@@ -179,10 +195,13 @@ function ScalingTransformation({ readonly = false, onApiCall, onValidationChange
 
             updatePreprocessingStep('step4', {
                 config: {
-                    toggles,
-                    transformationMethod,
-                    scalerMethod,
-                    selectedColumns
+                    session_id: datasetState?.sessionId,
+                    advanced_transformation: toggles.advancedTransformation,
+                    columns_to_transform: toggles.advancedTransformation ? selectedColumns : [],
+                    transformation_method: transformationMethod,
+                    near_zero_variance_filter: toggles.nearZeroVariance,
+                    feature_scaler: toggles.featureScaler,
+                    feature_scaler_method: scalerMethod
                 },
                 apiResponse: data
             });
@@ -193,7 +212,7 @@ function ScalingTransformation({ readonly = false, onApiCall, onValidationChange
             });
             return true;
         } catch (error) {
-             toast.error(error.message || 'Scaling & Transformation failed. Please try again.', {
+            toast.error(error.message || 'Scaling & Transformation failed. Please try again.', {
                 duration: 4000,
                 position: 'top-right',
             });
@@ -232,7 +251,6 @@ function ScalingTransformation({ readonly = false, onApiCall, onValidationChange
     };
 
     const toggleSection = (section) => {
-        if (readonly) return;
         setExpandedSections({
             advancedTransformation: false,
             nearZeroVariance: false,
