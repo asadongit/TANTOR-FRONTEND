@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import DeleteModal from './Components/DeleteModal';
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
+import { updateRecentAccess } from './Components/Hooks';
 
 const Data = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,12 +24,14 @@ const Data = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [aiCanvasLoading, setAiCanvasLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [recentAccessed, setRecentAccessed] = useState([]);
+  const [recentAccessedLoading, setRecentAccessedLoading] = useState(false);
+  const [recentAccessedError, setRecentAccessedError] = useState(null);
   const { setProjectState, setDatasetState, setMode } = useAIPlayground();
 
   const navigate = useNavigate();
   const { token, decodedToken } = useAuth();
   const hostnameAI = window._env_?.VITE_AI_API;
-  console.log(decodedToken.sub)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -82,6 +85,32 @@ const Data = () => {
     }
   }, [hostnameAI, token, decodedToken.sub]);
 
+  useEffect(() => {
+    const fetchRecentAccessed = async () => {
+      if (!decodedToken?.sub) return;
+      setRecentAccessedLoading(true);
+      setRecentAccessedError(null);
+      try {
+        const resp = await fetch(
+          `${hostnameAI}/canvas/entity/recent_access/list?user_id=${decodedToken.sub}&entity_type=data&limit=5`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        if (!resp.ok) throw new Error('Failed to fetch recent accessed data');
+        const data = await resp.json();
+        setRecentAccessed(data?.recent_entities || []);
+      } catch (err) {
+        setRecentAccessedError(err.message);
+      } finally {
+        setRecentAccessedLoading(false);
+      }
+    };
+    fetchRecentAccessed();
+  }, [hostnameAI, token, decodedToken?.sub]);
+
   const statsData = useMemo(() => {
     if (!dashboardData) return [
       { label: 'Sources', value: '07', icon: FileText },
@@ -99,17 +128,14 @@ const Data = () => {
   }, [dashboardData]);
 
   const lastAccessedData = useMemo(() => {
-    return dashboardData?.recently_accessed_datasets || [
-      { name: 'Churn', count: 2, trend: 'up' },
-      { name: 'NPA', count: 3, trend: 'up' },
-      { name: 'CS', count: 4, trend: 'down' },
-      { name: 'Fraud', count: 4, trend: 'up' },
-      { name: 'NPA', count: 3, trend: 'down' },
-      { name: 'Fraud', count: 4, trend: 'up' },
-      { name: 'Campaign', count: 2, trend: 'down' },
-      { name: 'M_risk', count: 6, trend: 'up' },
-    ];
-  }, [dashboardData]);
+    if (recentAccessed && Array.isArray(recentAccessed) && recentAccessed.length > 0) {
+      return recentAccessed.map(item => ({
+        name: item.entity_name || item.name || 'Unknown',
+        accessed_at: item.accessed_at ? new Date(item.accessed_at) : null,
+      }));
+    }
+    return [];
+  }, [recentAccessed]);
 
   const qualityData = [
     { name: 'Good', value: 45, color: '#10B981' },
@@ -189,6 +215,71 @@ const Data = () => {
     }
   };
 
+  const updateRecentAccess = async (row) => {
+    try {
+      const userId = decodedToken?.sub;
+      const itemId = row.id || row.dataset_id || row.uuid || row.file_id || row.file_name;
+      const itemName = row.file_name || row.dataset_name || row.name;
+      if (!userId || !itemId || !itemName) return;
+      await fetch(
+        `${hostnameAI}/canvas/entity/update_recent_access?user_id=${userId}&item_id=${itemId}&item_name=${encodeURIComponent(itemName)}&entity_type=data`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            accept: "application/json",
+          },
+        }
+      );
+      setRecentAccessedLoading(true);
+      const resp = await fetch(
+        `${hostnameAI}/canvas/entity/recent_access/list?user_id=${userId}&entity_type=data&limit=5`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (resp.ok) {
+        const data = await resp.json();
+        setRecentAccessed(data?.recent_entities || []);
+      }
+      setRecentAccessedLoading(false);
+    } catch (err) {
+      setRecentAccessedLoading(false);
+    }
+  };
+
+  const handleLibrary = async (row) => {
+    navigate(`/ai/hub/data/library/${row.file_name}`, {
+      state: { datasetData: row }
+    });
+    await updateRecentAccess({
+      row,
+      entityType: 'data',
+      hostnameAI,
+      token,
+      userId: decodedToken?.sub,
+      setRecentList: setRecentAccessed,
+      setRecentLoading: setRecentAccessedLoading,
+      limit: 5,
+    });
+  };
+
+  const handleF1Mode = async (row) => {
+    console.log('F1 Mode:', row);
+    await updateRecentAccess({
+      row,
+      entityType: 'data',
+      hostnameAI,
+      token,
+      userId: decodedToken?.sub,
+      setRecentList: setRecentAccessed,
+      setRecentLoading: setRecentAccessedLoading,
+      limit: 5,
+    });
+  };
+
   const handleAICanvas = async (row) => {
     try {
       setAiCanvasLoading(true);
@@ -265,7 +356,17 @@ const Data = () => {
 
       setMode('dataset');
       navigate('/ai/playground');
-
+      // Update recent access after successful action
+      await updateRecentAccess({
+        row,
+        entityType: 'data',
+        hostnameAI,
+        token,
+        userId: decodedToken?.sub,
+        setRecentList: setRecentAccessed,
+        setRecentLoading: setRecentAccessedLoading,
+        limit: 5,
+      });
     } catch (err) {
       console.error('AI Canvas error:', err);
       alert(err.message || 'Failed to open AI Canvas');
@@ -274,21 +375,31 @@ const Data = () => {
     }
   };
 
+  const handleArchive = async (row) => {
+    console.log('Archive:', row);
+    await updateRecentAccess({
+      row,
+      entityType: 'data',
+      hostnameAI,
+      token,
+      userId: decodedToken?.sub,
+      setRecentList: setRecentAccessed,
+      setRecentLoading: setRecentAccessedLoading,
+      limit: 5,
+    });
+  };
+
   const actions = [
     {
       label: 'Library',
       icon: <BookOpen className="w-4 h-4" />,
-      onClick: (row) => {
-        navigate(`/ai/hub/data/library/${row.file_name}`, {
-          state: { datasetData: row }
-        });
-      },
+      onClick: handleLibrary,
       tooltip: 'Library',
     },
     {
       label: 'F1 Mode',
       icon: <Gauge className="w-4 h-4" />,
-      onClick: (row) => console.log('F1 Mode:', row),
+      onClick: handleF1Mode,
       tooltip: 'F1 Mode',
     },
     {
@@ -300,7 +411,7 @@ const Data = () => {
     {
       label: 'Archive',
       icon: <Archive className="w-4 h-4" />,
-      onClick: (row) => console.log('Archive:', row),
+      onClick: handleArchive,
       tooltip: 'Archive',
     },
     {
@@ -464,15 +575,29 @@ const Data = () => {
               <ChartCard
                 title="Last Accessed"
                 icon={Activity}
-                infoText="Recently accessed datasets and their frequency"
+                infoText="Recently accessed datasets and their last access time"
               >
-                {lastAccessedData.length > 0 ? (
+                {recentAccessedLoading ? (
+                  <div className="text-center py-8 text-gray-500">Loading...</div>
+                ) : recentAccessedError ? (
+                  <div className="text-center py-8 text-red-500">{recentAccessedError}</div>
+                ) : lastAccessedData.length > 0 ? (
                   <div className="max-h-[240px] overflow-y-auto">
                     {lastAccessedData.map((item, index) => (
                       <div key={index}>
                         <div className="flex items-center justify-between py-3 px-2 hover:bg-gray-50">
                           <span className="text-sm text-gray-700 flex-1">{item.name}</span>
-                          <span className="text-sm font-medium text-gray-900 mx-8">{item.count}</span>
+                          <span className="text-xs text-gray-500 mx-4">
+                            {item.accessed_at
+                              ? item.accessed_at.toLocaleString('en-GB', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })
+                              : ''}
+                          </span>
                           <button className="p-1 hover:bg-gray-100 rounded">
                             <BookOpenText className="w-4 h-4 text-[#8e78b7]" />
                           </button>

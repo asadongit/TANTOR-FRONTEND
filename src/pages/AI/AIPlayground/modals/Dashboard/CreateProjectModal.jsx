@@ -126,6 +126,11 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
       return;
     }
 
+    if (formData.members.length === 0) {
+      alert('Please select at least one member');
+      return;
+    }
+
     if (!decodedToken?.preferred_username) {
       alert('Unable to identify current user');
       return;
@@ -208,6 +213,7 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
 
   const selectedMemberLabels = selectedMembersData.map(m => m.label);
   const allSelectedMembersText = selectedMemberLabels.join(', ');
+  const isFormValid = formData.projectName.trim() && formData.members.length > 0;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -215,9 +221,9 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-slate-900">Create New Project</h2>
           <div className="flex items-center gap-2">
-            <button className="text-slate-400 hover:text-slate-600">
+            {/* <button className="text-slate-400 hover:text-slate-600">
               <Info className="w-5 h-5" />
-            </button>
+            </button> */}
             <button onClick={handleClose} className="text-slate-400 hover:text-slate-600">
               <X className="w-5 h-5" />
             </button>
@@ -227,7 +233,7 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
         <div className="space-y-4">
           <div>
             <label className="text-sm font-medium text-slate-700 mb-1 flex items-center gap-1">
-              Project Name
+              Project Name <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -236,11 +242,14 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
               onChange={(e) => setFormData({ ...formData, projectName: e.target.value })}
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500/20"
             />
+            {!formData.projectName.trim() && (
+              <p className="text-xs text-red-500 mt-1">Project name is required</p>
+            )}
           </div>
 
           <div className="relative">
             <label className="text-sm font-medium text-slate-700 mb-1 block">
-              Member {formData.members.length > 0 && `(${formData.members.length} selected)`}
+              Member <span className="text-red-500">*</span> {formData.members.length > 0 && `(${formData.members.length} selected)`}
             </label>
             <button
               onClick={() => setIsMemberDropdownOpen(!isMemberDropdownOpen)}
@@ -255,6 +264,9 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
               </span>
               <ChevronDown className="w-4 h-4 text-slate-400" />
             </button>
+            {formData.members.length === 0 && (
+              <p className="text-xs text-red-500 mt-1">At least one member must be selected</p>
+            )}
 
             {isMemberDropdownOpen && (
               <div className="absolute top-full mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg z-10">
@@ -352,7 +364,7 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !isFormValid}
             className="px-4 py-2 text-sm font-medium text-white bg-[#8e78b7] rounded-md hover:bg-[#7d69a6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isSubmitting ? (
