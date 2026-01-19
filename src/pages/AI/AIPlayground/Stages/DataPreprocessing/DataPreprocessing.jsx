@@ -22,13 +22,14 @@ const preprocessingSteps = [
 ];
 
 function DataPreprocessing() {
-  const location = useLocation();
-  const mode = location.state?.mode ?? 'edit';
+  const { workflowState, mode } = useAIPlayground();
   const readonly = mode === 'view';
-  const { workflowState } = useAIPlayground();
 
   const modelGenesisConfig = workflowState?.modelGenesis?.config;
-  const dataPreprocessingMode = modelGenesisConfig?.dataPreprocessing;
+
+  const dataPreprocessingMode = readonly
+    ? modelGenesisConfig?.data_preprocessing_mode
+    : modelGenesisConfig?.dataPreprocessing;
   const modelSelectionMode = modelGenesisConfig?.modelSelection;
 
   const isDataPreprocessingAuto = dataPreprocessingMode &&
@@ -99,7 +100,6 @@ function DataPreprocessing() {
       case 1:
         return (
           <DataCleaning
-            readonly={readonly}
             onValidationChange={setIsStep1Valid}
             onApiCall={(fn) => step1ApiCallRef.current = fn}
           />
@@ -107,7 +107,6 @@ function DataPreprocessing() {
       case 2:
         return (
           <FeatureSelection
-            readonly={readonly}
             onValidationChange={setIsStep2Valid}
             onApiCall={(fn) => step2ApiCallRef.current = fn}
           />
@@ -115,14 +114,12 @@ function DataPreprocessing() {
       case 3:
         return (
           <FeatureEngineering
-            readonly={readonly}
             onApiCall={(fn) => step3ApiCallRef.current = fn}
           />
         );
       case 4:
         return (
           <ScalingTransformation
-            readonly={readonly}
             onValidationChange={setIsStep4Valid}
             onApiCall={(fn) => step4ApiCallRef.current = fn}
           />
@@ -130,7 +127,6 @@ function DataPreprocessing() {
       case 5:
         return (
           <StatisticalAnalysis
-            readonly={readonly}
             onValidationChange={setIsStep5Valid}
             onApiCall={(fn) => step5ApiCallRef.current = fn}
           />
@@ -138,7 +134,6 @@ function DataPreprocessing() {
       case 6:
         return (
           <FeatureImportance
-            readonly={readonly}
             onApiCall={(fn) => step6ApiCallRef.current = fn}
           />
         );
@@ -146,14 +141,12 @@ function DataPreprocessing() {
         return (
           <Step7
             showPreview={isStep7Preview}
-            readonly={readonly}
             onApiCall={(fn) => step7ApiCallRef.current = fn}
           />
         );
       default:
         return (
           <DataCleaning
-            readonly={readonly}
             onValidationChange={setIsStep1Valid}
             onApiCall={(fn) => step1ApiCallRef.current = fn}
           />

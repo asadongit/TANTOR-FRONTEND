@@ -219,18 +219,20 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate }) {
                         })}
                     </div>
 
-                    <button
-                        onClick={() => addGridSearchValue(paramName)}
-                        disabled={readonly || allOptionsSelected || !allPreviousFieldsFilled}
-                        className={`mt-3 w-full px-3 py-2 border-2 border-dashed rounded-lg text-sm flex items-center justify-center gap-2 font-medium transition-colors ${
-                            allOptionsSelected || !allPreviousFieldsFilled
-                                ? 'border-gray-200 text-gray-400 cursor-not-allowed' 
-                                : 'border-gray-300 text-gray-600 hover:border-[#8e78b7] hover:text-[#8e78b7] hover:bg-gray-100'
-                        }`}
-                    >
-                        <Plus className="w-4 h-4" />
-                        {allOptionsSelected ? 'All Options Selected' : 'Add Value'}
-                    </button>
+                    {!readonly && (
+                        <button
+                            onClick={() => addGridSearchValue(paramName)}
+                            disabled={readonly || allOptionsSelected || !allPreviousFieldsFilled}
+                            className={`mt-3 w-full px-3 py-2 border-2 border-dashed rounded-lg text-sm flex items-center justify-center gap-2 font-medium transition-colors ${
+                                allOptionsSelected || !allPreviousFieldsFilled
+                                    ? 'border-gray-200 text-gray-400 cursor-not-allowed' 
+                                    : 'border-gray-300 text-gray-600 hover:border-[#8e78b7] hover:text-[#8e78b7] hover:bg-gray-100'
+                            }`}
+                        >
+                            <Plus className="w-4 h-4" />
+                            {allOptionsSelected ? 'All Options Selected' : 'Add Value'}
+                        </button>
+                    )}
                 </div>
             );
         } else if (typeof paramValue === 'object' && paramValue.low && paramValue.high) {
@@ -281,18 +283,20 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate }) {
                         ))}
                     </div>
 
-                    <button
-                        onClick={() => addGridSearchValue(paramName)}
-                        disabled={readonly || !allPreviousFieldsFilled || hasAnyErrors}
-                        className={`mt-3 w-full px-3 py-2 border-2 border-dashed rounded-lg text-sm flex items-center justify-center gap-2 font-medium transition-colors ${
-                            !allPreviousFieldsFilled || hasAnyErrors
-                                ? 'border-gray-200 text-gray-400 cursor-not-allowed' 
-                                : 'border-gray-300 text-gray-600 hover:border-[#8e78b7] hover:text-[#8e78b7] hover:bg-gray-100'
-                        }`}
-                    >
-                        <Plus className="w-4 h-4" />
-                        Add Value
-                    </button>
+                    {!readonly && (
+                        <button
+                            onClick={() => addGridSearchValue(paramName)}
+                            disabled={readonly || !allPreviousFieldsFilled || hasAnyErrors}
+                            className={`mt-3 w-full px-3 py-2 border-2 border-dashed rounded-lg text-sm flex items-center justify-center gap-2 font-medium transition-colors ${
+                                !allPreviousFieldsFilled || hasAnyErrors
+                                    ? 'border-gray-200 text-gray-400 cursor-not-allowed' 
+                                    : 'border-gray-300 text-gray-600 hover:border-[#8e78b7] hover:text-[#8e78b7] hover:bg-gray-100'
+                            }`}
+                        >
+                            <Plus className="w-4 h-4" />
+                            Add Value
+                        </button>
+                    )}
 
                     <p className="text-xs text-gray-600 mt-3 italic">
                         Range: {paramValue.low} to {paramValue.high}
@@ -332,8 +336,8 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate }) {
                     </label>
                     <button
                         onClick={() => onExpand(algo.id)}
-                        disabled={readonly}
-                        className="text-gray-400 hover:text-gray-600"
+                        className="text-gray-400 hover:text-gray-600 transition-colors"
+                        title={algo.expanded ? "Collapse" : "Expand"}
                     >
                         {algo.expanded ? (
                             <ChevronUp className='w-5 h-5' />

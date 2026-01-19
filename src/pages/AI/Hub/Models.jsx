@@ -13,6 +13,7 @@ import {
   Palette,
   BookOpen,
   Gauge,
+  Loader2,
 } from "lucide-react";
 import { Icon } from "@iconify-icon/react";
 import Breadcrumb from "../../../components/Breadcrumb";
@@ -21,6 +22,7 @@ import { StatCard, StatsContainer, StatsGrid } from "./Components/StatsCard";
 import QuickPredictModal from "./Components/Models/QuickPredictModal";
 import DeleteModal from "./Components/DeleteModal";
 import { useAuth } from "../../../context/AuthContext";
+import { useAIPlayground } from "../../../context/AIPlaygroundContext";
 
 function Models() {
   const navigate = useNavigate();
@@ -38,6 +40,8 @@ function Models() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const hostnameAI = window._env_?.VITE_AI_API;
   const { token, decodedToken } = useAuth();
+  const [isCanvasLoading, setIsCanvasLoading] = useState(false);
+  const { setWorkflowState, setDatasetState, setMode, setModelState, setProjectState } = useAIPlayground();
 
   useEffect(() => {
     const fetchModels = async () => {
@@ -316,14 +320,146 @@ function Models() {
     {
       label: "AI Canvas",
       icon: <Palette className="w-4 h-4" />,
-      onClick: (row) =>
-        navigate("/ai/playground/model-genesis", {
-          state: {
-            mode: "view",
-            model: row,
-          },
-        }),
+      onClick: async (row) => {
+        setIsCanvasLoading(true);
+
+        try {
+          const modelName = row?.run_name || row?._raw?.run_name;
+          if (!modelName) {
+            throw new Error("Model name not found");
+          }
+
+          const modelResponse = await fetch(`${hostnameAI}/canvas/model/${modelName}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              accept: "application/json",
+            },
+          });
+
+          if (!modelResponse.ok) {
+            throw new Error("Failed to fetch model details");
+          }
+
+          const modelData = await modelResponse.json();
+
+          const projectName = modelData.project_name;
+          const username = decodedToken?.preferred_username || "admin";
+
+          const ingestionParams = new URLSearchParams({
+            domain: '',
+            project_name: projectName,
+            profiling_required: 'false',
+            tag: '',
+            source: '',
+            sub_tag: '',
+            table_name: modelData.dataset_name,
+            category: '',
+            user_name: username
+          });
+
+          const ingestionResponse = await fetch(
+            `${hostnameAI}/data/ingestion`,
+            {
+              method: 'POST',
+              headers: {
+                'accept': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+              body: ingestionParams.toString()
+            }
+          );
+
+          if (!ingestionResponse.ok) {
+            throw new Error("Failed to ingest data");
+          }
+
+          const ingestionData = await ingestionResponse.json();
+
+          setModelState({selectedModel: modelData.model_name });
+
+          setProjectState(prev => ({ ...prev, selectedProject: modelData.project_name }));
+
+          setDatasetState({
+            tableName: modelData.dataset_name,
+            sessionId: ingestionData.session_id || '',
+            columnNames: ingestionData.column_names || [],
+            profileReportHtml: ingestionData.profile_report_html || ''
+          });
+
+          if (modelData?.prefill) {
+            const newWorkflowState = {
+              modelGenesis: {
+                config: modelData.prefill?.data_preprocessing?.request?.genesis || null,
+                apiResponse: modelData.prefill?.data_preprocessing?.response?.genesis || null
+              },
+              dataPreprocessing: {
+                step1: {
+                  config: modelData.prefill?.data_preprocessing?.request?.initial_clean || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.initial_clean || null
+                },
+                step2: {
+                  config: modelData.prefill?.data_preprocessing?.request?.feature_selection || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.feature_selection || null
+                },
+                step3: {
+                  config: modelData.prefill?.data_preprocessing?.request?.feature_engineering || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.feature_engineering || null
+                },
+                step4: {
+                  config: modelData.prefill?.data_preprocessing?.request?.advanced_transformation || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.advanced_transformation || null
+                },
+                step5: {
+                  config: modelData.prefill?.data_preprocessing?.request?.statistical_analysis || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.statistical_analysis || null
+                },
+                step6: {
+                  config: modelData.prefill?.data_preprocessing?.request?.feature_importance || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.feature_importance || null
+                },
+                step7: {
+                  config: modelData.prefill?.data_preprocessing?.request?.imbalance_handling || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.imbalance_handling || null
+                }
+              },
+              modelSelection: {
+                config: modelData.prefill?.training?.request?.training_request || null,
+                apiResponse: modelData.prefill?.training?.response || null
+              },
+              modelInferencing: {
+                config: null,
+                apiResponse: null
+              },
+              xai: {
+                config: null,
+                apiResponse: null
+              },
+              modelDeployment: {
+                config: null,
+                apiResponse: null
+              }
+            };
+
+            setWorkflowState(newWorkflowState);
+            setMode('view');
+          }
+
+          navigate("/ai/playground/model-genesis", {
+            state: {
+              mode: "view",
+              model: row,
+              modelDetails: modelData,
+            },
+          });
+
+        } catch (error) {
+          console.error("Error loading model:", error);
+        } finally {
+          setIsCanvasLoading(false);
+        }
+      },
       tooltip: "AI Canvas",
+      disabled: isCanvasLoading,
     },
     {
       label: "Deploy",
@@ -726,23 +862,16 @@ function Models() {
             <div key={index} className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <div
-                  className={`w-2.5 h-2.5 rounded-full ${
-                    alert.type === "drift" ? "bg-orange-400" : "bg-blue-400"
-                  }`}
+                  className={`w-2.5 h-2.5 rounded-full ${alert.type === "drift" ? "bg-orange-400" : "bg-blue-400"
+                    }`}
                 />
                 <span className="text-sm text-gray-700">{alert.name}</span>
               </div>
               <span
-                className={`text-xs flex items-center gap-1 ${
-                  alert.trend === "up" ? "text-green-500" : "text-orange-500"
-                }`}
+                className={`text-xs flex items-center gap-1 ${alert.trend === "up" ? "text-green-500" : "text-orange-500"
+                  }`}
               >
                 {alert.issue}
-                {/* {alert.trend === "up" ? (
-                  <ArrowUp className="w-3 h-3" />
-                ) : (
-                  <ArrowDown className="w-3 h-3" />
-                )} */}
               </span>
             </div>
           ))}
@@ -771,11 +900,10 @@ function Models() {
           </div>
 
           <button
-            className={`p-1.5 rounded-lg border ${
-              viewMode === "list"
-                ? "bg-gray-100 border-gray-500"
-                : "border-gray-300"
-            } hover:bg-gray-50`}
+            className={`p-1.5 rounded-lg border ${viewMode === "list"
+              ? "bg-gray-100 border-gray-500"
+              : "border-gray-300"
+              } hover:bg-gray-50`}
             onClick={() => setViewMode(viewMode === "list" ? "both" : "list")}
             title={viewMode === "list" ? "Show All Views" : "Show List Only"}
           >
@@ -794,9 +922,8 @@ function Models() {
             disabled={isLoading}
           >
             <RefreshCcw
-              className={`h-5 w-5 text-gray-600 ${
-                isLoading ? "animate-spin" : ""
-              }`}
+              className={`h-5 w-5 text-gray-600 ${isLoading ? "animate-spin" : ""
+                }`}
             />
           </button>
         </div>
@@ -854,6 +981,17 @@ function Models() {
         loading={deleteLoading}
         confirmText="Delete"
       />
+      {isCanvasLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div className="flex flex-col items-center">
+              <Loader2 className="w-16 h-16 text-[#8e78b7] animate-spin mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading AI Canvas</h3>
+              <p className="text-gray-600 text-center">Please wait while we prepare your workspace</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

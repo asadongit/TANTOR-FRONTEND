@@ -14,9 +14,9 @@ function XAI() {
   const hostnameAI = window._env_?.VITE_AI_API;
   const location = useLocation();
   const navigate = useNavigate();
-  const { projectState, workflowState, datasetState, setProjectState } = useAIPlayground();
+  const { projectState, workflowState, datasetState, setProjectState, modelState, mode } = useAIPlayground();
   const sessionId = datasetState?.sessionId;
-  const readonly = location.state?.mode === 'view';
+  const readonly = mode === 'view';
 
   const [selectedModel, setSelectedModel] = useState('');
   const [modelsList, setModelsList] = useState([]);
@@ -31,13 +31,57 @@ function XAI() {
   const [generatingReport, setGeneratingReport] = useState(false);
   const [reportData, setReportData] = useState(null);
   const [configuredModel, setConfiguredModel] = useState(''); // Track which model's config we have
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false); // Track if initial load in view mode is done
 
-  // Fetch logged models on component mount
   useEffect(() => {
-    if (sessionId) {
+    if (sessionId && !readonly) {
       fetchLoggedModels();
     }
-  }, [sessionId]);
+  }, [sessionId, readonly]);
+
+  // Pre-select model and fetch XAI report in view mode
+  useEffect(() => {
+    if (readonly && modelState?.selectedModel) {
+      setSelectedModel(modelState.selectedModel);
+      fetchXAIReport(modelState.selectedModel);
+    }
+  }, [readonly, modelState?.selectedModel]);
+
+  const fetchXAIReport = async (runName) => {
+    if (!runName) return;
+
+    setGeneratingReport(true);
+    try {
+      const response = await fetch(
+        `${hostnameAI}/canvas/mlflow/xai-report?run_name=${encodeURIComponent(runName)}`,
+        {
+          method: 'GET',
+          headers: {
+            'accept': 'application/json'
+          }
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.xai_report) {
+          setReportData(data.xai_report);
+          setReportGenerated(true);
+        } else {
+          setReportGenerated(false);
+        }
+      } else {
+        setReportGenerated(false);
+      }
+    } catch (error) {
+      console.error('Error fetching XAI report:', error);
+      setReportGenerated(false);
+     
+    } finally {
+      setGeneratingReport(false);
+      setInitialLoadComplete(true);
+    }
+  };
 
   const fetchLoggedModels = async () => {
     setLoadingModels(true);
@@ -182,7 +226,7 @@ function XAI() {
   };
 
   const handleSaveModelFromLayout = () => {
-    setShowSaveModal(true);
+      setShowSaveModal(true);
   };
 
   const handleSaveModel = async (modelsToSave) => {
@@ -226,7 +270,7 @@ function XAI() {
         });
 
         setShowSaveModal(false);
-
+        
         if (projectState?.selectedProject) {
           try {
             const experimentResponse = await fetch(
@@ -369,193 +413,229 @@ function XAI() {
   );
 
   return (
-    <AIPlaygroundLayout onSaveModel={handleSaveModelFromLayout}>
+    <AIPlaygroundLayout onSaveModel={handleSaveModelFromLayout} isNextDisabled={readonly}>
       <div className="max-w-7xl mx-auto bg-gray-50 rounded-lg p-6">
         <div className="flex items-start justify-between">
           {/* Header Section */}
-          <div>
+          <div className="flex-1">
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Explainability Report</h2>
             <p className="text-sm text-gray-600">
-              Select a model to generate explainability insights using SHAP, PDP, LIME, and counterfactuals.
+              {readonly 
+                ? 'View explainability insights using SHAP, PDP, LIME, and counterfactuals.'
+                : 'Select a model to generate explainability insights using SHAP, PDP, LIME, and counterfactuals.'}
             </p>
           </div>
 
           {/* Controls Section */}
-          <div className="flex items-end gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Model Selection</label>
-              <select
-                value={selectedModel}
-                onChange={(e) => {
-                  if (!readonly) {
-                    const newModel = e.target.value;
-                    setSelectedModel(newModel);
-                    // Reset configured model if user changes selection
-                    if (newModel !== configuredModel) {
-                      setConfiguredModel('');
-                      setReportGenerated(false); // Reset report generated state
-                    }
-                  }
-                }}
-                disabled={readonly || loadingModels}
-                className="w-56 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:border-transparent"
-              >
-                <option value="">Select</option>
-                {modelsList.map((model) => (
-                  <option key={model.run_id} value={model.run_name}>
-                    {model.run_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <button
-              onClick={handleConfigureReport}
-              disabled={!selectedModel || loadingConfig}
-              className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#7d67a6]"
-            >
-              {loadingConfig ? 'Loading...' : (reportGenerated ? 'Reconfigure' : 'Configure & Generate Report')}
-            </button>
-
-            <div className="relative">
-              <button
-                onClick={() => setShowMenuDropdown(!showMenuDropdown)}
-                disabled={!selectedModel}
-                className="w-10 h-10 bg-white border border-gray-300 rounded-lg flex items-center justify-center text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-              >
-                <MoreVertical size={20} />
-              </button>
-
-              {showMenuDropdown && (
-                <div className="absolute right-0 top-12 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                  <button
-                    onClick={() => {
-                      setShowMenuDropdown(false);
-                      setShowGovernanceModal(true);
-                    }}
-                    className="w-full px-4 py-3 text-left text-sm text-[#8e78b7] hover:bg-gray-50 transition-colors"
-                  >
-                    Download Governance Report
-                  </button>
+          <div className="flex items-end gap-3 flex-shrink-0">
+            {readonly ? (
+              <div className="min-w-[400px] max-w-[600px]">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Model Name</label>
+                <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 break-words">
+                  {selectedModel || 'No model selected'}
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Model Selection</label>
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => {
+                      const newModel = e.target.value;
+                      setSelectedModel(newModel);
+                      // Reset configured model if user changes selection
+                      if (newModel !== configuredModel) {
+                        setConfiguredModel('');
+                        setReportGenerated(false); // Reset report generated state
+                      }
+                    }}
+                    disabled={loadingModels}
+                    className="w-56 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:border-transparent"
+                  >
+                    <option value="">Select</option>
+                    {modelsList.map((model) => (
+                      <option key={model.run_id} value={model.run_name}>
+                        {model.run_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  onClick={handleConfigureReport}
+                  disabled={!selectedModel || loadingConfig}
+                  className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#7d67a6]"
+                >
+                  {loadingConfig ? 'Loading...' : (reportGenerated ? 'Reconfigure' : 'Configure & Generate Report')}
+                </button>
+
+                <div className="relative">
+                  <button
+                    onClick={() => setShowMenuDropdown(!showMenuDropdown)}
+                    disabled={!selectedModel}
+                    className="w-10 h-10 bg-white border border-gray-300 rounded-lg flex items-center justify-center text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                  >
+                    <MoreVertical size={20} />
+                  </button>
+
+                  {showMenuDropdown && (
+                    <div className="absolute right-0 top-12 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                      <button
+                        onClick={() => {
+                          setShowMenuDropdown(false);
+                          setShowGovernanceModal(true);
+                        }}
+                        className="w-full px-4 py-3 text-left text-sm text-[#8e78b7] hover:bg-gray-50 transition-colors"
+                      >
+                        Download Governance Report
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
 
+      {/* Loading State for View Mode - Show during initial fetch */}
+      {readonly && generatingReport && !initialLoadComplete && (
+        <div className="max-w-7xl mx-auto mt-6">
+          <div className="bg-white rounded-lg p-6 border border-gray-200">
+            <div className="py-12 text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#8e78b7] mb-4"></div>
+              <p className="text-gray-500 text-sm">Loading XAI report...</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Report Results */}
-      {reportGenerated && (
+      {reportGenerated && reportData && !generatingReport && (
         <div className="max-w-7xl mx-auto mt-6 space-y-6">
-          {!reportData ? (
+          {/* SHAP Summary Plot */}
+          {reportData.shap_summary_plot && (
             <div className="bg-white rounded-lg p-6 border border-gray-200">
-              <div className="py-12 text-center">
-                <p className="text-gray-500 text-sm">No report data available. Please try generating the report again.</p>
+              <h3 className="text-base font-semibold text-gray-900 mb-4">Feature Importance (SHAP Summary Plot)</h3>
+              <div className="bg-white border border-gray-200 rounded p-4 flex justify-center items-center min-h-[400px]">
+                <img
+                  src={`data:image/png;base64,${reportData.shap_summary_plot}`}
+                  alt="SHAP Summary Plot"
+                  className="w-full h-auto object-contain"
+                  style={{ maxHeight: '600px' }}
+                />
               </div>
             </div>
-          ) : (
-            <>
-              {/* SHAP Summary Plot */}
-              {reportData.shap_summary_plot && (
-                <div className="bg-white rounded-lg p-6 border border-gray-200">
-                  <h3 className="text-base font-semibold text-gray-900 mb-4">Feature Importance (SHAP Summary Plot)</h3>
-                  <div className="bg-white border border-gray-200 rounded p-4 flex justify-center items-center min-h-[400px]">
-                    <img
-                      src={`data:image/png;base64,${reportData.shap_summary_plot}`}
-                      alt="SHAP Summary Plot"
-                      className="w-full h-auto object-contain"
-                      style={{ maxHeight: '600px' }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* SHAP Beeswarm Plot */}
-              {reportData.shap_beeswarm_plot && (
-                <div className="bg-white rounded-lg p-6 border border-gray-200">
-                  <h3 className="text-base font-semibold text-gray-900 mb-4">Feature Importance (SHAP Beeswarm Plot)</h3>
-                  <div className="bg-white border border-gray-200 rounded p-4 flex justify-center items-center min-h-[400px]">
-                    <img
-                      src={`data:image/png;base64,${reportData.shap_beeswarm_plot}`}
-                      alt="SHAP Beeswarm Plot"
-                      className="w-full h-auto object-contain"
-                      style={{ maxHeight: '600px' }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* PDP Plots */}
-              {reportData.pdp_plots && Object.keys(reportData.pdp_plots).length > 0 && (
-                <div className="bg-white rounded-lg p-6 border border-gray-200">
-                  <h3 className="text-base font-semibold text-gray-900 mb-4">PDP Plots</h3>
-                  <div className={`grid gap-4 ${Object.keys(reportData.pdp_plots).length === 1
-                    ? 'grid-cols-1'
-                    : Object.keys(reportData.pdp_plots).length === 2
-                      ? 'grid-cols-2'
-                      : 'grid-cols-2 xl:grid-cols-3'
-                    }`}>
-                    {Object.entries(reportData.pdp_plots).map(([featureName, imageData]) => (
-                      <PDPChart
-                        key={featureName}
-                        imageData={imageData}
-                        title={featureName}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Feature Flip Summary */}
-              {reportData.feature_flip_summary && reportData.feature_flip_summary.length > 0 && (
-                <div className="bg-white rounded-lg p-6 border border-gray-200">
-                  <h3 className="text-base font-semibold text-gray-900 mb-4">Feature Flip Summary</h3>
-                  <DataTable
-                    columns={featureFlipColumns}
-                    data={getFeatureFlipData()}
-                    isLoading={false}
-                    isError={false}
-                  />
-                </div>
-              )}
-
-              {/* Counterfactual Report */}
-              {reportData.counterfactual_report && reportData.counterfactual_report.length > 0 && (
-                <div className="bg-white rounded-lg p-6 border border-gray-200">
-                  <h3 className="text-base font-semibold text-gray-900 mb-4">Counterfactual Report</h3>
-                  <DataTable
-                    columns={counterfactualColumns}
-                    data={getCounterfactualData()}
-                    isLoading={false}
-                    isError={false}
-                  />
-                </div>
-              )}
-
-              {/* LIME Report */}
-              {reportData.lime_report && reportData.lime_report.explanation_for_class && reportData.lime_report.explanation_for_class.length > 0 && (
-                <div className="bg-white rounded-lg p-6 border border-gray-200">
-                  <h3 className="text-base font-semibold text-gray-900 mb-4">LIME Report</h3>
-                  <div className="mb-4 space-y-1">
-                    <p className="text-sm text-gray-700">
-                      <strong>Predicted Class:</strong> {reportData.lime_report.predicted_class_name || 'N/A'}
-                    </p>
-                    <p className="text-sm text-gray-700">
-                      <strong>Intercept:</strong> {reportData.lime_report.intercept !== undefined && reportData.lime_report.intercept !== null
-                        ? reportData.lime_report.intercept.toFixed(10)
-                        : 'N/A'}
-                    </p>
-                  </div>
-                  <DataTable
-                    columns={limeColumns}
-                    data={getLimeData()}
-                    isLoading={false}
-                    isError={false}
-                  />
-                </div>
-              )}
-            </>
           )}
+
+          {/* SHAP Beeswarm Plot */}
+          {reportData.shap_beeswarm_plot && (
+            <div className="bg-white rounded-lg p-6 border border-gray-200">
+              <h3 className="text-base font-semibold text-gray-900 mb-4">Feature Importance (SHAP Beeswarm Plot)</h3>
+              <div className="bg-white border border-gray-200 rounded p-4 flex justify-center items-center min-h-[400px]">
+                <img
+                  src={`data:image/png;base64,${reportData.shap_beeswarm_plot}`}
+                  alt="SHAP Beeswarm Plot"
+                  className="w-full h-auto object-contain"
+                  style={{ maxHeight: '600px' }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* PDP Plots */}
+          {reportData.pdp_plots && Object.keys(reportData.pdp_plots).length > 0 && (
+            <div className="bg-white rounded-lg p-6 border border-gray-200">
+              <h3 className="text-base font-semibold text-gray-900 mb-4">PDP Plots</h3>
+              <div className={`grid gap-4 ${Object.keys(reportData.pdp_plots).length === 1
+                ? 'grid-cols-1'
+                : Object.keys(reportData.pdp_plots).length === 2
+                  ? 'grid-cols-2'
+                  : 'grid-cols-2 xl:grid-cols-3'
+                }`}>
+                {Object.entries(reportData.pdp_plots).map(([featureName, imageData]) => (
+                  <PDPChart
+                    key={featureName}
+                    imageData={imageData}
+                    title={featureName}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Feature Flip Summary */}
+          {reportData.feature_flip_summary && reportData.feature_flip_summary.length > 0 && (
+            <div className="bg-white rounded-lg p-6 border border-gray-200">
+              <h3 className="text-base font-semibold text-gray-900 mb-4">Feature Flip Summary</h3>
+              <DataTable
+                columns={featureFlipColumns}
+                data={getFeatureFlipData()}
+                isLoading={false}
+                isError={false}
+              />
+            </div>
+          )}
+
+          {/* Counterfactual Report */}
+          {reportData.counterfactual_report && reportData.counterfactual_report.length > 0 && (
+            <div className="bg-white rounded-lg p-6 border border-gray-200">
+              <h3 className="text-base font-semibold text-gray-900 mb-4">Counterfactual Report</h3>
+              <DataTable
+                columns={counterfactualColumns}
+                data={getCounterfactualData()}
+                isLoading={false}
+                isError={false}
+              />
+            </div>
+          )}
+
+          {/* LIME Report */}
+          {reportData.lime_report && reportData.lime_report.explanation_for_class && reportData.lime_report.explanation_for_class.length > 0 && (
+            <div className="bg-white rounded-lg p-6 border border-gray-200">
+              <h3 className="text-base font-semibold text-gray-900 mb-4">LIME Report</h3>
+              <div className="mb-4 space-y-1">
+                <p className="text-sm text-gray-700">
+                  <strong>Predicted Class:</strong> {reportData.lime_report.predicted_class_name || 'N/A'}
+                </p>
+                <p className="text-sm text-gray-700">
+                  <strong>Intercept:</strong> {reportData.lime_report.intercept !== undefined && reportData.lime_report.intercept !== null
+                    ? reportData.lime_report.intercept.toFixed(10)
+                    : 'N/A'}
+                </p>
+              </div>
+              <DataTable
+                columns={limeColumns}
+                data={getLimeData()}
+                isLoading={false}
+                isError={false}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* No Report Message - Only show after initial load is complete */}
+      {!reportGenerated && !generatingReport && readonly && initialLoadComplete && (
+        <div className="max-w-7xl mx-auto mt-6">
+          <div className="bg-white rounded-lg p-6 border border-gray-200">
+            <div className="py-12 text-center">
+              <p className="text-gray-500 text-sm">XAI report was not generated while saving the model.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Loading State for Edit Mode */}
+      {!readonly && generatingReport && (
+        <div className="max-w-7xl mx-auto mt-6">
+          <div className="bg-white rounded-lg p-6 border border-gray-200">
+            <div className="py-12 text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#8e78b7] mb-4"></div>
+              <p className="text-gray-500 text-sm">Generating XAI report...</p>
+            </div>
+          </div>
         </div>
       )}
 

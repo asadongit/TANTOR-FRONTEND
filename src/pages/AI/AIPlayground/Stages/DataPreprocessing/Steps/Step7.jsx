@@ -62,7 +62,6 @@ const FeatureSection = ({
                 {isToggled && (
                     <button
                         onClick={onExpand}
-                        disabled={readonly}
                         className="text-gray-400 hover:text-gray-600"
                     >
                         {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -134,9 +133,10 @@ const VariantDataTable = ({ variantKey, displayData, message }) => {
     );
 };
 
-function Step7({ onShowPreview, showPreview, readonly = false, onApiCall }) {
+function Step7({ onShowPreview, showPreview, onApiCall }) {
     const hostnameAI = window._env_?.VITE_AI_API;
-    const { workflowState, datasetState, updatePreprocessingStep, updateWorkflowStage } = useAIPlayground();
+    const { workflowState, datasetState, updatePreprocessingStep, updateWorkflowStage, mode } = useAIPlayground();
+    const readonly = mode === 'view';
 
     const [toggles, setToggles] = useState({
         imbalancedData: false,
@@ -204,7 +204,10 @@ function Step7({ onShowPreview, showPreview, readonly = false, onApiCall }) {
     ];
 
     const modelGenesisConfig = workflowState?.modelGenesis?.config;
-    const dataPreprocessingMode = modelGenesisConfig?.dataPreprocessing;
+
+    const dataPreprocessingMode = readonly
+        ? modelGenesisConfig?.data_preprocessing_mode
+        : modelGenesisConfig?.dataPreprocessing;
     const modelSelectionMode = modelGenesisConfig?.modelSelection;
 
     const isDataPreprocessingAuto = dataPreprocessingMode &&
@@ -212,8 +215,24 @@ function Step7({ onShowPreview, showPreview, readonly = false, onApiCall }) {
     const isModelSelectionAuto = modelSelectionMode &&
         ['Swift', 'Standard', 'Comprehensive'].includes(modelSelectionMode);
 
+    useEffect(() => {
+        if ((mode === 'view' || mode === 'edit') && workflowState?.dataPreprocessing?.step7?.config) {
+            const config = workflowState.dataPreprocessing.step7.config;
+
+            setToggles({
+                imbalancedData: config.imbalance_handling || false,
+            });
+
+            setSamplingMethod(config.imbalance_handling_method || 'smote');
+
+            if (workflowState.dataPreprocessing.step7.apiResponse) {
+                setPreviewData(workflowState.dataPreprocessing.step7.apiResponse);
+            }
+        }
+    }, [mode, workflowState]);
+
     const handleImbalanceHandling = async () => {
-        if (readonly) return false;
+        if (readonly) return true;
 
         setIsProcessing(true);
 
@@ -296,7 +315,6 @@ function Step7({ onShowPreview, showPreview, readonly = false, onApiCall }) {
     };
 
     const toggleSection = (section) => {
-        if (readonly) return;
         setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
     };
 

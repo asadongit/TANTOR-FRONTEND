@@ -17,6 +17,14 @@ const METRIC_NAME_MAPPING = {
     "Log Loss": "log_loss"
 };
 
+const REVERSE_METRIC_MAPPING = {
+    "accuracy": "Accuracy",
+    "precision": "Precision",
+    "recall": "Recall",
+    "f1": "F1 Score",
+    "log_loss": "Log Loss"
+};
+
 function ModelSelection() {
     const hostnameAI = window._env_?.VITE_AI_API;
     const location = useLocation();
@@ -73,7 +81,14 @@ function ModelSelection() {
         return allAlgos;
     });
 
-    const algorithms = Object.values(allAlgorithmsState).filter(algo => algo.category === selectedTab);
+    const algorithms = Object.values(allAlgorithmsState).filter(algo => {
+        const matchesCategory = algo.category === selectedTab;
+        // In readonly mode, only show enabled algorithms
+        if (readonly) {
+            return matchesCategory && algo.enabled;
+        }
+        return matchesCategory;
+    });
 
     const [normalizeData, setNormalizeData] = useState(true);
     const [isModelInferencingEnabled, setIsModelInferencingEnabled] = useState(false);
@@ -95,10 +110,134 @@ function ModelSelection() {
 
     const filteredCategories = allCategories.filter(category => {
         const categorized = categorizeAlgorithms();
-        return categorized[category].some(algo =>
+        const categoryAlgorithms = categorized[category];
+
+        if (readonly) {
+            return categoryAlgorithms.some(algo => {
+                const matchesSearch = algo.name.toLowerCase().includes(searchQuery.toLowerCase());
+                const algoState = Object.values(allAlgorithmsState).find(a => a.backend_key === (algo.backend_key || algo.name));
+                return matchesSearch && algoState?.enabled;
+            });
+        }
+
+        return categoryAlgorithms.some(algo =>
             algo.name.toLowerCase().includes(searchQuery.toLowerCase())
         );
     });
+
+    useEffect(() => {
+        const savedConfig = workflowState?.modelSelection?.config;
+
+        if (!savedConfig) return;
+
+        if (savedConfig.normalize !== undefined) {
+            setNormalizeData(savedConfig.normalize);
+        }
+
+        if (savedConfig.performance_metrics && Array.isArray(savedConfig.performance_metrics)) {
+            const backendToDisplay = savedConfig.performance_metrics.map(
+                backendName => REVERSE_METRIC_MAPPING[backendName]
+            ).filter(Boolean);
+
+            const orderedMetrics = [];
+
+            backendToDisplay.forEach(displayName => {
+                const metric = metrics.find(m => m.name === displayName);
+                if (metric) {
+                    orderedMetrics.push({ ...metric, enabled: true });
+                }
+            });
+
+            metrics.forEach(metric => {
+                if (!backendToDisplay.includes(metric.name)) {
+                    orderedMetrics.push({ ...metric, enabled: false });
+                }
+            });
+
+            setMetrics(orderedMetrics);
+        }
+
+        if (savedConfig.algorithms && Array.isArray(savedConfig.algorithms)) {
+            setAllAlgorithmsState(prevState => {
+                const updatedState = { ...prevState };
+
+                Object.keys(updatedState).forEach(key => {
+                    updatedState[key] = {
+                        ...updatedState[key],
+                        enabled: false,
+                        expanded: false
+                    };
+                });
+
+                savedConfig.algorithms.forEach(algoBackendKey => {
+                    const algoEntry = Object.entries(updatedState).find(
+                        ([_, algo]) => algo.backend_key === algoBackendKey
+                    );
+
+                    if (algoEntry) {
+                        const [algoId, algo] = algoEntry;
+
+                        let configMode = 'Base';
+                        const hyperparameterMode = savedConfig.hyperparameter_modes?.[algoBackendKey];
+
+                        if (hyperparameterMode === 'user_params') {
+                            configMode = 'Hyper Parameter';
+                        } else if (hyperparameterMode === 'grid_search') {
+                            configMode = 'Grid Search';
+                        }
+
+                        const paramGridValues = savedConfig.param_grid?.[algoBackendKey] || {};
+
+                        let hyperparameterValues = {};
+                        let gridSearchValues = {};
+                        let gridSearchErrors = {};
+
+                        if (configMode === 'Hyper Parameter') {
+                            hyperparameterValues = Object.entries(paramGridValues).reduce((acc, [key, value]) => {
+                                acc[key] = String(value);
+                                return acc;
+                            }, {});
+                        } else if (configMode === 'Grid Search') {
+                            gridSearchValues = Object.entries(paramGridValues).reduce((acc, [key, value]) => {
+                                if (Array.isArray(value)) {
+                                    acc[key] = value.map(v => String(v));
+                                } else {
+                                    acc[key] = [String(value)];
+                                }
+                                return acc;
+                            }, {});
+
+                            gridSearchErrors = Object.keys(gridSearchValues).reduce((acc, key) => {
+                                acc[key] = gridSearchValues[key].map(() => null);
+                                return acc;
+                            }, {});
+                        }
+
+                        updatedState[algoId] = {
+                            ...updatedState[algoId],
+                            enabled: true,
+                            expanded: false,
+                            configMode,
+                            hyperparameterValues,
+                            gridSearchValues,
+                            gridSearchErrors
+                        };
+                    }
+                });
+
+                return updatedState;
+            });
+
+            if (readonly && savedConfig.algorithms.length > 0) {
+                const firstEnabledAlgo = Object.values(allAlgorithmsState).find(algo =>
+                    savedConfig.algorithms.includes(algo.backend_key)
+                );
+                if (firstEnabledAlgo) {
+                    setSelectedTab(firstEnabledAlgo.category);
+                }
+            }
+        }
+    }, [workflowState?.modelSelection?.config, readonly]);
 
     useEffect(() => {
         if (searchQuery && filteredCategories.length > 0) {
@@ -111,7 +250,7 @@ function ModelSelection() {
     useEffect(() => {
         const enabledAlgos = Object.values(allAlgorithmsState).filter(algo => algo.enabled);
         const hasEnabledMetrics = metrics.some(m => m.enabled);
-        
+
         if (enabledAlgos.length === 0 || !hasEnabledMetrics) {
             setIsModelInferencingEnabled(false);
             return;
@@ -132,7 +271,6 @@ function ModelSelection() {
     };
 
     const handleTabChange = (tab) => {
-        if (readonly) return;
         setSelectedTab(tab);
     };
 
@@ -175,8 +313,6 @@ function ModelSelection() {
     };
 
     const toggleExpanded = (id) => {
-        if (readonly) return;
-
         const updates = {};
         Object.keys(allAlgorithmsState).forEach(key => {
             if (key === id) {
@@ -258,7 +394,7 @@ function ModelSelection() {
         const payload = {
             session_id: datasetState?.sessionId,
             algorithms: algorithmNames,
-            hyperparameter_mode: hyperparameterMode,
+            hyperparameter_modes: hyperparameterMode,
             param_grid: finalParamGrid,
             normalize: normalizeData,
             return_metrics: true,
@@ -273,6 +409,7 @@ function ModelSelection() {
     };
 
     const handleNextClick = async () => {
+        if (readonly) return true;
         if (isSubmitting) return false;
 
         setIsSubmitting(true);
@@ -298,10 +435,11 @@ function ModelSelection() {
 
             updateWorkflowStage('modelSelection', {
                 config: {
-                    algorithms: Object.values(allAlgorithmsState).filter(algo => algo.enabled),
-                    normalizeData,
-                    metrics,
-                    payload
+                    algorithms: payload.algorithms,
+                    normalize: normalizeData,
+                    performance_metrics: payload.performance_metrics,
+                    hyperparameter_modes: payload.hyperparameter_modes,
+                    param_grid: payload.param_grid
                 },
                 apiResponse: result
             });
@@ -366,7 +504,6 @@ function ModelSelection() {
                                     placeholder="Search algorithms..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    disabled={readonly}
                                     className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent text-sm"
                                 />
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -379,7 +516,6 @@ function ModelSelection() {
                                         {filteredCategories.map((category) => (
                                             <button
                                                 key={category}
-                                                disabled={readonly}
                                                 onClick={() => handleTabChange(category)}
                                                 className={`px-4 py-2 font-medium whitespace-nowrap ${selectedTab === category
                                                     ? 'text-[#8e78b7] border-b-4 border-[#8e78b7]'
