@@ -1,56 +1,76 @@
 import { ChevronDown, ChevronRight, Search, BookOpen, Gauge, Palette, Archive, Trash2, Rocket, Sparkles } from "lucide-react"
 import DataTable from "../../../../../components/DataTable"
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../../../../context/AuthContext";
 
-const ComponentsTab = () => {
+const ComponentsTab = ({ projectData }) => {
     const navigate = useNavigate();
+    const { token, decodedToken } = useAuth();
+    const hostnameAI = window._env_?.VITE_AI_API;
+
+    const projectId = projectData?.id;
+    const projectName = projectData?.name;
+
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedSections, setExpandedSections] = useState({
         datasets: false,
         models: false,
-        notebook: false
     });
-    const [selectedModel, setSelectedModel] = useState(null);
-    const [isQuickPredictOpen, setIsQuickPredictOpen] = useState(false);
 
-    const datasetsData = [
-        { sno: 1, name: 'Project - Churn', description: 'Churn', created_date: '01/10/2025', size: '23 MB', rows: 23, features: 'Swifts' },
-        { sno: 2, name: 'Project - Analysis', description: 'Churn', created_date: '01/10/2025', size: '23 MB', rows: 23, features: 'Swifts' },
-        { sno: 3, name: 'Project - Retention', description: 'Retention', created_date: '15/10/2025', size: '23 MB', rows: 23, features: 'Mekong' },
-        { sno: 4, name: 'Project - Acquisition', description: 'Acquisition', created_date: '01/12/2025', size: '23 MB', rows: 23, features: 'Amazon' },
-        { sno: 5, name: 'Project - Engagement', description: 'Engagement', created_date: '20/12/2025', size: '23 MB', rows: 23, features: 'Nile' },
-        { sno: 6, name: 'Project - Onboarding', description: 'Onboarding', created_date: '05/01/2025', size: '23 MB', rows: 23, features: 'Yangtze' },
-        { sno: 7, name: 'Project - Feedback', description: 'Feedback', created_date: '30/01/2025', size: '23 MB', rows: 23, features: 'Danube' },
-        { sno: 8, name: 'Project - Analysis', description: 'Analysis', created_date: '15/02/2025', size: '23 MB', rows: 23, features: 'Thames' },
-        { sno: 9, name: 'Project - Strategy', description: 'Strategy', created_date: '01/03/2025', size: '23 MB', rows: 23, features: 'Seine' }
-    ];
+    // Datasets state
+    const [datasets, setDatasets] = useState([]);
+    const [datasetsLoading, setDatasetsLoading] = useState(false);
+    const [datasetsError, setDatasetsError] = useState(null);
 
-    const modelsData = [
-        { sno: 1, name: 'Model - Churn Predictor', description: 'Predict customer churn', created_date: '05/10/2025', accuracy: '92%', type: 'Classification' },
-        { sno: 2, name: 'Model - Sentiment Analysis', description: 'Analyze customer sentiment', created_date: '10/10/2025', accuracy: '88%', type: 'NLP' },
-        { sno: 3, name: 'Model - Recommendation', description: 'Product recommendations', created_date: '20/10/2025', accuracy: '85%', type: 'Collaborative Filtering' },
-        { sno: 4, name: 'Model - Fraud Detection', description: 'Detect fraudulent transactions', created_date: '25/10/2025', accuracy: '94%', type: 'Anomaly Detection' },
-        { sno: 5, name: 'Model - Price Optimization', description: 'Optimize pricing strategy', created_date: '01/11/2025', accuracy: '89%', type: 'Regression' },
-        { sno: 6, name: 'Model - Customer Segmentation', description: 'Segment customers by behavior', created_date: '10/11/2025', accuracy: '91%', type: 'Clustering' },
-        { sno: 7, name: 'Model - Demand Forecasting', description: 'Forecast product demand', created_date: '15/11/2025', accuracy: '87%', type: 'Time Series' },
-        { sno: 8, name: 'Model - Image Classification', description: 'Classify product images', created_date: '20/11/2025', accuracy: '93%', type: 'Deep Learning' },
-        { sno: 9, name: 'Model - Text Summarization', description: 'Summarize customer reviews', created_date: '25/11/2025', accuracy: '86%', type: 'NLP' },
-        { sno: 10, name: 'Model - Click Prediction', description: 'Predict ad click probability', created_date: '01/12/2025', accuracy: '90%', type: 'Classification' }
-    ];
+    // Models state
+    const [models, setModels] = useState([]);
+    const [modelsLoading, setModelsLoading] = useState(false);
+    const [modelsError, setModelsError] = useState(null);
 
-    const notebookData = [
-        { sno: 1, name: 'EDA - Customer Analysis', description: 'Exploratory data analysis', created_date: '02/10/2025', last_run: '05/10/2025', status: 'Completed' },
-        { sno: 2, name: 'Feature Engineering', description: 'Feature creation and selection', created_date: '08/10/2025', last_run: '10/10/2025', status: 'In Progress' },
-        { sno: 3, name: 'Model Training', description: 'Train and validate models', created_date: '15/10/2025', last_run: '18/10/2025', status: 'Completed' },
-        { sno: 4, name: 'Data Cleaning', description: 'Clean and preprocess data', created_date: '20/10/2025', last_run: '22/10/2025', status: 'Completed' },
-        { sno: 5, name: 'Hyperparameter Tuning', description: 'Optimize model parameters', created_date: '25/10/2025', last_run: '28/10/2025', status: 'Failed' },
-        { sno: 6, name: 'Model Evaluation', description: 'Evaluate model performance', created_date: '01/11/2025', last_run: '03/11/2025', status: 'Completed' },
-        { sno: 7, name: 'Data Visualization', description: 'Create visualizations', created_date: '05/11/2025', last_run: '07/11/2025', status: 'Completed' },
-        { sno: 8, name: 'A/B Testing Analysis', description: 'Analyze A/B test results', created_date: '10/11/2025', last_run: '12/11/2025', status: 'In Progress' },
-        { sno: 9, name: 'Model Deployment', description: 'Deploy model to production', created_date: '15/11/2025', last_run: '17/11/2025', status: 'Pending' },
-        { sno: 10, name: 'Performance Monitoring', description: 'Monitor model performance', created_date: '20/11/2025', last_run: '22/11/2025', status: 'Active' }
-    ];
+    // Fetch datasets
+    useEffect(() => {
+        if (!hostnameAI || !token || !projectName) return;
+        setDatasetsLoading(true);
+        setDatasetsError(null);
+        const fetchDatasets = async () => {
+            try {
+                const url = `${hostnameAI}/canvas/projects/${encodeURIComponent(projectName)}/datasets`;
+                const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+                if (!res.ok) throw new Error('Failed to fetch datasets');
+                const data = await res.json();
+                setDatasets(Array.isArray(data.datasets) ? data.datasets : []);
+            } catch (e) {
+                setDatasets([]);
+                setDatasetsError(e?.message || 'Failed to fetch datasets');
+            } finally {
+                setDatasetsLoading(false);
+            }
+        };
+        fetchDatasets();
+    }, [hostnameAI, token, projectName]);
+
+    // Fetch models
+    useEffect(() => {
+        if (!hostnameAI || !token || !projectName) return;
+        setModelsLoading(true);
+        setModelsError(null);
+        const fetchModels = async () => {
+            try {
+                const url = `${hostnameAI}/canvas/projects/${encodeURIComponent(projectName)}/models`;
+                const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+                if (!res.ok) throw new Error('Failed to fetch models');
+                const data = await res.json();
+                setModels(Array.isArray(data.models) ? data.models : []);
+            } catch (e) {
+                setModels([]);
+                setModelsError(e?.message || 'Failed to fetch models');
+            } finally {
+                setModelsLoading(false);
+            }
+        };
+        fetchModels();
+    }, [hostnameAI, token, projectName]);
 
     // Dataset actions
     const datasetActions = [
@@ -58,7 +78,7 @@ const ComponentsTab = () => {
             label: 'Library',
             icon: <BookOpen className="w-4 h-4" />,
             onClick: (row) => {
-                navigate(`/ai/hub/data/library/${row.name}`, {
+                navigate(`/ai/hub/data/library/${row.dataset_id || row.dataset_name || row.id}`, {
                     state: { datasetData: row }
                 });
             },
@@ -132,10 +152,7 @@ const ComponentsTab = () => {
         {
             label: "Quick Predict",
             icon: <Sparkles className="w-4 h-4" />,
-            onClick: (row) => {
-                setSelectedModel(row);
-                setIsQuickPredictOpen(true);
-            },
+            onClick: (row) => console.log("Quick Predict:", row),
             tooltip: "Quick Predict",
         },
         {
@@ -145,6 +162,58 @@ const ComponentsTab = () => {
             tooltip: "Delete",
         },
     ];
+
+    // Columns for datasets
+    const datasetColumns = [
+        { key: 'dataset_id', label: 'ID', sortable: true, width: '80px' },
+        {
+            key: 'dataset_name',
+            label: 'Name',
+            sortable: true,
+            render: (row) => <span className="text-[#8e78b7] hover:underline cursor-pointer">{row.dataset_name}</span>,
+        },
+        { key: 'row_count', label: 'Rows', sortable: true },
+        { key: 'column_count', label: 'Columns', sortable: true },
+        { key: 'status', label: 'Status', sortable: true },
+        { key: 'created_at', label: 'Created Date', sortable: true, render: (row) => row.created_at ? new Date(row.created_at).toLocaleDateString('en-GB') : '—' },
+        // { label: 'Action', sortable: false, width: '100px' },
+    ];
+
+    // Columns for models
+    const modelColumns = [
+        { key: 'model_id', label: 'ID', sortable: true, width: '80px' },
+        {
+            key: 'model_name',
+            label: 'Name',
+            sortable: true,
+            render: (row) => <span className="text-[#8e78b7] hover:underline cursor-pointer">{row.model_name}</span>,
+        },
+        { key: 'status', label: 'Status', sortable: true },
+        { key: 'modeling_type', label: 'Modeling Type', sortable: true },
+        { key: 'run_mode_modelling', label: 'Run Mode', sortable: true },
+        { key: 'run_type_modelling', label: 'Run Type', sortable: true },
+        { key: 'target_variable', label: 'Target Variable', sortable: true },
+        { key: 'created_at', label: 'Created At', sortable: true, render: (row) => row.created_at ? new Date(row.created_at).toLocaleDateString('en-GB') : '—' },
+        { key: 'updated_at', label: 'Updated At', sortable: true, render: (row) => row.updated_at ? new Date(row.updated_at).toLocaleDateString('en-GB') : '—' },
+        // { label: 'Action', sortable: false, width: '100px' },
+    ];
+
+    // Filtered data
+    const filteredDatasets = useMemo(() => {
+        if (!searchTerm.trim()) return datasets;
+        const q = searchTerm.toLowerCase();
+        return datasets.filter(row =>
+            Object.values(row || {}).some(val => String(val ?? '').toLowerCase().includes(q))
+        );
+    }, [datasets, searchTerm]);
+
+    const filteredModels = useMemo(() => {
+        if (!searchTerm.trim()) return models;
+        const q = searchTerm.toLowerCase();
+        return models.filter(row =>
+            Object.values(row || {}).some(val => String(val ?? '').toLowerCase().includes(q))
+        );
+    }, [models, searchTerm]);
 
     const toggleSection = (section) => {
         setExpandedSections(prev => ({
@@ -173,7 +242,7 @@ const ComponentsTab = () => {
                 >
                     <div className="w-full flex items-center justify-between">
                         <span className="text-base font-medium text-[#8e78b7]">
-                            Datasets ({datasetsData.length})
+                            Datasets ({datasets.length})
                         </span>
                         {expandedSections.datasets ? (
                             <ChevronDown className="w-5 h-5 text-[#8e78b7]" />
@@ -184,26 +253,13 @@ const ComponentsTab = () => {
                 </button>
                 {expandedSections.datasets && (
                     <div className="px-4 pb-4">
+                        {datasetsError && <div className="text-red-600 text-sm mb-2">{datasetsError}</div>}
                         <DataTable
-                            columns={[
-                                { key: 'sno', label: 'Sno', sortable: true, width: '80px' },
-                                {
-                                    key: 'name',
-                                    label: 'Name',
-                                    sortable: true,
-                                    render: (row) => <span className="text-[#8e78b7] hover:underline cursor-pointer">{row.name}</span>,
-                                },
-                                { key: 'description', label: 'Description', sortable: true },
-                                { key: 'created_date', label: 'Created Date', sortable: true },
-                                { key: 'size', label: 'Size', sortable: true },
-                                { key: 'rows', label: 'Rows', sortable: true },
-                                { key: 'features', label: 'Features', sortable: true },
-                                { label: 'Action', sortable: false, width: '100px' },
-                            ]}
-                            data={datasetsData}
+                            columns={datasetColumns}
+                            data={filteredDatasets}
                             actions={datasetActions}
-                            isLoading={false}
-                            isError={false}
+                            isLoading={datasetsLoading}
+                            isError={!!datasetsError}
                         />
                     </div>
                 )}
@@ -216,7 +272,7 @@ const ComponentsTab = () => {
                 >
                     <div className="w-full flex items-center justify-between">
                         <span className="text-base font-medium text-[#8e78b7]">
-                            Models ({modelsData.length})
+                            Models ({models.length})
                         </span>
                         {expandedSections.models ? (
                             <ChevronDown className="w-5 h-5 text-[#8e78b7]" />
@@ -227,66 +283,13 @@ const ComponentsTab = () => {
                 </button>
                 {expandedSections.models && (
                     <div className="px-4 pb-4">
+                        {modelsError && <div className="text-red-600 text-sm mb-2">{modelsError}</div>}
                         <DataTable
-                            columns={[
-                                { key: 'sno', label: 'Sno', sortable: true, width: '80px' },
-                                {
-                                    key: 'name',
-                                    label: 'Name',
-                                    sortable: true,
-                                    render: (row) => <span className="text-[#8e78b7] hover:underline cursor-pointer">{row.name}</span>,
-                                },
-                                { key: 'description', label: 'Description', sortable: true },
-                                { key: 'created_date', label: 'Created Date', sortable: true },
-                                { key: 'accuracy', label: 'Accuracy', sortable: true },
-                                { key: 'type', label: 'Type', sortable: true },
-                                { label: 'Action', sortable: false, width: '100px' },
-                            ]}
-                            data={modelsData}
+                            columns={modelColumns}
+                            data={filteredModels}
                             actions={modelActions}
-                            isLoading={false}
-                            isError={false}
-                        />
-                    </div>
-                )}
-            </div>
-
-            <div className="border border-gray-200 rounded-lg">
-                <button
-                    onClick={() => toggleSection('notebook')}
-                    className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-                >
-                    <div className="w-full flex items-center justify-between">
-                        <span className="text-base font-medium text-[#8e78b7]">
-                            Notebook ({notebookData.length})
-                        </span>
-                        {expandedSections.notebook ? (
-                            <ChevronDown className="w-5 h-5 text-[#8e78b7]" />
-                        ) : (
-                            <ChevronRight className="w-5 h-5 text-gray-600" />
-                        )}
-                    </div>
-                </button>
-                {expandedSections.notebook && (
-                    <div className="px-4 pb-4">
-                        <DataTable
-                            columns={[
-                                { key: 'sno', label: 'Sno', sortable: true, width: '80px' },
-                                {
-                                    key: 'name',
-                                    label: 'Name',
-                                    sortable: true,
-                                    render: (row) => <span className="text-[#8e78b7] hover:underline cursor-pointer">{row.name}</span>,
-                                },
-                                { key: 'description', label: 'Description', sortable: true },
-                                { key: 'created_date', label: 'Created Date', sortable: true },
-                                { key: 'last_run', label: 'Last Run', sortable: true },
-                                { key: 'status', label: 'Status', sortable: true },
-                            ]}
-                            data={notebookData}
-                            actions={[]}
-                            isLoading={false}
-                            isError={false}
+                            isLoading={modelsLoading}
+                            isError={!!modelsError}
                         />
                     </div>
                 )}

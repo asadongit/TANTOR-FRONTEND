@@ -356,7 +356,6 @@ const Data = () => {
 
       setMode('dataset');
       navigate('/ai/playground');
-      // Update recent access after successful action
       await updateRecentAccess({
         row,
         entityType: 'data',
