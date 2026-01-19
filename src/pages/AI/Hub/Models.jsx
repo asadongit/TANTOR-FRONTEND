@@ -38,6 +38,11 @@ function Models() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deployModalOpen, setDeployModalOpen] = useState(false);
+  const [deployLoading, setDeployLoading] = useState(false);
+  const [deployResult, setDeployResult] = useState(null);
+  const [deployError, setDeployError] = useState(null);
+  const [deployTarget, setDeployTarget] = useState(null);
   const hostnameAI = window._env_?.VITE_AI_API;
   const { token, decodedToken } = useAuth();
   const [isCanvasLoading, setIsCanvasLoading] = useState(false);
@@ -301,6 +306,38 @@ function Models() {
     }
   };
 
+  // Deploy action handler
+  const handleDeploy = async (row) => {
+    setDeployTarget(row);
+    setDeployModalOpen(true);
+    setDeployLoading(true);
+    setDeployResult(null);
+    setDeployError(null);
+    try {
+      const modelName = row?.run_name || row?._raw?.run_name;
+      const resp = await fetch(
+        `${hostnameAI}/quick/deploy-quick-action?model_name=${encodeURIComponent(modelName)}`,
+        {
+          headers:
+            {
+              Authorization: `Bearer ${token}`,
+              accept: "application/json",
+            },
+        }
+      );
+      const data = await resp.json();
+      if (resp.ok && data.success) {
+        setDeployResult(data);
+      } else {
+        setDeployError(data?.message || "Deployment failed");
+      }
+    } catch (err) {
+      setDeployError(err.message || "Deployment failed");
+    } finally {
+      setDeployLoading(false);
+    }
+  };
+
   const actions = [
     {
       label: "Library",
@@ -464,7 +501,7 @@ function Models() {
     {
       label: "Deploy",
       icon: <Rocket className="w-4 h-4" />,
-      onClick: (row) => console.log("Deploy:", row),
+      onClick: handleDeploy,
       tooltip: "Deploy",
     },
     {
@@ -880,6 +917,50 @@ function Models() {
     );
   };
 
+  const DeployModal = () => {
+    if (!deployModalOpen) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+        <div className="relative bg-white rounded-lg max-w-md w-full mx-4 p-6 shadow-xl">
+          <div className="text-lg font-semibold mb-2">Deploy Model</div>
+          {deployLoading && (
+            <div className="flex flex-col items-center py-6">
+              <Loader2 className="w-12 h-12 text-purple-500 animate-spin mb-3" />
+              <span className="text-gray-700">Deploying model...</span>
+            </div>
+          )}
+          {!deployLoading && deployResult && (
+            <div className="flex flex-col items-center py-6">
+              <Icon icon="material-symbols:check-circle-outline" className="w-12 h-12 text-green-500 mb-2" />
+              <span className="text-green-700 font-medium mb-1">Deployment Successful!</span>
+              <div className="text-xs text-gray-500 text-center">
+                Model: <b>{deployResult.model_name}</b>
+                <br />
+                Project: <b>{deployResult.project_name}</b>
+              </div>
+            </div>
+          )}
+          {!deployLoading && deployError && (
+            <div className="flex flex-col items-center py-6">
+              <Icon icon="material-symbols:error-outline" className="w-12 h-12 text-red-500 mb-2" />
+              <span className="text-red-700 font-medium mb-1">Deployment Failed</span>
+              <div className="text-xs text-gray-500 text-center">{deployError}</div>
+            </div>
+          )}
+          <div className="mt-4 flex justify-end">
+            <button
+              className="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700"
+              onClick={() => setDeployModalOpen(false)}
+              disabled={deployLoading}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="p-6 space-y-4">
       <Breadcrumb link="/" />
@@ -981,6 +1062,8 @@ function Models() {
         loading={deleteLoading}
         confirmText="Delete"
       />
+      {/* Deploy Modal */}
+      <DeployModal />
       {isCanvasLoading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
