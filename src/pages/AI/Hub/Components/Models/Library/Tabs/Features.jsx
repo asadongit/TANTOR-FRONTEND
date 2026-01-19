@@ -70,9 +70,10 @@ function Features({ modelData }) {
         );
         const json = await res.json();
         if (dataType === "processed") {
-          setTableData(processedToRows(json.data));
+          const featureImportance = json.data?.feature_importance || {};
+          setTableData(processedToRows(featureImportance));
           setStatsCards([
-            { title: "Features", value: Object.keys(json.data || {}).length },
+            { title: "Features", value: Object.keys(featureImportance).length },
             { title: "Data points", value: "-" },
           ]);
         } else {
@@ -90,7 +91,6 @@ function Features({ modelData }) {
     fetchData();
   }, [dataType, modelData.dataset_id, hostnameAI, token]);
 
-  // Columns for processed and raw
   const processedColumns = [
     { key: "sno", label: "Sno", sortable: true, width: "90px" },
     { key: "name", label: "Name", sortable: true },
