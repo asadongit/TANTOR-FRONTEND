@@ -74,20 +74,31 @@ const ModelInferencing = () => {
       };
     }
 
-    // When both are auto OR when data preprocessing is manual and model selection is auto
-    // Use accuracy for best model calculation
     if ((isDataPreprocessingAuto && isModelSelectionAuto) ||
       (!isDataPreprocessingAuto && isModelSelectionAuto)) {
-      const metricKey = 'train_accuracy';
+
+      const autoMetricOrder = ['train_accuracy', 'train_precision', 'train_recall', 'train_f1', 'train_log_loss'];
 
       const best = apiResults.reduce((prev, current) => {
-        const prevValue = prev.metrics?.[metricKey] || 0;
-        const currValue = current.metrics?.[metricKey] || 0;
+        for (const metricKey of autoMetricOrder) {
+          const prevValue = prev.metrics?.[metricKey] || 0;
+          const currValue = current.metrics?.[metricKey] || 0;
 
-        return currValue > prevValue ? current : prev;
+          // For log_loss, lower is better
+          if (metricKey === 'train_log_loss') {
+            if (currValue < prevValue) return current;
+            if (currValue > prevValue) return prev;
+          } else {
+            // For other metrics, higher is better
+            if (currValue > prevValue) return current;
+            if (currValue < prevValue) return prev;
+          }
+        }
+
+        return prev;
       });
 
-      const bestValue = best.metrics?.[metricKey] || 0;
+      const bestValue = best.metrics?.['train_accuracy'] || 0;
       const formattedValue = `${(bestValue * 100).toFixed(2)}%`;
 
       return {
@@ -97,27 +108,9 @@ const ModelInferencing = () => {
       };
     }
 
-    // For manual model selection (both edit and readonly mode)
-    // Get performance_metrics array from config
     const performanceMetrics = workflowState?.modelSelection?.config?.performance_metrics || [];
 
-    let firstEnabledMetric;
-    if (performanceMetrics.length > 0) {
-      const metricNameMap = {
-        'accuracy': 'Accuracy',
-        'precision': 'Precision',
-        'recall': 'Recall',
-        'f1': 'F1 Score',
-        'log_loss': 'Log Loss',
-      };
-
-      firstEnabledMetric = {
-        name: metricNameMap[performanceMetrics[0]] || 'Accuracy'
-      };
-    }
-
-    if (!firstEnabledMetric) {
-      // Fallback to accuracy if no enabled metrics found
+    if (performanceMetrics.length === 0) {
       const metricKey = 'train_accuracy';
       const best = apiResults.reduce((prev, current) => {
         const prevValue = prev.metrics?.[metricKey] || 0;
@@ -136,33 +129,73 @@ const ModelInferencing = () => {
     }
 
     const metricNameMap = {
-      'Accuracy': 'train_accuracy',
-      'Precision': 'train_precision',
-      'Recall': 'train_recall',
-      'F1 Score': 'train_f1',
-      'Log Loss': 'train_log_loss',
+      'accuracy': 'train_accuracy',
+      'precision': 'train_precision',
+      'recall': 'train_recall',
+      'f1': 'train_f1',
+      'log_loss': 'train_log_loss',
     };
 
-    const metricKey = metricNameMap[firstEnabledMetric.name];
+    const orderedMetricKeys = performanceMetrics.map(metric => metricNameMap[metric]).filter(Boolean);
 
+    if (orderedMetricKeys.length === 0) {
+      const metricKey = 'train_accuracy';
+      const best = apiResults.reduce((prev, current) => {
+        const prevValue = prev.metrics?.[metricKey] || 0;
+        const currValue = current.metrics?.[metricKey] || 0;
+        return currValue > prevValue ? current : prev;
+      });
+
+      const bestValue = best.metrics?.[metricKey] || 0;
+      const formattedValue = `${(bestValue * 100).toFixed(2)}%`;
+
+      return {
+        metricName: 'Accuracy',
+        name: best.run_name,
+        value: formattedValue,
+      };
+    }
     const best = apiResults.reduce((prev, current) => {
-      const prevValue = prev.metrics?.[metricKey] || 0;
-      const currValue = current.metrics?.[metricKey] || 0;
+      for (const metricKey of orderedMetricKeys) {
+        const prevValue = prev.metrics?.[metricKey] || 0;
+        const currValue = current.metrics?.[metricKey] || 0;
 
-      return currValue > prevValue ? current : prev;
+        // For log_loss, lower is better
+        if (metricKey === 'train_log_loss') {
+          if (currValue < prevValue) return current;
+          if (currValue > prevValue) return prev;
+        } else {
+          // For other metrics, higher is better
+          if (currValue > prevValue) return current;
+          if (currValue < prevValue) return prev;
+        }
+      }
+
+      return prev;
     });
 
-    const bestValue = best.metrics?.[metricKey] || 0;
+    const firstMetricKey = orderedMetricKeys[0];
+    const bestValue = best.metrics?.[firstMetricKey] || 0;
+
+    const metricDisplayNameMap = {
+      'train_accuracy': 'Accuracy',
+      'train_precision': 'Precision',
+      'train_recall': 'Recall',
+      'train_f1': 'F1 Score',
+      'train_log_loss': 'Log Loss',
+    };
+
+    const displayMetricName = metricDisplayNameMap[firstMetricKey] || 'Accuracy';
 
     let formattedValue;
-    if (firstEnabledMetric.name === 'Log Loss') {
+    if (firstMetricKey === 'train_log_loss') {
       formattedValue = bestValue.toFixed(4);
     } else {
       formattedValue = `${(bestValue * 100).toFixed(2)}%`;
     }
 
     return {
-      metricName: firstEnabledMetric.name,
+      metricName: displayMetricName,
       name: best.run_name,
       value: formattedValue,
     };
