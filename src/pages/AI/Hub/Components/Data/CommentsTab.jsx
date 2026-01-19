@@ -53,7 +53,7 @@ const CommentsTab = ({ datasetId, projectId }) => {
             setIsLoading(true);
             setError(null);
             try {
-                const url = `${hostnameAI}/canvas/comments/by-component?component=dataset&component_id=${encodeURIComponent(datasetId)}`;
+                const url = `${hostnameAI}/canvas/comments/by-component?component=data&component_id=${encodeURIComponent(datasetId)}`;
                 const res = await fetch(url, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
@@ -170,6 +170,17 @@ const CommentsTab = ({ datasetId, projectId }) => {
 
     const canCallApis = Boolean(hostnameAI && token && decodedToken?.sub && datasetId && projectId);
 
+    const wordCount = (str) => {
+        if (!str || !str.trim()) return 0;
+        return str.trim().split(/\s+/).filter(Boolean).length;
+    };
+
+    const trimToWords = (str, maxWords) => {
+        if (!str) return '';
+        const words = str.trim().split(/\s+/).filter(Boolean);
+        return words.slice(0, maxWords).join(' ');
+    };
+
     const submitAddComment = async () => {
         if (!canCallApis) {
             setError('Missing required context (token/user/dataset/project).');
@@ -179,6 +190,14 @@ const CommentsTab = ({ datasetId, projectId }) => {
             setError('Subject and Comment are required.');
             return;
         }
+        if (wordCount(addForm.subject) > 120) {
+            setError('Subject cannot exceed 120 words.');
+            return;
+        }
+        if (wordCount(addForm.comment) > 500) {
+            setError('Comment cannot exceed 500 words.');
+            return;
+        }
 
         setIsSubmitting(true);
         setError(null);
@@ -186,7 +205,7 @@ const CommentsTab = ({ datasetId, projectId }) => {
             const payload = {
                 user_id: decodedToken.sub,
                 subject: addForm.subject.trim(),
-                component: 'Dataset',
+                component: 'Data',
                 component_id: datasetId,
                 pinned: Number(addForm.pinned) ? 1 : 0,
                 comment: addForm.comment.trim(),
@@ -515,10 +534,18 @@ const CommentsTab = ({ datasetId, projectId }) => {
                                     <label className="block text-xs text-gray-600 mb-1">Subject</label>
                                     <input
                                         value={addForm.subject}
-                                        onChange={(e) => setAddForm((s) => ({ ...s, subject: e.target.value }))}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            if (wordCount(value) <= 120) {
+                                                setAddForm((s) => ({ ...s, subject: value }));
+                                            } else {
+                                                setAddForm((s) => ({ ...s, subject: trimToWords(value, 120) }));
+                                            }
+                                        }}
                                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                                         placeholder="Project status"
                                     />
+                                    <div className="text-xs text-gray-400 text-right">{wordCount(addForm.subject)}/120 words</div>
                                 </div>
                                 <div>
                                     <label className="block text-xs text-gray-600 mb-1">Type</label>
@@ -547,10 +574,18 @@ const CommentsTab = ({ datasetId, projectId }) => {
                                 <label className="block text-xs text-gray-600 mb-1">Comment</label>
                                 <textarea
                                     value={addForm.comment}
-                                    onChange={(e) => setAddForm((s) => ({ ...s, comment: e.target.value }))}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        if (wordCount(value) <= 500) {
+                                            setAddForm((s) => ({ ...s, comment: value }));
+                                        } else {
+                                            setAddForm((s) => ({ ...s, comment: trimToWords(value, 500) }));
+                                        }
+                                    }}
                                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[120px]"
                                     placeholder="data is working fine"
                                 />
+                                <div className="text-xs text-gray-400 text-right">{wordCount(addForm.comment)}/500 words</div>
                             </div>
                         </div>
 
