@@ -272,20 +272,45 @@ const ModelInferencing = () => {
 
     const metrics = selectedModel.metrics || {};
 
-    const demographics = ['age', 'gender'];
     const fairnessData = {};
+    const demographicColumns = new Set();
 
-    demographics.forEach(demo => {
+    Object.keys(metrics).forEach(key => {
+      if (key.startsWith('fairness_')) {
+        // Remove 'fairness_' prefix
+        const withoutPrefix = key.substring(9); // 'fairness_'.length = 9
+
+        // Check which metric type it is and extract demographic
+        const metricTypes = [
+          '_demographic_parity_difference',
+          '_demographic_parity_ratio',
+          '_accuracy_score_difference'
+        ];
+
+        for (const metricType of metricTypes) {
+          if (withoutPrefix.endsWith(metricType)) {
+            // Extract demographic by removing the metric type suffix
+            const demographic = withoutPrefix.substring(0, withoutPrefix.length - metricType.length);
+            demographicColumns.add(demographic);
+            break;
+          }
+        }
+      }
+    });
+
+    // Build fairness data for each detected demographic
+    demographicColumns.forEach(demo => {
       fairnessData[demo] = {
-        demographic_parity_difference: metrics[`fairness_${demo}_demographic_parity_difference`] || 0,
-        demographic_parity_ratio: metrics[`fairness_${demo}_demographic_parity_ratio`] || 0,
-        accuracy_score_difference: metrics[`fairness_${demo}_accuracy_score_difference`] || 0,
+        demographic_parity_difference: metrics[`fairness_${demo}_demographic_parity_difference`] ?? null,
+        demographic_parity_ratio: metrics[`fairness_${demo}_demographic_parity_ratio`] ?? null,
+        accuracy_score_difference: metrics[`fairness_${demo}_accuracy_score_difference`] ?? null,
       };
     });
 
     return {
       modelName: selectedModel.run_name,
       fairnessAssessment: selectedModel.fairness_assessment_message || 'N/A',
+      demographics: Array.from(demographicColumns),
       ...fairnessData
     };
   }, [apiResults, selectedFairnessModel]);
