@@ -16,6 +16,7 @@ const Projects = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [dashboardRefreshTrigger, setDashboardRefreshTrigger] = useState(0); // NEW: force stats refresh
     const [viewMode, setViewMode] = useState('both');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -75,7 +76,7 @@ const Projects = () => {
         };
 
         if (hostnameAI && token && decodedToken?.sub) fetchDashboard();
-    }, [hostnameAI, token, decodedToken?.sub]);
+    }, [hostnameAI, token, decodedToken?.sub, dashboardRefreshTrigger]); // CHANGED
 
     // Fetch recent projects from new API
     useEffect(() => {
@@ -90,7 +91,6 @@ const Projects = () => {
                 });
                 if (!resp.ok) throw new Error('Failed to fetch recent projects');
                 const data = await resp.json();
-                // Expecting { user_id, recent_entities: [...] }
                 setRecentProjects(Array.isArray(data?.recent_entities) ? data.recent_entities : []);
             } catch (err) {
                 setRecentProjectsError(err?.message || 'Failed to fetch recent projects');
@@ -99,15 +99,15 @@ const Projects = () => {
             }
         };
         fetchRecentProjects();
-    }, [hostnameAI, token, decodedToken?.sub, refreshTrigger]);
+    }, [hostnameAI, token, decodedToken?.sub, dashboardRefreshTrigger]); // CHANGED (tie to stats refresh)
 
     const statsCards = useMemo(() => {
-        if (!dashboardData?.counts) {
+        if (dashboardLoading || !dashboardData?.counts) { // CHANGED
             return [
-                { label: 'Projects', value: '—', trend: '', trendUp: true },
-                { label: 'Models', value: '—', trend: '', trendUp: true },
-                { label: 'Datasets', value: '—', trend: '', trendUp: true },
-                { label: 'Change (1week)', value: '—', trend: '', trendUp: true },
+                { label: 'Projects', value: 'Loading…', trend: '', trendUp: true },
+                { label: 'Models', value: 'Loading…', trend: '', trendUp: true },
+                { label: 'Datasets', value: 'Loading…', trend: '', trendUp: true },
+                { label: 'Change (1week)', value: 'Loading…', trend: '', trendUp: true },
             ];
         }
 
@@ -144,16 +144,16 @@ const Projects = () => {
                 trendUp: true,
             },
         ];
-    }, [dashboardData]);
+    }, [dashboardData, dashboardLoading]); // CHANGED
 
     const handleSearchChange = (e) => {
         setSearchTerm(e.target.value);
     };
 
     const handleRefresh = () => {
-        setIsLoading(true);
+        // CHANGED: refresh table + stats; stop table spinner when table fetch finishes (effect will do it)
         setRefreshTrigger((prev) => prev + 1);
-        setTimeout(() => setIsLoading(false), 1000);
+        setDashboardRefreshTrigger((prev) => prev + 1);
     };
 
     const getStatusStyle = (status) => {
@@ -218,11 +218,13 @@ const Projects = () => {
             sortable: true,
             render: (row) => (
                 <span
-                    className="text-[#8e78b7] hover:underline cursor-pointer"
+                    className="text-[#8e78b7] hover:underline cursor-pointer whitespace-normal break-words"
+                    style={{ overflowWrap: 'anywhere' }}
                     onClick={() => handleProjectLibrary(row)}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => e.key === 'Enter' && handleProjectLibrary(row)}
+                    title={row.name ?? ''}
                 >
                     {row.name}
                 </span>
@@ -298,21 +300,30 @@ const Projects = () => {
                 <CheckCircle className="w-5 h-5 text-[#8e78b7]" />
                 <span className="text-gray-600 text-sm">Recent Projects</span>
             </div>
-            {recentProjectsLoading ? (
+
+            {(recentProjectsLoading || dashboardLoading) ? (
                 <div className="text-sm text-gray-500">Loading…</div>
             ) : recentProjectsError ? (
                 <div className="text-sm text-red-600">{recentProjectsError}</div>
             ) : recentProjects.length ? (
-                <div className="flex flex-col gap-2">
-                    {recentProjects.map((project, idx) => (
-                        <div key={project.entity_id ?? idx} className="flex items-center gap-3 bg-gray-100 px-2 py-1.5 rounded-md">
-                            <Target className="w-4 h-4 text-gray-500" />
-                            <span className="text-sm text-gray-700 font-medium">{project.entity_name ?? '—'}</span>
-                            <span className="text-xs text-gray-500">
-                                {project.accessed_at ? new Date(project.accessed_at).toLocaleString('en-GB') : ''}
-                            </span>
-                        </div>
-                    ))}
+                <div className="grid grid-cols-2 gap-2">
+                    {recentProjects.map((project, idx) => {
+                        const fullName = project.entity_name ?? '—';
+                        return (
+                            <div
+                                key={project.entity_id ?? idx}
+                                className="flex items-start gap-2 bg-gray-100 px-2 py-1.5 rounded-md min-w-0"
+                            >
+                                <Target className="w-4 h-4 text-gray-500 shrink-0 mt-[2px]" />
+                                <span
+                                    className="block min-w-0 flex-1 text-sm text-gray-700 font-medium whitespace-nowrap overflow-hidden text-ellipsis"
+                                    title={fullName}
+                                >
+                                    {fullName}
+                                </span>
+                            </div>
+                        );
+                    })}
                 </div>
             ) : (
                 <div className="text-sm text-gray-500">No recent projects</div>

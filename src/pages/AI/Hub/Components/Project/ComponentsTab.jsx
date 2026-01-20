@@ -28,6 +28,95 @@ const ComponentsTab = ({ projectData }) => {
     const [modelsLoading, setModelsLoading] = useState(false);
     const [modelsError, setModelsError] = useState(null);
 
+    // NEW: click-to-library should pass "full" entity payload (component rows are lightweight)
+    const [entityNavLoading, setEntityNavLoading] = useState(false);
+
+    // NEW: fetch full lists (same APIs as Data/Models pages) and filter by id/name
+    const fetchDatasetFromList = async (row) => {
+        const datasetId = row?.dataset_id ?? row?.id;
+        const datasetName = row?.dataset_name;
+
+        const res = await fetch(`${hostnameAI}/canvas/list_data_info`, {
+            headers: { Authorization: `Bearer ${token}`, accept: "application/json" },
+        });
+        if (!res.ok) throw new Error("Failed to fetch datasets list");
+        const list = await res.json();
+        const arr = Array.isArray(list) ? list : [];
+
+        // match by id-like fields first, then by name-like fields
+        const match =
+            (datasetId != null && arr.find((d) => String(d?.id ?? d?.dataset_id ?? d?.uuid ?? d?.file_id) === String(datasetId))) ||
+            (datasetName && arr.find((d) => String(d?.file_name ?? d?.dataset_name ?? "").toLowerCase() === String(datasetName).toLowerCase()));
+
+        return match ?? row;
+    };
+
+    const fetchModelFromList = async (row) => {
+        const modelId = row?.model_id ?? row?.id;
+        const modelName = row?.model_name ?? row?.run_name;
+
+        const res = await fetch(`${hostnameAI}/canvas/model_list`, {
+            headers: { Authorization: `Bearer ${token}`, accept: "application/json" },
+        });
+        if (!res.ok) throw new Error("Failed to fetch models list");
+        const list = await res.json();
+        const arr = Array.isArray(list) ? list : [];
+
+        const match =
+            (modelId != null && arr.find((m) => String(m?.id) === String(modelId))) ||
+            (modelName && arr.find((m) => String(m?.run_name ?? m?.model_name ?? "").toLowerCase() === String(modelName).toLowerCase()));
+
+        return match ?? row;
+    };
+
+    const openDatasetLibraryFromComponents = async (row) => {
+        if (!hostnameAI || !token) return;
+        setEntityNavLoading(true);
+        try {
+            const fullRow = await fetchDatasetFromList(row);
+            const datasetKey =
+                fullRow?.id ||
+                fullRow?.dataset_id ||
+                fullRow?.uuid ||
+                fullRow?.file_id ||
+                fullRow?.file_name ||
+                row?.dataset_id ||
+                row?.id ||
+                row?.dataset_name;
+
+            navigate(`/ai/hub/data/library/${encodeURIComponent(String(datasetKey))}`, {
+                state: { datasetData: fullRow },
+            });
+        } catch (e) {
+            // fallback: still navigate with what we have
+            const datasetKey = row?.dataset_id || row?.id || row?.dataset_name;
+            if (datasetKey) {
+                navigate(`/ai/hub/data/library/${encodeURIComponent(String(datasetKey))}`, {
+                    state: { datasetData: row },
+                });
+            }
+        } finally {
+            setEntityNavLoading(false);
+        }
+    };
+
+    const openModelLibraryFromComponents = async (row) => {
+        if (!hostnameAI || !token) return;
+        setEntityNavLoading(true);
+        try {
+            const fullRaw = await fetchModelFromList(row);
+            navigate("/ai/hub/models/library", {
+                state: { modelData: fullRaw },
+            });
+        } catch (e) {
+            navigate("/ai/hub/models/library", {
+                state: { modelData: row },
+            });
+        } finally {
+            setEntityNavLoading(false);
+        }
+    };
+
     // Fetch datasets
     useEffect(() => {
         if (!hostnameAI || !token || !projectName) return;
@@ -50,7 +139,6 @@ const ComponentsTab = ({ projectData }) => {
         fetchDatasets();
     }, [hostnameAI, token, projectName]);
 
-    // Fetch models
     useEffect(() => {
         if (!hostnameAI || !token || !projectName) return;
         setModelsLoading(true);
@@ -170,7 +258,19 @@ const ComponentsTab = ({ projectData }) => {
             key: 'dataset_name',
             label: 'Name',
             sortable: true,
-            render: (row) => <span className="text-[#8e78b7] hover:underline cursor-pointer">{row.dataset_name}</span>,
+            render: (row) => (
+                <span
+                    className={`block text-[#8e78b7] hover:underline cursor-pointer whitespace-normal break-words ${entityNavLoading ? 'opacity-60 pointer-events-none' : ''}`}
+                    style={{ overflowWrap: 'anywhere' }}
+                    title={row.dataset_name ?? ''}
+                    onClick={() => openDatasetLibraryFromComponents(row)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && openDatasetLibraryFromComponents(row)}
+                >
+                    {row.dataset_name}
+                </span>
+            ),
         },
         { key: 'row_count', label: 'Rows', sortable: true },
         { key: 'column_count', label: 'Columns', sortable: true },
@@ -186,9 +286,21 @@ const ComponentsTab = ({ projectData }) => {
             key: 'model_name',
             label: 'Name',
             sortable: true,
-            render: (row) => <span className="text-[#8e78b7] hover:underline cursor-pointer">{row.model_name}</span>,
+            render: (row) => (
+                <span
+                    className={`block text-[#8e78b7] hover:underline cursor-pointer whitespace-normal break-words ${entityNavLoading ? 'opacity-60 pointer-events-none' : ''}`}
+                    style={{ overflowWrap: 'anywhere' }}
+                    title={row.model_name ?? ''}
+                    onClick={() => openModelLibraryFromComponents(row)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && openModelLibraryFromComponents(row)}
+                >
+                    {row.model_name}
+                </span>
+            ),
         },
-        { key: 'status', label: 'Status', sortable: true },
+        // { key: 'status', label: 'Status', sortable: true },
         { key: 'modeling_type', label: 'Modeling Type', sortable: true },
         { key: 'run_mode_modelling', label: 'Run Mode', sortable: true },
         { key: 'run_type_modelling', label: 'Run Type', sortable: true },
