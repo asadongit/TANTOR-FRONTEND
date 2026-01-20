@@ -23,6 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 package-lock.json merge=union
+package-lock.json
 
 .gitlabs-ci.yml
 

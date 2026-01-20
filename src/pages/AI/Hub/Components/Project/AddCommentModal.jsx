@@ -1,9 +1,10 @@
 import { X, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Link as LinkIcon, Play, Send } from 'lucide-react';
 
-const AddCommentModal = ({ isOpen, onClose, formData, onInputChange, onSubmit }) => {
+const AddCommentModal = ({ isOpen, onClose, formData, onInputChange, onSubmit, onReset }) => {
     if (!isOpen) return null;
 
     const handleCancel = () => {
+        onReset();
         onClose();
     };
 
@@ -79,13 +80,19 @@ const AddCommentModal = ({ isOpen, onClose, formData, onInputChange, onSubmit })
 
                         {/* Subject */}
                         <div className="flex flex-col">
-                            <label className="text-sm text-gray-700 mb-1.5">Subject</label>
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="text-sm text-gray-700">Subject</label>
+                                <span className="text-xs text-gray-500">
+                                    {formData.subject?.length || 0}/120
+                                </span>
+                            </div>
                             <input
                                 type="text"
                                 name="subject"
                                 value={formData.subject}
                                 onChange={onInputChange}
                                 placeholder="Subject"
+                                maxLength="120"
                                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                             />
                         </div>
@@ -93,48 +100,20 @@ const AddCommentModal = ({ isOpen, onClose, formData, onInputChange, onSubmit })
 
                     {/* Add Comment Text Area */}
                     <div className="flex flex-col mb-4">
-                        <label className="text-sm text-gray-700 mb-1.5">Add Comment</label>
+                        <div className="flex items-center justify-between mb-1.5">
+                            <label className="text-sm text-gray-700">Add Comment</label>
+                            <span className="text-xs text-gray-500">
+                                {formData.comment?.length || 0}/500
+                            </span>
+                        </div>
                         <div className="border border-gray-300 rounded-lg overflow-hidden">
-                            {/* Toolbar */}
-                            <div className="flex items-center gap-1 px-3 py-2 bg-gray-50 border-b border-gray-300">
-                                <button className="p-1.5 hover:bg-gray-200 rounded transition-colors">
-                                    <Bold className="w-4 h-4 text-gray-600" />
-                                </button>
-                                <button className="p-1.5 hover:bg-gray-200 rounded transition-colors">
-                                    <Italic className="w-4 h-4 text-gray-600" />
-                                </button>
-                                <button className="p-1.5 hover:bg-gray-200 rounded transition-colors">
-                                    <Underline className="w-4 h-4 text-gray-600" />
-                                </button>
-                                <div className="w-px h-5 bg-gray-300 mx-1"></div>
-                                <button className="p-1.5 hover:bg-gray-200 rounded transition-colors">
-                                    <AlignLeft className="w-4 h-4 text-gray-600" />
-                                </button>
-                                <button className="p-1.5 hover:bg-gray-200 rounded transition-colors">
-                                    <AlignCenter className="w-4 h-4 text-gray-600" />
-                                </button>
-                                <button className="p-1.5 hover:bg-gray-200 rounded transition-colors">
-                                    <AlignRight className="w-4 h-4 text-gray-600" />
-                                </button>
-                                <div className="w-px h-5 bg-gray-300 mx-1"></div>
-                                <button className="p-1.5 hover:bg-gray-200 rounded transition-colors">
-                                    <List className="w-4 h-4 text-gray-600" />
-                                </button>
-                                <button className="p-1.5 hover:bg-gray-200 rounded transition-colors">
-                                    <ListOrdered className="w-4 h-4 text-gray-600" />
-                                </button>
-                                <div className="w-px h-5 bg-gray-300 mx-1"></div>
-                                <button className="p-1.5 hover:bg-gray-200 rounded transition-colors">
-                                    <LinkIcon className="w-4 h-4 text-gray-600" />
-                                </button>
-                            </div>
                             {/* Text Area */}
                             <textarea
                                 name="comment"
                                 value={formData.comment}
                                 onChange={onInputChange}
-                                placeholder="Add Comment"
                                 rows="6"
+                                maxLength="500"
                                 className="w-full px-3 py-2 text-sm focus:outline-none resize-none"
                             ></textarea>
                         </div>

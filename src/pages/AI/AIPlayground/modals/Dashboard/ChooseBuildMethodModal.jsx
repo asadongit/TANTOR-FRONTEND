@@ -1,16 +1,19 @@
 
 import React, { useState } from 'react';
 import { X, ArrowRight, Network, Layers } from 'lucide-react';
+import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 
 export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
     const [selectedMethod, setSelectedMethod] = useState('monolithic');
     const [ensembleCount, setEnsembleCount] = useState(2);
+    const { setMode } = useAIPlayground();
 
     if (!isOpen) return null;
 
     const handleProceed = () => {
         onProceed(selectedMethod, ensembleCount);
         onClose();
+        setMode('write')
     };
 
     const decrementCount = () => {

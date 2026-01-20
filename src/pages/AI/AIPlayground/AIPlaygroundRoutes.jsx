@@ -2,8 +2,8 @@ import { Route } from 'react-router-dom';
 import AIPlaygroundDashboard from './AIPlaygroundDashboard';
 import DataPreprocessing from './Stages/DataPreprocessing/DataPreprocessing';
 import ModelGenesis from './Stages/ModelGenesis';
-import ModelSelection from './Stages/ModelSelection';
-import ModelInferencing from './Stages/ModelInferencing';
+import ModelSelection from './Stages/ModelSelection/ModelSelection';
+import ModelInferencing from './Stages/ModelInferencing/ModelInferencing';
 import XAI from './Stages/XAI';
 import ModelDeployment from './Stages/ModelDeployment';
 

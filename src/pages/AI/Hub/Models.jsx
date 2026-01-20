@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback } from "react";
+import React, { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   RefreshCcw,
@@ -13,12 +13,16 @@ import {
   Palette,
   BookOpen,
   Gauge,
+  Loader2,
 } from "lucide-react";
 import { Icon } from "@iconify-icon/react";
 import Breadcrumb from "../../../components/Breadcrumb";
 import DataTable from "../../../components/DataTable";
 import { StatCard, StatsContainer, StatsGrid } from "./Components/StatsCard";
 import QuickPredictModal from "./Components/Models/QuickPredictModal";
+import DeleteModal from "./Components/DeleteModal";
+import { useAuth } from "../../../context/AuthContext";
+import { useAIPlayground } from "../../../context/AIPlaygroundContext";
 
 function Models() {
   const navigate = useNavigate();
@@ -28,188 +32,193 @@ function Models() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isQuickPredictOpen, setIsQuickPredictOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
+  const [modelsData, setModelsData] = useState([]);
+  const [error, setError] = useState(null);
+  const [dashboardSummary, setDashboardSummary] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deployModalOpen, setDeployModalOpen] = useState(false);
+  const [deployLoading, setDeployLoading] = useState(false);
+  const [deployResult, setDeployResult] = useState(null);
+  const [deployError, setDeployError] = useState(null);
+  const [deployTarget, setDeployTarget] = useState(null);
+  const hostnameAI = window._env_?.VITE_AI_API;
+  const { token, decodedToken } = useAuth();
+  const [isCanvasLoading, setIsCanvasLoading] = useState(false);
+  const { setWorkflowState, setDatasetState, setMode, setModelState, setProjectState } = useAIPlayground();
 
-  const metricsData = [
-    {
-      title: "Projects",
-      value: 39,
-      trend: "up",
-      trendValue: "10%",
-      icon: "material-symbols:check-circle-outline",
-    },
-    {
-      title: "Projects",
-      value: 15,
-      trend: "up",
-      trendValue: "6%",
-      icon: "material-symbols:check-circle-outline",
-    },
-    {
-      title: "Projects",
-      value: "82%",
-      trend: "up",
-      trendValue: "2%",
-      icon: "material-symbols:check-circle-outline",
-    },
-    {
-      title: "Projects",
-      value: 9,
-      trend: "down",
-      trendValue: "2%",
-      icon: "material-symbols:check-circle-outline",
-    },
-    {
-      title: "Projects",
-      value: "17sec",
-      trend: "down",
-      trendValue: "2%",
-      icon: "material-symbols:check-circle-outline",
-    },
-  ];
+  useEffect(() => {
+    const fetchModels = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`${hostnameAI}/canvas/model_list`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch models");
+        }
+        const data = await response.json();
 
-  const alertsData = [
-    { name: "M_credit", issue: "Drift 5%", trend: "down", type: "drift" },
-    { name: "M_CS", issue: "Latency 3s", trend: "down", type: "latency" },
-    { name: "M_churn", issue: "Drift 4%", trend: "down", type: "drift" },
-    { name: "M_risk", issue: "Latency 2s", trend: "up", type: "latency" },
-    { name: "M_campaign", issue: "Drift 3%", trend: "down", type: "drift" },
-    { name: "M_risk", issue: "Latency 2s", trend: "up", type: "latency" },
-  ];
+        const mappedData = (Array.isArray(data) ? data : []).map((item, index) => ({
+          _raw: item, // keep full backend payload for downstream pages
+          id: item.id,
+          sno: index + 1,
+          run_name: item.run_name,
+          description: item.target_variable || item.usecase || "",
+          created_date: item.created_at
+            ? new Date(item.created_at).toLocaleDateString("en-GB")
+            : "",
+          type: item.modeling_type,
+          status: item.status ?? "Unknown",
+        }));
 
-  const modelFlowData = {
-    aiModel: {
-      id: "ai-model",
-      label: "564",
-      sublabel: "All Models",
-      x: 30,
-      y: 100,
-    },
-    classificationAgents: [
-      { id: "class-1", label: "Classification\nAgent", x: 180, y: 60 },
-      { id: "class-2", label: "Classification\nAgent", x: 180, y: 140 },
-    ],
-    middleAgents: [
-      {
-        id: "loan-agent",
-        label: "Loan Agent",
-        color: "#FB923C",
-        x: 320,
-        y: 20,
-      },
-      { id: "gst-agent", label: "GST Agent", color: "#FB923C", x: 320, y: 60 },
-      {
-        id: "loan-agent-1",
-        label: "Loan Agent 1",
-        color: "#FB923C",
-        x: 320,
-        y: 100,
-      },
-      {
-        id: "multi-agent",
-        label: "Multi Agent",
-        color: "#FB923C",
-        x: 320,
-        y: 140,
-      },
-      {
-        id: "gst-agent-1",
-        label: "GST Agent 1",
-        color: "#FB923C",
-        x: 320,
-        y: 180,
-      },
-    ],
-    orchestrationLayer: {
-      id: "orchestration",
-      label: "Orchestration Agent",
-      x: 500,
-      y: 90,
-    },
-    output: { id: "output", label: "Output", x: 660, y: 100 },
+
+        setModelsData(mappedData);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchModels();
+  }, [hostnameAI, token, refreshTrigger]);
+
+  useEffect(() => {
+    const fetchDashboardSummary = async () => {
+      try {
+        const response = await fetch(`${hostnameAI}/canvas/model_dashboard/summary`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) throw new Error("Failed to fetch dashboard summary");
+        const data = await response.json();
+        setDashboardSummary(data);
+      } catch (err) {
+        setDashboardSummary(null);
+      }
+    };
+
+    fetchDashboardSummary();
+  }, [hostnameAI, token, refreshTrigger]);
+
+  const formatPct = (n) => {
+    const num = Number(n);
+    if (!Number.isFinite(num)) return "0%";
+    const rounded =
+      Math.abs(num) >= 10 ? Math.round(num) : Math.round(num * 10) / 10;
+    return `${rounded}%`;
   };
 
-  const projectsData = [
-    {
-      sno: 1,
-      name: "Project - Churn",
-      description: "Churn",
-      created_date: "01/10/2025",
-      type: "Salish",
-      status: "Deployed",
-    },
-    {
-      sno: 2,
-      name: "Project - Analysis",
-      description: "Churn",
-      created_date: "01/10/2025",
-      type: "Salish",
-      status: "Archived",
-    },
-    {
-      sno: 3,
-      name: "Project - Retention",
-      description: "Retention",
-      created_date: "15/11/2025",
-      type: "Mekong",
-      status: "Deployed",
-    },
-    {
-      sno: 4,
-      name: "Project - Acquisition",
-      description: "Acquisition",
-      created_date: "01/12/2025",
-      type: "Amazon",
-      status: "Deployed",
-    },
-    {
-      sno: 5,
-      name: "Project - Engagement",
-      description: "Engagement",
-      created_date: "20/12/2025",
-      type: "Nile",
-      status: "In progress",
-    },
-    {
-      sno: 6,
-      name: "Project - Onboarding",
-      description: "Onboarding",
-      created_date: "05/01/2026",
-      type: "Yangtze",
-      status: "Inactive",
-    },
-    {
-      sno: 7,
-      name: "Project - Feedback",
-      description: "Feedback",
-      created_date: "30/01/2026",
-      type: "Danube",
-      status: "Deployed",
-    },
-    {
-      sno: 8,
-      name: "Project - Analysis",
-      description: "Analysis",
-      created_date: "15/02/2026",
-      type: "Thames",
-      status: "Archived",
-    },
-    {
-      sno: 9,
-      name: "Project - Strategy",
-      description: "Strategy",
-      created_date: "01/03/2026",
-      type: "Seine",
-      status: "Deployed",
-    },
-    {
-      sno: 10,
-      name: "Project - Optimization",
-      description: "Optimization",
-      created_date: "15/03/2026",
-      type: "Mississippi",
-      status: "Archived",
-    },
-  ];
+  const formatLatency = (ms) => {
+    const num = Number(ms);
+    if (!Number.isFinite(num)) return "0 ms";
+    if (num >= 1000) return `${Math.round((num / 1000) * 10) / 10}s`;
+    return `${Math.round(num)}ms`;
+  };
+
+  const metricsData = useMemo(() => {
+    const models = dashboardSummary?.counts?.models;
+    const deployed = dashboardSummary?.counts?.deployed_models;
+    const acc = dashboardSummary?.metrics?.avg_model_accuracy;
+    const lat = dashboardSummary?.metrics?.avg_model_latency;
+
+    const toTrend = (t, pct) => {
+      if (t === "increased") return "up";
+      if (t === "decreased") return "down";
+      const num = Number(pct);
+      if (!Number.isFinite(num)) return "up";
+      return num >= 0 ? "up" : "down";
+    };
+
+    return [
+      {
+        title: "Models",
+        value: models?.current ?? 0,
+        trend: toTrend(models?.trend, models?.percentage_change),
+        trendValue: formatPct(models?.percentage_change),
+        icon: "material-symbols:check-circle-outline",
+      },
+      {
+        title: "Deployed Models",
+        value: deployed?.current ?? 0,
+        trend: toTrend(deployed?.trend, deployed?.percentage_change),
+        trendValue: formatPct(deployed?.percentage_change),
+        icon: "material-symbols:check-circle-outline",
+      },
+      {
+        title: "Avg Accuracy",
+        value:
+          acc?.current == null
+            ? "0%"
+            : `${Math.round(Number(acc.current) * 1000) / 10}%`,
+        trend: toTrend(acc?.trend, acc?.percentage_change),
+        trendValue: formatPct(acc?.percentage_change),
+        icon: "material-symbols:check-circle-outline",
+      },
+      {
+        title: "Avg Latency",
+        value: formatLatency(lat?.current),
+        trend: toTrend(lat?.trend, lat?.percentage_change),
+        trendValue: formatPct(lat?.percentage_change),
+        icon: "material-symbols:check-circle-outline",
+      },
+      {
+        title: "Active Models",
+        value: dashboardSummary?.model_status_counts?.active ?? 0,
+        trend: "up",
+        trendValue: "",
+        icon: "material-symbols:check-circle-outline",
+      },
+    ];
+  }, [dashboardSummary]);
+
+  const alertsData = useMemo(() => {
+    const rows = dashboardSummary?.recent_alerted_runs_per_schedule;
+    if (!Array.isArray(rows)) return [];
+    return rows.slice(0, 6).map((r) => ({
+      name: r.model_run_name || r.schedule_name || "Run",
+      issue: r.schedule_name ? `Schedule: ${r.schedule_name}` : "Alert",
+      trend: "down",
+      type: "drift",
+    }));
+  }, [dashboardSummary]);
+
+  const modelFlowData = useMemo(() => {
+    const count = dashboardSummary?.counts?.models?.current;
+    return {
+      aiModel: {
+        id: "ai-model",
+        label: String(count ?? 0),
+        sublabel: "All Models",
+        x: 30,
+        y: 100,
+      },
+      classificationAgents: [
+        { id: "class-1", label: "Classification\nAgent", x: 180, y: 60 },
+        { id: "class-2", label: "Classification\nAgent", x: 180, y: 140 },
+      ],
+      middleAgents: [
+        { id: "loan-agent", label: "Loan Agent", color: "#FB923C", x: 320, y: 20 },
+        { id: "gst-agent", label: "GST Agent", color: "#FB923C", x: 320, y: 60 },
+        { id: "loan-agent-1", label: "Loan Agent 1", color: "#FB923C", x: 320, y: 100 },
+        { id: "multi-agent", label: "Multi Agent", color: "#FB923C", x: 320, y: 140 },
+        { id: "gst-agent-1", label: "GST Agent 1", color: "#FB923C", x: 320, y: 180 },
+      ],
+      orchestrationLayer: {
+        id: "orchestration",
+        label: "Orchestration Agent",
+        x: 500,
+        y: 90,
+      },
+      output: { id: "output", label: "Output", x: 660, y: 100 },
+    };
+  }, [dashboardSummary]);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -239,12 +248,12 @@ function Models() {
   const columns = [
     { key: "sno", label: "Sno", sortable: true, width: "90px" },
     {
-      key: "name",
+      key: "run_name",
       label: "Name",
       sortable: true,
       render: (row) => (
-        <span className="text-purple-600 hover:underline cursor-pointer">
-          {row.name}
+        <span className="text-purple-600 hover:underline cursor-pointer whitespace-normal break-words break-all">
+          {row.run_name}
         </span>
       ),
     },
@@ -268,12 +277,75 @@ function Models() {
     { label: "Action", sortable: false },
   ];
 
+  const handleDelete = (row) => {
+    setDeleteTarget(row);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      const id = deleteTarget.id || deleteTarget._raw?.id;
+      const url = `${hostnameAI}/canvas/model/${id}/delete`;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          accept: "application/json",
+        },
+      });
+      if (!resp.ok) throw new Error("Failed to delete model");
+      setDeleteModalOpen(false);
+      setDeleteTarget(null);
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (err) {
+      alert(err.message || "Delete failed");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // Deploy action handler
+  const handleDeploy = async (row) => {
+    setDeployTarget(row);
+    setDeployModalOpen(true);
+    setDeployLoading(true);
+    setDeployResult(null);
+    setDeployError(null);
+    try {
+      const modelName = row?.run_name || row?._raw?.run_name;
+      const resp = await fetch(
+        `${hostnameAI}/quick/deploy-quick-action?model_name=${encodeURIComponent(modelName)}`,
+        {
+          headers:
+            {
+              Authorization: `Bearer ${token}`,
+              accept: "application/json",
+            },
+        }
+      );
+      const data = await resp.json();
+      if (resp.ok && data.success) {
+        setDeployResult(data);
+      } else {
+        setDeployError(data?.message || "Deployment failed");
+      }
+    } catch (err) {
+      setDeployError(err.message || "Deployment failed");
+    } finally {
+      setDeployLoading(false);
+    }
+  };
+
   const actions = [
     {
       label: "Library",
       icon: <BookOpen className="w-4 h-4" />,
       onClick: (row) =>
-        navigate("/ai/hub/models/library", { state: { modelData: row } }),
+        navigate("/ai/hub/models/library", {
+          state: { modelData: row?._raw ?? row },
+        }),
       tooltip: "Library",
     },
     {
@@ -285,19 +357,151 @@ function Models() {
     {
       label: "AI Canvas",
       icon: <Palette className="w-4 h-4" />,
-      onClick: (row) =>
-        navigate("/ai/playground/model-genesis", {
-          state: {
-            mode: "view",
-            model: row,
-          },
-        }),
+      onClick: async (row) => {
+        setIsCanvasLoading(true);
+
+        try {
+          const modelName = row?.run_name || row?._raw?.run_name;
+          if (!modelName) {
+            throw new Error("Model name not found");
+          }
+
+          const modelResponse = await fetch(`${hostnameAI}/canvas/model/${modelName}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              accept: "application/json",
+            },
+          });
+
+          if (!modelResponse.ok) {
+            throw new Error("Failed to fetch model details");
+          }
+
+          const modelData = await modelResponse.json();
+
+          const projectName = modelData.project_name;
+          const username = decodedToken?.preferred_username || "admin";
+
+          const ingestionParams = new URLSearchParams({
+            domain: '',
+            project_name: projectName,
+            profiling_required: 'false',
+            tag: '',
+            source: '',
+            sub_tag: '',
+            table_name: modelData.dataset_name,
+            category: '',
+            user_name: username
+          });
+
+          const ingestionResponse = await fetch(
+            `${hostnameAI}/data/ingestion`,
+            {
+              method: 'POST',
+              headers: {
+                'accept': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+              body: ingestionParams.toString()
+            }
+          );
+
+          if (!ingestionResponse.ok) {
+            throw new Error("Failed to ingest data");
+          }
+
+          const ingestionData = await ingestionResponse.json();
+
+          setModelState({selectedModel: modelData.model_name });
+
+          setProjectState(prev => ({ ...prev, selectedProject: modelData.project_name }));
+
+          setDatasetState({
+            tableName: modelData.dataset_name,
+            sessionId: ingestionData.session_id || '',
+            columnNames: ingestionData.column_names || [],
+            profileReportHtml: ingestionData.profile_report_html || ''
+          });
+
+          if (modelData?.prefill) {
+            const newWorkflowState = {
+              modelGenesis: {
+                config: modelData.prefill?.data_preprocessing?.request?.genesis || null,
+                apiResponse: modelData.prefill?.data_preprocessing?.response?.genesis || null
+              },
+              dataPreprocessing: {
+                step1: {
+                  config: modelData.prefill?.data_preprocessing?.request?.initial_clean || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.initial_clean || null
+                },
+                step2: {
+                  config: modelData.prefill?.data_preprocessing?.request?.feature_selection || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.feature_selection || null
+                },
+                step3: {
+                  config: modelData.prefill?.data_preprocessing?.request?.feature_engineering || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.feature_engineering || null
+                },
+                step4: {
+                  config: modelData.prefill?.data_preprocessing?.request?.advanced_transformation || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.advanced_transformation || null
+                },
+                step5: {
+                  config: modelData.prefill?.data_preprocessing?.request?.statistical_analysis || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.statistical_analysis || null
+                },
+                step6: {
+                  config: modelData.prefill?.data_preprocessing?.request?.feature_importance || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.feature_importance || null
+                },
+                step7: {
+                  config: modelData.prefill?.data_preprocessing?.request?.imbalance_handling || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.imbalance_handling || null
+                }
+              },
+              modelSelection: {
+                config: modelData.prefill?.training?.request?.training_request || null,
+                apiResponse: modelData.prefill?.training?.response || null
+              },
+              modelInferencing: {
+                config: null,
+                apiResponse: null
+              },
+              xai: {
+                config: null,
+                apiResponse: null
+              },
+              modelDeployment: {
+                config: null,
+                apiResponse: null
+              }
+            };
+
+            setWorkflowState(newWorkflowState);
+            setMode('view');
+          }
+
+          navigate("/ai/playground/model-genesis", {
+            state: {
+              mode: "view",
+              model: row,
+              modelDetails: modelData,
+            },
+          });
+
+        } catch (error) {
+          console.error("Error loading model:", error);
+        } finally {
+          setIsCanvasLoading(false);
+        }
+      },
       tooltip: "AI Canvas",
+      disabled: isCanvasLoading,
     },
     {
       label: "Deploy",
       icon: <Rocket className="w-4 h-4" />,
-      onClick: (row) => console.log("Deploy:", row),
+      onClick: handleDeploy,
       tooltip: "Deploy",
     },
     {
@@ -318,22 +522,26 @@ function Models() {
     {
       label: "Delete",
       icon: <Trash2 className="w-4 h-4" />,
-      onClick: (row) => console.log("Delete:", row),
+      onClick: handleDelete,
       tooltip: "Delete",
     },
   ];
 
   const filteredData = useMemo(() => {
-    if (!searchTerm.trim()) return projectsData;
+    if (!searchTerm.trim()) {
+      return modelsData.filter(row => String(row.status).toLowerCase() !== "deleted");
+    }
     const q = searchTerm.toLowerCase();
-    return projectsData.filter((row) =>
-      Object.values(row || {}).some((val) =>
-        String(val ?? "")
-          .toLowerCase()
-          .includes(q)
-      )
-    );
-  }, [searchTerm, projectsData]);
+    return modelsData
+      .filter(row => String(row.status).toLowerCase() !== "deleted")
+      .filter((row) =>
+        Object.values(row || {}).some((val) =>
+          String(val ?? "")
+            .toLowerCase()
+            .includes(q)
+        )
+      );
+  }, [searchTerm, modelsData]);
 
   const ModelFlowDiagram = ({ data }) => {
     const svgRef = useRef(null);
@@ -691,26 +899,63 @@ function Models() {
             <div key={index} className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <div
-                  className={`w-2.5 h-2.5 rounded-full ${
-                    alert.type === "drift" ? "bg-orange-400" : "bg-blue-400"
-                  }`}
+                  className={`w-2.5 h-2.5 rounded-full ${alert.type === "drift" ? "bg-orange-400" : "bg-blue-400"
+                    }`}
                 />
                 <span className="text-sm text-gray-700">{alert.name}</span>
               </div>
               <span
-                className={`text-xs flex items-center gap-1 ${
-                  alert.trend === "up" ? "text-green-500" : "text-orange-500"
-                }`}
+                className={`text-xs flex items-center gap-1 ${alert.trend === "up" ? "text-green-500" : "text-orange-500"
+                  }`}
               >
                 {alert.issue}
-                {alert.trend === "up" ? (
-                  <ArrowUp className="w-3 h-3" />
-                ) : (
-                  <ArrowDown className="w-3 h-3" />
-                )}
               </span>
             </div>
           ))}
+        </div>
+      </div>
+    );
+  };
+
+  const DeployModal = () => {
+    if (!deployModalOpen) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+        <div className="relative bg-white rounded-lg max-w-md w-full mx-4 p-6 shadow-xl">
+          <div className="text-lg font-semibold mb-2">Deploy Model</div>
+          {deployLoading && (
+            <div className="flex flex-col items-center py-6">
+              <Loader2 className="w-12 h-12 text-purple-500 animate-spin mb-3" />
+              <span className="text-gray-700">Deploying model...</span>
+            </div>
+          )}
+          {!deployLoading && deployResult && (
+            <div className="flex flex-col items-center py-6">
+              <Icon icon="material-symbols:check-circle-outline" className="w-12 h-12 text-green-500 mb-2" />
+              <span className="text-green-700 font-medium mb-1">Deployment Successful!</span>
+              <div className="text-xs text-gray-500 text-center">
+                Model: <b>{deployResult.model_name}</b>
+                <br />
+                Project: <b>{deployResult.project_name}</b>
+              </div>
+            </div>
+          )}
+          {!deployLoading && deployError && (
+            <div className="flex flex-col items-center py-6">
+              <Icon icon="material-symbols:error-outline" className="w-12 h-12 text-red-500 mb-2" />
+              <span className="text-red-700 font-medium mb-1">Deployment Failed</span>
+              <div className="text-xs text-gray-500 text-center">{deployError}</div>
+            </div>
+          )}
+          <div className="mt-4 flex justify-end">
+            <button
+              className="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700"
+              onClick={() => setDeployModalOpen(false)}
+              disabled={deployLoading}
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -736,11 +981,10 @@ function Models() {
           </div>
 
           <button
-            className={`p-1.5 rounded-lg border ${
-              viewMode === "list"
-                ? "bg-gray-100 border-gray-500"
-                : "border-gray-300"
-            } hover:bg-gray-50`}
+            className={`p-1.5 rounded-lg border ${viewMode === "list"
+              ? "bg-gray-100 border-gray-500"
+              : "border-gray-300"
+              } hover:bg-gray-50`}
             onClick={() => setViewMode(viewMode === "list" ? "both" : "list")}
             title={viewMode === "list" ? "Show All Views" : "Show List Only"}
           >
@@ -759,9 +1003,8 @@ function Models() {
             disabled={isLoading}
           >
             <RefreshCcw
-              className={`h-5 w-5 text-gray-600 ${
-                isLoading ? "animate-spin" : ""
-              }`}
+              className={`h-5 w-5 text-gray-600 ${isLoading ? "animate-spin" : ""
+                }`}
             />
           </button>
         </div>
@@ -785,8 +1028,8 @@ function Models() {
             </StatsGrid>
           </StatsContainer>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-2">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-1">
               <ModelFlowDiagram data={modelFlowData} />
             </div>
             <div>
@@ -801,7 +1044,7 @@ function Models() {
         data={filteredData}
         actions={actions}
         isLoading={isLoading}
-        isError={false}
+        isError={!!error}
         refetch={handleRefresh}
         resetSortTrigger={refreshTrigger}
       />
@@ -810,6 +1053,28 @@ function Models() {
         onClose={() => setIsQuickPredictOpen(false)}
         modelData={selectedModel}
       />
+      <DeleteModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Model"
+        description={`Are you sure you want to delete "${deleteTarget?.run_name || deleteTarget?.id || ''}"? This action cannot be undone.`}
+        loading={deleteLoading}
+        confirmText="Delete"
+      />
+      {/* Deploy Modal */}
+      <DeployModal />
+      {isCanvasLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div className="flex flex-col items-center">
+              <Loader2 className="w-16 h-16 text-[#8e78b7] animate-spin mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading AI Canvas</h3>
+              <p className="text-gray-600 text-center">Please wait while we prepare your workspace</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

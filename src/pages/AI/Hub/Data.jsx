@@ -1,133 +1,147 @@
-import { FileText, Database, FolderKanban, Box, Scale, ArrowUp, ArrowDown, Info, Activity, Search, List, RefreshCw, BookOpenText, Archive, Trash2, Rocket, Palette, BookOpen, Gauge, LayoutGrid } from 'lucide-react';
+import { FileText, Database, FolderKanban, Box, Scale, ArrowUp, ArrowDown, Info, Activity, Search, List, RefreshCw, BookOpenText, Archive, Trash2, Rocket, Palette, BookOpen, Gauge, LayoutGrid, Loader2 } from 'lucide-react';
 import { PieChart, Pie, Cell } from 'recharts';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import DataTable from '../../../components/DataTable';
 import { useNavigate } from 'react-router-dom';
-
+import { useAuth } from '../../../context/AuthContext';
+import DeleteModal from './Components/DeleteModal';
+import { useAIPlayground } from '../../../context/AIPlaygroundContext';
+// import { updateRecentAccess } from './Components/Hooks';
+import { updateRecentAccess } from './Components/Hooks';
 
 const Data = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isTableView, setIsTableView] = useState(false);
+  const [tableData, setTableData] = useState([]);
+  const [error, setError] = useState(null);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardError, setDashboardError] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [aiCanvasLoading, setAiCanvasLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
+  const [recentAccessed, setRecentAccessed] = useState([]);
+  const [recentAccessedLoading, setRecentAccessedLoading] = useState(false);
+  const [recentAccessedError, setRecentAccessedError] = useState(null);
+  const { setProjectState, setDatasetState, setMode } = useAIPlayground();
+
   const navigate = useNavigate();
+  const { token, decodedToken } = useAuth();
+  const hostnameAI = window._env_?.VITE_AI_API;
 
-  const statsData = [
-    { label: 'Sources', value: '07', icon: FileText },
-    { label: 'Datasets', value: '70', icon: Database },
-    { label: 'Size (GB)', value: '61', icon: Box },
-    { label: 'Additions (1week)', value: '61', icon: FolderKanban },
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`${hostnameAI}/canvas/list_data_info`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch data');
+        }
+        const data = await response.json();
+        setTableData(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const lastAccessedData = [
-    { name: 'Churn', count: 2, trend: 'up' },
-    { name: 'NPA', count: 3, trend: 'up' },
-    { name: 'CS', count: 4, trend: 'down' },
-    { name: 'Fraud', count: 4, trend: 'up' },
-    { name: 'NPA', count: 3, trend: 'down' },
-    { name: 'Fraud', count: 4, trend: 'up' },
-    { name: 'Campaign', count: 2, trend: 'down' },
-    { name: 'M_risk', count: 6, trend: 'up' },
-  ];
+    fetchData();
+  }, [hostnameAI, token, refreshTrigger]);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      setDashboardLoading(true);
+      setDashboardError(null);
+      try {
+        const response = await fetch(`${hostnameAI}/canvas/data_dashboard/summary?user_id=${decodedToken.sub}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch dashboard data');
+        }
+        const data = await response.json();
+        setDashboardData(data);
+      } catch (err) {
+        setDashboardError(err.message);
+      } finally {
+        setDashboardLoading(false);
+      }
+    };
+
+    if (decodedToken.sub) {
+      fetchDashboardData();
+    }
+  }, [hostnameAI, token, decodedToken.sub]);
+
+  useEffect(() => {
+    const fetchRecentAccessed = async () => {
+      if (!decodedToken?.sub) return;
+      setRecentAccessedLoading(true);
+      setRecentAccessedError(null);
+      try {
+        const resp = await fetch(
+          `${hostnameAI}/canvas/entity/recent_access/list?user_id=${decodedToken.sub}&entity_type=data&limit=5`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        if (!resp.ok) throw new Error('Failed to fetch recent accessed data');
+        const data = await resp.json();
+        setRecentAccessed(data?.recent_entities || []);
+      } catch (err) {
+        setRecentAccessedError(err.message);
+      } finally {
+        setRecentAccessedLoading(false);
+      }
+    };
+    fetchRecentAccessed();
+  }, [hostnameAI, token, decodedToken?.sub]);
+
+  const statsData = useMemo(() => {
+    if (!dashboardData) return [
+      { label: 'Sources', value: '07', icon: FileText },
+      { label: 'Datasets', value: '70', icon: Database },
+      { label: 'Size (GB)', value: '61', icon: Box },
+      { label: 'Additions (1week)', value: '61', icon: FolderKanban },
+    ];
+    const getTrendIcon = (trend) => trend === 'increased' ? <ArrowUp className="w-4 h-4 text-green-500" /> : trend === 'decreased' ? <ArrowDown className="w-4 h-4 text-red-500" /> : null;
+    return [
+      { label: 'Sources', value: dashboardData.counts.sources.current.toString(), icon: FileText, trend: dashboardData.counts.sources.trend },
+      { label: 'Datasets', value: dashboardData.counts.datasets.current.toString(), icon: Database, trend: dashboardData.counts.datasets.trend },
+      { label: 'Size (GB)', value: dashboardData.metrics.dataset_size_gb.current.toString(), icon: Box, trend: dashboardData.metrics.dataset_size_gb.trend },
+      { label: 'Change (1week)', value: `${dashboardData.counts.datasets.percentage_change}%`, icon: FolderKanban, trend: dashboardData.counts.datasets.trend },
+    ];
+  }, [dashboardData]);
+
+  const lastAccessedData = useMemo(() => {
+    if (recentAccessed && Array.isArray(recentAccessed) && recentAccessed.length > 0) {
+      return recentAccessed.map(item => ({
+        name: item.entity_name || item.name || 'Unknown',
+        accessed_at: item.accessed_at ? new Date(item.accessed_at) : null,
+      }));
+    }
+    return [];
+  }, [recentAccessed]);
 
   const qualityData = [
     { name: 'Good', value: 45, color: '#10B981' },
     { name: 'Average', value: 30, color: '#FBBF24' },
     { name: 'Poor', value: 25, color: '#EF4444' },
-  ];
-
-  const tableData = [
-    {
-      id: 1,
-      name: 'Project - Churn',
-      createdDate: '01/10/2025',
-      lastUsedDate: '07/10/2025',
-      size: '23 MB',
-      rows: 23,
-      features: 'Salah'
-    },
-    {
-      id: 2,
-      name: 'Project - Analysis',
-      createdDate: '01/10/2025',
-      lastUsedDate: '01/10/2025',
-      size: '23 MB',
-      rows: 23,
-      features: 'Salad'
-    },
-    {
-      id: 3,
-      name: 'Project - Retention',
-      createdDate: '15/11/2025',
-      lastUsedDate: '15/11/2025',
-      size: '23 MB',
-      rows: 23,
-      features: 'Moki'
-    },
-    {
-      id: 4,
-      name: 'Project - Acquisition',
-      createdDate: '01/12/2025',
-      lastUsedDate: '01/12/2025',
-      size: '23 MB',
-      rows: 23,
-      features: 'And'
-    },
-    {
-      id: 5,
-      name: 'Project - Engagement',
-      createdDate: '20/10/2025',
-      lastUsedDate: '20/12/2025',
-      size: '23 MB',
-      rows: 23,
-      features: 'Niko'
-    },
-    {
-      id: 6,
-      name: 'Project - Onboarding',
-      createdDate: '05/01/2025',
-      lastUsedDate: '05/01/2026',
-      size: '23 MB',
-      rows: 23,
-      features: 'Yang'
-    },
-    {
-      id: 7,
-      name: 'Project - Feedback',
-      createdDate: '30/01/2026',
-      lastUsedDate: '30/01/2026',
-      size: '23 MB',
-      rows: 23,
-      features: 'Darubu'
-    },
-    {
-      id: 8,
-      name: 'Project - Analysis',
-      createdDate: '18/02/2026',
-      lastUsedDate: '16/03/2026',
-      size: '23 MB',
-      rows: 23,
-      features: 'Thames'
-    },
-    {
-      id: 9,
-      name: 'Project - Strategy',
-      createdDate: '01/03/2026',
-      lastUsedDate: '01/03/2026',
-      size: '23 MB',
-      rows: 23,
-      features: 'Sethi'
-    },
-    {
-      id: 10,
-      name: 'Project - Optimization',
-      createdDate: '16/03/2026',
-      lastUsedDate: '16/03/2026',
-      size: '23 MB',
-      rows: 23,
-      features: 'Mississippi'
-    }
   ];
 
   const handleSearchChange = (e) => {
@@ -158,75 +172,272 @@ const Data = () => {
   };
 
   const columns = [
-    { key: 'id', label: 'Sno', sortable: true, width: '90px' },
+    { key: 'sno', label: 'Sno', sortable: true, width: '90px', render: (row, index) => index + 1 },
     {
-      key: 'name',
-      label: 'Name',
+      key: 'file_name',
+      label: 'File Name',
       sortable: true,
-      render: (row) => <span className="text-[#8e78b7] hover:underline cursor-pointer">{row.name}</span>,
+      width: '250px',
+      render: (row) => <span className="text-[#8e78b7] hover:underline cursor-pointer">{row.file_name}</span>,
     },
-    { key: 'createdDate', label: 'Created Date', sortable: true },
-    { key: 'lastUsedDate', label: 'Last Used Date', sortable: true },
+    { key: 'row_count', label: 'Rows', sortable: true },
+    { key: 'column_count', label: 'Columns', sortable: true },
+    { key: 'status', label: 'Status', sortable: true },
+    { key: 'created_at', label: 'Created Date', sortable: true, render: (row) => new Date(row.created_at).toLocaleDateString('en-GB') },
     { key: 'size', label: 'Size', sortable: true },
-    { key: 'rows', label: 'Rows', sortable: true },
-    { key: 'features', label: 'Features', sortable: true },
     { label: 'Action', sortable: false },
   ];
+
+  const handleDelete = (row) => {
+    setDeleteTarget(row);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      const id = deleteTarget.id || deleteTarget.dataset_id || deleteTarget.uuid || deleteTarget.file_id || deleteTarget.file_name;
+      const url = `${hostnameAI}/canvas/dataset/${id}/delete`;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          accept: "application/json",
+        },
+      });
+      if (!resp.ok) throw new Error("Failed to delete dataset");
+      setDeleteModalOpen(false);
+      setDeleteTarget(null);
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (err) {
+      alert(err.message || "Delete failed");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const updateRecentAccess = async (row) => {
+    try {
+      const userId = decodedToken?.sub;
+      const itemId = row.id || row.dataset_id || row.uuid || row.file_id || row.file_name;
+      const itemName = row.file_name || row.dataset_name || row.name;
+      if (!userId || !itemId || !itemName) return;
+      await fetch(
+        `${hostnameAI}/canvas/entity/update_recent_access?user_id=${userId}&item_id=${itemId}&item_name=${encodeURIComponent(itemName)}&entity_type=data`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            accept: "application/json",
+          },
+        }
+      );
+      setRecentAccessedLoading(true);
+      const resp = await fetch(
+        `${hostnameAI}/canvas/entity/recent_access/list?user_id=${userId}&entity_type=data&limit=5`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (resp.ok) {
+        const data = await resp.json();
+        setRecentAccessed(data?.recent_entities || []);
+      }
+      setRecentAccessedLoading(false);
+    } catch (err) {
+      setRecentAccessedLoading(false);
+    }
+  };
+
+  const handleLibrary = async (row) => {
+    navigate(`/ai/hub/data/library/${row.file_name}`, {
+      state: { datasetData: row }
+    });
+    await updateRecentAccess({
+      row,
+      entityType: 'data',
+      hostnameAI,
+      token,
+      userId: decodedToken?.sub,
+      setRecentList: setRecentAccessed,
+      setRecentLoading: setRecentAccessedLoading,
+      limit: 5,
+    });
+  };
+
+  const handleF1Mode = async (row) => {
+    console.log('F1 Mode:', row);
+    await updateRecentAccess({
+      row,
+      entityType: 'data',
+      hostnameAI,
+      token,
+      userId: decodedToken?.sub,
+      setRecentList: setRecentAccessed,
+      setRecentLoading: setRecentAccessedLoading,
+      limit: 5,
+    });
+  };
+
+  const handleAICanvas = async (row) => {
+    try {
+      setAiCanvasLoading(true);
+      setLoadingMessage('Fetching dataset information...');
+
+      const datasetResponse = await fetch(
+        `${hostnameAI}/canvas/dataset/${row.id}`,
+        {
+          headers: {
+            'accept': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      if (!datasetResponse.ok) {
+        throw new Error('Failed to fetch dataset information');
+      }
+
+      const datasetData = await datasetResponse.json();
+      const { dataset_name, project_name, profiling_data } = datasetData;
+
+      setProjectState({
+        selectedProject: project_name
+      });
+
+      setDatasetState({
+        tableName: dataset_name,
+        sessionId: '',
+        columnNames: [],
+        profileReportHtml: profiling_data?.profile_report_html || ''
+      });
+
+      const username = decodedToken?.preferred_username || "admin";
+
+      const ingestionParams = new URLSearchParams({
+        domain: '',
+        project_name: project_name,
+        profiling_required: 'false',
+        tag: '',
+        source: '',
+        sub_tag: '',
+        table_name: dataset_name,
+        category: '',
+        user_name: username
+      });
+
+      const ingestionResponse = await fetch(
+        `${hostnameAI}/data/ingestion`,
+        {
+          method: 'POST',
+          headers: {
+            'accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': `Bearer ${token}`
+          },
+          body: ingestionParams.toString()
+        }
+      );
+
+      if (!ingestionResponse.ok) {
+        throw new Error("Failed to ingest data");
+      }
+
+      const ingestionData = await ingestionResponse.json();
+
+      setLoadingMessage('Opening AI Canvas...');
+
+      setDatasetState(prev => ({
+        ...prev,
+        sessionId: ingestionData.session_id || '',
+        columnNames: ingestionData.column_names || []
+      }));
+
+      setMode('dataset');
+      navigate('/ai/playground');
+      await updateRecentAccess({
+        row,
+        entityType: 'data',
+        hostnameAI,
+        token,
+        userId: decodedToken?.sub,
+        setRecentList: setRecentAccessed,
+        setRecentLoading: setRecentAccessedLoading,
+        limit: 5,
+      });
+    } catch (err) {
+      console.error('AI Canvas error:', err);
+      alert(err.message || 'Failed to open AI Canvas');
+      setAiCanvasLoading(false);
+    } finally {
+    }
+  };
+
+  const handleArchive = async (row) => {
+    console.log('Archive:', row);
+    await updateRecentAccess({
+      row,
+      entityType: 'data',
+      hostnameAI,
+      token,
+      userId: decodedToken?.sub,
+      setRecentList: setRecentAccessed,
+      setRecentLoading: setRecentAccessedLoading,
+      limit: 5,
+    });
+  };
 
   const actions = [
     {
       label: 'Library',
       icon: <BookOpen className="w-4 h-4" />,
-      onClick: (row) => {
-        navigate(`/ai/hub/data/library/${row.name}`, {
-          state: { datasetData: row }
-        });
-      },
+      onClick: handleLibrary,
       tooltip: 'Library',
     },
     {
       label: 'F1 Mode',
       icon: <Gauge className="w-4 h-4" />,
-      onClick: (row) => console.log('F1 Mode:', row),
+      onClick: handleF1Mode,
       tooltip: 'F1 Mode',
     },
     {
       label: 'AI Canvas',
       icon: <Palette className="w-4 h-4" />,
-      onClick: (row) => console.log('AI Canvas:', row),
+      onClick: handleAICanvas,
       tooltip: 'AI Canvas',
-    },
-    {
-      label: 'Deploy',
-      icon: <Rocket className="w-4 h-4" />,
-      onClick: (row) => console.log('Deploy:', row),
-      tooltip: 'Deploy',
     },
     {
       label: 'Archive',
       icon: <Archive className="w-4 h-4" />,
-      onClick: (row) => console.log('Archive:', row),
+      onClick: handleArchive,
       tooltip: 'Archive',
     },
     {
       label: 'Delete',
       icon: <Trash2 className="w-4 h-4" />,
-      onClick: (row) => console.log('Delete:', row),
+      onClick: handleDelete,
       tooltip: 'Delete',
     },
   ];
 
   const filteredData = useMemo(() => {
-    if (!searchTerm.trim()) return tableData;
+    if (!searchTerm.trim()) {
+      return tableData.filter(row => String(row.status).toLowerCase() !== "deleted");
+    }
     const q = searchTerm.toLowerCase();
-    return tableData.filter((row) =>
-      Object.values(row || {}).some((val) =>
-        String(val ?? '').toLowerCase().includes(q)
-      )
-    );
-  }, [searchTerm]);
+    return tableData
+      .filter(row => String(row.status).toLowerCase() !== "deleted")
+      .filter((row) =>
+        Object.values(row || {}).some((val) =>
+          String(val ?? '').toLowerCase().includes(q)
+        )
+      );
+  }, [searchTerm, tableData]);
 
-  const StatCard = ({ label, value, icon: Icon }) => (
+  const StatCard = ({ label, value, icon: Icon, trend }) => (
     <div className="bg-white rounded-lg px-4 py-1 border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -237,6 +448,8 @@ const Data = () => {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-lg sm:text-xl font-bold text-gray-800">{value}</span>
+          {trend === 'increased' && <ArrowUp className="w-4 h-4 text-green-500" />}
+          {trend === 'decreased' && <ArrowDown className="w-4 h-4 text-red-500" />}
         </div>
       </div>
     </div>
@@ -287,7 +500,7 @@ const Data = () => {
               className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm"
             />
           </div>
-          <button 
+          <button
             className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
             onClick={toggleView}
             title={isTableView ? "Grid View" : "List View"}
@@ -363,24 +576,44 @@ const Data = () => {
               <ChartCard
                 title="Last Accessed"
                 icon={Activity}
-                infoText="Recently accessed datasets and their frequency"
+                infoText="Recently accessed datasets and their last access time"
               >
-                <div className="max-h-[240px] overflow-y-auto">
-                  {lastAccessedData.map((item, index) => (
-                    <div key={index}>
-                      <div className="flex items-center justify-between py-3 px-2 hover:bg-gray-50">
-                        <span className="text-sm text-gray-700 flex-1">{item.name}</span>
-                        <span className="text-sm font-medium text-gray-900 mx-8">{item.count}</span>
-                        <button className="p-1 hover:bg-gray-100 rounded">
-                          <BookOpenText className="w-4 h-4 text-[#8e78b7]" />
-                        </button>
+                {recentAccessedLoading ? (
+                  <div className="text-center py-8 text-gray-500">Loading...</div>
+                ) : recentAccessedError ? (
+                  <div className="text-center py-8 text-red-500">{recentAccessedError}</div>
+                ) : lastAccessedData.length > 0 ? (
+                  <div className="max-h-[240px] overflow-y-auto">
+                    {lastAccessedData.map((item, index) => (
+                      <div key={index}>
+                        <div className="flex items-center justify-between py-3 px-2 hover:bg-gray-50">
+                          <span className="text-sm text-gray-700 flex-1">{item.name}</span>
+                          <span className="text-xs text-gray-500 mx-4">
+                            {item.accessed_at
+                              ? item.accessed_at.toLocaleString('en-GB', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })
+                              : ''}
+                          </span>
+                          <button className="p-1 hover:bg-gray-100 rounded">
+                            <BookOpenText className="w-4 h-4 text-[#8e78b7]" />
+                          </button>
+                        </div>
+                        {index < lastAccessedData.length - 1 && (
+                          <div className="border-b border-gray-200"></div>
+                        )}
                       </div>
-                      {index < lastAccessedData.length - 1 && (
-                        <div className="border-b border-gray-200"></div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    No recently accessed datasets
+                  </div>
+                )}
               </ChartCard>
             </div>
           </>
@@ -391,11 +624,33 @@ const Data = () => {
           data={filteredData}
           actions={actions}
           isLoading={isLoading}
-          isError={false}
+          isError={!!error}
           refetch={handleRefresh}
           resetSortTrigger={refreshTrigger}
         />
       </div>
+
+      <DeleteModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Dataset"
+        description={`Are you sure you want to delete "${deleteTarget?.file_name || deleteTarget?.id || ''}"? This action cannot be undone.`}
+        loading={deleteLoading}
+        confirmText="Delete"
+      />
+
+      {aiCanvasLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div className="flex flex-col items-center">
+              <Loader2 className="w-16 h-16 text-[#8e78b7] animate-spin mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading AI Canvas</h3>
+              <p className="text-gray-600 text-center">{loadingMessage}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
