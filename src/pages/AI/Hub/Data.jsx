@@ -157,6 +157,7 @@ const Data = () => {
   const toggleView = () => {
     setIsTableView(prev => !prev);
   };
+
   const getQualityStyle = (quality) => {
     switch (quality) {
       case 'Good':
