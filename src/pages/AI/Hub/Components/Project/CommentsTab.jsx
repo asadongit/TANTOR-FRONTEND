@@ -515,15 +515,6 @@ const CommentsTab = ({ projectData }) => {
                         </div>
                     </div>
                 </div>
-
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7d6ba3] transition-colors text-sm flex items-center gap-2 whitespace-nowrap"
-                    >
-                        + Comment
-                    </button>
-                </div>
             </div>
 
             {error && (
@@ -548,7 +539,7 @@ const CommentsTab = ({ projectData }) => {
                         <div className="flex items-center justify-between px-5 py-4 border-b">
                             <div>
                                 <div className="text-base font-semibold text-gray-900">Add Comment</div>
-                                <div className="text-xs text-gray-500">Project: {projectData?.project_name || projectId}</div>
+                                <div className="text-xs text-gray-500">Project: {projectData?.name || projectId}</div>
                             </div>
                             <button className="p-2 hover:bg-gray-50 rounded-lg" onClick={closeAdd} title="Close">
                                 <X className="w-4 h-4 text-gray-600" />
