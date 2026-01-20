@@ -30,6 +30,7 @@ function Models() {
   const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState("both");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [dashboardRefreshTrigger, setDashboardRefreshTrigger] = useState(0); // NEW: force stats refresh
   const [isQuickPredictOpen, setIsQuickPredictOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
   const [modelsData, setModelsData] = useState([]);
@@ -47,6 +48,8 @@ function Models() {
   const { token, decodedToken } = useAuth();
   const [isCanvasLoading, setIsCanvasLoading] = useState(false);
   const { setWorkflowState, setDatasetState, setMode, setModelState, setProjectState } = useAIPlayground();
+    const [dashboardLoading, setDashboardLoading] = useState(false);
+
 
   useEffect(() => {
     const fetchModels = async () => {
@@ -90,6 +93,7 @@ function Models() {
 
   useEffect(() => {
     const fetchDashboardSummary = async () => {
+      setDashboardLoading(true);
       try {
         const response = await fetch(`${hostnameAI}/canvas/model_dashboard/summary`, {
           headers: {
@@ -101,11 +105,13 @@ function Models() {
         setDashboardSummary(data);
       } catch (err) {
         setDashboardSummary(null);
+      } finally {
+        setDashboardLoading(false);
       }
     };
 
     fetchDashboardSummary();
-  }, [hostnameAI, token, refreshTrigger]);
+  }, [hostnameAI, token, dashboardRefreshTrigger]);
 
   const formatPct = (n) => {
     const num = Number(n);
@@ -123,6 +129,16 @@ function Models() {
   };
 
   const metricsData = useMemo(() => {
+    if (dashboardLoading || !dashboardSummary) {
+      return [
+        { title: "Models", value: "Loading…", trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
+        { title: "Deployed Models", value: "Loading…", trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
+        { title: "Avg Accuracy", value: "Loading…", trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
+        { title: "Avg Latency", value: "Loading…", trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
+        { title: "Active Models", value: "Loading…", trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
+      ];
+    }
+
     const models = dashboardSummary?.counts?.models;
     const deployed = dashboardSummary?.counts?.deployed_models;
     const acc = dashboardSummary?.metrics?.avg_model_accuracy;
@@ -176,7 +192,7 @@ function Models() {
         icon: "material-symbols:check-circle-outline",
       },
     ];
-  }, [dashboardSummary]);
+  }, [dashboardSummary, dashboardLoading]);
 
   const alertsData = useMemo(() => {
     const rows = dashboardSummary?.recent_alerted_runs_per_schedule;
@@ -225,9 +241,9 @@ function Models() {
   };
 
   const handleRefresh = () => {
-    setIsLoading(true);
+    // CHANGED: refresh table + stats; no artificial timeout
     setRefreshTrigger((prev) => prev + 1);
-    setTimeout(() => setIsLoading(false), 1000);
+    setDashboardRefreshTrigger((prev) => prev + 1);
   };
 
   const getStatusStyle = (status) => {
@@ -252,7 +268,15 @@ function Models() {
       label: "Name",
       sortable: true,
       render: (row) => (
-        <span className="text-purple-600 hover:underline cursor-pointer whitespace-normal break-words break-all">
+        <span
+          className="text-purple-600 hover:underline cursor-pointer whitespace-normal break-words break-all"
+          onClick={() => openModelLibrary(row)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === "Enter" && openModelLibrary(row)}
+          title={row?.run_name ?? ""}
+          style={{ overflowWrap: "anywhere" }}
+        >
           {row.run_name}
         </span>
       ),
@@ -338,14 +362,21 @@ function Models() {
     }
   };
 
+  const openModelLibrary = useCallback(
+    (row) => {
+      const raw = row?._raw ?? row;
+      navigate("/ai/hub/models/library", {
+        state: { modelData: raw },
+      });
+    },
+    [navigate]
+  );
+
   const actions = [
     {
       label: "Library",
       icon: <BookOpen className="w-4 h-4" />,
-      onClick: (row) =>
-        navigate("/ai/hub/models/library", {
-          state: { modelData: row?._raw ?? row },
-        }),
+      onClick: openModelLibrary,
       tooltip: "Library",
     },
     {
