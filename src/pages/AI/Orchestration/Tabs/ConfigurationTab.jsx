@@ -13,7 +13,9 @@ const ConfigurationTab = () => {
     const [dataSources, setDataSources] = useState([]);
     const [destinationTables, setDestinationTables] = useState([]);
     const [scheduleName, setScheduleName] = useState('');
-
+    const [existingSchedules, setExistingSchedules] = useState([]);
+    const [loadingSchedules, setLoadingSchedules] = useState(false);
+    const [scheduleNameError, setScheduleNameError] = useState('');
 
     const [loadingProjects, setLoadingProjects] = useState(false);
     const [loadingModels, setLoadingModels] = useState(false);
@@ -23,8 +25,7 @@ const ConfigurationTab = () => {
     const [scheduleType, setScheduleType] = useState('Single Run');
     const [showDateModal, setShowDateModal] = useState(false);
     const [summary, setSummary] = useState('');
-
-    const API_BASE_URL = 'http://192.168.3.86:30080/api/v1';
+const hostnameAI = window._env_?.VITE_AI_API;
 
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
         'July', 'August', 'September', 'October', 'November', 'December'];
@@ -112,9 +113,17 @@ const ConfigurationTab = () => {
         setSummary('')
         setScheduleType(type);
         let flowType = 'single_run';
-        if (type === 'Single Run') flowType = 'single_run';
-        else if (type === 'Recurring') flowType = 'Recurring';
-        else if (type === 'Periodic (Interval)') flowType = 'Periodic';
+        let intervalType = '';
+        if (type === 'Single Run') {
+            flowType = 'single_run';
+            intervalType = 'cron';
+        } else if (type === 'Recurring') {
+            flowType = 'Recurring';
+            intervalType = 'recurring';
+        } else if (type === 'Periodic (Interval)') {
+            flowType = 'Periodic';
+            intervalType = 'periodic';
+        }
 
         setSchedulerState(prev => ({
             ...prev,
@@ -123,7 +132,7 @@ const ConfigurationTab = () => {
                 ...prev.scheduler,
                 mode: 'auto',
                 frequency: '',
-                intervalType: flowType
+                intervalType: intervalType
             }
         }));
     };
@@ -158,7 +167,7 @@ const ConfigurationTab = () => {
             ...prev,
             scheduler: {
                 ...prev.scheduler,
-                startDateTime: isoDateTime
+                intervalValue: isoDateTime
             }
         }));
 
@@ -171,21 +180,20 @@ const ConfigurationTab = () => {
     };
 
     const isGenerateSummaryDisabled = () => {
-        // Common required fields
         const commonFieldsFilled =
             scheduleName &&
+            !scheduleNameError &&
             schedulerState.project &&
             schedulerState.model &&
             schedulerState.source.source_table &&
             schedulerState.target.destination_table &&
             schedulerState.scheduler.timeZone &&
-            schedulerState.scheduler.startDateTime;
+            schedulerState.scheduler.intervalValue;
 
         if (!commonFieldsFilled) return true;
 
-        // Schedule type specific validations
         if (scheduleType === 'Single Run') {
-            return false; // All common fields are sufficient
+            return false;
         } else if (scheduleType === 'Recurring') {
             return !schedulerState.scheduler.runningDays ||
                 schedulerState.scheduler.runningDays.length === 0;
@@ -197,10 +205,10 @@ const ConfigurationTab = () => {
     };
 
     const generateSummary = () => {
-        const startDateTime = schedulerState.scheduler.startDateTime;
+        const intervalValue = schedulerState.scheduler.intervalValue;
         const timeZone = schedulerState.scheduler.timeZone;
 
-        if (!startDateTime || !timeZone) {
+        if (!intervalValue || !timeZone) {
             toast.error('Please fill in all required fields', {
                 duration: 3000,
                 position: 'top-right',
@@ -208,7 +216,7 @@ const ConfigurationTab = () => {
             return;
         }
 
-        const [datePart, timePart] = startDateTime.split('T');
+        const [datePart, timePart] = intervalValue.split('T');
         const [year, month, day] = datePart.split('-');
         const displayDate = `${day}/${month}/${year}`;
         const displayTime = timePart;
@@ -230,14 +238,13 @@ const ConfigurationTab = () => {
         setSummary(summaryText);
     };
 
-    // Fetch projects on component mount
     useEffect(() => {
+        fetchExistingSchedules();
         fetchProjects();
         fetchDataSources();
         fetchDestinationTables();
     }, []);
 
-    // Fetch models when project changes
     useEffect(() => {
         if (schedulerState.project && schedulerState.project !== '') {
             fetchModels(schedulerState.project);
@@ -251,6 +258,34 @@ const ConfigurationTab = () => {
             }));
         }
     }, [schedulerState.project]);
+
+    const fetchExistingSchedules = async () => {
+        setLoadingSchedules(true);
+        try {
+            const response = await fetch(`${hostnameAI}/orchestration/schedules/summary`, {
+                method: 'GET',
+                headers: {
+                    'accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch existing schedules: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            setExistingSchedules(data || []);
+        } catch (error) {
+            console.error('Error fetching existing schedules:', error);
+            toast.error(error.message || 'Failed to fetch existing schedules.', {
+                duration: 4000,
+                position: 'top-right',
+            });
+            setExistingSchedules([]);
+        } finally {
+            setLoadingSchedules(false);
+        }
+    };
 
     const fetchProjects = async () => {
         setLoadingProjects(true);
@@ -284,7 +319,7 @@ const ConfigurationTab = () => {
         setLoadingModels(true);
         try {
             const response = await fetch(
-                `${API_BASE_URL}/model/projects/${encodeURIComponent(projectName)}/models`,
+                `${hostnameAI}/model/projects/${encodeURIComponent(projectName)}/models`,
                 {
                     method: 'GET',
                     headers: {
@@ -317,7 +352,7 @@ const ConfigurationTab = () => {
         setLoadingDataSources(true);
         try {
             const response = await fetch(
-                `${API_BASE_URL}/schemas/predictions-source-schema/tables`,
+                `${hostnameAI}/schemas/predictions-source-schema/tables`,
                 {
                     method: 'GET',
                     headers: {
@@ -357,7 +392,7 @@ const ConfigurationTab = () => {
         setLoadingDestinations(true);
         try {
             const response = await fetch(
-                `${API_BASE_URL}/schemas/predictions-destination-schema/tables`,
+                `${hostnameAI}/schemas/predictions-destination-schema/tables`,
                 {
                     method: 'GET',
                     headers: {
@@ -457,13 +492,48 @@ const ConfigurationTab = () => {
                     <input
                         type="text"
                         value={scheduleName}
-                        onChange={(e) => setScheduleName(e.target.value)}
+                        onChange={(e) => {
+                            const value = e.target.value;
+                            setScheduleName(value);
+
+                            const isDuplicate = existingSchedules.some(
+                                schedule => schedule.name.toLowerCase() === value.toLowerCase()
+                            );
+
+                            if (isDuplicate && value.trim() !== '') {
+                                setSchedulerState(prev => ({
+                                    ...prev,
+                                    workflow_name: ''
+                                }));
+                                setScheduleNameError('A schedule with this name already exists. Please choose a different name.');
+                            } else {
+                                setScheduleNameError('');
+                                setSchedulerState(prev => ({
+                                    ...prev,
+                                    workflow_name: value
+                                }));
+                            }
+
+                        }}
                         placeholder="Enter a unique name for this schedule"
-                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
+                        className={`w-full px-3 py-2 border rounded text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 ${scheduleNameError
+                            ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                            : 'border-gray-300 focus:ring-[#8e78b7] focus:border-[#8e78b7]'
+                            }`}
                     />
-                    <p className="text-xs text-gray-500 mt-1.5">
-                        Choose a descriptive name to identify this schedule later.
-                    </p>
+                    {scheduleNameError && (
+                        <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1">
+                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            {scheduleNameError}
+                        </p>
+                    )}
+                    {!scheduleNameError && (
+                        <p className="text-xs text-gray-500 mt-1.5">
+                            Choose a descriptive name to identify this schedule later.
+                        </p>
+                    )}
                 </div>
             </div>
             <div>
@@ -487,7 +557,7 @@ const ConfigurationTab = () => {
                 <h2 className="text-base font-bold text-gray-900 mb-0.5">Schedule Type</h2>
                 <p className="text-xs text-gray-500 mb-3">Select how and when this model should run.</p>
                 <div className="flex flex-wrap gap-3">
-                    {['Single Run', 'Recurring', 'Periodic (Interval)'].map((type) => (
+                    {['Single Run', 'Periodic (Interval)'].map((type) => (
                         <label
                             key={type}
                             className={`flex items-center gap-2 px-4 py-2 rounded-md cursor-pointer transition-colors ${scheduleType === type ? 'text-[#8e78b7] bg-purple-50' : 'text-gray-700'
@@ -513,13 +583,6 @@ const ConfigurationTab = () => {
                 {scheduleType === 'Recurring' && (
                     <>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
-                            {/* {renderSelect('Frequency', schedulerState.scheduler.frequency, [
-                                { value: '', label: 'Select' },
-                                { value: 'monthly', label: 'Monthly' },
-                                { value: 'quarterly', label: 'Quarterly' },
-                                { value: 'half_yearly', label: 'Half Yearly' },
-                                { value: 'yearly', label: 'Yearly' }
-                            ], 'frequency')} */}
                             {renderSelect('Time Zone', schedulerState.scheduler.timeZone, [
                                 { value: '', label: 'Select' },
                                 { value: 'utc', label: 'UTC' },
@@ -556,16 +619,15 @@ const ConfigurationTab = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
                         {renderSelect('Frequency', schedulerState.scheduler.frequency, [
                             { value: '', label: 'Select' },
+                            { value: 'hourly', label: 'Hourly' },
+                            { value: 'weekly', label: 'Weekly' },
                             { value: 'monthly', label: 'Monthly' },
                             { value: 'quarterly', label: 'Quarterly' },
                             { value: 'half_yearly', label: 'Half Yearly' },
-                            { value: 'yearly', label: 'Yearly' }
+                            { value: 'yearly', label: 'Yearly' },
                         ], 'frequency')}
                         {renderSelect('Time Zone', schedulerState.scheduler.timeZone, [
                             { value: '', label: 'Select' },
-                            { value: 'utc', label: 'UTC' },
-                            { value: 'est', label: 'EST' },
-                            { value: 'pst', label: 'PST' },
                             { value: 'ist', label: 'IST' }
                         ], 'timeZone')}
                     </div>
@@ -574,9 +636,6 @@ const ConfigurationTab = () => {
                     <div className="max-w-xs">
                         {renderSelect('Time Zone', schedulerState.scheduler.timeZone, [
                             { value: '', label: 'Select' },
-                            { value: 'utc', label: 'UTC' },
-                            { value: 'est', label: 'EST' },
-                            { value: 'pst', label: 'PST' },
                             { value: 'ist', label: 'IST' }
                         ], 'timeZone')}
                     </div>
@@ -587,7 +646,7 @@ const ConfigurationTab = () => {
                         <div className="relative">
                             <input
                                 type="text"
-                                value={formatDateTimeForDisplay(schedulerState.scheduler.startDateTime)}
+                                value={formatDateTimeForDisplay(schedulerState.scheduler.intervalValue)}
                                 readOnly
                                 onClick={() => setShowDateModal(true)}
                                 placeholder="DD/MM/YYYY HH:MM"
@@ -599,13 +658,13 @@ const ConfigurationTab = () => {
                 </div>
             </div>
 
-            <div className="pt-2 space-y-4">
+            {/* <div className="pt-2 space-y-4">
                 <button
                     onClick={generateSummary}
                     disabled={isGenerateSummaryDisabled()}
                     className={`px-5 py-2 rounded text-sm font-medium transition-colors ${!isGenerateSummaryDisabled()
-                            ? 'bg-[#8e78b7] text-white hover:bg-[#b5a3cc] cursor-pointer'
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        ? 'bg-[#8e78b7] text-white hover:bg-[#b5a3cc] cursor-pointer'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         }`}
                 >
                     Generate Summary
@@ -627,7 +686,7 @@ const ConfigurationTab = () => {
                         </div>
                     </div>
                 )}
-            </div>
+            </div> */}
 
             <DatePickerModal
                 isOpen={showDateModal}

@@ -1,25 +1,30 @@
 import { useState } from "react";
 import DiscardModal from "./modals/DiscardModal";
-import { ChevronLeft } from 'lucide-react';
+import { CheckCircle, ChevronLeft, Loader2, X } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
 import DeliveryAlertsTab from "./Tabs/DeliveryAlertsTab";
 import ConfigurationTab from "./Tabs/ConfigurationTab";
 import RecipientsTab from "./Tabs/RecipientsTab";
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
+import { useAuth } from "../../../context/AuthContext";
 
 const NewSchedule = () => {
     const navigate = useNavigate();
-    const { schedulerState } = useAIPlayground();
+    const hostnameAI = window._env_?.VITE_AI_API;
+    const { schedulerState, setSchedulerState } = useAIPlayground();
+    const { token, decodedToken } = useAuth(); // Add this
     const [activeTab, setActiveTab] = useState('Configuration');
     const [showDiscardModal, setShowDiscardModal] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false); // Add this
+    const [isCreating, setIsCreating] = useState(false); // Add this
     const [alertFormData, setAlertFormData] = useState({
-        warningThreshold: 0.15, 
-        blockingThreshold: 0.24, 
+        warningThreshold: 0.15,
+        blockingThreshold: 0.24,
         f1ScoreDecay: 10,
-        emailEnabled: false, 
-        slackEnabled: false, 
+        emailEnabled: false,
+        slackEnabled: false,
         webhookEnabled: false,
-        alertSubjectTemplate: '', 
+        alertSubjectTemplate: '',
         reportFormat: ''
     });
 
@@ -27,16 +32,16 @@ const NewSchedule = () => {
 
     const handleAlertInputChange = (field, value) => setAlertFormData(prev => ({ ...prev, [field]: value }));
 
-    const hasUnsavedChanges = () => 
-        schedulerState.project || 
-        schedulerState.model || 
-        schedulerState.source.source_table || 
+    const hasUnsavedChanges = () =>
+        schedulerState.project ||
+        schedulerState.model ||
+        schedulerState.source.source_table ||
         schedulerState.target.destination_table ||
-        schedulerState.scheduler.timeZone || 
-        schedulerState.scheduler.startDateTime || 
+        schedulerState.scheduler.timeZone ||
+        schedulerState.scheduler.startDateTime ||
         schedulerState.scheduler.frequency;
 
-    const handleBackClick = () => 
+    const handleBackClick = () =>
         hasUnsavedChanges() ? setShowDiscardModal(true) : navigate('/ai/orchestration');
 
     const handleNextFromDeliveryAlerts = () => {
@@ -47,14 +52,22 @@ const NewSchedule = () => {
         setActiveTab('Configuration');
     };
 
+    const handleRecipientsChange = (recipientNames) => {
+        setSchedulerState(prev => ({
+            ...prev,
+            recipients: recipientNames
+        }));
+    };
+
     const handleSaveAndContinue = () => {
-        const isConfigurationComplete = 
+        const isConfigurationComplete =
+            schedulerState.workflow_name &&
             schedulerState.project &&
             schedulerState.model &&
             schedulerState.source.source_table &&
             schedulerState.target.destination_table &&
             schedulerState.scheduler.timeZone &&
-            schedulerState.scheduler.startDateTime;
+            schedulerState.scheduler.intervalValue;
 
         if (isConfigurationComplete) {
             setActiveTab('Delivery & Alerts');
@@ -65,29 +78,132 @@ const NewSchedule = () => {
         setActiveTab('Delivery & Alerts');
     };
 
-    const handleCreateSchedule = () => {
-        console.log('Creating schedule with data:', {
-            schedulerState,
-            alertFormData
-        });
+    const handleCreateSchedule = async () => {
+        setIsCreating(true);
+
+        try {
+            // Step 1: Get user ID from username
+            const username = decodedToken?.preferred_username;
+            if (!username) {
+                throw new Error('Username not found in token');
+            }
+
+            const userIdResponse = await fetch(
+                `${hostnameAI}/users/users/get-id?username=${encodeURIComponent(username)}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'accept': 'application/json'
+                    }
+                }
+            );
+
+            if (!userIdResponse.ok) {
+                throw new Error('Failed to fetch user ID');
+            }
+
+            const userData = await userIdResponse.json();
+            const userId = userData.user_id;
+
+            const dagConfig = {
+                dag_config: {
+                    owner_id: userId,
+                    created_by: username,
+                    workflow_name: schedulerState.workflow_name,
+                    project: schedulerState.project,
+                    model: schedulerState.model,
+                    model_id: schedulerState.model_id,
+                    project_id: schedulerState.project_id,
+                    flow_type: schedulerState.flow_type || "single_run",
+                    scheduler: {
+                        mode: schedulerState.scheduler.mode || "auto",
+                        frequency: schedulerState.scheduler.frequency || "",
+                        runningDays: schedulerState.scheduler.runningDays || [],
+                        endDateTime: schedulerState.scheduler.endDateTime || "",
+                        intervalType: schedulerState.scheduler.intervalType || "cron",
+                        intervalValue: schedulerState.scheduler.intervalValue,
+                        startDateTime: "",
+                        timeZone: schedulerState.scheduler.timeZone
+                    },
+                    source: {
+                        source_conn_type: schedulerState.source.source_conn_type || "postgres",
+                        source_schema: schedulerState.source.source_schema,
+                        source_table: schedulerState.source.source_table
+                    },
+                    target: {
+                        destination_conn_type: schedulerState.target.destination_conn_type || "postgres",
+                        destination_schema: schedulerState.target.destination_schema,
+                        destination_table: schedulerState.target.destination_table
+                    },
+                    data_drift_threshold: schedulerState.data_drift_threshold || {
+                        distribution_drift_threshold: 0.26,
+                        statistical_significance_level: 0.36,
+                        information_stability_threshold: 0.38,
+                        target_stability_threshold: 0.53
+                    },
+                    model_drift_threshold: schedulerState.model_drift_threshold || {
+                        prediction_drift_threshold: 0.32,
+                        performance_drift_threshold: -0.57
+                    },
+                    data_drift_check: schedulerState.data_drift_check || 1,
+                    model_drift_check: schedulerState.model_drift_check || 1,
+                    recipients: schedulerState.recipients || [],
+                    airflow_dag_id: ""
+                }
+            };
+
+            const triggerResponse = await fetch(
+                `${hostnameAI}/orchestration/trigger-dag`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(dagConfig)
+                }
+            );
+
+            if (!triggerResponse.ok) {
+                const errorData = await triggerResponse.json();
+                throw new Error(errorData.detail || 'Failed to create schedule');
+            }
+
+            const result = await triggerResponse.json();
+            console.log('Schedule created successfully:', result);
+
+            setShowSuccessModal(true);
+
+        } catch (error) {
+            console.error('Error creating schedule:', error);
+            alert(`Failed to create schedule: ${error.message}`);
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
+    const handleSuccessModalClose = () => {
+        setShowSuccessModal(false);
         navigate('/ai/orchestration');
     };
 
-    const isConfigurationComplete = 
+    const isConfigurationComplete =
+        schedulerState.workflow_name &&
         schedulerState.project &&
         schedulerState.model &&
         schedulerState.source.source_table &&
         schedulerState.target.destination_table &&
         schedulerState.scheduler.timeZone &&
-        schedulerState.scheduler.startDateTime;
+        schedulerState.scheduler.intervalValue;
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
             <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
                 <div className="flex items-center gap-2">
-                    <button 
-                        onClick={handleBackClick} 
+                    <button
+                        onClick={handleBackClick}
                         className="text-gray-600 hover:text-gray-900"
+                        disabled={isCreating}
                     >
                         <ChevronLeft className="w-5 h-5" />
                     </button>
@@ -98,13 +214,12 @@ const NewSchedule = () => {
             <div className="bg-white border-b border-gray-200 px-4 sm:px-6">
                 <div className="flex gap-6">
                     {tabs.map((tab) => (
-                        <button 
-                            key={tab} 
-                            className={`py-3 px-1 text-sm font-normal relative whitespace-nowrap ${
-                                activeTab === tab 
-                                    ? 'text-[#8e78b7]' 
-                                    : 'text-gray-500 hover:text-gray-700'
-                            }`}
+                        <button
+                            key={tab}
+                            className={`py-3 px-1 text-sm font-normal relative whitespace-nowrap ${activeTab === tab
+                                ? 'text-[#8e78b7]'
+                                : 'text-gray-500 hover:text-gray-700'
+                                }`}
                         >
                             {tab}
                             {activeTab === tab && (
@@ -126,37 +241,40 @@ const NewSchedule = () => {
                         />
                     )}
 
-                    {activeTab === 'Recipients' && <RecipientsTab />}
+                    {activeTab === 'Recipients' &&
+                        <RecipientsTab
+                            onRecipientsChange={handleRecipientsChange}
+                        />}
                 </div>
             </div>
 
             <div className="bg-white border-t border-gray-200 px-4 py-3 mt-auto">
                 <div className="flex justify-end gap-3">
                     {activeTab === 'Configuration' && (
-                        <button 
-                            onClick={handleSaveAndContinue} 
+                        <button
+                            onClick={handleSaveAndContinue}
                             disabled={!isConfigurationComplete}
-                            className={`px-6 py-2 rounded text-sm font-medium transition-colors ${
-                                isConfigurationComplete 
-                                    ? 'bg-[#8e78b7] text-white hover:bg-[#b5a3cc] cursor-pointer' 
-                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                            }`}
+                            className={`px-6 py-2 rounded text-sm font-medium transition-colors ${isConfigurationComplete && !isCreating
+                                ? 'bg-[#8e78b7] text-white hover:bg-[#b5a3cc] cursor-pointer'
+                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                }`}
                         >
                             Save & Continue
                         </button>
                     )}
-                    
+
                     {activeTab === 'Delivery & Alerts' && (
                         <>
-                            <button 
+                            <button
                                 onClick={handleBackFromDeliveryAlerts}
-                                className="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded text-sm font-medium hover:bg-gray-50 transition-colors"
+                                disabled={isCreating}
+                                className="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
                             >
                                 Back
                             </button>
-                            <button 
+                            <button
                                 onClick={handleNextFromDeliveryAlerts}
-                                className="px-6 py-2 bg-[#8e78b7] text-white rounded text-sm font-medium hover:bg-[#7a6aa0] transition-colors"
+                                className="px-6 py-2 bg-[#8e78b7] text-white rounded text-sm font-medium hover:bg-[#7a6aa0] transition-colors disabled:opacity-50"
                             >
                                 Next
                             </button>
@@ -165,28 +283,83 @@ const NewSchedule = () => {
 
                     {activeTab === 'Recipients' && (
                         <>
-                            <button 
+                            <button
                                 onClick={handleBackFromRecipients}
-                                className="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded text-sm font-medium hover:bg-gray-50 transition-colors"
+                                disabled={isCreating}
+                                className="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
                             >
                                 Back
                             </button>
-                            <button 
+                            <button
                                 onClick={handleCreateSchedule}
-                                className="px-6 py-2 bg-[#8e78b7] text-white rounded text-sm font-medium hover:bg-[#7a6aa0] transition-colors"
+                                disabled={isCreating}
+                                className={`px-6 py-2 rounded text-sm font-medium transition-colors flex items-center gap-2 ${isCreating
+                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                    : 'bg-[#8e78b7] text-white hover:bg-[#7a6aa0] cursor-pointer'
+                                    }`}
                             >
-                                Create Schedule
+                                {isCreating ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Creating Schedule...
+                                    </>
+                                ) : (
+                                    'Create Schedule'
+                                )}
                             </button>
                         </>
                     )}
                 </div>
+                {showSuccessModal &&
+                    (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center">
+                            {/* Backdrop */}
+                            <div
+                                className="absolute inset-0 bg-black bg-opacity-50"
+                                onClick={handleSuccessModalClose}
+                            />
+
+                            {/* Modal */}
+                            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+                                {/* Close button */}
+                                <button
+                                    onClick={handleSuccessModalClose}
+                                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+
+                                <div className="flex flex-col items-center text-center">
+                                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                                        <CheckCircle className="w-10 h-10 text-green-600" />
+                                    </div>
+
+                                    <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+                                        Schedule Created Successfully!
+                                    </h2>
+
+                                    <p className="text-gray-600 mb-6">
+                                        Your schedule has been created and will run according to the configured settings.
+                                    </p>
+
+                                    <button
+                                        onClick={handleSuccessModalClose}
+                                        className="px-6 py-2.5 bg-[#8e78b7] text-white rounded text-sm font-medium hover:bg-[#7a6aa0] transition-colors"
+                                    >
+                                        OK
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
             </div>
 
-            <DiscardModal 
-                isOpen={showDiscardModal} 
-                onDiscard={() => navigate('/ai/orchestration')} 
-                onStay={() => setShowDiscardModal(false)} 
+            <DiscardModal
+                isOpen={showDiscardModal}
+                onDiscard={() => navigate('/ai/orchestration')}
+                onStay={() => setShowDiscardModal(false)}
             />
+
         </div>
     );
 };

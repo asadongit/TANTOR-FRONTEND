@@ -13,6 +13,7 @@ const Orchestration = () => {
     const [loading, setLoading] = useState(true);
     const [schedulerLoading, setSchedulerLoading] = useState(false);
     const navigate = useNavigate();
+    const hostnameAI = window._env_?.VITE_AI_API;
 
     useEffect(() => {
         fetchSummaryData();
@@ -26,7 +27,7 @@ const Orchestration = () => {
 
     const fetchSummaryData = async () => {
         try {
-            const response = await fetch('http://192.168.3.86:30080/api/v1/orchestration/schedules/dashboard/summary');
+            const response = await fetch(`${hostnameAI}/orchestration/schedules/dashboard/summary`);
             const data = await response.json();
             setSummaryData(data);
             setLoading(false);
@@ -39,7 +40,7 @@ const Orchestration = () => {
     const fetchSchedulerData = async () => {
         setSchedulerLoading(true);
         try {
-            const response = await fetch('http://192.168.3.86:30080/api/v1/orchestration/schedules/summary');
+            const response = await fetch(`${hostnameAI}/orchestration/schedules/summary`);
             const data = await response.json();
             
             // Transform API data to table format
