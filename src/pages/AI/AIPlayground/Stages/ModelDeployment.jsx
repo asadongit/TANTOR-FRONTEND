@@ -1,10 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { AIPlaygroundLayout } from '../AIPlaygroundLayout';
 import { useAIPlayground } from '../../../../context/AIPlaygroundContext';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 function ModelDeployment() {
-  const { projectState } = useAIPlayground();
+  const { projectState, datasetState } = useAIPlayground();
   const [mlflowUrl, setMlflowUrl] = useState('');
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (datasetState.sessionId == '') {
+      navigate('/ai/playground')
+    }
+  }, []);
 
   useEffect(() => {
     if (projectState?.mlflowExperimentId) {
@@ -17,7 +25,7 @@ function ModelDeployment() {
     <AIPlaygroundLayout>
       <div className="flex flex-col h-full">
         <h2 className="text-2xl font-semibold text-gray-900 mb-4">Model Deployment</h2>
-        
+
         {mlflowUrl ? (
           <div className="flex-1 border border-gray-300 rounded-lg overflow-hidden">
             <iframe
@@ -29,8 +37,8 @@ function ModelDeployment() {
           </div>
         ) : (
           <div className="flex items-center justify-center h-64 text-gray-500">
-            {projectState?.selectedProject 
-              ? 'Loading MLflow experiment...' 
+            {projectState?.selectedProject
+              ? 'Loading MLflow experiment...'
               : 'Please select a project to view MLflow experiments'}
           </div>
         )}

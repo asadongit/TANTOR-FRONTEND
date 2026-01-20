@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AIPlaygroundLayout } from '../AIPlaygroundLayout';
 import { Check, X } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAIPlayground } from '../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 
@@ -631,8 +631,16 @@ const FairnessAttribute = ({ config, setConfig, readonly, columnNames = [] }) =>
 function ModelGenesis() {
   const hostnameAI = window._env_?.VITE_AI_API;
   const location = useLocation();
+  const navigate = useNavigate();
 
   const { datasetState, updateWorkflowStage, workflowState, mode } = useAIPlayground();
+
+  useEffect(() => {
+    if (datasetState.sessionId == '') {
+      navigate('/ai/playground')
+    }
+  }, []);
+
   const readonly = mode === 'view';
 
   const getInitialConfig = () => {
@@ -676,17 +684,17 @@ function ModelGenesis() {
   const [isValidated, setIsValidated] = useState(mode === 'view' && workflowState.modelGenesis?.config);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-   useEffect(() => {
-     if(mode === 'edit'){
+  useEffect(() => {
+    if (mode === 'edit') {
       setIsValidated(false)
-     }
-   }, [mode]);
+    }
+  }, [mode]);
 
   const modellingTypeMap = {
-        'Binary': 'binary',
-        'Multiclass': 'multiclass',
-        'Regression': 'regression'
-      };
+    'Binary': 'binary',
+    'Multiclass': 'multiclass',
+    'Regression': 'regression'
+  };
 
   const handleValidate = () => {
     if (readonly) return;

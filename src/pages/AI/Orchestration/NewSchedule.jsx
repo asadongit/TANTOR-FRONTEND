@@ -12,11 +12,11 @@ const NewSchedule = () => {
     const navigate = useNavigate();
     const hostnameAI = window._env_?.VITE_AI_API;
     const { schedulerState, setSchedulerState } = useAIPlayground();
-    const { token, decodedToken } = useAuth(); // Add this
+    const { token, decodedToken } = useAuth();
     const [activeTab, setActiveTab] = useState('Configuration');
     const [showDiscardModal, setShowDiscardModal] = useState(false);
-    const [showSuccessModal, setShowSuccessModal] = useState(false); // Add this
-    const [isCreating, setIsCreating] = useState(false); // Add this
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
     const [alertFormData, setAlertFormData] = useState({
         warningThreshold: 0.15,
         blockingThreshold: 0.24,
@@ -82,47 +82,24 @@ const NewSchedule = () => {
         setIsCreating(true);
 
         try {
-            // Step 1: Get user ID from username
-            const username = decodedToken?.preferred_username;
-            if (!username) {
-                throw new Error('Username not found in token');
-            }
-
-            const userIdResponse = await fetch(
-                `${hostnameAI}/users/users/get-id?username=${encodeURIComponent(username)}`,
-                {
-                    method: 'GET',
-                    headers: {
-                        'accept': 'application/json'
-                    }
-                }
-            );
-
-            if (!userIdResponse.ok) {
-                throw new Error('Failed to fetch user ID');
-            }
-
-            const userData = await userIdResponse.json();
-            const userId = userData.user_id;
-
             const dagConfig = {
                 dag_config: {
-                    owner_id: userId,
-                    created_by: username,
+                    owner_id: schedulerState?.owner_id,
+                    created_by: decodedToken?.preferred_username,
                     workflow_name: schedulerState.workflow_name,
                     project: schedulerState.project,
                     model: schedulerState.model,
                     model_id: schedulerState.model_id,
                     project_id: schedulerState.project_id,
-                    flow_type: schedulerState.flow_type || "single_run",
+                    flow_type: schedulerState.flow_type || "",
                     scheduler: {
                         mode: schedulerState.scheduler.mode || "auto",
                         frequency: schedulerState.scheduler.frequency || "",
                         runningDays: schedulerState.scheduler.runningDays || [],
                         endDateTime: schedulerState.scheduler.endDateTime || "",
-                        intervalType: schedulerState.scheduler.intervalType || "cron",
+                        intervalType: schedulerState.scheduler.intervalType || "",
                         intervalValue: schedulerState.scheduler.intervalValue,
-                        startDateTime: "",
+                        startDateTime: new Date().toISOString().slice(0, 16),
                         timeZone: schedulerState.scheduler.timeZone
                     },
                     source: {
@@ -135,18 +112,10 @@ const NewSchedule = () => {
                         destination_schema: schedulerState.target.destination_schema,
                         destination_table: schedulerState.target.destination_table
                     },
-                    data_drift_threshold: schedulerState.data_drift_threshold || {
-                        distribution_drift_threshold: 0.26,
-                        statistical_significance_level: 0.36,
-                        information_stability_threshold: 0.38,
-                        target_stability_threshold: 0.53
-                    },
-                    model_drift_threshold: schedulerState.model_drift_threshold || {
-                        prediction_drift_threshold: 0.32,
-                        performance_drift_threshold: -0.57
-                    },
-                    data_drift_check: schedulerState.data_drift_check || 1,
-                    model_drift_check: schedulerState.model_drift_check || 1,
+                    data_drift_threshold: schedulerState.data_drift_threshold,
+                    model_drift_threshold: schedulerState.model_drift_threshold,
+                    data_drift_check: schedulerState.data_drift_check,
+                    model_drift_check: schedulerState.model_drift_check,
                     recipients: schedulerState.recipients || [],
                     airflow_dag_id: ""
                 }
