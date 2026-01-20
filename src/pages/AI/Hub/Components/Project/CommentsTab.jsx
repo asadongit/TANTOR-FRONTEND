@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { RefreshCw, Pin, Eye, Trash2, Plus, MessageSquare, X, MoreVertical } from 'lucide-react';
 import { useAuth } from '../../../../../context/AuthContext';
 import DataTable from '../../../../../components/DataTable';
+import AddCommentModal from './AddCommentModal';
+import CommentDetailModal from './CommentDetailModal';
 
 const CommentsTab = ({ projectData }) => {
     const { token, decodedToken } = useAuth();
@@ -512,6 +514,15 @@ const CommentsTab = ({ projectData }) => {
                             />
                         </div>
                     </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7d6ba3] transition-colors text-sm flex items-center gap-2 whitespace-nowrap"
+                    >
+                        + Comment
+                    </button>
                 </div>
             </div>
 
