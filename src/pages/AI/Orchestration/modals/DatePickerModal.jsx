@@ -1,23 +1,39 @@
-import { ChevronLeft, Calendar, X } from 'lucide-react';
-import { useState } from 'react';
+import { useState } from "react";
 
 const DatePickerModal = ({ 
     isOpen, 
     onClose, 
-    selectedDate, 
-    setSelectedDate,
-    selectedMonth,
-    setSelectedMonth,
-    selectedYear,
-    setSelectedYear,
-    formData,
-    handleInputChange,
     onAdd
 }) => {
     if (!isOpen) return null;
 
+    const [selectedDate, setSelectedDate] = useState(null);
+    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [selectedHour, setSelectedHour] = useState('');
+    const [selectedMinute, setSelectedMinute] = useState('');
+
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
         'July', 'August', 'September', 'October', 'November', 'December'];
+
+    const generateHours = () => {
+        const hours = [];
+        for (let hour = 0; hour < 24; hour++) {
+            hours.push(String(hour).padStart(2, '0'));
+        }
+        return hours;
+    };
+
+    const generateMinutes = () => {
+        const minutes = [];
+        for (let minute = 0; minute < 60; minute++) {
+            minutes.push(String(minute).padStart(2, '0'));
+        }
+        return minutes;
+    };
+
+    const hours = generateHours();
+    const minutes = generateMinutes();
 
     const getDaysInMonth = (month, year) => {
         return new Date(year, month + 1, 0).getDate();
@@ -43,6 +59,26 @@ const DatePickerModal = ({
         } else {
             setSelectedMonth(selectedMonth + 1);
         }
+    };
+
+    const handleAddClick = () => {
+        if (!selectedDate || !selectedHour || !selectedMinute) {
+            return;
+        }
+
+        const dateTimeData = {
+            date: selectedDate,
+            month: selectedMonth,
+            year: selectedYear,
+            hour: selectedHour,
+            minute: selectedMinute
+        };
+
+        onAdd(dateTimeData);
+
+        setSelectedDate(null);
+        setSelectedHour('');
+        setSelectedMinute('');
     };
 
     const renderCalendar = () => {
@@ -91,7 +127,7 @@ const DatePickerModal = ({
                 <div className="flex items-center justify-between p-4 border-b border-gray-200">
                     <h2 className="text-lg font-semibold text-gray-900">Select Custom date & time</h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-                        <X className="w-5 h-5" />
+                        <span className="text-xl">×</span>
                     </button>
                 </div>
                 
@@ -128,19 +164,33 @@ const DatePickerModal = ({
                         </div>
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">Run Time</label>
-                            <select 
-                                value={formData.runTime} 
-                                onChange={(e) => handleInputChange('runTime', e.target.value)} 
-                                className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                            >
-                                <option value="">Select</option>
-                                <option value="00:00">00:00</option>
-                                <option value="01:00">01:00</option>
-                                <option value="02:00">02:00</option>
-                                <option value="06:00">06:00</option>
-                                <option value="12:00">12:00</option>
-                                <option value="18:00">18:00</option>
-                            </select>
+                            <div className="flex items-center gap-2">
+                                <div className="relative flex-1">
+                                    <select 
+                                        value={selectedHour} 
+                                        onChange={(e) => setSelectedHour(e.target.value)} 
+                                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] appearance-none"
+                                    >
+                                        <option value="">HH</option>
+                                        {hours.map(hour => (
+                                            <option key={hour} value={hour}>{hour}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <span className="text-gray-500 font-medium">:</span>
+                                <div className="relative flex-1">
+                                    <select 
+                                        value={selectedMinute} 
+                                        onChange={(e) => setSelectedMinute(e.target.value)} 
+                                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] appearance-none"
+                                    >
+                                        <option value="">MM</option>
+                                        {minutes.map(minute => (
+                                            <option key={minute} value={minute}>{minute}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -153,7 +203,7 @@ const DatePickerModal = ({
                         Cancel
                     </button>
                     <button 
-                        onClick={onAdd} 
+                        onClick={handleAddClick} 
                         className="px-4 py-2 text-sm font-medium text-white bg-[#8e78b7] hover:bg-[#7d68a6] rounded transition-colors"
                     >
                         Add
@@ -164,4 +214,4 @@ const DatePickerModal = ({
     );
 };
 
-export default DatePickerModal
+export default DatePickerModal;
