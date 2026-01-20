@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 
@@ -39,20 +39,13 @@ const FeatureSection = ({
     onToggle,
     onExpand,
     children,
-    readonly,
-    infoMessage
+    readonly
 }) => (
     <div className="bg-gray-50 rounded-lg border border-gray-200">
         <div className="p-4 flex items-center justify-between">
             <div className="flex-1">
                 <h4 className="text-sm font-medium text-gray-700">{title}</h4>
                 <p className="text-xs text-gray-400 mt-0.5">{description}</p>
-                {infoMessage && (
-                    <div className="mt-2 flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-md p-2">
-                        <Info size={14} className="text-blue-500 mt-0.5 flex-shrink-0" />
-                        <p className="text-xs text-blue-700">{infoMessage}</p>
-                    </div>
-                )}
             </div>
             <div className="flex items-center gap-3">
                 <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
@@ -95,7 +88,6 @@ function FeatureEngineering({ onApiCall }) {
     const [isLoading, setIsLoading] = useState(false);
 
     const categoricalColumns = workflowState?.dataPreprocessing?.step2?.apiResponse?.categorical_columns || [];
-    const hasCategoricalColumns = categoricalColumns.length > 0;
 
     useEffect(() => {
         const step3Config = workflowState?.dataPreprocessing?.step3?.config;
@@ -103,7 +95,7 @@ function FeatureEngineering({ onApiCall }) {
         if (step3Config && (mode === 'view' || mode === 'edit')) {
             setToggles({
                 outlierTreatment: step3Config.outlier_treatment || false,
-                categoricalEncoding: hasCategoricalColumns ? true : (step3Config.categorical_encoding || false),
+                categoricalEncoding: step3Config.categorical_encoding || false,
             });
 
             if (step3Config.outlier_treatment_strategy) {
@@ -113,10 +105,9 @@ function FeatureEngineering({ onApiCall }) {
             if (step3Config.categorical_encoding_method) {
                 setEncodingStrategy(step3Config.categorical_encoding_method);
             }
-        } else if (hasCategoricalColumns) {
-            setToggles(prev => ({ ...prev, categoricalEncoding: true }));
+
         }
-    }, [workflowState?.dataPreprocessing?.step3, mode, hasCategoricalColumns]);
+    }, [workflowState?.dataPreprocessing?.step3, mode]);
 
     const handleApiCall = async () => {
         if (readonly) return true;
@@ -176,13 +167,13 @@ function FeatureEngineering({ onApiCall }) {
             });
 
             setIsLoading(false);
-             toast.success('Feature Engineering completed successfully!', {
+            toast.success('Feature Engineering completed successfully!', {
                 duration: 3000,
                 position: 'top-right',
             });
             return true;
         } catch (error) {
-             toast.error(error.message || 'Feature Engineering failed. Please try again.', {
+            toast.error(error.message || 'Feature Engineering failed. Please try again.', {
                 duration: 4000,
                 position: 'top-right',
             });
@@ -228,11 +219,6 @@ function FeatureEngineering({ onApiCall }) {
 
     const toggleSwitch = (key) => {
         if (readonly) return;
-
-        if (key === 'categoricalEncoding' && hasCategoricalColumns) {
-            return;
-        }
-
         const newToggleState = !toggles[key];
 
         setToggles(prev => ({ ...prev, [key]: newToggleState }));
@@ -258,6 +244,7 @@ function FeatureEngineering({ onApiCall }) {
 
     return (
         <div className="space-y-4">
+
             <FeatureSection
                 title="Outlier Treatment"
                 description="Handle outliers detected in your dataset."
@@ -287,53 +274,54 @@ function FeatureEngineering({ onApiCall }) {
                 </div>
             </FeatureSection>
 
-            {hasCategoricalColumns && (
-                <FeatureSection
-                    title="Categorical Encoding"
-                    description="Encode categorical variables for machine learning."
-                    isToggled={toggles.categoricalEncoding}
-                    isExpanded={expandedSections.categoricalEncoding}
-                    onToggle={() => toggleSwitch('categoricalEncoding')}
-                    onExpand={() => toggleSection('categoricalEncoding')}
-                    readonly={readonly || hasCategoricalColumns}
-                    infoMessage={hasCategoricalColumns ? "Categorical encoding is required because your dataset contains categorical columns" : null}
-                >
-                    <div className="space-y-4">
-                        <div>
-                            <h5 className="text-sm font-medium text-gray-700 mb-3">Categorical Columns</h5>
-                            <div className={`flex flex-wrap gap-2 ${categoricalColumns.length > 10 ? 'max-h-32 overflow-y-auto pr-2' : ''}`}>
-                                {categoricalColumns.map((column) => (
+            <FeatureSection
+                title="Categorical Encoding"
+                description="Encode categorical variables for machine learning."
+                isToggled={toggles.categoricalEncoding}
+                isExpanded={expandedSections.categoricalEncoding}
+                onToggle={() => toggleSwitch('categoricalEncoding')}
+                onExpand={() => toggleSection('categoricalEncoding')}
+                readonly={readonly}
+            >
+                <div className="space-y-4">
+                    <div>
+                        <h5 className="text-sm font-medium text-gray-700 mb-3">Categorical Columns</h5>
+                        <div className={`flex flex-wrap gap-2 ${categoricalColumns.length > 10 ? 'max-h-32 overflow-y-auto pr-2' : ''}`}>
+                            {categoricalColumns.length > 0 ? (
+                                categoricalColumns.map((column) => (
                                     <span
                                         key={column}
                                         className="px-3 py-1.5 bg-white border border-gray-300 rounded-md text-sm text-gray-500 hover:border-[#8e78b7] hover:bg-purple-50 transition-colors"
                                     >
                                         {column}
                                     </span>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="pt-2">
-                            <h5 className="text-sm font-medium text-gray-700 mb-3">Encoding Method</h5>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-x-8 gap-y-3 max-h-64 overflow-y-auto pr-2">
-                            {Encodingoptions.map(option => (
-                                <div key={option.value} className="bg-white px-3 py-2 rounded border border-gray-200">
-                                    <RadioOption
-                                        name="encodingStrategy"
-                                        value={option.value}
-                                        checked={encodingStrategy === option.value}
-                                        onChange={(e) => !readonly && setEncodingStrategy(e.target.value)}
-                                        label={option.label}
-                                        readonly={readonly}
-                                    />
-                                </div>
-                            ))}
+                                ))
+                            ) : (
+                                <span className="text-sm text-gray-400 italic">No categorical columns available</span>
+                            )}
                         </div>
                     </div>
-                </FeatureSection>
-            )}
+
+                    <div className="pt-2">
+                        <h5 className="text-sm font-medium text-gray-700 mb-3">Encoding Method</h5>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-3 max-h-64 overflow-y-auto pr-2">
+                        {Encodingoptions.map(option => (
+                            <div key={option.value} className="bg-white px-3 py-2 rounded border border-gray-200">
+                                <RadioOption
+                                    name="encodingStrategy"
+                                    value={option.value}
+                                    checked={encodingStrategy === option.value}
+                                    onChange={(e) => !readonly && setEncodingStrategy(e.target.value)}
+                                    label={option.label}
+                                    readonly={readonly}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </FeatureSection>
         </div>
     );
 }
