@@ -9,6 +9,15 @@ export const DatasetDescriptionModal = ({ isOpen, onClose, onSave, onSkip }) => 
   const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  const MAX_LENGTH = 400;
+
+  const handleDescriptionChange = (e) => {
+    const value = e.target.value;
+    if (value.length <= MAX_LENGTH) {
+      setDescription(value);
+    }
+  };
+
   const handleSave = async () => {
     if (!description.trim()) {
       toast.error('Please enter a description', {
@@ -80,6 +89,8 @@ export const DatasetDescriptionModal = ({ isOpen, onClose, onSave, onSkip }) => 
     }
   };
 
+  const isSaveDisabled = isLoading || !description.trim();
+
   if (!isOpen) return null;
 
   return (
@@ -106,11 +117,16 @@ export const DatasetDescriptionModal = ({ isOpen, onClose, onSave, onSkip }) => 
             <textarea
               placeholder="Describe the uploaded data"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={handleDescriptionChange}
               rows={4}
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500/20 resize-none"
               disabled={isLoading}
             />
+            <div className="flex justify-end mt-1">
+              <span className={`text-xs ${description.length >= MAX_LENGTH ? 'text-red-500' : 'text-slate-400'}`}>
+                {description.length}/{MAX_LENGTH}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -125,7 +141,7 @@ export const DatasetDescriptionModal = ({ isOpen, onClose, onSave, onSkip }) => 
           <button
             onClick={handleSave}
             className="px-4 py-2 text-sm font-medium text-white bg-[#8e78b7] rounded-md hover:bg-[#7d6ba0] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isLoading}
+            disabled={isSaveDisabled}
           >
             {isLoading ? 'Saving...' : 'Save & Continue'}
           </button>

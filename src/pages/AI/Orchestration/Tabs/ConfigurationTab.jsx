@@ -25,7 +25,7 @@ const ConfigurationTab = () => {
     const [scheduleType, setScheduleType] = useState('Single Run');
     const [showDateModal, setShowDateModal] = useState(false);
     const [summary, setSummary] = useState('');
-const hostnameAI = window._env_?.VITE_AI_API;
+    const hostnameAI = window._env_?.VITE_AI_API;
 
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
         'July', 'August', 'September', 'October', 'November', 'December'];
@@ -290,7 +290,7 @@ const hostnameAI = window._env_?.VITE_AI_API;
     const fetchProjects = async () => {
         setLoadingProjects(true);
         try {
-            const response = await fetch(`${API_BASE_URL}/model/list_projects`, {
+            const response = await fetch(`${hostnameAI}/model/list_projects`, {
                 method: 'GET',
                 headers: {
                     'accept': 'application/json'

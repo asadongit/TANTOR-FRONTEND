@@ -588,6 +588,7 @@ const AIPlayground = () => {
             onSubmit={handleCreateProject}
             ownerOptions={OWNER_OPTIONS}
             memberOptions={MEMBER_OPTIONS}
+            projectList={projects}
           />
 
           <DatasetDescriptionModal

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { AIPlaygroundLayout } from '../../AIPlaygroundLayout';
 import { Search } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
 import algorithmsData from '../../../../../components/classification_models_hyperparameters.json';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 import AlgorithmCard from './AlgorithmCard';
 import SidePanel from './SidePanel';
 import { validateAlgorithm } from './validationUtils';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const METRIC_NAME_MAPPING = {
     "Accuracy": "accuracy",
@@ -30,6 +30,13 @@ function ModelSelection() {
     const location = useLocation();
     const readonly = location.state?.mode === 'view';
     const { workflowState, datasetState, updateWorkflowStage } = useAIPlayground();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (datasetState.sessionId == '') {
+            navigate('/ai/playground')
+        }
+    }, []);
 
     const categorizeAlgorithms = () => {
         const categories = {};
