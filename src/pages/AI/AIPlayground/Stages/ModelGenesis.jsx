@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AIPlaygroundLayout } from '../AIPlaygroundLayout';
 import { Check, X } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import { useAIPlayground } from '../../../../context/AIPlaygroundContext';
+import { toast } from 'react-hot-toast';
 
 const RadioButton = ({ label, checked, onChange, name, readonly }) => (
   <label
@@ -156,29 +158,29 @@ const ModeSelection = ({ config, setConfig, readonly }) => {
 
             <div className="grid grid-cols-[1fr_1fr_1fr]">
               <div className="px-4 bg-gray-50 py-4 text-sm text-gray-700 border-r border-gray-200 flex items-center">
-                Example detail seven
+                Model Selection
               </div>
 
               <div className="px-4 py-4 flex flex-col gap-2 border-r border-gray-200 bg-white">
                 <RadioButton
                   label="Swift"
-                  checked={config.exampleDetail === 'Swift'}
-                  onChange={() => setConfig({ ...config, exampleDetail: 'Swift' })}
-                  name="exampleDetail-auto"
+                  checked={config.modelSelection === 'Swift'}
+                  onChange={() => setConfig({ ...config, modelSelection: 'Swift' })}
+                  name="modelSelection-auto"
                   readonly={readonly}
                 />
                 <RadioButton
                   label="Standard"
-                  checked={config.exampleDetail === 'Standard'}
-                  onChange={() => setConfig({ ...config, exampleDetail: 'Standard' })}
-                  name="exampleDetail-auto"
+                  checked={config.modelSelection === 'Standard'}
+                  onChange={() => setConfig({ ...config, modelSelection: 'Standard' })}
+                  name="modelSelection-auto"
                   readonly={readonly}
                 />
                 <RadioButton
                   label="Comprehensive"
-                  checked={config.exampleDetail === 'Comprehensive'}
-                  onChange={() => setConfig({ ...config, exampleDetail: 'Comprehensive' })}
-                  name="exampleDetail-auto"
+                  checked={config.modelSelection === 'Comprehensive'}
+                  onChange={() => setConfig({ ...config, modelSelection: 'Comprehensive' })}
+                  name="modelSelection-auto"
                   readonly={readonly}
                 />
               </div>
@@ -186,9 +188,9 @@ const ModeSelection = ({ config, setConfig, readonly }) => {
               <div className="px-4 py-4 flex items-center bg-white">
                 <RadioButton
                   label="Manual"
-                  checked={config.exampleDetail === 'Manual'}
-                  onChange={() => setConfig({ ...config, exampleDetail: 'Manual' })}
-                  name="exampleDetail-manual"
+                  checked={config.modelSelection === 'Manual'}
+                  onChange={() => setConfig({ ...config, modelSelection: 'Manual' })}
+                  name="modelSelection-manual"
                   readonly={readonly}
                 />
               </div>
@@ -246,15 +248,77 @@ const ModeSelection = ({ config, setConfig, readonly }) => {
   );
 };
 
-const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly }) => {
+const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, columnNames }) => {
+  const hostnameAI = window._env_?.VITE_AI_API;
+  const { datasetState } = useAIPlayground();
+  const [isValidating, setIsValidating] = useState(false);
   const tabs = ['Supervised', 'Unsupervised', 'Time Series', 'Anomaly Detection'];
 
-  const handleValidate = () => {
-    if (readonly) return;
-    if (config.classification && config.targetFeature) onValidate();
+  const handleValidate = async () => {
+    if (!config.classification || !config.targetFeature) return;
+
+    setIsValidating(true);
+
+    try {
+      const modellingTypeMap = {
+        'Binary': 'binary',
+        'Multiclass': 'multiclass',
+        'Regression': 'regression'
+      };
+
+      const modellingType = modellingTypeMap[config.classification];
+      const sessionId = datasetState.sessionId;
+      const targetColumn = config.targetFeature;
+
+      const apiUrl = `${hostnameAI}/data/validate-targetcolumn-modellingtype?session_id=${sessionId}&target_column=${encodeURIComponent(targetColumn)}&modelling_type=${modellingType}`;
+
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'accept': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        if (data.status === 'success') {
+          toast.success('Validation successful!', {
+            duration: 3000,
+            position: 'top-right',
+          });
+          onValidate();
+        } else {
+          toast.error('Unable to validate. Please check your configuration.', {
+            duration: 4000,
+            position: 'top-right',
+          });
+        }
+      } else {
+        toast.error('Unable to validate. Please try again.', {
+          duration: 4000,
+          position: 'top-right',
+        });
+      }
+    } catch (error) {
+      console.error('Validation error:', error);
+      toast.error('Unable to validate. Network error occurred.', {
+        duration: 4000,
+        position: 'top-right',
+      });
+    } finally {
+      setIsValidating(false);
+    }
   };
 
-  const isValidateDisabled = !config.classification || !config.targetFeature;
+  const handleConfigChange = (newConfig) => {
+    setConfig(newConfig);
+    if (isValidated) {
+      onValidate();
+    }
+  };
+
+  const isValidateDisabled = !config.classification || !config.targetFeature || isValidating;
 
   return (
     <Section title="Prediction Type" className="!bg-gray-50 p-6 rounded-lg border border-gray-200">
@@ -287,14 +351,14 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly }
                     <RadioButton
                       label="Binary"
                       checked={config.classification === 'Binary'}
-                      onChange={() => setConfig({ ...config, classification: 'Binary' })}
+                      onChange={() => handleConfigChange({ ...config, classification: 'Binary' })}
                       name="learning-type"
                       readonly={readonly}
                     />
                     <RadioButton
                       label="Multiclass"
                       checked={config.classification === 'Multiclass'}
-                      onChange={() => setConfig({ ...config, classification: 'Multiclass' })}
+                      onChange={() => handleConfigChange({ ...config, classification: 'Multiclass' })}
                       name="learning-type"
                       readonly={readonly}
                     />
@@ -307,7 +371,7 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly }
                     <RadioButton
                       label="Regression"
                       checked={config.classification === 'Regression'}
-                      onChange={() => setConfig({ ...config, classification: 'Regression' })}
+                      onChange={() => handleConfigChange({ ...config, classification: 'Regression' })}
                       name="learning-type"
                       readonly={readonly}
                     />
@@ -318,29 +382,37 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly }
 
             <div className="bg-white border border-gray-200 rounded-lg p-5">
               <label className="block text-sm font-medium text-gray-700 mb-3">Target Feature</label>
-              <div className="relative">
-                <select
-                  value={config.targetFeature}
-                  disabled={readonly}
-                  onChange={
-                    readonly
-                      ? undefined
-                      : (e) => setConfig({ ...config, targetFeature: e.target.value })
-                  }
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent appearance-none bg-white ${readonly ? 'cursor-not-allowed' : ''
-                    }`}
-                >
-                  <option value="">Select...</option>
-                  <option value="feature1">Feature 1</option>
-                  <option value="feature2">Feature 2</option>
-                  <option value="feature3">Feature 3</option>
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
+              {columnNames.length > 0 ? (
+                <div className="relative">
+                  <select
+                    value={config.targetFeature}
+                    disabled={readonly}
+                    onChange={
+                      readonly
+                        ? undefined
+                        : (e) => handleConfigChange({ ...config, targetFeature: e.target.value })
+                    }
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent appearance-none bg-white ${readonly ? 'cursor-not-allowed' : ''
+                      }`}
+                  >
+                    <option value="">Select...</option>
+                    {columnNames.map((column) => (
+                      <option key={column} value={column}>
+                        {column}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-500 bg-gray-50">
+                  No columns found in the dataset
+                </div>
+              )}
             </div>
           </div>
 
@@ -349,13 +421,18 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly }
               onClick={handleValidate}
               disabled={readonly || isValidateDisabled || isValidated}
               className={`px-8 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${isValidated
-                  ? 'bg-green-100 text-green-700 cursor-default border border-green-400'
-                  : readonly || isValidateDisabled
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-[#8e78b7] text-white hover:bg-[#7d67a6]'
+                ? 'bg-green-100 text-green-700 cursor-default border border-green-400'
+                : readonly || isValidateDisabled
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-[#8e78b7] text-white hover:bg-[#7d67a6]'
                 }`}
             >
-              {isValidated ? (
+              {isValidating ? (
+                <>
+                  Validating...
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                </>
+              ) : isValidated ? (
                 <>
                   Validated <Check className="w-5 h-5" />
                 </>
@@ -379,26 +456,10 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
 
     if (type === 'train') {
       newConfig.trainSplit = value;
-      const remaining = total - value;
-      const currentTestValidationSum = config.testSplit + config.validationSplit;
-      if (currentTestValidationSum > 0) {
-        const testRatio = config.testSplit / currentTestValidationSum;
-        newConfig.testSplit = Math.round(remaining * testRatio);
-        newConfig.validationSplit = remaining - newConfig.testSplit;
-      } else {
-        newConfig.testSplit = Math.round(remaining / 2);
-        newConfig.validationSplit = remaining - newConfig.testSplit;
-      }
+      newConfig.testSplit = total - value;
     } else if (type === 'test') {
-      const maxTest = total - config.trainSplit;
-      const constrainedValue = Math.min(value, maxTest);
-      newConfig.testSplit = constrainedValue;
-      newConfig.validationSplit = total - config.trainSplit - constrainedValue;
-    } else if (type === 'validation') {
-      const maxValidation = total - config.trainSplit;
-      const constrainedValue = Math.min(value, maxValidation);
-      newConfig.validationSplit = constrainedValue;
-      newConfig.testSplit = total - config.trainSplit - constrainedValue;
+      newConfig.testSplit = value;
+      newConfig.trainSplit = total - value;
     }
 
     setConfig(newConfig);
@@ -416,11 +477,10 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
           <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden flex">
             <div style={{ width: `${config.trainSplit}%` }} className="bg-[#8e78b7] h-full" />
             <div style={{ width: `${config.testSplit}%` }} className="bg-orange-400 h-full" />
-            <div style={{ width: `${config.validationSplit}%` }} className="bg-teal-500 h-full" />
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 gap-6">
           <div>
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium text-gray-700">Train</span>
@@ -472,38 +532,12 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
               <span className="text-sm text-gray-600 w-10 text-right">{config.testSplit}%</span>
             </div>
           </div>
-
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-700">Validation</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={config.validationSplit}
-                disabled={readonly}
-                onChange={
-                  readonly
-                    ? undefined
-                    : (e) => handleSliderChange('validation', parseInt(e.target.value))
-                }
-                className={`flex-1 h-2 bg-gray-200 rounded-lg appearance-none ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'
-                  }`}
-                style={{
-                  background: `linear-gradient(to right, #14b8a6 0%, #14b8a6 ${config.validationSplit}%, #e5e7eb ${config.validationSplit}%, #e5e7eb 100%)`
-                }}
-              />
-              <span className="text-sm text-gray-600 w-10 text-right">{config.validationSplit}%</span>
-            </div>
-          </div>
         </div>
 
         <div className="bg-white border border-[#8e78b7] rounded-md p-2">
           <p className="text-sm ">
-            <span className="font-medium text-[#8e78b7]">Note:</span> To proceed, make sure the Train, Test, and
-            Validation percentages together equal 100%. You can adjust the sliders to balance the data as needed.
+            <span className="font-medium text-[#8e78b7]">Note:</span> To proceed, make sure the Train and Test
+            percentages together equal 100%. You can adjust the sliders to balance the data as needed.
           </p>
         </div>
       </div>
@@ -511,14 +545,10 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
   );
 };
 
-const FairnessAttribute = ({ config, setConfig, readonly }) => {
+const FairnessAttribute = ({ config, setConfig, readonly, columnNames = [] }) => {
   const [showMore, setShowMore] = useState(false);
 
-  const allOptions = [
-    'Option 1', 'Option 2', 'Option 3', 'Option 4',
-    'Option 5', 'Option 6', 'Option 7', 'Option 8', 'Option 9', 'Option 10',
-    'Option 12', 'Option 13', 'Option 14', 'Option 15', 'Option 16', 'Option 17', 'Option 18', 'Option 19'
-  ];
+  const allOptions = Array.isArray(columnNames) ? columnNames : [];
 
   const toggleOption = (option) => {
     if (readonly) return;
@@ -535,30 +565,38 @@ const FairnessAttribute = ({ config, setConfig, readonly }) => {
   const displayedOptions = showMore ? config.fairnessAttributes : config.fairnessAttributes.slice(0, 3);
   const remainingCount = config.fairnessAttributes.length - 3;
 
+  const availableOptions = allOptions.filter(option => !config.fairnessAttributes.includes(option));
+
   return (
     <Section title="Fairness Attribute" className="!bg-gray-50 p-6 rounded-lg border border-gray-200">
       <div className="space-y-3">
         <div className="relative">
           <select
-            disabled={readonly || config.fairnessAttributes.length >= 3}
-            className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white ${readonly || config.fairnessAttributes.length >= 3 ? 'cursor-not-allowed opacity-50' : ''
+            disabled={readonly || config.fairnessAttributes.length >= 3 || allOptions.length === 0}
+            className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white ${readonly || config.fairnessAttributes.length >= 3 || allOptions.length === 0
+              ? 'cursor-not-allowed opacity-50 bg-gray-50'
+              : ''
               }`}
             value=""
-            onChange={
-              readonly || config.fairnessAttributes.length >= 3
-                ? undefined
-                : (e) => {
-                  if (e.target.value) toggleOption(e.target.value);
-                }
-            }
+            onChange={(e) => {
+              if (e.target.value) toggleOption(e.target.value);
+            }}
           >
-            <option value="">{config.fairnessAttributes.length}/3 Options Selected</option>
-            {allOptions
-              .filter(option => !config.fairnessAttributes.includes(option))
-              .map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
+            {allOptions.length === 0 ? (
+              <option value="">No columns available</option>
+            ) : (
+              <option value="">
+                {config.fairnessAttributes.length >= 3
+                  ? "Maximum selection reached"
+                  : `${config.fairnessAttributes.length}/3 Options Selected`}
+              </option>
+            )}
+
+            {availableOptions.map(option => (
+              <option key={option} value={option}>{option}</option>
+            ))}
           </select>
+
           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
             <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -576,37 +614,13 @@ const FairnessAttribute = ({ config, setConfig, readonly }) => {
                 {option}
                 <button
                   disabled={readonly}
-                  onClick={readonly ? undefined : () => toggleOption(option)}
+                  onClick={() => toggleOption(option)}
                   className={`ml-1 ${readonly ? 'cursor-not-allowed' : 'text-gray-500 hover:text-gray-700'}`}
                 >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X className="w-3 h-3" />
                 </button>
               </span>
             ))}
-
-            {!showMore && remainingCount > 0 && (
-              <button
-                disabled={readonly}
-                onClick={readonly ? undefined : () => setShowMore(true)}
-                className={`inline-flex items-center gap-1 px-3 py-1 bg-white border border-gray-300 text-gray-700 text-sm rounded-md ${readonly ? 'cursor-not-allowed' : 'hover:bg-gray-50'
-                  }`}
-              >
-                +{remainingCount} More
-              </button>
-            )}
-
-            {showMore && config.fairnessAttributes.length > 3 && (
-              <button
-                disabled={readonly}
-                onClick={readonly ? undefined : () => setShowMore(false)}
-                className={`inline-flex items-center gap-1 px-3 py-1 bg-white border border-gray-300 text-gray-700 text-sm rounded-md ${readonly ? 'cursor-not-allowed' : 'hover:bg-gray-50'
-                  }`}
-              >
-                Show Less
-              </button>
-            )}
           </div>
         )}
       </div>
@@ -615,35 +629,226 @@ const FairnessAttribute = ({ config, setConfig, readonly }) => {
 };
 
 function ModelGenesis() {
+  const hostnameAI = window._env_?.VITE_AI_API;
   const location = useLocation();
-  const mode = location.state?.mode ?? 'edit';
+
+  const { datasetState, updateWorkflowStage, workflowState, mode } = useAIPlayground();
   const readonly = mode === 'view';
 
-  const [config, setConfig] = useState({
-    dataPreprocessing: 'Standard',
-    exampleDetail: 'Manual',
-    notebookMode: false,
+  const getInitialConfig = () => {
+    if ((mode === 'view' || mode === 'edit') && workflowState.modelGenesis?.config) {
+      const savedConfig = workflowState.modelGenesis.config;
+      return {
+        dataPreprocessing: savedConfig.data_preprocessing_mode || 'Manual',
+        modelSelection: savedConfig.model_mode || 'Manual',
+        notebookMode: false,
 
-    predictionType: 'Supervised',
-    classification: 'Multiclass',
-    targetFeature: 'feature3',
+        predictionType: 'Supervised',
+        classification: 'Multiclass',
+        targetFeature: 'next_product',
 
-    trainSplit: 70,
-    testSplit: 20,
-    validationSplit: 10,
+        trainSplit: Math.round((savedConfig.train_size || 0.7) * 100),
+        testSplit: Math.round((savedConfig.test_size || 0.3) * 100),
 
-    fairnessAttributes: []
-  });
+        fairnessAttributes: savedConfig.fairness_columns || []
+      };
+    }
 
-  const [isValidated, setIsValidated] = useState(false);
+    return {
+      dataPreprocessing: 'Manual',
+      modelSelection: 'Manual',
+      notebookMode: false,
+
+      predictionType: 'Supervised',
+      classification: 'Multiclass',
+      targetFeature: '',
+
+      trainSplit: 90,
+      testSplit: 10,
+
+      fairnessAttributes: []
+    };
+  };
+
+
+
+  const [config, setConfig] = useState(getInitialConfig);
+  const [isValidated, setIsValidated] = useState(mode === 'view' && workflowState.modelGenesis?.config);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+   useEffect(() => {
+     if(mode === 'edit'){
+      setIsValidated(false)
+     }
+   }, [mode]);
+
+  const modellingTypeMap = {
+        'Binary': 'binary',
+        'Multiclass': 'multiclass',
+        'Regression': 'regression'
+      };
 
   const handleValidate = () => {
     if (readonly) return;
-    setIsValidated(true);
+    setIsValidated(!isValidated);
+  };
+
+  const runValidation = async () => {
+    if (!config.classification || !config.targetFeature) {
+      toast.error('Please select classification type and target feature.', {
+        duration: 4000,
+        position: 'top-right',
+      });
+      return false;
+    }
+
+    try {
+
+      const modellingType = modellingTypeMap[config.classification];
+      const sessionId = datasetState.sessionId;
+      const targetColumn = config.targetFeature;
+
+      const apiUrl = `${hostnameAI}/data/validate-targetcolumn-modellingtype?session_id=${sessionId}&target_column=${encodeURIComponent(targetColumn)}&modelling_type=${modellingType}`;
+
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'accept': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        if (data.status === 'success') {
+          return true;
+        } else {
+          toast.error('Unable to validate. Please check your configuration.', {
+            duration: 4000,
+            position: 'top-right',
+          });
+          return false;
+        }
+      } else {
+        toast.error('Unable to validate. Please try again.', {
+          duration: 4000,
+          position: 'top-right',
+        });
+        return false;
+      }
+    } catch (error) {
+      console.error('Validation error:', error);
+      toast.error('Unable to validate. Network error occurred.', {
+        duration: 4000,
+        position: 'top-right',
+      });
+      return false;
+    }
+  };
+
+  const handleNextClick = async () => {
+    setIsSubmitting(true);
+
+    try {
+      // In view mode, only run validation and skip model genesis API
+      if (mode === 'view') {
+        const validationSuccess = await runValidation();
+        if (!validationSuccess) {
+          setIsSubmitting(false);
+          return false;
+        }
+        setIsValidated(true);
+        setIsSubmitting(false);
+        return true;
+      }
+
+      if (!isValidated) {
+        toast.error('Please validate your configuration before proceeding.', {
+          duration: 4000,
+          position: 'top-right',
+        });
+        setIsSubmitting(false);
+        return false;
+      }
+
+      const trainSize = config.trainSplit / 100;
+      const testSize = config.testSplit / 100;
+
+      const sum = trainSize + testSize;
+      if (Math.abs(sum - 1.0) > 0.01) {
+        toast.error('Train and Test splits must equal 100%', {
+          duration: 4000,
+          position: 'top-right',
+        });
+        setIsSubmitting(false);
+        return false;
+      }
+
+      const payload = {
+        session_id: datasetState.sessionId,
+        test_size: testSize,
+        train_size: trainSize,
+        random_state: 42,
+        fairness_columns: config.fairnessAttributes,
+        data_preprocessing_mode: config.dataPreprocessing,
+        model_mode: config.modelSelection,
+        target_column: config.targetFeature,
+        modelling_type: modellingTypeMap[config.classification]
+      };
+
+      const response = await fetch(`${hostnameAI}/data/genesis`, {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        updateWorkflowStage('modelGenesis', {
+          config: {
+            ...config,
+            trainSize,
+            testSize
+          },
+          apiResponse: data
+        });
+
+        toast.success('Model genesis completed successfully!', {
+          duration: 3000,
+          position: 'top-right',
+        });
+
+        return true;
+
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        toast.error(errorData.message || 'Failed to complete model genesis. Please try again.', {
+          duration: 4000,
+          position: 'top-right',
+        });
+        return false;
+      }
+    } catch (error) {
+      console.error('Model genesis error:', error);
+      toast.error('Network error occurred. Please try again.', {
+        duration: 4000,
+        position: 'top-right',
+      });
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <AIPlaygroundLayout isNextDisabled={!isValidated}>
+    <AIPlaygroundLayout
+      isNextDisabled={!isValidated || isSubmitting}
+      onNextClick={handleNextClick}
+    >
       <div className="space-y-6">
         <ModeSelection config={config} setConfig={setConfig} readonly={readonly} />
 
@@ -653,11 +858,17 @@ function ModelGenesis() {
           isValidated={isValidated}
           onValidate={handleValidate}
           readonly={readonly}
+          columnNames={datasetState.columnNames}
         />
 
         <SplitSetting config={config} setConfig={setConfig} readonly={readonly} />
 
-        <FairnessAttribute config={config} setConfig={setConfig} readonly={readonly} />
+        <FairnessAttribute
+          config={config}
+          setConfig={setConfig}
+          readonly={readonly}
+          columnNames={datasetState.columnNames}
+        />
       </div>
 
       <style jsx>{`

@@ -11,27 +11,23 @@ const OverviewTab = ({ datasetData }) => {
     return (
         <div className='bg-gray-50 p-6 rounded-xl'>
             <div className="grid grid-cols-3 gap-4">
-                <InfoField label="Name" value="Customer_Transactions_2024" />
-                <InfoField label="Description" value="Contains transactional data of customers for..." />
-                <InfoField label="Size (in GB)" value={datasetData?.size || '2.4 GB'} />
-
-                <InfoField label="Connection" value="PostgreSQL — Analytics_DB" />
-                <InfoField label="Schema" value="public" />
-                <InfoField label="Table" value="customer_transactions" />
-
-                <InfoField label="Owner" value="Data Engineering Team" />
-                <InfoField label="Created Date" value={datasetData?.createdDate || '05/10/2025'} />
-                <InfoField label="Updated Date" value={datasetData?.updatedDate || '05/10/2025'} />
-
-                <InfoField label="Last Used" value={datasetData?.lastUsedDate || '05/10/2025'} />
-                <InfoField label="Rows" value={datasetData?.rows || '1,245,320'} />
-                <InfoField label="Features" value={datasetData?.features || 'customer_id, transaction_id, transaction_date...'} />
-
-                <InfoField label="Domain" value="Finance" />
-                <InfoField label="Category" value="Customer Transactions" />
-                <InfoField label="Tag" value="Payments" />
-
-                <InfoField label="Sub-Tag" value="Credit & Debit Transactions" />
+                <InfoField label="ID" value={datasetData?.id || '-'} />
+                <InfoField label="File Name" value={datasetData?.file_name || '-'} />
+                <InfoField label="Owner ID" value={datasetData?.owner_id || '-'} />
+                <InfoField label="Project ID" value={datasetData?.project_id || '-'} />
+                <InfoField label="Rows" value={datasetData?.row_count ?? '-'} />
+                <InfoField label="Columns" value={datasetData?.column_count ?? '-'} />
+                <InfoField label="Source" value={datasetData?.source || '-'} />
+                <InfoField label="File Path" value={datasetData?.filepath || '-'} />
+                <InfoField label="Status" value={datasetData?.status || '-'} />
+                <InfoField label="Description" value={datasetData?.description || '-'} />
+                <InfoField label="Created Date" value={datasetData?.created_at ? new Date(datasetData.created_at).toLocaleString('en-GB') : '-'} />
+                <InfoField label="Updated Date" value={datasetData?.updated_at ? new Date(datasetData.updated_at).toLocaleString('en-GB') : '-'} />
+                <InfoField label="Domain" value={datasetData?.domain || '-'} />
+                <InfoField label="Category" value={datasetData?.category || '-'} />
+                <InfoField label="Tag" value={datasetData?.tag || '-'} />
+                <InfoField label="Sub-Tag" value={datasetData?.sub_tag || '-'} />
+                <InfoField label="Size" value={datasetData?.size ?? '-'} />
             </div>
         </div>
     );

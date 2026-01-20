@@ -1,16 +1,17 @@
 stages:
+  - check
   - clone
 
 variables:
   DEPLOYMENT_REPO: "https://$GITLAB_USERNAME:$GITLAB_TOKEN@gitlab.tantor.io/root/tantor2-0_frontend_deployment.git"
-  DEPLOYMENT_DIR: "tantor-front-2-0"
   REGISTRY: "registry.tantor.io:443/tantor"
-  IMAGE_NAME: "tantorfront2-0-test"
   GIT_USER: "root"
   GIT_EMAIL: "your-email@example.com"
   HARBOR_USER: "admin"
-  HARBOR_PASSWORD: "$HARBOR_PASS"
-
+  HARBOR_PASSWORD: "$HARBOR_PASS"   
+  YAML_FILE: "tantorfront2-0-deployment.yml"
+  DEPLOYMENT_DIR: "tantor-front-2-0"
+ 
 before_script:
   - sudo yum update -y && sudo yum install -y git jq
   - git config --global user.name "$GIT_USER"
@@ -18,32 +19,64 @@ before_script:
   - git config --global http.sslVerify false
   - docker login registry.tantor.io:443 -u "$HARBOR_USER" -p "$HARBOR_PASSWORD"
 
+
+check-disk-usage:
+  stage: check   
+  script: |
+    ROOT_USAGE=$(df / --output=pcent | tail -1 | tr -d ' %')
+    echo "Root usage: ${ROOT_USAGE}%"
+    if [ "$ROOT_USAGE" -gt 80 ]; then
+      echo "ERROR: Disk usage too high" >&2
+      exit 1
+    fi
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ /^(dev|testing|int)$/'
+
 clone-deployment:
-  stage: clone
+  stage: clone   
   script:
-    - export BRANCH="${CI_COMMIT_REF_NAME}"
-    - echo $BRANCH
+    - |
+      set -e
+      BRANCH="${CI_COMMIT_REF_NAME}"
+      echo "Running on branch: $BRANCH"
 
-    - git clone -b "$BRANCH" "$DEPLOYMENT_REPO" "$DEPLOYMENT_DIR"
+      case "$BRANCH" in
+        dev)
+          IMAGE_NAME="tantorfront2-0-dev"
+          ;;
+        testing)
+          IMAGE_NAME="tantorfront2-0-test"
+          ;;
+        int)
+          IMAGE_NAME="tantorfront2-0-int"
+          ;;
+        *)
+          echo "ERROR: Unsupported branch '$BRANCH'. Only 'dev', 'testing', 'int' allowed." >&2
+          exit 1
+          ;;
+      esac
 
-    - cd "$DEPLOYMENT_DIR/deploy"
-    - export CURRENT_IMAGE=$(grep 'image:' tantorfront2-0-deployment.yml | awk '{print $2}')
-    - export CURRENT_TAG=$(echo "$CURRENT_IMAGE" | rev | cut -d ':' -f1 | rev)
-    - echo $CURRENT_IMAGE
-    - echo $CURRENT_TAG
+      echo "Environment config: DIR=$DEPLOYMENT_DIR | YAML=$YAML_FILE | IMAGE=$IMAGE_NAME"
 
-    - cd ../..
-    - export NEW_TAG=$(git rev-parse --short HEAD)
-    - export NEW_IMAGE="$REGISTRY/$IMAGE_NAME:$NEW_TAG"
-    - echo $NEW_IMAGE
+      git clone -b "$BRANCH" "$DEPLOYMENT_REPO" "$DEPLOYMENT_DIR"
+      echo "Cloned deployment repo into $DEPLOYMENT_DIR"
+      cd "$DEPLOYMENT_DIR/deploy"
 
-    - docker build -t "$NEW_IMAGE" .
-    - docker push "$NEW_IMAGE"
+      CURRENT_IMAGE=$(grep 'image:' "$YAML_FILE" | awk '{print $2}')
+      echo "Current image version: $CURRENT_IMAGE"
 
-    - cd "$DEPLOYMENT_DIR/deploy"
-    - sed -i "s|$CURRENT_IMAGE|$NEW_IMAGE|g" tantorfront2-0-deployment.yml
-    - cat tantorfront2-0-deployment.yml
+      cd ../..
+      NEW_TAG=$(git rev-parse --short HEAD)
+      NEW_IMAGE="$REGISTRY/$IMAGE_NAME:$NEW_TAG"
+      docker build -t "$NEW_IMAGE" .
+      docker push "$NEW_IMAGE"
 
-    - git add tantorfront2-0-deployment.yml
-    - git commit -m "Update deployment image to $NEW_IMAGE"
-    - git push origin "$BRANCH"
+      cd "$DEPLOYMENT_DIR/deploy"
+      sed -i "s|$CURRENT_IMAGE|$NEW_IMAGE|g" "$YAML_FILE"
+      cat "$YAML_FILE"
+
+      git add "$YAML_FILE"
+      git commit -m "[CI] Update $IMAGE_NAME to $NEW_TAG"
+      git push origin "$BRANCH"
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ /^(dev|testing|int)$/'

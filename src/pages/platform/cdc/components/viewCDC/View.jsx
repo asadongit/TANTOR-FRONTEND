@@ -222,32 +222,37 @@ export default function CDCJobView() {
 
   const [selectedConnectorName, setselectedConnectorName] = useState("")
 
+  const fetchMetrics = async () => {
+    try {
+      const metricsResponse = await axios.get(
+        `${hostnameV2}/cdc/debezium-metrics`,
+        {
+          params: { connector_name: selectedConnectorName },
+          headers: { accept: "application/json" },
+        }
+      );
+      setMetrics(metricsResponse.data);
+    } catch (error) {
+      console.error("Error fetching metrics:", error);
+      // toast.error("Failed to fetch metrics data");
+    }
+  };
+
   useEffect(() => {
     if (selectedConnectorName != "") {
-      const fetchMetrics = async () => {
-        try {
-          const metricsResponse = await axios.get(
-            `${hostnameV2}/cdc/debezium-metrics`,
-            {
-              params: { connector_name: selectedConnectorName },
-              headers: { accept: "application/json" },
-            }
-          );
-          setMetrics(metricsResponse.data);
-        } catch (error) {
-          console.error("Error fetching metrics:", error);
-          // toast.error("Failed to fetch metrics data");
-        }
-      };
-
       fetchMetrics();
+
+      const metricIntervalId = setInterval(() => {
+        fetchMetrics();
+      }, 15000);
+
+      return () => {
+        clearInterval(metricIntervalId);
+      };
     }
   }, [selectedConnectorName]);
 
-  useEffect(() => {
-    if (!cdcId) return;
-
-    const fetchData = async () => {
+     const fetchData = async () => {
       try {
         const configsResponse = await axios.get(
           `${hostnameV2}/cdc/${cdcId}/connector-configs`
@@ -374,11 +379,14 @@ export default function CDCJobView() {
       }
     };
 
+  useEffect(() => {
+    if (!cdcId) return;
+
     fetchData();
 
     const intervalId = setInterval(() => {
       fetchData();
-    }, 30000);
+    }, 15000);
 
     return () => {
       clearInterval(intervalId);
@@ -387,9 +395,14 @@ export default function CDCJobView() {
 
   const refreshData = () => {
     setIsRefreshing(true);
-    setTimeout(() => {
+    try{
+      fetchMetrics();
+      fetchData();
+    }catch(err){
+      console.error("Error refreshing data ", err);
+    }finally{
       setIsRefreshing(false);
-    }, 800);
+    }
   };
 
   const handleRestartTask = async (taskId) => {
@@ -1311,10 +1324,9 @@ export default function CDCJobView() {
                   onClick={refreshData}
                   className="flex items-center px-2 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-md transition-colors"
                 >
-                  {/* <RefreshCw
-                    className={`h-4 w-4 mr-1.5 ${isRefreshing ? "animate-spin" : ""
-                      }`}
-                  /> */}
+                  <RefreshCw
+                    className={`h-5 w-5 ${isRefreshing ? "animate-spin" : ""}`}
+                  />
                 </button>
                 {/* <span className="text-sm text-gray-500">Last updated:</span>
                 <span className="text-sm font-medium">

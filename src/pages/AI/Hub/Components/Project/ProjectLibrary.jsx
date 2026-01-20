@@ -13,7 +13,7 @@ const ProjectLibrary = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('Overview');
 
-    const ProjectData = location.state?.ProjectData;
+    const ProjectData = location.state?.ProjectData || {};
 
     const tabs = ['Overview', 'Components', 'Comments'];
 
@@ -21,6 +21,7 @@ const ProjectLibrary = () => {
         if (ProjectData?.name) {
             return ProjectData.name.replace('Project - ', '');
         }
+        return projectId; // fallback label
     };
 
     const handleLibraryBack = () => {

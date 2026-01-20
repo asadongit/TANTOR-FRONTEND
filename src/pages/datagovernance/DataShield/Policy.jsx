@@ -88,7 +88,9 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
         selectedPolicy: '',
         description: '',
         selectedSubPolicy: '',
-        subPolicyDescription: ''
+        subPolicyDescription: '',
+        start_date: '',
+        expiry_date: ''
     });
     const [step2Data, setStep2Data] = useState({
         selectedRole: '',
@@ -294,6 +296,8 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
             policy_description: data.description,
             sub_policy_name: data.sub_policy_name,
             sub_policy_description: data.sub_policy_description,
+            start_date: data.start_date,
+            expiry_date: data.expiry_date
         }));
     };
 
@@ -499,6 +503,8 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
             description: '',
             selectedSubPolicy: '',
             subPolicyDescription: '',
+            start_date: '',
+            expiry_date: ''
         });
         setStep2Data({
             selectedRole: '',
@@ -533,6 +539,8 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
                     description: '',
                     selectedSubPolicy: '',
                     subPolicyDescription: '',
+                    start_date: '',
+                    expiry_date: ''
                 });
                 break;
             case 1:
@@ -698,6 +706,8 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
                 description: policyDetails.policy_description || "",
                 sub_policy_name: policyDetails.sub_policy_name || "",
                 sub_policy_description: policyDetails.sub_policy_description || "",
+                start_date: policyDetails.start_date || "",
+                expiry_date: policyDetails.expiry_date || ""
             });
             setStep2Data({
                 selectedRole: policyDetails.user_selections.role || "",
@@ -1190,7 +1200,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
                                             {getSortIcon('CreatedDate')}
                                         </button>
                                     </th>
-                                    <th className="text-left p-4 whitespace-nowrap">
+                                    {/* <th className="text-left p-4 whitespace-nowrap">
                                         <button
                                             onClick={() => handleSort('expiryDate')}
                                             className="flex items-center gap-2 hover:bg-[#3a415a] px-2 py-1 rounded transition-colors"
@@ -1198,7 +1208,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
                                             Expiry Date
                                             {getSortIcon('expiryDate')}
                                         </button>
-                                    </th>
+                                    </th> */}
                                     <th className="text-left p-4 whitespace-nowrap">
                                         <button
                                             onClick={() => handleSort('UpdatedDate')}
@@ -1254,9 +1264,9 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
                                             <td className="p-4 text-gray-500 text-center whitespace-nowrap max-w-xs truncate tooltip" title={policy.CreatedDate || "-"}>
                                                 {policy.CreatedDate || "-"}
                                             </td>
-                                            <td className="p-4 text-gray-500 text-center whitespace-nowrap max-w-xs truncate tooltip" title={policy.expiryDate || "-"}>
+                                            {/* <td className="p-4 text-gray-500 text-center whitespace-nowrap max-w-xs truncate tooltip" title={policy.expiryDate || "-"}>
                                                 {policy.expiryDate || "-"}
-                                            </td>
+                                            </td> */}
                                             <td className="p-4 text-gray-500 text-center whitespace-nowrap max-w-xs truncate tooltip" title={policy.UpdatedDate || "-"}>
                                                 {policy.UpdatedDate || "-"}
                                             </td>

@@ -1,7 +1,7 @@
 // DataLibrary.jsx
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ChevronLeft, Database, LayoutDashboard } from 'lucide-react';
+import { ChevronLeft, LayoutDashboard } from 'lucide-react';
 import OverviewTab from './OverviewTab';
 import ProjectsTab from './ProjectsTab';
 import CommentsTab from './CommentsTab';
@@ -44,10 +44,7 @@ const DataLibrary = () => {
     };
 
     const getDatasetName = () => {
-        if (datasetData?.name) {
-            return datasetData.name.replace('Project - ', '');
-        }
-        return 'Dataset';
+        return datasetData?.file_name || 'Dataset';
     };
 
     const DatasetName = getDatasetName();
@@ -102,11 +99,11 @@ const DataLibrary = () => {
                     )}
 
                     {activeTab === 'Projects' && (
-                        <ProjectsTab />
+                        <ProjectsTab datasetId={datasetData?.id} />
                     )}
 
                     {activeTab === 'Comments' && (
-                        <CommentsTab />
+                        <CommentsTab datasetId={datasetData.id} projectId={datasetData.project_id} />
                     )}
 
                     {activeTab === 'Access' && (
