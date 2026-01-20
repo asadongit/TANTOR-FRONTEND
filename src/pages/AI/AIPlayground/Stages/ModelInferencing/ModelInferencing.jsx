@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { AIPlaygroundLayout } from '../../AIPlaygroundLayout';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 import BestModelCard from './BestModelCard';
@@ -17,6 +17,13 @@ const ModelInferencing = () => {
   const [selectedChartsModel, setSelectedChartsModel] = useState('');
   const [selectedChartDemographic, setSelectedChartDemographic] = useState('age');
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (datasetState.sessionId == '') {
+      navigate('/ai/playground')
+    }
+  }, []);
 
   const truncateName = (name, maxLength = 30) => {
     if (name.length <= maxLength) return name;

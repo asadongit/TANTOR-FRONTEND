@@ -3,7 +3,9 @@ import { useState, useEffect } from 'react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import DataTable from '../../../components/DataTable';
 import { useNavigate } from 'react-router-dom';
-
+import { useAIPlayground } from '../../../context/AIPlaygroundContext';
+import { useAuth } from '../../../context/AuthContext';
+import InterventionsTab from '../Orchestration/Tabs/InterventionsTab';
 
 const Orchestration = () => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -14,6 +16,46 @@ const Orchestration = () => {
     const [schedulerLoading, setSchedulerLoading] = useState(false);
     const navigate = useNavigate();
     const hostnameAI = window._env_?.VITE_AI_API;
+    const { token, decodedToken } = useAuth();
+    const { schedulerState, setSchedulerState } = useAIPlayground();
+
+    useEffect(() => {
+        const fetchUserId = async () => {
+            const username = decodedToken?.preferred_username;
+
+            if (!username) {
+                console.error('Username not found in decoded token');
+                return;
+            }
+
+            try {
+                const response = await fetch(
+                    `${hostnameAI}/users/users/get-id?username=${username}`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'accept': 'application/json'
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch user ID');
+                }
+
+                const data = await response.json();
+
+                setSchedulerState(prevState => ({
+                    ...prevState,
+                    owner_id: data.user_id
+                }));
+            } catch (error) {
+                console.error('Error fetching user ID:', error);
+            }
+        };
+
+        fetchUserId();
+    }, [decodedToken?.preferred_username]);
 
     useEffect(() => {
         fetchSummaryData();
@@ -42,8 +84,7 @@ const Orchestration = () => {
         try {
             const response = await fetch(`${hostnameAI}/orchestration/schedules/summary`);
             const data = await response.json();
-            
-            // Transform API data to table format
+
             const transformedData = data.map((item, index) => ({
                 sno: index + 1,
                 id: item.schedule_id,
@@ -53,7 +94,7 @@ const Orchestration = () => {
                 next_run: item.next_run || '-',
                 status: item.status || '-'
             }));
-            
+
             setSchedulerData(transformedData);
             setSchedulerLoading(false);
         } catch (error) {
@@ -106,12 +147,6 @@ const Orchestration = () => {
         { text: 'Retrain scheduled for Retail_PD_LGBM', icon: Clock },
         { text: 'Auto-retrain completed for Fraud_XGB_v2', icon: Clock },
         { text: 'Run blocked for Fraud_XGB_v2', icon: AlertTriangle },
-    ];
-
-    const interventionsData = [
-        { model_name: 'Fraud_Detection_XGB', scheduled: 'Today | 14:00', drift_current: 0.45, drift_threshold: 0.30, status: 'Blocked' },
-        { model_name: 'Fraud_Detection_XGB', scheduled: '24 Dec,25 | 14:00', drift_current: 0.70, drift_threshold: 0.30, status: 'Blocked' },
-        { model_name: 'Fraud_Detection_XGB', scheduled: 'Today, 14:00', drift_current: 0.70, drift_threshold: 0.80, status: 'Blocked' },
     ];
 
     const tabs = ['Recent Activity', 'Scheduler', 'Interventions'];
@@ -284,58 +319,7 @@ const Orchestration = () => {
                         )}
 
                         {activeTab === 'Interventions' && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 my-6">
-                                {interventionsData.map((intervention, index) => (
-                                    <div key={index} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
-                                        <div className="flex items-start justify-between mb-3 gap-2">
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className="text-sm sm:text-base font-semibold text-gray-900 truncate">{intervention.model_name}</h3>
-                                                <p className="text-xs sm:text-sm text-gray-500 mt-1">Scheduled: {intervention.scheduled}</p>
-                                            </div>
-                                            <span className="px-2 sm:px-3 py-1 bg-red-100 text-red-700 rounded-md text-xs font-medium whitespace-nowrap">
-                                                {intervention.status}
-                                            </span>
-                                        </div>
-
-
-                                        <div className="mb-4">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="text-xs sm:text-sm text-gray-600">Drift Score (PSI)</span>
-                                                <span className="text-xs sm:text-sm font-medium text-gray-900">Current: {intervention.drift_current}</span>
-                                            </div>
-
-                                            <div className="relative">
-                                                <div className="w-full bg-gray-200 rounded-full h-2 relative overflow-hidden">
-                                                    <div
-                                                        className={`absolute top-0 left-0 h-full rounded-full ${intervention.drift_current > intervention.drift_threshold
-                                                            ? 'bg-red-400'
-                                                            : 'bg-green-400'
-                                                            }`}
-                                                        style={{ width: `${Math.min((intervention.drift_current / 1) * 100, 100)}%` }}
-                                                    ></div>
-                                                </div>
-                                                <div
-                                                    className="absolute top-1/2 -translate-y-1/2 w-0.5 h-5 bg-gray-800"
-                                                    style={{ left: `${(intervention.drift_threshold / 1) * 100}%` }}
-                                                ></div>
-                                            </div>
-
-                                            <div className="flex justify-end mt-1">
-                                                <span className="text-xs text-gray-500">Threshold: {intervention.drift_threshold}</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex flex-col sm:flex-row gap-2">
-                                            <button className="flex-1 px-3 sm:px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
-                                                Force Run
-                                            </button>
-                                            <button className="flex-1 px-3 sm:px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7d6aa3] transition-colors text-sm font-medium">
-                                                Retrain
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                            <InterventionsTab/>
                         )}
                     </div>
                 </div>

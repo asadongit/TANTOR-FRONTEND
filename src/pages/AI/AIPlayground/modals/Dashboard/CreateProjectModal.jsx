@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Info, X, Plus, ChevronDown, Loader2 } from 'lucide-react';
 import { useAuth } from '../../../../../context/AuthContext';
 
-export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
+export const CreateProjectModal = ({ isOpen, onClose, onSubmit, projectList }) => {
   const hostnameAI = window._env_?.VITE_AI_API;
   const { token, decodedToken } = useAuth();
   const [formData, setFormData] = useState({
@@ -22,10 +22,17 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
   const searchTimeoutRef = useRef(null);
   const MEMBERS_LIMIT = 12;
 
+  const projectNameExists = () => {
+    if (!formData.projectName.trim() || !projectList) return false;
+    return projectList.some(
+      project => project.label.toLowerCase() === formData.projectName.trim().toLowerCase()
+    );
+  };
+
   const fetchMembers = async (skip = 0, search = '', isLoadMore = false) => {
     setIsLoadingMembers(true);
     try {
-      let url = `${window._env_?.VITE_FAST_API}/auth/users?skip=${skip}&limit=${MEMBERS_LIMIT}`;
+      let url = `${hostnameAI}/users/users?skip=${skip}&limit=${MEMBERS_LIMIT}`;
       if (search.trim()) {
         url += `&search=${encodeURIComponent(search.trim())}`;
       }
@@ -126,6 +133,11 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
       return;
     }
 
+    if (projectNameExists()) {
+      alert('A project with this name already exists. Please choose a different name.');
+      return;
+    }
+
     if (formData.members.length === 0) {
       alert('Please select at least one member');
       return;
@@ -213,7 +225,8 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
 
   const selectedMemberLabels = selectedMembersData.map(m => m.label);
   const allSelectedMembersText = selectedMemberLabels.join(', ');
-  const isFormValid = formData.projectName.trim() && formData.members.length > 0;
+  const isDuplicateProject = projectNameExists();
+  const isFormValid = formData.projectName.trim() && formData.members.length > 0 && !isDuplicateProject;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -232,18 +245,29 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
 
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-slate-700 mb-1 flex items-center gap-1">
-              Project Name <span className="text-red-500">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium text-slate-700 flex items-center gap-1">
+                Project Name <span className="text-red-500">*</span>
+              </label>
+              <span className="text-xs text-slate-400">
+                {formData.projectName.length}/100
+              </span>
+            </div>
             <input
               type="text"
               placeholder="Enter Project Name"
               value={formData.projectName}
               onChange={(e) => setFormData({ ...formData, projectName: e.target.value })}
+              maxLength={100}
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500/20"
             />
             {!formData.projectName.trim() && (
               <p className="text-xs text-red-500 mt-1">Project name is required</p>
+            )}
+            {formData.projectName.trim() && isDuplicateProject && (
+              <p className="text-xs text-red-500 mt-1">
+                A project with this name already exists. Please choose a different name.
+              </p>
             )}
           </div>
 
@@ -343,12 +367,18 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-slate-700 mb-1 block">Description</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium text-slate-700">Description</label>
+              <span className="text-xs text-slate-400">
+                {formData.description.length}/200
+              </span>
+            </div>
             <textarea
               placeholder="Description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={4}
+              maxLength={200}
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500/20 resize-none"
             />
           </div>
