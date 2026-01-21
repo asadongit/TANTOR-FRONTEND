@@ -504,7 +504,7 @@ function ModelSelection() {
                 <div className="lg:col-span-2 bg-white rounded-xl p-6 border border-gray-200">
                     <div className="mb-6">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-semibold text-gray-900">Algorithms</h3>
+                            <h3 className="text-lg font-semibold text-gray-900">Algorithms <span className="text-red-500">*</span></h3>
                             <div className="relative w-64">
                                 <input
                                     type="text"
