@@ -249,8 +249,139 @@ const InterventionsTab = ({ }) => {
                             )}
 
                             {modalTab === 'DETAILS' && (
-                                <div className="text-center py-8 text-gray-500">
-                                    Details coming soon...
+                                <div className="space-y-6">
+                                    {selectedIntervention.intervention_type?.[0] === 'DATA_DRIFT' &&
+                                        selectedIntervention.monitoring_data?.data_drift_score?.report_1_raw_features ? (
+                                        <>
+                                            {/* Numeric Features Table */}
+                                            {selectedIntervention.monitoring_data.data_drift_score.report_1_raw_features
+                                                .filter(f => f.type === 'numeric').length > 0 && (
+                                                    <div>
+                                                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                                                            Numeric Features
+                                                        </h3>
+                                                        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                                            <table className="min-w-full divide-y divide-gray-200">
+                                                                <thead className="bg-gray-50">
+                                                                    <tr>
+                                                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                                            Feature
+                                                                        </th>
+                                                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                                            KS Stat
+                                                                        </th>
+                                                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                                            KS P-value
+                                                                        </th>
+                                                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                                            Wasserstein
+                                                                        </th>
+                                                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                                            PSI
+                                                                        </th>
+                                                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                                            Mean Shift
+                                                                        </th>
+                                                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                                            P95 Shift
+                                                                        </th>
+                                                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                                            Std Shift
+                                                                        </th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="bg-white divide-y divide-gray-200">
+                                                                    {selectedIntervention.monitoring_data.data_drift_score.report_1_raw_features
+                                                                        .filter(f => f.type === 'numeric')
+                                                                        .map((feature, idx) => (
+                                                                            <tr key={idx} className="hover:bg-gray-50">
+                                                                                <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                                                                    {feature.feature}
+                                                                                </td>
+                                                                                <td className="px-4 py-3 text-sm text-gray-700">
+                                                                                    {typeof feature.ks_stat === 'number' ? feature.ks_stat.toFixed(4) : 'N/A'}
+                                                                                </td>
+                                                                                <td className="px-4 py-3 text-sm text-gray-700">
+                                                                                    {typeof feature.ks_pvalue === 'number' ? feature.ks_pvalue.toFixed(4) : 'N/A'}
+                                                                                </td>
+                                                                                <td className="px-4 py-3 text-sm text-gray-700">
+                                                                                    {typeof feature.wasserstein === 'number' ? feature.wasserstein.toFixed(4) : 'N/A'}
+                                                                                </td>
+                                                                                <td className="px-4 py-3 text-sm text-gray-700">
+                                                                                    {typeof feature.psi === 'number' ? feature.psi.toFixed(4) : 'N/A'}
+                                                                                </td>
+                                                                                <td className="px-4 py-3 text-sm text-gray-700">
+                                                                                    {typeof feature.mean_shift === 'number' ? feature.mean_shift.toFixed(4) : 'N/A'}
+                                                                                </td>
+                                                                                <td className="px-4 py-3 text-sm text-gray-700">
+                                                                                    {typeof feature.p95_shift === 'number' ? feature.p95_shift.toFixed(4) : 'N/A'}
+                                                                                </td>
+                                                                                <td className="px-4 py-3 text-sm text-gray-700">
+                                                                                    {typeof feature.std_shift === 'number' ? feature.std_shift.toFixed(4) : 'N/A'}
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                            {/* Categorical Features Table */}
+                                            {selectedIntervention.monitoring_data.data_drift_score.report_1_raw_features
+                                                .filter(f => f.type === 'categorical').length > 0 && (
+                                                    <div>
+                                                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                                                            Categorical Features
+                                                        </h3>
+                                                        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                                            <table className="min-w-full divide-y divide-gray-200">
+                                                                <thead className="bg-gray-50">
+                                                                    <tr>
+                                                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                                            Feature
+                                                                        </th>
+                                                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                                            Chi2
+                                                                        </th>
+                                                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                                            Chi2 P-value
+                                                                        </th>
+                                                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                                            JS Divergence
+                                                                        </th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="bg-white divide-y divide-gray-200">
+                                                                    {selectedIntervention.monitoring_data.data_drift_score.report_1_raw_features
+                                                                        .filter(f => f.type === 'categorical')
+                                                                        .map((feature, idx) => (
+                                                                            <tr key={idx} className="hover:bg-gray-50">
+                                                                                <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                                                                    {feature.feature}
+                                                                                </td>
+                                                                                <td className="px-4 py-3 text-sm text-gray-700">
+                                                                                    {typeof feature.chi2 === 'number' ? feature.chi2.toFixed(4) : 'N/A'}
+                                                                                </td>
+                                                                                <td className="px-4 py-3 text-sm text-gray-700">
+                                                                                    {typeof feature.chi2_pvalue === 'number' ? feature.chi2_pvalue.toFixed(4) : 'N/A'}
+                                                                                </td>
+                                                                                <td className="px-4 py-3 text-sm text-gray-700">
+                                                                                    {typeof feature.js_divergence === 'number' ? feature.js_divergence.toFixed(4) : 'N/A'}
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                        </>
+                                    ) : (
+                                        <div className="text-center py-8 text-gray-500">
+                                            No details available for this intervention type
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -262,12 +393,6 @@ const InterventionsTab = ({ }) => {
                                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
                             >
                                 Close
-                            </button>
-                            <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
-                                Force Run
-                            </button>
-                            <button className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7d6aa3] transition-colors text-sm font-medium">
-                                Retrain
                             </button>
                         </div>
                     </div>
