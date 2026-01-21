@@ -370,7 +370,7 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit, projectList }) =
             <div className="flex items-center justify-between mb-1">
               <label className="text-sm font-medium text-slate-700">Description</label>
               <span className="text-xs text-slate-400">
-                {formData.description.length}/200
+                {formData.description.length}/400
               </span>
             </div>
             <textarea
@@ -378,7 +378,7 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit, projectList }) =
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={4}
-              maxLength={200}
+              maxLength={400}
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500/20 resize-none"
             />
           </div>

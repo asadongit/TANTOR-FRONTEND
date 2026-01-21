@@ -52,6 +52,12 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
     createBasic: ''
   });
 
+  const [imputationWarnings, setImputationWarnings] = useState({
+    numerical: false,
+    categorical: false,
+    datetime: false
+  });
+
   const numericalImputationMethods = ['knn', 'mice', 'mean', 'median', 'constant', 'ffill', 'bfill', 'interpolate', 'mice_bayes', 'simple_cv'];
   const categoricalImputationMethods = ['mode', 'constant', 'ffill', 'bfill'];
   const timeSeriesImputationMethods = ['mode', 'constant', 'ffill', 'bfill'];
@@ -180,6 +186,49 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
       if (!hasDropConfig && !hasImputationMethod) {
         errors.handleMissing = 'Please configure at least one method: set a threshold for dropping columns or select an imputation method';
         isValid = false;
+      }
+
+      if (imputationWarnings.numerical || imputationWarnings.categorical || imputationWarnings.datetime) {
+        errors.handleMissing = 'Please configure all required imputation methods for columns with missing values';
+        isValid = false;
+      }
+    }
+
+    const missingNumeric = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_numeric_column || {};
+    const missingCategorical = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_categorical_column || {};
+    const missingDatetime = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_datetime_column || {};
+
+    const columnsToDropManually = Object.entries(selectedColumns)
+      .filter(([_, isSelected]) => isSelected)
+      .map(([key]) => {
+        const columnName = key.substring(0, key.lastIndexOf('-'));
+        return columnName;
+      });
+
+    const hasNumericMissing = Object.entries(missingNumeric).some(
+      ([col, val]) => val === 1 && !columnsToDropManually.includes(col)
+    );
+    const hasCategoricalMissing = Object.entries(missingCategorical).some(
+      ([col, val]) => val === 1 && !columnsToDropManually.includes(col)
+    );
+    const hasDatetimeMissing = Object.entries(missingDatetime).some(
+      ([col, val]) => val === 1 && !columnsToDropManually.includes(col)
+    );
+
+    if (hasNumericMissing || hasCategoricalMissing || hasDatetimeMissing) {
+      if (!toggles.handleMissing) {
+        errors.handleMissing = 'Handle Missing Values must be enabled as there are columns with missing values';
+        isValid = false;
+      } else {
+        if (hasNumericMissing && !numericalImputation) {
+          isValid = false;
+        }
+        if (hasCategoricalMissing && !categoricalImputation) {
+          isValid = false;
+        }
+        if (hasDatetimeMissing && !timeSeriesImputation) {
+          isValid = false;
+        }
       }
     }
 
@@ -371,6 +420,19 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
 
   const toggleSwitch = (key) => {
     if (readonly) return;
+
+    if (key === 'handleMissing') {
+      const hasMissingValues = checkHasMissingValues();
+
+      if (hasMissingValues && toggles.handleMissing) {
+        toast.error('Handle Missing Values cannot be disabled as there are columns with missing values that need to be addressed.', {
+          duration: 4000,
+          position: 'top-right',
+        });
+        return;
+      }
+    }
+
     const newToggleState = !toggles[key];
 
     setToggles(prev => ({
@@ -468,16 +530,16 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
     ));
   };
 
-  const ToggleSwitch = ({ checked, onChange }) => (
-    <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+  const ToggleSwitch = ({ checked, onChange, disabled }) => (
+    <label className={`relative inline-flex items-center ${readonly || disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
       <input
         type="checkbox"
         checked={checked}
         onChange={onChange}
-        disabled={readonly}
+        disabled={readonly || disabled}
         className="sr-only peer"
       />
-      <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
+      <div className={`w-11 h-6 ${disabled ? 'bg-gray-200' : 'bg-gray-300'} peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${disabled ? 'peer-checked:bg-[#a899c9]' : 'peer-checked:bg-[#8e78b7]'}`}></div>
     </label>
   );
 
@@ -485,6 +547,92 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
   const totalFields = columns.length;
 
   const highCardinalityDropped = workflowState?.dataPreprocessing?.step1?.apiResponse?.high_cardinality_columns_dropped || [];
+
+  const checkHasMissingValues = () => {
+    const columnsToDropManually = Object.entries(selectedColumns)
+      .filter(([_, isSelected]) => isSelected)
+      .map(([key]) => {
+        const columnName = key.substring(0, key.lastIndexOf('-'));
+        return columnName;
+      });
+
+    const missingNumeric = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_numeric_column || {};
+    const missingCategorical = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_categorical_column || {};
+    const missingDatetime = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_datetime_column || {};
+
+    const hasNumericMissing = Object.entries(missingNumeric).some(
+      ([col, val]) => val === 1 && !columnsToDropManually.includes(col)
+    );
+    const hasCategoricalMissing = Object.entries(missingCategorical).some(
+      ([col, val]) => val === 1 && !columnsToDropManually.includes(col)
+    );
+    const hasDatetimeMissing = Object.entries(missingDatetime).some(
+      ([col, val]) => val === 1 && !columnsToDropManually.includes(col)
+    );
+
+    return hasNumericMissing || hasCategoricalMissing || hasDatetimeMissing;
+  };
+
+  useEffect(() => {
+    const hasMissingValues = checkHasMissingValues();
+
+    if (hasMissingValues && !toggles.handleMissing) {
+      setToggles(prev => ({
+        ...prev,
+        handleMissing: true
+      }));
+      setExpandedSections(prev => ({
+        ...prev,
+        handleMissing: true
+      }));
+
+      setDropColumnsEnabled(true);
+      setImputationEnabled(true);
+      if (!threshold || threshold === '') {
+        setThreshold('70');
+      }
+    }
+  }, [selectedColumns, workflowState?.dataPreprocessing?.step1?.apiResponse]);
+
+  useEffect(() => {
+    const { hasAny } = checkHasMissingValues();
+
+    if (hasAny && !toggles.handleMissing) {
+      setToggles(prev => ({
+        ...prev,
+        handleMissing: true
+      }));
+      setExpandedSections(prev => ({
+        ...prev,
+        handleMissing: true
+      }));
+
+      setDropColumnsEnabled(true);
+      setImputationEnabled(true);
+      if (!threshold || threshold === '') {
+        setThreshold('70');
+      }
+    }
+  }, [selectedColumns, workflowState?.dataPreprocessing?.step1?.apiResponse]);
+
+  // Add the imputationWarnings useEffect
+  useEffect(() => {
+    if (toggles.handleMissing) {
+      const { hasNumericMissing, hasCategoricalMissing, hasDatetimeMissing } = checkHasMissingValues();
+
+      setImputationWarnings({
+        numerical: hasNumericMissing && !numericalImputation,
+        categorical: hasCategoricalMissing && !categoricalImputation,
+        datetime: hasDatetimeMissing && !timeSeriesImputation
+      });
+    } else {
+      setImputationWarnings({
+        numerical: false,
+        categorical: false,
+        datetime: false
+      });
+    }
+  }, [toggles.handleMissing, selectedColumns, numericalImputation, categoricalImputation, timeSeriesImputation, workflowState?.dataPreprocessing?.step1?.apiResponse]);
 
   return (
     <div className="space-y-4">
@@ -579,7 +727,11 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
             <p className="text-xs text-gray-500 mt-1">Fix missing entries using dropping or imputation techniques.</p>
           </div>
           <div className="flex items-center gap-3">
-            <ToggleSwitch checked={toggles.handleMissing} onChange={() => toggleSwitch('handleMissing')} />
+            <ToggleSwitch
+              checked={toggles.handleMissing}
+              onChange={() => toggleSwitch('handleMissing')}
+              disabled={checkHasMissingValues()} // Add this prop
+            />
             {toggles.handleMissing && (
               <button onClick={() => toggleSection('handleMissing')} className="text-gray-400 hover:text-gray-600">
                 {expandedSections.handleMissing ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -652,6 +804,28 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
                           <option key={method} value={method}>{method}</option>
                         ))}
                       </select>
+                      {(() => {
+                        const columnsToDropManually = Object.entries(selectedColumns)
+                          .filter(([_, isSelected]) => isSelected)
+                          .map(([key]) => key.substring(0, key.lastIndexOf('-')));
+
+                        const missingNumeric = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_numeric_column || {};
+                        const numericColumnsWithMissing = Object.entries(missingNumeric)
+                          .filter(([col, val]) => val === 1 && !columnsToDropManually.includes(col))
+                          .map(([col]) => col);
+
+                        if (numericColumnsWithMissing.length > 0 && !numericalImputation) {
+                          return (
+                            <div className="mt-2 flex items-start gap-2 p-2 bg-amber-50 border border-amber-200 rounded">
+                              <AlertCircle size={14} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                              <p className="text-xs text-amber-800">
+                                Required: Numerical columns have missing values
+                              </p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
 
                     <div>
@@ -667,6 +841,28 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
                           <option key={method} value={method}>{method}</option>
                         ))}
                       </select>
+                      {(() => {
+                        const columnsToDropManually = Object.entries(selectedColumns)
+                          .filter(([_, isSelected]) => isSelected)
+                          .map(([key]) => key.substring(0, key.lastIndexOf('-')));
+
+                        const missingCategorical = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_categorical_column || {};
+                        const categoricalColumnsWithMissing = Object.entries(missingCategorical)
+                          .filter(([col, val]) => val === 1 && !columnsToDropManually.includes(col))
+                          .map(([col]) => col);
+
+                        if (categoricalColumnsWithMissing.length > 0 && !categoricalImputation) {
+                          return (
+                            <div className="mt-2 flex items-start gap-2 p-2 bg-amber-50 border border-amber-200 rounded">
+                              <AlertCircle size={14} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                              <p className="text-xs text-amber-800">
+                                Required: Categorical columns have missing values
+                              </p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
 
                     <div>
@@ -682,6 +878,28 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
                           <option key={method} value={method}>{method}</option>
                         ))}
                       </select>
+                      {(() => {
+                        const columnsToDropManually = Object.entries(selectedColumns)
+                          .filter(([_, isSelected]) => isSelected)
+                          .map(([key]) => key.substring(0, key.lastIndexOf('-')));
+
+                        const missingDatetime = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_datetime_column || {};
+                        const datetimeColumnsWithMissing = Object.entries(missingDatetime)
+                          .filter(([col, val]) => val === 1 && !columnsToDropManually.includes(col))
+                          .map(([col]) => col);
+
+                        if (datetimeColumnsWithMissing.length > 0 && !timeSeriesImputation) {
+                          return (
+                            <div className="mt-2 flex items-start gap-2 p-2 bg-amber-50 border border-amber-200 rounded">
+                              <AlertCircle size={14} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                              <p className="text-xs text-amber-800">
+                                Required: Datetime columns have missing values
+                              </p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   </div>
 

@@ -65,7 +65,6 @@ export const AIPlaygroundProvider = ({ children }) => {
         data_drift_check: 0,
         model_drift_check: 0,
         recipients: [],
-        airflow_dag_id: '',
         created_by: '',
         workflow_name: ''
     });
