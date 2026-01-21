@@ -186,14 +186,146 @@ function Models() {
     {
       label: "AI Playground",
       icon: <Palette className="w-4 h-4" />,
-      onClick: (row) =>
-        navigate("/ai/playground/model-genesis", {
-          state: {
-            mode: "view",
-            model: row,
-          },
-        }),
-      tooltip: "AI Canvas",
+      onClick: async (row) => {
+        setIsCanvasLoading(true);
+
+        try {
+          const modelName = row?.run_name || row?._raw?.run_name;
+          if (!modelName) {
+            throw new Error("Model name not found");
+          }
+
+          const modelResponse = await fetch(`${hostnameAI}/canvas/model/${modelName}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              accept: "application/json",
+            },
+          });
+
+          if (!modelResponse.ok) {
+            throw new Error("Failed to fetch model details");
+          }
+
+          const modelData = await modelResponse.json();
+
+          const projectName = modelData.project_name;
+          const username = decodedToken?.preferred_username || "admin";
+
+          const ingestionParams = new URLSearchParams({
+            domain: '',
+            project_name: projectName,
+            profiling_required: 'false',
+            tag: '',
+            source: '',
+            sub_tag: '',
+            table_name: modelData.dataset_name,
+            category: '',
+            user_name: username
+          });
+
+          const ingestionResponse = await fetch(
+            `${hostnameAI}/data/ingestion`,
+            {
+              method: 'POST',
+              headers: {
+                'accept': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+              body: ingestionParams.toString()
+            }
+          );
+
+          if (!ingestionResponse.ok) {
+            throw new Error("Failed to ingest data");
+          }
+
+          const ingestionData = await ingestionResponse.json();
+
+          setModelState({selectedModel: modelData.model_name });
+
+          setProjectState(prev => ({ ...prev, selectedProject: modelData.project_name }));
+
+          setDatasetState({
+            tableName: modelData.dataset_name,
+            sessionId: ingestionData.session_id || '',
+            columnNames: ingestionData.column_names || [],
+            profileReportHtml: ingestionData.profile_report_html || ''
+          });
+
+          if (modelData?.prefill) {
+            const newWorkflowState = {
+              modelGenesis: {
+                config: modelData.prefill?.data_preprocessing?.request?.genesis || null,
+                apiResponse: modelData.prefill?.data_preprocessing?.response?.genesis || null
+              },
+              dataPreprocessing: {
+                step1: {
+                  config: modelData.prefill?.data_preprocessing?.request?.initial_clean || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.initial_clean || null
+                },
+                step2: {
+                  config: modelData.prefill?.data_preprocessing?.request?.feature_selection || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.feature_selection || null
+                },
+                step3: {
+                  config: modelData.prefill?.data_preprocessing?.request?.feature_engineering || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.feature_engineering || null
+                },
+                step4: {
+                  config: modelData.prefill?.data_preprocessing?.request?.advanced_transformation || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.advanced_transformation || null
+                },
+                step5: {
+                  config: modelData.prefill?.data_preprocessing?.request?.statistical_analysis || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.statistical_analysis || null
+                },
+                step6: {
+                  config: modelData.prefill?.data_preprocessing?.request?.feature_importance || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.feature_importance || null
+                },
+                step7: {
+                  config: modelData.prefill?.data_preprocessing?.request?.imbalance_handling || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.imbalance_handling || null
+                }
+              },
+              modelSelection: {
+                config: modelData.prefill?.training?.request?.training_request || null,
+                apiResponse: modelData.prefill?.training?.response || null
+              },
+              modelInferencing: {
+                config: null,
+                apiResponse: null
+              },
+              xai: {
+                config: null,
+                apiResponse: null
+              },
+              modelDeployment: {
+                config: null,
+                apiResponse: null
+              }
+            };
+
+            setWorkflowState(newWorkflowState);
+            setMode('view');
+          }
+
+          navigate("/ai/playground/model-genesis", {
+            state: {
+              mode: "view",
+              model: row,
+              modelDetails: modelData,
+            },
+          });
+
+        } catch (error) {
+          console.error("Error loading model:", error);
+        } finally {
+          setIsCanvasLoading(false);
+        }
+      },
+      tooltip: "AI Playground",
+      disabled: isCanvasLoading,
     },
     {
       label: "Deploy",
@@ -750,6 +882,28 @@ function Models() {
         onClose={() => setIsQuickPredictOpen(false)}
         modelData={selectedModel}
       />
+      <DeleteModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Model"
+        description={`Are you sure you want to delete "${deleteTarget?.run_name || deleteTarget?.id || ''}"? This action cannot be undone.`}
+        loading={deleteLoading}
+        confirmText="Delete"
+      />
+      {/* Deploy Modal */}
+      <DeployModal />
+      {isCanvasLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div className="flex flex-col items-center">
+              <Loader2 className="w-16 h-16 text-[#8e78b7] animate-spin mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading AI Playground</h3>
+              <p className="text-gray-600 text-center">Please wait while we prepare your workspace</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
