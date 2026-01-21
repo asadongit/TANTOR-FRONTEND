@@ -160,10 +160,10 @@ const ComponentsTab = ({ projectData }) => {
             tooltip: 'F1 Mode',
         },
         {
-            label: 'AI Canvas',
+            label: 'AI Playground',
             icon: <Palette className="w-4 h-4" />,
-            onClick: (row) => console.log('AI Canvas:', row),
-            tooltip: 'AI Canvas',
+            onClick: (row) => console.log('AI Playground:', row),
+            tooltip: 'AI Playground',
         },
         {
             label: 'Archive',
@@ -195,7 +195,7 @@ const ComponentsTab = ({ projectData }) => {
             tooltip: "F1 Mode",
         },
         {
-            label: "AI Canvas",
+            label: "AI Playground",
             icon: <Palette className="w-4 h-4" />,
             onClick: (row) =>
                 navigate("/ai/playground/model-genesis", {
@@ -204,7 +204,7 @@ const ComponentsTab = ({ projectData }) => {
                         model: row,
                     },
                 }),
-            tooltip: "AI Canvas",
+            tooltip: "AI Playground",
         },
         {
             label: "Deploy",
