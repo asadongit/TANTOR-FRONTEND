@@ -1,16 +1,8 @@
 import { FileText, Database, FolderKanban, Box, Bot, Scale, Lightbulb, ChevronRight, ArrowUp, ArrowDown, Info, Activity, AlertTriangle } from 'lucide-react';
 import { PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { useEffect, useState } from 'react';
-import { useAIPlayground } from '../../context/AIPlaygroundContext';
+import { useState } from 'react';
 
 const Dashboard = () => {
-
-  const { setMode } = useAIPlayground();
-
-  useEffect(() => {
-    setMode('write')
-  }, []);
-
   const statsData = [
     { label: 'Sources', value: '07', icon: FileText, trend: 'up' },
     { label: 'Size (GB)', value: '70', icon: Database, trend: 'up' },
@@ -200,8 +192,8 @@ const Dashboard = () => {
             <AreaChart data={tokenUsageData}>
               <defs>
                 <linearGradient id="colorUsage" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.05} />
+                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.4}/>
+                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.05}/>
                 </linearGradient>
               </defs>
               <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9CA3AF' }} />

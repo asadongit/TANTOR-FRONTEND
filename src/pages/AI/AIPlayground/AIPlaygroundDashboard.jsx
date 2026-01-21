@@ -10,7 +10,7 @@ import {
   ChevronDown,
   File,
   MoveRight,
-  BarChart2,
+  ChartColumnDecreasing,
   RotateCcw,
   Search
 } from 'lucide-react';
@@ -21,8 +21,6 @@ import { SelectDataViewModal } from './modals/Dashboard/SelectDataViewModal';
 import { ResetProjectModal } from './modals/Dashboard/ResetProjectModal';
 import { ChooseBuildMethodModal } from './modals/Dashboard/ChooseBuildMethodModal';
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
-import { useAuth } from '../../../context/AuthContext';
-import { toast } from 'react-hot-toast';
 
 // Constants
 const OWNER_OPTIONS = [
@@ -69,9 +67,9 @@ const CAPABILITIES = [
 const AIPlayground = () => {
   const navigate = useNavigate();
   const hostnameAI = window._env_?.VITE_AI_API;
+  const fileInputRef = useRef(null);
 
   const { projectState, setProjectState, datasetState, setDatasetState, setWorkflowState, setModelState, setMode, mode } = useAIPlayground();
-  const { token, decodedToken } = useAuth();
 
   const [selectedProject, setSelectedProject] = useState('');
 
@@ -216,6 +214,54 @@ const AIPlayground = () => {
           displayName: datasetState.tableName
         });
       }
+    } else {
+      setProjectState({ selectedProject: '' });
+      setModelState({ selectedModel: '' })
+      setDatasetState({
+        tableName: '',
+        sessionId: '',
+        columnNames: [],
+        profileReportHtml: ''
+      });
+      setSelectedProject('');
+      setUploadedFile(null);
+      setMode('write')
+    }
+
+    setWorkflowState({
+      modelGenesis: {
+        config: null,
+        apiResponse: null
+      },
+      dataPreprocessing: {
+        step1: { config: null, apiResponse: null },
+        step2: { config: null, apiResponse: null },
+        step3: { config: null, apiResponse: null },
+        step4: { config: null, apiResponse: null },
+        step5: { config: null, apiResponse: null },
+        step6: { config: null, apiResponse: null },
+        step7: { config: null, apiResponse: null }
+      },
+      modelSelection: { config: null, apiResponse: null },
+      modelInferencing: { config: null, apiResponse: null },
+      xai: { config: null, apiResponse: null },
+      modelDeployment: { config: null, apiResponse: null }
+    });
+  }, [mode]);
+
+  useEffect(() => {
+    if (mode === "dataset") {
+      if (projectState?.selectedProject) {
+        setSelectedProject(projectState.selectedProject);
+      }
+      if (datasetState?.tableName) {
+        setUploadedFile({
+          name: datasetState.tableName,
+          type: 'database',
+          TableId: datasetState.tableName,
+          displayName: datasetState.tableName
+        });
+      }
     }
     else if (mode === "schedule") {
       if (projectState?.selectedProject) {
@@ -257,6 +303,53 @@ const AIPlayground = () => {
     });
   }, [mode]);
 
+  useEffect(() => {
+    if (mode === "dataset") {
+      if (projectState?.selectedProject) {
+        setSelectedProject(projectState.selectedProject);
+      }
+      if (datasetState?.tableName) {
+        setUploadedFile({
+          name: datasetState.tableName,
+          type: 'database',
+          TableId: datasetState.tableName,
+          displayName: datasetState.tableName
+        });
+      }
+    } else {
+      setProjectState({ selectedProject: '' });
+      setModelState({ selectedModel: '' })
+      setDatasetState({
+        tableName: '',
+        sessionId: '',
+        columnNames: [],
+        profileReportHtml: ''
+      });
+      setSelectedProject('');
+      setUploadedFile(null);
+      setMode('write')
+    }
+
+    setWorkflowState({
+      modelGenesis: {
+        config: null,
+        apiResponse: null
+      },
+      dataPreprocessing: {
+        step1: { config: null, apiResponse: null },
+        step2: { config: null, apiResponse: null },
+        step3: { config: null, apiResponse: null },
+        step4: { config: null, apiResponse: null },
+        step5: { config: null, apiResponse: null },
+        step6: { config: null, apiResponse: null },
+        step7: { config: null, apiResponse: null }
+      },
+      modelSelection: { config: null, apiResponse: null },
+      modelInferencing: { config: null, apiResponse: null },
+      xai: { config: null, apiResponse: null },
+      modelDeployment: { config: null, apiResponse: null }
+    });
+  }, [mode]);
   const fetchProjects = async () => {
     try {
       setLoading(true);
@@ -284,10 +377,7 @@ const AIPlayground = () => {
 
       setProjects(transformedProjects);
     } catch (err) {
-      toast.error('Error fetching projects', {
-        duration: 3000,
-        position: 'top-right',
-      });
+      console.error('Error fetching projects:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -312,6 +402,7 @@ const AIPlayground = () => {
   };
 
   const handleCreateProject = async (formData) => {
+    console.log('Creating project:', formData);
     await fetchProjects();
   };
 
@@ -353,66 +444,15 @@ const AIPlayground = () => {
     toggleModal('selectTable', true);
   };
 
-  const handleDataTableSelected = async (tableData) => {
-    const tempFileData = {
+  const handleDataTableSelected = (tableData) => {
+    setTempFile({
       name: tableData.label,
       type: 'database',
       TableId: tableData.value,
       displayName: tableData.label
-    };
+    });
 
-    setTempFile(tempFileData);
-
-    try {
-      const username = decodedToken?.preferred_username;
-      if (!username) {
-        toggleModal('datasetDescription', true);
-        return;
-      }
-
-      const userResponse = await fetch(
-        `${hostnameAI}/users/users/get-id?username=${encodeURIComponent(username)}`,
-        {
-          method: 'GET',
-          headers: {
-            'accept': 'application/json'
-          }
-        }
-      );
-
-      if (!userResponse.ok) {
-        throw new Error('Failed to fetch user ID');
-      }
-
-      const userData = await userResponse.json();
-      const userId = userData.user_id;
-
-      const checkResponse = await fetch(
-        `${hostnameAI}/data/check_dataset_exists?project_name=${encodeURIComponent(selectedProject)}&owner_id=${encodeURIComponent(userId)}&file_name=${encodeURIComponent(tableData.value)}`,
-        {
-          method: 'POST',
-          headers: {
-            'accept': 'application/json'
-          }
-        }
-      );
-
-      if (!checkResponse.ok) {
-        throw new Error('Failed to check dataset existence');
-      }
-
-      const checkData = await checkResponse.json();
-
-      if (checkData.description_flag === 0) {
-        toggleModal('datasetDescription', true);
-      } else {
-        setUploadedFile(tempFileData);
-        setTempFile(null);
-      }
-    } catch (error) {
-      console.error('Error checking dataset existence:', error);
-      toggleModal('datasetDescription', true);
-    }
+    toggleModal('datasetDescription', true);
   };
 
   const handleSaveDescription = (description) => {
@@ -421,7 +461,6 @@ const AIPlayground = () => {
       setTempFile(null);
     }
   };
-
   const handleSkipDescription = () => {
     if (tempFile) {
       setUploadedFile(tempFile);
@@ -440,11 +479,6 @@ const AIPlayground = () => {
       profileReportHtml: ''
     });
     toggleModal('resetProject', false);
-    setMode('write')
-    toast.success('Project has been reset successfully', {
-      duration: 3000,
-      position: 'top-right',
-    });
   };
 
   const handleCapabilityClick = (path, title) => {
@@ -503,7 +537,7 @@ const AIPlayground = () => {
 
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-[#8e78b7] rounded-lg flex items-center justify-center shadow-sm">
-                    <BarChart2 className="w-6 h-6 text-white" />
+                    <ChartColumnDecreasing className="w-6 h-6 text-white" />
                   </div>
                   <div>
                     <h2 className="text-lg font-bold text-slate-900">
@@ -531,6 +565,7 @@ const AIPlayground = () => {
       ) : (
         <>
           <div className="">
+            {/* Header */}
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-2xl font-bold">AI playground</h1>
             </div>
@@ -544,27 +579,9 @@ const AIPlayground = () => {
                   </p>
                 </div>
 
-                {mode === 'schedule' ? (
-                  <div className='flex items-start justify-between'>
-                    <div className="mb-8 relative w-80">
-                      <input
-                        type="text"
-                        value={selectedProject || 'No project selected'}
-                        readOnly
-                        disabled
-                        className="w-full h-10 px-3 rounded-md border border-slate-200 bg-white text-sm text-slate-600 cursor-not-allowed"
-                      />
-                    </div>
-                    <button
-                      onClick={() => toggleModal('resetProject', true)}
-                      className="px-4 py-2 text-sm font-medium text-[#8e78b7] border border-slate-200 rounded-md hover:bg-slate-50 transition-colors flex items-center gap-2"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                      Reset project
-                    </button>
-                  </div>
-                ) : (
-                  <div className=" mb-8 relative w-80">
+                <div className="mb-8 relative">
+                  <label className="text-sm font-medium block mb-2">Project Name</label>
+                  <div className="relative w-80">
                     <button
                       onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                       className="w-full h-10 px-3 rounded-md border border-slate-200 bg-white text-sm text-left focus:outline-none focus:ring-2 focus:ring-violet-500/20 transition-all flex items-center justify-between"
@@ -638,7 +655,7 @@ const AIPlayground = () => {
                       </div>
                     )}
                   </div>
-                )}
+                </div>
 
                 <div className="mb-8">
                   <div
@@ -730,7 +747,7 @@ const AIPlayground = () => {
                   <div className="flex-1 bg-white border border-slate-200 rounded-lg p-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-purple-50 rounded flex items-center justify-center flex-shrink-0">
-                        <BarChart2 className="text-[#8e78b7]" />
+                        <ChartColumnDecreasing className="text-[#8e78b7]" />
                       </div>
 
                       <div className="min-w-0 flex-1">

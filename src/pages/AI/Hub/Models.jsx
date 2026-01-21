@@ -280,8 +280,13 @@ function Models() {
       label: "Name",
       sortable: true,
       render: (row) => (
-        <span className="text-purple-600 hover:underline cursor-pointer">
-          {row.name}
+        <span
+          className="block min-w-0 whitespace-normal break-words text-[#8e78b7] hover:underline cursor-pointer"
+          onClick={() =>
+            actions.find(a => a.label === "Library")?.onClick(row)
+          }
+        >
+          {row.run_name}
         </span>
       ),
     },
@@ -307,6 +312,67 @@ function Models() {
     { label: "Action", sortable: false },
   ];
 
+  const handleDelete = (row) => {
+    setDeleteTarget(row);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      const id = deleteTarget.id || deleteTarget._raw?.id;
+      const url = `${hostnameAI}/canvas/model/${id}/delete`;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          accept: "application/json",
+        },
+      });
+      if (!resp.ok) throw new Error("Failed to delete model");
+      setDeleteModalOpen(false);
+      setDeleteTarget(null);
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (err) {
+      alert(err.message || "Delete failed");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // Deploy action handler
+  const handleDeploy = async (row) => {
+    setDeployTarget(row);
+    setDeployModalOpen(true);
+    setDeployLoading(true);
+    setDeployResult(null);
+    setDeployError(null);
+    try {
+      const modelName = row?.run_name || row?._raw?.run_name;
+      const resp = await fetch(
+        `${hostnameAI}/quick/deploy-quick-action?model_name=${encodeURIComponent(modelName)}`,
+        {
+          headers:
+            {
+              Authorization: `Bearer ${token}`,
+              accept: "application/json",
+            },
+        }
+      );
+      const data = await resp.json();
+      if (resp.ok && data.success) {
+        setDeployResult(data);
+      } else {
+        setDeployError(data?.message || "Deployment failed");
+      }
+    } catch (err) {
+      setDeployError(err.message || "Deployment failed");
+    } finally {
+      setDeployLoading(false);
+    }
+  };
+
   const actions = [
     {
       label: "Library",
@@ -323,7 +389,7 @@ function Models() {
     },
     {
       label: "AI Playground",
-      label: "AI Playground",
+      label: "AI Canvas",
       icon: <Palette className="w-4 h-4" />,
       onClick: async (row) => {
         setIsCanvasLoading(true);
@@ -463,13 +529,13 @@ function Models() {
           setIsCanvasLoading(false);
         }
       },
-      tooltip: "AI Playground",
+      tooltip: "AI Canvas",
       disabled: isCanvasLoading,
     },
     {
       label: "Deploy",
       icon: <Rocket className="w-4 h-4" />,
-      onClick: handleDeploy,
+      // onClick: handleDeploy,
       tooltip: "Deploy",
     },
     {
@@ -1102,7 +1168,7 @@ function Models() {
           <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
             <div className="flex flex-col items-center">
               <Loader2 className="w-16 h-16 text-[#8e78b7] animate-spin mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading AI Playground</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading AI Canvas</h3>
               <p className="text-gray-600 text-center">Please wait while we prepare your workspace</p>
             </div>
           </div>

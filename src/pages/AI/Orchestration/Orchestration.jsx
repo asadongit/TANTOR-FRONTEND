@@ -1,4 +1,4 @@
-import { FileText, Clock, AlertTriangle, TrendingUp, Search, Plus, RefreshCw } from 'lucide-react';
+import { FileText, Clock, AlertTriangle, TrendingUp, Search, Plus } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import DataTable from '../../../components/DataTable';
@@ -9,7 +9,6 @@ import InterventionsTab from '../Orchestration/Tabs/InterventionsTab';
 
 const Orchestration = () => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [schedulerSearchTerm, setSchedulerSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('Recent Activity');
     const [summaryData, setSummaryData] = useState(null);
     const [schedulerData, setSchedulerData] = useState([]);
@@ -17,15 +16,10 @@ const Orchestration = () => {
     const [loading, setLoading] = useState(true);
     const [schedulerLoading, setSchedulerLoading] = useState(false);
     const [activityLoading, setActivityLoading] = useState(false);
-    const [refreshLoading, setRefreshLoading] = useState(false);
     const navigate = useNavigate();
     const hostnameAI = window._env_?.VITE_AI_API;
     const { token, decodedToken } = useAuth();
-    const { setSchedulerState, setMode } = useAIPlayground();
-
-    useEffect(() => {
-        setMode('write')
-    }, []);
+    const { schedulerState, setSchedulerState } = useAIPlayground();
 
     useEffect(() => {
         const fetchUserId = async () => {
@@ -118,14 +112,14 @@ const Orchestration = () => {
         try {
             const response = await fetch(`${hostnameAI}/orchestration/airflow/dags/recent?limit=10`);
             const data = await response.json();
-
+            
             const transformedActivities = data.dags.map((dag) => ({
                 message: dag.message,
                 status: dag.status,
                 run_time: dag.run_time,
                 dag_name: dag.dag_name
             }));
-
+            
             setRecentActivityData(transformedActivities);
             setActivityLoading(false);
         } catch (error) {
@@ -196,31 +190,6 @@ const Orchestration = () => {
 
     const tabs = ['Recent Activity', 'Scheduler', 'Interventions'];
 
-    const filteredSchedulerData = schedulerData.filter(item => {
-        const searchLower = schedulerSearchTerm.toLowerCase();
-        return (
-            item.schedule_name.toLowerCase().includes(searchLower) ||
-            item.frequency.toLowerCase().includes(searchLower) ||
-            item.next_run.toLowerCase().includes(searchLower) ||
-            item.status.toLowerCase().includes(searchLower) ||
-            item.sno.toString().includes(searchLower)
-        );
-    });
-
-    const handleRefresh = async () => {
-        setRefreshLoading(true);
-        setActiveTab('Recent Activity');
-
-        try {
-            await fetchSummaryData();
-            await fetchRecentActivity();
-        } catch (error) {
-            console.error('Error refreshing data:', error);
-        } finally {
-            setRefreshLoading(false);
-        }
-    };
-
     const renderLastDriftCheck = (row) => {
         if (row.last_drift_check === '-' || row.drift_status === '-') {
             return <span className="text-gray-500">-</span>;
@@ -278,53 +247,6 @@ const Orchestration = () => {
         }
     };
 
-    const handleNavigate = () => {
-        setSchedulerState({
-            owner_id: '',
-            project: '',
-            model: '',
-            model_id: '',
-            project_id: '',
-            flow_type: 'single_run',
-            scheduler: {
-                mode: 'auto',
-                frequency: '',
-                runningDays: [],
-                endDateTime: '',
-                intervalType: 'single_run',
-                intervalValue: '',
-                startDateTime: '',
-            },
-            source: {
-                source_conn_type: '',
-                source_schema: '',
-                source_table: ''
-            },
-            target: {
-                destination_conn_type: '',
-                destination_schema: '',
-                destination_table: ''
-            },
-            data_drift_threshold: {
-                distribution_drift_threshold: 0,
-                statistical_significance_level: 0,
-                information_stability_threshold: 0,
-                target_stability_threshold: 0
-            },
-            model_drift_threshold: {
-                prediction_drift_threshold: 0,
-                performance_drift_threshold: 0
-            },
-            data_drift_check: 0,
-            model_drift_check: 0,
-            recipients: [],
-            created_by: '',
-            workflow_name: ''
-        })
-        navigate('/ai/orchestration/new')
-
-    }
-
     return (
         <div className="p-3 sm:p-4 lg:p-6 bg-gray-50 min-h-screen">
             <Breadcrumb />
@@ -332,15 +254,18 @@ const Orchestration = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">Orchestration</h1>
                 <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="relative flex-1 sm:flex-initial">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-5 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm"
+                        />
+                    </div>
                     <button
-                        onClick={handleRefresh}
-                        disabled={refreshLoading}
-                        className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                        <RefreshCw className={`w-4 h-4 ${refreshLoading ? 'animate-spin' : ''}`} />
-                        <span className="text-sm font-medium">Refresh</span>
-                    </button>
-                    <button
-                        onClick={handleNavigate}
+                        onClick={() => navigate('/ai/orchestration/new')}
                         className="flex items-center gap-2 px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7d6aa3] transition-colors">
                         <Plus className="w-4 h-4" />
                         <span className="text-sm font-medium">New Schedule</span>
@@ -349,31 +274,17 @@ const Orchestration = () => {
             </div>
 
             <div className="space-y-6">
-                {loading ? (
-                    <div className="bg-white rounded-xl p-4 border border-gray-200">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                            {[1, 2, 3, 4, 5].map((_, index) => (
-                                <div key={index} className="bg-gray-100 rounded-lg px-4 py-3 border border-gray-200 animate-pulse">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <div className="w-5 h-5 bg-gray-300 rounded"></div>
-                                        <div className="h-4 bg-gray-300 rounded w-24"></div>
-                                    </div>
-                                    <div className="pl-8">
-                                        <div className="h-8 bg-gray-300 rounded w-16"></div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ) : (
-                    <div className="bg-gradient-to-r from-[#8e78b7] via-purple-300 to-purple-100 rounded-xl p-4">
+                <div className="bg-gradient-to-r from-[#8e78b7] via-purple-300 to-purple-100 rounded-xl p-4">
+                    {loading ? (
+                        <div className="text-center py-8 text-white">Loading...</div>
+                    ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                             {statsData.map((stat, index) => (
                                 <StatCard key={index} {...stat} />
                             ))}
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
 
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
                     <div className="border-b border-gray-200">
@@ -382,7 +293,7 @@ const Orchestration = () => {
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
-                                    className={`px-4 py-2 text-md font-medium rounded-lg transition-colors relative ${activeTab === tab
+                                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors relative ${activeTab === tab
                                         ? 'text-[#8e78b7] bg-purple-50'
                                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                                         }`}
@@ -407,17 +318,17 @@ const Orchestration = () => {
                                     recentActivityData.map((activity, index) => {
                                         const ActivityIcon = getActivityIcon(activity.status);
                                         const iconColor = getActivityIconColor(activity.status);
-
+                                        
                                         return (
                                             <div
                                                 key={index}
-                                                className="flex items-start gap-3 py-2 px-3 hover:bg-gray-50 rounded-lg transition-colors group"
+                                                className="flex items-start gap-3 py-3 px-3 hover:bg-gray-50 rounded-lg transition-colors group"
                                             >
-                                                <div className={`mt-1 ${iconColor}`}>
+                                                <div className={`mt-0.5 ${iconColor}`}>
                                                     <ActivityIcon className="w-4 h-4 flex-shrink-0" />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-md text-gray-700 leading-relaxed">
+                                                    <p className="text-sm text-gray-700 leading-relaxed">
                                                         {activity.message}
                                                     </p>
                                                 </div>
@@ -430,25 +341,10 @@ const Orchestration = () => {
 
                         {activeTab === 'Scheduler' && (
                             <>
-                                <div className="flex justify-end pt-2">
-                                    <div className="relative w-full sm:w-80">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                        <input
-                                            type="text"
-                                            placeholder="Search..."
-                                            value={schedulerSearchTerm}
-                                            onChange={(e) => setSchedulerSearchTerm(e.target.value)}
-                                            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
-                                        />
-                                    </div>
-                                </div>
-
                                 {schedulerLoading ? (
                                     <div className="text-center py-8 text-gray-500">Loading...</div>
-                                ) : filteredSchedulerData.length === 0 ? (
-                                    <div className="text-center py-8 text-gray-500">
-                                        {schedulerSearchTerm ? 'No schedules found matching your search' : 'No data present'}
-                                    </div>
+                                ) : schedulerData.length === 0 ? (
+                                    <div className="text-center py-8 text-gray-500">No data present</div>
                                 ) : (
                                     <DataTable
                                         columns={[
@@ -469,7 +365,7 @@ const Orchestration = () => {
                                                 render: renderStatus
                                             },
                                         ]}
-                                        data={filteredSchedulerData}
+                                        data={schedulerData}
                                         actions={[]}
                                         isLoading={false}
                                         isError={false}
@@ -479,7 +375,7 @@ const Orchestration = () => {
                         )}
 
                         {activeTab === 'Interventions' && (
-                            <InterventionsTab />
+                            <InterventionsTab/>
                         )}
                     </div>
                 </div>
