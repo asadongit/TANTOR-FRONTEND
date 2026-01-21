@@ -232,7 +232,7 @@ function XAI() {
   };
 
   const handleSaveModelFromLayout = () => {
-      setShowSaveModal(true);
+    setShowSaveModal(true);
   };
 
   const handleSaveModel = async (modelsToSave) => {

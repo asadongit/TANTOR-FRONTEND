@@ -1,8 +1,102 @@
-import { Calendar, Clock } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Calendar, Clock, Search, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useAIPlayground } from '../../../../context/AIPlaygroundContext';
 import DatePickerModal from '../modals/DatePickerModal';
+
+const SearchableSelect = ({ label, value, options, field, onChange, isLoading = false, isDisabled = false }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const dropdownRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsOpen(false);
+                setSearchTerm('');
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const filteredOptions = options.filter(opt =>
+        opt.label.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const selectedOption = options.find(opt => opt.value === value);
+
+    // Check if there are any real options (excluding the default "Select" option)
+    const hasRealOptions = options.length > 1 || (options.length === 1 && options[0].value !== '');
+
+    return (
+        <div ref={dropdownRef} className="relative">
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">{label} <span className="text-red-500">*</span></label>
+            <div
+                onClick={() => !isLoading && !isDisabled && hasRealOptions && setIsOpen(!isOpen)}
+                className={`w-full px-3 py-2 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] cursor-pointer flex items-center justify-between ${isLoading || isDisabled || !hasRealOptions ? 'text-gray-400 cursor-not-allowed bg-gray-50' : 'text-gray-700'
+                    }`}
+            >
+                <span className={`${!value ? 'text-gray-500' : ''} truncate pr-2`}>
+                    {isLoading ? 'Loading...' : !hasRealOptions ? 'No values available' : (selectedOption?.label || 'Select')}
+                </span>
+                <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+            </div>
+
+            {isOpen && !isLoading && !isDisabled && hasRealOptions && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
+                    <div className="p-2 border-b border-gray-200">
+                        <div className="relative">
+                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="Search..."
+                                className="w-full pl-8 pr-8 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                            {searchTerm && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSearchTerm('');
+                                    }}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2"
+                                >
+                                    <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto">
+                        {filteredOptions.length === 0 ? (
+                            <div className="px-3 py-2 text-sm text-gray-500 text-center">No results found</div>
+                        ) : (
+                            filteredOptions.map((opt) => (
+                                <div
+                                    key={opt.value}
+                                    onClick={() => {
+                                        onChange(field, opt.value);
+                                        setIsOpen(false);
+                                        setSearchTerm('');
+                                    }}
+                                    className={`px-3 py-2 text-sm cursor-pointer hover:bg-purple-50 ${value === opt.value ? 'bg-purple-100 text-[#8e78b7] font-medium' : 'text-gray-700'
+                                        }`}
+                                >
+                                    {opt.label}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const ConfigurationTab = () => {
     const { schedulerState, setSchedulerState } = useAIPlayground();
@@ -229,6 +323,7 @@ const ConfigurationTab = () => {
             const daysText = schedulerState.scheduler.runningDays?.length > 0
                 ? schedulerState.scheduler.runningDays.join(', ')
                 : 'All days';
+            const frequency = schedulerState.scheduler.frequency || 'daily';
             summaryText = `This model will run ${frequency} on ${daysText}\nStarting from ${displayDate} at ${displayTime} (${timeZone})`;
         } else if (scheduleType === 'Periodic (Interval)') {
             const frequency = schedulerState.scheduler.frequency || 'Not set';
@@ -430,7 +525,7 @@ const ConfigurationTab = () => {
 
     const renderSelect = (label, value, options, field, isLoading = false, isDisabled = false) => (
         <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">{label}</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">{label} <span className="text-red-500">*</span></label>
             <select
                 value={value}
                 onChange={(e) => handleInputChange(field, e.target.value)}
@@ -532,27 +627,53 @@ const ConfigurationTab = () => {
                 </div>
             </div>
             <div>
-                <h2 className="text-base font-bold text-gray-900 mb-4">Model Configuration</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {renderSelect('Project', schedulerState.project, projectOptions, 'project', loadingProjects)}
-                    {renderSelect(
-                        'Model',
-                        schedulerState.model,
-                        modelOptions,
-                        'model',
-                        loadingModels,
-                        !schedulerState.project || schedulerState.project === ''
-                    )}
-                    {renderSelect('Data source', schedulerState.source.source_table, dataSourceOptions, 'dataSource', loadingDataSources)}
-                    {renderSelect('Destination Table', schedulerState.target.destination_table, destinationTableOptions, 'destinationTable', loadingDestinations)}
+                <h2 className="text-base font-bold text-gray-900 mb-4">Model Configuration </h2>
+                <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <SearchableSelect
+                            label="Project"
+                            value={schedulerState.project}
+                            options={projectOptions}
+                            field="project"
+                            onChange={handleInputChange}
+                            isLoading={loadingProjects}
+                        />
+                        <SearchableSelect
+                            label="Model"
+                            value={schedulerState.model}
+                            options={modelOptions}
+                            field="model"
+                            onChange={handleInputChange}
+                            isLoading={loadingModels}
+                            isDisabled={!schedulerState.project || schedulerState.project === ''}
+                        />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <SearchableSelect
+                            label="Data source"
+                            value={schedulerState.source.source_table}
+                            options={dataSourceOptions}
+                            field="dataSource"
+                            onChange={handleInputChange}
+                            isLoading={loadingDataSources}
+                        />
+                        <SearchableSelect
+                            label="Destination Table"
+                            value={schedulerState.target.destination_table}
+                            options={destinationTableOptions}
+                            field="destinationTable"
+                            onChange={handleInputChange}
+                            isLoading={loadingDestinations}
+                        />
+                    </div>
                 </div>
             </div>
 
             <div>
-                <h2 className="text-base font-bold text-gray-900 mb-0.5">Schedule Type</h2>
+                <h2 className="text-base font-bold text-gray-900 mb-0.5">Schedule Type <span className="text-red-500">*</span></h2>
                 <p className="text-xs text-gray-500 mb-3">Select how and when this model should run.</p>
                 <div className="flex flex-wrap gap-3">
-                    {['Single Run', 'Periodic (Interval)'].map((type) => (
+                    {['Single Run', 'Recurring', 'Periodic (Interval)'].map((type) => (
                         <label
                             key={type}
                             className={`flex items-center gap-2 px-4 py-2 rounded-md cursor-pointer transition-colors ${scheduleType === type ? 'text-[#8e78b7] bg-purple-50' : 'text-gray-700'
@@ -580,14 +701,11 @@ const ConfigurationTab = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
                             {renderSelect('Time Zone', schedulerState.scheduler.timeZone, [
                                 { value: '', label: 'Select' },
-                                { value: 'utc', label: 'UTC' },
-                                { value: 'est', label: 'EST' },
-                                { value: 'pst', label: 'PST' },
                                 { value: 'ist', label: 'IST' }
                             ], 'timeZone')}
                         </div>
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Run Days</label>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Run Days <span className="text-red-500">*</span></label>
                             <p className="text-xs text-gray-500 mb-3">Choose the days the model should execute.</p>
                             <div className="flex gap-2">
                                 {dayAbbreviations.map((day, idx) => (
@@ -637,7 +755,7 @@ const ConfigurationTab = () => {
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Start Date & Time</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Start Date & Time <span className="text-red-500">*</span></label>
                         <div className="relative">
                             <input
                                 type="text"
