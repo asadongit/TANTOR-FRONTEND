@@ -666,8 +666,8 @@ const AIPlayground = () => {
           </div>
 
 
-          {/* Modals */}
-          <CreateProjectModal
+      {/* Modals */}
+      <CreateProjectModal
             isOpen={modals.createProject}
             onClose={() => toggleModal('createProject', false)}
             onSubmit={handleCreateProject}
