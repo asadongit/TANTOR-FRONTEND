@@ -186,7 +186,7 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
 
           <div>
             <label className="text-sm font-medium text-slate-700 mb-2 block">
-              Available Tables
+              Available Tables <span className="text-red-500">*</span>
             </label>
             <div className="relative" ref={dropdownRef}>
               <button
