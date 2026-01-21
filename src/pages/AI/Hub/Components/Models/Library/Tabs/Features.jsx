@@ -17,20 +17,24 @@ function Features({ modelData }) {
   const [sampleDrawerTitle, setSampleDrawerTitle] = useState("");
   const [sampleDrawerValues, setSampleDrawerValues] = useState([]);
   const [openRowMenuSno, setOpenRowMenuSno] = useState(null);
+  const [noDataMessage, setNoDataMessage] = useState("");
   const hostnameAI = window._env_?.VITE_AI_API;
   const { token, decodedToken } = useAuth();
 
   const processedToRows = (dataObj) => {
+    // dataObj: { "0": {feature: importance, ...}, ... }
     if (!dataObj) return [];
-    return Object.entries(dataObj).map(([name, value], idx) => ({
-      sno: idx + 1,
-      name,
-      description: "",
-      created_date: "",
-      type: "",
-      status: "",
-      value,
-    }));
+    const rows = [];
+    Object.entries(dataObj).forEach(([classIdx, features], idx) => {
+      Object.entries(features).forEach(([feature, importance]) => {
+        rows.push({
+          class: classIdx,
+          feature,
+          importance,
+        });
+      });
+    });
+    return rows;
   };
 
   // Helper to transform raw API data to table rows
@@ -60,6 +64,7 @@ function Features({ modelData }) {
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
+      setNoDataMessage(""); // reset
       try {
         const res = await fetch(
           `${hostnameAI}/canvas/dataset/metadata/raw/processed?data_type=${dataType}&dataset_id=${modelData.dataset_id}`,
@@ -71,12 +76,29 @@ function Features({ modelData }) {
           }
         );
         const json = await res.json();
-        if (dataType === "processed") {
-          const featureImportance = json.data?.feature_importance || {};
-          setTableData(processedToRows(featureImportance));
+        if (
+          (dataType === "processed" && (!json.feature_importance_available || !json.data)) ||
+          (dataType === "raw" && !json.data)
+        ) {
+          setTableData([]);
+          setNoDataMessage(json.message || "No data available.");
           setStatsCards([
-            { title: "Features", value: Object.keys(featureImportance).length },
-            { title: "Data points", value: "-" },
+            // { title: "Classes", value: "-" },
+            { title: "Features", value: "-" },
+          ]);
+        } else if (dataType === "processed") {
+          // New processed structure: json.data is { "0": {...}, ... }
+          const processedData = json.data || {};
+          setTableData(processedToRows(processedData));
+          // Count unique features and classes
+          const classCount = Object.keys(processedData).length;
+          const featureSet = new Set();
+          Object.values(processedData).forEach((features) => {
+            Object.keys(features).forEach((f) => featureSet.add(f));
+          });
+          setStatsCards([
+            // { title: "Classes", value: classCount },
+            { title: "Features", value: featureSet.size },
           ]);
         } else {
           setTableData(rawToRows(json.data));
@@ -87,6 +109,7 @@ function Features({ modelData }) {
         }
       } catch (e) {
         setTableData([]);
+        setNoDataMessage("No data available.");
       }
       setIsLoading(false);
     };
@@ -94,9 +117,9 @@ function Features({ modelData }) {
   }, [dataType, modelData.dataset_id, hostnameAI, token]);
 
   const processedColumns = [
-    { key: "sno", label: "Sno", sortable: true, width: "90px" },
-    { key: "name", label: "Name", sortable: true },
-    { key: "value", label: "Importance", sortable: true },
+    { key: "class", label: "Class", sortable: true, width: "80px" },
+    { key: "feature", label: "Feature", sortable: true },
+    { key: "importance", label: "Importance", sortable: true },
   ];
 
   const rawColumns = [
@@ -229,13 +252,17 @@ function Features({ modelData }) {
         </div>
       </div>
 
-      <DataTable
-        columns={dataType === "processed" ? processedColumns : rawColumns}
-        data={filteredData}
-        actions={[]} // No actions for feature table
-        isLoading={isLoading}
-        isError={false}
-      />
+      {noDataMessage ? (
+        <div className="p-8 text-center text-gray-500 text-base">{noDataMessage}</div>
+      ) : (
+        <DataTable
+          columns={dataType === "processed" ? processedColumns : rawColumns}
+          data={filteredData}
+          actions={[]} // No actions for feature table
+          isLoading={isLoading}
+          isError={false}
+        />
+      )}
 
       {/* Right Drawer: Sample Values */}
       {sampleDrawerOpen && (

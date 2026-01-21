@@ -22,6 +22,7 @@ import QuickPredictModal from "./Components/Models/QuickPredictModal";
 import DeleteModal from "./Components/DeleteModal";
 import { useAuth } from "../../../context/AuthContext";
 import { useAIPlayground } from "../../../context/AIPlaygroundContext";
+import ModelFlow from "./Components/Models/ModelFlow";
 
 function Models() {
   const navigate = useNavigate();
@@ -281,15 +282,19 @@ function Models() {
       sortable: true,
       render: (row) => (
         <span
-          className="block min-w-0 whitespace-normal break-words text-[#8e78b7] hover:underline cursor-pointer"
-          onClick={() =>
-            actions.find(a => a.label === "Library")?.onClick(row)
-          }
+          className="text-purple-600 hover:underline cursor-pointer whitespace-normal break-words break-all"
+          onClick={() => openModelLibrary(row)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === "Enter" && openModelLibrary(row)}
+          title={row?.run_name ?? ""}
+          style={{ overflowWrap: "anywhere" }}
         >
           {row.run_name}
         </span>
       ),
-    },
+    }
+,
     { key: "description", label: "Description", sortable: true },
     { key: "created_date", label: "Created Date", sortable: true },
     {key: 'project_name', label: 'Project', sortable: true },
@@ -372,6 +377,17 @@ function Models() {
       setDeployLoading(false);
     }
   };
+
+    const openModelLibrary = useCallback(
+    (row) => {
+      const raw = row?._raw ?? row;
+      navigate("/ai/hub/models/library", {
+        state: { modelData: raw },
+      });
+    },
+    [navigate]
+  );
+
 
   const actions = [
     {
@@ -533,7 +549,7 @@ function Models() {
     {
       label: "Deploy",
       icon: <Rocket className="w-4 h-4" />,
-      // onClick: handleDeploy,
+      onClick: handleDeploy,
       tooltip: "Deploy",
     },
     {
@@ -575,336 +591,11 @@ function Models() {
       );
   }, [searchTerm, modelsData]);
 
-  const ModelFlowDiagram = ({ data }) => {
-    const svgRef = useRef(null);
-    const containerRef = useRef(null);
-    const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-    const [showInfo, setShowInfo] = useState(false);
-
-    const handleWheel = useCallback((e) => {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      setTransform((prev) => ({
-        ...prev,
-        scale: Math.min(Math.max(prev.scale * delta, 0.5), 2),
-      }));
-    }, []);
-
-    const handleMouseDown = useCallback(
-      (e) => {
-        setIsDragging(true);
-        setDragStart({
-          x: e.clientX - transform.x,
-          y: e.clientY - transform.y,
-        });
-      },
-      [transform.x, transform.y]
-    );
-
-    const handleMouseMove = useCallback(
-      (e) => {
-        if (!isDragging) return;
-        setTransform((prev) => ({
-          ...prev,
-          x: e.clientX - dragStart.x,
-          y: e.clientY - dragStart.y,
-        }));
-      },
-      [isDragging, dragStart]
-    );
-
-    const handleMouseUp = useCallback(() => {
-      setIsDragging(false);
-    }, []);
-
-    const resetZoom = () => {
-      setTransform({ x: 0, y: 0, scale: 1 });
-    };
-
-    return (
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm h-full">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Icon
-              icon="material-symbols:account-tree-outline"
-              className="w-5 h-5 text-purple-600"
-            />
-            <h3 className="text-sm font-semibold text-gray-800">Model Flow</h3>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() =>
-                setTransform((prev) => ({
-                  ...prev,
-                  scale: Math.min(prev.scale * 1.2, 2),
-                }))
-              }
-              className="p-1 hover:bg-gray-100 rounded text-gray-500"
-              title="Zoom In"
-            >
-              <Icon icon="material-symbols:zoom-in" className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() =>
-                setTransform((prev) => ({
-                  ...prev,
-                  scale: Math.max(prev.scale * 0.8, 0.5),
-                }))
-              }
-              className="p-1 hover:bg-gray-100 rounded text-gray-500"
-              title="Zoom Out"
-            >
-              <Icon icon="material-symbols:zoom-out" className="w-4 h-4" />
-            </button>
-            <button
-              onClick={resetZoom}
-              className="p-1 hover:bg-gray-100 rounded text-gray-500"
-              title="Reset"
-            >
-              <Icon icon="material-symbols:fit-screen" className="w-4 h-4" />
-            </button>
-            <div className="relative">
-              <Info
-                className="w-4 h-4 text-gray-400 cursor-pointer hover:text-gray-600"
-                onMouseEnter={() => setShowInfo(true)}
-                onMouseLeave={() => setShowInfo(false)}
-              />
-              {showInfo && (
-                <div className="absolute right-0 top-6 z-10 w-48 p-2 bg-gray-800 text-white text-xs rounded-lg shadow-lg">
-                  Interactive model flow diagram. Use scroll to zoom, drag to
-                  pan.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        <div
-          ref={containerRef}
-          className="h-[260px] overflow-hidden cursor-grab active:cursor-grabbing rounded-lg bg-gray-50"
-          onWheel={handleWheel}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-        >
-          <svg
-            ref={svgRef}
-            viewBox="0 0 780 240"
-            className="w-full h-full"
-            style={{
-              transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
-              transformOrigin: "center center",
-              transition: isDragging ? "none" : "transform 0.1s ease-out",
-            }}
-          >
-            <g className="cursor-pointer hover:opacity-80 transition-opacity">
-              <rect
-                x={data.aiModel.x}
-                y={data.aiModel.y}
-                width="100"
-                height="60"
-                rx="8"
-                fill="#7C3AED"
-              />
-              <text
-                x={data.aiModel.x + 50}
-                y={data.aiModel.y + 28}
-                textAnchor="middle"
-                fill="white"
-                fontSize="20"
-                fontWeight="bold"
-              >
-                {data.aiModel.label}
-              </text>
-              <text
-                x={data.aiModel.x + 50}
-                y={data.aiModel.y + 45}
-                textAnchor="middle"
-                fill="white"
-                fontSize="9"
-              >
-                {data.aiModel.sublabel}
-              </text>
-            </g>
-
-            {data.classificationAgents.map((agent, idx) => (
-              <g
-                key={agent.id}
-                className="cursor-pointer hover:opacity-80 transition-opacity"
-              >
-                <rect
-                  x={agent.x}
-                  y={agent.y}
-                  width="90"
-                  height="40"
-                  rx="8"
-                  fill="#EC4899"
-                />
-                <text
-                  x={agent.x + 45}
-                  y={agent.y + 15}
-                  textAnchor="middle"
-                  fill="white"
-                  fontSize="9"
-                  fontWeight="500"
-                >
-                  Classification
-                </text>
-                <text
-                  x={agent.x + 45}
-                  y={agent.y + 28}
-                  textAnchor="middle"
-                  fill="white"
-                  fontSize="9"
-                  fontWeight="500"
-                >
-                  Agent
-                </text>
-              </g>
-            ))}
-
-            {data.middleAgents.map((agent) => (
-              <g
-                key={agent.id}
-                className="cursor-pointer hover:opacity-80 transition-opacity"
-              >
-                <rect
-                  x={agent.x}
-                  y={agent.y}
-                  width="80"
-                  height="32"
-                  rx="6"
-                  fill={agent.color}
-                />
-                <text
-                  x={agent.x + 40}
-                  y={agent.y + 20}
-                  textAnchor="middle"
-                  fill="white"
-                  fontSize="9"
-                  fontWeight="500"
-                >
-                  {agent.label}
-                </text>
-              </g>
-            ))}
-
-            <g className="cursor-pointer hover:opacity-80 transition-opacity">
-              <rect
-                x={data.orchestrationLayer.x}
-                y={data.orchestrationLayer.y}
-                width="110"
-                height="80"
-                rx="8"
-                fill="#10B981"
-              />
-              <text
-                x={data.orchestrationLayer.x + 55}
-                y={data.orchestrationLayer.y + 38}
-                textAnchor="middle"
-                fill="white"
-                fontSize="9"
-                fontWeight="500"
-              >
-                Orchestration
-              </text>
-              <text
-                x={data.orchestrationLayer.x + 55}
-                y={data.orchestrationLayer.y + 52}
-                textAnchor="middle"
-                fill="white"
-                fontSize="9"
-                fontWeight="500"
-              >
-                Agent
-              </text>
-            </g>
-
-            <g className="cursor-pointer hover:opacity-80 transition-opacity">
-              <rect
-                x={data.output.x}
-                y={data.output.y}
-                width="80"
-                height="40"
-                rx="8"
-                fill="#06B6D4"
-              />
-              <text
-                x={data.output.x + 40}
-                y={data.output.y + 25}
-                textAnchor="middle"
-                fill="white"
-                fontSize="10"
-                fontWeight="600"
-              >
-                {data.output.label}
-              </text>
-            </g>
-
-            <path
-              d="M130 120 C155 120, 155 80, 180 80"
-              stroke="#A78BFA"
-              strokeWidth="3"
-              fill="none"
-              opacity="0.5"
-            />
-            <path
-              d="M130 130 C155 130, 155 160, 180 160"
-              stroke="#A78BFA"
-              strokeWidth="3"
-              fill="none"
-              opacity="0.5"
-            />
-
-            {data.middleAgents.map((agent, idx) => {
-              const sourceY = idx < 2 ? 80 : 160;
-              const targetY = agent.y + 16;
-              return (
-                <path
-                  key={`class-to-middle-${agent.id}`}
-                  d={`M270 ${sourceY} C295 ${sourceY}, 295 ${targetY}, 320 ${targetY}`}
-                  stroke={idx < 2 ? "#EC4899" : "#EC4899"}
-                  strokeWidth="2.5"
-                  fill="none"
-                  opacity="0.4"
-                />
-              );
-            })}
-
-            {data.middleAgents.map((agent) => {
-              const sourceY = agent.y + 16;
-              return (
-                <path
-                  key={`middle-to-orch-${agent.id}`}
-                  d={`M400 ${sourceY} C450 ${sourceY}, 450 130, 500 130`}
-                  stroke="#FB923C"
-                  strokeWidth="2.5"
-                  fill="none"
-                  opacity="0.3"
-                />
-              );
-            })}
-
-            <path
-              d="M610 130 C635 130, 635 120, 660 120"
-              stroke="#10B981"
-              strokeWidth="3"
-              fill="none"
-              opacity="0.6"
-            />
-          </svg>
-        </div>
-      </div>
-    );
-  };
-
   const AlertsPanel = () => {
     const [showInfo, setShowInfo] = useState(false);
 
     return (
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm h-full">
+      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm h-[350px]">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Icon
@@ -1127,7 +818,8 @@ function Models() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-1">
-              <ModelFlowDiagram data={modelFlowData} />
+              {/* REPLACE: <ModelFlowDiagram data={modelFlowData} /> */}
+              <ModelFlow />
             </div>
             <div>
               <AlertsPanel />
