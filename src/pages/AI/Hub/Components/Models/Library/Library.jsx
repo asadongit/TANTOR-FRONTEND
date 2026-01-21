@@ -43,11 +43,11 @@ function Library() {
   const tabs = [
     { name: 'Overview', component: Overview },
     { name: 'Features', component: Features },
-    { name: 'Performance Timeline', component: PerformanceTimeline },
+    // { name: 'Performance Timeline', component: PerformanceTimeline },
     { name: 'Parameters', component: Parameters },
     { name: 'XAI', component: XAI },
     { name: 'Comments', component: Comments },
-    { name: 'Access', component: Access },
+    // { name: 'Access', component: Access },
     // { name: 'Quick Predict', component: QuickPredict },
   ];
 

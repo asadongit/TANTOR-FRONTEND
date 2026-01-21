@@ -72,7 +72,7 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
             <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900">Metrics</h3>
+                        <h3 className="text-lg font-semibold text-gray-900">Metrics <span className="text-red-500">*</span></h3>
                         <p className="text-sm text-gray-600">Measure how your model performs.</p>
                     </div>
                     <button
@@ -88,14 +88,14 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
                     </button>
                 </div>
 
-                {!hasEnabledMetrics && !readonly && (
+                {/* {!hasEnabledMetrics && !readonly && (
                     <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
                         <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
                         <p className="text-xs text-amber-800">
                             <span className="font-medium">Required:</span> Please select at least one metric to continue.
                         </p>
                     </div>
-                )}
+                )} */}
 
                 {metricsExpanded && (
                     <>

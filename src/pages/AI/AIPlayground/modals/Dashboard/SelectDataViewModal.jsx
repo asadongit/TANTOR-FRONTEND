@@ -56,11 +56,11 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
           'accept': 'application/json'
         }
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch tables');
       }
-      
+
       const data = await response.json();
       const tables = data.tables.map(table => ({
         value: table,

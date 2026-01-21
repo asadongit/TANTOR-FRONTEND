@@ -258,7 +258,6 @@ function FeatureEngineering({ onApiCall }) {
 
     return (
         <div className="space-y-4">
-
             <FeatureSection
                 title="Outlier Treatment"
                 description="Handle outliers detected in your dataset."

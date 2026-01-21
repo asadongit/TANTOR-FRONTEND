@@ -23,57 +23,39 @@ const ComponentsTab = ({ projectData }) => {
     const [datasetsLoading, setDatasetsLoading] = useState(false);
     const [datasetsError, setDatasetsError] = useState(null);
 
-    // Models state
     const [models, setModels] = useState([]);
     const [modelsLoading, setModelsLoading] = useState(false);
     const [modelsError, setModelsError] = useState(null);
 
-    // NEW: click-to-library should pass "full" entity payload (component rows are lightweight)
     const [entityNavLoading, setEntityNavLoading] = useState(false);
 
-    // NEW: fetch full lists (same APIs as Data/Models pages) and filter by id/name
-    const fetchDatasetFromList = async (row) => {
-        const datasetId = row?.dataset_id ?? row?.id;
-        const datasetName = row?.dataset_name;
-
-        const res = await fetch(`${hostnameAI}/canvas/list_data_info`, {
+    const fetchDatasetById = async (row) => {
+        const datasetId = row?.dataset_id ?? row?.id ?? row?.uuid ?? row?.file_id;
+        if (!datasetId) return row;
+        const res = await fetch(`${hostnameAI}/canvas/list_data_info?data_id=${encodeURIComponent(datasetId)}`, {
             headers: { Authorization: `Bearer ${token}`, accept: "application/json" },
         });
-        if (!res.ok) throw new Error("Failed to fetch datasets list");
+        if (!res.ok) throw new Error("Failed to fetch dataset");
         const list = await res.json();
-        const arr = Array.isArray(list) ? list : [];
-
-        // match by id-like fields first, then by name-like fields
-        const match =
-            (datasetId != null && arr.find((d) => String(d?.id ?? d?.dataset_id ?? d?.uuid ?? d?.file_id) === String(datasetId))) ||
-            (datasetName && arr.find((d) => String(d?.file_name ?? d?.dataset_name ?? "").toLowerCase() === String(datasetName).toLowerCase()));
-
-        return match ?? row;
+        return Array.isArray(list) && list.length > 0 ? list[0] : row;
     };
 
-    const fetchModelFromList = async (row) => {
+    const fetchModelById = async (row) => {
         const modelId = row?.model_id ?? row?.id;
-        const modelName = row?.model_name ?? row?.run_name;
-
-        const res = await fetch(`${hostnameAI}/canvas/model_list`, {
+        if (!modelId) return row;
+        const res = await fetch(`${hostnameAI}/canvas/model_list?model_id=${encodeURIComponent(modelId)}`, {
             headers: { Authorization: `Bearer ${token}`, accept: "application/json" },
         });
-        if (!res.ok) throw new Error("Failed to fetch models list");
+        if (!res.ok) throw new Error("Failed to fetch model");
         const list = await res.json();
-        const arr = Array.isArray(list) ? list : [];
-
-        const match =
-            (modelId != null && arr.find((m) => String(m?.id) === String(modelId))) ||
-            (modelName && arr.find((m) => String(m?.run_name ?? m?.model_name ?? "").toLowerCase() === String(modelName).toLowerCase()));
-
-        return match ?? row;
+        return Array.isArray(list) && list.length > 0 ? list[0] : row;
     };
 
     const openDatasetLibraryFromComponents = async (row) => {
         if (!hostnameAI || !token) return;
         setEntityNavLoading(true);
         try {
-            const fullRow = await fetchDatasetFromList(row);
+            const fullRow = await fetchDatasetById(row);
             const datasetKey =
                 fullRow?.id ||
                 fullRow?.dataset_id ||
@@ -104,9 +86,9 @@ const ComponentsTab = ({ projectData }) => {
         if (!hostnameAI || !token) return;
         setEntityNavLoading(true);
         try {
-            const fullRaw = await fetchModelFromList(row);
+            const fullRow = await fetchModelById(row);
             navigate("/ai/hub/models/library", {
-                state: { modelData: fullRaw },
+                state: { modelData: fullRow },
             });
         } catch (e) {
             navigate("/ai/hub/models/library", {
@@ -117,7 +99,6 @@ const ComponentsTab = ({ projectData }) => {
         }
     };
 
-    // Fetch datasets
     useEffect(() => {
         if (!hostnameAI || !token || !projectName) return;
         setDatasetsLoading(true);
@@ -179,10 +160,10 @@ const ComponentsTab = ({ projectData }) => {
             tooltip: 'F1 Mode',
         },
         {
-            label: 'AI Playground',
+            label: 'AI Canvas',
             icon: <Palette className="w-4 h-4" />,
-            onClick: (row) => console.log('AI Playground:', row),
-            tooltip: 'AI Playground',
+            onClick: (row) => console.log('AI Canvas:', row),
+            tooltip: 'AI Canvas',
         },
         {
             label: 'Archive',
@@ -214,7 +195,7 @@ const ComponentsTab = ({ projectData }) => {
             tooltip: "F1 Mode",
         },
         {
-            label: "AI Playground",
+            label: "AI Canvas",
             icon: <Palette className="w-4 h-4" />,
             onClick: (row) =>
                 navigate("/ai/playground/model-genesis", {
@@ -223,7 +204,7 @@ const ComponentsTab = ({ projectData }) => {
                         model: row,
                     },
                 }),
-            tooltip: "AI Playground",
+            tooltip: "AI Canvas",
         },
         {
             label: "Deploy",
