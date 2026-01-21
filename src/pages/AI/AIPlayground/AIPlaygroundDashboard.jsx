@@ -216,13 +216,7 @@ const AIPlayground = () => {
           displayName: datasetState.tableName
         });
       }
-    }
-    else if (mode === "schedule") {
-      if (projectState?.selectedProject) {
-        setSelectedProject(projectState.selectedProject);
-      }
-    }
-    else {
+    } else {
       setProjectState({ selectedProject: '' });
       setModelState({ selectedModel: '' })
       setDatasetState({
@@ -256,7 +250,6 @@ const AIPlayground = () => {
       modelDeployment: { config: null, apiResponse: null }
     });
   }, [mode]);
-
   const fetchProjects = async () => {
     try {
       setLoading(true);
@@ -421,7 +414,6 @@ const AIPlayground = () => {
       setTempFile(null);
     }
   };
-
   const handleSkipDescription = () => {
     if (tempFile) {
       setUploadedFile(tempFile);
