@@ -18,6 +18,12 @@ function XAI() {
   const sessionId = datasetState?.sessionId;
   const readonly = mode === 'view';
 
+  useEffect(() => {
+    if (datasetState.sessionId == '') {
+      navigate('/ai/playground')
+    }
+  }, []);
+
   const [selectedModel, setSelectedModel] = useState('');
   const [modelsList, setModelsList] = useState([]);
   const [loadingModels, setLoadingModels] = useState(false);
@@ -76,7 +82,7 @@ function XAI() {
     } catch (error) {
       console.error('Error fetching XAI report:', error);
       setReportGenerated(false);
-     
+
     } finally {
       setGeneratingReport(false);
       setInitialLoadComplete(true);
@@ -226,7 +232,7 @@ function XAI() {
   };
 
   const handleSaveModelFromLayout = () => {
-      setShowSaveModal(true);
+    setShowSaveModal(true);
   };
 
   const handleSaveModel = async (modelsToSave) => {
@@ -270,7 +276,7 @@ function XAI() {
         });
 
         setShowSaveModal(false);
-        
+
         if (projectState?.selectedProject) {
           try {
             const experimentResponse = await fetch(
@@ -420,7 +426,7 @@ function XAI() {
           <div className="flex-1">
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Explainability Report</h2>
             <p className="text-sm text-gray-600">
-              {readonly 
+              {readonly
                 ? 'View explainability insights using SHAP, PDP, LIME, and counterfactuals.'
                 : 'Select a model to generate explainability insights using SHAP, PDP, LIME, and counterfactuals.'}
             </p>

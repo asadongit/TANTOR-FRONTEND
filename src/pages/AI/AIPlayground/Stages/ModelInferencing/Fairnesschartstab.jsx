@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Info } from 'lucide-react';
 
 const FairnessTab = ({ 
@@ -45,59 +45,40 @@ const FairnessTab = ({
             </div>
           </div>
 
-          {(selectedModelFairnessData.gender || selectedModelFairnessData.age) ? (
+          {selectedModelFairnessData.demographics && selectedModelFairnessData.demographics.length > 0 ? (
             <div className="space-y-6">
-              {selectedModelFairnessData.gender && (
-                <div>
-                  <h3 className="text-base font-semibold text-gray-900 mb-4">Gender Fairness Metrics</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h4 className="text-xs text-gray-600 mb-2">Demographic Parity Difference (Gender)</h4>
-                      <p className="text-2xl font-semibold text-gray-900">
-                        {selectedModelFairnessData.gender.demographic_parity_difference.toFixed(4)}
-                      </p>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h4 className="text-xs text-gray-600 mb-2">Demographic Parity Ratio (Gender)</h4>
-                      <p className="text-2xl font-semibold text-gray-900">
-                        {selectedModelFairnessData.gender.demographic_parity_ratio.toFixed(4)}
-                      </p>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h4 className="text-xs text-gray-600 mb-2">Accuracy Score Difference (Gender)</h4>
-                      <p className="text-2xl font-semibold text-gray-900">
-                        {selectedModelFairnessData.gender.accuracy_score_difference.toFixed(4)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {selectedModelFairnessData.demographics.map((demographic) => {
+                const data = selectedModelFairnessData[demographic];
+                if (!data) return null;
 
-              {selectedModelFairnessData.age && (
-                <div>
-                  <h3 className="text-base font-semibold text-gray-900 mb-4">Age Fairness Metrics</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h4 className="text-xs text-gray-600 mb-2">Demographic Parity Difference (Age)</h4>
-                      <p className="text-2xl font-semibold text-gray-900">
-                        {selectedModelFairnessData.age.demographic_parity_difference.toFixed(4)}
-                      </p>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h4 className="text-xs text-gray-600 mb-2">Demographic Parity Ratio (Age)</h4>
-                      <p className="text-2xl font-semibold text-gray-900">
-                        {selectedModelFairnessData.age.demographic_parity_ratio.toFixed(4)}
-                      </p>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h4 className="text-xs text-gray-600 mb-2">Accuracy Score Difference (Age)</h4>
-                      <p className="text-2xl font-semibold text-gray-900">
-                        {selectedModelFairnessData.age.accuracy_score_difference.toFixed(4)}
-                      </p>
+                const displayName = demographic.charAt(0).toUpperCase() + demographic.slice(1);
+
+                return (
+                  <div key={demographic}>
+                    <h3 className="text-base font-semibold text-gray-900 mb-4">{displayName} Fairness Metrics</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h4 className="text-xs text-gray-600 mb-2">Demographic Parity Difference ({displayName})</h4>
+                        <p className="text-2xl font-semibold text-gray-900">
+                          {data.demographic_parity_difference !== null ? data.demographic_parity_difference.toFixed(4) : 'N/A'}
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h4 className="text-xs text-gray-600 mb-2">Demographic Parity Ratio ({displayName})</h4>
+                        <p className="text-2xl font-semibold text-gray-900">
+                          {data.demographic_parity_ratio !== null ? data.demographic_parity_ratio.toFixed(4) : 'N/A'}
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h4 className="text-xs text-gray-600 mb-2">Accuracy Score Difference ({displayName})</h4>
+                        <p className="text-2xl font-semibold text-gray-900">
+                          {data.accuracy_score_difference !== null ? data.accuracy_score_difference.toFixed(4) : 'N/A'}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })}
             </div>
           ) : (
             <div className="py-12 text-center bg-gray-50 rounded-lg">
@@ -119,6 +100,38 @@ const ChartsTab = ({
   apiResults, 
   selectedModelChartData 
 }) => {
+  const availableDemographics = React.useMemo(() => {
+    if (!selectedModelChartData) return [];
+    
+    const demographics = new Set();
+    
+    // Extract demographics from fairness bar charts
+    if (selectedModelChartData.fairnessBarCharts) {
+      Object.keys(selectedModelChartData.fairnessBarCharts).forEach(key => {
+        if (selectedModelChartData.fairnessBarCharts[key]) {
+          demographics.add(key);
+        }
+      });
+    }
+    
+    // Extract demographics from profile radial charts
+    if (selectedModelChartData.profileRadialCharts) {
+      Object.keys(selectedModelChartData.profileRadialCharts).forEach(key => {
+        if (selectedModelChartData.profileRadialCharts[key]) {
+          demographics.add(key);
+        }
+      });
+    }
+    
+    return Array.from(demographics).sort();
+  }, [selectedModelChartData]);
+
+  useEffect(() => {
+    if (availableDemographics.length > 0 && !availableDemographics.includes(selectedChartDemographic)) {
+      setSelectedChartDemographic(availableDemographics[0]);
+    }
+  }, [availableDemographics, selectedChartDemographic, setSelectedChartDemographic]);
+
   return (
     <div className="bg-gray-50 p-4 rounded-lg -mx-4 -mb-3">
       <div className="bg-white rounded-lg p-4 sm:p-6 border border-gray-200 shadow-sm">
@@ -145,17 +158,22 @@ const ChartsTab = ({
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="text-xs text-gray-600 block mb-1">Select Demographic:</label>
-                  <select 
-                    className="border border-gray-300 rounded px-3 py-1.5 text-sm"
-                    value={selectedChartDemographic}
-                    onChange={(e) => setSelectedChartDemographic(e.target.value)}
-                  >
-                    <option value="age">Age</option>
-                    <option value="gender">Gender</option>
-                  </select>
-                </div>
+                {availableDemographics.length > 0 && (
+                  <div>
+                    <label className="text-xs text-gray-600 block mb-1">Select Demographic:</label>
+                    <select 
+                      className="border border-gray-300 rounded px-3 py-1.5 text-sm"
+                      value={selectedChartDemographic}
+                      onChange={(e) => setSelectedChartDemographic(e.target.value)}
+                    >
+                      {availableDemographics.map((demographic) => (
+                        <option key={demographic} value={demographic}>
+                          {demographic.charAt(0).toUpperCase() + demographic.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -171,45 +189,54 @@ const ChartsTab = ({
                   </div>
                 </div>
 
-                <div className="bg-gray-50 rounded-lg p-6 mb-6">
-                  <h3 className="text-base font-semibold text-gray-900 mb-4">
-                    Fairness Bar Chart for '{selectedChartDemographic}' ({selectedModelChartData.modelName})
-                  </h3>
+                {availableDemographics.length > 0 ? (
+                  <>
+                    <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                      <h3 className="text-base font-semibold text-gray-900 mb-4">
+                        Fairness Bar Chart for '{selectedChartDemographic.charAt(0).toUpperCase() + selectedChartDemographic.slice(1)}' ({selectedModelChartData.modelName})
+                      </h3>
 
-                  {selectedModelChartData.fairnessBarCharts[selectedChartDemographic] ? (
-                    <div className="flex justify-center">
-                      <img 
-                        src={`data:image/png;base64,${selectedModelChartData.fairnessBarCharts[selectedChartDemographic]}`}
-                        alt={`Fairness bar chart for ${selectedChartDemographic}`}
-                        className="max-w-full h-auto rounded-lg shadow-md"
-                      />
+                      {selectedModelChartData.fairnessBarCharts[selectedChartDemographic] ? (
+                        <div className="flex justify-center">
+                          <img 
+                            src={`data:image/png;base64,${selectedModelChartData.fairnessBarCharts[selectedChartDemographic]}`}
+                            alt={`Fairness bar chart for ${selectedChartDemographic}`}
+                            className="max-w-full h-auto rounded-lg shadow-md"
+                          />
+                        </div>
+                      ) : (
+                        <div className="text-center py-12 text-gray-500">
+                          <p>No bar chart data available for {selectedChartDemographic}</p>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="text-center py-12 text-gray-500">
-                      <p>No bar chart data available for {selectedChartDemographic}</p>
-                    </div>
-                  )}
-                </div>
 
-                <div className="bg-gray-50 rounded-lg p-6">
-                  <h3 className="text-base font-semibold text-gray-900 mb-4">
-                    Profile Radial Chart for '{selectedChartDemographic}' ({selectedModelChartData.modelName})
-                  </h3>
+                    <div className="bg-gray-50 rounded-lg p-6">
+                      <h3 className="text-base font-semibold text-gray-900 mb-4">
+                        Profile Radial Chart for '{selectedChartDemographic.charAt(0).toUpperCase() + selectedChartDemographic.slice(1)}' ({selectedModelChartData.modelName})
+                      </h3>
 
-                  {selectedModelChartData.profileRadialCharts[selectedChartDemographic] ? (
-                    <div className="flex justify-center">
-                      <img 
-                        src={`data:image/png;base64,${selectedModelChartData.profileRadialCharts[selectedChartDemographic]}`}
-                        alt={`Profile radial chart for ${selectedChartDemographic}`}
-                        className="max-w-full h-auto rounded-lg shadow-md"
-                      />
+                      {selectedModelChartData.profileRadialCharts[selectedChartDemographic] ? (
+                        <div className="flex justify-center">
+                          <img 
+                            src={`data:image/png;base64,${selectedModelChartData.profileRadialCharts[selectedChartDemographic]}`}
+                            alt={`Profile radial chart for ${selectedChartDemographic}`}
+                            className="max-w-full h-auto rounded-lg shadow-md"
+                          />
+                        </div>
+                      ) : (
+                        <div className="text-center py-12 text-gray-500">
+                          <p>No radial chart data available for {selectedChartDemographic}</p>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="text-center py-12 text-gray-500">
-                      <p>No radial chart data available for {selectedChartDemographic}</p>
-                    </div>
-                  )}
-                </div>
+                  </>
+                ) : (
+                  <div className="py-12 text-center bg-gray-50 rounded-lg">
+                    <p className="text-sm font-medium text-gray-500">No chart data available</p>
+                    <p className="text-xs text-gray-400 mt-1">No demographic charts are present for this model</p>
+                  </div>
+                )}
               </>
             )}
           </div>

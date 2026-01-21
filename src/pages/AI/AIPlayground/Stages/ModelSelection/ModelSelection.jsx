@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { AIPlaygroundLayout } from '../../AIPlaygroundLayout';
 import { Search } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
 import algorithmsData from '../../../../../components/classification_models_hyperparameters.json';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 import AlgorithmCard from './AlgorithmCard';
 import SidePanel from './SidePanel';
 import { validateAlgorithm } from './validationUtils';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const METRIC_NAME_MAPPING = {
     "Accuracy": "accuracy",
@@ -28,8 +28,15 @@ const REVERSE_METRIC_MAPPING = {
 function ModelSelection() {
     const hostnameAI = window._env_?.VITE_AI_API;
     const location = useLocation();
-    const readonly = location.state?.mode === 'view';
-    const { workflowState, datasetState, updateWorkflowStage } = useAIPlayground();
+    const { workflowState, datasetState, updateWorkflowStage, mode } = useAIPlayground();
+     const readonly = mode === 'view';
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (datasetState.sessionId == '') {
+            navigate('/ai/playground')
+        }
+    }, []);
 
     const categorizeAlgorithms = () => {
         const categories = {};
@@ -90,7 +97,7 @@ function ModelSelection() {
         return matchesCategory;
     });
 
-    const [normalizeData, setNormalizeData] = useState(true);
+    const [normalizeData, setNormalizeData] = useState(false);
     const [isModelInferencingEnabled, setIsModelInferencingEnabled] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -497,7 +504,7 @@ function ModelSelection() {
                 <div className="lg:col-span-2 bg-white rounded-xl p-6 border border-gray-200">
                     <div className="mb-6">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-semibold text-gray-900">Algorithms</h3>
+                            <h3 className="text-lg font-semibold text-gray-900">Algorithms <span className="text-red-500">*</span></h3>
                             <div className="relative w-64">
                                 <input
                                     type="text"

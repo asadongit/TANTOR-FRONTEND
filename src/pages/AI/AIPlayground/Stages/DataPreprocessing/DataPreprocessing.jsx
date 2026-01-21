@@ -1,7 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { AIPlaygroundLayout } from '../../AIPlaygroundLayout';
 import { Check } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 import DataCleaning from './Steps/DataCleaning';
 import FeatureSelection from './Steps/FeatureSelection';
@@ -10,6 +9,7 @@ import ScalingTransformation from './Steps/ScalingTransformation';
 import StatisticalAnalysis from './Steps/StatisticalAnalysis';
 import FeatureImportance from './Steps/FeatureImportance';
 import Step7 from './Steps/Step7';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const preprocessingSteps = [
   { id: 1, label: 'Data Pre-processing' },
@@ -22,8 +22,15 @@ const preprocessingSteps = [
 ];
 
 function DataPreprocessing() {
-  const { workflowState, mode } = useAIPlayground();
+  const { workflowState, mode, datasetState } = useAIPlayground();
   const readonly = mode === 'view';
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (datasetState.sessionId == '') {
+      navigate('/ai/playground')
+    }
+  }, []);
 
   const modelGenesisConfig = workflowState?.modelGenesis?.config;
 

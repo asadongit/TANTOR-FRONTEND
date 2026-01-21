@@ -21,12 +21,20 @@ const OverviewTab = ({ projectData }) => {
         return v === 'active' ? 'Active' : v === 'inactive' ? 'Inactive' : s;
     };
 
+    const teamMembersLabel = (members) => {
+        if (!members) return '—';
+        if (Array.isArray(members)) return members.length ? members.join(', ') : '—';
+        const s = String(members).trim();
+        return s ? s : '—';
+    };
+
     return (
         <div className='bg-gray-50 p-6 rounded-xl'>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <InfoField label="Name" value={projectData?.name || '—'} />
                 <InfoField label="Description" value={projectData?.description || '—'} />
                 <InfoField label="Owner" value={projectData?.owner_name || projectData?.owner || '—'} />
+                <InfoField label="Team Members" value={teamMembersLabel(projectData?.team_members)} />
 
                 <InfoField label="Status" value={statusLabel(projectData?.status)} />
                 <InfoField label="Created Date" value={formatDate(projectData?.created_at)} />
