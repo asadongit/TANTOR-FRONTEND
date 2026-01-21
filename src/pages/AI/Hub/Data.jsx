@@ -13,6 +13,7 @@ import { updateRecentAccess } from './Components/Hooks';
 const Data = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [dashboardRefreshTrigger, setDashboardRefreshTrigger] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isTableView, setIsTableView] = useState(false);
   const [tableData, setTableData] = useState([]);
@@ -84,7 +85,7 @@ const Data = () => {
     if (decodedToken.sub) {
       fetchDashboardData();
     }
-  }, [hostnameAI, token, decodedToken.sub]);
+  }, [hostnameAI, token, decodedToken.sub, dashboardRefreshTrigger]); // CHANGED
 
   useEffect(() => {
     const fetchRecentAccessed = async () => {
@@ -110,15 +111,17 @@ const Data = () => {
       }
     };
     fetchRecentAccessed();
-  }, [hostnameAI, token, decodedToken?.sub]);
+  }, [hostnameAI, token, decodedToken?.sub, dashboardRefreshTrigger]); // CHANGED (refetch on refresh)
 
   const statsData = useMemo(() => {
-    if (!dashboardData) return [
-      { label: 'Sources', value: '07', icon: FileText },
-      { label: 'Datasets', value: '70', icon: Database },
-      { label: 'Size (GB)', value: '61', icon: Box },
-      { label: 'Additions (1week)', value: '61', icon: FolderKanban },
-    ];
+    if (dashboardLoading || !dashboardData) { // CHANGED: loading placeholders
+      return [
+        { label: 'Sources', value: 'Loading…', icon: FileText },
+        { label: 'Datasets', value: 'Loading…', icon: Database },
+        { label: 'Size (GB)', value: 'Loading…', icon: Box },
+        { label: 'Additions (1week)', value: 'Loading…', icon: FolderKanban },
+      ];
+    }
     const getTrendIcon = (trend) => trend === 'increased' ? <ArrowUp className="w-4 h-4 text-green-500" /> : trend === 'decreased' ? <ArrowDown className="w-4 h-4 text-red-500" /> : null;
     return [
       { label: 'Sources', value: dashboardData.counts.sources.current.toString(), icon: FileText, trend: dashboardData.counts.sources.trend },
@@ -126,7 +129,7 @@ const Data = () => {
       { label: 'Size (GB)', value: dashboardData.metrics.dataset_size_gb.current.toString(), icon: Box, trend: dashboardData.metrics.dataset_size_gb.trend },
       { label: 'Change (1week)', value: `${dashboardData.counts.datasets.percentage_change}%`, icon: FolderKanban, trend: dashboardData.counts.datasets.trend },
     ];
-  }, [dashboardData]);
+  }, [dashboardData, dashboardLoading]); // CHANGED
 
   const lastAccessedData = useMemo(() => {
     if (recentAccessed && Array.isArray(recentAccessed) && recentAccessed.length > 0) {
@@ -149,9 +152,9 @@ const Data = () => {
   };
 
   const handleRefresh = () => {
-    setIsLoading(true);
+    // CHANGED: refresh table + stats; no artificial timeout
     setRefreshTrigger(prev => prev + 1);
-    setTimeout(() => setIsLoading(false), 1000);
+    setDashboardRefreshTrigger(prev => prev + 1);
   };
 
   const toggleView = () => {
@@ -178,7 +181,19 @@ const Data = () => {
       label: 'File Name',
       sortable: true,
       width: '250px',
-      render: (row) => <span className="text-[#8e78b7] hover:underline cursor-pointer">{row.file_name}</span>,
+      render: (row) => (
+        <span
+          className="block min-w-0 whitespace-normal break-words text-[#8e78b7] hover:underline cursor-pointer"
+          onClick={() => handleLibrary(row)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && handleLibrary(row)}
+          title={row.file_name ?? ''}
+          style={{ overflowWrap: 'anywhere' }}
+        >
+          {row.file_name}
+        </span>
+      ),
     },
     { key: 'row_count', label: 'Rows', sortable: true },
     { key: 'column_count', label: 'Columns', sortable: true },
@@ -217,45 +232,18 @@ const Data = () => {
     }
   };
 
-  const updateRecentAccess = async (row) => {
-    try {
-      const userId = decodedToken?.sub;
-      const itemId = row.id || row.dataset_id || row.uuid || row.file_id || row.file_name;
-      const itemName = row.file_name || row.dataset_name || row.name;
-      if (!userId || !itemId || !itemName) return;
-      await fetch(
-        `${hostnameAI}/canvas/entity/update_recent_access?user_id=${userId}&item_id=${itemId}&item_name=${encodeURIComponent(itemName)}&entity_type=data`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            accept: "application/json",
-          },
-        }
-      );
-      setRecentAccessedLoading(true);
-      const resp = await fetch(
-        `${hostnameAI}/canvas/entity/recent_access/list?user_id=${userId}&entity_type=data&limit=5`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      if (resp.ok) {
-        const data = await resp.json();
-        setRecentAccessed(data?.recent_entities || []);
-      }
-      setRecentAccessedLoading(false);
-    } catch (err) {
-      setRecentAccessedLoading(false);
-    }
-  };
-
   const handleLibrary = async (row) => {
-    navigate(`/ai/hub/data/library/${row.file_name}`, {
+    const datasetId =
+      row?.id ||
+      row?.dataset_id ||
+      row?.uuid ||
+      row?.file_id ||
+      row?.file_name;
+
+    navigate(`/ai/hub/data/library/${encodeURIComponent(String(datasetId))}`, {
       state: { datasetData: row }
     });
+
     await updateRecentAccess({
       row,
       entityType: 'data',

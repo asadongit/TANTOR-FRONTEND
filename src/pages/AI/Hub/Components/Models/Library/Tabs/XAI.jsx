@@ -9,6 +9,7 @@ const XAI = ({ modelData }) => {
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [xaiReport, setXaiReport] = useState(null);
+    const [xaiResponse, setXaiResponse] = useState(null);
     const hostnameAI = window._env_?.VITE_AI_API;
     const { token } = useAuth();
 
@@ -30,9 +31,13 @@ const XAI = ({ modelData }) => {
                         },
                     }
                 );
+
                 const json = await res.json();
-                setXaiReport(json.xai_report);
+                setXaiResponse(json);
+
+                setXaiReport(json?.xai_report ?? null);
             } catch (e) {
+                setXaiResponse({ detail: "Failed to load XAI report." });
                 setXaiReport(null);
             }
             setIsLoading(false);
@@ -82,7 +87,17 @@ const XAI = ({ modelData }) => {
     }
 
     if (!xaiReport) {
-        return <div className="p-8 text-center text-red-500">Failed to load XAI report.</div>;
+        const detail =
+            xaiResponse?.detail ??
+            xaiResponse?.details ??
+            xaiResponse?.message ??
+            "Failed to load XAI report.";
+
+        return (
+            <div className="p-8 text-center text-gray-500">
+                {String(detail)}
+            </div>
+        );
     }
 
     return (
