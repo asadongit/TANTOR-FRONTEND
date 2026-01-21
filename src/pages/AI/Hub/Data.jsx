@@ -9,6 +9,7 @@ import DeleteModal from './Components/DeleteModal';
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 // import { updateRecentAccess } from './Components/Hooks';
 import { updateRecentAccess } from './Components/Hooks';
+import { toast } from 'react-hot-toast';
 
 const Data = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -35,6 +36,10 @@ const Data = () => {
   const navigate = useNavigate();
   const { token, decodedToken } = useAuth();
   const hostnameAI = window._env_?.VITE_AI_API;
+
+  useEffect(() => {
+    setMode('write')
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -388,10 +393,10 @@ const Data = () => {
       tooltip: 'F1 Mode',
     },
     {
-      label: 'AI Canvas',
+      label: 'AI Playground',
       icon: <Palette className="w-4 h-4" />,
       onClick: handleAICanvas,
-      tooltip: 'AI Canvas',
+      tooltip: 'AI Playground',
     },
     {
       label: 'Archive',
