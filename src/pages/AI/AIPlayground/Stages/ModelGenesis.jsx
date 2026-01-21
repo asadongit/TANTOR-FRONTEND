@@ -31,7 +31,7 @@ const RadioButton = ({ label, checked, onChange, name, readonly }) => (
 
 const Section = ({ title, children, className = '' }) => (
   <div className={`bg-white ${className}`}>
-    <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+    <h3 className="text-lg font-semibold text-gray-900 mb-4">{title} {title != "Fairness Attribute" && <span className="text-red-500">*</span>}</h3>
     {children}
   </div>
 );

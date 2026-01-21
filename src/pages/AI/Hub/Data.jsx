@@ -9,6 +9,7 @@ import DeleteModal from './Components/DeleteModal';
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 // import { updateRecentAccess } from './Components/Hooks';
 import { updateRecentAccess } from './Components/Hooks';
+import { toast } from 'react-hot-toast';
 
 const Data = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,6 +35,10 @@ const Data = () => {
   const navigate = useNavigate();
   const { token, decodedToken } = useAuth();
   const hostnameAI = window._env_?.VITE_AI_API;
+
+  useEffect(() => {
+    setMode('write')
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -336,7 +341,7 @@ const Data = () => {
 
       const ingestionData = await ingestionResponse.json();
 
-      setLoadingMessage('Opening AI Canvas...');
+      setLoadingMessage('Opening AI Playground...');
 
       setDatasetState(prev => ({
         ...prev,
@@ -357,8 +362,10 @@ const Data = () => {
         limit: 5,
       });
     } catch (err) {
-      console.error('AI Canvas error:', err);
-      alert(err.message || 'Failed to open AI Canvas');
+      toast.error('Failed to open AI Playground', {
+        duration: 3000,
+        position: 'top-right',
+      });
       setAiCanvasLoading(false);
     } finally {
     }
@@ -392,10 +399,10 @@ const Data = () => {
       tooltip: 'F1 Mode',
     },
     {
-      label: 'AI Canvas',
+      label: 'AI Playground',
       icon: <Palette className="w-4 h-4" />,
       onClick: handleAICanvas,
-      tooltip: 'AI Canvas',
+      tooltip: 'AI Playground',
     },
     {
       label: 'Archive',
@@ -579,12 +586,12 @@ const Data = () => {
                           <span className="text-xs text-gray-500 mx-4">
                             {item.accessed_at
                               ? item.accessed_at.toLocaleString('en-GB', {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: '2-digit',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })
+                                year: 'numeric',
+                                month: 'short',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
                               : ''}
                           </span>
                           <button className="p-1 hover:bg-gray-100 rounded">
@@ -633,7 +640,7 @@ const Data = () => {
           <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
             <div className="flex flex-col items-center">
               <Loader2 className="w-16 h-16 text-[#8e78b7] animate-spin mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading AI Canvas</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading AI Playground</h3>
               <p className="text-gray-600 text-center">{loadingMessage}</p>
             </div>
           </div>

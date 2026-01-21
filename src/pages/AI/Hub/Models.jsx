@@ -386,7 +386,7 @@ function Models() {
       tooltip: "F1 Mode",
     },
     {
-      label: "AI Canvas",
+      label: "AI Playground",
       icon: <Palette className="w-4 h-4" />,
       onClick: async (row) => {
         setIsCanvasLoading(true);
@@ -526,7 +526,7 @@ function Models() {
           setIsCanvasLoading(false);
         }
       },
-      tooltip: "AI Canvas",
+      tooltip: "AI Playground",
       disabled: isCanvasLoading,
     },
     {
@@ -1100,7 +1100,7 @@ function Models() {
           <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
             <div className="flex flex-col items-center">
               <Loader2 className="w-16 h-16 text-[#8e78b7] animate-spin mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading AI Canvas</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading AI Playground</h3>
               <p className="text-gray-600 text-center">Please wait while we prepare your workspace</p>
             </div>
           </div>
