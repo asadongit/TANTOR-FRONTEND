@@ -28,8 +28,8 @@ const REVERSE_METRIC_MAPPING = {
 function ModelSelection() {
     const hostnameAI = window._env_?.VITE_AI_API;
     const location = useLocation();
-    const readonly = location.state?.mode === 'view';
-    const { workflowState, datasetState, updateWorkflowStage } = useAIPlayground();
+    const { workflowState, datasetState, updateWorkflowStage, mode } = useAIPlayground();
+     const readonly = mode === 'view';
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -97,7 +97,7 @@ function ModelSelection() {
         return matchesCategory;
     });
 
-    const [normalizeData, setNormalizeData] = useState(true);
+    const [normalizeData, setNormalizeData] = useState(false);
     const [isModelInferencingEnabled, setIsModelInferencingEnabled] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 

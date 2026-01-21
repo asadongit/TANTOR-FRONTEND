@@ -529,11 +529,6 @@ const ConfigurationTab = () => {
                             {scheduleNameError}
                         </p>
                     )}
-                    {!scheduleNameError && (
-                        <p className="text-xs text-gray-500 mt-1.5">
-                            Choose a descriptive name to identify this schedule later.
-                        </p>
-                    )}
                 </div>
             </div>
             <div>

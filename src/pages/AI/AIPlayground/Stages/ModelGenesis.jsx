@@ -289,20 +289,20 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
           });
           onValidate();
         } else {
-          toast.error('Unable to validate. Please check your configuration.', {
+          toast.error('Target column is not compatible with the selected modeling type.', {
             duration: 4000,
             position: 'top-right',
           });
         }
       } else {
-        toast.error('Unable to validate. Please try again.', {
+        toast.error('Target column is not compatible with the selected modeling type.', {
           duration: 4000,
           position: 'top-right',
         });
       }
     } catch (error) {
       console.error('Validation error:', error);
-      toast.error('Unable to validate. Network error occurred.', {
+      toast.error('Target column is not compatible with the selected modeling type.', {
         duration: 4000,
         position: 'top-right',
       });
@@ -731,22 +731,21 @@ function ModelGenesis() {
         if (data.status === 'success') {
           return true;
         } else {
-          toast.error('Unable to validate. Please check your configuration.', {
+          toast.error('Target column is not compatible with the selected modeling type.', {
             duration: 4000,
             position: 'top-right',
           });
           return false;
         }
       } else {
-        toast.error('Unable to validate. Please try again.', {
+        toast.error('Target column is not compatible with the selected modeling type.', {
           duration: 4000,
           position: 'top-right',
         });
         return false;
       }
     } catch (error) {
-      console.error('Validation error:', error);
-      toast.error('Unable to validate. Network error occurred.', {
+      toast.error('Target column is not compatible with the selected modeling type.', {
         duration: 4000,
         position: 'top-right',
       });

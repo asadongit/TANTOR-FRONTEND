@@ -12,8 +12,10 @@ const Orchestration = () => {
     const [activeTab, setActiveTab] = useState('Recent Activity');
     const [summaryData, setSummaryData] = useState(null);
     const [schedulerData, setSchedulerData] = useState([]);
+    const [recentActivityData, setRecentActivityData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [schedulerLoading, setSchedulerLoading] = useState(false);
+    const [activityLoading, setActivityLoading] = useState(false);
     const navigate = useNavigate();
     const hostnameAI = window._env_?.VITE_AI_API;
     const { token, decodedToken } = useAuth();
@@ -64,6 +66,8 @@ const Orchestration = () => {
     useEffect(() => {
         if (activeTab === 'Scheduler') {
             fetchSchedulerData();
+        } else if (activeTab === 'Recent Activity') {
+            fetchRecentActivity();
         }
     }, [activeTab]);
 
@@ -103,12 +107,57 @@ const Orchestration = () => {
         }
     };
 
+    const fetchRecentActivity = async () => {
+        setActivityLoading(true);
+        try {
+            const response = await fetch(`${hostnameAI}/orchestration/airflow/dags/recent?limit=10`);
+            const data = await response.json();
+            
+            const transformedActivities = data.dags.map((dag) => ({
+                message: dag.message,
+                status: dag.status,
+                run_time: dag.run_time,
+                dag_name: dag.dag_name
+            }));
+            
+            setRecentActivityData(transformedActivities);
+            setActivityLoading(false);
+        } catch (error) {
+            console.error('Error fetching recent activity:', error);
+            setActivityLoading(false);
+        }
+    };
+
     const formatRuntime = (milliseconds) => {
         if (!milliseconds) return 'N/A';
         const seconds = Math.floor(milliseconds / 1000);
         const minutes = Math.floor(seconds / 60);
         const remainingSeconds = seconds % 60;
         return `${minutes}m ${remainingSeconds}s`;
+    };
+
+    const getActivityIcon = (status) => {
+        switch (status) {
+            case 'Prediction Successful':
+                return Clock;
+            case 'Model Drift Detected':
+            case 'Data Drift Detected':
+                return AlertTriangle;
+            default:
+                return Clock;
+        }
+    };
+
+    const getActivityIconColor = (status) => {
+        switch (status) {
+            case 'Prediction Successful':
+                return 'text-green-500';
+            case 'Model Drift Detected':
+            case 'Data Drift Detected':
+                return 'text-amber-500';
+            default:
+                return 'text-gray-400';
+        }
     };
 
     const statsData = summaryData ? [
@@ -138,16 +187,6 @@ const Orchestration = () => {
             icon: AlertTriangle,
         },
     ] : [];
-
-    const recentActivities = [
-        { text: 'Model Credit_Default_v3 ran successfully', icon: Clock },
-        { text: 'Data drift detected on Income_Band', icon: AlertTriangle },
-        { text: 'Run blocked for Fraud_XGB_v2', icon: AlertTriangle },
-        { text: 'Owner approved override — model executed', icon: Clock },
-        { text: 'Retrain scheduled for Retail_PD_LGBM', icon: Clock },
-        { text: 'Auto-retrain completed for Fraud_XGB_v2', icon: Clock },
-        { text: 'Run blocked for Fraud_XGB_v2', icon: AlertTriangle },
-    ];
 
     const tabs = ['Recent Activity', 'Scheduler', 'Interventions'];
 
@@ -271,15 +310,32 @@ const Orchestration = () => {
                     <div className="px-4 py-1">
                         {activeTab === 'Recent Activity' && (
                             <div className="space-y-1">
-                                {recentActivities.map((activity, index) => (
-                                    <div
-                                        key={index}
-                                        className="flex items-center gap-3 py-3 px-3 hover:bg-gray-50 rounded-lg transition-colors"
-                                    >
-                                        <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                                        <span className="text-sm text-gray-700">{activity.text}</span>
-                                    </div>
-                                ))}
+                                {activityLoading ? (
+                                    <div className="text-center py-8 text-gray-500">Loading...</div>
+                                ) : recentActivityData.length === 0 ? (
+                                    <div className="text-center py-8 text-gray-500">No recent activity</div>
+                                ) : (
+                                    recentActivityData.map((activity, index) => {
+                                        const ActivityIcon = getActivityIcon(activity.status);
+                                        const iconColor = getActivityIconColor(activity.status);
+                                        
+                                        return (
+                                            <div
+                                                key={index}
+                                                className="flex items-start gap-3 py-3 px-3 hover:bg-gray-50 rounded-lg transition-colors group"
+                                            >
+                                                <div className={`mt-0.5 ${iconColor}`}>
+                                                    <ActivityIcon className="w-4 h-4 flex-shrink-0" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm text-gray-700 leading-relaxed">
+                                                        {activity.message}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
                             </div>
                         )}
 
