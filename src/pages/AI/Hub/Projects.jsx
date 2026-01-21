@@ -1,4 +1,4 @@
-import { Search, List, RefreshCw, CheckCircle, TrendingUp, TrendingDown, Target, BookOpenText, Trash2, Plus, LayoutGrid } from 'lucide-react';
+import { Search, List, RefreshCw, CheckCircle, Target, BookOpenText, Trash2, Plus, LayoutGrid, Folder, Database, Bot, ArrowUp, ArrowDown } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Breadcrumb from '../../../components/Breadcrumb';
@@ -30,7 +30,6 @@ const Projects = () => {
     const [dashboardLoading, setDashboardLoading] = useState(false);
     const [dashboardError, setDashboardError] = useState(null);
 
-    // New state for recent projects
     const [recentProjects, setRecentProjects] = useState([]);
     const [recentProjectsLoading, setRecentProjectsLoading] = useState(false);
     const [recentProjectsError, setRecentProjectsError] = useState(null);
@@ -76,9 +75,8 @@ const Projects = () => {
         };
 
         if (hostnameAI && token && decodedToken?.sub) fetchDashboard();
-    }, [hostnameAI, token, decodedToken?.sub, dashboardRefreshTrigger]); // CHANGED
+    }, [hostnameAI, token, decodedToken?.sub, dashboardRefreshTrigger]);
 
-    // Fetch recent projects from new API
     useEffect(() => {
         const fetchRecentProjects = async () => {
             if (!hostnameAI || !token || !decodedToken?.sub) return;
@@ -99,59 +97,88 @@ const Projects = () => {
             }
         };
         fetchRecentProjects();
-    }, [hostnameAI, token, decodedToken?.sub, dashboardRefreshTrigger]); // CHANGED (tie to stats refresh)
+    }, [hostnameAI, token, decodedToken?.sub, dashboardRefreshTrigger]);
+
+    const trendUp = (t) => String(t || '').toLowerCase() === 'increased';
+    const pct = (v) => (v == null ? 0 : Number(v));
 
     const statsCards = useMemo(() => {
-        if (dashboardLoading || !dashboardData?.counts) { // CHANGED
+        if (dashboardLoading || !dashboardData?.counts) {
             return [
-                { label: 'Projects', value: 'Loading…', trend: '', trendUp: true },
-                { label: 'Models', value: 'Loading…', trend: '', trendUp: true },
-                { label: 'Datasets', value: 'Loading…', trend: '', trendUp: true },
-                { label: 'Change (1week)', value: 'Loading…', trend: '', trendUp: true },
+                { label: 'Projects', value: null, icon: Folder, trend: null, trendValue: null },
+                { label: 'Models', value: null, icon: Bot, trend: null, trendValue: null },
+                { label: 'Datasets', value: null, icon: Database, trend: null, trendValue: null },
             ];
         }
 
         const counts = dashboardData.counts;
-        const trendUp = (t) => t === 'increased';
 
         return [
             {
                 label: 'Projects',
                 value: String(counts.projects?.current ?? 0),
-                trend: `${counts.projects?.percentage_change ?? 0}%`,
-                trendUp: trendUp(counts.projects?.trend),
+                icon: Folder,
+                trend: trendUp(counts.projects?.trend) ? 'up' : 'down',
+                trendValue: `${pct(counts.projects?.percentage_change)}%`,
             },
             {
                 label: 'Models',
                 value: String(counts.models?.current ?? 0),
-                trend: `${counts.models?.percentage_change ?? 0}%`,
-                trendUp: trendUp(counts.models?.trend),
+                icon: Bot,
+                trend: trendUp(counts.models?.trend) ? 'up' : 'down',
+                trendValue: `${pct(counts.models?.percentage_change)}%`,
             },
             {
                 label: 'Datasets',
                 value: String(counts.datasets?.current ?? 0),
-                trend: `${counts.datasets?.percentage_change ?? 0}%`,
-                trendUp: trendUp(counts.datasets?.trend),
-            },
-            {
-                label: 'Snapshot',
-                value: dashboardData.snapshot_info?.snapshot_date
-                    ? new Date(dashboardData.snapshot_info.snapshot_date).toLocaleDateString('en-GB')
-                    : '—',
-                trend: dashboardData.snapshot_info?.snapshot_created_at
-                    ? `Updated ${new Date(dashboardData.snapshot_info.snapshot_created_at).toLocaleDateString('en-GB')}`
-                    : '',
-                trendUp: true,
+                icon: Database,
+                trend: trendUp(counts.datasets?.trend) ? 'up' : 'down',
+                trendValue: `${pct(counts.datasets?.percentage_change)}%`,
             },
         ];
-    }, [dashboardData, dashboardLoading]); // CHANGED
+    }, [dashboardData, dashboardLoading]);
+
+    const StatsCardWithTrend = ({ label, value, icon: Icon, trend, trendValue }) => {
+        const isUp = trend === 'up';
+        const TrendIcon = isUp ? ArrowUp : ArrowDown;
+        const trendColor = isUp ? 'text-emerald-500' : 'text-red-500';
+
+        return (
+            <div className="bg-white rounded-xl px-6 py-5 border border-purple-200 flex flex-col justify-between min-h-[120px]">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <Icon className="w-7 h-7 text-[#8e78b7] shrink-0" />
+                        <span className="text-gray-900 text-2xl font-semibold truncate">{label}</span>
+                    </div>
+                </div>
+
+                <div className="flex items-end justify-between mt-6">
+                    <div className="text-4xl font-extrabold text-gray-900 tabular-nums leading-none">
+                        {value == null ? (
+                            <div className="h-10 w-16 bg-gray-200 rounded animate-pulse"></div>
+                        ) : (
+                            value
+                        )}
+                    </div>
+
+                    {(trend && trendValue && value != null) ? (
+                        <div className={`flex items-center gap-2 ${trendColor} text-2xl font-semibold leading-none`}>
+                            <TrendIcon className="w-7 h-7" />
+                            <span className="tabular-nums">{trendValue}</span>
+                        </div>
+                    ) : (
+                        <div className="h-7 w-14" />
+                    )}
+                </div>
+            </div>
+        );
+    };
 
     const handleSearchChange = (e) => {
         setSearchTerm(e.target.value);
     };
 
     const handleRefresh = () => {
-        // CHANGED: refresh table + stats; stop table spinner when table fetch finishes (effect will do it)
         setRefreshTrigger((prev) => prev + 1);
         setDashboardRefreshTrigger((prev) => prev + 1);
     };
@@ -274,60 +301,77 @@ const Projects = () => {
             );
     }, [searchTerm, tableData]);
 
-    const StatCard = ({ label, value, trend, trendUp }) => (
-        <div className="bg-white rounded-lg p-4 border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-[#8e78b7]" />
-                    <span className="text-gray-600 text-sm">{label}</span>
-                </div>
-            </div>
-            <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold text-gray-800">{value}</span>
-                {!!trend && (
-                    <div className={`flex items-center gap-1 ${trendUp ? 'text-green-500' : 'text-red-500'}`}>
-                        {trendUp ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                        <span className="text-sm font-medium">{trend}</span>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
+    // Fetch a single project by id (API returns an array)
+    const fetchProjectById = async (projectId) => {
+        const resp = await fetch(`${hostnameAI}/canvas/project_list/?project_id=${encodeURIComponent(projectId)}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!resp.ok) throw new Error('Failed to fetch project');
+        const data = await resp.json();
+        const project = Array.isArray(data) ? data[0] : null;
+        if (!project) throw new Error('Project not found');
+        return project;
+    };
+
+    const handleRecentProjectClick = async (recent) => {
+        const projectId = recent?.entity_id;
+        if (!projectId) return;
+
+        try {
+            const project = await fetchProjectById(projectId);
+            navigate(`/ai/hub/projects/${project.id}/library`, { state: { ProjectData: project } });
+
+            // keep recent list in sync (best-effort)
+            await updateRecentAccess({
+                row: project,
+                entityType: 'project',
+                hostnameAI,
+                token,
+                userId: decodedToken?.sub,
+                setRecentList: setRecentProjects,
+                setRecentLoading: setRecentProjectsLoading,
+                limit: 2,
+            });
+        } catch (err) {
+            alert(err?.message || 'Failed to open project');
+        }
+    };
 
     const LastAccessedCard = () => (
-        <div className="bg-white rounded-lg p-4 border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white rounded-xl px-5 py-4 border border-purple-200 shadow-sm flex flex-col h-full min-h-[110px]">
             <div className="flex items-center gap-2 mb-3">
                 <CheckCircle className="w-5 h-5 text-[#8e78b7]" />
-                <span className="text-gray-600 text-sm">Recent Projects</span>
+                <span className="text-gray-700 text-sm font-medium">Last Accessed</span>
             </div>
-
-            {(recentProjectsLoading || dashboardLoading) ? (
-                <div className="text-sm text-gray-500">Loading…</div>
-            ) : recentProjectsError ? (
-                <div className="text-sm text-red-600">{recentProjectsError}</div>
-            ) : recentProjects.length ? (
-                <div className="grid grid-cols-2 gap-2">
-                    {recentProjects.map((project, idx) => {
-                        const fullName = project.entity_name ?? '—';
-                        return (
-                            <div
-                                key={project.entity_id ?? idx}
-                                className="flex items-start gap-2 bg-gray-100 px-2 py-1.5 rounded-md min-w-0"
-                            >
-                                <Target className="w-4 h-4 text-gray-500 shrink-0 mt-[2px]" />
-                                <span
-                                    className="block min-w-0 flex-1 text-sm text-gray-700 font-medium whitespace-nowrap overflow-hidden text-ellipsis"
+            <div className="flex-1 flex flex-col justify-center">
+                {(recentProjectsLoading || dashboardLoading) ? (
+                    <div className="text-sm text-gray-500">Loading…</div>
+                ) : recentProjectsError ? (
+                    <div className="text-sm text-red-600">{recentProjectsError}</div>
+                ) : recentProjects.length ? (
+                    <div className="grid grid-cols-1 gap-2">
+                        {recentProjects.map((project, idx) => {
+                            const fullName = project.entity_name ?? '—';
+                            return (
+                                <button
+                                    key={project.entity_id ?? idx}
+                                    type="button"
+                                    className="flex items-center gap-2 bg-gray-100 px-2 py-1.5 rounded-md min-w-0 text-left hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-[#8e78b7]/40"
+                                    onClick={() => handleRecentProjectClick(project)}
                                     title={fullName}
                                 >
-                                    {fullName}
-                                </span>
-                            </div>
-                        );
-                    })}
-                </div>
-            ) : (
-                <div className="text-sm text-gray-500">No recent projects</div>
-            )}
+                                    <Target className="w-4 h-4 text-gray-500 shrink-0" />
+                                    <span className="block min-w-0 flex-1 text-sm text-gray-700 font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+                                        {fullName}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="text-sm text-gray-500">No recent projects</div>
+                )}
+            </div>
         </div>
     );
 
@@ -342,7 +386,7 @@ const Projects = () => {
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
                             type="text"
-                            placeholder="Search database"
+                            placeholder="Search"
                             className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm"
                             value={searchTerm}
                             onChange={handleSearchChange}
@@ -376,9 +420,16 @@ const Projects = () => {
             <div className="space-y-6">
                 {viewMode === 'both' && (
                     <div className="bg-gradient-to-r from-[#8e78b7] via-purple-300 to-purple-100 rounded-xl p-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             {statsCards.map((stat, index) => (
-                                <StatCard key={index} {...stat} />
+                                <StatsCardWithTrend
+                                    key={index}
+                                    label={stat.label}
+                                    value={stat.value}
+                                    icon={stat.icon}
+                                    trend={stat.trend}
+                                    trendValue={stat.trendValue}
+                                />
                             ))}
                             <LastAccessedCard />
                         </div>

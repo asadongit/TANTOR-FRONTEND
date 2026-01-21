@@ -13,6 +13,7 @@ import { toast } from 'react-hot-toast';
 
 const Data = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all'); // ADDED: all | active | inactive | archived
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [dashboardRefreshTrigger, setDashboardRefreshTrigger] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -116,29 +117,29 @@ const Data = () => {
       }
     };
     fetchRecentAccessed();
-  }, [hostnameAI, token, decodedToken?.sub, dashboardRefreshTrigger]); // CHANGED (refetch on refresh)
+  }, [hostnameAI, token, decodedToken?.sub, dashboardRefreshTrigger]);
 
   const statsData = useMemo(() => {
-    if (dashboardLoading || !dashboardData) { // CHANGED: loading placeholders
+    if (dashboardLoading || !dashboardData) {
       return [
-        { label: 'Sources', value: 'Loading…', icon: FileText },
-        { label: 'Datasets', value: 'Loading…', icon: Database },
-        { label: 'Size (GB)', value: 'Loading…', icon: Box },
-        { label: 'Additions (1week)', value: 'Loading…', icon: FolderKanban },
+        { label: 'Sources', value: null, icon: FileText },
+        { label: 'Datasets', value: null, icon: Database },
+        { label: 'Size (GB)', value: null, icon: Box },
+        { label: 'Additions (1week)', value: null, icon: FolderKanban },
       ];
     }
-    const getTrendIcon = (trend) => trend === 'increased' ? <ArrowUp className="w-4 h-4 text-green-500" /> : trend === 'decreased' ? <ArrowDown className="w-4 h-4 text-red-500" /> : null;
     return [
-      { label: 'Sources', value: dashboardData.counts.sources.current.toString(), icon: FileText, trend: dashboardData.counts.sources.trend },
-      { label: 'Datasets', value: dashboardData.counts.datasets.current.toString(), icon: Database, trend: dashboardData.counts.datasets.trend },
-      { label: 'Size (GB)', value: dashboardData.metrics.dataset_size_gb.current.toString(), icon: Box, trend: dashboardData.metrics.dataset_size_gb.trend },
-      { label: 'Change (1week)', value: `${dashboardData.counts.datasets.percentage_change}%`, icon: FolderKanban, trend: dashboardData.counts.datasets.trend },
+      { label: 'Sources', value: dashboardData.counts.sources.current.toString(), icon: FileText },
+      { label: 'Datasets', value: dashboardData.counts.datasets.current.toString(), icon: Database },
+      { label: 'Size (GB)', value: dashboardData.metrics.dataset_size_gb.current.toString(), icon: Box },
+      { label: 'Additions (1week)', value: dashboardData.counts.datasets.additions_1week?.toString() ?? "0", icon: FolderKanban },
     ];
-  }, [dashboardData, dashboardLoading]); // CHANGED
+  }, [dashboardData, dashboardLoading]);
 
   const lastAccessedData = useMemo(() => {
     if (recentAccessed && Array.isArray(recentAccessed) && recentAccessed.length > 0) {
       return recentAccessed.map(item => ({
+        id: item.entity_id || item.id || item.dataset_id || item.uuid || item.file_id, // CHANGED
         name: item.entity_name || item.name || 'Unknown',
         accessed_at: item.accessed_at ? new Date(item.accessed_at) : null,
       }));
@@ -157,7 +158,6 @@ const Data = () => {
   };
 
   const handleRefresh = () => {
-    // CHANGED: refresh table + stats; no artificial timeout
     setRefreshTrigger(prev => prev + 1);
     setDashboardRefreshTrigger(prev => prev + 1);
   };
@@ -166,24 +166,12 @@ const Data = () => {
     setIsTableView(prev => !prev);
   };
 
-  const getQualityStyle = (quality) => {
-    switch (quality) {
-      case 'Good':
-        return 'bg-green-100 text-green-700';
-      case 'Average':
-        return 'bg-yellow-100 text-yellow-700';
-      case 'Poor':
-        return 'bg-red-100 text-red-700';
-      default:
-        return 'bg-gray-100 text-gray-600';
-    }
-  };
 
   const columns = [
     { key: 'sno', label: 'Sno', sortable: true, width: '90px', render: (row, index) => index + 1 },
     {
       key: 'file_name',
-      label: 'File Name',
+      label: 'Dataset Name',
       sortable: true,
       width: '250px',
       render: (row) => (
@@ -200,11 +188,19 @@ const Data = () => {
         </span>
       ),
     },
+    {key: 'description', label: 'Description', sortable: true },
     { key: 'row_count', label: 'Rows', sortable: true },
     { key: 'column_count', label: 'Columns', sortable: true },
     { key: 'status', label: 'Status', sortable: true },
     { key: 'created_at', label: 'Created Date', sortable: true, render: (row) => new Date(row.created_at).toLocaleDateString('en-GB') },
-    { key: 'size', label: 'Size', sortable: true },
+    {
+      key: 'size_mb',
+      label: 'Size',
+      sortable: true,
+      render: (row) => (row?.size_mb ?? row?.size_mb === 0) ? `${row.size_mb} MB` : ''
+    },
+    { key: 'username', label: 'User', sortable: true },
+    { key: 'project_name', label: 'Project', sortable: true },
     { label: 'Action', sortable: false },
   ];
 
@@ -341,7 +337,7 @@ const Data = () => {
 
       const ingestionData = await ingestionResponse.json();
 
-      setLoadingMessage('Opening AI Playground...');
+      setLoadingMessage('Opening AI Canvas...');
 
       setDatasetState(prev => ({
         ...prev,
@@ -362,10 +358,8 @@ const Data = () => {
         limit: 5,
       });
     } catch (err) {
-      toast.error('Failed to open AI Playground', {
-        duration: 3000,
-        position: 'top-right',
-      });
+      console.error('AI Canvas error:', err);
+      alert(err.message || 'Failed to open AI Canvas');
       setAiCanvasLoading(false);
     } finally {
     }
@@ -419,33 +413,35 @@ const Data = () => {
   ];
 
   const filteredData = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return tableData.filter(row => String(row.status).toLowerCase() !== "deleted");
-    }
-    const q = searchTerm.toLowerCase();
-    return tableData
-      .filter(row => String(row.status).toLowerCase() !== "deleted")
-      .filter((row) =>
-        Object.values(row || {}).some((val) =>
-          String(val ?? '').toLowerCase().includes(q)
-        )
-      );
-  }, [searchTerm, tableData]);
+    const base = tableData.filter(row => String(row.status).toLowerCase() !== "deleted");
 
-  const StatCard = ({ label, value, icon: Icon, trend }) => (
-    <div className="bg-white rounded-lg px-4 py-1 border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="px-2 py-4">
-            <Icon className="w-5 h-5 text-[#8e78b7]" />
-          </div>
-          <span className="text-gray-600 text-xs sm:text-sm">{label}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-lg sm:text-xl font-bold text-gray-800">{value}</span>
-          {trend === 'increased' && <ArrowUp className="w-4 h-4 text-green-500" />}
-          {trend === 'decreased' && <ArrowDown className="w-4 h-4 text-red-500" />}
-        </div>
+    const statusFiltered =
+      statusFilter === 'all'
+        ? base
+        : base.filter(row => String(row.status ?? '').toLowerCase() === statusFilter);
+
+    if (!searchTerm.trim()) return statusFiltered;
+
+    const q = searchTerm.toLowerCase();
+    return statusFiltered.filter((row) =>
+      Object.values(row || {}).some((val) =>
+        String(val ?? '').toLowerCase().includes(q)
+      )
+    );
+  }, [searchTerm, tableData, statusFilter]);
+
+  const StatsCardSimple = ({ label, value, icon: Icon }) => (
+    <div className="bg-white rounded-xl px-6 py-5 border border-purple-200 flex items-center min-h-[90px]">
+      <div className="flex items-center gap-3 flex-1">
+        <Icon className="w-5 h-5 text-[#8e78b7]" />
+        <span className="text-black text-xl font-bold">{label}</span>
+      </div>
+      <div className="flex items-center justify-end min-w-[40px]">
+        {value == null ? (
+          <div className="h-7 w-10 bg-gray-200 rounded animate-pulse"></div>
+        ) : (
+          <span className="text-2xl font-extrabold text-gray-900 tabular-nums">{value}</span>
+        )}
       </div>
     </div>
   );
@@ -478,6 +474,45 @@ const Data = () => {
     );
   };
 
+  const handleLastAccessedClick = async (item) => {
+    const dataId = item?.id;
+    if (!dataId) return;
+
+    try {
+      const resp = await fetch(
+        `${hostnameAI}/canvas/list_data_info?data_id=${encodeURIComponent(String(dataId))}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            accept: 'application/json',
+          },
+        }
+      );
+      if (!resp.ok) throw new Error('Failed to fetch dataset info');
+
+      const payload = await resp.json();
+      const datasetRow =
+        (Array.isArray(payload) ? payload[0] : payload?.data?.[0] || payload?.dataset || payload) || { id: dataId };
+
+      navigate(`/ai/hub/data/library/${encodeURIComponent(String(dataId))}`, {
+        state: { datasetData: datasetRow },
+      });
+
+      await updateRecentAccess({
+        row: datasetRow,
+        entityType: 'data',
+        hostnameAI,
+        token,
+        userId: decodedToken?.sub,
+        setRecentList: setRecentAccessed,
+        setRecentLoading: setRecentAccessedLoading,
+        limit: 5,
+      });
+    } catch (err) {
+      alert(err?.message || 'Failed to open dataset');
+    }
+  };
+
   return (
     <div className="p-3 sm:p-4 lg:p-6 bg-gray-50 min-h-screen">
       <Breadcrumb />
@@ -485,11 +520,25 @@ const Data = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">Data</h1>
         <div className="flex items-center gap-2 sm:gap-3">
+          <div className="relative">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="h-10 border border-gray-300 rounded-lg text-sm px-3 bg-white"
+              title="Filter by Status"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="archived">Archived</option>
+            </select>
+          </div>
+
           <div className="relative flex-1 sm:flex-initial">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search database"
+              placeholder="Search"
               value={searchTerm}
               onChange={handleSearchChange}
               className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm"
@@ -519,13 +568,20 @@ const Data = () => {
       <div className="space-y-6">
         {!isTableView && (
           <>
+            {/* --- Updated Stats Card Row --- */}
             <div className="bg-gradient-to-r from-[#8e78b7] via-purple-300 to-purple-100 rounded-xl p-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {statsData.map((stat, index) => (
-                  <StatCard key={index} {...stat} />
+                  <StatsCardSimple
+                    key={index}
+                    label={stat.label}
+                    value={stat.value}
+                    icon={stat.icon}
+                  />
                 ))}
               </div>
             </div>
+            {/* --- End Stats Card Row --- */}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <ChartCard
@@ -574,7 +630,17 @@ const Data = () => {
                 infoText="Recently accessed datasets and their last access time"
               >
                 {recentAccessedLoading ? (
-                  <div className="text-center py-8 text-gray-500">Loading...</div>
+                  <div className="py-8">
+                    <div className="space-y-3">
+                      {[...Array(5)].map((_, idx) => (
+                        <div key={idx} className="flex items-center justify-between px-2">
+                          <div className="h-4 bg-gray-200 rounded w-1/3 animate-pulse"></div>
+                          <div className="h-3 bg-gray-200 rounded w-1/4 mx-4 animate-pulse"></div>
+                          <div className="h-4 w-6 bg-gray-200 rounded animate-pulse"></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 ) : recentAccessedError ? (
                   <div className="text-center py-8 text-red-500">{recentAccessedError}</div>
                 ) : lastAccessedData.length > 0 ? (
@@ -582,16 +648,25 @@ const Data = () => {
                     {lastAccessedData.map((item, index) => (
                       <div key={index}>
                         <div className="flex items-center justify-between py-3 px-2 hover:bg-gray-50">
-                          <span className="text-sm text-gray-700 flex-1">{item.name}</span>
+                          <span
+                            className="text-sm text-gray-700 flex-1 cursor-pointer hover:underline"
+                            onClick={() => handleLastAccessedClick(item)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => e.key === 'Enter' && handleLastAccessedClick(item)}
+                            title={item.name}
+                          >
+                            {item.name}
+                          </span>
                           <span className="text-xs text-gray-500 mx-4">
                             {item.accessed_at
                               ? item.accessed_at.toLocaleString('en-GB', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })
                               : ''}
                           </span>
                           <button className="p-1 hover:bg-gray-100 rounded">
@@ -640,7 +715,7 @@ const Data = () => {
           <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
             <div className="flex flex-col items-center">
               <Loader2 className="w-16 h-16 text-[#8e78b7] animate-spin mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading AI Playground</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading AI Canvas</h3>
               <p className="text-gray-600 text-center">{loadingMessage}</p>
             </div>
           </div>

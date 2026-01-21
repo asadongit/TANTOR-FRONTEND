@@ -345,7 +345,7 @@ const Comments = (modelData) => {
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <button
+                        {/* <button
                             onClick={openAdd}
                             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm bg-[#8e78b7] text-white hover:opacity-90 disabled:opacity-50"
                             title="Add Comment"
@@ -353,7 +353,7 @@ const Comments = (modelData) => {
                         >
                             <Plus className="w-4 h-4" />
                             Comment
-                        </button>
+                        </button> */}
 
                         <div className="relative">
                             <button

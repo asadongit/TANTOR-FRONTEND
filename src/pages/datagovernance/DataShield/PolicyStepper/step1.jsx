@@ -24,7 +24,6 @@ const Step1 = ({ onDataChange, initialData, nextButtonRef }) => {
         severity: 'success'
     });
     const { token } = useAuth();
-    const today = new Date().toISOString().split("T")[0]
 
     useEffect(() => {
         fetchPolicy();
@@ -283,7 +282,6 @@ const Step1 = ({ onDataChange, initialData, nextButtonRef }) => {
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
                         disabled={!selectedSubPolicy}
-                        min={today}
                     />
                 </div>
 
