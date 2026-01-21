@@ -329,6 +329,7 @@ const CommentsTab = ({ projectData }) => {
             id: c.id,
             user_name: c.user_name || c.user_id || 'Unknown',
             component: c.component || 'project',
+            component_name: c.component_name || '',
             subject: c.subject || 'No subject',
             comment: c.comment || '',
             post_date: c.created_at || '',
@@ -343,6 +344,8 @@ const CommentsTab = ({ projectData }) => {
         () => [
             { key: 'user_name', label: 'User Name', sortable: true, width: '160px' },
             { key: 'component', label: 'Component', sortable: true, width: '180px' },
+            { key: 'component_name', label: 'Component Name', sortable: true, width: '180px' },
+
             {
                 key: 'subject',
                 label: 'Subject',
@@ -369,7 +372,7 @@ const CommentsTab = ({ projectData }) => {
             {
                 key: 'repliesCount',
                 label: '',
-                sortable: true,
+                // sortable: true,
                 width: '130px',
                 render: (row) => (
                     <button
@@ -488,7 +491,7 @@ const CommentsTab = ({ projectData }) => {
                         />
                     </div>
 
-                    <div className="min-w-[160px]">
+                    {/* <div className="min-w-[160px]">
                         <label className="block text-xs text-gray-600 mb-1">Sort by</label>
                         <select
                             value={filters.sortBy}
@@ -501,7 +504,7 @@ const CommentsTab = ({ projectData }) => {
                             <option value="component">Component</option>
                             <option value="replies">Replies</option>
                         </select>
-                    </div>
+                    </div> */}
 
                     <div className="flex-1 min-w-[220px]">
                         <label className="block text-xs text-gray-600 mb-1">&nbsp;</label>

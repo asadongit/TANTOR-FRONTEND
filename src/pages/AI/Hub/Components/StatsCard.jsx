@@ -25,6 +25,8 @@ export const StatCard = ({
     ? 'ring-2 ring-purple-500 shadow-md'
     : 'hover:shadow-md';
 
+  const isLoading = value == null;
+
   return (
     <div
       onClick={onClick}
@@ -38,20 +40,29 @@ export const StatCard = ({
           <span className="text-gray-700 text-sm font-medium">{title}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xl font-bold text-gray-800">{value}</span>
-          {trend && trendValue && (
-            <span
-              className={`flex items-center text-xs font-medium ${
-                trend === 'up' ? 'text-green-600' : 'text-orange-500'
-              }`}
-            >
-              {trend === 'up' ? (
-                <ArrowUp className="w-3 h-3" />
-              ) : (
-                <ArrowDown className="w-3 h-3" />
+          {isLoading ? (
+            <div className="flex flex-col gap-2">
+              <div className="h-5 w-16 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-3 w-10 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+          ) : (
+            <>
+              <span className="text-xl font-bold text-gray-800">{value}</span>
+              {trend && trendValue && (
+                <span
+                  className={`flex items-center text-xs font-medium ${
+                    trend === 'up' ? 'text-green-600' : 'text-orange-500'
+                  }`}
+                >
+                  {trend === 'up' ? (
+                    <ArrowUp className="w-3 h-3" />
+                  ) : (
+                    <ArrowDown className="w-3 h-3" />
+                  )}
+                  {trendValue}
+                </span>
               )}
-              {trendValue}
-            </span>
+            </>
           )}
         </div>
       </div>
@@ -86,15 +97,20 @@ export const StatsContainer = ({
 );
 
 export const StatsGrid = ({
-  columns = 5,
+  columns = 4,
   gap = 4,
   children,
   className = '',
-}) => (
-  <div className={`grid grid-cols-${columns} gap-${gap} ${className}`} style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
-    {children}
-  </div>
-);
+}) => {
+  // Only allow 1-6 columns for Tailwind grid-cols-X
+  const colClass = [1,2,3,4,5,6].includes(columns) ? `grid-cols-${columns}` : '';
+  const gapClass = [0,1,2,3,4,5,6,8,10,12].includes(gap) ? `gap-${gap}` : '';
+  return (
+    <div className={`grid ${colClass} ${gapClass} ${className}`} style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+      {children}
+    </div>
+  );
+};
 
 export const StatsRow = ({
   statsCards = [],

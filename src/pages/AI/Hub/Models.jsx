@@ -18,7 +18,6 @@ import {
 import { Icon } from "@iconify-icon/react";
 import Breadcrumb from "../../../components/Breadcrumb";
 import DataTable from "../../../components/DataTable";
-import { StatCard, StatsContainer, StatsGrid } from "./Components/StatsCard";
 import QuickPredictModal from "./Components/Models/QuickPredictModal";
 import DeleteModal from "./Components/DeleteModal";
 import { useAuth } from "../../../context/AuthContext";
@@ -75,6 +74,19 @@ function Models() {
           created_date: item.created_at
             ? new Date(item.created_at).toLocaleDateString("en-GB")
             : "",
+          project_name:
+            item.project_name ??
+            item.project ??
+            item.projectName ??
+            item?.metadata?.project_name ??
+            "",
+          user_name:
+            item.user_name ??
+            item.owner ??
+            item.created_by ??
+            item.createdBy ??
+            item?.metadata?.user_name ??
+            "",
           type: item.modeling_type,
           status: item.status ?? "Unknown",
         }));
@@ -131,11 +143,11 @@ function Models() {
   const metricsData = useMemo(() => {
     if (dashboardLoading || !dashboardSummary) {
       return [
-        { title: "Models", value: "Loading…", trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
-        { title: "Deployed Models", value: "Loading…", trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
-        { title: "Avg Accuracy", value: "Loading…", trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
-        { title: "Avg Latency", value: "Loading…", trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
-        { title: "Active Models", value: "Loading…", trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
+        { title: "Models", value: null, trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
+        { title: "Deployed Models", value: null, trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
+        { title: "Avg Accuracy", value: null, trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
+        { title: "Avg Latency", value: null, trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
+        { title: "Active Models", value: null, trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
       ];
     }
 
@@ -283,6 +295,8 @@ function Models() {
     },
     { key: "description", label: "Description", sortable: true },
     { key: "created_date", label: "Created Date", sortable: true },
+    {key: 'project_name', label: 'Project', sortable: true },
+    {key: 'user_name', label: 'Owner', sortable: true },
     { key: "type", label: "Type", sortable: true },
     {
       key: "status",
@@ -992,6 +1006,71 @@ function Models() {
     );
   };
 
+  const StatsCardWithTrend = ({ label, value, icon: IconCmp, trend, trendValue }) => {
+    const isUp = trend === "up";
+    const TrendIcon = isUp ? ArrowUp : ArrowDown;
+    const trendColor = isUp ? "text-emerald-500" : "text-red-500";
+
+    return (
+      <div className="bg-white rounded-xl px-6 py-5 border border-purple-200 flex flex-col justify-between min-h-[120px]">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <IconCmp className="w-7 h-7 text-[#8e78b7] shrink-0" />
+            <span className="text-gray-900 text-xl font-semibold truncate">{label}</span>
+          </div>
+        </div>
+
+        <div className="flex items-end justify-between mt-6">
+          <div className="text-2xl font-extrabold text-gray-900 tabular-nums leading-none">
+            {value == null ? <div className="h-10 w-16 bg-gray-200 rounded animate-pulse" /> : value}
+          </div>
+
+          {(trend && trendValue && value != null) ? (
+            <div className={`flex items-center gap-2 ${trendColor} text-xl font-semibold leading-none`}>
+              <TrendIcon className="w-7 h-7" />
+              <span className="tabular-nums">{trendValue}</span>
+            </div>
+          ) : (
+            <div className="h-7 w-14" />
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // ADD: map iconify names -> lucide icons for consistent card header icon
+  const metricIcon = (key) => {
+    switch (key) {
+      case "models":
+        return BookOpen;
+      case "deployed":
+        return Rocket;
+      case "accuracy":
+        return Gauge;
+      case "latency":
+        return Gauge;
+      case "active":
+        return CheckCircleFallback; // defined below
+      default:
+        return BookOpen;
+    }
+  };
+
+  // ADD: tiny fallback icon to avoid extra imports; uses existing lucide "Info" shape if needed
+  const CheckCircleFallback = (props) => <Info {...props} />;
+
+  const statsCards = useMemo(() => {
+    // keep null values while loading (matches Projects skeleton behavior)
+    const [m1, m2, m3, m4, m5] = metricsData || [];
+    return [
+      { key: "models", label: "Models", value: m1?.value ?? null, trend: m1?.trend ?? null, trendValue: m1?.trendValue ?? null, icon: metricIcon("models") },
+      { key: "deployed", label: "Deployed Models", value: m2?.value ?? null, trend: m2?.trend ?? null, trendValue: m2?.trendValue ?? null, icon: metricIcon("deployed") },
+      { key: "accuracy", label: "Avg Accuracy", value: m3?.value ?? null, trend: m3?.trend ?? null, trendValue: m3?.trendValue ?? null, icon: metricIcon("accuracy") },
+      { key: "latency", label: "Avg Latency", value: m4?.value ?? null, trend: m4?.trend ?? null, trendValue: m4?.trendValue ?? null, icon: metricIcon("latency") },
+      { key: "active", label: "Active Models", value: m5?.value ?? null, trend: m5?.trend ?? null, trendValue: m5?.trendValue ?? null, icon: metricIcon("active") },
+    ];
+  }, [metricsData]);
+
   return (
     <div className="p-6 space-y-4">
       <Breadcrumb link="/" />
@@ -1043,21 +1122,21 @@ function Models() {
 
       {viewMode !== "list" && (
         <>
-          <StatsContainer gradient="from-[#8e78b7] via-purple-300 to-purple-100">
-            <StatsGrid columns={5} gap={4}>
-              {metricsData.map((metric, index) => (
-                <StatCard
-                  key={index}
-                  title={metric.title}
-                  value={metric.value}
-                  icon={metric.icon}
-                  trend={metric.trend}
-                  trendValue={metric.trendValue}
-                  variant="bordered"
+          {/* REPLACE: Models stats area to match Projects UI */}
+          <div className="bg-gradient-to-r from-[#8e78b7] via-purple-300 to-purple-100 rounded-xl p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              {statsCards.map((stat) => (
+                <StatsCardWithTrend
+                  key={stat.key}
+                  label={stat.label}
+                  value={stat.value}
+                  icon={stat.icon}
+                  trend={stat.trend}
+                  trendValue={stat.trendValue}
                 />
               ))}
-            </StatsGrid>
-          </StatsContainer>
+            </div>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-1">
