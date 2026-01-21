@@ -33,53 +33,177 @@ function Models() {
   const [dashboardRefreshTrigger, setDashboardRefreshTrigger] = useState(0); // NEW: force stats refresh
   const [isQuickPredictOpen, setIsQuickPredictOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
+  const [modelsData, setModelsData] = useState([]);
+  const [error, setError] = useState(null);
+  const [dashboardSummary, setDashboardSummary] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deployModalOpen, setDeployModalOpen] = useState(false);
+  const [deployLoading, setDeployLoading] = useState(false);
+  const [deployResult, setDeployResult] = useState(null);
+  const [deployError, setDeployError] = useState(null);
+  const [deployTarget, setDeployTarget] = useState(null);
+  const hostnameAI = window._env_?.VITE_AI_API;
+  const { token, decodedToken } = useAuth();
+  const [isCanvasLoading, setIsCanvasLoading] = useState(false);
+  const { setWorkflowState, setDatasetState, setMode, setModelState, setProjectState } = useAIPlayground();
+    const [dashboardLoading, setDashboardLoading] = useState(false);
 
-  const metricsData = [
-    {
-      title: "Projects",
-      value: 39,
-      trend: "up",
-      trendValue: "10%",
-      icon: "material-symbols:check-circle-outline",
-    },
-    {
-      title: "Projects",
-      value: 15,
-      trend: "up",
-      trendValue: "6%",
-      icon: "material-symbols:check-circle-outline",
-    },
-    {
-      title: "Projects",
-      value: "82%",
-      trend: "up",
-      trendValue: "2%",
-      icon: "material-symbols:check-circle-outline",
-    },
-    {
-      title: "Projects",
-      value: 9,
-      trend: "down",
-      trendValue: "2%",
-      icon: "material-symbols:check-circle-outline",
-    },
-    {
-      title: "Projects",
-      value: "17sec",
-      trend: "down",
-      trendValue: "2%",
-      icon: "material-symbols:check-circle-outline",
-    },
-  ];
 
-  const alertsData = [
-    { name: "M_credit", issue: "Drift 5%", trend: "down", type: "drift" },
-    { name: "M_CS", issue: "Latency 3s", trend: "down", type: "latency" },
-    { name: "M_churn", issue: "Drift 4%", trend: "down", type: "drift" },
-    { name: "M_risk", issue: "Latency 2s", trend: "up", type: "latency" },
-    { name: "M_campaign", issue: "Drift 3%", trend: "down", type: "drift" },
-    { name: "M_risk", issue: "Latency 2s", trend: "up", type: "latency" },
-  ];
+  useEffect(() => {
+    const fetchModels = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`${hostnameAI}/canvas/model_list`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch models");
+        }
+        const data = await response.json();
+
+        const mappedData = (Array.isArray(data) ? data : []).map((item, index) => ({
+          _raw: item, // keep full backend payload for downstream pages
+          id: item.id,
+          sno: index + 1,
+          run_name: item.run_name,
+          description: item.target_variable || item.usecase || "",
+          created_date: item.created_at
+            ? new Date(item.created_at).toLocaleDateString("en-GB")
+            : "",
+          type: item.modeling_type,
+          status: item.status ?? "Unknown",
+        }));
+
+
+        setModelsData(mappedData);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchModels();
+  }, [hostnameAI, token, refreshTrigger]);
+
+  useEffect(() => {
+    const fetchDashboardSummary = async () => {
+      setDashboardLoading(true);
+      try {
+        const response = await fetch(`${hostnameAI}/canvas/model_dashboard/summary`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) throw new Error("Failed to fetch dashboard summary");
+        const data = await response.json();
+        setDashboardSummary(data);
+      } catch (err) {
+        setDashboardSummary(null);
+      } finally {
+        setDashboardLoading(false);
+      }
+    };
+
+    fetchDashboardSummary();
+  }, [hostnameAI, token, dashboardRefreshTrigger]);
+
+  const formatPct = (n) => {
+    const num = Number(n);
+    if (!Number.isFinite(num)) return "0%";
+    const rounded =
+      Math.abs(num) >= 10 ? Math.round(num) : Math.round(num * 10) / 10;
+    return `${rounded}%`;
+  };
+
+  const formatLatency = (ms) => {
+    const num = Number(ms);
+    if (!Number.isFinite(num)) return "0 ms";
+    if (num >= 1000) return `${Math.round((num / 1000) * 10) / 10}s`;
+    return `${Math.round(num)}ms`;
+  };
+
+  const metricsData = useMemo(() => {
+    if (dashboardLoading || !dashboardSummary) {
+      return [
+        { title: "Models", value: "Loading…", trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
+        { title: "Deployed Models", value: "Loading…", trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
+        { title: "Avg Accuracy", value: "Loading…", trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
+        { title: "Avg Latency", value: "Loading…", trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
+        { title: "Active Models", value: "Loading…", trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
+      ];
+    }
+
+    const models = dashboardSummary?.counts?.models;
+    const deployed = dashboardSummary?.counts?.deployed_models;
+    const acc = dashboardSummary?.metrics?.avg_model_accuracy;
+    const lat = dashboardSummary?.metrics?.avg_model_latency;
+
+    const toTrend = (t, pct) => {
+      if (t === "increased") return "up";
+      if (t === "decreased") return "down";
+      const num = Number(pct);
+      if (!Number.isFinite(num)) return "up";
+      return num >= 0 ? "up" : "down";
+    };
+
+    return [
+      {
+        title: "Models",
+        value: models?.current ?? 0,
+        trend: toTrend(models?.trend, models?.percentage_change),
+        trendValue: formatPct(models?.percentage_change),
+        icon: "material-symbols:check-circle-outline",
+      },
+      {
+        title: "Deployed Models",
+        value: deployed?.current ?? 0,
+        trend: toTrend(deployed?.trend, deployed?.percentage_change),
+        trendValue: formatPct(deployed?.percentage_change),
+        icon: "material-symbols:check-circle-outline",
+      },
+      {
+        title: "Avg Accuracy",
+        value:
+          acc?.current == null
+            ? "0%"
+            : `${Math.round(Number(acc.current) * 1000) / 10}%`,
+        trend: toTrend(acc?.trend, acc?.percentage_change),
+        trendValue: formatPct(acc?.percentage_change),
+        icon: "material-symbols:check-circle-outline",
+      },
+      {
+        title: "Avg Latency",
+        value: formatLatency(lat?.current),
+        trend: toTrend(lat?.trend, lat?.percentage_change),
+        trendValue: formatPct(lat?.percentage_change),
+        icon: "material-symbols:check-circle-outline",
+      },
+      {
+        title: "Active Models",
+        value: dashboardSummary?.model_status_counts?.active ?? 0,
+        trend: "up",
+        trendValue: "",
+        icon: "material-symbols:check-circle-outline",
+      },
+    ];
+  }, [dashboardSummary, dashboardLoading]);
+
+  const alertsData = useMemo(() => {
+    const rows = dashboardSummary?.recent_alerted_runs_per_schedule;
+    if (!Array.isArray(rows)) return [];
+    return rows.slice(0, 6).map((r) => ({
+      name: r.model_run_name || r.schedule_name || "Run",
+      issue: r.schedule_name ? `Schedule: ${r.schedule_name}` : "Alert",
+      trend: "down",
+      type: "drift",
+    }));
+  }, [dashboardSummary]);
 
   const modelFlowData = useMemo(() => {
     const count = dashboardSummary?.counts?.models?.current;
@@ -144,8 +268,16 @@ function Models() {
       label: "Name",
       sortable: true,
       render: (row) => (
-        <span className="text-purple-600 hover:underline cursor-pointer">
-          {row.name}
+        <span
+          className="text-purple-600 hover:underline cursor-pointer whitespace-normal break-words break-all"
+          onClick={() => openModelLibrary(row)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === "Enter" && openModelLibrary(row)}
+          title={row?.run_name ?? ""}
+          style={{ overflowWrap: "anywhere" }}
+        >
+          {row.run_name}
         </span>
       ),
     },
@@ -169,12 +301,82 @@ function Models() {
     { label: "Action", sortable: false },
   ];
 
+  const handleDelete = (row) => {
+    setDeleteTarget(row);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      const id = deleteTarget.id || deleteTarget._raw?.id;
+      const url = `${hostnameAI}/canvas/model/${id}/delete`;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          accept: "application/json",
+        },
+      });
+      if (!resp.ok) throw new Error("Failed to delete model");
+      setDeleteModalOpen(false);
+      setDeleteTarget(null);
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (err) {
+      alert(err.message || "Delete failed");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // Deploy action handler
+  const handleDeploy = async (row) => {
+    setDeployTarget(row);
+    setDeployModalOpen(true);
+    setDeployLoading(true);
+    setDeployResult(null);
+    setDeployError(null);
+    try {
+      const modelName = row?.run_name || row?._raw?.run_name;
+      const resp = await fetch(
+        `${hostnameAI}/quick/deploy-quick-action?model_name=${encodeURIComponent(modelName)}`,
+        {
+          headers:
+            {
+              Authorization: `Bearer ${token}`,
+              accept: "application/json",
+            },
+        }
+      );
+      const data = await resp.json();
+      if (resp.ok && data.success) {
+        setDeployResult(data);
+      } else {
+        setDeployError(data?.message || "Deployment failed");
+      }
+    } catch (err) {
+      setDeployError(err.message || "Deployment failed");
+    } finally {
+      setDeployLoading(false);
+    }
+  };
+
+  const openModelLibrary = useCallback(
+    (row) => {
+      const raw = row?._raw ?? row;
+      navigate("/ai/hub/models/library", {
+        state: { modelData: raw },
+      });
+    },
+    [navigate]
+  );
+
   const actions = [
     {
       label: "Library",
       icon: <BookOpen className="w-4 h-4" />,
-      onClick: (row) =>
-        navigate("/ai/hub/models/library", { state: { modelData: row } }),
+      onClick: openModelLibrary,
       tooltip: "Library",
     },
     {
@@ -186,14 +388,146 @@ function Models() {
     {
       label: "AI Playground",
       icon: <Palette className="w-4 h-4" />,
-      onClick: (row) =>
-        navigate("/ai/playground/model-genesis", {
-          state: {
-            mode: "view",
-            model: row,
-          },
-        }),
-      tooltip: "AI Canvas",
+      onClick: async (row) => {
+        setIsCanvasLoading(true);
+
+        try {
+          const modelName = row?.run_name || row?._raw?.run_name;
+          if (!modelName) {
+            throw new Error("Model name not found");
+          }
+
+          const modelResponse = await fetch(`${hostnameAI}/canvas/model/${modelName}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              accept: "application/json",
+            },
+          });
+
+          if (!modelResponse.ok) {
+            throw new Error("Failed to fetch model details");
+          }
+
+          const modelData = await modelResponse.json();
+
+          const projectName = modelData.project_name;
+          const username = decodedToken?.preferred_username || "admin";
+
+          const ingestionParams = new URLSearchParams({
+            domain: '',
+            project_name: projectName,
+            profiling_required: 'false',
+            tag: '',
+            source: '',
+            sub_tag: '',
+            table_name: modelData.dataset_name,
+            category: '',
+            user_name: username
+          });
+
+          const ingestionResponse = await fetch(
+            `${hostnameAI}/data/ingestion`,
+            {
+              method: 'POST',
+              headers: {
+                'accept': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+              body: ingestionParams.toString()
+            }
+          );
+
+          if (!ingestionResponse.ok) {
+            throw new Error("Failed to ingest data");
+          }
+
+          const ingestionData = await ingestionResponse.json();
+
+          setModelState({selectedModel: modelData.model_name });
+
+          setProjectState(prev => ({ ...prev, selectedProject: modelData.project_name }));
+
+          setDatasetState({
+            tableName: modelData.dataset_name,
+            sessionId: ingestionData.session_id || '',
+            columnNames: ingestionData.column_names || [],
+            profileReportHtml: ingestionData.profile_report_html || ''
+          });
+
+          if (modelData?.prefill) {
+            const newWorkflowState = {
+              modelGenesis: {
+                config: modelData.prefill?.data_preprocessing?.request?.genesis || null,
+                apiResponse: modelData.prefill?.data_preprocessing?.response?.genesis || null
+              },
+              dataPreprocessing: {
+                step1: {
+                  config: modelData.prefill?.data_preprocessing?.request?.initial_clean || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.initial_clean || null
+                },
+                step2: {
+                  config: modelData.prefill?.data_preprocessing?.request?.feature_selection || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.feature_selection || null
+                },
+                step3: {
+                  config: modelData.prefill?.data_preprocessing?.request?.feature_engineering || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.feature_engineering || null
+                },
+                step4: {
+                  config: modelData.prefill?.data_preprocessing?.request?.advanced_transformation || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.advanced_transformation || null
+                },
+                step5: {
+                  config: modelData.prefill?.data_preprocessing?.request?.statistical_analysis || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.statistical_analysis || null
+                },
+                step6: {
+                  config: modelData.prefill?.data_preprocessing?.request?.feature_importance || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.feature_importance || null
+                },
+                step7: {
+                  config: modelData.prefill?.data_preprocessing?.request?.imbalance_handling || null,
+                  apiResponse: modelData.prefill?.data_preprocessing?.response?.imbalance_handling || null
+                }
+              },
+              modelSelection: {
+                config: modelData.prefill?.training?.request?.training_request || null,
+                apiResponse: modelData.prefill?.training?.response || null
+              },
+              modelInferencing: {
+                config: null,
+                apiResponse: null
+              },
+              xai: {
+                config: null,
+                apiResponse: null
+              },
+              modelDeployment: {
+                config: null,
+                apiResponse: null
+              }
+            };
+
+            setWorkflowState(newWorkflowState);
+            setMode('view');
+          }
+
+          navigate("/ai/playground/model-genesis", {
+            state: {
+              mode: "view",
+              model: row,
+              modelDetails: modelData,
+            },
+          });
+
+        } catch (error) {
+          console.error("Error loading model:", error);
+        } finally {
+          setIsCanvasLoading(false);
+        }
+      },
+      tooltip: "AI Playground",
+      disabled: isCanvasLoading,
     },
     {
       label: "Deploy",
@@ -750,6 +1084,28 @@ function Models() {
         onClose={() => setIsQuickPredictOpen(false)}
         modelData={selectedModel}
       />
+      <DeleteModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Model"
+        description={`Are you sure you want to delete "${deleteTarget?.run_name || deleteTarget?.id || ''}"? This action cannot be undone.`}
+        loading={deleteLoading}
+        confirmText="Delete"
+      />
+      {/* Deploy Modal */}
+      <DeployModal />
+      {isCanvasLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div className="flex flex-col items-center">
+              <Loader2 className="w-16 h-16 text-[#8e78b7] animate-spin mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading AI Playground</h3>
+              <p className="text-gray-600 text-center">Please wait while we prepare your workspace</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
