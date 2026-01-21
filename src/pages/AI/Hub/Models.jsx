@@ -280,16 +280,8 @@ function Models() {
       label: "Name",
       sortable: true,
       render: (row) => (
-        <span
-          className="text-purple-600 hover:underline cursor-pointer whitespace-normal break-words break-all"
-          onClick={() => openModelLibrary(row)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === "Enter" && openModelLibrary(row)}
-          title={row?.run_name ?? ""}
-          style={{ overflowWrap: "anywhere" }}
-        >
-          {row.run_name}
+        <span className="text-purple-600 hover:underline cursor-pointer">
+          {row.name}
         </span>
       ),
     },
@@ -315,82 +307,12 @@ function Models() {
     { label: "Action", sortable: false },
   ];
 
-  const handleDelete = (row) => {
-    setDeleteTarget(row);
-    setDeleteModalOpen(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!deleteTarget) return;
-    setDeleteLoading(true);
-    try {
-      const id = deleteTarget.id || deleteTarget._raw?.id;
-      const url = `${hostnameAI}/canvas/model/${id}/delete`;
-      const resp = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          accept: "application/json",
-        },
-      });
-      if (!resp.ok) throw new Error("Failed to delete model");
-      setDeleteModalOpen(false);
-      setDeleteTarget(null);
-      setRefreshTrigger((prev) => prev + 1);
-    } catch (err) {
-      alert(err.message || "Delete failed");
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
-
-  // Deploy action handler
-  const handleDeploy = async (row) => {
-    setDeployTarget(row);
-    setDeployModalOpen(true);
-    setDeployLoading(true);
-    setDeployResult(null);
-    setDeployError(null);
-    try {
-      const modelName = row?.run_name || row?._raw?.run_name;
-      const resp = await fetch(
-        `${hostnameAI}/quick/deploy-quick-action?model_name=${encodeURIComponent(modelName)}`,
-        {
-          headers:
-            {
-              Authorization: `Bearer ${token}`,
-              accept: "application/json",
-            },
-        }
-      );
-      const data = await resp.json();
-      if (resp.ok && data.success) {
-        setDeployResult(data);
-      } else {
-        setDeployError(data?.message || "Deployment failed");
-      }
-    } catch (err) {
-      setDeployError(err.message || "Deployment failed");
-    } finally {
-      setDeployLoading(false);
-    }
-  };
-
-  const openModelLibrary = useCallback(
-    (row) => {
-      const raw = row?._raw ?? row;
-      navigate("/ai/hub/models/library", {
-        state: { modelData: raw },
-      });
-    },
-    [navigate]
-  );
-
   const actions = [
     {
       label: "Library",
       icon: <BookOpen className="w-4 h-4" />,
-      onClick: openModelLibrary,
+      onClick: (row) =>
+        navigate("/ai/hub/models/library", { state: { modelData: row } }),
       tooltip: "Library",
     },
     {
@@ -400,6 +322,7 @@ function Models() {
       tooltip: "F1 Mode",
     },
     {
+      label: "AI Playground",
       label: "AI Playground",
       icon: <Palette className="w-4 h-4" />,
       onClick: async (row) => {

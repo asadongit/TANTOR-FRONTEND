@@ -149,6 +149,114 @@ const AIPlayground = () => {
     });
   }, [mode]);
 
+  useEffect(() => {
+    if (mode === "dataset") {
+      if (projectState?.selectedProject) {
+        setSelectedProject(projectState.selectedProject);
+      }
+      if (datasetState?.tableName) {
+        setUploadedFile({
+          name: datasetState.tableName,
+          type: 'database',
+          TableId: datasetState.tableName,
+          displayName: datasetState.tableName
+        });
+      }
+    }
+    else if (mode === "schedule") {
+      if (projectState?.selectedProject) {
+        setSelectedProject(projectState.selectedProject);
+      }
+    }
+    else {
+      setProjectState({ selectedProject: '' });
+      setModelState({ selectedModel: '' })
+      setDatasetState({
+        tableName: '',
+        sessionId: '',
+        columnNames: [],
+        profileReportHtml: ''
+      });
+      setSelectedProject('');
+      setUploadedFile(null);
+      setMode('write')
+    }
+
+    setWorkflowState({
+      modelGenesis: {
+        config: null,
+        apiResponse: null
+      },
+      dataPreprocessing: {
+        step1: { config: null, apiResponse: null },
+        step2: { config: null, apiResponse: null },
+        step3: { config: null, apiResponse: null },
+        step4: { config: null, apiResponse: null },
+        step5: { config: null, apiResponse: null },
+        step6: { config: null, apiResponse: null },
+        step7: { config: null, apiResponse: null }
+      },
+      modelSelection: { config: null, apiResponse: null },
+      modelInferencing: { config: null, apiResponse: null },
+      xai: { config: null, apiResponse: null },
+      modelDeployment: { config: null, apiResponse: null }
+    });
+  }, [mode]);
+
+  useEffect(() => {
+    if (mode === "dataset") {
+      if (projectState?.selectedProject) {
+        setSelectedProject(projectState.selectedProject);
+      }
+      if (datasetState?.tableName) {
+        setUploadedFile({
+          name: datasetState.tableName,
+          type: 'database',
+          TableId: datasetState.tableName,
+          displayName: datasetState.tableName
+        });
+      }
+    }
+    else if (mode === "schedule") {
+      if (projectState?.selectedProject) {
+        setSelectedProject(projectState.selectedProject);
+      }
+    }
+    else {
+      setProjectState({ selectedProject: '' });
+      setModelState({ selectedModel: '' })
+      setDatasetState({
+        tableName: '',
+        sessionId: '',
+        columnNames: [],
+        profileReportHtml: ''
+      });
+      setSelectedProject('');
+      setUploadedFile(null);
+      setMode('write')
+    }
+
+    setWorkflowState({
+      modelGenesis: {
+        config: null,
+        apiResponse: null
+      },
+      dataPreprocessing: {
+        step1: { config: null, apiResponse: null },
+        step2: { config: null, apiResponse: null },
+        step3: { config: null, apiResponse: null },
+        step4: { config: null, apiResponse: null },
+        step5: { config: null, apiResponse: null },
+        step6: { config: null, apiResponse: null },
+        step7: { config: null, apiResponse: null }
+      },
+      modelSelection: { config: null, apiResponse: null },
+      modelInferencing: { config: null, apiResponse: null },
+      xai: { config: null, apiResponse: null },
+      modelDeployment: { config: null, apiResponse: null }
+    });
+  }, [mode]);
+
   const fetchProjects = async () => {
     try {
       setLoading(true);
@@ -666,8 +774,8 @@ const AIPlayground = () => {
           </div>
 
 
-          {/* Modals */}
-          <CreateProjectModal
+      {/* Modals */}
+      <CreateProjectModal
             isOpen={modals.createProject}
             onClose={() => toggleModal('createProject', false)}
             onSubmit={handleCreateProject}
