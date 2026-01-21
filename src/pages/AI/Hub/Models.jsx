@@ -377,8 +377,7 @@ function Models() {
     {
       label: "Library",
       icon: <BookOpen className="w-4 h-4" />,
-      onClick: (row) =>
-        navigate("/ai/hub/models/library", { state: { modelData: row } }),
+      onClick: openModelLibrary,
       tooltip: "Library",
     },
     {
