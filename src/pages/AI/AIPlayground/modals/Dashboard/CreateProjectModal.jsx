@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { Info, X, Plus, ChevronDown, Loader2 } from 'lucide-react';
+import { Info, X, Plus, ChevronDown, Loader2, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../../../../context/AuthContext';
+import { toast } from 'react-hot-toast';
 
-export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
+export const CreateProjectModal = ({ isOpen, onClose, onSubmit, projectList }) => {
   const hostnameAI = window._env_?.VITE_AI_API;
   const { token, decodedToken } = useAuth();
   const [formData, setFormData] = useState({
@@ -19,13 +20,22 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
   const [totalMembers, setTotalMembers] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedMembersData, setSelectedMembersData] = useState([]);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [createdProjectName, setCreatedProjectName] = useState('');
   const searchTimeoutRef = useRef(null);
   const MEMBERS_LIMIT = 12;
+
+  const projectNameExists = () => {
+    if (!formData.projectName.trim() || !projectList) return false;
+    return projectList.some(
+      project => project.label.toLowerCase() === formData.projectName.trim().toLowerCase()
+    );
+  };
 
   const fetchMembers = async (skip = 0, search = '', isLoadMore = false) => {
     setIsLoadingMembers(true);
     try {
-      let url = `${window._env_?.VITE_FAST_API}/auth/users?skip=${skip}&limit=${MEMBERS_LIMIT}`;
+      let url = `${hostnameAI}/users/users?skip=${skip}&limit=${MEMBERS_LIMIT}`;
       if (search.trim()) {
         url += `&search=${encodeURIComponent(search.trim())}`;
       }
@@ -126,6 +136,11 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
       return;
     }
 
+    if (projectNameExists()) {
+      alert('A project with this name already exists. Please choose a different name.');
+      return;
+    }
+
     if (formData.members.length === 0) {
       alert('Please select at least one member');
       return;
@@ -179,19 +194,35 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
 
       if (!createProjectResponse.ok) {
         const errorData = await createProjectResponse.json().catch(() => ({}));
-        throw new Error(errorData.detail || 'Failed to create project');
+        toast.error('Failed to create project. Please try again.', {
+          duration: 4000,
+          position: 'top-right',
+        });
+        return;
       }
 
       const result = await createProjectResponse.json();
+
+      setCreatedProjectName(formData.projectName.trim());
 
       if (onSubmit) {
         onSubmit(result);
       }
 
-      handleClose();
+      setShowSuccessModal(true);
+      setFormData({ projectName: '', members: [], description: '' });
+      setIsMemberDropdownOpen(false);
+      setMemberSearchQuery('');
+      setMemberOptions([]);
+      setSelectedMembersData([]);
+      setMemberSkip(0);
+      setHasMoreMembers(false);
+      setTotalMembers(0);
     } catch (error) {
-      console.error('Error creating project:', error);
-      alert(error.message || 'Failed to create project. Please try again.');
+      toast.error('Failed to create project. Please try again.', {
+        duration: 4000,
+        position: 'top-right',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -209,11 +240,64 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
     onClose();
   };
 
-  if (!isOpen) return null;
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
+    setCreatedProjectName('');
+    onClose();
+  };
+
+  if (!isOpen && !showSuccessModal) return null;
 
   const selectedMemberLabels = selectedMembersData.map(m => m.label);
   const allSelectedMembersText = selectedMemberLabels.join(', ');
-  const isFormValid = formData.projectName.trim() && formData.members.length > 0;
+  const isDuplicateProject = projectNameExists();
+
+  const validateProjectName = (name) => {
+    if (!name.trim()) {
+      return null;
+    }
+    if (/^\d+$/.test(name.trim())) {
+      return 'Project name cannot contain only digits';
+    }
+
+    const validCharPattern = /^[A-Za-z0-9_\-@#& ]+$/;
+    if (!validCharPattern.test(name)) {
+      return 'Only letters, numbers, underscore, hyphen, space, @, #, and & are allowed.';
+    }
+
+    return null;
+  };
+
+  const nameValidationError = validateProjectName(formData.projectName);
+
+  const isFormValid = formData.projectName.trim() &&
+    formData.members.length > 0 &&
+    !isDuplicateProject &&
+    !nameValidationError;
+
+  if (showSuccessModal) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle className="w-10 h-10 text-green-600" />
+            </div>
+            <h2 className="text-xl font-semibold text-slate-900 mb-2">Project Created Successfully!</h2>
+            <p className="text-sm text-slate-600 mb-6">
+              Your project "<span className="font-medium text-slate-900">{createdProjectName}</span>" has been created successfully.
+            </p>
+            <button
+              onClick={handleSuccessModalClose}
+              className="px-6 py-2 text-sm font-medium text-white bg-[#8e78b7] rounded-md hover:bg-[#7d69a6] transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -221,9 +305,6 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-slate-900">Create New Project</h2>
           <div className="flex items-center gap-2">
-            {/* <button className="text-slate-400 hover:text-slate-600">
-              <Info className="w-5 h-5" />
-            </button> */}
             <button onClick={handleClose} className="text-slate-400 hover:text-slate-600">
               <X className="w-5 h-5" />
             </button>
@@ -232,18 +313,31 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
 
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-slate-700 mb-1 flex items-center gap-1">
-              Project Name <span className="text-red-500">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium text-slate-700 flex items-center gap-1">
+                Project Name <span className="text-red-500">*</span>
+              </label>
+              <span className="text-xs text-slate-400">
+                {formData.projectName.length}/100
+              </span>
+            </div>
             <input
               type="text"
               placeholder="Enter Project Name"
               value={formData.projectName}
               onChange={(e) => setFormData({ ...formData, projectName: e.target.value })}
+              maxLength={100}
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500/20"
             />
-            {!formData.projectName.trim() && (
-              <p className="text-xs text-red-500 mt-1">Project name is required</p>
+            {formData.projectName.trim() && isDuplicateProject && (
+              <p className="text-xs text-red-500 mt-1">
+                A project with this name already exists. Please choose a different name.
+              </p>
+            )}
+            {formData.projectName.trim() && !isDuplicateProject && nameValidationError && (
+              <p className="text-xs text-red-500 mt-1">
+                {nameValidationError}
+              </p>
             )}
           </div>
 
@@ -264,9 +358,6 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
               </span>
               <ChevronDown className="w-4 h-4 text-slate-400" />
             </button>
-            {formData.members.length === 0 && (
-              <p className="text-xs text-red-500 mt-1">At least one member must be selected</p>
-            )}
 
             {isMemberDropdownOpen && (
               <div className="absolute top-full mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg z-10">
@@ -343,12 +434,18 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-slate-700 mb-1 block">Description</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium text-slate-700">Description</label>
+              <span className="text-xs text-slate-400">
+                {formData.description.length}/400
+              </span>
+            </div>
             <textarea
               placeholder="Description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={4}
+              maxLength={400}
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500/20 resize-none"
             />
           </div>

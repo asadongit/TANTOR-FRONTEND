@@ -95,9 +95,7 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                 value={configData.pdpTargetClass}
                 onChange={(e) => !readonly && !isGenerating && setConfigData({ ...configData, pdpTargetClass: e.target.value })}
                 disabled={readonly || isGenerating}
-                className={`w-full px-3 py-2 border rounded-lg text-sm ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed border-gray-300' :
-                  !configData.pdpTargetClass ? 'border-red-300' : 'border-gray-300'
-                  }`}
+                className={`w-full px-3 py-2 border rounded-lg text-sm ${readonly || isGenerating && 'bg-gray-50 cursor-not-allowed border-gray-300'} border-gray-300`}
               >
                 <option value="">Select</option>
                 {pdpTargetClasses.map((cls) => (
@@ -106,9 +104,9 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                   </option>
                 ))}
               </select>
-              {!configData.pdpTargetClass && (
+              {/* {!configData.pdpTargetClass && (
                 <p className="text-xs text-red-500 mt-1">Please select at least one value</p>
-              )}
+              )} */}
             </div>
 
             <div>
@@ -119,8 +117,7 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                 value={configData.cfDesiredClass}
                 onChange={(e) => !readonly && !isGenerating && setConfigData({ ...configData, cfDesiredClass: e.target.value })}
                 disabled={readonly || isGenerating}
-                className={`w-full px-3 py-2 border rounded-lg text-sm ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed border-gray-300' :
-                  !configData.cfDesiredClass ? 'border-red-300' : 'border-gray-300'
+                className={`w-full px-3 py-2 border rounded-lg text-sm ${readonly || isGenerating && 'bg-gray-50 cursor-not-allowed border-gray-300 '} 'border-gray-300'
                   }`}
               >
                 <option value="">Select</option>
@@ -130,16 +127,16 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                   </option>
                 ))}
               </select>
-              {!configData.cfDesiredClass && (
+              {/* {!configData.cfDesiredClass && (
                 <p className="text-xs text-red-500 mt-1">Please select at least one value</p>
-              )}
+              )} */}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-2">
-                CF Instance Index (0-{maxIndex})
+                CF Instance Index (0-{maxIndex}) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -164,7 +161,7 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
 
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-2">
-                LIME Instance Index (0-{maxIndex})
+                LIME Instance Index (0-{maxIndex}) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AIPlaygroundLayout } from '../AIPlaygroundLayout';
 import { Check, X } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAIPlayground } from '../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 
@@ -31,7 +31,7 @@ const RadioButton = ({ label, checked, onChange, name, readonly }) => (
 
 const Section = ({ title, children, className = '' }) => (
   <div className={`bg-white ${className}`}>
-    <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+    <h3 className="text-lg font-semibold text-gray-900 mb-4">{title} {title != "Fairness Attribute" && <span className="text-red-500">*</span>}</h3>
     {children}
   </div>
 );
@@ -289,20 +289,20 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
           });
           onValidate();
         } else {
-          toast.error('Unable to validate. Please check your configuration.', {
+          toast.error('Target column is not compatible with the selected modeling type.', {
             duration: 4000,
             position: 'top-right',
           });
         }
       } else {
-        toast.error('Unable to validate. Please try again.', {
+        toast.error('Target column is not compatible with the selected modeling type.', {
           duration: 4000,
           position: 'top-right',
         });
       }
     } catch (error) {
       console.error('Validation error:', error);
-      toast.error('Unable to validate. Network error occurred.', {
+      toast.error('Target column is not compatible with the selected modeling type.', {
         duration: 4000,
         position: 'top-right',
       });
@@ -631,8 +631,16 @@ const FairnessAttribute = ({ config, setConfig, readonly, columnNames = [] }) =>
 function ModelGenesis() {
   const hostnameAI = window._env_?.VITE_AI_API;
   const location = useLocation();
+  const navigate = useNavigate();
 
   const { datasetState, updateWorkflowStage, workflowState, mode } = useAIPlayground();
+
+  useEffect(() => {
+    if (datasetState.sessionId == '') {
+      navigate('/ai/playground')
+    }
+  }, []);
+
   const readonly = mode === 'view';
 
   const getInitialConfig = () => {
@@ -676,17 +684,17 @@ function ModelGenesis() {
   const [isValidated, setIsValidated] = useState(mode === 'view' && workflowState.modelGenesis?.config);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-   useEffect(() => {
-     if(mode === 'edit'){
+  useEffect(() => {
+    if (mode === 'edit') {
       setIsValidated(false)
-     }
-   }, [mode]);
+    }
+  }, [mode]);
 
   const modellingTypeMap = {
-        'Binary': 'binary',
-        'Multiclass': 'multiclass',
-        'Regression': 'regression'
-      };
+    'Binary': 'binary',
+    'Multiclass': 'multiclass',
+    'Regression': 'regression'
+  };
 
   const handleValidate = () => {
     if (readonly) return;
@@ -723,22 +731,21 @@ function ModelGenesis() {
         if (data.status === 'success') {
           return true;
         } else {
-          toast.error('Unable to validate. Please check your configuration.', {
+          toast.error('Target column is not compatible with the selected modeling type.', {
             duration: 4000,
             position: 'top-right',
           });
           return false;
         }
       } else {
-        toast.error('Unable to validate. Please try again.', {
+        toast.error('Target column is not compatible with the selected modeling type.', {
           duration: 4000,
           position: 'top-right',
         });
         return false;
       }
     } catch (error) {
-      console.error('Validation error:', error);
-      toast.error('Unable to validate. Network error occurred.', {
+      toast.error('Target column is not compatible with the selected modeling type.', {
         duration: 4000,
         position: 'top-right',
       });

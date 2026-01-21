@@ -18,11 +18,11 @@ import {
 import { Icon } from "@iconify-icon/react";
 import Breadcrumb from "../../../components/Breadcrumb";
 import DataTable from "../../../components/DataTable";
-import { StatCard, StatsContainer, StatsGrid } from "./Components/StatsCard";
 import QuickPredictModal from "./Components/Models/QuickPredictModal";
 import DeleteModal from "./Components/DeleteModal";
 import { useAuth } from "../../../context/AuthContext";
 import { useAIPlayground } from "../../../context/AIPlaygroundContext";
+import ModelFlow from "./Components/Models/ModelFlow";
 
 function Models() {
   const navigate = useNavigate();
@@ -30,6 +30,7 @@ function Models() {
   const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState("both");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [dashboardRefreshTrigger, setDashboardRefreshTrigger] = useState(0); // NEW: force stats refresh
   const [isQuickPredictOpen, setIsQuickPredictOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
   const [modelsData, setModelsData] = useState([]);
@@ -47,6 +48,8 @@ function Models() {
   const { token, decodedToken } = useAuth();
   const [isCanvasLoading, setIsCanvasLoading] = useState(false);
   const { setWorkflowState, setDatasetState, setMode, setModelState, setProjectState } = useAIPlayground();
+    const [dashboardLoading, setDashboardLoading] = useState(false);
+
 
   useEffect(() => {
     const fetchModels = async () => {
@@ -72,6 +75,19 @@ function Models() {
           created_date: item.created_at
             ? new Date(item.created_at).toLocaleDateString("en-GB")
             : "",
+          project_name:
+            item.project_name ??
+            item.project ??
+            item.projectName ??
+            item?.metadata?.project_name ??
+            "",
+          user_name:
+            item.user_name ??
+            item.owner ??
+            item.created_by ??
+            item.createdBy ??
+            item?.metadata?.user_name ??
+            "",
           type: item.modeling_type,
           status: item.status ?? "Unknown",
         }));
@@ -90,6 +106,7 @@ function Models() {
 
   useEffect(() => {
     const fetchDashboardSummary = async () => {
+      setDashboardLoading(true);
       try {
         const response = await fetch(`${hostnameAI}/canvas/model_dashboard/summary`, {
           headers: {
@@ -101,11 +118,13 @@ function Models() {
         setDashboardSummary(data);
       } catch (err) {
         setDashboardSummary(null);
+      } finally {
+        setDashboardLoading(false);
       }
     };
 
     fetchDashboardSummary();
-  }, [hostnameAI, token, refreshTrigger]);
+  }, [hostnameAI, token, dashboardRefreshTrigger]);
 
   const formatPct = (n) => {
     const num = Number(n);
@@ -123,6 +142,16 @@ function Models() {
   };
 
   const metricsData = useMemo(() => {
+    if (dashboardLoading || !dashboardSummary) {
+      return [
+        { title: "Models", value: null, trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
+        { title: "Deployed Models", value: null, trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
+        { title: "Avg Accuracy", value: null, trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
+        { title: "Avg Latency", value: null, trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
+        { title: "Active Models", value: null, trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
+      ];
+    }
+
     const models = dashboardSummary?.counts?.models;
     const deployed = dashboardSummary?.counts?.deployed_models;
     const acc = dashboardSummary?.metrics?.avg_model_accuracy;
@@ -176,7 +205,7 @@ function Models() {
         icon: "material-symbols:check-circle-outline",
       },
     ];
-  }, [dashboardSummary]);
+  }, [dashboardSummary, dashboardLoading]);
 
   const alertsData = useMemo(() => {
     const rows = dashboardSummary?.recent_alerted_runs_per_schedule;
@@ -225,9 +254,9 @@ function Models() {
   };
 
   const handleRefresh = () => {
-    setIsLoading(true);
+    // CHANGED: refresh table + stats; no artificial timeout
     setRefreshTrigger((prev) => prev + 1);
-    setTimeout(() => setIsLoading(false), 1000);
+    setDashboardRefreshTrigger((prev) => prev + 1);
   };
 
   const getStatusStyle = (status) => {
@@ -252,13 +281,24 @@ function Models() {
       label: "Name",
       sortable: true,
       render: (row) => (
-        <span className="text-purple-600 hover:underline cursor-pointer whitespace-normal break-words break-all">
+        <span
+          className="text-purple-600 hover:underline cursor-pointer whitespace-normal break-words break-all"
+          onClick={() => openModelLibrary(row)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === "Enter" && openModelLibrary(row)}
+          title={row?.run_name ?? ""}
+          style={{ overflowWrap: "anywhere" }}
+        >
           {row.run_name}
         </span>
       ),
-    },
+    }
+,
     { key: "description", label: "Description", sortable: true },
     { key: "created_date", label: "Created Date", sortable: true },
+    {key: 'project_name', label: 'Project', sortable: true },
+    {key: 'user_name', label: 'Owner', sortable: true },
     { key: "type", label: "Type", sortable: true },
     {
       key: "status",
@@ -338,14 +378,22 @@ function Models() {
     }
   };
 
+    const openModelLibrary = useCallback(
+    (row) => {
+      const raw = row?._raw ?? row;
+      navigate("/ai/hub/models/library", {
+        state: { modelData: raw },
+      });
+    },
+    [navigate]
+  );
+
+
   const actions = [
     {
       label: "Library",
       icon: <BookOpen className="w-4 h-4" />,
-      onClick: (row) =>
-        navigate("/ai/hub/models/library", {
-          state: { modelData: row?._raw ?? row },
-        }),
+      onClick: openModelLibrary,
       tooltip: "Library",
     },
     {
@@ -355,7 +403,7 @@ function Models() {
       tooltip: "F1 Mode",
     },
     {
-      label: "AI Canvas",
+      label: "AI Playground",
       icon: <Palette className="w-4 h-4" />,
       onClick: async (row) => {
         setIsCanvasLoading(true);
@@ -495,7 +543,7 @@ function Models() {
           setIsCanvasLoading(false);
         }
       },
-      tooltip: "AI Canvas",
+      tooltip: "AI Playground",
       disabled: isCanvasLoading,
     },
     {
@@ -543,336 +591,11 @@ function Models() {
       );
   }, [searchTerm, modelsData]);
 
-  const ModelFlowDiagram = ({ data }) => {
-    const svgRef = useRef(null);
-    const containerRef = useRef(null);
-    const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-    const [showInfo, setShowInfo] = useState(false);
-
-    const handleWheel = useCallback((e) => {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      setTransform((prev) => ({
-        ...prev,
-        scale: Math.min(Math.max(prev.scale * delta, 0.5), 2),
-      }));
-    }, []);
-
-    const handleMouseDown = useCallback(
-      (e) => {
-        setIsDragging(true);
-        setDragStart({
-          x: e.clientX - transform.x,
-          y: e.clientY - transform.y,
-        });
-      },
-      [transform.x, transform.y]
-    );
-
-    const handleMouseMove = useCallback(
-      (e) => {
-        if (!isDragging) return;
-        setTransform((prev) => ({
-          ...prev,
-          x: e.clientX - dragStart.x,
-          y: e.clientY - dragStart.y,
-        }));
-      },
-      [isDragging, dragStart]
-    );
-
-    const handleMouseUp = useCallback(() => {
-      setIsDragging(false);
-    }, []);
-
-    const resetZoom = () => {
-      setTransform({ x: 0, y: 0, scale: 1 });
-    };
-
-    return (
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm h-full">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Icon
-              icon="material-symbols:account-tree-outline"
-              className="w-5 h-5 text-purple-600"
-            />
-            <h3 className="text-sm font-semibold text-gray-800">Model Flow</h3>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() =>
-                setTransform((prev) => ({
-                  ...prev,
-                  scale: Math.min(prev.scale * 1.2, 2),
-                }))
-              }
-              className="p-1 hover:bg-gray-100 rounded text-gray-500"
-              title="Zoom In"
-            >
-              <Icon icon="material-symbols:zoom-in" className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() =>
-                setTransform((prev) => ({
-                  ...prev,
-                  scale: Math.max(prev.scale * 0.8, 0.5),
-                }))
-              }
-              className="p-1 hover:bg-gray-100 rounded text-gray-500"
-              title="Zoom Out"
-            >
-              <Icon icon="material-symbols:zoom-out" className="w-4 h-4" />
-            </button>
-            <button
-              onClick={resetZoom}
-              className="p-1 hover:bg-gray-100 rounded text-gray-500"
-              title="Reset"
-            >
-              <Icon icon="material-symbols:fit-screen" className="w-4 h-4" />
-            </button>
-            <div className="relative">
-              <Info
-                className="w-4 h-4 text-gray-400 cursor-pointer hover:text-gray-600"
-                onMouseEnter={() => setShowInfo(true)}
-                onMouseLeave={() => setShowInfo(false)}
-              />
-              {showInfo && (
-                <div className="absolute right-0 top-6 z-10 w-48 p-2 bg-gray-800 text-white text-xs rounded-lg shadow-lg">
-                  Interactive model flow diagram. Use scroll to zoom, drag to
-                  pan.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        <div
-          ref={containerRef}
-          className="h-[260px] overflow-hidden cursor-grab active:cursor-grabbing rounded-lg bg-gray-50"
-          onWheel={handleWheel}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-        >
-          <svg
-            ref={svgRef}
-            viewBox="0 0 780 240"
-            className="w-full h-full"
-            style={{
-              transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
-              transformOrigin: "center center",
-              transition: isDragging ? "none" : "transform 0.1s ease-out",
-            }}
-          >
-            <g className="cursor-pointer hover:opacity-80 transition-opacity">
-              <rect
-                x={data.aiModel.x}
-                y={data.aiModel.y}
-                width="100"
-                height="60"
-                rx="8"
-                fill="#7C3AED"
-              />
-              <text
-                x={data.aiModel.x + 50}
-                y={data.aiModel.y + 28}
-                textAnchor="middle"
-                fill="white"
-                fontSize="20"
-                fontWeight="bold"
-              >
-                {data.aiModel.label}
-              </text>
-              <text
-                x={data.aiModel.x + 50}
-                y={data.aiModel.y + 45}
-                textAnchor="middle"
-                fill="white"
-                fontSize="9"
-              >
-                {data.aiModel.sublabel}
-              </text>
-            </g>
-
-            {data.classificationAgents.map((agent, idx) => (
-              <g
-                key={agent.id}
-                className="cursor-pointer hover:opacity-80 transition-opacity"
-              >
-                <rect
-                  x={agent.x}
-                  y={agent.y}
-                  width="90"
-                  height="40"
-                  rx="8"
-                  fill="#EC4899"
-                />
-                <text
-                  x={agent.x + 45}
-                  y={agent.y + 15}
-                  textAnchor="middle"
-                  fill="white"
-                  fontSize="9"
-                  fontWeight="500"
-                >
-                  Classification
-                </text>
-                <text
-                  x={agent.x + 45}
-                  y={agent.y + 28}
-                  textAnchor="middle"
-                  fill="white"
-                  fontSize="9"
-                  fontWeight="500"
-                >
-                  Agent
-                </text>
-              </g>
-            ))}
-
-            {data.middleAgents.map((agent) => (
-              <g
-                key={agent.id}
-                className="cursor-pointer hover:opacity-80 transition-opacity"
-              >
-                <rect
-                  x={agent.x}
-                  y={agent.y}
-                  width="80"
-                  height="32"
-                  rx="6"
-                  fill={agent.color}
-                />
-                <text
-                  x={agent.x + 40}
-                  y={agent.y + 20}
-                  textAnchor="middle"
-                  fill="white"
-                  fontSize="9"
-                  fontWeight="500"
-                >
-                  {agent.label}
-                </text>
-              </g>
-            ))}
-
-            <g className="cursor-pointer hover:opacity-80 transition-opacity">
-              <rect
-                x={data.orchestrationLayer.x}
-                y={data.orchestrationLayer.y}
-                width="110"
-                height="80"
-                rx="8"
-                fill="#10B981"
-              />
-              <text
-                x={data.orchestrationLayer.x + 55}
-                y={data.orchestrationLayer.y + 38}
-                textAnchor="middle"
-                fill="white"
-                fontSize="9"
-                fontWeight="500"
-              >
-                Orchestration
-              </text>
-              <text
-                x={data.orchestrationLayer.x + 55}
-                y={data.orchestrationLayer.y + 52}
-                textAnchor="middle"
-                fill="white"
-                fontSize="9"
-                fontWeight="500"
-              >
-                Agent
-              </text>
-            </g>
-
-            <g className="cursor-pointer hover:opacity-80 transition-opacity">
-              <rect
-                x={data.output.x}
-                y={data.output.y}
-                width="80"
-                height="40"
-                rx="8"
-                fill="#06B6D4"
-              />
-              <text
-                x={data.output.x + 40}
-                y={data.output.y + 25}
-                textAnchor="middle"
-                fill="white"
-                fontSize="10"
-                fontWeight="600"
-              >
-                {data.output.label}
-              </text>
-            </g>
-
-            <path
-              d="M130 120 C155 120, 155 80, 180 80"
-              stroke="#A78BFA"
-              strokeWidth="3"
-              fill="none"
-              opacity="0.5"
-            />
-            <path
-              d="M130 130 C155 130, 155 160, 180 160"
-              stroke="#A78BFA"
-              strokeWidth="3"
-              fill="none"
-              opacity="0.5"
-            />
-
-            {data.middleAgents.map((agent, idx) => {
-              const sourceY = idx < 2 ? 80 : 160;
-              const targetY = agent.y + 16;
-              return (
-                <path
-                  key={`class-to-middle-${agent.id}`}
-                  d={`M270 ${sourceY} C295 ${sourceY}, 295 ${targetY}, 320 ${targetY}`}
-                  stroke={idx < 2 ? "#EC4899" : "#EC4899"}
-                  strokeWidth="2.5"
-                  fill="none"
-                  opacity="0.4"
-                />
-              );
-            })}
-
-            {data.middleAgents.map((agent) => {
-              const sourceY = agent.y + 16;
-              return (
-                <path
-                  key={`middle-to-orch-${agent.id}`}
-                  d={`M400 ${sourceY} C450 ${sourceY}, 450 130, 500 130`}
-                  stroke="#FB923C"
-                  strokeWidth="2.5"
-                  fill="none"
-                  opacity="0.3"
-                />
-              );
-            })}
-
-            <path
-              d="M610 130 C635 130, 635 120, 660 120"
-              stroke="#10B981"
-              strokeWidth="3"
-              fill="none"
-              opacity="0.6"
-            />
-          </svg>
-        </div>
-      </div>
-    );
-  };
-
   const AlertsPanel = () => {
     const [showInfo, setShowInfo] = useState(false);
 
     return (
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm h-full">
+      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm h-[350px]">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Icon
@@ -961,6 +684,71 @@ function Models() {
     );
   };
 
+  const StatsCardWithTrend = ({ label, value, icon: IconCmp, trend, trendValue }) => {
+    const isUp = trend === "up";
+    const TrendIcon = isUp ? ArrowUp : ArrowDown;
+    const trendColor = isUp ? "text-emerald-500" : "text-red-500";
+
+    return (
+      <div className="bg-white rounded-xl px-6 py-5 border border-purple-200 flex flex-col justify-between min-h-[120px]">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <IconCmp className="w-7 h-7 text-[#8e78b7] shrink-0" />
+            <span className="text-gray-900 text-xl font-semibold truncate">{label}</span>
+          </div>
+        </div>
+
+        <div className="flex items-end justify-between mt-6">
+          <div className="text-2xl font-extrabold text-gray-900 tabular-nums leading-none">
+            {value == null ? <div className="h-10 w-16 bg-gray-200 rounded animate-pulse" /> : value}
+          </div>
+
+          {(trend && trendValue && value != null) ? (
+            <div className={`flex items-center gap-2 ${trendColor} text-xl font-semibold leading-none`}>
+              <TrendIcon className="w-7 h-7" />
+              <span className="tabular-nums">{trendValue}</span>
+            </div>
+          ) : (
+            <div className="h-7 w-14" />
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // ADD: map iconify names -> lucide icons for consistent card header icon
+  const metricIcon = (key) => {
+    switch (key) {
+      case "models":
+        return BookOpen;
+      case "deployed":
+        return Rocket;
+      case "accuracy":
+        return Gauge;
+      case "latency":
+        return Gauge;
+      case "active":
+        return CheckCircleFallback; // defined below
+      default:
+        return BookOpen;
+    }
+  };
+
+  // ADD: tiny fallback icon to avoid extra imports; uses existing lucide "Info" shape if needed
+  const CheckCircleFallback = (props) => <Info {...props} />;
+
+  const statsCards = useMemo(() => {
+    // keep null values while loading (matches Projects skeleton behavior)
+    const [m1, m2, m3, m4, m5] = metricsData || [];
+    return [
+      { key: "models", label: "Models", value: m1?.value ?? null, trend: m1?.trend ?? null, trendValue: m1?.trendValue ?? null, icon: metricIcon("models") },
+      { key: "deployed", label: "Deployed Models", value: m2?.value ?? null, trend: m2?.trend ?? null, trendValue: m2?.trendValue ?? null, icon: metricIcon("deployed") },
+      { key: "accuracy", label: "Avg Accuracy", value: m3?.value ?? null, trend: m3?.trend ?? null, trendValue: m3?.trendValue ?? null, icon: metricIcon("accuracy") },
+      { key: "latency", label: "Avg Latency", value: m4?.value ?? null, trend: m4?.trend ?? null, trendValue: m4?.trendValue ?? null, icon: metricIcon("latency") },
+      { key: "active", label: "Active Models", value: m5?.value ?? null, trend: m5?.trend ?? null, trendValue: m5?.trendValue ?? null, icon: metricIcon("active") },
+    ];
+  }, [metricsData]);
+
   return (
     <div className="p-6 space-y-4">
       <Breadcrumb link="/" />
@@ -1012,25 +800,26 @@ function Models() {
 
       {viewMode !== "list" && (
         <>
-          <StatsContainer gradient="from-[#8e78b7] via-purple-300 to-purple-100">
-            <StatsGrid columns={5} gap={4}>
-              {metricsData.map((metric, index) => (
-                <StatCard
-                  key={index}
-                  title={metric.title}
-                  value={metric.value}
-                  icon={metric.icon}
-                  trend={metric.trend}
-                  trendValue={metric.trendValue}
-                  variant="bordered"
+          {/* REPLACE: Models stats area to match Projects UI */}
+          <div className="bg-gradient-to-r from-[#8e78b7] via-purple-300 to-purple-100 rounded-xl p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              {statsCards.map((stat) => (
+                <StatsCardWithTrend
+                  key={stat.key}
+                  label={stat.label}
+                  value={stat.value}
+                  icon={stat.icon}
+                  trend={stat.trend}
+                  trendValue={stat.trendValue}
                 />
               ))}
-            </StatsGrid>
-          </StatsContainer>
+            </div>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-1">
-              <ModelFlowDiagram data={modelFlowData} />
+              {/* REPLACE: <ModelFlowDiagram data={modelFlowData} /> */}
+              <ModelFlow />
             </div>
             <div>
               <AlertsPanel />
@@ -1069,7 +858,7 @@ function Models() {
           <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
             <div className="flex flex-col items-center">
               <Loader2 className="w-16 h-16 text-[#8e78b7] animate-spin mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading AI Canvas</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading AI Playground</h3>
               <p className="text-gray-600 text-center">Please wait while we prepare your workspace</p>
             </div>
           </div>

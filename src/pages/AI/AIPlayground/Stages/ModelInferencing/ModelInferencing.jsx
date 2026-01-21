@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { AIPlaygroundLayout } from '../../AIPlaygroundLayout';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 import BestModelCard from './BestModelCard';
@@ -17,6 +17,13 @@ const ModelInferencing = () => {
   const [selectedChartsModel, setSelectedChartsModel] = useState('');
   const [selectedChartDemographic, setSelectedChartDemographic] = useState('age');
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (datasetState.sessionId == '') {
+      navigate('/ai/playground')
+    }
+  }, []);
 
   const truncateName = (name, maxLength = 30) => {
     if (name.length <= maxLength) return name;
@@ -272,20 +279,41 @@ const ModelInferencing = () => {
 
     const metrics = selectedModel.metrics || {};
 
-    const demographics = ['age', 'gender'];
     const fairnessData = {};
+    const demographicColumns = new Set();
 
-    demographics.forEach(demo => {
+    Object.keys(metrics).forEach(key => {
+      if (key.startsWith('fairness_')) {
+        const withoutPrefix = key.substring(9);
+
+        const metricTypes = [
+          '_demographic_parity_difference',
+          '_demographic_parity_ratio',
+          '_accuracy_score_difference'
+        ];
+
+        for (const metricType of metricTypes) {
+          if (withoutPrefix.endsWith(metricType)) {
+            const demographic = withoutPrefix.substring(0, withoutPrefix.length - metricType.length);
+            demographicColumns.add(demographic);
+            break;
+          }
+        }
+      }
+    });
+
+    demographicColumns.forEach(demo => {
       fairnessData[demo] = {
-        demographic_parity_difference: metrics[`fairness_${demo}_demographic_parity_difference`] || 0,
-        demographic_parity_ratio: metrics[`fairness_${demo}_demographic_parity_ratio`] || 0,
-        accuracy_score_difference: metrics[`fairness_${demo}_accuracy_score_difference`] || 0,
+        demographic_parity_difference: metrics[`fairness_${demo}_demographic_parity_difference`] ?? null,
+        demographic_parity_ratio: metrics[`fairness_${demo}_demographic_parity_ratio`] ?? null,
+        accuracy_score_difference: metrics[`fairness_${demo}_accuracy_score_difference`] ?? null,
       };
     });
 
     return {
       modelName: selectedModel.run_name,
       fairnessAssessment: selectedModel.fairness_assessment_message || 'N/A',
+      demographics: Array.from(demographicColumns),
       ...fairnessData
     };
   }, [apiResults, selectedFairnessModel]);

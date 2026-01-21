@@ -26,6 +26,49 @@ export const AIPlaygroundProvider = ({ children }) => {
         profileReportHtml: ''
     });
 
+    const [schedulerState, setSchedulerState] = useState({
+        owner_id: '',
+        project: '',
+        model: '',
+        model_id: '',
+        project_id: '',
+        flow_type: 'single_run',
+        scheduler: {
+            mode: 'auto',
+            frequency: '',
+            runningDays: [],
+            endDateTime: '',
+            intervalType: 'single_run',
+            intervalValue: '',
+            startDateTime: '',
+        },
+        source: {
+            source_conn_type: '',
+            source_schema: '',
+            source_table: ''
+        },
+        target: {
+            destination_conn_type: '',
+            destination_schema: '',
+            destination_table: ''
+        },
+        data_drift_threshold: {
+            distribution_drift_threshold: 0,
+            statistical_significance_level: 0,
+            information_stability_threshold: 0,
+            target_stability_threshold: 0
+        },
+        model_drift_threshold: {
+            prediction_drift_threshold: 0,
+            performance_drift_threshold: 0
+        },
+        data_drift_check: 0,
+        model_drift_check: 0,
+        recipients: [],
+        created_by: '',
+        workflow_name: ''
+    });
+
     const [workflowState, setWorkflowState] = useState({
         modelGenesis: {
             config: null,
@@ -79,7 +122,6 @@ export const AIPlaygroundProvider = ({ children }) => {
         }
     });
 
-
     const [mode, setMode] = useState('write');
 
     const updateWorkflowStage = (stage, data) => {
@@ -105,15 +147,23 @@ export const AIPlaygroundProvider = ({ children }) => {
         }));
     };
 
+    // console.log("DATASET STATE IS @@@ ", datasetState)
+    // console.log("PROJECT IS @@@", projectState)
+    // console.log("MODE IS @@@", mode)
+    // console.log("WORKFLOW STATE IS @@@@ ", workflowState)
+    // console.log("SCHEDULER STATE IS @@@@ ", schedulerState)
+
     const value = {
         projectState,
         datasetState,
         workflowState,
+        schedulerState,
         mode,
         modelState,
         setProjectState,
         setDatasetState,
         setWorkflowState,
+        setSchedulerState,
         setMode,
         setModelState,
         updateWorkflowStage,
