@@ -64,6 +64,7 @@ function FeatureImportance({ onApiCall }) {
     const readonly = mode === 'view';
 
     const maxFeatures = workflowState?.dataPreprocessing?.step4?.apiResponse?.column_count || 0;
+    const step5Response = workflowState?.dataPreprocessing?.step5?.apiResponse;
 
     const sessionId = datasetState?.sessionId;
 
@@ -74,6 +75,7 @@ function FeatureImportance({ onApiCall }) {
     const [subMethod, setSubMethod] = useState('mutual_info');
     const [numFeatures, setNumFeatures] = useState(0);
     const [reductionMethod, setReductionMethod] = useState('pca');
+    const [nComponents, setNComponents] = useState(2);
 
     const subMethodMapping = {
         random_forest: [],
@@ -83,12 +85,15 @@ function FeatureImportance({ onApiCall }) {
         unsupervised: ["variance", "pca_loading", "cluster_mi"]
     };
 
-    const reductionMethods = [
-        "pca", "lda", "ica", "tsne", "umap", "autoencoder", "sparse_pca", "factor_analysis",
-        "nmf", "lsa", "lle", "modified_lle", "hessian_lle", "ltsa", "isomap", "mds",
-        "spectral_embedding", "random_projection", "truncated_svd", "dictionary_learning",
-        "mini_batch_dictionary_learning", "vae"
-    ];
+    const reductionMethodsConfig = step5Response?.dimensionality_reduction?.dimentionality_reduction_n_components || [];
+    const availableReductionMethods = reductionMethodsConfig.flatMap(config => config.methods);
+
+    const getNComponentsRange = (method) => {
+        const config = reductionMethodsConfig.find(c => c.methods.includes(method));
+        return config ? { low: config.low, high: config.high } : { low: 2, high: 2 };
+    };
+
+    const currentRange = getNComponentsRange(reductionMethod);
 
     useEffect(() => {
         if ((mode === 'view' || mode === 'edit') && workflowState?.dataPreprocessing?.step6?.config) {
@@ -103,10 +108,14 @@ function FeatureImportance({ onApiCall }) {
             setSubMethod(config.sub_method);
             setNumFeatures(config.n_features || 0);
             setReductionMethod(config.dimensionality_reduction_method);
-
+            setNComponents(config.n_components || 2);
         }
     }, [mode, workflowState]);
 
+    useEffect(() => {
+        const range = getNComponentsRange(reductionMethod);
+        setNComponents(range.low);
+    }, [reductionMethod]);
 
     const handleApiCall = async () => {
         if (readonly) return true;
@@ -119,7 +128,7 @@ function FeatureImportance({ onApiCall }) {
                 n_features: numFeatures,
                 dimensionality_reduction: toggles.dimensionalityReduction,
                 dimensionality_reduction_method: reductionMethod,
-                n_components: 2
+                n_components: nComponents
             };
 
             const response = await fetch(`${hostnameAI}/data/preprocess/feature_importance`, {
@@ -139,12 +148,14 @@ function FeatureImportance({ onApiCall }) {
             const data = await response.json();
 
             updatePreprocessingStep('step6', {
-                selections: {
-                    toggles,
-                    methodCategory,
-                    subMethod,
-                    numFeatures,
-                    reductionMethod
+                config: {
+                    feature_importance_selection: toggles.featureImportance,
+                    method: methodCategory,
+                    sub_method: subMethod,
+                    n_features: numFeatures,
+                    dimensionality_reduction: toggles.dimensionalityReduction,
+                    dimensionality_reduction_method: reductionMethod,
+                    n_components: nComponents
                 },
                 apiResponse: data
             });
@@ -169,7 +180,7 @@ function FeatureImportance({ onApiCall }) {
         if (onApiCall) {
             onApiCall(handleApiCall);
         }
-    }, [onApiCall, sessionId, toggles, methodCategory, subMethod, numFeatures, reductionMethod]);
+    }, [onApiCall, sessionId, toggles, methodCategory, subMethod, numFeatures, reductionMethod, nComponents]);
 
     const toggleSwitch = (key) => {
         if (readonly) return;
@@ -271,11 +282,43 @@ function FeatureImportance({ onApiCall }) {
                             disabled={readonly}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#8e78b7] bg-white outline-none"
                         >
-                            {reductionMethods.map(method => (
+                            {availableReductionMethods.map(method => (
                                 <option key={method} value={method}>{method.toUpperCase()}</option>
                             ))}
                         </select>
                     </div>
+
+                    {currentRange.low !== currentRange.high && (
+                        <div className="pt-2">
+                            <h5 className="text-sm font-medium text-gray-700 mb-2">Number of Components</h5>
+                            <input
+                                type="range"
+                                min={currentRange.low}
+                                max={currentRange.high}
+                                value={nComponents}
+                                onChange={(e) => setNComponents(parseInt(e.target.value))}
+                                disabled={readonly}
+                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#8e78b7]"
+                                style={{
+                                    background: `linear-gradient(to right, #8e78b7 0%, #8e78b7 ${((nComponents - currentRange.low) / (currentRange.high - currentRange.low)) * 100}%, #e5e7eb ${((nComponents - currentRange.low) / (currentRange.high - currentRange.low)) * 100}%, #e5e7eb 100%)`
+                                }}
+                            />
+                            <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>{currentRange.low}</span>
+                                <span className="font-bold text-[#8e78b7]">{nComponents}</span>
+                                <span>{currentRange.high}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {currentRange.low === currentRange.high && (
+                        <div className="pt-2">
+                            <h5 className="text-sm font-medium text-gray-700 mb-2">Number of Components</h5>
+                            <div className="px-3 py-2 bg-gray-100 rounded border border-gray-200 text-sm text-gray-700">
+                                Fixed at <span className="font-bold text-[#8e78b7]">{currentRange.low}</span> component(s)
+                            </div>
+                        </div>
+                    )}
                 </div>
             </FeatureSection>
         </div>

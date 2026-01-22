@@ -14,9 +14,10 @@ const Projects = () => {
     const hostnameAI = window._env_?.VITE_AI_API;
 
     const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
     const [isLoading, setIsLoading] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
-    const [dashboardRefreshTrigger, setDashboardRefreshTrigger] = useState(0); // NEW: force stats refresh
+    const [dashboardRefreshTrigger, setDashboardRefreshTrigger] = useState(0);
     const [viewMode, setViewMode] = useState('both');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -240,6 +241,13 @@ const Projects = () => {
 
     const columns = [
         {
+            key: 'sno',
+            label: 'S.No',
+            sortable: false,
+            width: '100px',
+            render: (_row, idx) => idx + 1,
+        },
+        {
             key: 'name',
             label: 'Name',
             sortable: true,
@@ -258,7 +266,8 @@ const Projects = () => {
             ),
         },
         { key: 'description', label: 'Description', sortable: true },
-        { key: 'owner_name', label: 'Owner', sortable: true, render: (row) => row.owner_name ?? '—' },
+        { key: 'created_at', label: 'Created Date', sortable: true, render: (row) => row.created_at ? new Date(row.created_at).toLocaleDateString('en-GB') : '—' },
+        { key: 'owner_name', label: 'Created By', sortable: true, render: (row) => row.owner_name ?? '—' },
         {
             key: 'status',
             label: 'Status',
@@ -269,8 +278,6 @@ const Projects = () => {
                 </span>
             ),
         },
-        { key: 'created_at', label: 'Created', sortable: true, render: (row) => row.created_at ? new Date(row.created_at).toLocaleDateString('en-GB') : '—' },
-        { key: 'updated_at', label: 'Updated', sortable: true, render: (row) => row.updated_at ? new Date(row.updated_at).toLocaleDateString('en-GB') : '—' },
         { label: 'Action', sortable: false },
     ];
 
@@ -290,18 +297,26 @@ const Projects = () => {
     ];
 
     const filteredData = useMemo(() => {
-        if (!searchTerm.trim()) {
-            return tableData.filter(row => String(row.status).toLowerCase() !== "deleted");
+        const base = tableData.filter(row => String(row.status).toLowerCase() !== "deleted");
+        let statusFiltered = base;
+        if (statusFilter === 'active') {
+            statusFiltered = base.filter(row => {
+                const s = String(row.status ?? '').toLowerCase();
+                return s === 'active';
+            });
+        } else if (statusFilter === 'archived') {
+            statusFiltered = base.filter(row => {
+                const s = String(row.status ?? '').toLowerCase();
+                return s === 'archived';
+            });
         }
+        if (!searchTerm.trim()) return statusFiltered;
         const q = searchTerm.toLowerCase();
-        return tableData
-            .filter(row => String(row.status).toLowerCase() !== "deleted")
-            .filter((row) =>
-                Object.values(row || {}).some((val) => String(val ?? '').toLowerCase().includes(q))
-            );
-    }, [searchTerm, tableData]);
+        return statusFiltered.filter((row) =>
+            Object.values(row || {}).some((val) => String(val ?? '').toLowerCase().includes(q))
+        );
+    }, [searchTerm, tableData, statusFilter]);
 
-    // Fetch a single project by id (API returns an array)
     const fetchProjectById = async (projectId) => {
         const resp = await fetch(`${hostnameAI}/canvas/project_list/?project_id=${encodeURIComponent(projectId)}`, {
             headers: { Authorization: `Bearer ${token}` },
@@ -321,7 +336,6 @@ const Projects = () => {
             const project = await fetchProjectById(projectId);
             navigate(`/ai/hub/projects/${project.id}/library`, { state: { ProjectData: project } });
 
-            // keep recent list in sync (best-effort)
             await updateRecentAccess({
                 row: project,
                 entityType: 'project',
@@ -382,6 +396,19 @@ const Projects = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">Projects</h1>
                 <div className="flex items-center gap-2 sm:gap-3">
+                    {/* ADD: Status filter dropdown */}
+                    <div className="relative">
+                        <select
+                            value={statusFilter}
+                            onChange={e => setStatusFilter(e.target.value)}
+                            className="h-10 border border-gray-300 rounded-lg text-sm px-3 bg-white"
+                            title="Filter by Status"
+                        >
+                            <option value="all">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="archived">Archived</option>
+                        </select>
+                    </div>
                     <div className="relative flex-1 sm:flex-initial">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
