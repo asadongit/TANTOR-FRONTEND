@@ -6,6 +6,7 @@ import OverviewTab from './OverviewTab';
 import ProjectsTab from './ProjectsTab';
 import CommentsTab from './CommentsTab';
 import AccessTab from './AccessTab';
+import Snapshot from './Snapshot';
 
 const DataLibrary = () => {
     const navigate = useNavigate();
@@ -14,7 +15,7 @@ const DataLibrary = () => {
 
     const datasetData = location.state?.datasetData;
 
-    const tabs = ['Overview', 'Projects', 'Comments', 'Access'];
+    const tabs = ['Overview', 'Projects', 'Comments', 'Snapshot'];
 
     const handleTabChange = (tab) => {
         setActiveTab(tab);
@@ -106,8 +107,11 @@ const DataLibrary = () => {
                         <CommentsTab datasetId={datasetData.id} projectId={datasetData.project_id} />
                     )}
 
-                    {activeTab === 'Access' && (
+                    {/* {activeTab === 'Access' && (
                         <AccessTab />
+                    )} */}
+                    {activeTab === 'Snapshot' && (
+                        <Snapshot datasetData={datasetData} />
                     )}
                 </div>
             </div>
