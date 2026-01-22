@@ -14,6 +14,7 @@ import {
   BookOpen,
   Gauge,
   Loader2,
+  Bell,
 } from "lucide-react";
 import { Icon } from "@iconify-icon/react";
 import Breadcrumb from "../../../components/Breadcrumb";
@@ -27,6 +28,7 @@ import ModelFlow from "./Components/Models/ModelFlow";
 function Models() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState("both");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -145,7 +147,7 @@ function Models() {
         { title: "Deployed Models", value: null, trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
         { title: "Avg Accuracy", value: null, trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
         { title: "Avg Latency", value: null, trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
-        { title: "Active Models", value: null, trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
+        { title: "Alert Count", value: null, trend: "up", trendValue: "", icon: "material-symbols:check-circle-outline" },
       ];
     }
 
@@ -195,11 +197,11 @@ function Models() {
         icon: "material-symbols:check-circle-outline",
       },
       {
-        title: "Active Models",
-        value: dashboardSummary?.model_status_counts?.active ?? 0,
-        trend: "up",
-        trendValue: "",
-        icon: "material-symbols:check-circle-outline",
+        title: "Alert Count",
+        value: dashboardSummary?.alert_counts ?? 0,
+        trend: null,
+        trendValue: null,
+        icon: "material-symbols:notifications-outline",
       },
     ];
   }, [dashboardSummary, dashboardLoading]);
@@ -290,15 +292,16 @@ function Models() {
         </span>
       ),
     }
-    ,
-    { key: "description", label: "Description", sortable: true },
-    { key: "created_date", label: "Created Date", sortable: true },
-    { key: 'project_name', label: 'Project', sortable: true },
-    { key: 'user_name', label: 'Owner', sortable: true },
-    { key: "type", label: "Type", sortable: true },
+,
+    { key: "description", width: '250px',  label: "Description", sortable: true },
+    { key: "created_date", width: '150px',  label: "Created Date", sortable: true },
+    {key: 'project_name', width: '150px',  label: 'Project', sortable: true },
+    {key: 'user_name', width: '120px',  label: 'Created By', sortable: true },
+    { key: "type", width: '120px',  label: "Type", sortable: true },
     {
       key: "status",
       label: "Status",
+      width: '100px',
       sortable: true,
       render: (row) => (
         <span
@@ -571,20 +574,42 @@ function Models() {
   ];
 
   const filteredData = useMemo(() => {
+    // ADD: status filter logic
+    const base = modelsData.filter(row => String(row.status).toLowerCase() !== "deleted");
+    let statusFiltered = base;
+    if (statusFilter === "saved") {
+      statusFiltered = base.filter(row => {
+        const s = String(row.status ?? '').toLowerCase();
+        return s === "saved";
+      });
+    } else if (statusFilter === "deployed") {
+      statusFiltered = base.filter(row => {
+        const s = String(row.status ?? '').toLowerCase();
+        return s === "deployed";
+      });
+    } else if (statusFilter === "archived") {
+      statusFiltered = base.filter(row => {
+        const s = String(row.status ?? '').toLowerCase();
+        return s === "archived";
+      });
+    } else if (statusFilter === "completed") {
+      statusFiltered = base.filter(row => {
+        const s = String(row.status ?? '').toLowerCase();
+        return s === "completed";
+      });
+    }
     if (!searchTerm.trim()) {
-      return modelsData.filter(row => String(row.status).toLowerCase() !== "deleted");
+      return statusFiltered;
     }
     const q = searchTerm.toLowerCase();
-    return modelsData
-      .filter(row => String(row.status).toLowerCase() !== "deleted")
-      .filter((row) =>
-        Object.values(row || {}).some((val) =>
-          String(val ?? "")
-            .toLowerCase()
-            .includes(q)
-        )
-      );
-  }, [searchTerm, modelsData]);
+    return statusFiltered.filter((row) =>
+      Object.values(row || {}).some((val) =>
+        String(val ?? "")
+          .toLowerCase()
+          .includes(q)
+      )
+    );
+  }, [searchTerm, modelsData, statusFilter]);
 
   const AlertsPanel = () => {
     const [showInfo, setShowInfo] = useState(false);
@@ -739,8 +764,8 @@ function Models() {
         return Gauge;
       case "latency":
         return Gauge;
-      case "active":
-        return CheckCircleFallback;
+      case "alerts":
+        return Bell;
       default:
         return BookOpen;
     }
@@ -753,9 +778,10 @@ function Models() {
     return [
       { key: "models", label: "Models", value: m1?.value ?? null, trend: m1?.trend ?? null, trendValue: m1?.trendValue ?? null, icon: metricIcon("models") },
       { key: "deployed", label: "Deployed Models", value: m2?.value ?? null, trend: m2?.trend ?? null, trendValue: m2?.trendValue ?? null, icon: metricIcon("deployed") },
-      { key: "accuracy", label: "Avg Accuracy", value: m3?.value ?? null, trend: m3?.trend ?? null, trendValue: m3?.trendValue ?? null, icon: metricIcon("accuracy") },
-      { key: "latency", label: "Avg Latency", value: m4?.value ?? null, trend: m4?.trend ?? null, trendValue: m4?.trendValue ?? null, icon: metricIcon("latency") },
-      { key: "active", label: "Active Models", value: m5?.value ?? null, trend: m5?.trend ?? null, trendValue: m5?.trendValue ?? null, icon: metricIcon("active") },
+      { key: "accuracy", label: "Accuracy", value: m3?.value ?? null, trend: m3?.trend ?? null, trendValue: m3?.trendValue ?? null, icon: metricIcon("accuracy") },
+      { key: "alerts", label: "Alert Count", value: m5?.value ?? null, trend: m5?.trend ?? null, trendValue: m5?.trendValue ?? null, icon: metricIcon("alerts") },
+
+      { key: "latency", label: "Latency", value: m4?.value ?? null, trend: m4?.trend ?? null, trendValue: m4?.trendValue ?? null, icon: metricIcon("latency") },
     ];
   }, [metricsData]);
 
@@ -767,6 +793,22 @@ function Models() {
         <h1 className="text-2xl font-semibold">Models</h1>
 
         <div className="flex items-center gap-2">
+          {/* ADD: Status filter dropdown */}
+          <div className="relative">
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            className="h-10 border border-gray-300 rounded-lg text-sm px-3 bg-white"
+            title="Filter by Status"
+          >
+            <option value="all">All Status</option>
+            <option value="saved">Saved</option>
+            <option value="deployed">Deployed</option>
+            <option value="archived">Archived</option>
+            <option value="completed">Completed</option>
+          </select>
+          </div>
+
           <div className="relative">
             <input
               type="text"

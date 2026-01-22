@@ -132,7 +132,7 @@ const Data = () => {
       { label: 'Sources', value: dashboardData.counts.sources.current.toString(), icon: FileText },
       { label: 'Datasets', value: dashboardData.counts.datasets.current.toString(), icon: Database },
       { label: 'Size (GB)', value: dashboardData.metrics.dataset_size_gb.current.toString(), icon: Box },
-      { label: 'Additions (1week)', value: dashboardData.counts.datasets.additions_1week?.toString() ?? "0", icon: FolderKanban },
+      { label: 'Additions (1week)', value: dashboardData.weekly_additions?.datasets_added_last_7_days?.toString() ?? "0", icon: FolderKanban },
     ];
   }, [dashboardData, dashboardLoading]);
 
@@ -171,9 +171,9 @@ const Data = () => {
     { key: 'sno', label: 'Sno', sortable: true, width: '90px', render: (row, index) => index + 1 },
     {
       key: 'file_name',
-      label: 'Dataset Name',
+      label: 'Name',
       sortable: true,
-      width: '250px',
+      width: '300px',
       render: (row) => (
         <span
           className="block min-w-0 whitespace-normal break-words text-[#8e78b7] hover:underline cursor-pointer"
@@ -188,19 +188,13 @@ const Data = () => {
         </span>
       ),
     },
-    { key: 'description', label: 'Description', sortable: true },
-    { key: 'row_count', label: 'Rows', sortable: true },
-    { key: 'column_count', label: 'Columns', sortable: true },
-    { key: 'status', label: 'Status', sortable: true },
     { key: 'created_at', label: 'Created Date', sortable: true, render: (row) => new Date(row.created_at).toLocaleDateString('en-GB') },
-    {
-      key: 'size_mb',
-      label: 'Size',
-      sortable: true,
-      render: (row) => (row?.size_mb ?? row?.size_mb === 0) ? `${row.size_mb} MB` : ''
-    },
-    { key: 'username', label: 'User', sortable: true },
+    { key: 'last_used_at', label: 'Last Used Date', sortable: true, render: (row) => row.updated_at ? new Date(row.updated_at).toLocaleDateString('en-GB') : '' },
+    { key: 'size_mb', label: 'Size', width: '100px', sortable: true, render: (row) => (row?.size_mb ?? row?.size_mb === 0) ? `${row.size_mb} MB` : '' },
+    { key: 'row_count', width: '100px', label: 'Rows', sortable: true },
+    { key: 'column_count', width: '100px', label: 'Columns', sortable: true },
     { key: 'project_name', label: 'Project', sortable: true },
+    { key: 'username', label: 'Created By', sortable: true },
     { label: 'Action', sortable: false },
   ];
 

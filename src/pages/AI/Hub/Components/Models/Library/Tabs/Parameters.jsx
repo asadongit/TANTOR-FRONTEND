@@ -1,10 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../../../../../../context/AuthContext'
+import { useAIPlayground } from '../../../../../../../context/AIPlaygroundContext'
+import DataCleaning from '../../../../../AIPlayground/Stages/DataPreprocessing/Steps/DataCleaning'
+import FeatureSelection from '../../../../../AIPlayground/Stages/DataPreprocessing/Steps/FeatureSelection'
+import FeatureEngineering from '../../../../../AIPlayground/Stages/DataPreprocessing/Steps/FeatureEngineering'
+import ScalingTransformation from '../../../../../AIPlayground/Stages/DataPreprocessing/Steps/ScalingTransformation'
+import StatisticalAnalysis from '../../../../../AIPlayground/Stages/DataPreprocessing/Steps/StatisticalAnalysis'
+import FeatureImportance from '../../../../../AIPlayground/Stages/DataPreprocessing/Steps/FeatureImportance'
+import Step7 from '../../../../../AIPlayground/Stages/DataPreprocessing/Steps/Step7'
 
 const AUTO_MODES = ['Swift', 'Standard', 'Comprehensive']
 
 function Parameters({ modelData }) {
-  const { token } = useAuth()
+  const { token, decodedToken } = useAuth()
+  const { setWorkflowState, setDatasetState, setProjectState, setModelState, setMode } = useAIPlayground()
   const [details, setDetails] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -13,16 +22,145 @@ function Parameters({ modelData }) {
 
   useEffect(() => {
     if (!runName) return
-    setLoading(true)
-    setError('')
-    fetch(`${window._env_?.VITE_AI_API}/canvas/model/${runName}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(res => (res.ok ? res.json() : Promise.reject('Failed to fetch')))
-      .then(setDetails)
-      .catch(err => setError(typeof err === 'string' ? err : 'Error loading parameters'))
-      .finally(() => setLoading(false))
-  }, [runName, token])
+
+    const controller = new AbortController()
+    let alive = true
+
+    const safeReadText = async (res) => {
+      try {
+        return await res.text()
+      } catch {
+        return ''
+      }
+    }
+
+    const load = async () => {
+      setLoading(true)
+      setError('')
+
+      try {
+        const baseUrl = window._env_?.VITE_AI_API
+        if (!baseUrl) throw new Error('VITE_AI_API is not configured')
+
+        // 1) model details (same as Models.jsx)
+        const modelRes = await fetch(`${baseUrl}/canvas/model/${encodeURIComponent(runName)}`, {
+          headers: { Authorization: `Bearer ${token}`, accept: 'application/json' },
+          signal: controller.signal
+        })
+        if (!modelRes.ok) {
+          const body = await safeReadText(modelRes)
+          throw new Error(`Failed to fetch model details (${modelRes.status}). ${body?.slice(0, 200)}`)
+        }
+        const fetchedModel = await modelRes.json()
+        if (!alive) return
+        setDetails(fetchedModel)
+
+        // 2) ingestion (same as Models.jsx)
+        const projectName = fetchedModel.project_name
+        const username = decodedToken?.preferred_username || 'admin'
+        const ingestionParams = new URLSearchParams({
+          domain: '',
+          project_name: projectName,
+          profiling_required: 'false',
+          tag: '',
+          source: '',
+          sub_tag: '',
+          table_name: fetchedModel.dataset_name,
+          category: '',
+          user_name: username
+        })
+
+        const ingestionRes = await fetch(`${baseUrl}/data/ingestion`, {
+          method: 'POST',
+          headers: {
+            accept: 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: ingestionParams.toString(),
+          signal: controller.signal
+        })
+        if (!ingestionRes.ok) {
+          const body = await safeReadText(ingestionRes)
+          throw new Error(`Failed to ingest data (${ingestionRes.status}). ${body?.slice(0, 200)}`)
+        }
+        const ingestionData = await ingestionRes.json()
+        if (!alive) return
+
+        // 3) set AIPlayground context (same mapping as Models.jsx)
+        setModelState({ selectedModel: fetchedModel.model_name })
+        setProjectState(prev => ({ ...prev, selectedProject: fetchedModel.project_name }))
+        setDatasetState({
+          tableName: fetchedModel.dataset_name,
+          sessionId: ingestionData.session_id || '',
+          columnNames: ingestionData.column_names || [],
+          profileReportHtml: ingestionData.profile_report_html || ''
+        })
+
+        if (fetchedModel?.prefill) {
+          const newWorkflowState = {
+            modelGenesis: {
+              config: fetchedModel.prefill?.data_preprocessing?.request?.genesis || null,
+              apiResponse: fetchedModel.prefill?.data_preprocessing?.response?.genesis || null
+            },
+            dataPreprocessing: {
+              step1: {
+                config: fetchedModel.prefill?.data_preprocessing?.request?.initial_clean || null,
+                apiResponse: fetchedModel.prefill?.data_preprocessing?.response?.initial_clean || null
+              },
+              step2: {
+                config: fetchedModel.prefill?.data_preprocessing?.request?.feature_selection || null,
+                apiResponse: fetchedModel.prefill?.data_preprocessing?.response?.feature_selection || null
+              },
+              step3: {
+                config: fetchedModel.prefill?.data_preprocessing?.request?.feature_engineering || null,
+                apiResponse: fetchedModel.prefill?.data_preprocessing?.response?.feature_engineering || null
+              },
+              step4: {
+                config: fetchedModel.prefill?.data_preprocessing?.request?.advanced_transformation || null,
+                apiResponse: fetchedModel.prefill?.data_preprocessing?.response?.advanced_transformation || null
+              },
+              step5: {
+                config: fetchedModel.prefill?.data_preprocessing?.request?.statistical_analysis || null,
+                apiResponse: fetchedModel.prefill?.data_preprocessing?.response?.statistical_analysis || null
+              },
+              step6: {
+                config: fetchedModel.prefill?.data_preprocessing?.request?.feature_importance || null,
+                apiResponse: fetchedModel.prefill?.data_preprocessing?.response?.feature_importance || null
+              },
+              step7: {
+                config: fetchedModel.prefill?.data_preprocessing?.request?.imbalance_handling || null,
+                apiResponse: fetchedModel.prefill?.data_preprocessing?.response?.imbalance_handling || null
+              }
+            },
+            modelSelection: {
+              config: fetchedModel.prefill?.training?.request?.training_request || null,
+              apiResponse: fetchedModel.prefill?.training?.response || null
+            },
+            modelInferencing: { config: null, apiResponse: null },
+            xai: { config: null, apiResponse: null },
+            modelDeployment: { config: null, apiResponse: null }
+          }
+
+          setWorkflowState(newWorkflowState)
+          setMode('view')
+        }
+      } catch (e) {
+        if (!alive) return
+        if (e?.name === 'AbortError') return
+        setError(e?.message || 'Error loading parameters')
+      } finally {
+        if (!alive) return
+        setLoading(false)
+      }
+    }
+
+    load()
+
+    return () => {
+      alive = false
+      controller.abort()
+    }
+  }, [runName, token, decodedToken, setWorkflowState, setDatasetState, setProjectState, setModelState, setMode])
 
   // --- UI helpers (professional, consistent rendering) ---
   const cx = (...a) => a.filter(Boolean).join(' ')
@@ -453,8 +591,7 @@ function Parameters({ modelData }) {
       { label: 'Feature Engineering', key: 'feature_engineering' },
       { label: 'Scaling & Transformation', key: 'advanced_transformation' },
       { label: 'Statistical Analysis', key: 'statistical_analysis' },
-      { label: 'Feature Importance', key: 'feature_importance' },
-      { label: 'Imbalance Handling', key: 'imbalance_handling' }
+      { label: 'Feature Importance', key: 'feature_importance' }
     ],
     []
   )
@@ -549,508 +686,32 @@ function Parameters({ modelData }) {
       </NoteBar>
     )
 
-    if (tabKey === 'genesis') {
-      return (
-        <div className="space-y-4">
-          {note}
-
-          <PGSection title="Dataset Configuration" description="Basic setup for the model training.">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <PGField label="Target column" hint="The column the model will predict">
-                <ReadOnlySelect value={req.target_column} placeholder="—" />
-              </PGField>
-
-              <PGField label="Modelling type" hint="Type of prediction task">
-                <div className="border border-gray-200 rounded-xl divide-y divide-gray-100">
-                  {['binary', 'multiclass', 'regression'].map(k => (
-                    <RadioRow
-                      key={k}
-                      label={k.charAt(0).toUpperCase() + k.slice(1)}
-                      checked={String(req.modelling_type || '').toLowerCase() === k}
-                    />
-                  ))}
-                </div>
-              </PGField>
-
-              <PGField label="Train size">
-                <ReadOnlySelect value={req.train_size} placeholder="—" />
-              </PGField>
-
-              <PGField label="Test size">
-                <ReadOnlySelect value={req.test_size} placeholder="—" />
-              </PGField>
-
-              <PGField label="Random state">
-                <ReadOnlySelect value={req.random_state} placeholder="—" />
-              </PGField>
-
-              <PGField label="Fairness columns" hint="Columns for fairness analysis">
-                <ChipsWrap items={req.fairness_columns} />
-              </PGField>
-            </div>
-          </PGSection>
-
-          <PGSection title="Processing Mode" description="Choose between auto or manual preprocessing.">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <PGField label="Data preprocessing mode">
-                <div className="border border-gray-200 rounded-xl divide-y divide-gray-100">
-                  {['Manual', 'Swift', 'Standard', 'Comprehensive'].map(k => (
-                    <RadioRow
-                      key={k}
-                      label={k}
-                      checked={String(req.data_preprocessing_mode || '').toLowerCase() === k.toLowerCase()}
-                    />
-                  ))}
-                </div>
-              </PGField>
-
-              <PGField label="Model mode">
-                <ReadOnlySelect value={req.model_mode} placeholder="—" />
-              </PGField>
-            </div>
-          </PGSection>
-        </div>
-      )
+    // Render the corresponding DataPreprocessing step component for each tabKey
+    const renderStep = () => {
+      switch (tabKey) {
+        case 'genesis':
+          return <DataCleaning onValidationChange={() => {}} onApiCall={() => {}} />
+        case 'initial_clean':
+          return <FeatureSelection onValidationChange={() => {}} onApiCall={() => {}} />
+        case 'feature_selection':
+          return <FeatureEngineering onValidationChange={() => {}} onApiCall={() => {}} />
+        case 'feature_engineering':
+          return <ScalingTransformation onValidationChange={() => {}} onApiCall={() => {}} />
+        case 'advanced_transformation':
+          return <StatisticalAnalysis onValidationChange={() => {}} onApiCall={() => {}} />
+        case 'statistical_analysis':
+          return <FeatureImportance onValidationChange={() => {}} onApiCall={() => {}} />
+        case 'feature_importance':
+          return <Step7 showPreview={false} onApiCall={() => {}} />
+        default:
+          return <Empty title="No Playground view yet" hint="This step has no dedicated UI yet." />
+      }
     }
 
-    if (tabKey === 'initial_clean') {
-      return (
-        <div className="space-y-4">
-          {note}
-
-          <PGSection title="Data Type Modifications" description="Adjust column data types.">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <PGField label="Modify data types">
-                <div className="flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50 px-3 h-10">
-                  <div className="text-xs text-gray-700">Enabled</div>
-                  <PGToggler on={!!req.modify_data_types} />
-                </div>
-              </PGField>
-
-              <PGField label="Data type map" hint="Per-column type overrides">
-                <ReadOnlySelect value={req.modify_data_types_map ? 'Configured' : ''} placeholder="Not configured" />
-              </PGField>
-            </div>
-          </PGSection>
-
-          <PGSection title="Column Dropping" description="Remove unwanted columns.">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <PGField label="Drop columns">
-                <div className="flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50 px-3 h-10">
-                  <div className="text-xs text-gray-700">Enabled</div>
-                  <PGToggler on={!!req.drop_columns_active} />
-                </div>
-                <div className="mt-2">
-                  <div className="text-[11px] text-gray-500 mb-1">Columns to drop</div>
-                  <ChipsWrap items={req.drop_columns} />
-                </div>
-              </PGField>
-
-              <PGField label="Drop duplicate rows">
-                <div className="flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50 px-3 h-10">
-                  <div className="text-xs text-gray-700">Enabled</div>
-                  <PGToggler on={!!req.drop_duplicates_rows} />
-                </div>
-              </PGField>
-            </div>
-          </PGSection>
-
-          <PGSection title="Missing Value Indicators" description="Add flags for missing values.">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <PGField label="Missing value indicator">
-                <div className="flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50 px-3 h-10">
-                  <div className="text-xs text-gray-700">Enabled</div>
-                  <PGToggler on={!!req.missing_value_indicator} />
-                </div>
-                <div className="mt-2">
-                  <div className="text-[11px] text-gray-500 mb-1">Indicator columns</div>
-                  <ChipsWrap items={req.missing_value_indicator_cols} />
-                </div>
-              </PGField>
-            </div>
-          </PGSection>
-
-          <PGSection title="Uniqueness Filter" description="Drop columns based on uniqueness.">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <PGField label="Uniqueness filter">
-                <div className="flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50 px-3 h-10">
-                  <div className="text-xs text-gray-700">Enabled</div>
-                  <PGToggler on={!!req.uniqueness_filter_active} />
-                </div>
-              </PGField>
-
-              <PGField label="Lower threshold">
-                <ReadOnlySelect value={req.uniqueness_lower_threshold} placeholder="—" />
-              </PGField>
-
-              <PGField label="Upper threshold">
-                <ReadOnlySelect value={req.uniqueness_upper_threshold} placeholder="—" />
-              </PGField>
-            </div>
-          </PGSection>
-
-          <PGSection title="Uniqueness Report" right={headerRight}>
-            <DataTable
-              columns={[
-                { key: 'column', header: 'Column' },
-                { key: 'uniqueness_ratio', header: 'Uniqueness Ratio' },
-                { key: 'reason', header: 'Reason' }
-              ]}
-              rows={res?.filtered_uniqueness_report || []}
-            />
-          </PGSection>
-
-          <PGSection title="High Cardinality Columns Dropped" right={headerRight}>
-            <DataTable
-              columns={[
-                { key: 'column', header: 'Column' },
-                { key: 'unique_values_count', header: 'Unique Values Count' },
-                { key: 'reason', header: 'Reason' }
-              ]}
-              rows={res?.high_cardinality_columns_dropped || []}
-            />
-          </PGSection>
-
-          <PGSection title="Missing Value Report" right={headerRight}>
-            <DataTable
-              columns={[
-                { key: 'column', header: 'Column' },
-                { key: 'kind', header: 'Type', render: r => <Badge tone="gray">{r.kind}</Badge> },
-                { key: 'missing', header: 'Missing Count' }
-              ]}
-              rows={[
-                ...Object.entries(res?.missing_numeric_column || {}).map(([column, missing]) => ({ column, missing, kind: 'numeric' })),
-                ...Object.entries(res?.missing_categorical_column || {}).map(([column, missing]) => ({ column, missing, kind: 'categorical' }))
-              ]}
-              getKey={r => `${r.kind}:${r.column}`}
-            />
-          </PGSection>
-        </div>
-      )
-    }
-
-    if (tabKey === 'feature_selection') {
-      return (
-        <div className="space-y-4">
-          {note}
-
-          <PGSection
-            title="Drop Low-Value Columns"
-            description="Remove columns with zero or excessively high uniqueness."
-            right={<PGToggler on={!!req.drop_high_uniqueness_active || !!req.drop_high_null_active} />}
-          >
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <PGField label="Columns to drop (manual)">
-                <ChipsWrap items={req.columns_to_drop_manually} />
-              </PGField>
-
-              <PGField label="High null filter" hint="Drop columns above null threshold">
-                <div className="space-y-2">
-                  <RadioRow label="Disabled" checked={!req.drop_high_null_active} />
-                  <RadioRow label="Enabled" checked={!!req.drop_high_null_active} />
-                  <div className="pt-1">
-                    <div className="text-[11px] text-gray-500 mb-1">Null threshold</div>
-                    <ReadOnlySelect value={req.null_threshold} />
-                  </div>
-                </div>
-              </PGField>
-
-              <PGField label="High uniqueness filter" hint="Drop columns beyond uniqueness threshold">
-                <div className="space-y-2">
-                  <RadioRow label="Disabled" checked={!req.drop_high_uniqueness_active} />
-                  <RadioRow label="Enabled" checked={!!req.drop_high_uniqueness_active} />
-                </div>
-              </PGField>
-            </div>
-          </PGSection>
-
-          <PGSection title="Handle Missing Values" description="Fix missing entries using dropping or imputation techniques.">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <PGField label="Imputation (by type)">
-                <ReadOnlySelect value={req.imputation_strategy_by_type ? 'Configured' : ''} placeholder="Not configured" />
-              </PGField>
-
-              <PGField label="Imputation (by column)">
-                <ReadOnlySelect value={req.imputation_strategy_by_column ? 'Configured' : ''} placeholder="Not configured" />
-              </PGField>
-
-              <PGField label="Outlier Detection" hint="Detect outliers as part of feature selection">
-                <div className="flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50 px-3 h-10">
-                  <div className="text-xs text-gray-700">Enabled</div>
-                  <PGToggler on={!!req.outlier_detection_active} />
-                </div>
-                <div className="mt-2">
-                  <div className="text-[11px] text-gray-500 mb-1">Method</div>
-                  <ReadOnlySelect value={req.outlier_detection_method} placeholder="—" />
-                </div>
-              </PGField>
-            </div>
-          </PGSection>
-
-          <PGSection title="Outlier Report" right={headerRight}>
-            <DataTable
-              columns={[
-                { key: 'age', header: 'Age' },
-                { key: 'gender', header: 'Gender' },
-                { key: 'marital_status', header: 'Marital Status' },
-                { key: 'annual_income', header: 'Annual Income' },
-                { key: 'credit_score', header: 'Credit Score' },
-                { key: 'num_dependents', header: 'Dependents' },
-                { key: 'years_as_customer', header: 'Years as Customer' },
-                { key: 'home_ownership', header: 'Home Ownership' },
-                { key: 'total_products_owned', header: 'Products Owned' },
-                { key: 'total_premium_amount', header: 'Total Premium' },
-                {
-                  key: 'outlier_columns',
-                  header: 'Outlier Columns',
-                  render: r => <span className="text-gray-800">{(r?.outlier_columns || []).join(', ') || '-'}</span>
-                },
-                {
-                  key: 'outlier_details',
-                  header: 'Outlier Details',
-                  render: r =>
-                    r?.outlier_details ? (
-                      <pre className="text-[11px] bg-gray-50 border border-gray-200 rounded-md p-2 overflow-auto max-w-[520px]">
-                        {JSON.stringify(r.outlier_details, null, 2)}
-                      </pre>
-                    ) : (
-                      '-'
-                    )
-                }
-              ]}
-              rows={res?.outlier_report || []}
-            />
-          </PGSection>
-        </div>
-      )
-    }
-
-    if (tabKey === 'feature_engineering') {
-      return (
-        <div className="space-y-4">
-          {note}
-
-          <PGSection
-            title="Outlier Treatment"
-            description="Handle outliers detected in your dataset."
-            right={<PGToggler on={!!req.outlier_treatment} />}
-          >
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <PGField label="Treatment strategy">
-                <div className="border border-gray-200 rounded-xl divide-y divide-gray-100">
-                  {['remove', 'cap_95', 'log_transform', 'sqrt_transform', 'normalize'].map(k => (
-                    <div key={k} className="px-3">
-                      <RadioRow
-                        label={
-                          k === 'remove'
-                            ? 'Remove'
-                            : k === 'cap_95'
-                              ? 'Cap 95%'
-                              : k === 'log_transform'
-                                ? 'Log Transform'
-                                : k === 'sqrt_transform'
-                                  ? 'Square Root Transform'
-                                  : 'Normalize'
-                        }
-                        checked={String(req.outlier_treatment_strategy || '').toLowerCase() === k}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-3">
-                  <div className="text-[11px] text-gray-500 mb-1">Threshold</div>
-                  <ReadOnlySelect value={req.outlier_threshold} />
-                </div>
-              </PGField>
-
-              <PGField label="Categorical Encoding" hint="Encode categorical features for modelling">
-                <div className="flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50 px-3 h-10">
-                  <div className="text-xs text-gray-700">Enabled</div>
-                  <PGToggler on={!!req.categorical_encoding} />
-                </div>
-                <div className="mt-3">
-                  <div className="text-[11px] text-gray-500 mb-1">Encoding method</div>
-                  <ReadOnlySelect value={req.categorical_encoding_method} placeholder="—" />
-                </div>
-                <div className="mt-3">
-                  <div className="text-[11px] text-gray-500 mb-1">Encoding base</div>
-                  <ReadOnlySelect value={req.categorical_encoding_base} placeholder="—" />
-                </div>
-              </PGField>
-            </div>
-          </PGSection>
-
-          <PGSection title="Skewness report" right={headerRight}>
-            <DataTable
-              columns={[
-                { key: 'feature', header: 'Feature', render: r => r.feature },
-                { key: 'skew', header: 'Skewness', render: r => r.skew }
-              ]}
-              rows={Object.entries(res?.skewness_report || {}).map(([feature, skew]) => ({ feature, skew }))}
-              getKey={r => r.feature}
-            />
-          </PGSection>
-        </div>
-      )
-    }
-
-    if (tabKey === 'advanced_transformation') {
-      return (
-        <div className="space-y-4">
-          {note}
-
-          <PGSection title="Correlation Graphs" description="Feature relationship visualization" right={headerRight}>
-            <ImagePanel
-              title="Correlation Plot"
-              base64Png={res?.correlation_plot}
-              emptyHint="Correlation plot was not returned for this run."
-            />
-          </PGSection>
-
-          <PGSection title="VIF analysis" description="Detect multicollinearity across features.">
-            <DataTable
-              columns={[
-                { key: 'Feature', header: 'Feature' },
-                { key: 'VIF', header: 'VIF', render: r => (r?.VIF !== null && r?.VIF !== undefined ? r.VIF : '-') },
-                {
-                  key: 'Multicollinearity_issue',
-                  header: 'Issue',
-                  render: r => (r?.Multicollinearity_issue ? <Badge tone="red">Yes</Badge> : <Badge tone="green">No</Badge>)
-                },
-                { key: 'Multicollinearity_Risk', header: 'Risk' }
-              ]}
-              rows={res?.vif_report || []}
-            />
-          </PGSection>
-        </div>
-      )
-    }
-
-    if (tabKey === 'statistical_analysis') {
-      return (
-        <div className="space-y-4">
-          {note}
-
-          <PGSection
-            title="What's Included?"
-            description={
-              <div className="text-[11px] text-gray-600">
-                <ul className="list-disc ml-5 space-y-1">
-                  <li>Correlation heatmap to show feature relationships</li>
-                  <li>VIF analysis to detect multicollinearity</li>
-                  <li>VIF column dropper to remove problematic features</li>
-                  <li>Risk assessment for each feature</li>
-                </ul>
-              </div>
-            }
-          >
-            <div />
-          </PGSection>
-
-          <PGSection title="Numerical Columns" right={headerRight}>
-            <Badges items={res?.numerical_columns || []} />
-          </PGSection>
-        </div>
-      )
-    }
-
-    if (tabKey === 'feature_importance') {
-      return (
-        <div className="space-y-4">
-          {note}
-
-          <PGSection title="Feature Importance Selection" description="Select features based on importance.">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <PGField label="Feature importance selection">
-                <div className="flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50 px-3 h-10">
-                  <div className="text-xs text-gray-700">Enabled</div>
-                  <PGToggler on={!!req.feature_importance_selection} />
-                </div>
-              </PGField>
-
-              <PGField label="Method">
-                <ReadOnlySelect value={req.method} placeholder="—" />
-              </PGField>
-
-              <PGField label="Sub-method">
-                <ReadOnlySelect value={req.sub_method} placeholder="—" />
-              </PGField>
-
-              <PGField label="Number of features">
-                <ReadOnlySelect value={req.n_features} placeholder="—" />
-              </PGField>
-            </div>
-          </PGSection>
-
-          <PGSection title="Dimensionality Reduction" description="Reduce feature dimensions.">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <PGField label="Dimensionality reduction">
-                <div className="flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50 px-3 h-10">
-                  <div className="text-xs text-gray-700">Enabled</div>
-                  <PGToggler on={!!req.dimensionality_reduction} />
-                </div>
-              </PGField>
-
-              <PGField label="Reduction method">
-                <ReadOnlySelect value={req.dimensionality_reduction_method} placeholder="—" />
-              </PGField>
-
-              <PGField label="N components">
-                <ReadOnlySelect value={req.n_components} placeholder="—" />
-              </PGField>
-            </div>
-          </PGSection>
-
-          <PGSection title="Top Features" right={headerRight}>
-            <Badges items={res?.numerical_columns || []} />
-          </PGSection>
-        </div>
-      )
-    }
-
-    // if (tabKey === 'imbalance_handling') {
-    //   return (
-    //     <div className="space-y-4">
-    //       {note}
-
-    //       <PGSection title="Imbalance Handling" description="Address class imbalance in the dataset.">
-    //         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-    //           <PGField label="Imbalance handling">
-    //             <div className="flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50 px-3 h-10">
-    //               <div className="text-xs text-gray-700">Enabled</div>
-    //               <PGToggler on={!!req.imbalance_handling} />
-    //             </div>
-    //           </PGField>
-
-    //           <PGField label="Method">
-    //             <ReadOnlySelect value={req.imbalance_handling_method} placeholder="—" />
-    //           </PGField>
-
-    //           <PGField label="Use class weights">
-    //             <div className="flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50 px-3 h-10">
-    //               <div className="text-xs text-gray-700">Enabled</div>
-    //               <PGToggler on={!!req.use_class_weights} />
-    //             </div>
-    //           </PGField>
-
-    //           <PGField label="Sampling strategy">
-    //             <ReadOnlySelect value={req.sampling_strategy} placeholder="—" />
-    //           </PGField>
-    //         </div>
-    //       </PGSection>
-
-    //       <PGSection title="Data Preview (after imbalance handling)" right={headerRight}>
-    //         <PrettyJson obj={res?.cleaned_df_preview || []} />
-    //       </PGSection>
-    //     </div>
-    //   )
-    // }
-
-    // Default fallback: show nothing except note + a small empty (no raw JSON)
     return (
       <div className="space-y-4">
         {note}
-        <Empty title="No Playground view yet" hint="This step has no dedicated UI yet." />
+        {renderStep()}
       </div>
     )
   }
@@ -1080,9 +741,6 @@ function Parameters({ modelData }) {
                   }`}
                 >
                   {tab.label}
-                  <span className="ml-2 text-[11px] font-semibold text-gray-500">
-                    ({tabCounts[tab.key] ?? 0})
-                  </span>
                 </button>
               ))}
             </nav>
