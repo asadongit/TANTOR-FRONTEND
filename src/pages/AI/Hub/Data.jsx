@@ -188,7 +188,7 @@ const Data = () => {
         </span>
       ),
     },
-    {key: 'description', label: 'Description', sortable: true },
+    { key: 'description', label: 'Description', sortable: true },
     { key: 'row_count', label: 'Rows', sortable: true },
     { key: 'column_count', label: 'Columns', sortable: true },
     { key: 'status', label: 'Status', sortable: true },
@@ -337,7 +337,7 @@ const Data = () => {
 
       const ingestionData = await ingestionResponse.json();
 
-      setLoadingMessage('Opening AI Canvas...');
+      setLoadingMessage('Opening AI Playground...');
 
       setDatasetState(prev => ({
         ...prev,
@@ -358,8 +358,10 @@ const Data = () => {
         limit: 5,
       });
     } catch (err) {
-      console.error('AI Canvas error:', err);
-      alert(err.message || 'Failed to open AI Canvas');
+      toast.error('Failed to open AI Canvas', {
+        duration: 4000,
+        position: 'top-right',
+      });
       setAiCanvasLoading(false);
     } finally {
     }
@@ -661,12 +663,12 @@ const Data = () => {
                           <span className="text-xs text-gray-500 mx-4">
                             {item.accessed_at
                               ? item.accessed_at.toLocaleString('en-GB', {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: '2-digit',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })
+                                year: 'numeric',
+                                month: 'short',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
                               : ''}
                           </span>
                           <button className="p-1 hover:bg-gray-100 rounded">
@@ -715,7 +717,7 @@ const Data = () => {
           <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
             <div className="flex flex-col items-center">
               <Loader2 className="w-16 h-16 text-[#8e78b7] animate-spin mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading AI Canvas</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Opening AI Playground</h3>
               <p className="text-gray-600 text-center">{loadingMessage}</p>
             </div>
           </div>
