@@ -1,30 +1,110 @@
 import { FileText, Database, FolderKanban, Box, Bot, Scale, Lightbulb, ChevronRight, ArrowUp, ArrowDown, Info, Activity, AlertTriangle } from 'lucide-react';
 import { PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAIPlayground } from '../../context/AIPlaygroundContext';
+import { useAuth } from '../../context/AuthContext';
 
 const Dashboard = () => {
-
+  const navigate = useNavigate();
   const { setMode } = useAIPlayground();
+  const { token, decodedToken } = useAuth();
+  const hostnameAI = window._env_?.VITE_AI_API;
+
+  const [modelLifecycleData, setModelLifecycleData] = useState([]);
+  const [recentActivityData, setRecentActivityData] = useState([]);
+  const [summaryData, setSummaryData] = useState({});
+
+  const getColorForStatus = (status) => {
+    switch (status) {
+      case 'Deployed': return '#F97316';
+      case 'Saved': return '#3B82F6';
+      case 'Archived': return '#6B7280';
+      default: return '#9CA3AF';
+    }
+  };
+
+  const truncateName = (name, maxLength = 30) => {
+    return name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
+  };
 
   useEffect(() => {
-    setMode('write')
+    setMode('write');
   }, []);
 
-  const statsData = [
-    { label: 'Sources', value: '07', icon: FileText, trend: 'up' },
-    { label: 'Size (GB)', value: '70', icon: Database, trend: 'up' },
-    { label: 'Projects', value: '61', icon: FolderKanban, trend: 'up' },
-    { label: 'Models', value: '273', icon: Box, trend: 'up' },
-    { label: 'Agents', value: '27', icon: Bot, trend: 'up' },
-    { label: 'Fairness', value: '0.9', icon: Scale, trend: 'up' },
-  ];
+  useEffect(() => {
+    const fetchLifecycle = async () => {
+      try {
+        const response = await fetch(`${hostnameAI}/canvas/models/lifecycle`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        const data = await response.json();
+        const transformedData = Object.entries(data.model_status_counts).map(([status, { count, percentage }]) => ({
+          name: status,
+          value: count,
+          percentage: percentage,
+          color: getColorForStatus(status)
+        }));
+        setModelLifecycleData(transformedData);
+      } catch (error) {
+        console.error('Error fetching model lifecycle:', error);
+      }
+    };
+    fetchLifecycle();
+  }, [hostnameAI, token]);
 
-  const modelLifecycleData = [
-    { name: 'Deployed', value: 40, color: '#F97316' },
-    { name: 'Training', value: 25, color: '#FBBF24' },
-    { name: 'Active', value: 20, color: '#3B82F6' },
-    { name: 'In-Active', value: 15, color: '#1E3A8A' },
+  useEffect(() => {
+    const fetchRecentActivity = async () => {
+      try {
+        const response = await fetch(`${hostnameAI}/canvas/recent-access`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        const data = await response.json();
+        const transformedData = data.map(item => ({
+          name: item.name,
+          status: item.status,
+          entity_type: item.entity_type,
+          entity_id: item.entity_id
+        }));
+        setRecentActivityData(transformedData);
+      } catch (error) {
+        console.error('Error fetching recent activity:', error);
+      }
+    };
+    fetchRecentActivity();
+  }, [hostnameAI, token]);
+
+  useEffect(() => {
+    const fetchSummary = async () => {
+      try {
+        const response = await fetch(`${hostnameAI}/canvas/summary`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        const data = await response.json();
+        setSummaryData(data);
+      } catch (error) {
+        console.error('Error fetching summary:', error);
+      }
+    };
+    fetchSummary();
+  }, [hostnameAI, token]);
+
+  const statsData = [
+    { label: 'Sources', value: summaryData.counts?.sources?.current || '0', icon: FileText, trend: summaryData.counts?.sources?.trend === 'increased' ? 'up' : 'down' },
+    { label: 'Size (GB)', value: summaryData.metrics?.total_dataset_size_gb?.current?.toFixed(2) || '0', icon: Database, trend: summaryData.metrics?.total_dataset_size_gb?.trend === 'increased' ? 'up' : 'down' },
+    { label: 'Projects', value: summaryData.counts?.projects?.current || '0', icon: FolderKanban, trend: summaryData.counts?.projects?.trend === 'increased' ? 'up' : 'down' },
+    { label: 'Models', value: summaryData.counts?.models?.current || '0', icon: Box, trend: summaryData.counts?.models?.trend === 'increased' ? 'up' : 'down' },
+    { label: 'Datasets', value: summaryData.counts?.datasets?.current || '0', icon: Bot, trend: summaryData.counts?.datasets?.trend === 'increased' ? 'up' : 'down' },
+    { label: 'Fairness', value: '0', icon: Scale, },
   ];
 
   const tokenUsageData = [
@@ -37,14 +117,13 @@ const Dashboard = () => {
     { month: 'Jul', usage: 3.9 },
   ];
 
-  const driftAlerts = [
-    { name: 'Project_churn_v4', issue: 'Data drift', value: '8%', trend: 'down' },
-    { name: 'Project_churn_v9', issue: 'Algorithm bias', value: '20%', trend: 'down' },
-    { name: 'Project_churn_v5', issue: 'Feature instability', value: '12%', trend: 'up' },
-    { name: 'Project_churn_v6', issue: 'User disengagement', value: '15%', trend: 'up' },
-    { name: 'Project_churn_v8', issue: 'Data quality issues', value: '5%', trend: 'up' },
-    { name: 'Project_churn_v8', issue: '', value: '', trend: null },
-  ];
+  const driftAlerts = summaryData.recent_drift_alerts?.map(alert => ({
+    name: truncateName(alert.model_name),
+    type: alert.alert_type,
+    model_id: alert.model_id,
+    model_name: alert.model_name,
+    severity: alert.severity
+  })) || [];
 
   const popularUseCases = [
     { name: 'UC_Churn' },
@@ -58,14 +137,6 @@ const Dashboard = () => {
     { name: 'Data Analysts', description: 'analyzing data trends', rating: 4.2 },
     { name: 'System Administrators', description: 'managing IT infrastructure', rating: 4.7 },
     { name: 'Cybersecurity Experts', description: 'protecting against threats', rating: 4.9 },
-  ];
-
-  const recentActivity = [
-    { name: 'Pm_Churn_Rec', status: null },
-    { name: 'Pm_Churn_Campgain', status: 'Archived' },
-    { name: 'Dg_Agent', status: 'Deployed' },
-    { name: 'PII_Agent', status: 'Deployed' },
-    { name: 'Orcl_Cust', status: 'Deployed' },
   ];
 
   const StatCard = ({ label, value, icon: Icon, trend }) => (
@@ -117,7 +188,41 @@ const Dashboard = () => {
     switch (status) {
       case 'Deployed': return 'bg-orange-500';
       case 'Archived': return 'bg-gray-400';
+      case 'active': return 'bg-orange-500';
       default: return 'bg-gray-200';
+    }
+  };
+
+  const handleRecentActivityClick = async (activity) => {
+    const { entity_type, entity_id, name } = activity;
+    try {
+      if (entity_type === 'data') {
+        const response = await fetch(`${hostnameAI}/canvas/list_data_info?data_id=${encodeURIComponent(entity_id)}`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'accept': 'application/json' }
+        });
+        if (!response.ok) throw new Error('Failed to fetch dataset');
+        const data = await response.json();
+        const dataset = Array.isArray(data) ? data[0] : data;
+        navigate(`/ai/hub/data/library/${encodeURIComponent(entity_id)}`, { state: { datasetData: dataset } });
+      } else if (entity_type === 'model') {
+        const response = await fetch(`${hostnameAI}/canvas/model_list?model_id=${encodeURIComponent(entity_id)}`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'accept': 'application/json' }
+        });
+        if (!response.ok) throw new Error('Failed to fetch model');
+        const data = await response.json();
+        const model = Array.isArray(data) ? data[0] : data;
+        navigate('/ai/hub/models/library', { state: { modelData: model } });
+      } else if (entity_type === 'project') {
+        const response = await fetch(`${hostnameAI}/canvas/project_list/?project_id=${encodeURIComponent(entity_id)}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Failed to fetch project');
+        const data = await response.json();
+        const project = Array.isArray(data) ? data[0] : data;
+        navigate(`/ai/hub/projects/${entity_id}/library`, { state: { ProjectData: project } });
+      }
+    } catch (error) {
+      console.error(`Error opening ${entity_type} library for ${name}:`, error);
     }
   };
 
@@ -140,20 +245,12 @@ const Dashboard = () => {
               </div>
               <span className="text-gray-700 font-medium">Accuracy</span>
             </div>
-            <div className="flex justify-around">
-              <div className="text-center">
-                <p className="text-sm text-gray-500">Model</p>
-                <p className="text-2xl font-bold text-orange-500 flex items-center justify-center">
-                  87% <ArrowDown className="w-4 h-4 ml-1" />
-                </p>
-              </div>
-              <div className="border-l border-gray-200"></div>
-              <div className="text-center">
-                <p className="text-sm text-gray-500">Agents</p>
-                <p className="text-2xl font-bold text-orange-500 flex items-center justify-center">
-                  97% <ArrowDown className="w-4 h-4 ml-1" />
-                </p>
-              </div>
+            <div className="text-center">
+              <p className="text-sm text-gray-500">Model</p>
+              <p className="text-2xl font-bold text-orange-500 flex items-center justify-center">
+                {summaryData.metrics?.avg_model_accuracy?.current ? `${(summaryData.metrics.avg_model_accuracy.current * 100).toFixed(1)}%` : '0%'}
+                {summaryData.metrics?.avg_model_accuracy?.trend === 'decreased' ? <ArrowDown className="w-4 h-4 ml-1" /> : <ArrowUp className="w-4 h-4 ml-1" />}
+              </p>
             </div>
           </div>
         </div>
@@ -163,7 +260,7 @@ const Dashboard = () => {
         <ChartCard
           title="Model Lifecycle"
           icon={Box}
-          infoText="Shows the distribution of models across different lifecycle stages: Deployed, Training, Active, and Inactive."
+          infoText="Shows the distribution of models across different lifecycle stages: Saved, Deployed, and Archived."
         >
           <div className="flex items-center justify-center">
             <PieChart width={180} height={180}>
@@ -179,6 +276,7 @@ const Dashboard = () => {
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
+              <Tooltip formatter={(value, name, props) => [`${value} (${props.payload.percentage}%)`, name]} />
             </PieChart>
           </div>
           <div className="flex justify-center gap-4 mt-4 flex-wrap">
@@ -229,15 +327,19 @@ const Dashboard = () => {
             {driftAlerts.map((alert, index) => (
               <div key={index} className="flex justify-between items-center">
                 <div>
-                  <p className="text-sm font-medium text-gray-700">{alert.name}</p>
-                  <p className="text-xs text-gray-400">{alert.issue}</p>
-                </div>
-                {alert.value && (
-                  <span className={`text-sm font-medium flex items-center ${alert.trend === 'up' ? 'text-green-500' : 'text-orange-500'}`}>
-                    {alert.value}
-                    {alert.trend === 'up' ? <ArrowUp className="w-3 h-3 ml-1" /> : <ArrowDown className="w-3 h-3 ml-1" />}
+                  <span
+                    className="text-sm font-medium text-gray-700 cursor-pointer hover:underline"
+                    onClick={() => handleRecentActivityClick({ entity_type: 'model', entity_id: alert.model_id, name: alert.model_name })}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && handleRecentActivityClick({ entity_type: 'model', entity_id: alert.model_id, name: alert.model_name })}
+                    title={alert.model_name}
+                  >
+                    {alert.name}
                   </span>
-                )}
+                  <p className="text-xs text-gray-400">{alert.type}</p>
+                </div>
+                <span className="text-sm font-medium text-orange-500">{alert.severity}</span>
               </div>
             ))}
           </div>
@@ -296,9 +398,18 @@ const Dashboard = () => {
           infoText="Latest activities and deployments in workspace."
         >
           <div className="space-y-3">
-            {recentActivity.map((activity, index) => (
+            {recentActivityData.map((activity, index) => (
               <div key={index} className="flex justify-between items-center">
-                <span className="text-sm text-gray-700">{activity.name}</span>
+                <span
+                  className="text-sm text-gray-700 cursor-pointer hover:underline"
+                  onClick={() => handleRecentActivityClick(activity)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && handleRecentActivityClick(activity)}
+                  title={activity.name}
+                >
+                  {truncateName(activity.name)}
+                </span>
                 {activity.status && (
                   <span className={`text-xs px-3 py-1 rounded-md text-white ${getStatusColor(activity.status)}`}>
                     {activity.status}
