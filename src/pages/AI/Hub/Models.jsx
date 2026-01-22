@@ -42,15 +42,12 @@ function Models() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deployModalOpen, setDeployModalOpen] = useState(false);
-  const [deployLoading, setDeployLoading] = useState(false);
-  const [deployResult, setDeployResult] = useState(null);
-  const [deployError, setDeployError] = useState(null);
   const [deployTarget, setDeployTarget] = useState(null);
   const hostnameAI = window._env_?.VITE_AI_API;
   const { token, decodedToken } = useAuth();
   const [isCanvasLoading, setIsCanvasLoading] = useState(false);
-  const { setWorkflowState, setDatasetState, setMode, setModelState, setProjectState } = useAIPlayground();
-    const [dashboardLoading, setDashboardLoading] = useState(false);
+  const { setWorkflowState, setDatasetState, setMode, setModelState, setProjectState, setSchedulerState } = useAIPlayground();
+  const [dashboardLoading, setDashboardLoading] = useState(false);
 
 
   useEffect(() => {
@@ -69,7 +66,7 @@ function Models() {
         const data = await response.json();
 
         const mappedData = (Array.isArray(data) ? data : []).map((item, index) => ({
-          _raw: item, // keep full backend payload for downstream pages
+          _raw: item,
           id: item.id,
           sno: index + 1,
           run_name: item.run_name,
@@ -256,7 +253,6 @@ function Models() {
   };
 
   const handleRefresh = () => {
-    // CHANGED: refresh table + stats; no artificial timeout
     setRefreshTrigger((prev) => prev + 1);
     setDashboardRefreshTrigger((prev) => prev + 1);
   };
@@ -349,39 +345,38 @@ function Models() {
     }
   };
 
-  // Deploy action handler
-  const handleDeploy = async (row) => {
+  const handleDeploy = (row) => {
     setDeployTarget(row);
     setDeployModalOpen(true);
-    setDeployLoading(true);
-    setDeployResult(null);
-    setDeployError(null);
+  };
+
+  const confirmDeploy = () => {
+    if (!deployTarget) return;
+
     try {
-      const modelName = row?.run_name || row?._raw?.run_name;
-      const resp = await fetch(
-        `${hostnameAI}/quick/deploy-quick-action?model_name=${encodeURIComponent(modelName)}`,
-        {
-          headers:
-            {
-              Authorization: `Bearer ${token}`,
-              accept: "application/json",
-            },
-        }
-      );
-      const data = await resp.json();
-      if (resp.ok && data.success) {
-        setDeployResult(data);
-      } else {
-        setDeployError(data?.message || "Deployment failed");
-      }
+      const raw = deployTarget?._raw ?? deployTarget;
+
+      setSchedulerState(prev => ({
+        ...prev,
+        projectName: raw.project_name || "",
+        projectId: raw.project_id || "",
+        modelName: raw.run_name || "",
+        modelId: raw.id || "",
+      }));
+
+      setMode('schedule')
+
+      setDeployModalOpen(false);
+      setDeployTarget(null);
+
+      navigate("/ai/orchestration/new");
     } catch (err) {
-      setDeployError(err.message || "Deployment failed");
-    } finally {
-      setDeployLoading(false);
+      console.error("Error during deploy:", err);
+      alert("Failed to navigate to deployment page");
     }
   };
 
-    const openModelLibrary = useCallback(
+  const openModelLibrary = useCallback(
     (row) => {
       const raw = row?._raw ?? row;
       navigate("/ai/hub/models/library", {
@@ -463,7 +458,7 @@ function Models() {
 
           const ingestionData = await ingestionResponse.json();
 
-          setModelState({selectedModel: modelData.model_name });
+          setModelState({ selectedModel: modelData.model_name });
 
           setProjectState(prev => ({ ...prev, selectedProject: modelData.project_name }));
 
@@ -667,41 +662,59 @@ function Models() {
 
   const DeployModal = () => {
     if (!deployModalOpen) return null;
+
+    const modelName = deployTarget?.run_name || deployTarget?._raw?.run_name || "this model";
+    const projectName = deployTarget?.project_name || deployTarget?._raw?.project_name || "Unknown Project";
+
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-        <div className="relative bg-white rounded-lg max-w-md w-full mx-4 p-6 shadow-xl">
-          <div className="text-lg font-semibold mb-2">Deploy Model</div>
-          {deployLoading && (
-            <div className="flex flex-col items-center py-6">
-              <Loader2 className="w-12 h-12 text-purple-500 animate-spin mb-3" />
-              <span className="text-gray-700">Deploying model...</span>
+        <div className="relative bg-white rounded-lg max-w-2xl w-full mx-4 p-6 shadow-xl">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
+              <Rocket className="w-6 h-6 text-[#8e78b7]" />
             </div>
-          )}
-          {!deployLoading && deployResult && (
-            <div className="flex flex-col items-center py-6">
-              <Icon icon="material-symbols:check-circle-outline" className="w-12 h-12 text-green-500 mb-2" />
-              <span className="text-green-700 font-medium mb-1">Deployment Successful!</span>
-              <div className="text-xs text-gray-500 text-center">
-                Model: <b>{deployResult.model_name}</b>
-                <br />
-                Project: <b>{deployResult.project_name}</b>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Deploy Model</h3>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Project:</span>
+                <span className="text-sm font-medium text-gray-900" title={projectName}>
+                  {projectName}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Model:</span>
+                <span className="text-sm font-medium text-gray-900" title={modelName}>
+                  {modelName}
+                </span>
               </div>
             </div>
-          )}
-          {!deployLoading && deployError && (
-            <div className="flex flex-col items-center py-6">
-              <Icon icon="material-symbols:error-outline" className="w-12 h-12 text-red-500 mb-2" />
-              <span className="text-red-700 font-medium mb-1">Deployment Failed</span>
-              <div className="text-xs text-gray-500 text-center">{deployError}</div>
-            </div>
-          )}
-          <div className="mt-4 flex justify-end">
+          </div>
+
+          <p className="text-sm text-gray-600 mb-6">
+            Are you sure you want to deploy this model? You will be redirected to the orchestration page to configure the deployment.
+          </p>
+
+          <div className="flex gap-3 justify-end">
             <button
-              className="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700"
-              onClick={() => setDeployModalOpen(false)}
-              disabled={deployLoading}
+              className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
+              onClick={() => {
+                setDeployModalOpen(false);
+                setDeployTarget(null);
+              }}
             >
-              Close
+              Cancel
+            </button>
+            <button
+              className="px-4 py-2 rounded-lg bg-[#8e78b7] text-white font-medium flex items-center gap-2"
+              onClick={confirmDeploy}
+            >
+              <Rocket className="w-4 h-4" />
+              Deploy
             </button>
           </div>
         </div>
@@ -741,7 +754,6 @@ function Models() {
     );
   };
 
-  // ADD: map iconify names -> lucide icons for consistent card header icon
   const metricIcon = (key) => {
     switch (key) {
       case "models":
@@ -759,11 +771,9 @@ function Models() {
     }
   };
 
-  // ADD: tiny fallback icon to avoid extra imports; uses existing lucide "Info" shape if needed
   const CheckCircleFallback = (props) => <Info {...props} />;
 
   const statsCards = useMemo(() => {
-    // keep null values while loading (matches Projects skeleton behavior)
     const [m1, m2, m3, m4, m5] = metricsData || [];
     return [
       { key: "models", label: "Models", value: m1?.value ?? null, trend: m1?.trend ?? null, trendValue: m1?.trendValue ?? null, icon: metricIcon("models") },
@@ -842,7 +852,6 @@ function Models() {
 
       {viewMode !== "list" && (
         <>
-          {/* REPLACE: Models stats area to match Projects UI */}
           <div className="bg-gradient-to-r from-[#8e78b7] via-purple-300 to-purple-100 rounded-xl p-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               {statsCards.map((stat) => (
@@ -860,7 +869,6 @@ function Models() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-1">
-              {/* REPLACE: <ModelFlowDiagram data={modelFlowData} /> */}
               <ModelFlow />
             </div>
             <div>
@@ -893,7 +901,6 @@ function Models() {
         loading={deleteLoading}
         confirmText="Delete"
       />
-      {/* Deploy Modal */}
       <DeployModal />
       {isCanvasLoading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

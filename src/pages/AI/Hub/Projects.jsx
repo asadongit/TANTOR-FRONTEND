@@ -244,6 +244,7 @@ const Projects = () => {
             key: 'sno',
             label: 'S.No',
             sortable: false,
+            width: '100px',
             render: (_row, idx) => idx + 1,
         },
         {
