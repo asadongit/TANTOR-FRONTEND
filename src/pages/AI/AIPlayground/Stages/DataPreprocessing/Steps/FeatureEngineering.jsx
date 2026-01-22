@@ -98,8 +98,7 @@ function FeatureEngineering({ onApiCall }) {
     const hasCategoricalColumns = categoricalColumns.length > 0;
 
     const detectOutliersEnabled = workflowState?.dataPreprocessing?.step2?.config?.toggles?.detectOutliers || false;
-    const outlierReport = workflowState?.dataPreprocessing?.step2?.apiResponse?.outlier_report || [];
-    const outlierCount = outlierReport.length;
+    const outlierCount = workflowState?.dataPreprocessing?.step2?.apiResponse?.outlier_count || 0;
     const hasOutliers = detectOutliersEnabled && outlierCount > 0;
 
     const isOutlierTreatmentDisabled = !hasOutliers;

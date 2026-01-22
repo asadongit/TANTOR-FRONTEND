@@ -423,7 +423,7 @@ export function AIPlaygroundLayout({
             )}
 
             <div className="bg-white rounded-md px-6 py-3">
-                <div className="flex items-center justify-between max-w-7xl mx-auto">
+                <div className="flex items-center justify-between w-full">
                     <div className="flex items-center gap-3">
                         <button onClick={() => navigate('/ai/playground')} className="text-gray-600 hover:text-gray-900">
                             <ChevronLeft size={24} />
@@ -470,7 +470,7 @@ export function AIPlaygroundLayout({
 
             {isEnsemble && models.length > 0 && (
                 <div className="bg-white rounded-md px-6 py-3">
-                    <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+                    <div className="w-full flex items-center justify-between gap-2">
                         <div className="flex items-center gap-3">
                             {models.map((model, index) => (
                                 <div
@@ -526,7 +526,7 @@ export function AIPlaygroundLayout({
             )}
 
             <div className="bg-white rounded-md px-6 pt-3 pb-4 relative overflow-hidden">
-                <div className="max-w-7xl mx-auto">
+                <div className="w-full">
                     <div className="flex items-center justify-between">
                         {visibleStages.map((stage, index) => {
                             const IconComponent = stage.icon;
@@ -582,12 +582,12 @@ export function AIPlaygroundLayout({
             </div>
 
             <div className='flex flex-col'>
-                <div className='bg-white flex-1 p-4'>
+                <div className='bg-white flex-1 p-6'>
                     {children}
                 </div>
 
                 <div className="bg-white border-t border-gray-200 px-6 py-4">
-                    <div className="max-w-7xl mx-auto flex justify-between items-center">
+                    <div className="w-full flex justify-between items-center">
                         {!(isOnStep7 && isStep7Preview) && !isDeploymentStage ? (
                             shouldShowCancel ? (
                                 <button
