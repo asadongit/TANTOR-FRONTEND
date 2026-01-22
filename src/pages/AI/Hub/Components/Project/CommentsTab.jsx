@@ -378,7 +378,7 @@ const CommentsTab = ({ projectData }) => {
                     <button
                         type="button"
                         onClick={() => openReplies(row.__raw)}
-                        className="inline-flex items-center gap-2 px-2.5 py-1 border border-gray-200 rounded-lg text-xs hover:bg-gray-50"
+                        className="inline-flex items-center gap-2 px-2.5 py-1 border border-[#8e78b7]  rounded-lg text-xs hover:bg-gray-50"
                         title="View replies"
                     >
                         <MessageSquare className="w-4 h-4 text-gray-500" />

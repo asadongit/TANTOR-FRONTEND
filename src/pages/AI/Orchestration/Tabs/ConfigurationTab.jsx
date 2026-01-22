@@ -99,7 +99,7 @@ const SearchableSelect = ({ label, value, options, field, onChange, isLoading = 
 };
 
 const ConfigurationTab = () => {
-    const { schedulerState, setSchedulerState } = useAIPlayground();
+    const { schedulerState, setSchedulerState, mode } = useAIPlayground();
 
     const [projects, setProjects] = useState([]);
     const [models, setModels] = useState([]);
@@ -272,6 +272,19 @@ const ConfigurationTab = () => {
             position: 'top-right',
         });
     };
+
+    useEffect(() => {
+        if (schedulerState.projectName && schedulerState.modelName) {
+
+            setSchedulerState(prev => ({
+                ...prev,
+                project: schedulerState.projectName,
+                project_id: schedulerState.projectId,
+                model: schedulerState.modelName,
+                model_id: schedulerState.modelId
+            }));
+        }
+    }, [mode]);
 
     const isGenerateSummaryDisabled = () => {
         const commonFieldsFilled =
@@ -576,6 +589,11 @@ const ConfigurationTab = () => {
         }))
     ];
 
+    const isPreFilledFromDeploy =
+        mode === 'schedule' &&
+        schedulerState.projectName &&
+        schedulerState.modelName;
+
     return (
         <div className="max-w-6xl space-y-6">
             <div>
@@ -630,23 +648,54 @@ const ConfigurationTab = () => {
                 <h2 className="text-base font-bold text-gray-900 mb-4">Model Configuration </h2>
                 <div className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <SearchableSelect
-                            label="Project"
-                            value={schedulerState.project}
-                            options={projectOptions}
-                            field="project"
-                            onChange={handleInputChange}
-                            isLoading={loadingProjects}
-                        />
-                        <SearchableSelect
-                            label="Model"
-                            value={schedulerState.model}
-                            options={modelOptions}
-                            field="model"
-                            onChange={handleInputChange}
-                            isLoading={loadingModels}
-                            isDisabled={!schedulerState.project || schedulerState.project === ''}
-                        />
+                        {isPreFilledFromDeploy ? (
+                            // Read-only text input when in schedule mode
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                                    Project <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={schedulerState.project}
+                                    readOnly
+                                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm bg-gray-50 text-gray-700 cursor-not-allowed focus:outline-none"
+                                />
+                            </div>
+                        ) : (
+                            <SearchableSelect
+                                label="Project"
+                                value={schedulerState.project}
+                                options={projectOptions}
+                                field="project"
+                                onChange={handleInputChange}
+                                isLoading={loadingProjects}
+                            />
+                        )}
+
+                        {isPreFilledFromDeploy ? (
+                            // Read-only text input when in schedule mode
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                                    Model <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={schedulerState.model}
+                                    readOnly
+                                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm bg-gray-50 text-gray-700 cursor-not-allowed focus:outline-none"
+                                />
+                            </div>
+                        ) : (
+                            <SearchableSelect
+                                label="Model"
+                                value={schedulerState.model}
+                                options={modelOptions}
+                                field="model"
+                                onChange={handleInputChange}
+                                isLoading={loadingModels}
+                                isDisabled={!schedulerState.project || schedulerState.project === ''}
+                            />
+                        )}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <SearchableSelect
@@ -755,7 +804,7 @@ const ConfigurationTab = () => {
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Start Date & Time <span className="text-red-500">*</span></label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Schedule Date & Time <span className="text-red-500">*</span></label>
                         <div className="relative">
                             <input
                                 type="text"

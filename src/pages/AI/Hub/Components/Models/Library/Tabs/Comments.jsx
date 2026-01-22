@@ -305,7 +305,7 @@ const Comments = (modelData) => {
                     <button
                         type="button"
                         onClick={() => openReplies(row.__raw)}
-                        className="inline-flex items-center gap-2 px-2.5 py-1 border border-gray-200 rounded-lg text-xs hover:bg-gray-50"
+                        className="inline-flex items-center gap-2 px-2.5 py-1 border border-[#8e78b7]  rounded-lg text-xs hover:bg-gray-50"
                         title="View replies"
                     >
                         <MessageSquare className="w-4 h-4 text-gray-500" />
@@ -418,20 +418,6 @@ const Comments = (modelData) => {
                         />
                     </div>
 
-                    <div className="min-w-[160px]">
-                        <label className="block text-xs text-gray-600 mb-1">Sort by</label>
-                        <select
-                            value={filters.sortBy}
-                            onChange={(e) => setFilters((s) => ({ ...s, sortBy: e.target.value }))}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
-                        >
-                            <option value="date">Date</option>
-                            <option value="user">User</option>
-                            <option value="subject">Subject</option>
-                            <option value="component">Component</option>
-                            <option value="replies">Replies</option>
-                        </select>
-                    </div>
 
                     <div className="flex-1 min-w-[220px]">
                         <label className="block text-xs text-gray-600 mb-1">&nbsp;</label>

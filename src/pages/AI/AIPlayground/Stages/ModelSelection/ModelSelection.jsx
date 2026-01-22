@@ -539,7 +539,11 @@ function ModelSelection() {
                         )}
                     </div>
 
-                    <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-2 custom-scrollbar">
+                    <div className={`space-y-4 ${
+                        filteredAlgorithms.length > 4 
+                            ? 'max-h-[calc(100vh-280px)] overflow-y-auto pr-2 custom-scrollbar' 
+                            : 'min-h-[500px]'
+                    }`}>
                         {filteredAlgorithms.length === 0 ? (
                             <div className="text-center py-12">
                                 <p className="text-gray-500 text-sm">No algorithms found matching "{searchQuery}"</p>
