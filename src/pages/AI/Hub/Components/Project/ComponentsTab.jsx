@@ -232,62 +232,61 @@ const ComponentsTab = ({ projectData }) => {
         },
     ];
 
-    // Columns for datasets
     const datasetColumns = [
-        { key: 'dataset_id', label: 'ID', sortable: true, width: '80px' },
+        { key: 'sno', label: 'Sno', sortable: true, width: '90px', render: (row, index) => index + 1 },
         {
             key: 'dataset_name',
             label: 'Name',
             sortable: true,
+            width: '300px',
             render: (row) => (
                 <span
-                    className={`block text-[#8e78b7] hover:underline cursor-pointer whitespace-normal break-words ${entityNavLoading ? 'opacity-60 pointer-events-none' : ''}`}
-                    style={{ overflowWrap: 'anywhere' }}
-                    title={row.dataset_name ?? ''}
+                    className={`block min-w-0 whitespace-normal break-words text-[#8e78b7] hover:underline cursor-pointer ${entityNavLoading ? 'opacity-60 pointer-events-none' : ''}`}
                     onClick={() => openDatasetLibraryFromComponents(row)}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => e.key === 'Enter' && openDatasetLibraryFromComponents(row)}
+                    title={row.dataset_name ?? ''}
+                    style={{ overflowWrap: 'anywhere' }}
                 >
                     {row.dataset_name}
                 </span>
             ),
         },
-        { key: 'row_count', label: 'Rows', sortable: true },
-        { key: 'column_count', label: 'Columns', sortable: true },
-        { key: 'status', label: 'Status', sortable: true },
         { key: 'created_at', label: 'Created Date', sortable: true, render: (row) => row.created_at ? new Date(row.created_at).toLocaleDateString('en-GB') : '—' },
+        { key: 'size_mb', label: 'Size', width: '100px', sortable: true, render: (row) => (row?.size_mb ?? row?.size_mb === 0) ? `${row.size_mb} MB` : '' },
+        { key: 'row_count', width: '100px', label: 'Rows', sortable: true },
+        { key: 'column_count', width: '100px', label: 'Columns', sortable: true },
+        { key: 'status', label: 'Status', sortable: true },
         // { label: 'Action', sortable: false, width: '100px' },
     ];
 
-    // Columns for models
     const modelColumns = [
-        { key: 'model_id', label: 'ID', sortable: true, width: '80px' },
+        { key: 'sno', label: 'Sno', sortable: true, width: '90px', render: (row, index) => index + 1 },
         {
             key: 'model_name',
             label: 'Name',
             sortable: true,
             render: (row) => (
                 <span
-                    className={`block text-[#8e78b7] hover:underline cursor-pointer whitespace-normal break-words ${entityNavLoading ? 'opacity-60 pointer-events-none' : ''}`}
-                    style={{ overflowWrap: 'anywhere' }}
-                    title={row.model_name ?? ''}
+                    className={`text-purple-600 hover:underline cursor-pointer whitespace-normal break-words break-all ${entityNavLoading ? 'opacity-60 pointer-events-none' : ''}`}
                     onClick={() => openModelLibraryFromComponents(row)}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => e.key === 'Enter' && openModelLibraryFromComponents(row)}
+                    title={row.model_name ?? ''}
+                    style={{ overflowWrap: 'anywhere' }}
                 >
                     {row.model_name}
                 </span>
             ),
         },
-        // { key: 'status', label: 'Status', sortable: true },
-        { key: 'modeling_type', label: 'Modeling Type', sortable: true },
-        { key: 'run_mode_modelling', label: 'Run Mode', sortable: true },
-        { key: 'run_type_modelling', label: 'Run Type', sortable: true },
-        { key: 'target_variable', label: 'Target Variable', sortable: true },
-        { key: 'created_at', label: 'Created At', sortable: true, render: (row) => row.created_at ? new Date(row.created_at).toLocaleDateString('en-GB') : '—' },
-        { key: 'updated_at', label: 'Updated At', sortable: true, render: (row) => row.updated_at ? new Date(row.updated_at).toLocaleDateString('en-GB') : '—' },
+        { key: 'description', width: '250px', label: 'Description', sortable: true },
+        { key: 'created_at', width: '150px', label: 'Created Date', sortable: true, render: (row) => row.created_at ? new Date(row.created_at).toLocaleDateString('en-GB') : '—' },
+        // { key: 'project_name', width: '150px', label: 'Project', sortable: true },
+        { key: 'owner_name', width: '120px', label: 'Created By', sortable: true },
+        { key: 'modeling_type', width: '120px', label: 'Type', sortable: true },
+        { key: 'status', label: 'Status', width: '100px', sortable: true },
         // { label: 'Action', sortable: false, width: '100px' },
     ];
 

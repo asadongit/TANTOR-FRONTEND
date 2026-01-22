@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
+import { toast } from 'react-hot-toast';
 
 export const workflowStages = [
     { id: 'model-genesis', label: 'Model Genesis', icon: Boxes, path: '/ai/playground/model-genesis' },
@@ -65,6 +66,7 @@ export function AIPlaygroundLayout({
     const [hoveredModelIndex, setHoveredModelIndex] = useState(null);
     const [isNavigating, setIsNavigating] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
+    const [showFinishModal, setShowFinishModal] = useState(false);
 
     useEffect(() => {
         if (isEnsemble) {
@@ -143,6 +145,19 @@ export function AIPlaygroundLayout({
             }
         });
     }
+
+    const handleFinish = () => {
+        setShowFinishModal(true);
+    };
+
+    const handleConfirmFinish = () => {
+        setShowFinishModal(false);
+        navigate('/ai/playground');
+    };
+
+    const handleFinishModalClose = () => {
+        setShowFinishModal(false);
+    };
 
     const handleNext = async () => {
         const isXAIPage = location.pathname === '/ai/playground/xai';
@@ -332,6 +347,9 @@ export function AIPlaygroundLayout({
         stage => stage.path === location.pathname
     );
 
+    // Check if we should show the Finish button
+    const shouldShowFinish = isDeploymentStage && (!isEnsemble || activeModelIndex >= models.length - 1);
+
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col gap-2">
             {/* Cancel Warning Modal */}
@@ -362,6 +380,41 @@ export function AIPlaygroundLayout({
                                     className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
                                 >
                                     Yes, Discard Changes
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Finish Confirmation Modal */}
+            {showFinishModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+                        <div className="p-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                                    <Check className="text-green-600" size={24} />
+                                </div>
+                                <h2 className="text-xl font-semibold text-gray-900">Complete Workflow</h2>
+                            </div>
+
+                            <p className="text-gray-600 mb-6">
+                                You have successfully completed all stages of the machine learning workflow. Click "Finish" to return to the AI Playground.
+                            </p>
+
+                            <div className="flex gap-3 justify-end">
+                                <button
+                                    onClick={handleFinishModalClose}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                                >
+                                    Stay Here
+                                </button>
+                                <button
+                                    onClick={handleConfirmFinish}
+                                    className="px-8 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors"
+                                >
+                                    Finish
                                 </button>
                             </div>
                         </div>
@@ -557,34 +610,46 @@ export function AIPlaygroundLayout({
                             )
                         ) : <div />}
 
-                        {!isLastStage && (
+                        {shouldShowFinish ? (
                             <button
-                                onClick={handleNext}
-                                disabled={isNextDisabled()}
-                                className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#7d67a6] disabled:hover:bg-[#8e78b7]"
+                                onClick={handleFinish}
+                                className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2"
                             >
-                                {getNextButtonLabel()}
-                                {isNavigating ? (
-                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                ) : (
-                                    <ArrowRight size={16} />
-                                )}
+                                <Check size={16} />
+                                Finish
                             </button>
-                        )}
+                        ) : (
+                            <>
+                                {!isLastStage && (
+                                    <button
+                                        onClick={handleNext}
+                                        disabled={isNextDisabled()}
+                                        className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#7d67a6] disabled:hover:bg-[#8e78b7]"
+                                    >
+                                        {getNextButtonLabel()}
+                                        {isNavigating ? (
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        ) : (
+                                            <ArrowRight size={16} />
+                                        )}
+                                    </button>
+                                )}
 
-                        {isLastStage && isEnsemble && activeModelIndex < models.length - 1 && (
-                            <button
-                                onClick={handleNext}
-                                disabled={isNextDisabled()}
-                                className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#7d67a6] disabled:hover:bg-[#8e78b7]"
-                            >
-                                {getNextButtonLabel()}
-                                {isNavigating ? (
-                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                ) : (
-                                    <ArrowRight size={16} />
+                                {isLastStage && isEnsemble && activeModelIndex < models.length - 1 && (
+                                    <button
+                                        onClick={handleNext}
+                                        disabled={isNextDisabled()}
+                                        className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#7d67a6] disabled:hover:bg-[#8e78b7]"
+                                    >
+                                        {getNextButtonLabel()}
+                                        {isNavigating ? (
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        ) : (
+                                            <ArrowRight size={16} />
+                                        )}
+                                    </button>
                                 )}
-                            </button>
+                            </>
                         )}
                     </div>
                 </div>

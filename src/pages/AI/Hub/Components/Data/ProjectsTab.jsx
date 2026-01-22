@@ -3,7 +3,7 @@ import { useAuth } from "../../../../../context/AuthContext";
 import DataTable from "../../../../../components/DataTable";
 import { useNavigate } from "react-router-dom";
 
-const ProjectsTab = ({ datasetId }) => {
+const ProjectsTab = ({ datasetId, projectId }) => {
     const navigate = useNavigate();
     const { token } = useAuth();
     const hostnameAI = window._env_?.VITE_AI_API;
@@ -12,10 +12,13 @@ const ProjectsTab = ({ datasetId }) => {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        if (!datasetId) return;
+        if (!projectId) {
+            setProjects([]);
+            return;
+        }
         setLoading(true);
         setError(null);
-        fetch(`${hostnameAI}/canvas/projects/by-dataset/${encodeURIComponent(datasetId)}`, {
+        fetch(`${hostnameAI}/canvas/project_list/?project_id=${encodeURIComponent(projectId)}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -25,16 +28,16 @@ const ProjectsTab = ({ datasetId }) => {
                 return resp.json();
             })
             .then((data) => {
-                // API returns a single project object under "project"
-                if (data?.project) {
-                    setProjects([data.project]);
+                // API returns an array of projects
+                if (Array.isArray(data)) {
+                    setProjects(data);
                 } else {
                     setProjects([]);
                 }
             })
             .catch((err) => setError(err.message))
             .finally(() => setLoading(false));
-    }, [datasetId, hostnameAI, token]);
+    }, [projectId, hostnameAI, token]);
 
     const handleProjectLibrary = async (row) => {
         const projectId = row?.id || row?.project_id;
@@ -61,46 +64,71 @@ const ProjectsTab = ({ datasetId }) => {
         }
     };
 
+    const getStatusStyle = (status) => {
+        const normalized = String(status || '').toLowerCase();
+        switch (normalized) {
+            case 'active':
+                return 'bg-green-100 text-green-700';
+            case 'inactive':
+                return 'bg-red-100 text-red-600';
+            default:
+                return 'bg-gray-100 text-gray-600';
+        }
+    };
+
     const columns = useMemo(() => [
         {
-            key: 'project_name',
-            label: 'Project Name',
+            key: 'sno',
+            label: 'S.No',
+            sortable: false,
+            render: (_row, idx) => idx + 1,
+        },
+        {
+            key: 'name',
+            label: 'Name',
             sortable: true,
             render: (row) => (
                 <span
-                    className="text-[#8e78b7] font-medium hover:underline cursor-pointer whitespace-normal break-words"
+                    className="text-[#8e78b7] hover:underline cursor-pointer whitespace-normal break-words"
                     style={{ overflowWrap: "anywhere" }}
                     onClick={() => handleProjectLibrary(row)}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => e.key === "Enter" && handleProjectLibrary(row)}
-                    title={row.project_name ?? ""}
+                    title={row.name ?? ""}
                 >
-                    {row.project_name}
+                    {row.name}
                 </span>
             ),
         },
         {
-            key: 'owner_id',
-            label: 'Owner ID',
-            sortable: false,
+            key: 'description',
+            label: 'Description',
+            sortable: true,
+        },
+        {
+            key: 'created_at',
+            label: 'Created Date',
+            sortable: true,
+            render: (row) => row.created_at ? new Date(row.created_at).toLocaleDateString("en-GB") : "—",
+        },
+        {
+            key: 'owner_name',
+            label: 'Created By',
+            sortable: true,
+            render: (row) => row.owner_name ?? '—',
         },
         {
             key: 'status',
             label: 'Status',
             sortable: true,
+            render: (row) => (
+                <span className={`px-3 py-1 rounded-md text-xs font-medium ${getStatusStyle(row.status)}`}>
+                    {String(row.status || '').toLowerCase() === 'active' ? 'Active' : String(row.status || '—')}
+                </span>
+            ),
         },
-        {
-            key: 'created_at',
-            label: 'Created At',
-            sortable: true,
-            render: (row) => row.created_at ? new Date(row.created_at).toLocaleDateString("en-GB") : "-",
-        },
-        {
-            key: 'description',
-            label: 'Description',
-            sortable: false,
-        },
+        // No actions column for tab view
     ], [hostnameAI, token]);
 
     return (
