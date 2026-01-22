@@ -147,13 +147,13 @@ const Projects = () => {
             <div className="bg-white rounded-xl px-6 py-5 border border-purple-200 flex flex-col justify-between min-h-[120px]">
                 <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                        <Icon className="w-7 h-7 text-[#8e78b7] shrink-0" />
-                        <span className="text-gray-900 text-2xl font-semibold truncate">{label}</span>
+                        <Icon className="w-5 h-5 text-[#8e78b7] shrink-0" />
+                        <span className="text-gray-900 text-2xl font-medium truncate">{label}</span>
                     </div>
                 </div>
 
                 <div className="flex items-end justify-between mt-6">
-                    <div className="text-4xl font-extrabold text-gray-900 tabular-nums leading-none">
+                    <div className="text-2xl font-bold text-gray-900 tabular-nums leading-none">
                         {value == null ? (
                             <div className="h-10 w-16 bg-gray-200 rounded animate-pulse"></div>
                         ) : (

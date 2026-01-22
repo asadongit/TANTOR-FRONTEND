@@ -434,13 +434,13 @@ const Data = () => {
     <div className="bg-white rounded-xl px-6 py-5 border border-purple-200 flex items-center min-h-[90px]">
       <div className="flex items-center gap-3 flex-1">
         <Icon className="w-5 h-5 text-[#8e78b7]" />
-        <span className="text-black text-xl font-bold">{label}</span>
+        <span className="text-black text-xl font-medium">{label}</span>
       </div>
       <div className="flex items-center justify-end min-w-[40px]">
         {value == null ? (
           <div className="h-7 w-10 bg-gray-200 rounded animate-pulse"></div>
         ) : (
-          <span className="text-2xl font-extrabold text-gray-900 tabular-nums">{value}</span>
+          <span className="text-2xl font-medium text-gray-900 tabular-nums">{value}</span>
         )}
       </div>
     </div>
@@ -518,7 +518,7 @@ const Data = () => {
       <Breadcrumb />
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">Data</h1>
+        <h1 className="text-2xl sm:text-3xl font-medium text-gray-900">Data</h1>
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="relative">
             <select
