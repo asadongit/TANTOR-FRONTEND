@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DiscardModal from "./modals/DiscardModal";
 import { CheckCircle, ChevronLeft, Loader2, X } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
@@ -29,6 +29,43 @@ const NewSchedule = () => {
     });
 
     const tabs = ['Configuration', 'Delivery & Alerts', 'Recipients'];
+
+    useEffect(() => {
+        const fetchUserId = async () => {
+            if (!decodedToken?.preferred_username) {
+                console.error('Username not found in decoded token');
+                return;
+            }
+
+            try {
+                const response = await fetch(
+                    `${hostnameAI}/users/users/get-id?username=${decodedToken.preferred_username}`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'accept': 'application/json'
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch user ID');
+                }
+
+                const data = await response.json();
+
+                setSchedulerState(prev => ({
+                    ...prev,
+                    owner_id: data.user_id
+                }));
+
+            } catch (error) {
+                console.error('Error fetching user ID:', error);
+            }
+        };
+
+        fetchUserId();
+    }, [decodedToken?.preferred_username, setSchedulerState]);
 
     const handleAlertInputChange = (field, value) => setAlertFormData(prev => ({ ...prev, [field]: value }));
 

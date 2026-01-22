@@ -269,7 +269,7 @@ function ScalingTransformation({ onApiCall, onValidationChange }) {
     };
 
     return (
-        <div className="max-w-4xl">
+        <div className="max-w-full">
             <div className="space-y-4">
                 {/* Advanced Transformation Section */}
                 <FeatureSection

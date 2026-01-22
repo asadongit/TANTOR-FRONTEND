@@ -179,9 +179,9 @@ function DataPreprocessing() {
       onNextClick={handleNextClick}
       isNextDisabled={getIsNextDisabled()}
     >
-      <div className={currentStep === 7 && isStep7Preview ? 'w-full' : 'max-w-7xl mx-auto w-full'}>
+      <div className="w-full">
         <div className={`
-          flex flex-col lg:flex-row gap-6 
+          flex flex-col lg:flex-row gap-6
           ${!(currentStep === 7 && isStep7Preview) ? 'h-auto lg:h-[calc(100vh-180px)]' : ''}
         `}>
 
@@ -225,7 +225,7 @@ function DataPreprocessing() {
           )}
 
           <div className={`
-            flex-1 w-full 
+            flex-1 min-w-0
             ${currentStep === 7 && isStep7Preview ? '' : 'lg:h-full lg:overflow-y-auto lg:pr-2 custom-scrollbar'}
           `}>
             {renderStepContent()}

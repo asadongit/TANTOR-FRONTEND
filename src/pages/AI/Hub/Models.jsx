@@ -292,12 +292,12 @@ function Models() {
         </span>
       ),
     }
-,
-    { key: "description", width: '250px',  label: "Description", sortable: true },
-    { key: "created_date", width: '150px',  label: "Created Date", sortable: true },
-    {key: 'project_name', width: '150px',  label: 'Project', sortable: true },
-    {key: 'user_name', width: '120px',  label: 'Created By', sortable: true },
-    { key: "type", width: '120px',  label: "Type", sortable: true },
+    ,
+    { key: "description", width: '250px', label: "Description", sortable: true },
+    { key: "created_date", width: '150px', label: "Created Date", sortable: true },
+    { key: 'project_name', width: '150px', label: 'Project', sortable: true },
+    { key: 'user_name', width: '120px', label: 'Created By', sortable: true },
+    { key: "type", width: '120px', label: "Type", sortable: true },
     {
       key: "status",
       label: "Status",
@@ -346,6 +346,16 @@ function Models() {
   };
 
   const handleDeploy = (row) => {
+    const raw = row?._raw ?? deployTarget;
+
+    setSchedulerState(prev => ({
+      ...prev,
+      projectName: raw.project_name || "",
+      projectId: raw.project_id || "",
+      modelName: raw.run_name || "",
+      modelId: raw.id || "",
+    }));
+
     setDeployTarget(row);
     setDeployModalOpen(true);
   };
@@ -354,15 +364,6 @@ function Models() {
     if (!deployTarget) return;
 
     try {
-      const raw = deployTarget?._raw ?? deployTarget;
-
-      setSchedulerState(prev => ({
-        ...prev,
-        projectName: raw.project_name || "",
-        projectId: raw.project_id || "",
-        modelName: raw.run_name || "",
-        modelId: raw.id || "",
-      }));
 
       setMode('schedule')
 
@@ -795,18 +796,18 @@ function Models() {
         <div className="flex items-center gap-2">
           {/* ADD: Status filter dropdown */}
           <div className="relative">
-          <select
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="h-10 border border-gray-300 rounded-lg text-sm px-3 bg-white"
-            title="Filter by Status"
-          >
-            <option value="all">All Status</option>
-            <option value="saved">Saved</option>
-            <option value="deployed">Deployed</option>
-            <option value="archived">Archived</option>
-            <option value="completed">Completed</option>
-          </select>
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="h-10 border border-gray-300 rounded-lg text-sm px-3 bg-white"
+              title="Filter by Status"
+            >
+              <option value="all">All Status</option>
+              <option value="saved">Saved</option>
+              <option value="deployed">Deployed</option>
+              <option value="archived">Archived</option>
+              <option value="completed">Completed</option>
+            </select>
           </div>
 
           <div className="relative">

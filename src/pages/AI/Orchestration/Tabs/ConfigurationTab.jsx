@@ -804,7 +804,7 @@ const ConfigurationTab = () => {
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Start Date & Time <span className="text-red-500">*</span></label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Schedule Date & Time <span className="text-red-500">*</span></label>
                         <div className="relative">
                             <input
                                 type="text"

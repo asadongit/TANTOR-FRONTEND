@@ -2,6 +2,7 @@
   "Logistic Regression": {
     "category": "Linear",
     "backend_key": "LogisticRegression",
+    "info": "Logistic Regression is a simple, fast classification algorithm that predicts class probabilities using a linear relationship between features and the target, commonly used for binary and multiclass problems.",
     "hyperparameters": {
       "penalty": "l1, l2, elasticnet, none",
       "C": {
@@ -9,7 +10,7 @@
         "high": "100"
       },
       "solver": "liblinear, lbfgs, saga, newton-cg",
-      "max_iter":{
+      "max_iter": {
         "low": "100",
         "high": "5000"
       }
@@ -18,98 +19,115 @@
   "Ridge Classifier": {
     "category": "Linear",
     "backend_key": "RidgeClassifier",
+    "info": "Ridge Classifier is a linear classification algorithm that applies L2 regularization to reduce overfitting, making it stable and effective for high-dimensional and collinear data.",
     "hyperparameters": {
       "alpha": {
-        "low":"0.0001",
-        "high":"100"
+        "low": "0.0001",
+        "high": "100"
       },
-      "solver": "auto, svd, cholesky, sag"
+      "fit_intercept": "true, false",
+      "copy_X": "true, false",
+      "max_iter": {
+        "low": "100",
+        "high": "5000"
+      },
+      "tol": {
+        "low": "1e-6",
+        "high": "1e-2"
+      },
+      "class_weight": "balanced, null",
+      "solver": "auto, svd, cholesky, lsqr, sag, saga"
     }
   },
   "Perceptron": {
     "category": "Linear",
     "backend_key": "Perceptron",
+    "info": "Perceptron is a basic linear classification algorithm that learns a decision boundary by iteratively updating weights, suitable for binary and multiclass classification.",
     "hyperparameters": {
-      "penalty": "l2, l1, elasticnet, none",
+      "penalty": "l1, l2, elasticnet, none",
       "alpha": {
-        "low":"0.0001",
-        "high":"1"
+        "low": "0.00001",
+        "high": "1"
       },
       "max_iter": {
-        "low":"100",
-        "high":"5000"
-      }
+        "low": "100",
+        "high": "5000"
+      },
+      "fit_intercept": "true, false"
     }
   },
   "Passive Aggressive Classifier": {
     "category": "Linear",
     "backend_key": "PassiveAggressiveClassifier",
+    "info": "Passive Aggressive Classifier is a fast linear algorithm that updates its model only when it makes mistakes, making it suitable for large-scale and online binary and multiclass classification.",
     "hyperparameters": {
       "C": {
-        "low":"0.01",
-        "high":"10"
+        "low": "0.0001",
+        "high": "10"
       },
       "loss": "hinge, squared_hinge",
       "max_iter": {
-        "low":"100",
-        "high":"5000"
-      }
+        "low": "100",
+        "high": "5000"
+      },
+      "fit_intercept": "true, false"
     }
   },
   "SGD Classifier": {
     "category": "Linear",
     "backend_key": "SGDClassifier",
+    "info": "SGD Classifier is a linear model trained using stochastic gradient descent, well suited for large-scale and sparse datasets in binary and multiclass classification.",
     "hyperparameters": {
-      "loss": "log_loss, hinge, modified_huber",
-      "penalty": "l2, l1, elasticnet",
+      "loss": "hinge, log_loss, modified_huber, perceptron",
+      "penalty": "l2, l1, elasticnet, none",
       "alpha": {
-        "low":"1e-6",
-        "high":"1e-1"
+        "low": "1e-6",
+        "high": "1e-1"
       },
       "max_iter": {
-        "low":"100",
-        "high":"5000"
+        "low": "100",
+        "high": "5000"
+      },
+      "tol": {
+        "low": "1e-6",
+        "high": "1e-2"
       }
     }
   },
   "Linear SVC": {
     "category": "Linear",
     "backend_key": "LinearSVC",
+    "info": "Linear SVC is a fast linear support vector machine classifier that finds a maximum-margin decision boundary, suitable for high-dimensional binary and multiclass classification.",
     "hyperparameters": {
       "C": {
-        "low":"0.01",
-        "high":"100"
+        "low": "0.0001",
+        "high": "100"
       },
-      "loss": "hinge, squared_hinge",
-      "max_iter": {
-        "low":"1000",
-        "high":"5000"
-      }
+      "penalty": "l1, l2",
+      "dual": "true, false"
     }
   },
   "SVC (RBF)": {
-    "category": "Kernel-based",
+    "category": "Kernel",
     "backend_key": "SVCRBF",
+    "info": "SVC with RBF kernel is a powerful classification algorithm that learns non-linear decision boundaries, effective for complex binary and multiclass classification problems.",
     "hyperparameters": {
       "C": {
-        "low":"0.01",
-        "high":"100"
+        "low": "0.0001",
+        "high": "100"
       },
-      "gamma": {
-        "low":"0.0001",
-        "high":"10",
-        "special":["scale","auto"]
-      },
-      "kernel": "rbf"
+      "kernel": "rbf",
+      "gamma": "scale, auto"
     }
   },
   "Nu-SVC": {
-    "category": "Kernel-based",
+    "category": "Kernel",
     "backend_key": "NuSVC",
+    "info": "Nu-SVC is a support vector machine classifier that controls model complexity using the nu parameter, making it effective for non-linear binary and multiclass classification problems.",
     "hyperparameters": {
       "nu": {
-        "low":"0.1",
-        "high":"0.9"
+        "low": "0.01",
+        "high": "0.9"
       },
       "kernel": "rbf, poly, sigmoid",
       "gamma": "scale, auto"
@@ -118,446 +136,588 @@
   "Linear Discriminant Analysis": {
     "category": "Linear",
     "backend_key": "LDA",
+    "info": "Linear Discriminant Analysis is a classification algorithm that projects data onto lower-dimensional space to maximize class separability, commonly used for binary and multiclass problems.",
     "hyperparameters": {
       "solver": "svd, lsqr, eigen",
-      "shrinkage": {
-        "low":"0",
-        "high":"1",
-        "special": ["None", "auto"]
+      "shrinkage": "none, auto",
+      "n_components": {
+        "low": "1",
+        "high": "min(n_features, n_classes - 1)"
       }
     }
   },
   "Quadratic Discriminant Analysis": {
     "category": "Linear",
     "backend_key": "QDA",
+    "info": "Quadratic Discriminant Analysis is a classification algorithm that models each class with its own covariance matrix, enabling non-linear decision boundaries for binary and multiclass problems.",
     "hyperparameters": {
       "reg_param": {
-        "low":"0",
-        "high":"1"
+        "low": "0.0",
+        "high": "1.0"
+      },
+      "store_covariance": "true, false",
+      "tol": {
+        "low": "1e-6",
+        "high": "1e-2"
       }
     }
   },
   "Gaussian Naive Bayes": {
     "category": "Probabilistic",
     "backend_key": "GaussianNB",
+    "info": "Gaussian Naive Bayes is a simple probabilistic classifier based on Bayes’ theorem, assuming features follow a normal distribution, suitable for binary and multiclass classification.",
     "hyperparameters": {
-      "alpha": {
-        "low":"0",
-        "high":"10"
+      "var_smoothing": {
+        "low": "1e-11",
+        "high": "1e-7"
       }
     }
   },
   "Multinomial Naive Bayes": {
     "category": "Probabilistic",
     "backend_key": "MultinomialNB",
+    "info": "Multinomial Naive Bayes is a probabilistic classifier commonly used for discrete features such as word counts or frequencies, suitable for binary and multiclass classification.",
     "hyperparameters": {
       "alpha": {
-        "low":"0",
-        "high":"10"
-      }
+        "low": "0.0",
+        "high": "10.0"
+      },
+      "fit_prior": "true, false"
     }
   },
   "Complement Naive Bayes": {
     "category": "Probabilistic",
     "backend_key": "ComplementNB",
+    "info": "Complement Naive Bayes is a variant of Naive Bayes designed to handle imbalanced datasets better, commonly used for text classification in binary and multiclass problems.",
     "hyperparameters": {
       "alpha": {
-        "low":"0",
-        "high":"10"
-      }
+        "low": "0.0",
+        "high": "10.0"
+      },
+      "fit_prior": "true, false",
+      "norm": "true, false"
     }
   },
   "Bernoulli Naive Bayes": {
     "category": "Probabilistic",
     "backend_key": "BernoulliNB",
+    "info": "Bernoulli Naive Bayes is a probabilistic classifier designed for binary or boolean features, commonly used for text and presence-absence based binary and multiclass classification.",
     "hyperparameters": {
       "alpha": {
-        "low":"0",
-        "high":"10"
-      }
+        "low": "0.0",
+        "high": "10.0"
+      },
+      "binarize": {
+        "low": "0.0",
+        "high": "1.0"
+      },
+      "fit_prior": "true, false"
     }
   },
   "Categorical Naive Bayes": {
     "category": "Probabilistic",
     "backend_key": "CategoricalNB",
+    "info": "Categorical Naive Bayes is a probabilistic classifier designed for categorical features, commonly used for binary and multiclass classification with discrete input variables.",
     "hyperparameters": {
       "alpha": {
-        "low":"0",
-        "high":"10"
-      }
+        "low": "0.0",
+        "high": "10.0"
+      },
+      "fit_prior": "true, false"
     }
   },
   "Decision Tree Classifier": {
     "category": "Tree-based",
     "backend_key": "DecisionTreeClassifier",
+    "info": "Decision Tree Classifier is a non-linear model that splits data into rules based on feature values, making it easy to interpret and suitable for binary and multiclass classification.",
     "hyperparameters": {
       "max_depth": {
-        "low":"3",
-        "high":"50",
-        "special": ["None"]
+        "low": "3",
+        "high": "50",
+        "special": [
+          "None"
+        ]
       },
       "min_samples_split": {
-        "low":"2",
-        "high":"20"
+        "low": "2",
+        "high": "20"
       },
       "criterion": "gini, entropy, log_loss"
     }
   },
-  "Extra Tree Classifier": {
-    "category": "Tree-based",
-    "backend_key": "ExtraTreeClassifier",
-    "hyperparameters": {
-      "max_depth": {
-        "low":"3",
-        "high":"50",
-        "special": ["None"]
-      },
-      "min_samples_split": {
-        "low":"2",
-        "high":"20"
-      }
-    }
-  },
   "Random Forest Classifier": {
-    "category": "Ensemble (Tree)",
+    "category": "Tree-based",
     "backend_key": "RandomForestClassifier",
+    "info": "Random Forest Classifier is an ensemble of decision trees that improves accuracy and reduces overfitting by combining predictions from multiple trees, suitable for binary and multiclass classification.",
     "hyperparameters": {
       "n_estimators": {
-        "low":"50",
-        "high":"1000"
+        "low": "50",
+        "high": "1000"
       },
       "max_depth": {
-        "low":"5",
-        "high":"50",
-        "special": ["None"]
+        "low": "3",
+        "high": "50",
+        "special": [
+          "None"
+        ]
       },
-      "max_features": "sqrt, log2"
+      "max_features": "sqrt, log2, None"
     }
   },
   "Extra Trees Classifier": {
-    "category": "Ensemble (Tree)",
+    "category": "Tree-based",
     "backend_key": "ExtraTreesClassifier",
+    "info": "Extra Trees Classifier is an ensemble of randomized decision trees that increases diversity by selecting split thresholds randomly, providing fast and robust performance for binary and multiclass classification.",
     "hyperparameters": {
       "n_estimators": {
-        "low":"50",
-        "high":"1000"
+        "low": "50",
+        "high": "1000"
       },
       "max_depth": {
-        "low":"5",
-        "high":"50",
-        "special": ["None"]
-      }
+        "low": "3",
+        "high": "50",
+        "special": [
+          "None"
+        ]
+      },
+      "min_samples_split": {
+        "low": "2",
+        "high": "20"
+      },
+      "max_features": "sqrt, log2, None"
     }
   },
   "Gradient Boosting Classifier": {
-    "category": "Ensemble (Boosting)",
-    "backend_key": "GradientBoostingClassifier",
+    "category": "Tree-based",
+     "backend_key": "GradientBoostingClassifier",
+    "info": "Gradient Boosting Classifier is an ensemble model that builds trees sequentially, where each new tree corrects errors made by previous ones, effective for binary and multiclass classification.",
     "hyperparameters": {
-      "learning_rate": {
-        "low":"0.01",
-        "high":"0.3"
-      },
       "n_estimators": {
-        "low":"50",
-        "high":"500"
+        "low": "50",
+        "high": "500"
+      },
+      "learning_rate": {
+        "low": "0.01",
+        "high": "0.3"
       },
       "max_depth": {
-        "low":"3",
-        "high":"10"
+        "low": "3",
+        "high": "10",
+        "special": [
+          "None"
+        ]
       }
     }
   },
   "Histogram Gradient Boosting Classifier": {
-    "category": "Ensemble (Boosting)",
+    "category": "Tree-based",
     "backend_key": "HGBClassifier",
+    "info": "Histogram Gradient Boosting Classifier is a fast boosting algorithm that bins continuous features into histograms, enabling efficient training on large datasets for binary and multiclass classification.",
     "hyperparameters": {
-      "learning_rate": {
-        "low":"0.01",
-        "high":"0.3"
-      },
       "max_iter": {
-        "low":"50",
-        "high":"500"
+        "low": "50",
+        "high": "500"
+      },
+      "learning_rate": {
+        "low": "0.01",
+        "high": "0.3"
       },
       "max_depth": {
-        "low":"3",
-        "high":"10"
+        "low": "3",
+        "high": "10",
+        "special": [
+          "None"
+        ]
       }
     }
   },
   "XGBoost Classifier": {
-    "category": "Ensemble (Boosting)",
+    "category": "Tree-based",
     "backend_key": "XGBClassifier",
+    "info": "XGBoost Classifier is a high-performance gradient boosting algorithm that builds trees sequentially with advanced regularization, delivering strong results for binary and multiclass classification.",
     "hyperparameters": {
-      "n_estimators": {
-        "low":"100",
-        "high":"1000"
-      },
       "learning_rate": {
-        "low":"0.01",
-        "high":"0.3"
+        "low": "0.01",
+        "high": "0.3"
       },
       "max_depth": {
-        "low":"3",
-        "high":"15"
+        "low": "3",
+        "high": "15",
+        "special": [
+          "None"
+        ]
       },
-      "subsample": {
-        "low":"0.5",
-        "high":"1.0"
+      "n_estimators": {
+        "low": "50",
+        "high": "1000"
       }
     }
   },
   "LightGBM Classifier": {
-    "category": "Ensemble (Boosting)",
+    "category": "Tree-based",
     "backend_key": "LightGBMClassifier",
+    "info": "LightGBM Classifier is a fast gradient boosting algorithm that grows trees leaf-wise, making it efficient and highly accurate for large-scale binary and multiclass classification.",
     "hyperparameters": {
       "num_leaves": {
-        "low":"15",
-        "high":"255"
+        "low": "15",
+        "high": "255"
       },
       "learning_rate": {
-        "low":"0.01",
-        "high":"0.3"
+        "low": "0.01",
+        "high": "0.3"
       },
       "n_estimators": {
-        "low":"100",
-        "high":"1000"
+        "low": "50",
+        "high": "1000"
       }
     }
   },
   "CatBoost Classifier": {
-    "category": "Ensemble (Boosting)",
+    "category": "Tree-based",
     "backend_key": "CatBoostClassifier",
+    "info": "CatBoost Classifier is a gradient boosting algorithm that handles categorical features natively and reduces overfitting using ordered boosting, effective for binary and multiclass classification.",
     "hyperparameters": {
+      "iterations": {
+        "low": "100",
+        "high": "1000"
+      },
       "depth": {
-        "low":"4",
-        "high":"10"
+        "low": "4",
+        "high": "10"
       },
       "learning_rate": {
-        "low":"0.01",
-        "high":"0.3"
-      },
-      "iterations": {
-        "low":"100",
-        "high":"1000"
+        "low": "0.01",
+        "high": "0.3"
       }
     }
   },
   "AdaBoost Classifier": {
-    "category": "Ensemble (Boosting)",
+    "category": "Tree-based",
     "backend_key": "AdaBoostClassifier",
+    "info": "AdaBoost Classifier is an ensemble algorithm that combines multiple weak learners sequentially, focusing more on misclassified samples to improve performance for binary and multiclass classification.",
     "hyperparameters": {
       "n_estimators": {
-        "low":"50",
-        "high":"500"
+        "low": "50",
+        "high": "500"
       },
       "learning_rate": {
-        "low":"0.01",
-        "high":"1"
+        "low": "0.01",
+        "high": "1.0"
+      },
+      "algorithm": "SAMME, SAMME.R",
+      "estimator__max_depth": {
+        "low": "1",
+        "high": "5",
+        "special": [
+          "None"
+        ]
       }
     }
   },
   "Bagging Classifier": {
-    "category": "Ensemble",
+    "category": "Tree-based",
     "backend_key": "BaggingClassifier",
+    "info": "Bagging Classifier is an ensemble method that trains multiple base models on different random subsets of data to reduce variance and improve stability for binary and multiclass classification.",
     "hyperparameters": {
       "n_estimators": {
-        "low":"10",
-        "high":"500"
+        "low": "10",
+        "high": "500"
       },
       "max_samples": {
-        "low":"0.5",
-        "high":"1.0"
+        "low": "0.5",
+        "high": "1.0"
+      },
+      "max_features": {
+        "low": "0.5",
+        "high": "1.0"
       }
     }
   },
   "Voting Classifier": {
     "category": "Ensemble",
     "backend_key": "VotingClassifier",
+    "info": "Voting Classifier combines predictions from multiple base classifiers using majority voting or averaged probabilities to improve performance for binary and multiclass classification.",
     "hyperparameters": {
-      "voting": "hard, soft",
-      "weights": "None or list"
+      "voting": "hard, soft"
     }
   },
   "Stacking Classifier": {
     "category": "Ensemble",
     "backend_key": "StackingClassifier",
+    "info": "Stacking Classifier is an ensemble technique that combines multiple base models by training a final meta-model on their predictions, improving performance for binary and multiclass classification.",
     "hyperparameters": {
-      "final_estimator": "Any classifier",
+      "stack_method": "auto, predict_proba, decision_function, predict",
       "cv": {
-        "low":"3",
-        "high":"10"
+        "low": "3",
+        "high": "10"
       }
     }
   },
   "K-Nearest Neighbors": {
     "category": "Distance-based",
     "backend_key": "KNeighborsClassifier",
+    "info": "K-Nearest Neighbors is a simple instance-based classifier that predicts labels based on the majority class of the nearest data points, suitable for binary and multiclass classification.",
     "hyperparameters": {
       "n_neighbors": {
-        "low":"3",
-        "high":"50"
+        "low": "1",
+        "high": "50"
       },
       "weights": "uniform, distance",
-      "metric": "euclidean, manhattan"
+      "algorithm": "auto, ball_tree, kd_tree, brute"
     }
   },
   "Radius Neighbors Classifier": {
     "category": "Distance-based",
     "backend_key": "RadiusNeighborsClassifier",
+    "info": "Radius Neighbors Classifier predicts labels based on all training samples within a fixed radius, making it useful for density-based binary and multiclass classification.",
     "hyperparameters": {
       "radius": {
-        "low":"0.5",
-        "high":"5"
+        "low": "0.5",
+        "high": "5.0"
       },
-      "weights": "uniform, distance"
+      "weights": "uniform, distance",
+      "outlier_label": "null, int",
+      "algorithm": "auto, ball_tree, kd_tree, brute",
+      "leaf_size": {
+        "low": "10",
+        "high": "50"
+      },
+      "p": {
+        "low": "1",
+        "high": "2"
+      }
     }
   },
   "Nearest Centroid": {
     "category": "Distance-based",
     "backend_key": "NearestCentroid",
+    "info": "Nearest Centroid is a simple classification algorithm that assigns classes based on the closest class centroid, offering fast and interpretable binary and multiclass classification.",
     "hyperparameters": {
-      "metric": "euclidean, manhattan"
+      "metric": "euclidean, manhattan, cosine",
+      "shrink_threshold": {
+        "low": "0.0",
+        "high": "1.0",
+        "special": [
+          "None"
+        ]
+      }
     }
   },
   "Multi-layer Perceptron": {
     "category": "Neural Network",
     "backend_key": "MLPClassifier",
+    "info": "Multi-layer Perceptron is a feedforward neural network that learns complex non-linear relationships through hidden layers, suitable for binary and multiclass classification.",
     "hyperparameters": {
-      "hidden_layer_sizes": "(50,), (100,), (100,50)",
-      "activation": "relu, tanh",
+      "activation": "relu, tanh, logistic",
+      "solver": "adam, sgd, lbfgs",
       "alpha": {
-        "low":"0.0001",
-        "high":"0.1"
+        "low": "0.0001",
+        "high": "1.0"
+      },
+      "learning_rate_init": {
+        "low": "0.0001",
+        "high": "0.1"
       },
       "max_iter": {
-        "low":"200",
-        "high":"5000"
+        "low": "200",
+        "high": "5000"
       }
     }
   },
   "Label Propagation": {
-    "category": "Graph-based",
+    "category": "Semi-supervised",
     "backend_key": "LabelPropagation",
+    "info": "Label Propagation is a semi-supervised learning algorithm that spreads labels through a similarity graph, allowing learning from a small amount of labeled data for classification.",
     "hyperparameters": {
       "kernel": "rbf, knn",
       "gamma": {
-        "low":"0.1",
-        "high":"20"
+        "low": "0.1",
+        "high": "20.0"
+      },
+      "n_neighbors": {
+        "low": "3",
+        "high": "50"
       }
     }
   },
   "Label Spreading": {
-    "category": "Graph-based",
+    "category": "Semi-supervised",
     "backend_key": "LabelSpreading",
+    "info": "Label Spreading is a semi-supervised learning algorithm that propagates labels across a similarity graph while controlling the influence of initial labels, suitable for classification with limited labeled data.",
     "hyperparameters": {
       "kernel": "rbf, knn",
       "gamma": {
-        "low":"0.1",
-        "high":"20"
+        "low": "0.1",
+        "high": "20.0"
       },
       "alpha": {
-        "low":"0.1",
-        "high":"0.9"
+        "low": "0.1",
+        "high": "0.9"
+      },
+      "n_neighbors": {
+        "low": "3",
+        "high": "50"
       }
     }
   },
   "One-vs-Rest Classifier": {
     "category": "Meta-estimator",
     "backend_key": "OVRClassifier",
+    "info": "One-vs-Rest Classifier is a strategy that trains one binary classifier per class, enabling binary classifiers to handle multiclass classification problems.",
     "hyperparameters": {
-      "estimator": "Any base classifier"
+      "estimator__C": {
+        "low": "0.0001",
+        "high": "100"
+      },
+      "estimator__penalty": "l1, l2, elasticnet, none",
+      "estimator__solver": "liblinear, lbfgs, saga, newton-cg"
     }
   },
   "One-vs-One Classifier": {
     "category": "Meta-estimator",
     "backend_key": "OVOClassifier",
+    "info": "One-vs-One Classifier is a multiclass strategy that trains a binary classifier for every pair of classes, enabling complex decision boundaries for multiclass classification.",
     "hyperparameters": {
-      "estimator": "Any base classifier"
+      "estimator__C": {
+        "low": "0.0001",
+        "high": "100"
+      },
+      "estimator__kernel": "rbf, poly, sigmoid",
+      "estimator__gamma": "scale, auto"
     }
   },
   "Output Code Classifier": {
     "category": "Meta-estimator",
     "backend_key": "OutputCodeClassifier",
+    "info": "Output Code Classifier is a multiclass strategy that represents classes using binary codewords, improving robustness and enabling binary classifiers to solve multiclass problems.",
     "hyperparameters": {
-      "estimator": "Any base classifier",
       "code_size": {
-        "low":"1",
-        "high":"5"
-      }
+        "low": "1",
+        "high": "5"
+      },
+      "estimator__C": {
+        "low": "0.0001",
+        "high": "100"
+      },
+      "estimator__solver": "liblinear, lbfgs, saga, newton-cg"
     }
   },
   "Calibrated Classifier CV": {
     "category": "Meta-estimator",
     "backend_key": "CalibratedClassifier",
+    "info": "Calibrated Classifier CV improves the reliability of predicted probabilities by applying probability calibration methods on an existing classifier using cross-validation.",
     "hyperparameters": {
       "method": "sigmoid, isotonic",
       "cv": {
-        "low":"3",
-        "high":"10"
+        "low": "3",
+        "high": "10"
       }
     }
   },
   "Balanced Random Forest": {
-    "category": "Ensemble (Imbalanced)",
+    "category": "Tree-based",
     "backend_key": "BalancedRandomForestClassifier",
+    "info": "Balanced Random Forest is an ensemble method designed for imbalanced datasets that balances classes through random under-sampling while training multiple decision trees.",
     "hyperparameters": {
       "n_estimators": {
-        "low":"100",
-        "high":"500"
+        "low": "50",
+        "high": "500"
       },
+      "sampling_strategy": "auto, float, dict",
+      "replacement": "true, false",
+      "criterion": "gini, entropy, log_loss",
       "max_depth": {
-        "low":"3",
-        "high":"30",
-        "special": ["None"]
+        "low": "3",
+        "high": "50",
+        "special": [
+          "None"
+        ]
       }
     }
   },
   "Balanced Bagging Classifier": {
-    "category": "Ensemble (Imbalanced)",
+    "category": "Tree-based",
     "backend_key": "BalancedBaggingClassifier",
+    "info": "Balanced Bagging Classifier is an ensemble method for imbalanced datasets that combines bagging with random under-sampling to improve performance on minority classes.",
     "hyperparameters": {
       "n_estimators": {
-        "low":"50",
-        "high":"500"
+        "low": "10",
+        "high": "500"
+      },
+      "sampling_strategy": "auto, float, dict",
+      "replacement": "true, false",
+      "estimator__max_depth": {
+        "low": "3",
+        "high": "50",
+        "special": [
+          "None"
+        ]
       }
     }
   },
   "Easy Ensemble Classifier": {
-    "category": "Ensemble (Imbalanced)",
+    "category": "Tree-based",
     "backend_key": "EasyEnsembleClassifier",
+    "info": "Easy Ensemble Classifier is an ensemble method for imbalanced datasets that trains multiple classifiers on different balanced subsets created via random under-sampling.",
     "hyperparameters": {
       "n_estimators": {
-        "low":"10",
-        "high":"200"
+        "low": "10",
+        "high": "200"
+      },
+      "sampling_strategy": "auto, float, dict",
+      "replacement": "true, false",
+      "estimator__max_depth": {
+        "low": "3",
+        "high": "50",
+        "special": [
+          "None"
+        ]
       }
     }
   },
   "RUSBoost Classifier": {
-    "category": "Ensemble (Imbalanced)",
+    "category": "Tree-based",
     "backend_key": "RUSBoostClassifier",
+    "info": "RUSBoost Classifier combines random under-sampling with boosting to improve classification performance on highly imbalanced datasets.",
     "hyperparameters": {
       "n_estimators": {
-        "low":"50",
-        "high":"500"
+        "low": "50",
+        "high": "500"
       },
       "learning_rate": {
-        "low":"0.01",
-        "high":"1"
+        "low": "0.01",
+        "high": "1.0"
+      },
+      "sampling_strategy": "auto, float, dict",
+      "estimator__max_depth": {
+        "low": "1",
+        "high": "5",
+        "special": [
+          "None"
+        ]
       }
     }
   },
   "SAMME Classifier": {
-    "category": "Ensemble (Boosting)",
+    "category": "Tree-based",
     "backend_key": "SammeClassifier",
+    "info": "SAMME Classifier is a multiclass boosting algorithm that combines multiple weak learners to improve classification accuracy by focusing on misclassified samples.",
     "hyperparameters": {
       "n_estimators": {
-        "low":"50",
-        "high":"500"
+        "low": "50",
+        "high": "500"
       },
       "learning_rate": {
-        "low":"0.01",
-        "high":"1"
+        "low": "0.01",
+        "high": "1.0"
+      },
+      "algorithm": "SAMME, SAMME.R",
+      "estimator__max_depth": {
+        "low": "1",
+        "high": "5",
+        "special": [
+          "None"
+        ]
       }
     }
   }
