@@ -17,7 +17,6 @@ const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData, isEd
         const finalPolicyData = {
             ...policyData,
             policy_status: "active",
-            expiry_date: "2026-05-14",
             owner: decodedToken?.preferred_username,
         };
 
@@ -62,7 +61,9 @@ const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData, isEd
                 id: data.id,
                 sub_policy_name: policyData.sub_policy_name,
                 policy_type:policyData.policy_type,
-                datapolicy: [data.id]
+                datapolicy: [data.id],
+                start_date: policyData.start_date,
+                expiry_date: policyData.expiry_date
             });
 
             await fetchPolicyListData();

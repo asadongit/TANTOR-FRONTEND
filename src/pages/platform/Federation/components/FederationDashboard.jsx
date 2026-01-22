@@ -69,7 +69,7 @@ const FederationDashBoard = () => {
         return;
       }
 
-      const response = await fetch(`${hostnameV1}/connection_details`, {
+      const response = await fetch(`${hostnameV1}/policy-connection-details`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -113,15 +113,15 @@ const FederationDashBoard = () => {
     }
   };
 
-  const refreshConnection = async (connectionId) => {
-    setRefreshingRow(connectionId);
+  const refreshConnection = async (connectionName) => {
+    setRefreshingRow(connectionName);
     try {
       const secureQueryResponse = await secureQuery({ user_query: "" }, token);
       const policyIds = secureQueryResponse.matched_policy_ids || [];
 
       if (policyIds.length === 0) return;
 
-      const response = await fetch(`${hostnameV1}/connection_details`, {
+      const response = await fetch(`${hostnameV1}/policy-connection-details`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -131,16 +131,14 @@ const FederationDashBoard = () => {
       });
       const data = await response.json();
 
-      // Update the specific connection's data
       const updatedConnectionData = connectionData.map(conn => 
-        conn.connection_id === connectionId ? 
-        data.find(item => item.connection_id === connectionId) || conn : 
+        conn.connection_name === connectionName ? 
+        data.find(item => item.connection_name === connectionName) || conn : 
         conn
       );
 
       setConnectionData(updatedConnectionData);
       
-      // Recalculate counts and update UI
       const connections = [...new Set(data.map(item => item.connection_name))];
       const schemaList = {};
       const tableList = {};
@@ -317,17 +315,15 @@ const FederationDashBoard = () => {
   useEffect(() => {
     if (!connectionData.length) return;
 
-    const updatedRowData = [...new Set(connectionData.map(item => item.connection_id))].map(id => {
-      const item = connectionData.find(c => c.connection_id === id);
+    const updatedRowData = [...new Set(connectionData.map(item => item.connection_name))].map(connectionName => {
+      const connectionItems = connectionData.filter(item => item.connection_name === connectionName);
       return {
-        ID: item.connection_id,
-        Connections: item.connection_name,
-        Schema: schemaList[item.connection_name]?.length || 0,
-        Tables: Object.values(tableList[item.connection_name] || {}).reduce((sum, tables) => sum + tables.length, 0),
-        Views: viewList[item.connection_name]?.length || 0,
-        Created: new Date(item.created_at).toLocaleDateString()
+        Connections: connectionName,
+        Schema: schemaList[connectionName]?.length || 0,
+        Tables: Object.values(tableList[connectionName] || {}).reduce((sum, tables) => sum + tables.length, 0),
+        Views: viewList[connectionName]?.length || 0,
       };
-    }).sort((a, b) => new Date(b.Created) - new Date(a.Created));
+    });
 
     setRowData(updatedRowData);
 
@@ -475,7 +471,6 @@ const FederationDashBoard = () => {
                 <th className="text-center p-4">Schema</th>
                 <th className="text-center p-4">Tables</th>
                 <th className="text-center p-4">Views</th>
-                <th className="text-center p-4">Created</th>
                 <th className="text-center p-4 last:rounded-tr-lg">Actions</th>
               </tr>
             </thead>
@@ -483,7 +478,7 @@ const FederationDashBoard = () => {
               {isTableLoading && !refreshingRow ? (
                 Array(5).fill().map((_, index) => (
                   <tr key={index} className="border-b">
-                    {Array(7).fill().map((_, colIndex) => (
+                    {Array(6).fill().map((_, colIndex) => (
                       <td key={colIndex} className="p-4 text-center">
                         <div className="h-4 bg-gray-200 rounded animate-pulse mx-auto" style={{ width: '80%' }}></div>
                       </td>
@@ -493,20 +488,19 @@ const FederationDashBoard = () => {
               ) : (
                 paginatedData.map((user, index) => (
                   <tr key={index} className="border-b">
-                    {refreshingRow === user.ID ? (
-                      Array(7).fill().map((_, colIndex) => (
+                    {refreshingRow === user.Connections ? (
+                      Array(6).fill().map((_, colIndex) => (
                         <td key={colIndex} className="p-4 text-center">
                           <div className="h-4 bg-gray-200 rounded animate-pulse mx-auto" style={{ width: '80%' }}></div>
                         </td>
                       ))
                     ) : (
                       <>
-                        <td className="p-4 text-center">{startItem + index}</td>
+                        <td className="p-4 text-center">{startItem + index}</td>                        
                         <td className="p-4 text-center">{user.Connections}</td>
                         <td className="p-4 text-center">{user.Schema}</td>
                         <td className="p-4 text-center">{user.Tables}</td>
                         <td className="p-4 text-center">{user.Views}</td>
-                        <td className="p-4 text-center">{user.Created}</td>
                         <td className="p-4 text-center">
                           <div className="relative">
                             <button
@@ -514,7 +508,7 @@ const FederationDashBoard = () => {
                                 setActiveMenu(activeMenu === index ? null : index)
                               }
                               className="p-1.5 rounded-full hover:bg-gray-100"
-                              disabled={refreshingRow === user.ID}
+                              disabled={refreshingRow === user.Connections}
                             >
                               <MoreHorizontal className="h-5 w-5" />
                             </button>
@@ -530,7 +524,7 @@ const FederationDashBoard = () => {
                                     <button 
                                       className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
                                       onClick={() => {
-                                        refreshConnection(user.ID);
+                                        refreshConnection(user.Connections);
                                         setActiveMenu(null);
                                       }}
                                     >
@@ -607,11 +601,9 @@ const FederationDashBoard = () => {
       <Modal open={connectionsOpen} onClose={handleConnectionsClose}>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-lg px-6 pb-5 pt-3 rounded-2xl shadow-xl max-h-[90vh] w-96 border border-gray-200 flex flex-col">
           <div className="flex text-center justify-center mb-4">
-            {/* <LinkIcon className="h-5 w-5 mr-4 mt-1" /> */}
             <h2 className="text-xl font-bold text-gray-900">Connections Details</h2>
           </div>
 
-          {/* Search Input */}
           <input
             type="text"
             placeholder="Search connections..."
@@ -620,7 +612,6 @@ const FederationDashBoard = () => {
             className="mt-3 w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
           />
 
-          {/* Connections List */}
           <div className="mt-4 flex-1 overflow-y-auto py-2 pr-4 space-y-3">
             {filteredConnections?.length > 0 ? (
               filteredConnections.map((name, index) => (
@@ -636,7 +627,6 @@ const FederationDashBoard = () => {
             )}
           </div>
 
-          {/* Close Button */}
           <button
             onClick={handleConnectionsClose}
             className="mt-6 w-full bg-[#8E77BB] text-white py-2 rounded-lg hover:opacity-90 font-medium shadow-md"
@@ -646,14 +636,12 @@ const FederationDashBoard = () => {
         </div>
       </Modal>
 
-
       <Modal open={schemasOpen} onClose={handleSchemasClose}>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-lg px-6 pb-5 pt-3 rounded-2xl shadow-xl max-h-[90vh] w-96 border border-gray-200 flex flex-col">
           <div className="flex text-center justify-center">
             <h2 className="text-xl font-bold text-gray-900">Schemas Details</h2>
           </div>
 
-          {/* Dropdown to select a connection */}
           <FormControl fullWidth variant="outlined" margin="normal">
             <InputLabel id="connection-select-label">Select Connection</InputLabel>
             <Select
@@ -695,7 +683,6 @@ const FederationDashBoard = () => {
           </button>
         </div>
       </Modal>
-
 
       <Modal open={tablesOpen} onClose={handleTablesClose}>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-lg px-6 pb-5 pt-3 rounded-2xl shadow-xl max-h-[90vh] w-96 border border-gray-200 flex flex-col">
@@ -763,15 +750,12 @@ const FederationDashBoard = () => {
         </div>
       </Modal>
 
-
       <Modal open={viewOpen} onClose={handleViewsClose}>
-
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-lg px-6 pb-5 pt-3 rounded-2xl shadow-xl max-h-[90vh] w-96 border border-gray-200 flex flex-col">
           <div className="flex text-center justify-center">
             <h2 className="text-xl font-bold text-gray-900">Views Details</h2>
           </div>
 
-          {/* Dropdown to select a connection */}
           <FormControl fullWidth variant="outlined" margin="normal">
             <InputLabel id="connection-select-label">Select Connection</InputLabel>
             <Select
@@ -813,13 +797,8 @@ const FederationDashBoard = () => {
           </button>
         </div>
       </Modal>
-
-
-
-
     </>
   );
-
 };
 
 export default FederationDashBoard;

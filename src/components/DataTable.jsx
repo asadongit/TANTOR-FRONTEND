@@ -16,6 +16,7 @@ import {
   Search,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+
 const DataTable = ({
   columns,
   data = [],
@@ -24,14 +25,19 @@ const DataTable = ({
   isLoading = false,
   isError = false,
   refetch = () => {},
+  resetSortTrigger,
+  onRowClick,
+  selectedRowId,
 }) => {
   const [sortConfig, setSortConfig] = useState({ key: "", direction: "asc" });
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [activeMenu, setActiveMenu] = useState(null);
+  const [hoveredAction, setHoveredAction] = useState(null);
   const menuRef = useRef(null);
   const { project } = useAuth();
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -46,6 +52,12 @@ const DataTable = ({
   }, []);
 
   useEffect(() => {
+    if (resetSortTrigger !== undefined) {
+      setSortConfig({ key: "", direction: "asc" });
+    }
+  }, [resetSortTrigger]);
+
+  useEffect(() => {
     setPage(1);
   }, [searchTerm]);
 
@@ -58,10 +70,6 @@ const DataTable = ({
 
   const processedData = useMemo(() => {
     let result = [...data];
-    // tbr
-    // if (project && !["none","default"].includes(project)) {
-    //   result = result.filter(row => row.project === project);
-    // }
 
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase();
@@ -128,6 +136,19 @@ const DataTable = ({
     if (page < maxPage) setPage(page + 1);
   };
 
+  const handleRowClickInternal = (row, e) => {
+    if (
+      e.target.closest('button') ||
+      e.target.closest('.action-menu')
+    ) {
+      return;
+    }
+    
+    if (onRowClick) {
+      onRowClick(row);
+    }
+  };
+
   const totalItems = processedData.length;
   const startItem = totalItems === 0 ? 0 : (page - 1) * itemsPerPage + 1;
   const endItem = Math.min(page * itemsPerPage, totalItems);
@@ -158,23 +179,6 @@ const DataTable = ({
 
   return (
     <div className="w-full mt-6">
-      {/* <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
-        {title && <h2 className="text-xl font-bold mb-2 md:mb-0">{title}</h2>}
-        <div className="relative w-full md:w-64">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search size={18} className="text-gray-400" />
-          </div>
-          <input
-            type="text"
-            placeholder="Search..."
-            className="pl-10 pr-4 py-2 border rounded-lg w-full"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            aria-label="Search records"
-          />
-        </div>
-      </div> */}
-
       <div
         className="overflow-auto border rounded-lg mb-4"
         style={{ maxHeight: "calc(100vh - 240px)" }}
@@ -250,13 +254,23 @@ const DataTable = ({
               </tr>
             ) : (
               paginatedData.map((row, rowIndex) => (
-                <tr key={rowIndex} className="border-b hover:bg-gray-50">
+                <tr
+                  key={rowIndex}
+                  className={`border-b transition-colors ${
+                    onRowClick ? 'cursor-pointer' : ''
+                  } ${
+                    selectedRowId && row.sno === selectedRowId
+                      ? 'bg-[#f3f0f8] border-l-4 border-l-[#8e78b7]'
+                      : 'hover:bg-gray-50'
+                  }`}
+                  onClick={(e) => handleRowClickInternal(row, e)}
+                >
                   {columns.map((column, cellIndex) => {
                     if (column.label === "Action") {
                       return (
                         <td
                           key={cellIndex}
-                          className="py-3 px-4 text-center relative"
+                          className="py-3 px-4 text-center relative action-menu"
                         >
                           <button
                             className="p-2 text-gray-600 hover:text-gray-800 rounded-full hover:bg-gray-100"
@@ -274,7 +288,9 @@ const DataTable = ({
                           {activeMenu === rowIndex && (
                             <div
                               ref={menuRef}
-                              className="absolute right-4 mt-2 bg-white shadow-lg rounded-lg py-1 px-3 z-10 border"
+                              className={`absolute right-4 bg-white shadow-lg rounded-lg py-1 px-3 z-10 border ${
+                                rowIndex >= paginatedData.length - 2 ? 'bottom-full mb-2' : 'mt-2'
+                              }`}
                               role="menu"
                               aria-orientation="horizontal"
                             >
@@ -288,17 +304,26 @@ const DataTable = ({
                                         : action.show)
                                   )
                                   .map((action, actionIndex) => (
-                                    <button
-                                      className="p-1 text-gray-500 hover:text-gray-800"
-                                      key={actionIndex}
-                                      onClick={() => handleAction(action, row)}
-                                      aria-label={action.label}
-                                      role="menuitem"
-                                    >
-                                      {action.icon && (
-                                        <span>{action.icon}</span>
+                                    <div key={actionIndex} className="relative">
+                                      <button
+                                        className="p-1 text-gray-500 hover:text-gray-800 transition-colors"
+                                        onClick={() => handleAction(action, row)}
+                                        onMouseEnter={() => setHoveredAction(`${rowIndex}-${actionIndex}`)}
+                                        onMouseLeave={() => setHoveredAction(null)}
+                                        aria-label={action.label}
+                                        role="menuitem"
+                                      >
+                                        {action.icon && (
+                                          <span>{action.icon}</span>
+                                        )}
+                                      </button>
+                                      {hoveredAction === `${rowIndex}-${actionIndex}` && (action.tooltip || action.label) && (
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap z-20">
+                                          {action.tooltip || action.label}
+                                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                                        </div>
                                       )}
-                                    </button>
+                                    </div>
                                   ))}
                                 {actions.length === 0 && (
                                   <>
@@ -419,9 +444,6 @@ const DataTable = ({
             >
               <ChevronLeft size={20} />
             </button>
-            {/* <span className="px-3 border-t border-b">
-              Page {page} of {totalPages || 1}
-            </span> */}
             <button
               onClick={handleNextPage}
               className="p-1 border rounded-r border-l-0 hover:bg-gray-100 disabled:opacity-50"
@@ -442,11 +464,12 @@ const getStatusStyles = (status) => {
 
   if (status === "active" || status === "completed" || status === "created") {
     return "bg-green-100 text-green-600";
-  } else if (status === "pending" || status === "in progress") {
+  } else if (status === "pending" || status === "in progress" || status === "orphan") {
     return "bg-yellow-100 text-yellow-600";
   } else if (status === "inactive" || status === "failed") {
     return "bg-red-100 text-red-600";
-  } else {
+  }
+  else {
     return "bg-gray-100 text-gray-600";
   }
 };

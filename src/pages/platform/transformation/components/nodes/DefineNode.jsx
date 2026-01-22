@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Handle, Position } from "reactflow";
 import { FilePlus, Loader } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
+import toast from "react-hot-toast";
 
 const hostname = window._env_?.VITE_FAST_API;
 
@@ -149,56 +150,27 @@ export const DefineNode = ({ id, data }) => {
     [getExistingTransformationNames]
   );
 
-  // const handleNameChange = (e) => {
-  //   // if (isEditMode) return;    Commenting this to enable name change in edit mode
-  //   const value = e.target.value;
-  //   // Testing log
-  //   console.log("Typing name:", value);
-  //   if (typeof data.onDataChange !== "function") {
-  //     console.warn("onDataChange is missing or not a function in edit mode");
-  //   }
-
-  //   data.onDataChange({ name: value });
-
-  //   if (attemptedSave) {
-  //     setNameError("");
-  //   }
-
-  //   clearTimeout(nameCheckTimeout.current);
-
-  //   if (value) {
-  //     nameCheckTimeout.current = setTimeout(() => {
-  //       validateName(value);
-  //     }, 500);
-  //   } else {
-  //     setNameError("Name is required");
-  //     setNameExists(false);
-  //   }
-  // };
-  /*=================================================================================================
-                  Modified handleNameChange and handleDescriptionChange Function
-  ===============================================================================================*/
-
-  //  Name change handler
   const handleNameChange = (e) => {
-    const value = e.target.value;
-    // console.log("Typing name:", value);
-    setLocalName(value); // update local state
+    const rawValue = e.target.value;
+    const sanitizedValue = rawValue.replace(/[^a-zA-Z0-9_]/g, "");
+    if (rawValue !== sanitizedValue) {
+      toast.error(
+        "Only letters, numbers, and underscores are allowed in the name."
+      );
+    }
+    setLocalName(sanitizedValue);
 
-    // Update both local and parent ReactFlow state
     if (typeof data.onDataChange === "function") {
-      data.onDataChange({ name: value });
+      data.onDataChange({ name: sanitizedValue });
     } else {
       console.warn("onDataChange is missing or not a function");
     }
-
-    // Reset validation + debounce
     if (attemptedSave) setNameError("");
     clearTimeout(nameCheckTimeout.current);
 
-    if (value) {
+    if (sanitizedValue) {
       nameCheckTimeout.current = setTimeout(() => {
-        validateName(value);
+        validateName(sanitizedValue);
       }, 500);
     } else {
       setNameError("Name is required");
@@ -206,10 +178,9 @@ export const DefineNode = ({ id, data }) => {
     }
   };
 
-  //  Description change handler
   const handleDescriptionChange = (e) => {
     const value = e.target.value;
-    setLocalDescription(value); // add this state variable (next step)
+    setLocalDescription(value);
 
     if (typeof data.onDataChange === "function") {
       data.onDataChange({ description: value });
@@ -221,27 +192,10 @@ export const DefineNode = ({ id, data }) => {
     }
   };
 
-  /* ==================================================================================================*/
-
-  // const handleDescriptionChange = (e) => {
-  //   const value = e.target.value;
-  //   data.onDataChange({ description: value });
-
-  //   if (attemptedSave) {
-  //     if (!value) {
-  //       setDescriptionError("Description is required");
-  //     } else {
-  //       setDescriptionError("");
-  //     }
-  //   }
-  // };
-
-  // Adding useEffect for local name change
   useEffect(() => {
     setLocalName(data.name || "");
   }, [data.name]);
 
-  // Adding useEffect for local description change
   useEffect(() => {
     setLocalDescription(data.description || "");
   }, [data.description]);
@@ -323,7 +277,7 @@ export const DefineNode = ({ id, data }) => {
                 attemptedSave && nameError
                   ? "focus:ring-red-500"
                   : "focus:ring-gray-400"
-              } focus:border-gray-400 
+              } focus:border-gray-400
               }`}
               placeholder="Enter transformation name"
               value={localName}

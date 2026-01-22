@@ -86,7 +86,7 @@ export const TransformationNode = ({ id, data }) => {
   }, [id, sourceColumns, isButtonEnabled, isDataReady]);
 
   return (
-    <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[250px] max-w-[280px] relative group">
+    <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[320px] max-w-[280px] relative group">
       <button
         onClick={() => window.deleteNode?.(id)}
         className="absolute top-1.5 right-2 p-1"
@@ -181,20 +181,6 @@ export const TransformationNode = ({ id, data }) => {
         </div>
       </div>
 
-      {data.sourceNodes && data.sourceNodes.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-gray-200">
-          <span className="text-[10px] text-gray-500">
-            Sources: {data.sourceNodes.map(node => node.dfId).join(', ')}
-          </span>
-        </div>
-      )}
-      {data.targetNodes && data.targetNodes.length > 0 && (
-        <div className="mt-1">
-          <span className="text-[10px] text-gray-500">
-            Targets: {data.targetNodes.map(node => node.dfId).join(', ')}
-          </span>
-        </div>
-      )}
     </div>
   );
 };

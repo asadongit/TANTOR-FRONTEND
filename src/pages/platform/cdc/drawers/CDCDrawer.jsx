@@ -6,7 +6,6 @@ import { useWorkflow } from "../context/WorkflowContext";
 import AddTable from "./components/AddTable";
 import AddScope from "./components/AddScope";
 import EditTable from "./components/EditTable";
-import AddFilter from "./components/Migration/AddFilter";
 const CDCDrawer = ({ nodes, setNodes }) => {
   const { drawerStates, closeDrawer } = useDrawerContext();
 
@@ -65,8 +64,8 @@ const CDCDrawer = ({ nodes, setNodes }) => {
                 ...node.data,
                 tables: node.data.tables?.map((t) =>
                   t.table_name === localTable.table_name
-                    ? { ...t, migrationField: selectedName } 
-                    
+                    ? { ...t, migrationField: selectedName }
+
                     : t
                 ),
               },
@@ -88,8 +87,8 @@ const CDCDrawer = ({ nodes, setNodes }) => {
                 ...node.data,
                 tables: node.data.tables?.map((t) =>
                   t.table_name === localTable.table_name
-                    ? { ...t, whereCondition } 
-                    
+                    ? { ...t, whereCondition }
+
                     : t
                 ),
               },
@@ -133,10 +132,10 @@ const CDCDrawer = ({ nodes, setNodes }) => {
                   {getDrawerTitle(drawerState.drawerType)}
                 </h2>
               </div>
-              
+
 
               <Divider className="w-full" sx={{ margin: 0 }} />
-              
+
               <div className="p-4">
                            {canvasType === "cdc" && drawerState.drawerType === "editTable" && (
                   <EditTable
@@ -160,11 +159,7 @@ const CDCDrawer = ({ nodes, setNodes }) => {
                   />
                 )}
 
-            {canvasType === "migration" && drawerState.drawerType === "AddFilter" && (
-                  <AddFilter
-                  drawerData={drawerState}
-                  />
-                )}
+
               </div>
             </div>
           </Drawer>

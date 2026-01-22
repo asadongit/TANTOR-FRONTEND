@@ -39,7 +39,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     })).values()
   );
 
-  console.log("all policies aree @@@ ", allPolicies)
+ 
 
   useEffect(() => {
     if (isOpen) {
@@ -69,6 +69,44 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     setNewPolicies([]);
     onClose();
   };
+
+  const handleRemovePolicy = (policyIdToRemove) => {
+    console.log("Attempting to remove policy ID:", policyIdToRemove, "Type:", typeof policyIdToRemove);
+  console.log("existingPolicies:", existingPolicies);
+  console.log("newPolicies:", newPolicies);
+  // Remove from both policy arrays
+  const updatedExisting = existingPolicies.filter(
+    policy => policy.id !== policyIdToRemove
+  );
+  const updatedNew = newPolicies.filter(
+    policy => policy.id !== policyIdToRemove
+  );
+
+  console.log("After filtering - updatedExisting:", updatedExisting);
+  console.log("After filtering - updatedNew:", updatedNew);
+
+  // Update UI
+  setExistingPolicies(updatedExisting);
+  setNewPolicies(updatedNew);
+
+  // IMPORTANT: Rebuild formData from remaining policies
+  const remainingPolicies = [...updatedExisting, ...updatedNew];
+  
+  if (remainingPolicies.length === 0) {
+    // If no policies left, clear everything
+    setFormData(prev => ({
+      ...prev,
+      roles: [],
+      persona: [],
+      groups: [],
+      subgroups: [],
+      datapolicy: []
+    }));
+  } else {
+    // Rebuild from remaining policies
+    updateFormDataFromPolicies(remainingPolicies);
+  }
+};
 
   const fetchPolicyNames = async (policyIds) => {
     if (!policyIds || policyIds.length === 0) return [];
@@ -129,7 +167,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
       addItemsToSet(policy.roles, combinedRoles);
       addItemsToSet(policy.persona, combinedPersonas);
       addItemsToSet(policy.groups, combinedGroups);
-      addItemsToSet(policy.subgroups, combinedSubgroups);
+      addItemsToSet(policy.subgroups, combinedSubgroups); 
     });
 
     setFormData(prev => ({
@@ -149,26 +187,34 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
   };
 
   const handleApplyPoliciesFromModal = async (appliedData) => {
-    const policyIds = appliedData.datapolicy;
-    const fetchedPolicies = await fetchPolicyNames(policyIds);
+  const policyIds = appliedData.datapolicy;
+  const fetchedPolicies = await fetchPolicyNames(policyIds);
 
-    const newExistingPolicies = fetchedPolicies.map(policy => ({
-      id: policy.id,
-      name: policy.name,
-      roles: appliedData.roles || [],
-      persona: appliedData.persona || [],
-      groups: appliedData.groups || [],
-      subgroups: appliedData.subgroups || []
-    }));
+  // Map each policy with ITS OWN individual data
+  const newExistingPolicies = policyIds.map((policyId) => {
+    const policyName = fetchedPolicies.find(p => p.id === String(policyId))?.name || `Policy ${policyId}`;
+    
+    // Get individual data for THIS policy
+    const policyIndividualData = appliedData.policiesData?.[policyId];
+    
+    return {
+      id: String(policyId),
+      name: policyName,
+      roles: policyIndividualData?.role ? [policyIndividualData.role] : [],
+      persona: policyIndividualData?.persona || [],
+      groups: policyIndividualData?.group ? [policyIndividualData.group] : [],
+      subgroups: policyIndividualData?.subGroup ? [policyIndividualData.subGroup] : []
+    };
+  });
 
-    setExistingPolicies(newExistingPolicies);
-    updateFormDataFromPolicies(newExistingPolicies);
-    setIsPolicyModalOpen(false);
-  };
+  setExistingPolicies(newExistingPolicies);
+  updateFormDataFromPolicies(newExistingPolicies);
+  setIsPolicyModalOpen(false);
+};
 
   const handlePolicyComplete = (policyDetails) => {
     const newPolicy = {
-      id: policyDetails.id,
+      id: String(policyDetails.id),
       name: policyDetails.policy_type || `Policy ${policyDetails.id}`,
       roles: policyDetails.roles || [],
       persona: policyDetails.persona || [],
@@ -357,7 +403,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
           </div>
         )}
 
-        <div className="grid grid-cols-11 gap-8">
+        <div className="grid grid-cols-9 gap-8">
           <div className="col-span-3 space-y-3">
             <h3 className="text-[#8e78b7] font-medium">Login Credentials</h3>
             <div className="space-y-4">
@@ -369,7 +415,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
                   value={formData.username}
                   onChange={handleChange}
                   placeholder="User name"
-                  className={`w-full p-2.5 border ${errors.username ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
+                  className={`w-[320px] h-[44px] p-2.5 border ${errors.username ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
                 />
                 {errors.username && <p className="mt-1 text-sm text-red-500">{errors.username}</p>}
               </div>
@@ -381,7 +427,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="Password"
-                  className={`w-full p-2.5 border ${errors.password ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
+                  className={`w-[320px] h-[44px] p-2.5 border ${errors.password ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
                 />
                 {errors.password && <p className="mt-1 text-sm text-red-500">{errors.password}</p>}
                 {/* <p className="mt-1 text-xs text-gray-500">
@@ -397,14 +443,14 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   placeholder="Confirm password"
-                  className={`w-full p-2.5 border ${errors.confirmPassword ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
+                  className={`w-[320px] h-[44px] p-2.5 border ${errors.confirmPassword ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
                 />
                 {errors.confirmPassword && <p className="mt-1 text-sm text-red-500">{errors.confirmPassword}</p>}
               </div>
             </div>
           </div>
 
-          <div className="col-span-4 space-y-3">
+          <div className="col-span-3 space-y-3">
             <h3 className="text-[#8e78b7] font-medium">Personal Details</h3>
             <div className="space-y-4">
               <div>
@@ -415,7 +461,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
                   value={formData.firstName}
                   onChange={handleChange}
                   placeholder="First name"
-                  className={`w-full p-2.5 border ${errors.firstName ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
+                  className={`w-[320px] h-[44px] p-2.5 border ${errors.firstName ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
                 />
                 {errors.firstName && <p className="mt-1 text-sm text-red-500">{errors.firstName}</p>}
               </div>
@@ -427,7 +473,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
                   value={formData.lastName}
                   onChange={handleChange}
                   placeholder="Last name"
-                  className={`w-full p-2.5 border ${errors.lastName ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
+                  className={`w-[320px] h-[44px] p-2.5 border ${errors.lastName ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
                 />
                 {errors.lastName && <p className="mt-1 text-sm text-red-500">{errors.lastName}</p>}
               </div>
@@ -439,35 +485,37 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="Email id"
-                  className={`w-full p-2.5 border ${errors.email ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
+                  className={`w-[320px] h-[44px] p-2.5 border ${errors.email ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
                 />
                 {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email}</p>}
               </div>
             </div>
           </div>
 
-          <div className="col-span-4 space-y-6">
+          <div className="col-span-3 space-y-6">
             <h3 className="text-[#8e78b7] font-medium">Access Policies</h3>
             <div className="space-y-3">
-              <div className="space-y-4 mt-10">
+              <div className="flex flex-col gap-11 mt-9">
                 <button
                   onClick={() => setIsPolicyModalOpen(true)}
-                  className="w-full px-4 py-2 border border-gray-400 rounded-lg bg-gray-100 hover:bg-[#8e78b7] hover:text-white transition-colors text-black"
+                  className="w-[320px] h-[44px] px-4 py-2 border border-gray-400 rounded-lg bg-gray-100 hover:bg-[#8e78b7] hover:text-white transition-colors text-black"
                   type="button"
                 >
                   Select existing policy
                 </button>
+
+                
                 <button
                   onClick={() => {
                     setIsPolicyStepperOpen(true);
                   }}
-                  className="w-full px-4 py-2 border border-gray-400 rounded-lg bg-gray-100 hover:bg-[#8e78b7] hover:text-white transition-colors text-black"
+                  className="w-[320px] h-[44px] px-4 py-2 border border-gray-400 rounded-lg bg-gray-100 hover:bg-[#8e78b7] hover:text-white transition-colors text-black"
                   type="button"
                 >
                   Add new policy
                 </button>
 
-                {allPolicies.length > 0 && (
+                {/* {allPolicies.length > 0 && (
                   <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <p className="text-sm font-medium mb-3 text-gray-700">Assigned Policies:</p>
                     {isFetchingPolicyNames ? (
@@ -495,7 +543,45 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
                       </div>
                     )}
                   </div>
-                )}
+                )} */}
+
+                {allPolicies.length > 0 && (
+  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+    <p className="text-sm font-medium mb-3 text-gray-700">Assigned Policies:</p>
+    {isFetchingPolicyNames ? (
+      <div className="flex items-center justify-center py-6">
+        <Loader className="h-5 w-5 animate-spin text-[#8e78b7]" />
+        <span className="ml-2 text-sm text-gray-600">Loading policy names...</span>
+      </div>
+    ) : (
+      <div className="max-h-64 overflow-y-auto space-y-2 pr-2">
+        {allPolicies.map((policy, index) => (
+          <div 
+            key={policy.id} 
+            className="bg-white p-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors flex items-center justify-between group"
+          >
+            <div className="flex items-start gap-2 flex-1">
+              <span className="text-sm text-gray-500 flex-shrink-0">{index + 1}.</span>
+              <p className="text-sm font-medium text-gray-900 truncate" title={policy.name}>
+                {policy.name}
+              </p>
+            </div>
+            
+            {/* Remove button - visible on hover */}
+            <button
+  onClick={() => handleRemovePolicy(policy.id)}
+  className="ml-2 text-gray-500 hover:text-red-600 hover:bg-red-100 p-1.5 rounded-md transition-all"
+  type="button"
+  title="Remove policy"
+>
+  <X className="h-4 w-4" />
+</button>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
 
                 {errors.policyAssignment && (
                   <p className="mt-2 text-sm text-red-500">{errors.policyAssignment}</p>

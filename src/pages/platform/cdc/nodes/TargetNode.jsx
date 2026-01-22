@@ -301,150 +301,145 @@ export function TargetNode({ id, data, selected }) {
   }, [refetchTables, refetchBulkTables, selectedConnection, selectedSchema, selectedMode, ID, firstSource, isPipelineNode, completeMapping]);
 
   return (
-    <div
-      className={`bg-white rounded-lg p-3 pt-2 shadow-md border-2 ${
-        selected ? "border-[#8E77BB]" : "border-gray-300"
-      } w-fit min-w-[18vw] max-w-[90vw] relative group grid grid-cols-[repeat(auto-fit,minmax(min-content,1fr))]`}
-    >
-      <div className="flex justify-between items-center mb-2">
-        <div className="flex items-center gap-1">
+    <div className="bg-white rounded-lg p-4 text-black shadow-md border-2 border-[#8E77BB] min-w-[320px] max-w-[500px] relative group">
+      <div className="flex justify-between items-center mb-3">
+        <div className="flex items-center space-x-3">
           <iconify-icon
             icon="material-symbols-light:ads-click"
             style={{ color: "#8e78b7" }}
-            width="24"
-            height="24"
+            width="22"
+            height="22"
           ></iconify-icon>
           <h3 className="text-black font-medium">Target</h3>
         </div>
 
         {!data?.pipelineId && (
-          <div className="flex space-x-2">
-            <button className="p-1">
-              <Minus className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-            </button>
-            <button onClick={() => window.deleteNode?.(id)} className="p-1">
-              <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-            </button>
-          </div>
+          <button onClick={() => window.deleteNode?.(id)} className="p-1">
+            <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+          </button>
         )}
       </div>
 
-      <Handle type="target" position={Position.Left} />
-      <Handle type="source" position={Position.Right} />
+      <Handle type="target" position={Position.Left} style={{ width: 10, height: 10 }} />
+      <Handle type="source" position={Position.Right} style={{ width: 10, height: 10 }} />
 
-      <div className="space-y-1.5">
-        <div>
-          <label className="text-xs font-medium text-black mb-0.5 block">
-            Connection
-          </label>
+      <div className="mb-2 w-full">
+        <label className="block text-sm font-semibold text-gray-700 mb-1">
+          Connection
+        </label>
+
+        <div className="w-full relative">
+          <button
+            type="button"
+            className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm text-left focus:outline-none focus:ring-2 focus:ring-purple-300 flex justify-between items-center"
+            onClick={() => setConnectionDropdownOpen((open) => !open)}
+          >
+            <span className={selectedConnectionObj ? "text-gray-900" : "text-gray-400"}>
+              {selectedConnectionObj ? selectedConnectionObj.connection_name : "Select Connection"}
+            </span>
+            <span className="text-gray-500">&#9662;</span>
+          </button>
+
+          {connectionDropdownOpen && (
+            <div className="absolute z-10 bg-white border border-gray-200 rounded-md shadow w-full mt-1 max-h-56 overflow-auto">
+              <input
+                type="text"
+                placeholder="Search connection..."
+                className="w-full px-3 py-2 text-sm border-b border-gray-200 focus:outline-none"
+                value={connectionSearch}
+                onChange={(e) => setConnectionSearch(e.target.value)}
+                autoFocus
+              />
+              <div>
+                {filteredConnections.length > 0 ? (
+                  filteredConnections.map((connection, idx) => (
+                    <div
+                      key={idx}
+                      className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 ${
+                        selectedConnectionObj?.connection_id === connection.connection_id ? "bg-gray-50" : ""
+                      }`}
+                      onClick={() => {
+                        setSelectedConnectionObj(connection);
+                        setSelectedConnection(connection.connection_name);
+                        setSelectedSchema("");
+                        setNodeData((prevData) => ({
+                          ...prevData,
+                          target_conn_id: connection.connection_id,
+                        }));
+                        setConnectionDropdownOpen(false);
+                        setConnectionSearch("");
+                      }}
+                    >
+                      {connection.connection_name}
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-sm text-gray-400">No connections found</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="mb-2 w-full">
+        <label className="block text-sm font-semibold text-gray-700 mb-1">
+          Schema
+        </label>
+
+        <div className="relative w-full flex items-center gap-2">
           <div className="w-full relative">
             <button
               type="button"
-              className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 flex justify-between items-center"
-              onClick={() => setConnectionDropdownOpen((open) => !open)}
+              className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm text-left focus:outline-none focus:ring-2 focus:ring-purple-300 flex justify-between items-center disabled:bg-gray-50 disabled:text-gray-400"
+              onClick={() => setSchemaDropdownOpen((open) => !open)}
+              disabled={!selectedConnection || schemaLoading}
             >
-              {selectedConnectionObj ? selectedConnectionObj.connection_name : "Select Connection"}
-              <span className="ml-2">&#9662;</span>
+              <span className={selectedSchema ? "text-gray-900" : "text-gray-400"}>
+                {selectedSchema || "Select Schema"}
+              </span>
+              <span className="text-gray-500">&#9662;</span>
             </button>
-            {connectionDropdownOpen && (
-              <div className="absolute z-10 bg-white border text-black border-gray-300 rounded shadow w-full mt-1 max-h-48 overflow-auto">
+
+            {schemaDropdownOpen && (
+              <div className="absolute z-10 bg-white border border-gray-200 rounded-md shadow w-full mt-1 max-h-56 overflow-auto">
                 <input
                   type="text"
-                  placeholder="Search connection..."
-                  className="w-full p-1 text-xs border-b border-gray-200"
-                  value={connectionSearch}
-                  onChange={e => setConnectionSearch(e.target.value)}
+                  placeholder="Search schema..."
+                  className="w-full px-3 py-2 text-sm border-b border-gray-200 focus:outline-none"
+                  value={schemaSearch}
+                  onChange={(e) => setSchemaSearch(e.target.value)}
                   autoFocus
                 />
                 <div>
-                  {filteredConnections.length > 0 ? (
-                    filteredConnections.map((connection, idx) => (
+                  {schemaLoading ? (
+                    <div className="px-3 py-2 text-sm text-gray-400">Loading schemas...</div>
+                  ) : filteredSchemas.length > 0 ? (
+                    filteredSchemas.map((schema, idx) => (
                       <div
                         key={idx}
-                        className={`px-2 py-1 text-xs text-black cursor-pointer hover:bg-gray-100 ${selectedConnectionObj && selectedConnectionObj.connection_id === connection.connection_id ? "bg-gray-100" : ""}`}
+                        className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 ${
+                          selectedSchema === schema.table_schema ? "bg-gray-50" : ""
+                        }`}
                         onClick={() => {
-                          setSelectedConnectionObj(connection);
-                          setSelectedConnection(connection.connection_name);
-                          setSelectedSchema("");
-                          setNodeData((prevData) => ({
-                            ...prevData,
-                            target_conn_id: connection.connection_id,
-                          }));
-                          setConnectionDropdownOpen(false);
-                          setConnectionSearch("");
+                          setSelectedSchema(schema.table_schema);
+                          setLoading(true);
+                          setSchemaDropdownOpen(false);
+                          setSchemaSearch("");
                         }}
                       >
-                        {connection.connection_name}
+                        {schema.table_schema}
                       </div>
                     ))
                   ) : (
-                    <div className="px-2 py-1 text-xs text-gray-400">No connections found</div>
+                    <div className="px-3 py-2 text-sm text-gray-400">No schemas found</div>
                   )}
                 </div>
               </div>
             )}
           </div>
-        </div>
 
-        <div>
-          <label className="text-xs font-medium text-black mb-0.5 block">
-            Schema
-          </label>
-          <div className="relative w-full flex items-center gap-2">
-            <div className="w-full relative">
-              <button
-                type="button"
-                className="w-full min-w-0 p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 flex justify-between items-center"
-                onClick={() => setSchemaDropdownOpen((open) => !open)}
-                disabled={!selectedConnection || schemaLoading}
-              >
-                {selectedSchema || "Select Schema"}
-                <span className="ml-2">&#9662;</span>
-              </button>
-              {schemaDropdownOpen && (
-                <div className="absolute z-10 bg-white text-black border border-gray-300 rounded shadow w-full mt-1 max-h-48 overflow-auto">
-                  <input
-                    type="text"
-                    placeholder="Search schema..."
-                    className="w-full p-1 text-xs border-b border-gray-200"
-                    value={schemaSearch}
-                    onChange={e => setSchemaSearch(e.target.value)}
-                    autoFocus
-                  />
-                  <div>
-                    {schemaLoading ? (
-                      <div className="px-2 py-1 text-xs text-gray-400">Loading schemas...</div>
-                    ) : filteredSchemas.length > 0 ? (
-                      filteredSchemas.map((schema, idx) => (
-                        <div
-                          key={idx}
-                          className={`px-2 py-1 text-xs text-black cursor-pointer hover:bg-gray-100 ${selectedSchema === schema.table_schema ? "bg-gray-100" : ""}`}
-                          onClick={() => {
-                            setSelectedSchema(schema.table_schema);
-                            setLoading(true);
-                            setSchemaDropdownOpen(false);
-                            setSchemaSearch("");
-                          }}
-                        >
-                          {schema.table_schema}
-                        </div>
-                      ))
-                    ) : (
-                      <div className="px-2 py-1 text-xs text-gray-400">No schemas found</div>
-                    )}
-                  </div>
-                </div>
-              )}
-              {schemaLoading && (
-                <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                  <div className="animate-spin h-4 w-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
-                </div>
-              )}
-            </div>
-            <span className="text-black font-bold">
-              {schemaCount?.schema_count}
-            </span>
-          </div>
+          <span className="text-black font-bold">{schemaCount?.schema_count}</span>
         </div>
       </div>
 
@@ -772,7 +767,7 @@ export function TargetNode({ id, data, selected }) {
           </div>
         </div>
       )}
-      {selectedMode == "subset" && selectedSchema && (
+      {/* {selectedMode == "subset" && selectedSchema && (
         <button
           className="w-full py-1 px-4 flex items-center justify-center border border-dashed border-[#8e78b7]  text-[#8e78b7] rounded-md  bg-transparent transition-all duration-200 ease-in-out
                                                           hover:bg-[#8e78b7] hover:text-white mt-2"
@@ -780,7 +775,7 @@ export function TargetNode({ id, data, selected }) {
         >
           + Add table
         </button>
-      )}
+      )} */}
       {/* <div className="flex space-x-2 mt-4">
         <button className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded"
         onClick={

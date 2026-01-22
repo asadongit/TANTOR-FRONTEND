@@ -6,29 +6,25 @@ export const PurgeContextProvider = ({ children }) => {
 
   const [ dropPartitions, setDropPartitions ] = useState({
     source: {
-      partitionName: null,
-      columnName: null,
-      highValue: null,
-      partitionType: null,
-      tableName: null
+      partition_name: null,
+      column_name: null,
+      high_value: null,
+      partition_type: null,
+      table_name: null
     },
     target: {
-      partitionName: null,
-      columnName: null,
-      highValue: null,
-      partitionType: null,
-      tableName: null
+      partition_name: null,
+      column_name: null,
+      high_value: null,
+      partition_type: null,
+      table_name: null
     }
   })
-  const saveDropPartitions = (nodeType, partitionName, columnName, highValue, partitionType, tableName) => {
+  const saveDropPartitions = (nodeType, partitionInfo) => {
     setDropPartitions({
       ...dropPartitions,
       [nodeType]: {
-        partitionName: partitionName,
-        columnName: columnName,
-        highValue: highValue,
-        partitionType: partitionType,
-        tableName: tableName
+        ...partitionInfo
       }
     })
   }
@@ -157,6 +153,7 @@ export const PurgeContextProvider = ({ children }) => {
       saveSourceData,
       targetData,
       saveTargetData,
+      setDropPartitions
     }}
   >
     {children}

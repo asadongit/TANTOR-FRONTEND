@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   LogOut, Settings, User, HelpCircle, Shield, CreditCard, Crown, Building
 } from 'lucide-react';
-import Logo from '../assets/Tantor.svg';
+import Logo from '../assets/TantorlogoNew.png';
 import { useAuth } from '../context/AuthContext';
 import { useFetchUser } from '../hooks/platform/user';
 import Notifications from './Notifications';
@@ -100,7 +100,7 @@ const Header = ({ activeSection }) => {
     <>
       <header className="sticky top-0 z-50 bg-white border-b border-gray-200 h-16 flex items-center px-6 justify-between shadow-sm">
         <div className="flex items-center">
-          <img src={Logo} alt="Tantor" className="h-8 cursor-pointer" onClick={() => navigate('/dashboard')} />
+          <img src={Logo} alt="Tantor" className="h-10 cursor-pointer" onClick={() => navigate('/dashboard')} />
         </div>
         <div className="flex items-center gap-4">
           {activeSection == "datagovernance" ? (
@@ -174,7 +174,7 @@ const Header = ({ activeSection }) => {
                   </div>
                 )}
 
-                <div className="py-1">
+                {/* <div className="py-1">
                   <button className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 w-full text-left" onClick={() => navigate('/dashboard')}>
                     <User size={16} className="mr-3 text-gray-500" /> My Profile
                   </button>
@@ -187,7 +187,7 @@ const Header = ({ activeSection }) => {
                   <button className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 w-full text-left" onClick={() => navigate('/dashboard')}>
                     <HelpCircle size={16} className="mr-3 text-gray-500" /> Help & Support
                   </button>
-                </div>
+                </div> */}
 
                 <div className="py-1 border-t border-gray-100 bg-gray-50">
                   {isLoading ? (

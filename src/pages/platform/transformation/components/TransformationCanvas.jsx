@@ -29,6 +29,7 @@ import {
   validateEditFlowData,
   restoreNodesAndEdgesFromEditData,
 } from "../utils/editFlowUtils";
+import UnStructureDataPrep from "./nodes/components/UnstructuredDataPrepModal"; // <-- add
 
 const nodeTypes = {
   define: DefineNode,
@@ -54,15 +55,62 @@ const initialNodes = [
     },
     deletable: false,
   },
+  {
+    id: "node_1",
+    type: "source",
+    position: { x: 400, y: 200 },
+    data: {
+      connection: "",
+      schema: "",
+      tables: [],
+      onDataChange: () => {},
+    },
+  },
+  {
+    id: "node_2",
+    type: "transformation",
+    position: { x: 800, y: 200 },
+    data: {
+      type: "",
+      function: "",
+      onDataChange: () => {},
+    },
+  },
+  {
+    id: "node_3",
+    type: "target",
+    position: { x: 1200, y: 200 },
+    data: {
+      connection: "",
+      schema: "",
+      onDataChange: () => {},
+    },
+  },
 ];
 
-const initialEdges = [];
+const initialEdges = [
+  {
+    id: "edge_0",
+    source: "node_0",
+    target: "node_1",
+  },
+  {
+    id: "edge_1",
+    source: "node_1",
+    target: "node_2",
+  },
+  {
+    id: "edge_2",
+    source: "node_2",
+    target: "node_3",
+  },
+];
 
 function TransformationCanvasContent() {
   const navigate = useNavigate();
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const nodeIdRef = useRef(1);
+  const nodeIdRef = useRef(4);
   const { generateTransformationJson, dispatch, ACTION_TYPES } =
     useTransformation();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -75,6 +123,26 @@ function TransformationCanvasContent() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editTransformationId, setEditTransformationId] = useState(null);
   const [isRestorationComplete, setIsRestorationComplete] = useState(false);
+
+  const [nlpModalOpen, setNlpModalOpen] = useState(false);
+  const [nlpTxtFile, setNlpTxtFile] = useState(null);
+
+  useEffect(() => {
+    window.openUnstructuredDataPrepModal = ({ file } = {}) => {
+      setNlpTxtFile(file || null);
+      setNlpModalOpen(true);
+    };
+
+    window.closeUnstructuredDataPrepModal = () => {
+      setNlpModalOpen(false);
+      setNlpTxtFile(null);
+    };
+
+    return () => {
+      window.openUnstructuredDataPrepModal = undefined;
+      window.closeUnstructuredDataPrepModal = undefined;
+    };
+  }, []);
 
   useTrackConnections(nodes, edges);
 
@@ -91,27 +159,6 @@ function TransformationCanvasContent() {
         setIsEditMode(true);
         setEditTransformationId(transformationId);
 
-        // const restoredData = restoreNodesAndEdgesFromEditData(
-        //   editFlowData,
-        //   setNodes,
-        //   setEdges,
-        //   nodeIdRef
-        // );
-
-        // setNodes(restoredData.nodes);
-        // setEdges(restoredData.edges);
-
-        // setNodes((prev) =>
-        //   prev.map((n) =>
-        //     n.type === "define"
-        //       ? { ...n, data: { ...n.data, isEditMode: true } }
-        //       : n
-        //   )
-        // );
-
-        /*==============================================================================================
-        Modified version to support ensure Define node works in edit mode
-        ==============================================================================================*/
         const restoredData = restoreNodesAndEdgesFromEditData(
           editFlowData,
           setNodes,
@@ -253,67 +300,6 @@ function TransformationCanvasContent() {
     [setNodes]
   );
 
-  // Update onDataChange for all nodes - only after restoration is complete
-  // useEffect(() => {
-  //   if (!isRestorationComplete) return;
-
-  //   setNodes((nds) =>
-  //     nds.map((node) => ({
-  //       ...node,
-  //       data: {
-  //         ...node.data,
-  //         onDataChange: (newData) => {
-  //           if (node.data._isRestoring) {
-  //             return;
-  //           }
-
-  //           onDataChangeImmediate(node.id, newData);
-  //         },
-  //       },
-  //     }))
-  //   );
-  // }, [onDataChangeImmediate, isRestorationComplete]);
-
-  /*==============================================================================================
-                     Updated code block to ensure Define node works in edit mode 
-==============================================================================================*/
-
-  //  Ensure every node — including Define in edit mode — always has a working onDataChange
-  // useEffect(() => {
-  //   if (!isRestorationComplete) return;
-
-  //   setNodes((nodes) =>
-  //     nodes.map((node) => {
-  //       // Build a fresh onDataChange for every node
-  //       const updatedData = {
-  //         ...node.data,
-  //         onDataChange: (newData) => {
-  //           // Skip updates only if node is in the middle of restoring
-  //           if (node.data._isRestoring) return;
-  //           console.log(
-  //             "Updating node data via onDataChangeImmediate",
-  //             node.id,
-  //             newData
-  //           );
-  //           // Allow Define node edits even in edit mode
-  //           if (node.type === "define") {
-  //             console.log("Updating Define node data:", newData); // debug
-  //           }
-
-  //           // Update the node’s data inside ReactFlow state
-  //           setNodes((prevNodes) =>
-  //             prevNodes.map((n) =>
-  //               n.id === node.id ? { ...n, data: { ...n.data, ...newData } } : n
-  //             )
-  //           );
-  //         },
-  //       };
-
-  //       return { ...node, data: updatedData };
-  //     })
-  //   );
-  // }, [setNodes, isRestorationComplete]);
-
   useEffect(() => {
     if (!isRestorationComplete) return;
 
@@ -344,31 +330,9 @@ function TransformationCanvasContent() {
     );
   }, [setNodes, isRestorationComplete]);
 
-  /*==============================================================================================*/
-
   useEffect(() => {
     id = nodeIdRef.current;
   }, []);
-
-  /*   =============================================================================================                               Commenting this block becox we will create a master to hanlde it
-  =============================================================================================== */
-  // useEffect(() => {
-  //   setNodes((nds) =>
-  //     nds.map((node) => ({
-  //       ...node,
-  //       data: {
-  //         ...node.data,
-  //         onDataChange: (newData) => {
-  //           setNodes((prevNodes) =>
-  //             prevNodes.map((n) =>
-  //               n.id === node.id ? { ...n, data: { ...n.data, ...newData } } : n
-  //             )
-  //           );
-  //         },
-  //       },
-  //     }))
-  //   );
-  // }, [setNodes]);
 
   useEffect(() => {
     const hasDefineNode = nodes.some((node) => node.type === "define");
@@ -592,10 +556,6 @@ function TransformationCanvasContent() {
         return;
       }
 
-      /*========================================================================================
-          Below code added to ensure new data is captured b4 passing on
-      ==========================================================================================*/
-      // Ensure latest Define node data is captured before saving
       const defineNodeIndex = nodes.findIndex((node) => node.type === "define");
       if (defineNodeIndex !== -1 && window.allNodes) {
         const liveDefine = window.allNodes.find((n) => n.type === "define");
@@ -604,11 +564,7 @@ function TransformationCanvasContent() {
         }
       }
 
-      /*========================================================================================*/
-
       const defineNode = nodes.find((node) => node.type === "define");
-      /*  Adding Patch to sync React flow with local state  */
-      // Ensure latest Define node data (localName, localDescription) are pulled directly from the DOM
       try {
         const nameInput = document.querySelector(
           'input[placeholder="Enter transformation name"]'
@@ -644,7 +600,6 @@ function TransformationCanvasContent() {
         return;
       }
 
-      // FIXED: Force update of transformation context with current node states before generating JSON
       nodes.forEach((node) => {
         if (
           node.type === "source" &&
@@ -676,12 +631,10 @@ function TransformationCanvasContent() {
         }
       });
 
-      // Wait for state update before generating JSON
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       setIsSaving(true);
 
-      // Dispatch to ensure the context state (state.define) is up-to-date, so your inner transformation_json will also get the correct workflow name and description.
       dispatch({
         type: ACTION_TYPES.UPDATE_DEFINE,
         payload: {
@@ -874,6 +827,7 @@ function TransformationCanvasContent() {
         },
       };
 
+      // console.log(payload)
       const isUpdate = isEditMode && editTransformationId;
       const url = isUpdate
         ? `${hostname}/etl/transformation/edit/update?transformation_id=${editTransformationId}`
@@ -1186,29 +1140,6 @@ function TransformationCanvasContent() {
     updateTransformationNodesData();
   }, [nodes.length, updateTransformationNodesData]);
 
-  /*===============================================================================================
-                        Commenting it becox we will use Master
-    =============================================================================================*/
-  // useEffect(() => {
-  //   setNodes((nds) =>
-  //     nds.map((node) => ({
-  //       ...node,
-  //       data: {
-  //         ...node.data,
-  //         onDataChange: (newData) => {
-  //           setNodes((prevNodes) => {
-  //             const updatedNodes = prevNodes.map((n) =>
-  //               n.id === node.id ? { ...n, data: { ...n.data, ...newData } } : n
-  //             );
-
-  //             return updatedNodes;
-  //           });
-  //         },
-  //       },
-  //     }))
-  //   );
-  // }, [setNodes]);
-
   useEffect(() => {
     const defineNode = nodes.find((node) => node.type === "define");
     if (!defineNode) return;
@@ -1376,7 +1307,7 @@ function TransformationCanvasContent() {
   );
 
   return (
-    <div style={{ width: "100%", height: "100vh" }} className="relative">
+    <div style={{ width: "100%", height: "90vh" }} className="relative">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -1402,12 +1333,6 @@ function TransformationCanvasContent() {
       </ReactFlow>
 
       <div className="fixed bottom-8 right-8 flex space-x-4">
-        {/* <button
-          onClick={handleNewFlow}
-          className="bg-white rounded-md border-2 border-[#8E77BB] shadow-md px-6 py-2 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-        >
-          New Flow
-        </button> */}
         <button
           onClick={handleCancel}
           className="bg-white rounded-md border-2 border-[#8E77BB] shadow-md px-6 py-2 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
@@ -1471,6 +1396,12 @@ function TransformationCanvasContent() {
           {...arthDrawerProps}
         />
       )}
+
+      <UnStructureDataPrep
+        open={nlpModalOpen}
+        onClose={() => window.closeUnstructuredDataPrepModal?.()}
+        txtFile={nlpTxtFile}
+      />
     </div>
   );
 }

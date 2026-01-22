@@ -14,6 +14,8 @@ const Step1 = ({ onDataChange, initialData, nextButtonRef }) => {
     const [modalOpen, setModalOpen] = useState(false);
     const [newSubPolicyName, setNewSubPolicyName] = useState('');
     const [newSubPolicyDesc, setNewSubPolicyDesc] = useState('');
+    const [startDate, setStartDate] = useState(initialData.start_date || '');
+    const [endDate, setEndDate] = useState(initialData.expiry_date || '');
     const [formValid, setFormValid] = useState(false);
     const [loading, setLoading] = useState(false);
     const [toast, setToast] = useState({
@@ -22,6 +24,7 @@ const Step1 = ({ onDataChange, initialData, nextButtonRef }) => {
         severity: 'success'
     });
     const { token } = useAuth();
+    const today = new Date().toISOString().split("T")[0]
 
     useEffect(() => {
         fetchPolicy();
@@ -32,6 +35,8 @@ const Step1 = ({ onDataChange, initialData, nextButtonRef }) => {
         setDescription(initialData.description || '');
         setSelectedSubPolicy(initialData.sub_policy_name || '');
         setSubPolicyDescription(initialData.sub_policy_description || '');
+        setStartDate(initialData.start_date || '');
+        setEndDate(initialData.expiry_date || '');
     }, [initialData]);
 
     useEffect(() => {
@@ -40,6 +45,8 @@ const Step1 = ({ onDataChange, initialData, nextButtonRef }) => {
             description,
             sub_policy_name: selectedSubPolicy,
             sub_policy_description: subPolicyDescription,
+            start_date: startDate,
+            expiry_date: endDate,
             isFormValid: selectedPolicy !== '' && selectedSubPolicy !== ''
         };
         onDataChange(currentData);
@@ -47,7 +54,7 @@ const Step1 = ({ onDataChange, initialData, nextButtonRef }) => {
         // Validate form - both policy and subpolicy must be selected
         const isValid = selectedPolicy !== '' && selectedSubPolicy !== '';
         setFormValid(isValid);
-    }, [selectedPolicy, description, selectedSubPolicy, subPolicyDescription]);
+    }, [selectedPolicy, description, selectedSubPolicy, subPolicyDescription, startDate, endDate]);
 
     useEffect(() => {
         if (selectedPolicy) {
@@ -263,6 +270,35 @@ const Step1 = ({ onDataChange, initialData, nextButtonRef }) => {
                         value={subPolicyDescription}
                         onChange={(e) => setSubPolicyDescription(e.target.value)}
                         readOnly
+                    /> 
+                </div>
+                {/* Start Date */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Start Date
+                    </label>
+                    <input
+                        type="date"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        disabled={!selectedSubPolicy}
+                        min={today}
+                    />
+                </div>
+
+                {/* End Date */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                        End Date
+                    </label>
+                    <input
+                        type="date"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        disabled={!selectedSubPolicy}
+                        min={startDate}  
                     />
                 </div>
             </div>

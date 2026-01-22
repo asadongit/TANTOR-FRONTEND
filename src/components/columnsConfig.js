@@ -47,7 +47,7 @@ const columnConfigurations = {
       { key: "source_table", label: "Source Table", sortable: true },
       { key: "target_table", label: "Target Table", sortable: true },
       { key: "status", label: "Status", sortable: true },
-      { label: "Action", sortable: false },
+      // { label: "Action", sortable: false },
     ],
   
     migration: [

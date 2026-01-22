@@ -14,6 +14,7 @@ import TypecastOperationFields, { getTypecastParams } from "./operations/typecas
 import SortOperationFields, { getSortParams } from "./operations/sort";
 import RankingOperationFields, { getRankingParams } from "./operations/ranking";
 import ExpressionOperationFields, { getExpressionParams, validatePySparkExpression } from "./operations/expression";
+import JsonFlattenOperationFields, { getJsonFlattenParams } from "./operations/jsonFlatten";
 
 const transformationOperations = [
 	{
@@ -66,6 +67,10 @@ const transformationOperations = [
 	{
 		id: "expression",
 		name: "Expression"
+	},
+	{
+		id: "json_flatten",
+		name: "JSON Flatten"
 	}
 ];
 
@@ -149,7 +154,7 @@ const TransformationItem = memo(({
 
   const renderTransformationFields = () => {
     const { transformation_operation, source_dataframe, target_dataframe } = transformation;
-    const sourceCols = dataframeColumns[source_dataframe] || [];
+    const sourceCols = dataframeColumns[source_dataframe]?.columns || [];
     const targetCols = sourceCols;
 
     const commonProps = {
@@ -281,6 +286,14 @@ const TransformationItem = memo(({
           onAddNewTargetColumn={onAddNewTargetColumn}
           setTransformationValidity={setTransformationValidity}
         />;
+	  case 'json_flatten':
+		return (
+			<JsonFlattenOperationFields
+				{...commonProps}
+				columnFormat={dataframeColumns[transformation.source_dataframe]?.column_format || {}}
+				setTransformationValidity={setTransformationValidity}
+			/>
+		);
       default:
         return null;
     }
@@ -392,7 +405,7 @@ export const TransformationDrawer = ({
 
     previousStates[idx] = JSON.parse(JSON.stringify(dfCols));
 
-    let cols = Array.isArray(dfCols[dfId]) ? [...dfCols[dfId]] : [];
+    let cols = Array.isArray(dfCols[dfId]?.columns) ? [...dfCols[dfId].columns] : [];
 
     switch (t.transformation_operation) {
       case "constantcopy":
@@ -466,7 +479,7 @@ export const TransformationDrawer = ({
 
       case "join":
         if (t.params?.right_dataframe && dfCols[t.params.right_dataframe]) {
-          const rightCols = dfCols[t.params.right_dataframe];
+          const rightCols = dfCols[t.params.right_dataframe].columns;
           const droppedLeft = new Set(t.params.drop_left_dataframe_collist || []);
           const droppedRight = new Set(t.params.drop_right_dataframe_collist || []);
 
@@ -482,7 +495,7 @@ export const TransformationDrawer = ({
         break;
     }
 
-    dfCols[dfId] = cols;
+    dfCols[dfId].columns = cols;
   });
 
   window.transformationReplayHistory = previousStates;
@@ -492,11 +505,17 @@ export const TransformationDrawer = ({
 }, []);
 
 	const syncDataframeColumnsFromNodes = useCallback(() => {
-		if (!window.allNodes || !window.allEdges) return;
+		if (!window.allNodes || !window.allEdges) {
+			setColumnsLoaded(true);
+			return;
+		}
 
 
 		const targetNodeId = activeNodeId;
-		if (!targetNodeId) return;
+		if (!targetNodeId) {
+			setColumnsLoaded(true);
+			return;
+		}
 
 		const incomingEdges = window.allEdges.filter(edge => edge.target === targetNodeId);
 
@@ -509,6 +528,7 @@ export const TransformationDrawer = ({
 				return {
 					id: alias,
 					columns: node.data?.columns || [],
+					column_format: node.data?.column_format || {},
 					label: alias,
 					nodeId: node.id
 				};
@@ -524,19 +544,25 @@ export const TransformationDrawer = ({
 
 		const dfCols = {};
 		allDfs.forEach(df => {
-			dfCols[df.id] = Array.isArray(df.columns) ? df.columns : [];
+			dfCols[df.id] = {
+				columns: Array.isArray(df.columns) ? df.columns : [],
+				column_format: df.column_format || {}
+			};
 		});
 
 		if (isEditMode && window.replayedDataframeColumns && hasReplayedRef.current) {
 			Object.keys(window.replayedDataframeColumns).forEach(dfId => {
-				if (window.replayedDataframeColumns[dfId] && window.replayedDataframeColumns[dfId].length > 0) {
-					dfCols[dfId] = [...window.replayedDataframeColumns[dfId]];
+				if (window.replayedDataframeColumns[dfId] && window.replayedDataframeColumns[dfId].columns && window.replayedDataframeColumns[dfId].columns.length > 0) {
+					dfCols[dfId] = {
+						columns: [...window.replayedDataframeColumns[dfId].columns],
+						column_format: window.replayedDataframeColumns[dfId].column_format || {}
+					};
 
 					const sourceNode = window.allNodes.find(node =>
 						(node.type === "source" && (node.data?.alias === dfId || node.id === dfId))
 					);
 					if (sourceNode && typeof sourceNode.data.onDataChange === "function") {
-						sourceNode.data.onDataChange({ columns: [...window.replayedDataframeColumns[dfId]] });
+						sourceNode.data.onDataChange({ columns: [...window.replayedDataframeColumns[dfId].columns] });
 					}
 				}
 			});
@@ -783,7 +809,9 @@ export const TransformationDrawer = ({
 		case "typecast":
 			params = {
 			target_datatype: "",
-			source_datatype: ""
+			source_datatype: "",
+			precision: "",
+			scale: ""
 			};
 			transformation_operator = "";
 			break;
@@ -805,6 +833,10 @@ export const TransformationDrawer = ({
 			exp: "",
 			datatype: "string"
 			};
+			transformation_operator = "";
+			break;
+		case "json_flatten":
+			params = getJsonFlattenParams({ params: { jsonColumns: {} } });
 			transformation_operator = "";
 			break;
 		}
@@ -975,11 +1007,14 @@ export const TransformationDrawer = ({
 			if (
 				(t.transformation_operation === "arithmetic" && transformationsValidity[t.id] === false) ||
 				(t.transformation_operation === "string" && transformationsValidity[t.id] === false) ||
-				(t.transformation_operation === "expression" && transformationsValidity[t.id] === false)
+				(t.transformation_operation === "expression" && transformationsValidity[t.id] === false) ||
+				(t.transformation_operation === "json_flatten" && transformationsValidity[t.id] === false)
 			) {
 				allValid = false;
 				if (t.transformation_operation === "expression") {
 					invalidReason = "Expression contains potentially unsafe code patterns.";
+				} else if (t.transformation_operation === "json_flatten") {
+					invalidReason = "Please complete JSON Flatten configuration (JSON column, schema fields, and datatypes).";
 				} else {
 					invalidReason = "Please fill all required fields before applying transformations.";
 				}
@@ -1065,6 +1100,9 @@ export const TransformationDrawer = ({
 				case 'expression':
 					transformationData.params = getExpressionParams(t);
 					break;
+				case 'json_flatten':
+					transformationData.params = getJsonFlattenParams(t);
+					break;
 				default:
 					transformationData.params = {};
 			}
@@ -1099,26 +1137,29 @@ export const TransformationDrawer = ({
 
 	const appendColumnToDataframe = useCallback((dataframeId, columnName, datatype) => {
 		setDataframeColumns(prev => {
-			const prevCols = prev[dataframeId] || [];
-			const existingColIndex = prevCols.findIndex(col =>
+			const prevCols = prev[dataframeId] || { columns: [], column_format: {} };
+			const existingColIndex = prevCols.columns.findIndex(col =>
 				(typeof col === "object" ? col.name : col) === columnName
 			);
 
 			let newCols;
 			if (existingColIndex !== -1) {
-				newCols = [...prevCols];
+				newCols = [...prevCols.columns];
 				if (typeof newCols[existingColIndex] === "object") {
 					newCols[existingColIndex] = { ...newCols[existingColIndex], datatype };
 				} else {
 					newCols[existingColIndex] = { name: columnName, datatype };
 				}
 			} else {
-				newCols = [...prevCols, { name: columnName, datatype }];
+				newCols = [...prevCols.columns, { name: columnName, datatype }];
 			}
 
 			return {
 				...prev,
-				[dataframeId]: newCols
+				[dataframeId]: {
+					columns: newCols,
+					column_format: prevCols.column_format
+				}
 			};
 		});
 	}, []);
@@ -1223,33 +1264,36 @@ export const TransformationDrawer = ({
   if (operationType === "restrictcolumns" && restrictedColumns !== null &&
      (restrictType === "select" || restrictType === "drop" || restrictType === "restore")) {
     setDataframeColumns(prev => {
-      const prevCols = prev[actualDfId] || [];
+      const prevCols = prev[actualDfId] || { columns: [], column_format: {} };
       let newCols;
 
       if (restrictType === "restore") {
         // Restore original columns from context
         const { state } = window.transformationContext || {};
         const originalColumns = state?.originalSourceColumns?.[actualDfId];
-        newCols = originalColumns ? [...originalColumns] : prevCols;
+        newCols = originalColumns ? [...originalColumns] : prevCols.columns;
       } else if (restrictType === "select") {
         // Keep only selected columns
-        newCols = prevCols.filter(col => {
+        newCols = prevCols.columns.filter(col => {
           const colName = typeof col === "object" ? col.name : col;
           return restrictedColumns.includes(colName);
         });
       } else if (restrictType === "drop") {
         // Remove selected columns (keep all others)
-        newCols = prevCols.filter(col => {
+        newCols = prevCols.columns.filter(col => {
           const colName = typeof col === "object" ? col.name : col;
           return !restrictedColumns.includes(colName);
         });
       } else {
-        newCols = prevCols;
+        newCols = prevCols.columns;
       }
 
       return {
         ...prev,
-        [actualDfId]: newCols
+        [actualDfId]: {
+          columns: newCols,
+          column_format: prevCols.column_format
+        }
       };
     });
 
@@ -1299,8 +1343,8 @@ export const TransformationDrawer = ({
   if (operationType === "rename" && oldColumnName) {
     // Update local state - replace old column with new one
     setDataframeColumns(prev => {
-      const prevCols = prev[actualDfId] || [];
-      const newCols = prevCols.map(col => {
+      const prevCols = prev[actualDfId] || { columns: [], column_format: {} };
+      const newCols = prevCols.columns.map(col => {
         const colName = typeof col === "object" ? col.name : col;
         if (colName === oldColumnName) {
           return typeof col === "object"
@@ -1311,7 +1355,10 @@ export const TransformationDrawer = ({
       });
       return {
         ...prev,
-        [actualDfId]: newCols
+        [actualDfId]: {
+          columns: newCols,
+          column_format: prevCols.column_format
+        }
       };
     });
 
@@ -1363,15 +1410,15 @@ export const TransformationDrawer = ({
     }
     if (isEditMode && window.replayedDataframeColumns) {
       if (!window.replayedDataframeColumns[dataframeId]) {
-        window.replayedDataframeColumns[dataframeId] = [];
+        window.replayedDataframeColumns[dataframeId] = { columns: [], column_format: {} };
       }
 
-      const existsInReplayed = window.replayedDataframeColumns[dataframeId].some(col =>
+      const existsInReplayed = window.replayedDataframeColumns[dataframeId].columns.some(col =>
         (typeof col === "object" ? col.name : col) === columnName
       );
 
       if (!existsInReplayed) {
-        window.replayedDataframeColumns[dataframeId].push({ name: columnName, datatype: datatype });
+        window.replayedDataframeColumns[dataframeId].columns.push({ name: columnName, datatype: datatype });
       }
     }
   }
@@ -1475,7 +1522,7 @@ useEffect(() => {
 		if (!isOpen) {
 			setIsDataLoaded(false);
 			setColumnsLoaded(false);
-			hasReplayedRef.current = false; // Reset on close
+			hasReplayedRef.current = false;
 			return;
 		}
 
@@ -1538,11 +1585,41 @@ useEffect(() => {
 						};
 					}
 				}
+				// Handle typecast operation - preserve precision and scale
+				if (op.transformation_operation === "typecast") {
+					// Extract precision and scale from formatted datatype like "float(10,2)"
+					const targetDatatype = params.target_datatype || "";
+					const match = targetDatatype.match(/^(float|decimal|double)\((\d+),(\d+)\)$/);
+					if (match) {
+						params = {
+							...params,
+							target_datatype: match[1], // base type without precision/scale
+							precision: match[2],
+							scale: match[3]
+						};
+					} else {
+						params = {
+							target_datatype: params.target_datatype || "",
+							source_datatype: params.source_datatype || "",
+							precision: params.precision || "",
+							scale: params.scale || "",
+							format: params.format || ""
+						};
+					}
+				}
+
 				if (op.transformation_operation === "expression") {
 					params = {
 						exp: typeof params.exp === "string" ? params.exp : "",
 						datatype: params.datatype || "string"
 					};
+				}
+
+				// NEW: normalize json_flatten params for edit mode
+				if (op.transformation_operation === "json_flatten") {
+					const jsonColumns =
+						params?.jsonColumns && typeof params.jsonColumns === "object" ? params.jsonColumns : {};
+					params = { jsonColumns };
 				}
 				return {
 					...op,
@@ -1574,7 +1651,7 @@ useEffect(() => {
 				}, 100);
 			}
 		}
-	}, [isOpen, activeNode, columnsLoaded]);
+	}, [isOpen, activeNodeId]);
 
 	// Use initialTransformations for drawer state if in edit mode - wait for columns to be loaded
 	useEffect(() => {
@@ -1587,24 +1664,21 @@ useEffect(() => {
 			!hasReplayedRef.current
 		) {
 			try {
-				// Add debugging info
-				console.log('Starting transformation replay with initial columns:', dataframeColumns);
 
 				const updatedDfCols = replayTransformationsForColumns(initialTransformations, dataframeColumns);
 
-				console.log('Columns after replay:', updatedDfCols);
 
 				setDataframeColumns(updatedDfCols);
 				setTransformations(initialTransformations);
 
 				// Force update nodes with new columns
 				if (window.allNodes) {
-					Object.entries(updatedDfCols).forEach(([dfId, columns]) => {
+					Object.entries(updatedDfCols).forEach(([dfId, dfData]) => {
 						const node = window.allNodes.find(n =>
 							n.data?.alias === dfId || n.id === dfId
 						);
 						if (node && typeof node.data.onDataChange === "function") {
-							node.data.onDataChange({ columns: [...columns] });
+							node.data.onDataChange({ columns: [...dfData.columns] });
 						}
 					});
 				}
@@ -1644,7 +1718,10 @@ useEffect(() => {
 
         sources.forEach(node => {
           const alias = node.data?.alias || `unnamed_source_${node.id}`;
-          initialDfCols[alias] = Array.isArray(node.data?.columns) ? [...node.data.columns] : [];
+          initialDfCols[alias] = {
+            columns: Array.isArray(node.data?.columns) ? [...node.data.columns] : [],
+            column_format: node.data?.column_format || {}
+          };
         });
       }
 
@@ -1653,12 +1730,12 @@ useEffect(() => {
       setDataframeColumns(updatedDfCols);
 
       if (window.allNodes) {
-        Object.entries(updatedDfCols).forEach(([dfId, columns]) => {
+        Object.entries(updatedDfCols).forEach(([dfId, dfData]) => {
           const node = window.allNodes.find(n =>
             n.data?.alias === dfId || n.id === dfId
           );
           if (node && typeof node.data.onDataChange === "function") {
-            node.data.onDataChange({ columns: [...columns] });
+            node.data.onDataChange({ columns: [...dfData.columns] });
           }
         });
       }
@@ -1804,7 +1881,8 @@ useEffect(() => {
 						disabled={!isDataLoaded || !columnsLoaded || transformations.some(t =>
 							(t.transformation_operation === "arithmetic" && transformationsValidity[t.id] === false) ||
 							(t.transformation_operation === "string" && transformationsValidity[t.id] === false) ||
-							(t.transformation_operation === "expression" && transformationsValidity[t.id] === false)
+							(t.transformation_operation === "expression" && transformationsValidity[t.id] === false) ||
+							(t.transformation_operation === "json_flatten" && transformationsValidity[t.id] === false)
 						)}
 					>
 						Apply

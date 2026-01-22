@@ -1,0 +1,136 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { ChevronLeft, LayoutDashboard } from 'lucide-react';
+import { Icon } from '@iconify-icon/react';
+import {
+  Overview,
+  Features,
+  PerformanceTimeline,
+  Parameters,
+  XAI,
+  Comments,
+  Access,
+  QuickPredict,
+} from './Tabs';
+
+function Library() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const rawModelData = location.state?.modelData;
+
+  const modelData = useMemo(() => {
+    if (!rawModelData) return null;
+    // Normalize possible shapes (Models.jsx sends run_name/created_date/type/status/etc)
+    return {
+      ...rawModelData,
+      name: rawModelData.name ?? rawModelData.run_name ?? '',
+      run_name: rawModelData.run_name ?? rawModelData.name ?? '',
+      description: rawModelData.description ?? '',
+      created_date: rawModelData.created_date ?? rawModelData.createdDate ?? '',
+      createdDate: rawModelData.createdDate ?? rawModelData.created_date ?? '',
+      type: rawModelData.type ?? '',
+      status: rawModelData.status ?? '',
+      id: rawModelData.id,
+    };
+  }, [rawModelData]);
+
+  const [activeTab, setActiveTab] = useState(0);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeTab]);
+
+  const tabs = [
+    { name: 'Overview', component: Overview },
+    { name: 'Features', component: Features },
+    // { name: 'Performance Timeline', component: PerformanceTimeline },
+    { name: 'Parameters', component: Parameters },
+    { name: 'XAI', component: XAI },
+    { name: 'Comments', component: Comments },
+    // { name: 'Access', component: Access },
+    // { name: 'Quick Predict', component: QuickPredict },
+  ];
+
+  const handleBack = () => {
+    if (activeTab > 0) {
+      setActiveTab(activeTab - 1);
+    } else {
+      navigate(-1);
+    }
+  };
+
+  const handleNext = () => {
+    if (activeTab < tabs.length - 1) {
+      setActiveTab(activeTab + 1);
+    }
+  };
+
+  const ActiveTabComponent = tabs[activeTab].component;
+  const modelName =
+    (modelData?.name || modelData?.run_name || '')
+      ?.replace('Project - ', '') || 'Model';
+
+  return (
+    <div className="p-6 space-y-4">
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate(-1)}
+              className="p-1 hover:bg-gray-100 rounded-lg"
+            >
+              <ChevronLeft className="w-6 h-6 text-gray-600" />
+            </button>
+            <h1 className="text-xl font-semibold">
+              Model Library - <span className="text-purple-600">{modelName}</span>
+            </h1>
+          </div>
+          <button className="px-3 py-1.5 rounded bg-purple-100 text-[#8e78b7] font-medium text-sm flex items-center gap-1.5 hover:bg-purple-200 transition-colors"
+            onClick={() => navigate('/ai/hub/models')}>
+            <LayoutDashboard className="w-4 h-4" />
+            AI/ML
+          </button>
+        </div>
+
+        <div className="mt-4 border-t border-gray-200 pt-4">
+          <nav className="flex gap-6">
+            {tabs.map((tab, index) => (
+              <button
+                key={tab.name}
+                onClick={() => setActiveTab(index)}
+                className={`px-3 py-2 text-sm font-medium transition-colors ${activeTab === index
+                    ? 'border-b-2 border-purple-600 text-purple-600'
+                    : 'text-gray-500 hover:text-gray-700'
+                  }`}
+              >
+                {tab.name}
+              </button>
+            ))}
+          </nav>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <ActiveTabComponent modelData={modelData} />
+      </div>
+
+      <div className="flex items-center justify-end gap-3">
+        <button
+          onClick={handleBack}
+          className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
+        >
+          Back
+        </button>
+        <button
+          onClick={handleNext}
+          disabled={activeTab === tabs.length - 1}
+          className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default Library;
