@@ -100,6 +100,7 @@ const SearchableSelect = ({ label, value, options, field, onChange, isLoading = 
 
 const ConfigurationTab = () => {
     const { schedulerState, setSchedulerState, mode } = useAIPlayground();
+    const { schedulerState, setSchedulerState, mode } = useAIPlayground();
 
     const [projects, setProjects] = useState([]);
     const [models, setModels] = useState([]);

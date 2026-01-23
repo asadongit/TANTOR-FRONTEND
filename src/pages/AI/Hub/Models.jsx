@@ -15,6 +15,7 @@ import {
   Gauge,
   Loader2,
   Bell,
+  Bell,
 } from "lucide-react";
 import { Icon } from "@iconify-icon/react";
 import Breadcrumb from "../../../components/Breadcrumb";
