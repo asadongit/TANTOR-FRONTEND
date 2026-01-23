@@ -274,17 +274,16 @@ const ConfigurationTab = () => {
     };
 
     useEffect(() => {
-        if (schedulerState.projectName && schedulerState.modelName) {
-
+        if (mode === 'deploy' && schedulerState.project && schedulerState.model) {
             setSchedulerState(prev => ({
                 ...prev,
-                project: schedulerState.projectName,
-                project_id: schedulerState.projectId,
-                model: schedulerState.modelName,
-                model_id: schedulerState.modelId
+                project: schedulerState.project,
+                project_id: schedulerState.project_id,
+                model: schedulerState.model,
+                model_id: schedulerState.model_id
             }));
         }
-    }, [mode]);
+    }, [mode, schedulerState.project, schedulerState.model, schedulerState.project_id, schedulerState.model_id]);
 
     const isGenerateSummaryDisabled = () => {
         const commonFieldsFilled =
@@ -590,9 +589,9 @@ const ConfigurationTab = () => {
     ];
 
     const isPreFilledFromDeploy =
-        mode === 'schedule' &&
-        schedulerState.projectName &&
-        schedulerState.modelName;
+        mode === 'deploy' &&
+        schedulerState.project &&
+        schedulerState.model;
 
     return (
         <div className="max-w-6xl space-y-6">
@@ -782,7 +781,7 @@ const ConfigurationTab = () => {
                         {renderSelect('Frequency', schedulerState.scheduler.frequency, [
                             { value: '', label: 'Select' },
                             { value: 'hourly', label: 'Hourly' },
-                            { value: 'weekly', label: 'Weekly' },
+                            { value: 'daily', label: 'Daily' },
                             { value: 'monthly', label: 'Monthly' },
                             { value: 'quarterly', label: 'Quarterly' },
                             { value: 'half_yearly', label: 'Half Yearly' },
