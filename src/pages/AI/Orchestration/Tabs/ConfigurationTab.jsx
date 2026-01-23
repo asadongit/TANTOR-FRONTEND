@@ -274,8 +274,7 @@ const ConfigurationTab = () => {
     };
 
     useEffect(() => {
-        if (schedulerState.projectName && schedulerState.modelName) {
-
+        if (mode === 'deploy' && schedulerState.projectName && schedulerState.modelName) {
             setSchedulerState(prev => ({
                 ...prev,
                 project: schedulerState.projectName,
@@ -284,7 +283,7 @@ const ConfigurationTab = () => {
                 model_id: schedulerState.modelId
             }));
         }
-    }, [mode]);
+    }, [mode, schedulerState.projectName, schedulerState.modelName, schedulerState.projectId, schedulerState.modelId]);
 
     const isGenerateSummaryDisabled = () => {
         const commonFieldsFilled =
