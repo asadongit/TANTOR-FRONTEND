@@ -120,19 +120,6 @@
       "gamma": "scale, auto"
     }
   },
-  "Nu-SVC": {
-    "category": "Kernel",
-    "backend_key": "NuSVC",
-    "info": "Nu-SVC is a support vector machine classifier that controls model complexity using the nu parameter, making it effective for non-linear binary and multiclass classification problems.",
-    "hyperparameters": {
-      "nu": {
-        "low": "0.01",
-        "high": "0.9"
-      },
-      "kernel": "rbf, poly, sigmoid",
-      "gamma": "scale, auto"
-    }
-  },
   "Linear Discriminant Analysis": {
     "category": "Linear",
     "backend_key": "LDA",
@@ -183,19 +170,6 @@
         "high": "10.0"
       },
       "fit_prior": "true, false"
-    }
-  },
-  "Complement Naive Bayes": {
-    "category": "Probabilistic",
-    "backend_key": "ComplementNB",
-    "info": "Complement Naive Bayes is a variant of Naive Bayes designed to handle imbalanced datasets better, commonly used for text classification in binary and multiclass problems.",
-    "hyperparameters": {
-      "alpha": {
-        "low": "0.0",
-        "high": "10.0"
-      },
-      "fit_prior": "true, false",
-      "norm": "true, false"
     }
   },
   "Bernoulli Naive Bayes": {

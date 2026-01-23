@@ -1,6 +1,6 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { Bot } from "lucide-react";
+import { Bot, AlertTriangle } from "lucide-react";
 import {
   ChartBarIcon,
   CubeIcon,
@@ -39,12 +39,18 @@ import {
   PanelLeftOpen
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useAIPlayground } from '../context/AIPlaygroundContext';
 
 const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const [expandedItem, setExpandedItem] = useState(null);
   const [expandedSubItem, setExpandedSubItem] = useState(null);
   const [currentActiveSection, setCurrentActiveSection] = useState(activeSection);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState(null);
+
   const { decodedToken } = useAuth();
+  const { isAIPlaygroundActive, resetAllStates } = useAIPlayground();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const savedSection = localStorage.getItem('activeSection');
@@ -72,12 +78,38 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     setExpandedSubItem(prev => prev === subRouteName ? null : subRouteName);
   };
 
+  const handleNavClick = (e, path) => {
+
+    const isAIRoute = (path.startsWith('/ai') || path === '/dashboard');
+    const currentPath = window.location.pathname;
+    const isCurrentlyInAIPlayground = currentPath.startsWith('/ai/playground')
+
+    if (isAIPlaygroundActive && isAIRoute && isCurrentlyInAIPlayground) {
+      e.preventDefault();
+      setPendingNavigation(path);
+      setShowCancelModal(true);
+    }
+  };
+
+  const handleCancelModalClose = () => {
+    setShowCancelModal(false);
+    setPendingNavigation(null);
+  };
+
+  const handleConfirmCancel = () => {
+    resetAllStates();
+    setShowCancelModal(false);
+
+    if (pendingNavigation) {
+      navigate(pendingNavigation);
+      setPendingNavigation(null);
+    }
+  };
+
   const platformRoutes = [
     { name: 'Dashboard', icon: ChartBarIcon, path: '/dashboard' },
     { name: 'Project', icon: CubeIcon, path: '/project' },
     { name: 'Connections', icon: LinkIcon, path: '/connections' },
-    // { name: 'Jobs', icon: BriefcaseIcon, path: '/jobs' },
-    // { name: 'Pipeline', icon: ArrowPathIcon, path: '/pipeline' },
     {
       name: 'Reports',
       icon: DocumentTextIcon,
@@ -117,7 +149,8 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
         { name: 'Persona', path: `${DATAGOVERNANCE_PREFIX}/user/persona` },
       ]
     },
-    { name: 'Data Catalogue', icon: BookOpenIcon, path: `${DATAGOVERNANCE_PREFIX}/data-catalogue`,
+    {
+      name: 'Data Catalogue', icon: BookOpenIcon, path: `${DATAGOVERNANCE_PREFIX}/data-catalogue`,
       subItems: [
         { name: 'Database', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/database` },
         { name: 'Schema', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/schema` },
@@ -126,7 +159,8 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
         { name: 'View', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/view` },
       ]
     },
-    { name: 'Data Assurance', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-assurance`,
+    {
+      name: 'Data Assurance', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-assurance`,
       subItems: [
         {
           name: 'Data Quality',
@@ -139,12 +173,14 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
         { name: 'Lineage', path: `${DATAGOVERNANCE_PREFIX}/data-assurance/lineage` },
       ]
     },
-    { name: 'Business Catalogue', icon: ClipboardDocumentListIcon, path: `${DATAGOVERNANCE_PREFIX}/business-catalogue`,
+    {
+      name: 'Business Catalogue', icon: ClipboardDocumentListIcon, path: `${DATAGOVERNANCE_PREFIX}/business-catalogue`,
       subItems: [
         { name: 'Glossary', path: `${DATAGOVERNANCE_PREFIX}/business-catalogue/glossary` },
       ]
     },
-    { name: 'Data Shield', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-shield`,
+    {
+      name: 'Data Shield', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-shield`,
       subItems: [
         { name: 'Protection', path: `${DATAGOVERNANCE_PREFIX}/data-shield/protection` },
         { name: 'Policy', path: `${DATAGOVERNANCE_PREFIX}/data-shield/policy`, requiresPolicyManager: true },
@@ -190,7 +226,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
       ]
     },
     { name: 'AI Playground', icon: Sparkles, path: `${AI_PREFIX}/playground` },
-    { name: 'Orchestration', icon: Workflow, path: `${AI_PREFIX}/orchestration`},
+    { name: 'Orchestration', icon: Workflow, path: `${AI_PREFIX}/orchestration` },
     { name: 'Agent Mesh', icon: GitBranch, path: `${AI_PREFIX}/agent-mesh` },
     { name: 'Marketplace', icon: Store, path: `${AI_PREFIX}/marketplace` },
     { name: 'Observability', icon: Activity, path: `${AI_PREFIX}/observability` },
@@ -201,8 +237,8 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
 
   const currentRoutes =
     currentActiveSection === 'platform' ? platformRoutes :
-    currentActiveSection === 'ai' ? aiRoutes :
-    dataGovernanceRoutes;
+      currentActiveSection === 'ai' ? aiRoutes :
+        dataGovernanceRoutes;
 
   const renderIcon = (IconComponent) => {
     if (typeof IconComponent === 'function') {
@@ -223,11 +259,11 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
       <div key={route.path}>
         <NavLink
           to={route.path}
+          onClick={(e) => handleNavClick(e, route.path)}
           className={({ isActive }) =>
-            `flex items-center gap-3 px-3 py-2 rounded-lg mb-1 ${
-              isActive
-                ? 'bg-purple-100 text-purple-700'
-                : 'text-gray-700 hover:bg-gray-100'
+            `flex items-center gap-3 px-3 py-2 rounded-lg mb-1 ${isActive
+              ? 'bg-purple-100 text-purple-700'
+              : 'text-gray-700 hover:bg-gray-100'
             }`
           }
         >
@@ -241,9 +277,8 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
                   className="p-1 hover:bg-gray-200 rounded-full transition-transform duration-300"
                 >
                   <ChevronRightIcon
-                    className={`h-4 w-4 transition-transform duration-300 ${
-                      isExpanded ? 'rotate-90' : 'rotate-0'
-                    }`}
+                    className={`h-4 w-4 transition-transform duration-300 ${isExpanded ? 'rotate-90' : 'rotate-0'
+                      }`}
                   />
                 </button>
               )}
@@ -253,9 +288,8 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
 
         {hasSubItems && !isCollapsed && (
           <div
-            className={`ml-9 overflow-hidden transition-all duration-300 ease-in-out ${
-              isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
-            }`}
+            className={`ml-9 overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+              }`}
           >
             <div className="space-y-1 py-1">
               {route.subItems.map((subItem) => {
@@ -267,11 +301,11 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
                     {subItem.path ? (
                       <NavLink
                         to={subItem.path}
+                        onClick={(e) => handleNavClick(e, subItem.path)}
                         className={({ isActive }) =>
-                          `flex items-center justify-between px-3 py-2 rounded-lg transition-colors duration-200 ${
-                            isActive
-                              ? 'bg-purple-100 text-purple-700'
-                              : 'text-gray-500 hover:bg-gray-100'
+                          `flex items-center justify-between px-3 py-2 rounded-lg transition-colors duration-200 ${isActive
+                            ? 'bg-purple-100 text-purple-700'
+                            : 'text-gray-500 hover:bg-gray-100'
                           }`
                         }
                       >
@@ -282,9 +316,8 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
                             className="p-1 hover:bg-gray-200 rounded-full transition-transform duration-300"
                           >
                             <ChevronRightIcon
-                              className={`h-3 w-3 transition-transform duration-300 ${
-                                isSubExpanded ? 'rotate-90' : 'rotate-0'
-                              }`}
+                              className={`h-3 w-3 transition-transform duration-300 ${isSubExpanded ? 'rotate-90' : 'rotate-0'
+                                }`}
                             />
                           </button>
                         )}
@@ -298,9 +331,8 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
                             className="p-1 hover:bg-gray-200 rounded-full transition-transform duration-300"
                           >
                             <ChevronRightIcon
-                              className={`h-3 w-3 transition-transform duration-300 ${
-                                isSubExpanded ? 'rotate-90' : 'rotate-0'
-                              }`}
+                              className={`h-3 w-3 transition-transform duration-300 ${isSubExpanded ? 'rotate-90' : 'rotate-0'
+                                }`}
                             />
                           </button>
                         )}
@@ -309,20 +341,19 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
 
                     {hasNestedSubItems && (
                       <div
-                        className={`ml-4 overflow-hidden transition-all duration-300 ease-in-out ${
-                          isSubExpanded ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'
-                        }`}
+                        className={`ml-4 overflow-hidden transition-all duration-300 ease-in-out ${isSubExpanded ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'
+                          }`}
                       >
                         <div className="space-y-1 py-1">
                           {subItem.subItems.map((nestedItem) => (
                             <NavLink
                               key={nestedItem.path}
                               to={nestedItem.path}
+                              onClick={(e) => handleNavClick(e, nestedItem.path)}
                               className={({ isActive }) =>
-                                `block px-6 py-2 rounded-lg transition-colors duration-200 ${
-                                  isActive
-                                    ? 'bg-purple-100 text-purple-700'
-                                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+                                `block px-6 py-2 rounded-lg transition-colors duration-200 ${isActive
+                                  ? 'bg-purple-100 text-purple-700'
+                                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
                                 }`
                               }
                             >
@@ -343,35 +374,68 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   };
 
   return (
-    <aside
-      className={`bg-white border-r border-gray-200 h-[calc(100vh-64px)] transition-all duration-300 ${
-        isCollapsed ? 'w-16' : 'w-64'
-      } fixed flex flex-col`}
-    >
-
-      <nav className="px-2 py-2 flex-1 overflow-y-auto">
-        {currentRoutes.map(renderNavItem)}
-      </nav>
-
-      <div
-        className={`mt-auto p-2 border-t border-gray-100 flex ${
-          isCollapsed ? 'justify-center' : 'justify-end'
-        }`}
+    <>
+      <aside
+        className={`bg-white border-r border-gray-200 h-[calc(100vh-64px)] transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'
+          } fixed flex flex-col`}
       >
-        <button
-          onClick={toggleSidebar}
-          className="p-2 hover:bg-gray-100 rounded-full"
-          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          title={isCollapsed ? 'Expand' : 'Collapse'}
+        <nav className="px-2 py-2 flex-1 overflow-y-auto">
+          {currentRoutes.map(renderNavItem)}
+        </nav>
+
+        <div
+          className={`mt-auto p-2 border-t border-gray-100 flex ${isCollapsed ? 'justify-center' : 'justify-end'
+            }`}
         >
-          {isCollapsed ? (
-            <PanelLeftOpen className="h-5 w-5" />
-          ) : (
-            <PanelLeftClose className="h-5 w-5" />
-          )}
-        </button>
-      </div>
-    </aside>
+          <button
+            onClick={toggleSidebar}
+            className="p-2 hover:bg-gray-100 rounded-full"
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={isCollapsed ? 'Expand' : 'Collapse'}
+          >
+            {isCollapsed ? (
+              <PanelLeftOpen className="h-5 w-5" />
+            ) : (
+              <PanelLeftClose className="h-5 w-5" />
+            )}
+          </button>
+        </div>
+      </aside>
+
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                  <AlertTriangle className="text-red-600" size={24} />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900">Cancel AI Playground Workflow?</h2>
+              </div>
+
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to cancel? All unsaved progress and configurations will be lost. This action cannot be undone.
+              </p>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={handleCancelModalClose}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Continue Working
+                </button>
+                <button
+                  onClick={handleConfirmCancel}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+                >
+                  Yes, Discard Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
