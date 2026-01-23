@@ -10,119 +10,125 @@ export const useAIPlayground = () => {
     return context;
 };
 
-export const AIPlaygroundProvider = ({ children }) => {
-    const [projectState, setProjectState] = useState({
-        selectedProject: '',
-    });
+const defaultProjectState = {
+    selectedProject: '',
+};
 
-    const [modelState, setModelState] = useState({
-        selectedModel: '',
-    });
+const defaultModelState = {
+    selectedModel: '',
+};
 
-    const [datasetState, setDatasetState] = useState({
-        tableName: '',
-        sessionId: '',
-        columnNames: [],
-        profileReportHtml: ''
-    });
+const defaultDatasetState = {
+    tableName: '',
+    sessionId: '',
+    columnNames: [],
+    profileReportHtml: ''
+};
 
-    const [schedulerState, setSchedulerState] = useState({
-        owner_id: '',
-        project: '',
-        model: '',
-        model_id: '',
-        project_id: '',
-        flow_type: 'single_run',
-        scheduler: {
-            mode: 'auto',
-            frequency: '',
-            runningDays: [],
-            endDateTime: '',
-            intervalType: 'single_run',
-            intervalValue: '',
-            startDateTime: '',
-        },
-        source: {
-            source_conn_type: '',
-            source_schema: '',
-            source_table: ''
-        },
-        target: {
-            destination_conn_type: '',
-            destination_schema: '',
-            destination_table: ''
-        },
-        data_drift_threshold: {
-            distribution_drift_threshold: 0,
-            statistical_significance_level: 0,
-            information_stability_threshold: 0,
-            target_stability_threshold: 0
-        },
-        model_drift_threshold: {
-            prediction_drift_threshold: 0,
-            performance_drift_threshold: 0
-        },
-        data_drift_check: 0,
-        model_drift_check: 0,
-        recipients: [],
-        created_by: '',
-        workflow_name: ''
-    });
+const defaultSchedulerState = {
+    owner_id: '',
+    project: '',
+    model: '',
+    model_id: '',
+    project_id: '',
+    flow_type: 'single_run',
+    scheduler: {
+        mode: 'auto',
+        frequency: '',
+        runningDays: [],
+        endDateTime: '',
+        intervalType: 'single_run',
+        intervalValue: '',
+        startDateTime: '',
+    },
+    source: {
+        source_conn_type: '',
+        source_schema: '',
+        source_table: ''
+    },
+    target: {
+        destination_conn_type: '',
+        destination_schema: '',
+        destination_table: ''
+    },
+    data_drift_threshold: {
+        distribution_drift_threshold: 0,
+        statistical_significance_level: 0,
+        information_stability_threshold: 0,
+        target_stability_threshold: 0
+    },
+    model_drift_threshold: {
+        prediction_drift_threshold: 0,
+        performance_drift_threshold: 0
+    },
+    data_drift_check: 0,
+    model_drift_check: 0,
+    recipients: [],
+    created_by: '',
+    workflow_name: ''
+};
 
-    const [workflowState, setWorkflowState] = useState({
-        modelGenesis: {
+const defaultWorkflowState = {
+    modelGenesis: {
+        config: null,
+        apiResponse: null
+    },
+    dataPreprocessing: {
+        step1: {
             config: null,
             apiResponse: null
         },
-        dataPreprocessing: {
-            step1: {
-                config: null,
-                apiResponse: null
-            },
-            step2: {
-                config: null,
-                apiResponse: null
-            },
-            step3: {
-                config: null,
-                apiResponse: null
-            },
-            step4: {
-                config: null,
-                apiResponse: null
-            },
-            step5: {
-                config: null,
-                apiResponse: null
-            },
-            step6: {
-                config: null,
-                apiResponse: null
-            },
-            step7: {
-                config: null,
-                apiResponse: null
-            }
-        },
-        modelSelection: {
+        step2: {
             config: null,
             apiResponse: null
         },
-        modelInferencing: {
+        step3: {
             config: null,
             apiResponse: null
         },
-        xai: {
+        step4: {
             config: null,
             apiResponse: null
         },
-        modelDeployment: {
+        step5: {
+            config: null,
+            apiResponse: null
+        },
+        step6: {
+            config: null,
+            apiResponse: null
+        },
+        step7: {
             config: null,
             apiResponse: null
         }
-    });
+    },
+    modelSelection: {
+        config: null,
+        apiResponse: null
+    },
+    modelInferencing: {
+        config: null,
+        apiResponse: null
+    },
+    xai: {
+        config: null,
+        apiResponse: null
+    },
+    modelDeployment: {
+        config: null,
+        apiResponse: null
+    }
+};
 
+export const AIPlaygroundProvider = ({ children }) => {
+    const [projectState, setProjectState] = useState(defaultProjectState);
+    const [modelState, setModelState] = useState(defaultModelState);
+    const [datasetState, setDatasetState] = useState(defaultDatasetState);
+    const [schedulerState, setSchedulerState] = useState(defaultSchedulerState);
+    const [workflowState, setWorkflowState] = useState(defaultWorkflowState);
     const [mode, setMode] = useState('write');
+    const [isAIPlaygroundActive, setIsAIPlaygroundActive] = useState(false);
 
     const updateWorkflowStage = (stage, data) => {
         setWorkflowState(prev => ({
@@ -147,11 +153,22 @@ export const AIPlaygroundProvider = ({ children }) => {
         }));
     };
 
+    const resetAllStates = () => {
+        setProjectState(defaultProjectState);
+        setModelState(defaultModelState);
+        setDatasetState(defaultDatasetState);
+        setSchedulerState(defaultSchedulerState);
+        setWorkflowState(defaultWorkflowState);
+        setMode('write');
+        setIsAIPlaygroundActive(false);
+    };
+
     // console.log("DATASET STATE IS @@@ ", datasetState)
     // console.log("PROJECT IS @@@", projectState)
     // console.log("MODE IS @@@", mode)
     // console.log("WORKFLOW STATE IS @@@@ ", workflowState)
     // console.log("SCHEDULER STATE IS @@@@ ", schedulerState)
+    // console.log("IN AI PLAYGROUND @@@ ", isAIPlaygroundActive)
 
     const value = {
         projectState,
@@ -160,14 +177,17 @@ export const AIPlaygroundProvider = ({ children }) => {
         schedulerState,
         mode,
         modelState,
+        isAIPlaygroundActive,
         setProjectState,
         setDatasetState,
         setWorkflowState,
         setSchedulerState,
         setMode,
         setModelState,
+        setIsAIPlaygroundActive,
         updateWorkflowStage,
-        updatePreprocessingStep
+        updatePreprocessingStep,
+        resetAllStates
     };
 
     return (

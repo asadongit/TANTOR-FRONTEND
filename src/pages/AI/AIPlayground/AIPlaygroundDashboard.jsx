@@ -70,7 +70,7 @@ const AIPlayground = () => {
   const navigate = useNavigate();
   const hostnameAI = window._env_?.VITE_AI_API;
 
-  const { projectState, setProjectState, datasetState, setDatasetState, setWorkflowState, setModelState, setMode, mode } = useAIPlayground();
+  const { projectState, setProjectState, datasetState, setDatasetState, setWorkflowState, setModelState, setMode, mode, setIsAIPlaygroundActive } = useAIPlayground();
   const { token, decodedToken } = useAuth();
 
   const [selectedProject, setSelectedProject] = useState('');
@@ -149,12 +149,12 @@ const AIPlayground = () => {
     });
   }, [mode]);
 
-  // useEffect(() => {
-  //   console.log()
-  //   if (setSelectedProject!= '' || projectState?.selectedProject != '') {
-  //     setIsAIPlaygroundActive(true)
-  //   }
-  // }, [projectState?.selectedProject]);
+  useEffect(() => {
+    console.log()
+    if (selectedProject != '' || projectState?.selectedProject != '') {
+      setIsAIPlaygroundActive(true)
+    }
+  }, [projectState?.selectedProject]);
 
   const fetchProjects = async () => {
     try {

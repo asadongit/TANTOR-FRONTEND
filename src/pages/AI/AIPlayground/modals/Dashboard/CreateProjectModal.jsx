@@ -35,7 +35,7 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit, projectList }) =
   const fetchMembers = async (skip = 0, search = '', isLoadMore = false) => {
     setIsLoadingMembers(true);
     try {
-      let url = `${hostnameAI}/users/users?skip=${skip}&limit=${MEMBERS_LIMIT}`;
+      let url = `${window._env_?.VITE_FAST_API}/auth/users?skip=${skip}&limit=${MEMBERS_LIMIT}`;
       if (search.trim()) {
         url += `&search=${encodeURIComponent(search.trim())}`;
       }
