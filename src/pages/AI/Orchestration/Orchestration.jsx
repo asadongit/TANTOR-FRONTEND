@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 import { useAuth } from '../../../context/AuthContext';
 import InterventionsTab from '../Orchestration/Tabs/InterventionsTab';
+import toast from 'react-hot-toast';
 
 const Orchestration = () => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -100,7 +101,7 @@ const Orchestration = () => {
                 id: item.schedule_id,
                 schedule_name: item.name || '-',
                 frequency: item.frequency || '-',
-                last_drift_check: '-',
+                last_drift_check: item.last_drift_check || null,
                 next_run: item.next_run || '-',
                 status: item.status || '-'
             }));
@@ -134,12 +135,24 @@ const Orchestration = () => {
         }
     };
 
-    const formatRuntime = (milliseconds) => {
-        if (!milliseconds) return 'N/A';
-        const seconds = Math.floor(milliseconds / 1000);
-        const minutes = Math.floor(seconds / 60);
-        const remainingSeconds = seconds % 60;
-        return `${minutes}m ${remainingSeconds}s`;
+    const formatRuntime = (runtimeData) => {
+        if (!runtimeData) return 'N/A';
+
+        const formatted = runtimeData.formatted;
+        if (!formatted) return 'N/A';
+
+        const parts = [];
+        if (formatted.hours > 0) {
+            parts.push(`${formatted.hours}h`);
+        }
+        if (formatted.minutes > 0) {
+            parts.push(`${formatted.minutes}m`);
+        }
+        if (formatted.seconds > 0 || parts.length === 0) {
+            parts.push(`${formatted.seconds}s`);
+        }
+
+        return parts.join(' ');
     };
 
     const getActivityIcon = (status) => {
@@ -179,7 +192,7 @@ const Orchestration = () => {
         },
         {
             label: 'Average Runtime',
-            value: formatRuntime(summaryData.avg_prediction_runtime_ms),
+            value: formatRuntime(summaryData.avg_prediction_runtime),
             icon: Clock,
         },
         {
@@ -214,24 +227,33 @@ const Orchestration = () => {
         try {
             await fetchSummaryData();
             await fetchRecentActivity();
+            toast.success('Refreshed Successfully', {
+                duration: 4000,
+                position: 'top-right',
+            });
         } catch (error) {
             console.error('Error refreshing data:', error);
+            toast.error('Failed to refresh data', {
+                duration: 4000,
+                position: 'top-right',
+            });
         } finally {
             setRefreshLoading(false);
         }
     };
 
     const renderLastDriftCheck = (row) => {
-        if (row.last_drift_check === '-' || row.drift_status === '-') {
+        if (row.last_drift_check === null || row.last_drift_check === undefined) {
             return <span className="text-gray-500">-</span>;
         }
+
+        const driftStatus = row.last_drift_check.toLowerCase() === 'detected' ? 'Detected' : 'Safe';
+        const statusColor = driftStatus === 'Detected' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
+
         return (
-            <div className="flex items-center gap-2">
-                <span className="text-gray-700">{row.last_drift_check}</span>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDriftStatusColor(row.drift_status)}`}>
-                    • {row.drift_status}
-                </span>
-            </div>
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor}`}>
+                • {driftStatus}
+            </span>
         );
     };
 
