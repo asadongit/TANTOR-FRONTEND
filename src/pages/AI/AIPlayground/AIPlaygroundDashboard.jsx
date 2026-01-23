@@ -149,6 +149,13 @@ const AIPlayground = () => {
     });
   }, [mode]);
 
+  // useEffect(() => {
+  //   console.log()
+  //   if (setSelectedProject!= '' || projectState?.selectedProject != '') {
+  //     setIsAIPlaygroundActive(true)
+  //   }
+  // }, [projectState?.selectedProject]);
+
   const fetchProjects = async () => {
     try {
       setLoading(true);
