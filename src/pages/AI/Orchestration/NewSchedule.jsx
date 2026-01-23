@@ -192,6 +192,53 @@ const NewSchedule = () => {
         navigate('/ai/orchestration');
     };
 
+    const handleConfirmDiscard = () => {
+        setSchedulerState({
+            owner_id: '',
+            project: '',
+            model: '',
+            model_id: '',
+            project_id: '',
+            flow_type: 'single_run',
+            scheduler: {
+                mode: 'auto',
+                frequency: '',
+                runningDays: [],
+                endDateTime: '',
+                intervalType: 'single_run',
+                intervalValue: '',
+                startDateTime: '',
+            },
+            source: {
+                source_conn_type: '',
+                source_schema: '',
+                source_table: ''
+            },
+            target: {
+                destination_conn_type: '',
+                destination_schema: '',
+                destination_table: ''
+            },
+            data_drift_threshold: {
+                distribution_drift_threshold: 0,
+                statistical_significance_level: 0,
+                information_stability_threshold: 0,
+                target_stability_threshold: 0
+            },
+            model_drift_threshold: {
+                prediction_drift_threshold: 0,
+                performance_drift_threshold: 0
+            },
+            data_drift_check: 0,
+            model_drift_check: 0,
+            recipients: [],
+            created_by: '',
+            workflow_name: ''
+        })
+        navigate('/ai/orchestration');
+    };
+
+
     const isConfigurationComplete =
         schedulerState.workflow_name &&
         schedulerState.project &&
@@ -361,7 +408,7 @@ const NewSchedule = () => {
 
             <DiscardModal
                 isOpen={showDiscardModal}
-                onDiscard={() => navigate('/ai/orchestration')}
+                onDiscard={handleConfirmDiscard}
                 onStay={() => setShowDiscardModal(false)}
             />
 

@@ -590,7 +590,7 @@ const ConfigurationTab = () => {
     ];
 
     const isPreFilledFromDeploy =
-        mode === 'schedule' &&
+        mode === 'deploy' &&
         schedulerState.projectName &&
         schedulerState.modelName;
 
@@ -782,7 +782,7 @@ const ConfigurationTab = () => {
                         {renderSelect('Frequency', schedulerState.scheduler.frequency, [
                             { value: '', label: 'Select' },
                             { value: 'hourly', label: 'Hourly' },
-                            { value: 'weekly', label: 'Weekly' },
+                            { value: 'daily', label: 'Daily' },
                             { value: 'monthly', label: 'Monthly' },
                             { value: 'quarterly', label: 'Quarterly' },
                             { value: 'half_yearly', label: 'Half Yearly' },
