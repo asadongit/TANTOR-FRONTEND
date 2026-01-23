@@ -348,13 +348,48 @@ function Models() {
   const handleDeploy = (row) => {
     const raw = row?._raw ?? deployTarget;
 
-    setSchedulerState(prev => ({
-      ...prev,
-      projectName: raw.project_name || "",
-      projectId: raw.project_id || "",
-      modelName: raw.run_name || "",
-      modelId: raw.id || "",
-    }));
+    setSchedulerState({
+      owner_id: '',
+      project: raw.project_name || "",
+      model: raw.run_name || "",
+      model_id: raw.id || "",
+      project_id: raw.project_id || "",
+      flow_type: 'single_run',
+      scheduler: {
+        mode: 'auto',
+        frequency: '',
+        runningDays: [],
+        endDateTime: '',
+        intervalType: 'single_run',
+        intervalValue: '',
+        startDateTime: '',
+      },
+      source: {
+        source_conn_type: '',
+        source_schema: '',
+        source_table: ''
+      },
+      target: {
+        destination_conn_type: '',
+        destination_schema: '',
+        destination_table: ''
+      },
+      data_drift_threshold: {
+        distribution_drift_threshold: 0,
+        statistical_significance_level: 0,
+        information_stability_threshold: 0,
+        target_stability_threshold: 0
+      },
+      model_drift_threshold: {
+        prediction_drift_threshold: 0,
+        performance_drift_threshold: 0
+      },
+      data_drift_check: 0,
+      model_drift_check: 0,
+      recipients: [],
+      created_by: '',
+      workflow_name: ''
+    });
 
     setDeployTarget(row);
     setDeployModalOpen(true);

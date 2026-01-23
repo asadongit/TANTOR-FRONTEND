@@ -274,16 +274,16 @@ const ConfigurationTab = () => {
     };
 
     useEffect(() => {
-        if (mode === 'deploy' && schedulerState.projectName && schedulerState.modelName) {
+        if (mode === 'deploy' && schedulerState.project && schedulerState.model) {
             setSchedulerState(prev => ({
                 ...prev,
-                project: schedulerState.projectName,
-                project_id: schedulerState.projectId,
-                model: schedulerState.modelName,
-                model_id: schedulerState.modelId
+                project: schedulerState.project,
+                project_id: schedulerState.project_id,
+                model: schedulerState.model,
+                model_id: schedulerState.model_id
             }));
         }
-    }, [mode, schedulerState.projectName, schedulerState.modelName, schedulerState.projectId, schedulerState.modelId]);
+    }, [mode, schedulerState.project, schedulerState.model, schedulerState.project_id, schedulerState.model_id]);
 
     const isGenerateSummaryDisabled = () => {
         const commonFieldsFilled =
@@ -590,8 +590,8 @@ const ConfigurationTab = () => {
 
     const isPreFilledFromDeploy =
         mode === 'deploy' &&
-        schedulerState.projectName &&
-        schedulerState.modelName;
+        schedulerState.project &&
+        schedulerState.model;
 
     return (
         <div className="max-w-6xl space-y-6">
