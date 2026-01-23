@@ -24,6 +24,7 @@ import DeleteModal from "./Components/DeleteModal";
 import { useAuth } from "../../../context/AuthContext";
 import { useAIPlayground } from "../../../context/AIPlaygroundContext";
 import ModelFlow from "./Components/Models/ModelFlow";
+import toast from 'react-hot-toast';
 
 function Models() {
   const navigate = useNavigate();
@@ -407,8 +408,10 @@ function Models() {
 
       navigate("/ai/orchestration/new");
     } catch (err) {
-      console.error("Error during deploy:", err);
-      alert("Failed to navigate to deployment page");
+      toast.error('Failed to navigate to deployment page', {
+        duration: 4000,
+        position: 'top-right',
+      });
     }
   };
 
@@ -456,7 +459,11 @@ function Models() {
           });
 
           if (!modelResponse.ok) {
-            throw new Error("Failed to fetch model details");
+            toast.error('Failed to open AI Playground', {
+              duration: 4000,
+              position: 'top-right',
+            });
+            return;
           }
 
           const modelData = await modelResponse.json();
@@ -489,7 +496,11 @@ function Models() {
           );
 
           if (!ingestionResponse.ok) {
-            throw new Error("Failed to ingest data");
+            toast.error('Failed to open AI Playground', {
+              duration: 4000,
+              position: 'top-right',
+            });
+            return;
           }
 
           const ingestionData = await ingestionResponse.json();
@@ -572,7 +583,10 @@ function Models() {
           });
 
         } catch (error) {
-          console.error("Error loading model:", error);
+          toast.error('Failed to open AI Playground', {
+            duration: 4000,
+            position: 'top-right',
+          });
         } finally {
           setIsCanvasLoading(false);
         }

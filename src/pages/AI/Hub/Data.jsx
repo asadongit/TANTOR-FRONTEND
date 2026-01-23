@@ -352,7 +352,7 @@ const Data = () => {
         limit: 5,
       });
     } catch (err) {
-      toast.error('Failed to open AI Canvas', {
+      toast.error('Failed to open AI Playground', {
         duration: 4000,
         position: 'top-right',
       });

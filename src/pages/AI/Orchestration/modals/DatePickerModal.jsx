@@ -1,8 +1,8 @@
 import { useState } from "react";
 
-const DatePickerModal = ({ 
-    isOpen, 
-    onClose, 
+const DatePickerModal = ({
+    isOpen,
+    onClose,
     onAdd
 }) => {
     if (!isOpen) return null;
@@ -96,18 +96,17 @@ const DatePickerModal = ({
 
         for (let day = 1; day <= daysInMonth; day++) {
             const isSelected = selectedDate === day;
-            const isPast = selectedYear < currentYear || 
-                          (selectedYear === currentYear && selectedMonth < currentMonth) ||
-                          (selectedYear === currentYear && selectedMonth === currentMonth && day < currentDay);
-            
+            const isPast = selectedYear < currentYear ||
+                (selectedYear === currentYear && selectedMonth < currentMonth) ||
+                (selectedYear === currentYear && selectedMonth === currentMonth && day < currentDay);
+
             days.push(
                 <button
                     key={day}
                     onClick={() => !isPast && setSelectedDate(day)}
                     disabled={isPast}
-                    className={`h-8 w-8 flex items-center justify-center text-sm rounded transition-colors ${
-                        isPast 
-                            ? 'text-gray-300 cursor-not-allowed' 
+                    className={`h-8 w-8 flex items-center justify-center text-sm rounded transition-colors ${isPast
+                            ? 'text-gray-300 cursor-not-allowed'
                             : isSelected
                                 ? 'bg-[#8e78b7] text-white'
                                 : 'text-gray-700 hover:bg-gray-100'
@@ -130,10 +129,9 @@ const DatePickerModal = ({
                         <span className="text-xl">×</span>
                     </button>
                 </div>
-                
+
                 <div className="p-4">
                     <div className="mb-4">
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Start Date</label>
                         <div className="flex items-center justify-between mb-3">
                             <button onClick={handlePreviousMonth} className="text-gray-600 hover:text-gray-900 p-1">
                                 &lt;
@@ -153,22 +151,22 @@ const DatePickerModal = ({
 
                     <div className="grid grid-cols-2 gap-4 mb-4">
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">Start Date</label>
-                            <input 
-                                type="text" 
-                                value={selectedDate ? `${String(selectedDate).padStart(2, '0')}/${String(selectedMonth + 1).padStart(2, '0')}/${selectedYear}` : ''} 
-                                readOnly 
-                                placeholder="DD/MM/YYYY" 
-                                className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-700 bg-white" 
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Schedule Date <span className="text-red-500">*</span></label>
+                            <input
+                                type="text"
+                                value={selectedDate ? `${String(selectedDate).padStart(2, '0')}/${String(selectedMonth + 1).padStart(2, '0')}/${selectedYear}` : ''}
+                                readOnly
+                                placeholder="DD/MM/YYYY"
+                                className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-700 bg-white"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">Run Time</label>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Run Time <span className="text-red-500">*</span></label>
                             <div className="flex items-center gap-2">
                                 <div className="relative flex-1">
-                                    <select 
-                                        value={selectedHour} 
-                                        onChange={(e) => setSelectedHour(e.target.value)} 
+                                    <select
+                                        value={selectedHour}
+                                        onChange={(e) => setSelectedHour(e.target.value)}
                                         className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] appearance-none"
                                     >
                                         <option value="">HH</option>
@@ -179,9 +177,9 @@ const DatePickerModal = ({
                                 </div>
                                 <span className="text-gray-500 font-medium">:</span>
                                 <div className="relative flex-1">
-                                    <select 
-                                        value={selectedMinute} 
-                                        onChange={(e) => setSelectedMinute(e.target.value)} 
+                                    <select
+                                        value={selectedMinute}
+                                        onChange={(e) => setSelectedMinute(e.target.value)}
                                         className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] appearance-none"
                                     >
                                         <option value="">MM</option>
@@ -196,15 +194,16 @@ const DatePickerModal = ({
                 </div>
 
                 <div className="flex items-center justify-end gap-2 p-4 border-t border-gray-200">
-                    <button 
-                        onClick={onClose} 
+                    <button
+                        onClick={onClose}
                         className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded transition-colors"
                     >
                         Cancel
                     </button>
-                    <button 
-                        onClick={handleAddClick} 
-                        className="px-4 py-2 text-sm font-medium text-white bg-[#8e78b7] hover:bg-[#7d68a6] rounded transition-colors"
+                    <button
+                        disabled={!selectedDate || !selectedHour || !selectedMinute}
+                        onClick={handleAddClick}
+                        className="px-4 py-2 text-sm font-medium text-white bg-[#8e78b7] hover:bg-[#7d68a6] rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Add
                     </button>

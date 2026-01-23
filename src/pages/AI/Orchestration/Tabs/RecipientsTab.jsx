@@ -22,7 +22,7 @@ const RecipientsTab = ({ onRecipientsChange }) => {
     const fetchUsers = async (skip = 0, search = '', isLoadMore = false) => {
         setIsLoadingUsers(true);
         try {
-            let url = `${hostnameAI}/users/users?skip=${skip}&limit=${USERS_LIMIT}`;
+            let url = `${window._env_?.VITE_FAST_API}/auth/users?skip=${skip}&limit=${USERS_LIMIT}`;
             if (search.trim()) {
                 url += `&search=${encodeURIComponent(search.trim())}`;
             }
