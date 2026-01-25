@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Scale, Download, CircleCheckBig } from 'lucide-react';
+import { ChevronDown, ChevronUp, Scale, Download, CircleCheckBig, Info } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
+import InfoButton from '../../../components/InfoButton';
 
 const ToggleSwitch = ({ checked, onChange, readonly }) => (
     <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -17,25 +18,30 @@ const ToggleSwitch = ({ checked, onChange, readonly }) => (
 );
 
 const RadioOption = ({ name, value, checked, onChange, label, description, readonly }) => (
-    <label className={`flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'} group`}>
-        <input
-            type="radio"
-            name={name}
-            value={value}
-            checked={checked}
-            onChange={onChange}
-            disabled={readonly}
-            className="w-4 h-4 mt-0.5 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7]"
-        />
-        <div className="flex-1">
-            <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 block">
-                {label}
-            </span>
-            {description && (
-                <span className="text-xs text-gray-400 mt-0.5 block">{description}</span>
-            )}
+    <div className="bg-white px-4 py-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors group relative">
+        <div className="flex items-center gap-2">
+            <label className={`flex items-center gap-2 ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                <input
+                    type="radio"
+                    name={name}
+                    value={value}
+                    checked={checked}
+                    onChange={onChange}
+                    disabled={readonly}
+                    className="w-4 h-4 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7]"
+                />
+                <span className="text-sm text-gray-700">{label}</span>
+            </label>
         </div>
-    </label>
+
+        {/* Tooltip */}
+        {description && (
+            <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                <p className="leading-relaxed">{description}</p>
+                <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+            </div>
+        )}
+    </div>
 );
 
 const FeatureSection = ({
@@ -47,36 +53,45 @@ const FeatureSection = ({
     onExpand,
     children,
     icon: Icon,
-    readonly
-}) => (
-    <div className="bg-gray-50 rounded-lg border border-gray-200">
-        <div className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3 flex-1">
-                <div className="flex-1">
-                    <h4 className="text-sm font-medium text-gray-700">{title}</h4>
-                    <p className="text-xs text-gray-400 mt-0.5">{description}</p>
+    readonly,
+    sectionKey
+}) => {
+    const sectionDescriptions = {
+        imbalancedData: "Imbalanced Data Handling refers to techniques used to address datasets where one class has significantly more samples than others. These methods help prevent model bias toward the majority class and improve the model’s ability to correctly learn and predict minority classes.",
+    };
+
+    return (
+        <div className="bg-gray-50 rounded-lg border border-gray-200">
+            <div className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3 flex-1">
+                    <div className="flex-1">
+                        <div className='flex flex-row'>
+                            <h4 className="text-sm font-medium text-gray-700 mr-2">{title}</h4>
+                            <InfoButton sectionDescriptions= {sectionDescriptions} section={sectionKey}/>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex items-center gap-3">
+                    <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
+                    {isToggled && (
+                        <button
+                            onClick={onExpand}
+                            className="text-gray-400 hover:text-gray-600"
+                        >
+                            {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                        </button>
+                    )}
                 </div>
             </div>
-            <div className="flex items-center gap-3">
-                <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
-                {isToggled && (
-                    <button
-                        onClick={onExpand}
-                        className="text-gray-400 hover:text-gray-600"
-                    >
-                        {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                    </button>
-                )}
-            </div>
-        </div>
 
-        {isToggled && isExpanded && (
-            <div className="px-4 pb-4 border-t border-gray-100">
-                <div className="mt-4">{children}</div>
-            </div>
-        )}
-    </div>
-);
+            {isToggled && isExpanded && (
+                <div className="px-4 pb-4 border-t border-gray-100">
+                    <div className="mt-4">{children}</div>
+                </div>
+            )}
+        </div>
+    )
+};
 
 const VariantDataTable = ({ variantKey, displayData, message }) => {
     if (!displayData || displayData.length === 0) {
@@ -150,58 +165,110 @@ function Step7({ onShowPreview, showPreview, onApiCall }) {
     const [isProcessing, setIsProcessing] = useState(false);
     const [previewData, setPreviewData] = useState(null);
 
-    const samplingMethods = [
-        {
-            value: 'smote',
-            label: 'SMOTE',
-            description: 'Synthetic Minority Over-sampling Technique'
-        },
-        {
-            value: 'adasyn',
-            label: 'ADASYN',
-            description: 'Adaptive Synthetic Sampling'
-        },
-        {
-            value: 'borderline_smote',
-            label: 'Borderline SMOTE',
-            description: 'SMOTE for borderline samples'
-        },
-        {
-            value: 'random_under',
-            label: 'Random Under-sampling',
-            description: 'Random under-sampling of majority class'
-        },
-        {
-            value: 'svmsmote',
-            label: 'SVM SMOTE',
-            description: 'SMOTE using SVM classifier'
-        },
-        {
-            value: 'nearmiss',
-            label: 'NearMiss',
-            description: 'NearMiss under-sampling'
-        },
-        {
-            value: 'tomek',
-            label: 'Tomek Links',
-            description: 'Remove Tomek links'
-        },
-        {
-            value: 'enn',
-            label: 'ENN',
-            description: 'Edited Nearest Neighbors'
-        },
-        {
-            value: 'smotetomek',
-            label: 'SMOTE + Tomek',
-            description: 'Combination of SMOTE and Tomek links'
-        },
-        {
-            value: 'smoteenn',
-            label: 'SMOTE + ENN',
-            description: 'Combination of SMOTE and ENN'
-        },
-    ];
+    const IMBALANCE_HANDLING_CONFIG = {
+        methods: [
+            {
+                value: 'smote',
+                label: 'SMOTE',
+                description: 'SMOTE is an oversampling method that generates synthetic data points for the minority class by interpolating between existing samples. It increases class balance without duplicating records.',
+                availability: {
+                    binary: 'yes',
+                    multiclass: 'yes'
+                }
+            },
+            {
+                value: 'adasyn',
+                label: 'ADASYN',
+                description: 'ADASYN is an extension of SMOTE that generates more synthetic samples in hard-to-learn regions. It focuses on areas where minority samples are sparse or difficult to classify.',
+                availability: {
+                    binary: 'yes',
+                    multiclass: 'warning'
+                }
+            },
+            {
+                value: 'borderline_smote',
+                label: 'Borderline SMOTE',
+                description: 'Borderline-SMOTE generates synthetic samples near the class decision boundary. It improves classification by strengthening minority samples that are most at risk of misclassification.',
+                availability: {
+                    binary: 'yes',
+                    multiclass: 'warning'
+                }
+            },
+            {
+                value: 'random_under',
+                label: 'Random Under-sampling',
+                description: 'Random Under-Sampling reduces class imbalance by randomly removing samples from the majority class. It is simple but may discard potentially useful information.',
+                availability: {
+                    binary: 'yes',
+                    multiclass: 'warning'
+                }
+            },
+            {
+                value: 'svmsmote',
+                label: 'SVM SMOTE',
+                description: 'SVM-SMOTE uses a Support Vector Machine to identify boundary regions before generating synthetic samples. It focuses oversampling on informative and critical data points.',
+                availability: {
+                    binary: 'yes',
+                    multiclass: 'warning'
+                }
+            },
+            {
+                value: 'nearmiss',
+                label: 'NearMiss',
+                description: 'NearMiss is an undersampling technique that selects majority class samples closest to minority samples. It helps preserve decision boundaries while reducing majority class size.',
+                availability: {
+                    binary: 'yes',
+                    multiclass: 'no'
+                }
+            },
+            {
+                value: 'tomek',
+                label: 'Tomek Link',
+                description: 'Tomek Links identify pairs of samples from opposite classes that are very close to each other. Removing these pairs helps clean overlapping and ambiguous data points.',
+                availability: {
+                    binary: 'yes',
+                    multiclass: 'warning'
+                }
+            },
+            {
+                value: 'enn',
+                label: 'ENN (Edited Nearest Neighbours)',
+                description: 'ENN removes samples that are misclassified by their nearest neighbors. It reduces noise and improves class separation.',
+                availability: {
+                    binary: 'yes',
+                    multiclass: 'warning'
+                }
+            },
+            {
+                value: 'smotetomek',
+                label: 'SMOTE + Tomek',
+                description: 'SMOTE + Tomek Links is a hybrid method that first oversamples the minority class and then cleans overlapping samples. It improves class balance while reducing noise at class boundaries.',
+                availability: {
+                    binary: 'yes',
+                    multiclass: 'warning'
+                }
+            },
+            {
+                value: 'smoteenn',
+                label: 'SMOTE + ENN',
+                description: 'SMOTE + ENN is a hybrid method that combines oversampling with noise reduction. It first generates synthetic minority samples, then removes misclassified samples to improve class separation.',
+                availability: {
+                    binary: 'yes',
+                    multiclass: 'warning'
+                }
+            },
+        ]
+    };
+
+    const classificationType = workflowState?.modelGenesis?.config?.modelling_type || 'binary';
+
+    const getAvailableSamplingMethods = (classificationType) => {
+        return IMBALANCE_HANDLING_CONFIG.methods.filter(
+            method => method.availability[classificationType] === 'yes'
+        );
+    };
+
+    const samplingMethods = getAvailableSamplingMethods(classificationType);
 
     const modelGenesisConfig = workflowState?.modelGenesis?.config;
 
@@ -490,6 +557,7 @@ function Step7({ onShowPreview, showPreview, onApiCall }) {
                 onExpand={() => toggleSection('imbalancedData')}
                 icon={Scale}
                 readonly={readonly}
+                sectionKey='imbalancedData'
             >
                 <div className="space-y-4">
                     <div className="flex items-center justify-between mb-4">
@@ -499,7 +567,7 @@ function Step7({ onShowPreview, showPreview, onApiCall }) {
                         </span>
                     </div>
 
-                    <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100 max-h-96 overflow-y-auto">
+                    <div className="grid grid-cols-3 gap-3">
                         {samplingMethods.map(method => (
                             <RadioOption
                                 key={method.value}

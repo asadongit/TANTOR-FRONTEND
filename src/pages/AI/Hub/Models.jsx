@@ -47,7 +47,7 @@ function Models() {
   const hostnameAI = window._env_?.VITE_AI_API;
   const { token, decodedToken } = useAuth();
   const [isCanvasLoading, setIsCanvasLoading] = useState(false);
-  const { setWorkflowState, setDatasetState, setMode, setModelState, setProjectState, setSchedulerState } = useAIPlayground();
+  const { setWorkflowState, setDatasetState, setMode, setModelState, setProjectState, setSchedulerState, setIsAIPlaygroundActive } = useAIPlayground();
   const [dashboardLoading, setDashboardLoading] = useState(false);
 
 
@@ -572,6 +572,7 @@ function Models() {
 
             setWorkflowState(newWorkflowState);
             setMode('view');
+            setIsAIPlaygroundActive(true)
           }
 
           navigate("/ai/playground/model-genesis", {

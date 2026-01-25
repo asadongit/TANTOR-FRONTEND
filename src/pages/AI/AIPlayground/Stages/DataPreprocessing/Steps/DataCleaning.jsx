@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Plus, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, AlertCircle, Info } from 'lucide-react';
 import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
+import InfoButton from '../../../components/InfoButton';
 
 function DataCleaning({ onValidationChange, onApiCall }) {
   const hostnameAI = window._env_?.VITE_AI_API;
@@ -29,6 +30,14 @@ function DataCleaning({ onValidationChange, onApiCall }) {
     uniquenessRatio: false,
     missingValue: false,
   });
+
+  const sectionDescriptions = {
+    changeDataType: "Change Data Type refers to converting a feature to its appropriate data format (e.g., string to numeric, date to datetime). Correct data types ensure accurate calculations, proper validation, and correct model behavior.",
+    dropColumns: "Drop Column is the process of removing a feature that is irrelevant, redundant, or low in informational value. This helps reduce noise and improves model efficiency.",
+    dropDuplicates: "Drop Duplicate Rows removes repeated records that appear more than once in the dataset. It prevents data bias and ensures each observation is counted only once.",
+    uniquenessRatio: "Uniqueness Ratio measures the proportion of unique values in a feature relative to total records. It helps identify identifier-like columns or features with very low variability.",
+    missingValue: "Missing Value Indicator creates a binary flag to indicate whether a value was originally missing. It helps models learn patterns related to data missingness."
+  };
 
   const [dataTypeColumns, setDataTypeColumns] = useState([
     { columnName: '', oldDataType: '', newDataType: '' }
@@ -366,9 +375,12 @@ function DataCleaning({ onValidationChange, onApiCall }) {
     <div className="space-y-4 max-w-full">
       <div className="bg-gray-50 rounded-lg border border-gray-200">
         <div className="p-4 flex items-center justify-between">
-          <div className="flex-1">
-            <h4 className="text-sm font-medium text-gray-900">Change Data Type</h4>
-            <p className="text-xs text-gray-500 mt-1">Modify column data types for accurate analysis.</p>
+          <div className="flex-1 flex items-center gap-2">
+            <div>
+              <h4 className="text-sm font-medium text-gray-900">Change Data Type</h4>
+              {/* <p className="text-xs text-gray-500 mt-1">Modify column data types for accurate analysis.</p> */}
+            </div>
+            <InfoButton sectionDescriptions= {sectionDescriptions} section="changeDataType"/>
           </div>
           <div className="flex items-center gap-3">
             <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -471,9 +483,12 @@ function DataCleaning({ onValidationChange, onApiCall }) {
 
       <div className="bg-gray-50 rounded-lg border border-gray-200">
         <div className="p-4 flex items-center justify-between">
-          <div className="flex-1">
-            <h4 className="text-sm font-medium text-gray-900">Drop Columns</h4>
-            <p className="text-xs text-gray-500 mt-1">Remove specific columns from your dataset.</p>
+          <div className="flex-1 flex items-center gap-2">
+            <div>
+              <h4 className="text-sm font-medium text-gray-900">Drop Columns</h4>
+              {/* <p className="text-xs text-gray-500 mt-1">Remove specific columns from your dataset.</p> */}
+            </div>
+            <InfoButton sectionDescriptions= {sectionDescriptions} section="dropColumns"/>
           </div>
           <div className="flex items-center gap-3">
             <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -557,9 +572,12 @@ function DataCleaning({ onValidationChange, onApiCall }) {
 
       <div className="bg-gray-50 rounded-lg border border-gray-200">
         <div className="p-4 flex items-center justify-between">
-          <div className="flex-1">
-            <h4 className="text-sm font-medium text-gray-900">Drop Duplicate Rows</h4>
-            <p className="text-xs text-gray-500 mt-1">Remove duplicated entries from your dataset.</p>
+          <div className="flex-1 flex items-center gap-2">
+            <div>
+              <h4 className="text-sm font-medium text-gray-900">Drop Duplicate Rows</h4>
+              {/* <p className="text-xs text-gray-500 mt-1">Remove duplicated entries from your dataset.</p> */}
+            </div>
+            <InfoButton sectionDescriptions= {sectionDescriptions} section="dropDuplicates"/>
           </div>
           <div className="flex items-center gap-3">
             <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -578,9 +596,12 @@ function DataCleaning({ onValidationChange, onApiCall }) {
 
       <div className="bg-gray-50 rounded-lg border border-gray-200">
         <div className="p-4 flex items-center justify-between">
-          <div className="flex-1">
-            <h4 className="text-sm font-medium text-gray-900">Uniqueness Ratio</h4>
-            <p className="text-xs text-gray-500 mt-1">Set threshold limits to evaluate column uniqueness.</p>
+          <div className="flex-1 flex items-center gap-2">
+            <div>
+              <h4 className="text-sm font-medium text-gray-900">Uniqueness Ratio</h4>
+              {/* <p className="text-xs text-gray-500 mt-1">Set threshold limits to evaluate column uniqueness.</p> */}
+            </div>
+            <InfoButton sectionDescriptions= {sectionDescriptions} section="uniquenessRatio"/>
           </div>
           <div className="flex items-center gap-3">
             <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -599,9 +620,12 @@ function DataCleaning({ onValidationChange, onApiCall }) {
 
       <div className="bg-gray-50 rounded-lg border border-gray-200">
         <div className="p-4 flex items-center justify-between">
-          <div className="flex-1">
-            <h4 className="text-sm font-medium text-gray-900">Missing Value Indicator</h4>
-            <p className="text-xs text-gray-500 mt-1">Create indicator columns for missing values.</p>
+          <div className="flex-1 flex items-center gap-2">
+            <div>
+              <h4 className="text-sm font-medium text-gray-900">Missing Value Indicator</h4>
+              {/* <p className="text-xs text-gray-500 mt-1">Create indicator columns for missing values.</p> */}
+            </div>
+            <InfoButton sectionDescriptions= {sectionDescriptions} section="missingValue"/>
           </div>
           <div className="flex items-center gap-3">
             <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>

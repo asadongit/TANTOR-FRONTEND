@@ -2,6 +2,244 @@ import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
+import InfoButton from '../../../components/InfoButton';
+
+const OUTLIER_OPTIONS_CONFIG = [
+    {
+        value: 'cap_95',
+        label: 'Cap 95%',
+        description: 'Cap 95% is an outlier treatment technique that limits extreme values to the 95th percentile of the data. Any value above this threshold is replaced with the 95th percentile value, reducing the impact of extreme observations while keeping all records.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'yes'
+        },
+        warnings: 'May distort valid extreme values; sensitive to percentile choice'
+    },
+    {
+        value: 'cap_99',
+        label: 'Cap 99%',
+        description: 'Cap 99% is an outlier treatment method that limits extreme values to the 99th percentile. It preserves most data variability while preventing very rare extreme values from dominating the analysis.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'yes'
+        },
+        warnings: 'Less aggressive but still alters tail values'
+    },
+    {
+        value: 'log',
+        label: 'Log Transform',
+        description: 'Log Transform is a mathematical transformation that reduces the effect of large values by applying a logarithmic scale. It compresses extreme values and helps normalize skewed data, making patterns easier for models to learn.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'yes'
+        },
+        warnings: 'Requires positive values; fails with zero or negative values'
+    },
+    {
+        value: 'bin',
+        label: 'Bin',
+        description: 'Binning groups continuous values into discrete intervals or bins, reducing the impact of outliers by treating them as part of boundary bins.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'yes'
+        },
+        warnings: 'May lose granularity in data'
+    },
+    {
+        value: 'remove',
+        label: 'Remove',
+        description: 'Remove is an outlier handling approach that completely deletes records identified as outliers. This method is used when extreme values are invalid, erroneous, or likely to distort model performance.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'yes'
+        },
+        warnings: 'Can delete valid minority samples; risky for small datasets'
+    }
+];
+
+// Configuration for categorical encoding options
+const ENCODING_OPTIONS_CONFIG = [
+    {
+        value: 'onehot',
+        label: 'One Hot',
+        description: 'One-Hot Encoding converts each category into a separate binary column. Each column indicates the presence or absence of a category, making the data usable for most machine learning models.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'yes'
+        },
+        warnings: 'High cardinality leads to many columns'
+    },
+    {
+        value: 'label',
+        label: 'Label',
+        description: 'Label Encoding assigns a unique numeric label to each category. It is simple and works best for ordered or ordinal categorical features.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'yes'
+        },
+        warnings: 'Imposes artificial ordering; unsafe for linear models'
+    },
+    {
+        value: 'target',
+        label: 'Target',
+        description: 'Target Encoding replaces each category with the average target value for that category. It captures the relationship between the category and the prediction outcome.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'warning'
+        },
+        warnings: 'High leakage risk; output interpretation changes in multiclass'
+    },
+    {
+        value: 'woe',
+        label: 'WOE',
+        description: 'WOE encoding replaces categories with a value based on their predictive power relative to the target. It is widely used in credit risk and banking models for interpretability.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'no'
+        },
+        warnings: 'Requires binary target; invalid for multiclass'
+    },
+    {
+        value: 'frequency',
+        label: 'Frequency',
+        description: 'Frequency Encoding replaces categories with their occurrence frequency in the dataset. It preserves information about how common each category is.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'yes'
+        },
+        warnings: 'Loses category-level distinction'
+    },
+    {
+        value: 'binary',
+        label: 'binary',
+        description: 'binary Encoding converts categories into binary digits and splits them across multiple columns. It reduces dimensionality compared to one-hot encoding.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'yes'
+        },
+        warnings: 'Requires prior label encoding'
+    },
+    {
+        value: 'leave_one_out',
+        label: 'Leave One Out',
+        description: 'Leave-One-Out Encoding replaces a category using the target mean excluding the current row. This helps reduce overfitting compared to standard target encoding.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'warning'
+        },
+        warnings: 'Noisy for rare categories; leakage risk'
+    },
+    {
+        value: 'james_stein',
+        label: 'James Stein',
+        description: 'James-Stein Encoding is a shrinkage-based target encoding method. It pulls category means toward the global mean to reduce overfitting.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'warning'
+        },
+        warnings: 'Unstable for small or sparse categories'
+    },
+    {
+        value: 'm_estimate',
+        label: 'M-Estimate',
+        description: 'M-Estimate Encoding smooths target encoding by combining category statistics with global averages. It improves stability for categories with few samples.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'warning'
+        },
+        warnings: 'Sensitive to smoothing parameter'
+    },
+    {
+        value: 'catboost',
+        label: 'CatBoost',
+        description: 'CatBoost Encoding is a target-based method that uses ordered statistics to avoid data leakage. It is optimized for gradient-boosting models like CatBoost.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'yes'
+        },
+        warnings: 'Requires proper ordering to avoid leakage'
+    },
+    {
+        value: 'count',
+        label: 'Count',
+        description: 'Count Encoding replaces each category with the number of times it appears in the data. It is simple and effective for high-cardinality features.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'yes'
+        },
+        warnings: 'Rare categories may dominate importance'
+    },
+    {
+        value: 'basen',
+        label: 'BaseN',
+        description: 'Base-N Encoding represents categories as digits in a base-N numeral system. It is a generalized form of binary encoding that balances feature size and information.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'yes'
+        },
+        warnings: 'Requires prior label encoding'
+    },
+    {
+        value: 'hash',
+        label: 'Hash',
+        description: 'Hash Encoding maps categories to fixed-size numeric features using a hashing function. It efficiently handles large numbers of unique categories with controlled dimensionality.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'yes'
+        },
+        warnings: 'Collisions possible; irreversible'
+    },
+    {
+        value: 'hashing',
+        label: 'Hashing',
+        description: 'Hashing Encoding converts categories into numeric features using a hash function. It is memory-efficient and suitable for large-scale datasets.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'yes'
+        },
+        warnings: 'Irreversible; collisions possible'
+    },
+    {
+        value: 'helmert',
+        label: 'Helmert',
+        description: 'Helmert Encoding compares each category with the mean of subsequent categories. It is commonly used in statistical modeling and hypothesis testing.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'yes'
+        },
+        warnings: 'Primarily useful for statistical models'
+    },
+    {
+        value: 'sum',
+        label: 'Sum',
+        description: 'Sum Encoding represents categories using deviation from the overall mean. It is mainly used in regression and statistical analysis.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'yes'
+        },
+        warnings: 'Interpretation less intuitive'
+    },
+    {
+        value: 'backward_difference',
+        label: 'Backward Difference',
+        description: 'Backward Difference Encoding compares each category with the previous category in order. It is useful for ordered categorical features.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'yes'
+        },
+        warnings: 'Assumes meaningful category order'
+    },
+    {
+        value: 'polynomial',
+        label: 'Polynomial',
+        description: 'Polynomial Encoding creates contrast-based numeric representations for categorical variables. It is mainly used in statistical and regression-based models.',
+        availability: {
+            binary: 'yes',
+            multiclass: 'yes'
+        },
+        warnings: 'Increases feature dimensionality'
+    }
+];
 
 const ToggleSwitch = ({ checked, onChange, readonly }) => (
     <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -16,21 +254,6 @@ const ToggleSwitch = ({ checked, onChange, readonly }) => (
     </label>
 );
 
-const RadioOption = ({ name, value, checked, onChange, label, readonly }) => (
-    <label className={`flex items-center gap-2 group ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-        <input
-            type="radio"
-            name={name}
-            value={value}
-            checked={checked}
-            onChange={onChange}
-            disabled={readonly}
-            className="w-4 h-4 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7]"
-        />
-        <span className="text-sm text-gray-700 group-hover:text-gray-900">{label}</span>
-    </label>
-);
-
 const FeatureSection = ({
     title,
     description,
@@ -40,40 +263,52 @@ const FeatureSection = ({
     onExpand,
     children,
     readonly,
-    infoMessage
-}) => (
-    <div className="bg-gray-50 rounded-lg border border-gray-200">
-        <div className="p-4 flex items-center justify-between">
-            <div className="flex-1">
-                <h4 className="text-sm font-medium text-gray-700">{title}</h4>
-                <p className="text-xs text-gray-400 mt-0.5">{description}</p>
-                {infoMessage && (
-                    <div className="mt-2 mr-8 flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-md p-2">
-                        <Info size={14} className="text-blue-500 mt-0.5 flex-shrink-0" />
-                        <p className="text-xs text-blue-700">{infoMessage}</p>
-                    </div>
-                )}
-            </div>
-            <div className="flex items-center gap-3">
-                <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
-                {isToggled && (
-                    <button
-                        onClick={onExpand}
-                        className="text-gray-400 hover:text-gray-600"
-                    >
-                        {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                    </button>
-                )}
-            </div>
-        </div>
+    infoMessage,
+    sectionKey
+}) => {
+    const sectionDescriptions = {
+        outlierTreatment: "Outlier Treatment refers to techniques used to identify and handle extreme or abnormal data values that deviate significantly from the rest of the dataset. These methods help reduce noise, prevent model distortion, and improve overall model stability and performance.",
+        categoricalEncoding: "Encode categorical variables for machine learning."
+    };
 
-        {isToggled && isExpanded && (
-            <div className="px-4 pb-4 border-t border-gray-100">
-                <div className="mt-4">{children}</div>
+    return (
+        <div className="bg-gray-50 rounded-lg border border-gray-200">
+            <div className="p-4 flex items-center justify-between">
+                <div className="flex-1 flex items-center gap-2">
+                    <div className="flex-1">
+                        <div className='flex flex-row'>
+                            <h4 className="text-sm font-medium text-gray-700 mr-2">{title}</h4>
+                            <InfoButton sectionDescriptions={sectionDescriptions} section={sectionKey} />
+                        </div>
+                        {infoMessage && (
+                            <div className="mt-2 mr-8 flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-md p-2">
+                                <Info size={14} className="text-blue-500 mt-0.5 flex-shrink-0" />
+                                <p className="text-xs text-blue-700">{infoMessage}</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <div className="flex items-center gap-3">
+                    <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
+                    {isToggled && (
+                        <button
+                            onClick={onExpand}
+                            className="text-gray-400 hover:text-gray-600"
+                        >
+                            {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                        </button>
+                    )}
+                </div>
             </div>
-        )}
-    </div>
-);
+
+            {isToggled && isExpanded && (
+                <div className="px-4 pb-4 border-t border-gray-100">
+                    <div className="mt-4">{children}</div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 function FeatureEngineering({ onApiCall }) {
     const hostnameAI = window._env_?.VITE_AI_API;
@@ -92,6 +327,7 @@ function FeatureEngineering({ onApiCall }) {
 
     const [outlierStrategy, setOutlierStrategy] = useState('remove');
     const [encodingStrategy, setEncodingStrategy] = useState('onehot');
+    const [hoveredOption, setHoveredOption] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
 
     const categoricalColumns = workflowState?.dataPreprocessing?.step2?.apiResponse?.categorical_columns || [];
@@ -101,8 +337,16 @@ function FeatureEngineering({ onApiCall }) {
     const outlierCount = workflowState?.dataPreprocessing?.step2?.apiResponse?.outlier_count || 0;
     const hasOutliers = detectOutliersEnabled && outlierCount > 0;
 
+    const classificationType = workflowState?.modelGenesis?.config?.modelling_type || 'binary';
     const isOutlierTreatmentDisabled = !hasOutliers;
 
+    // Filter options based on classification type
+    const getAvailableOptions = (optionsConfig, classificationType) => {
+        return optionsConfig.filter(option => {
+            const availability = option.availability[classificationType];
+            return availability === 'yes';
+        });
+    };
     useEffect(() => {
         const step3Config = workflowState?.dataPreprocessing?.step3?.config;
 
@@ -214,34 +458,25 @@ function FeatureEngineering({ onApiCall }) {
         }
     }, [toggles, outlierStrategy, encodingStrategy, datasetState.sessionId]);
 
-    const options = [
-        { value: 'cap_95', label: 'Cap 95%' },
-        { value: 'cap_99', label: 'Cap 99%' },
-        { value: 'log', label: 'Log Transform' },
-        { value: 'bin', label: 'Bin' },
-        { value: 'remove', label: 'Remove' },
-    ];
+    const availableOutlierOptions = getAvailableOptions(OUTLIER_OPTIONS_CONFIG, classificationType);
+    const availableEncodingOptions = getAvailableOptions(ENCODING_OPTIONS_CONFIG, classificationType);
 
-    const Encodingoptions = [
-        { value: 'onehot', label: 'One Hot' },
-        { value: 'label', label: 'Label' },
-        { value: 'target', label: 'Target' },
-        { value: 'woe', label: 'WOE' },
-        { value: 'frequency', label: 'Frequency' },
-        { value: 'binary', label: 'Binary' },
-        { value: 'leave_one_out', label: 'Leave One Out' },
-        { value: 'james_stein', label: 'James Stein' },
-        { value: 'm_estimate', label: 'M-Estimate' },
-        { value: 'catboost', label: 'CatBoost' },
-        { value: 'count', label: 'Count' },
-        { value: 'basen', label: 'BaseN' },
-        { value: 'hash', label: 'Hash' },
-        { value: 'hashing', label: 'Hashing' },
-        { value: 'helmert', label: 'Helmert' },
-        { value: 'sum', label: 'Sum' },
-        { value: 'backward_difference', label: 'Backward Difference' },
-        { value: 'polynomial', label: 'Polynomial' },
-    ];
+    // Create descriptions object for options
+    const optionDescriptions = {};
+
+    OUTLIER_OPTIONS_CONFIG.forEach(option => {
+        optionDescriptions[option.value] = {
+            description: option.description,
+            warnings: option.warnings
+        };
+    });
+
+    ENCODING_OPTIONS_CONFIG.forEach(option => {
+        optionDescriptions[option.value] = {
+            description: option.description,
+            warnings: option.warnings
+        };
+    });
 
     const toggleSwitch = (key) => {
         if (readonly) return;
@@ -301,6 +536,7 @@ function FeatureEngineering({ onApiCall }) {
                 onExpand={() => toggleSection('outlierTreatment')}
                 readonly={readonly || isOutlierTreatmentDisabled}
                 infoMessage={getOutlierInfoMessage()}
+                sectionKey="outlierTreatment"
             >
                 {hasOutliers && (
                     <>
@@ -318,16 +554,40 @@ function FeatureEngineering({ onApiCall }) {
                         </div>
 
                         <div className="grid grid-cols-2 gap-x-8 gap-y-3">
-                            {options.map(option => (
-                                <div key={option.value} className="bg-white px-3 py-2 rounded border border-gray-200">
-                                    <RadioOption
-                                        name="outlierStrategy"
-                                        value={option.value}
-                                        checked={outlierStrategy === option.value}
-                                        onChange={(e) => !readonly && setOutlierStrategy(e.target.value)}
-                                        label={option.label}
-                                        readonly={readonly}
-                                    />
+                            {availableOutlierOptions.map(option => (
+                                <div
+                                    key={option.value}
+                                    className="relative"
+                                    onMouseEnter={() => setHoveredOption(option.value)}
+                                    onMouseLeave={() => setHoveredOption(null)}
+                                >
+                                    <label
+                                        className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${outlierStrategy === option.value
+                                            ? 'border-[#8e78b7] bg-purple-50'
+                                            : 'border-gray-200 bg-white hover:border-gray-300'
+                                            } ${readonly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="outlierStrategy"
+                                            value={option.value}
+                                            checked={outlierStrategy === option.value}
+                                            onChange={(e) => !readonly && setOutlierStrategy(e.target.value)}
+                                            disabled={readonly}
+                                            className="w-4 h-4 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7]"
+                                        />
+                                        <span className={`text-sm font-medium ${outlierStrategy === option.value ? 'text-[#8e78b7]' : 'text-gray-700'
+                                            }`}>
+                                            {option.label}
+                                        </span>
+                                    </label>
+
+                                    {hoveredOption === option.value && (
+                                        <div className="absolute left-0 top-full mt-2 z-50 w-80 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg">
+                                            <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+                                            <p className="leading-relaxed">{optionDescriptions[option.value].description}</p>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -345,6 +605,7 @@ function FeatureEngineering({ onApiCall }) {
                     onExpand={() => toggleSection('categoricalEncoding')}
                     readonly={readonly || hasCategoricalColumns}
                     infoMessage={hasCategoricalColumns ? "Categorical encoding is required because your dataset contains categorical columns" : null}
+                    sectionKey="categoricalEncoding"
                 >
                     <div className="space-y-4">
                         <div>
@@ -362,20 +623,46 @@ function FeatureEngineering({ onApiCall }) {
                         </div>
 
                         <div className="pt-2">
-                            <h5 className="text-sm font-medium text-gray-700 mb-3">Encoding Method</h5>
+                            <h5 className="text-sm font-medium text-gray-700 mb-3">
+                                Encoding Method
+                            </h5>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-x-8 gap-y-3 max-h-64 overflow-y-auto pr-2">
-                            {Encodingoptions.map(option => (
-                                <div key={option.value} className="bg-white px-3 py-2 rounded border border-gray-200">
-                                    <RadioOption
-                                        name="encodingStrategy"
-                                        value={option.value}
-                                        checked={encodingStrategy === option.value}
-                                        onChange={(e) => !readonly && setEncodingStrategy(e.target.value)}
-                                        label={option.label}
-                                        readonly={readonly}
-                                    />
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-3 overflow-y-auto pr-2 pb-20">
+                            {availableEncodingOptions.map(option => (
+                                <div
+                                    key={option.value}
+                                    className="relative"
+                                    onMouseEnter={() => setHoveredOption(option.value)}
+                                    onMouseLeave={() => setHoveredOption(null)}
+                                >
+                                    <label
+                                        className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${encodingStrategy === option.value
+                                            ? 'border-[#8e78b7] bg-purple-50'
+                                            : 'border-gray-200 bg-white hover:border-gray-300'
+                                            } ${readonly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="encodingStrategy"
+                                            value={option.value}
+                                            checked={encodingStrategy === option.value}
+                                            onChange={(e) => !readonly && setEncodingStrategy(e.target.value)}
+                                            disabled={readonly}
+                                            className="w-4 h-4 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7]"
+                                        />
+                                        <span className={`text-sm font-medium ${encodingStrategy === option.value ? 'text-[#8e78b7]' : 'text-gray-700'
+                                            }`}>
+                                            {option.label}
+                                        </span>
+                                    </label>
+
+                                    {hoveredOption === option.value && (
+                                        <div className="absolute left-0 top-full mt-2 z-50 w-80 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg">
+                                            <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+                                            <p className="">{optionDescriptions[option.value].description}</p>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
