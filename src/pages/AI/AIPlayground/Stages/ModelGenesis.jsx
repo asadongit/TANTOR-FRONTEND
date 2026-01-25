@@ -818,6 +818,7 @@ function ModelGenesis() {
         updateWorkflowStage('modelGenesis', {
           config: {
             ...config,
+            modelling_type: modellingTypeMap[config.classification],
             trainSize,
             testSize
           },

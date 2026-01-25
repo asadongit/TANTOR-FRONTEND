@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ChevronDown, ChevronUp, CircleCheckBig, CircleX, TriangleAlert, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, CircleCheckBig, CircleX, TriangleAlert, Image as ImageIcon, AlertCircle, Info } from 'lucide-react';
 import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
+import InfoButton from '../../../components/InfoButton';
 
 function StatisticalAnalysis({ onValidationChange, onApiCall }) {
     const hostnameAI = window._env_?.VITE_AI_API;
@@ -25,6 +26,12 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
     const [vifDropperEnabled, setVifDropperEnabled] = useState(false);
     const [selectedFeatures, setSelectedFeatures] = useState([]);
     const [validationError, setValidationError] = useState('');
+
+    const sectionDescriptions = {
+        correlation: "Correlation graphs visually represent the strength and direction of relationships between numerical variables. They help identify strong positive or negative correlations, which can indicate redundant or highly related features.",
+        vif: "VIF Analysis measures how much a feature is linearly dependent on other features in the dataset. High VIF values indicate multicollinearity, which can reduce model stability and interpretability.Risk assessment for each feature"
+    };
+
     useEffect(() => {
         if ((mode === 'view' || mode === 'edit') && workflowState?.dataPreprocessing?.step5?.config) {
             const config = workflowState.dataPreprocessing.step5.config;
@@ -180,9 +187,12 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
             {/* Correlation Graphs Section */}
             <div className="bg-gray-50 rounded-lg border border-gray-200">
                 <div className="p-4 flex items-center justify-between border-b border-gray-100">
-                    <div className="flex-1">
-                        <h4 className="text-sm font-medium text-gray-700">Correlation Graphs</h4>
-                        <p className="text-xs text-gray-400 mt-0.5">Feature relationship visualization</p>
+                    <div className="flex-1 flex items-center gap-2">
+                        <div>
+                            <h4 className="text-sm font-medium text-gray-900">Correlation Graphs</h4>
+                            {/* <p className="text-xs text-gray-500 mt-1">Feature relationship visualization</p> */}
+                        </div>
+                        <InfoButton sectionDescriptions= {sectionDescriptions} section="correlation"/>
                     </div>
                     <div className="flex items-center gap-3">
                         <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -230,9 +240,14 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
             {/* VIF Analysis Section */}
             <div className="bg-gray-50 rounded-lg border border-gray-200">
                 <div className="p-4 flex items-center justify-between border-b border-gray-100">
-                    <div className="flex-1">
-                        <h4 className="text-sm font-medium text-gray-700">VIF Analysis</h4>
-                        <p className="text-xs text-gray-400 mt-0.5">{`${vifReport.length} features analyzed | ${selectedFeatures.length} selected to drop`}</p>
+                    <div className="flex-1 flex items-center gap-2">
+                        <div>
+                            <div className='flex flex-row'>
+                                <h4 className="text-sm font-medium text-gray-700 mr-2">VIF Analysis</h4>
+                                <InfoButton sectionDescriptions= {sectionDescriptions} section="vif"/>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-0.5">{`${vifReport.length} features analyzed | ${selectedFeatures.length} selected to drop`}</p>
+                        </div>
                     </div>
                     <div className="flex items-center gap-3">
                         <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
