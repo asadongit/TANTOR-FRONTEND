@@ -150,7 +150,6 @@ const AIPlayground = () => {
   }, [mode]);
 
   useEffect(() => {
-    console.log()
     if (selectedProject != '' || projectState?.selectedProject != '') {
       setIsAIPlaygroundActive(true)
     }
@@ -212,40 +211,6 @@ const AIPlayground = () => {
 
   const handleCreateProject = async (formData) => {
     await fetchProjects();
-  };
-
-  const validateFile = (file) => {
-    const validTypes = [
-      'application/pdf',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    ];
-    const validExtensions = ['.pdf', '.xls', '.xlsx'];
-    const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-
-    if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
-      alert('Please upload a valid file (PDF, XLS, or XLSX)');
-      return false;
-    }
-
-    if (file.size > 25 * 1024 * 1024) {
-      alert('File size must be less than 25 MB');
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (validateFile(file)) {
-      setTempFile(file);
-      toggleModal('datasetDescription', true);
-    }
-
-    e.target.value = '';
   };
 
   const handleFetchData = () => {

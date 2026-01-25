@@ -41,7 +41,7 @@ export function AIPlaygroundLayout({
 }) {
     const navigate = useNavigate();
     const location = useLocation();
-    const { workflowState, mode, setMode } = useAIPlayground();
+    const { workflowState, mode, setMode, resetAllStates} = useAIPlayground();
     const readonly = mode === 'view';
     const ensembleCount = location.state?.ensembleCount ?? 1;
     const isEnsemble = location.state?.isEnsemble;
@@ -151,6 +151,7 @@ export function AIPlaygroundLayout({
     };
 
     const handleConfirmFinish = () => {
+        resetAllStates();
         setShowFinishModal(false);
         navigate('/ai/playground');
     };
@@ -252,6 +253,7 @@ export function AIPlaygroundLayout({
     };
 
     const handleConfirmCancel = () => {
+        resetAllStates();
         setShowCancelModal(false);
         navigate('/ai/playground');
     };
