@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
@@ -314,6 +314,205 @@ const FEATURE_IMPORTANCE_OPTIONS_CONFIG = {
     ]
 };
 
+const DIMENSIONALITY_REDUCTION_DESCRIPTIONS = {
+    pca: "PCA reduces dimensions by transforming features into uncorrelated components that capture maximum variance. It helps simplify data while retaining most of the original information.",
+    lda: "LDA reduces dimensions by maximizing class separability using labeled data. It is mainly used for supervised classification tasks.",
+    tsne: "t-SNE maps high-dimensional data into a lower-dimensional space while preserving local similarities. It is primarily used for visualization, not model training.",
+    umap: "UMAP reduces dimensions by preserving both local and global data structure. It is faster and more scalable than t-SNE.",
+    autoencoder: "Autoencoders are neural networks that learn a compressed representation of data. They are effective for capturing complex non-linear relationships.",
+    sparse_pca: "Sparse PCA is a variant of PCA that enforces feature sparsity in components. It improves interpretability by using fewer original features.",
+    factor_analysis: "Factor Analysis models data using a smaller number of latent factors. It focuses on explaining correlations among observed variables.",
+    nmf: "NMF decomposes data into non-negative components. It is useful when features represent additive quantities, such as text or image data.",
+    lsa: "LSA reduces dimensions using Singular Value Decomposition on text data. It captures underlying semantic relationships between terms.",
+    lle: "LLE reduces dimensions by preserving local linear relationships among data points. It is effective for non-linear manifolds.",
+    modified_lle: "Modified LLE improves stability by adjusting neighborhood reconstruction. It performs better when data is noisy or unevenly distributed.",
+    hessian_lle: "Hessian LLE preserves local curvature of the data manifold. It is useful for complex non-linear structures.",
+    spectral_embedding: "Spectral Embedding uses graph-based techniques to reduce dimensions. It preserves neighborhood relationships in the data.",
+    random_projection: "Random Projection reduces dimensions using random linear mappings. It is fast and suitable for very high-dimensional data.",
+    truncated_svd: "Truncated SVD reduces dimensions by keeping the most significant singular values. It is commonly used for sparse and text-based datasets.",
+    dictionary_learning: "Dictionary Learning represents data as a sparse combination of basis vectors. It captures important patterns with fewer components.",
+    mini_batch_dictionary_learning: "This is a scalable version of Dictionary Learning using mini-batches. It is suitable for large datasets.",
+    vae: "VAE is a probabilistic autoencoder that learns a latent variable distribution. It is used for both dimensionality reduction and data generation.",
+    ltsa: "LTSA is a non-linear dimensionality reduction technique that preserves the local geometric structure of data. It aligns local tangent spaces of neighboring data points to create a meaningful low-dimensional representation.",
+    isomap: "Isomap reduces dimensions by preserving geodesic distances between data points. It is effective for unfolding non-linear manifolds.",
+    mds: "MDS reduces dimensions by preserving pairwise distances between data points. It is mainly used for visualization and exploratory analysis.",
+    ica: "ICA is a dimensionality reduction and signal separation technique that transforms data into statistically independent components. It is commonly used to separate mixed signals and identify hidden underlying factors in the data."
+};
+
+const SearchableDropdown = ({
+    value,
+    onChange,
+    options,
+    placeholder = "Select an option...",
+    disabled = false,
+    label,
+    searchValue,
+    setSearchValue,
+    showDropdown,
+    setShowDropdown,
+    type = "dimensionality",
+}) => {
+    const triggerRef = useRef(null);
+    const menuRef = useRef(null);
+    const [hoveredOption, setHoveredOption] = useState(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (
+                triggerRef.current && !triggerRef.current.contains(event.target) &&
+                menuRef.current && !menuRef.current.contains(event.target)
+            ) {
+                setShowDropdown(false);
+                setSearchValue('');
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [setShowDropdown, setSearchValue]);
+
+    const filteredOptions = options.filter((option) =>
+        option.toLowerCase().includes(searchValue.toLowerCase())
+    );
+
+    const displayValue = value ? value.toUpperCase() : placeholder;
+
+    const getDescription = (option) => {
+        return DIMENSIONALITY_REDUCTION_DESCRIPTIONS[option] || null;
+    };
+
+    return (
+        <div className="relative w-[350px]" ref={triggerRef}>
+            {label && (
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    {label}
+                </label>
+            )}
+
+            {/* Dropdown Trigger */}
+            <div
+                onClick={() => !disabled && setShowDropdown(!showDropdown)}
+                className={`
+          w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm
+          ${disabled
+                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed opacity-70'
+                        : 'bg-white text-gray-800 cursor-pointer hover:border-[#8e78b7] focus:border-[#8e78b7] focus:ring-2 focus:ring-[#8e78b7]/30'
+                    }
+          transition-all duration-150
+        `}
+            >
+                {displayValue}
+            </div>
+
+            {/* Dropdown Menu */}
+            {showDropdown && !disabled && (
+                <div
+                    ref={menuRef}
+                    className="
+            absolute left-0 z-50 w-full mt-1
+            bg-white border border-gray-200 rounded-lg shadow-xl
+            max-h-72 flex flex-col overflow-hidden
+          "
+                >
+                    {/* Search input */}
+                    <div className="p-2 border-b border-gray-200">
+                        <input
+                            type="text"
+                            value={searchValue}
+                            onChange={(e) => setSearchValue(e.target.value)}
+                            placeholder="Search methods..."
+                            className="w-full px-3 py-2 border border-gray-200 rounded text-sm focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]/50 transition"
+                            onClick={(e) => e.stopPropagation()}
+                            autoFocus
+                        />
+                    </div>
+
+                    {/* Options list */}
+                    <div className="flex-1 overflow-y-auto max-h-60">
+                        <div
+                            onClick={() => {
+                                onChange('');
+                                setSearchValue('');
+                                setShowDropdown(false);
+                            }}
+                            className="px-4 py-2.5 text-sm text-gray-500 hover:bg-gray-50 cursor-pointer border-b border-gray-100"
+                        >
+                            {placeholder}
+                        </div>
+
+                        {filteredOptions.length > 0 ? (
+                            filteredOptions.map((option) => {
+                                const isSelected = value === option;
+                                const description = getDescription(option);
+
+                                return (
+                                    <div
+                                        key={option}
+                                        className={`
+                      px-4 py-2.5 text-sm cursor-pointer border-b border-gray-50 last:border-b-0
+                      ${isSelected
+                                                ? 'bg-purple-50 text-[#8e78b7] font-medium'
+                                                : 'text-gray-800 hover:bg-purple-50/60'
+                                            }
+                      transition-colors duration-100
+                    `}
+                                        onMouseEnter={() => setHoveredOption(option)}
+                                        onMouseLeave={() => setHoveredOption(null)}
+                                        onClick={() => {
+                                            onChange(option);
+                                            setSearchValue('');
+                                            setShowDropdown(false);
+                                        }}
+                                    >
+                                        {option.toUpperCase()}
+
+                                        {hoveredOption === option && description && (
+                                            <div
+                                                className="
+                          fixed z-[9999] w-80 p-4
+                          bg-gray-900 text-white text-xs leading-relaxed
+                          rounded-lg shadow-2xl pointer-events-none
+                        "
+                                                style={{
+                                                    left: menuRef.current
+                                                        ? `${menuRef.current.getBoundingClientRect().right + 12}px`
+                                                        : '0px',
+                                                    top: menuRef.current
+                                                        ? `${menuRef.current.getBoundingClientRect().top}px`
+                                                        : '0px',
+                                                    maxWidth: 'calc(100vw - 40px)',
+                                                }}
+                                            >
+                                                <div className="font-semibold mb-2 text-sm uppercase tracking-wide text-purple-300">
+                                                    {option.replace(/_/g, ' ')}
+                                                </div>
+                                                <p className="opacity-95 leading-5">{description}</p>
+
+                                                {/* Small arrow pointing left */}
+                                                <div
+                                                    className="
+                            absolute top-4 -left-2 w-0 h-0
+                            border-t-8 border-t-transparent
+                            border-r-8 border-r-gray-900
+                            border-b-8 border-b-transparent
+                          "
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div className="px-4 py-6 text-sm text-gray-400 text-center italic">
+                                No methods found
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const getAvailableFeatureImportanceMethods = (classificationType) => {
     return FEATURE_IMPORTANCE_OPTIONS_CONFIG.methods
         .filter(method => method.availability[classificationType] === 'yes')
@@ -379,6 +578,8 @@ function FeatureImportance({ onApiCall }) {
     const [numFeatures, setNumFeatures] = useState(0);
     const [reductionMethod, setReductionMethod] = useState('pca');
     const [nComponents, setNComponents] = useState(2);
+    const [searchValue, setSearchValue] = useState('');
+    const [showDropdown, setShowDropdown] = useState(false);
 
     const classificationType = workflowState?.modelGenesis?.config?.modelling_type || 'binary';
 
@@ -502,6 +703,7 @@ function FeatureImportance({ onApiCall }) {
         });
     };
 
+
     return (
         <div className="space-y-4">
             <FeatureSection
@@ -584,16 +786,20 @@ function FeatureImportance({ onApiCall }) {
                 <div className="space-y-4">
                     <div>
                         <h5 className="text-sm font-medium text-gray-700 mb-2">Reduction Method</h5>
-                        <select
+
+                        <SearchableDropdown
                             value={reductionMethod}
-                            onChange={(e) => setReductionMethod(e.target.value)}
+                            onChange={setReductionMethod}
+                            options={availableReductionMethods}
+                            placeholder="Select reduction method..."
                             disabled={readonly}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#8e78b7] bg-white outline-none"
-                        >
-                            {availableReductionMethods.map(method => (
-                                <option key={method} value={method}>{method.toUpperCase()}</option>
-                            ))}
-                        </select>
+                            label={null}                    // we already have h5 label above
+                            searchValue={searchValue}
+                            setSearchValue={setSearchValue}
+                            showDropdown={showDropdown}
+                            setShowDropdown={setShowDropdown}
+                            type="dimensionality"           // used as key in descriptions object
+                        />
                     </div>
 
                     {currentRange.low !== currentRange.high && (

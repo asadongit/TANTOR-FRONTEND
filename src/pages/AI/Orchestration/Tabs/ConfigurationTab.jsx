@@ -285,6 +285,29 @@ const ConfigurationTab = () => {
         }
     }, [mode, schedulerState.project, schedulerState.model, schedulerState.project_id, schedulerState.model_id]);
 
+    const validateScheduleName = (name) => {
+        if (!name.trim()) return null;
+
+        if (/^\d+$/.test(name.trim())) {
+            return 'Schedule name cannot contain only digits';
+        }
+
+        const validCharPattern = /^[A-Za-z0-9_\-@#& ]+$/;
+        if (!validCharPattern.test(name)) {
+            return 'Only letters, numbers, underscore, hyphen, space, @, #, and & are allowed.';
+        }
+
+        const isDuplicate = existingSchedules.some(
+            schedule => schedule.name.toLowerCase() === name.toLowerCase()
+        );
+
+        if (isDuplicate) {
+            return 'A schedule with this name already exists. Please choose a different name.';
+        }
+
+        return null;
+    };
+
     const isGenerateSummaryDisabled = () => {
         const commonFieldsFilled =
             scheduleName &&
@@ -608,16 +631,14 @@ const ConfigurationTab = () => {
                             const value = e.target.value;
                             setScheduleName(value);
 
-                            const isDuplicate = existingSchedules.some(
-                                schedule => schedule.name.toLowerCase() === value.toLowerCase()
-                            );
+                            const error = validateScheduleName(value);
 
-                            if (isDuplicate && value.trim() !== '') {
+                            if (error) {
+                                setScheduleNameError(error);
                                 setSchedulerState(prev => ({
                                     ...prev,
                                     workflow_name: ''
                                 }));
-                                setScheduleNameError('A schedule with this name already exists. Please choose a different name.');
                             } else {
                                 setScheduleNameError('');
                                 setSchedulerState(prev => ({
@@ -625,7 +646,6 @@ const ConfigurationTab = () => {
                                     workflow_name: value
                                 }));
                             }
-
                         }}
                         placeholder="Enter a unique name for this schedule"
                         className={`w-full px-3 py-2 border rounded text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 ${scheduleNameError
