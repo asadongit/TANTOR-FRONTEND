@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
+import InfoButton from '../../../components/InfoButton';
 
 const ToggleSwitch = ({ checked, onChange, readonly }) => (
     <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -16,47 +17,548 @@ const ToggleSwitch = ({ checked, onChange, readonly }) => (
     </label>
 );
 
-const RadioOption = ({ name, value, checked, onChange, label, readonly }) => (
-    <label className={`flex items-center gap-2 group ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-        <input
-            type="radio"
-            name={name}
-            value={value}
-            checked={checked}
-            onChange={onChange}
-            disabled={readonly}
-            className="w-4 h-4 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7]"
-        />
-        <span className="text-sm text-gray-700 group-hover:text-gray-900">{label}</span>
-    </label>
-);
-
-const FeatureSection = ({ title, description, isToggled, isExpanded, onToggle, onExpand, children, readonly }) => (
-    <div className="bg-gray-50 rounded-lg border border-gray-200">
-        <div className="p-4 flex items-center justify-between">
-            <div className="flex-1">
-                <h4 className="text-sm font-medium text-gray-700">{title}</h4>
-                <p className="text-xs text-gray-400 mt-0.5">{description}</p>
+const FeatureSection = ({ title, description, isToggled, isExpanded, onToggle, onExpand, children, readonly, sectionKey }) => {
+    const sectionDescriptions = {
+        featureImportance: "Feature Importance is the process of identifying and ranking input features based on how much they contribute to a model's predictions. It helps remove irrelevant or redundant features, improve model performance, and increase interpretability by focusing on the most influential variables.",
+        dimensionalityReduction: "Dimensional Reduction is the process of reducing the number of input features while retaining the most important information in the data. It helps simplify models, reduce noise and multicollinearity, improve computational efficiency, and make high-dimensional data easier to analyze and visualize."
+    };
+    return (
+        <div className="bg-gray-50 rounded-lg border border-gray-200">
+            <div className="p-4 flex items-center justify-between">
+                <div className="flex-1 flex items-center gap-2">
+                    <div>
+                        <h4 className="text-sm font-medium text-gray-900">{title}</h4>
+                        {/* <p className="text-xs text-gray-500 mt-1">Modify column data types for accurate analysis.</p> */}
+                    </div>
+                    <InfoButton sectionDescriptions={sectionDescriptions} section={sectionKey} />
+                </div>
+                <div className="flex items-center gap-3">
+                    <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
+                    {isToggled && (
+                        <button
+                            onClick={onExpand}
+                            className="text-gray-400 hover:text-gray-600"
+                        >
+                            {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                        </button>
+                    )}
+                </div>
             </div>
-            <div className="flex items-center gap-3">
-                <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
-                {isToggled && (
-                    <button
-                        onClick={onExpand}
-                        className="text-gray-400 hover:text-gray-600"
-                    >
-                        {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                    </button>
-                )}
+            {isToggled && isExpanded && (
+                <div className="px-4 pb-4 border-t border-gray-100">
+                    <div className="mt-4">{children}</div>
+                </div>
+            )}
+        </div>
+    )
+}
+
+// const subMethodMapping = {
+//     random_forest: [],
+//     filter: ["mutual_info", "fisher_score", "relief", "variance", "pca_loading", "correlation", "selectkbest_chi2", "selectkbest_f"],
+//     wrapper: ["rfe", "sfs", "rfecv"],
+//     embedded: ["lasso", "tree", "permutation", "selectfrommodel", "boruta"],
+//     unsupervised: ["variance", "pca_loading", "cluster_mi"]
+// };
+const FEATURE_IMPORTANCE_OPTIONS_CONFIG = {
+    methods: [
+        {
+            value: 'random',
+            label: 'Random',
+            description: 'Random feature importance assigns importance scores without using data relationships or model learning. It is mainly used as a baseline to compare against meaningful feature selection methods.',
+            availability: {
+                binary: 'yes',
+                multiclass: 'yes'
+            },
+            warnings: null,
+            subMethods: []
+        },
+        {
+            value: 'filter',
+            label: 'Filter',
+            description: 'Filter methods evaluate feature importance using statistical measures independent of any machine learning model. They are fast, scalable, and help remove irrelevant features before model training.',
+            availability: {
+                binary: 'yes',
+                multiclass: 'yes'
+            },
+            warnings: null,
+            subMethods: [
+                {
+                    value: 'mutual_info',
+                    label: 'Mutual Information',
+                    description: 'Mutual Information measures how much information a feature shares with the target variable. Higher values indicate a stronger dependency, even when the relationship is non-linear.',
+                    availability: {
+                        binary: 'yes',
+                        multiclass: 'yes'
+                    },
+                    warnings: null
+                },
+                {
+                    value: 'relief',
+                    label: 'Relief',
+                    description: 'Relief evaluates feature importance by comparing differences between nearby data points. Features that help distinguish similar records with different outcomes are ranked higher.',
+                    availability: {
+                        binary: 'yes',
+                        multiclass: 'yes'
+                    },
+                    warnings: null
+                },
+                {
+                    value: 'variance',
+                    label: 'Variance',
+                    description: 'Variance measures how much a feature\'s values spread across records. Features with very low variance provide little information and can be removed.',
+                    availability: {
+                        binary: 'yes',
+                        multiclass: 'yes'
+                    },
+                    warnings: null
+                },
+                {
+                    value: 'pca_loading',
+                    label: 'PCA Loading',
+                    description: 'PCA Loading represents how much each original feature contributes to a principal component. Features with higher loadings are considered more influential in explaining data variation.',
+                    availability: {
+                        binary: 'yes',
+                        multiclass: 'yes'
+                    },
+                    warnings: null
+                },
+                {
+                    value: 'correlation',
+                    label: 'Correlation',
+                    description: 'Correlation measures the linear relationship between a feature and the target variable. Strongly correlated features are considered more important.',
+                    availability: {
+                        binary: 'yes',
+                        multiclass: 'yes'
+                    },
+                    warnings: null
+                },
+                {
+                    value: 'selectkbest_chi2',
+                    label: 'SelectKBest Chi² (Chi Square)',
+                    description: 'This method selects the top K features using the Chi-Square statistical test. It is mainly used for categorical features in classification problems.',
+                    availability: {
+                        binary: 'yes',
+                        multiclass: 'no'
+                    },
+                    warnings: 'Only available for binary classification; requires non-negative features'
+                },
+                {
+                    value: 'selectkbest_f',
+                    label: 'SelectKBest F (F-test)',
+                    description: 'This method selects the top K features based on the F-statistic. It evaluates whether feature values significantly differ across target classes.',
+                    availability: {
+                        binary: 'yes',
+                        multiclass: 'yes'
+                    },
+                    warnings: null
+                },
+                {
+                    value: 'fisher_score',
+                    label: 'Fisher Score',
+                    description: 'Fisher Score ranks features based on how well they separate different classes. Features with large between-class differences and small within-class variance score higher.',
+                    availability: {
+                        binary: 'yes',
+                        multiclass: 'warning'
+                    },
+                    warnings: 'May be less effective for multiclass problems with many classes'
+                }
+            ]
+        },
+        {
+            value: 'embedded',
+            label: 'Embedded',
+            description: 'Embedded methods determine feature importance during model training. The model automatically learns which features contribute most to predictions.',
+            availability: {
+                binary: 'yes',
+                multiclass: 'yes'
+            },
+            warnings: null,
+            subMethods: [
+                {
+                    value: 'lasso',
+                    label: 'Lasso',
+                    description: 'Lasso (Least Absolute Shrinkage and Selection Operator) uses L1 regularization to shrink less important feature coefficients to zero, effectively performing feature selection during model training.',
+                    availability: {
+                        binary: 'yes',
+                        multiclass: 'yes'
+                    },
+                    warnings: null
+                },
+                {
+                    value: 'tree',
+                    label: 'Tree',
+                    description: 'Tree-based feature importance uses decision tree algorithms to measure how much each feature contributes to reducing impurity or error in the model.',
+                    availability: {
+                        binary: 'yes',
+                        multiclass: 'yes'
+                    },
+                    warnings: null
+                },
+                {
+                    value: 'permutation',
+                    label: 'Permutation',
+                    description: 'Permutation importance measures how much model performance decreases when a feature\'s values are randomly shuffled. Higher drops indicate more important features.',
+                    availability: {
+                        binary: 'yes',
+                        multiclass: 'yes'
+                    },
+                    warnings: null
+                },
+                {
+                    value: 'selectfrommodel',
+                    label: 'Select From Model',
+                    description: 'Select From Model uses a trained machine learning model to select features based on their importance scores or coefficients learned during training.',
+                    availability: {
+                        binary: 'yes',
+                        multiclass: 'yes'
+                    },
+                    warnings: null
+                },
+                {
+                    value: 'boruta',
+                    label: 'Boruta',
+                    description: 'Boruta is an all-relevant feature selection algorithm that identifies all features that are statistically relevant to the outcome, including weakly relevant ones.',
+                    availability: {
+                        binary: 'yes',
+                        multiclass: 'yes'
+                    },
+                    warnings: 'Computationally intensive; may take longer for large datasets'
+                }
+            ]
+        },
+        {
+            value: 'wrapper',
+            label: 'Wrapper',
+            description: 'Wrapper methods evaluate feature importance by training models on different feature subsets. They provide high accuracy but are computationally expensive.',
+            availability: {
+                binary: 'yes',
+                multiclass: 'yes'
+            },
+            warnings: 'Computationally expensive; may overfit on small datasets',
+            subMethods: [
+                {
+                    value: 'rfe',
+                    label: 'RFE (Recursive Feature Elimination)',
+                    description: 'RFE recursively removes the least important features by training a model, ranking features, eliminating the weakest ones, and repeating until the desired number of features remains.',
+                    availability: {
+                        binary: 'yes',
+                        multiclass: 'yes'
+                    },
+                    warnings: null
+                },
+                {
+                    value: 'sfs',
+                    label: 'SFS (Sequential Feature Selection)',
+                    description: 'SFS either adds features one by one (forward) or removes them one by one (backward) based on which combination improves model performance the most.',
+                    availability: {
+                        binary: 'yes',
+                        multiclass: 'yes'
+                    },
+                    warnings: null
+                },
+                {
+                    value: 'rfecv',
+                    label: 'RFECV (RFE with Cross-Validation)',
+                    description: 'RFECV combines Recursive Feature Elimination with cross-validation to automatically determine the optimal number of features by evaluating model performance at each step.',
+                    availability: {
+                        binary: 'yes',
+                        multiclass: 'yes'
+                    },
+                    warnings: 'Very computationally expensive; best for smaller datasets'
+                }
+            ]
+        },
+        {
+            value: 'unsupervised',
+            label: 'Unsupervised',
+            description: 'Unsupervised feature importance identifies important features without using a target variable. It relies on data structure, variance, or clustering patterns.',
+            availability: {
+                binary: 'yes',
+                multiclass: 'yes'
+            },
+            warnings: null,
+            subMethods: [
+                {
+                    value: 'variance',
+                    label: 'Variance',
+                    description: 'Variance measures how much a feature\'s values spread across records. Features with very low variance provide little information and can be removed.',
+                    availability: {
+                        binary: 'yes',
+                        multiclass: 'yes'
+                    },
+                    warnings: null
+                },
+                {
+                    value: 'pca_loading',
+                    label: 'PCA Loading',
+                    description: 'PCA Loading represents how much each original feature contributes to a principal component. Features with higher loadings are considered more influential in explaining data variation.',
+                    availability: {
+                        binary: 'yes',
+                        multiclass: 'yes'
+                    },
+                    warnings: null
+                },
+                {
+                    value: 'cluster_mi',
+                    label: 'Cluster MI (Mutual Information)',
+                    description: 'Cluster MI measures how much information a feature provides about cluster assignments. Features that help distinguish different clusters are ranked higher.',
+                    availability: {
+                        binary: 'yes',
+                        multiclass: 'yes'
+                    },
+                    warnings: null
+                }
+            ]
+        }
+    ]
+};
+
+const DIMENSIONALITY_REDUCTION_DESCRIPTIONS = {
+    pca: "PCA reduces dimensions by transforming features into uncorrelated components that capture maximum variance. It helps simplify data while retaining most of the original information.",
+    lda: "LDA reduces dimensions by maximizing class separability using labeled data. It is mainly used for supervised classification tasks.",
+    tsne: "t-SNE maps high-dimensional data into a lower-dimensional space while preserving local similarities. It is primarily used for visualization, not model training.",
+    umap: "UMAP reduces dimensions by preserving both local and global data structure. It is faster and more scalable than t-SNE.",
+    autoencoder: "Autoencoders are neural networks that learn a compressed representation of data. They are effective for capturing complex non-linear relationships.",
+    sparse_pca: "Sparse PCA is a variant of PCA that enforces feature sparsity in components. It improves interpretability by using fewer original features.",
+    factor_analysis: "Factor Analysis models data using a smaller number of latent factors. It focuses on explaining correlations among observed variables.",
+    nmf: "NMF decomposes data into non-negative components. It is useful when features represent additive quantities, such as text or image data.",
+    lsa: "LSA reduces dimensions using Singular Value Decomposition on text data. It captures underlying semantic relationships between terms.",
+    lle: "LLE reduces dimensions by preserving local linear relationships among data points. It is effective for non-linear manifolds.",
+    modified_lle: "Modified LLE improves stability by adjusting neighborhood reconstruction. It performs better when data is noisy or unevenly distributed.",
+    hessian_lle: "Hessian LLE preserves local curvature of the data manifold. It is useful for complex non-linear structures.",
+    spectral_embedding: "Spectral Embedding uses graph-based techniques to reduce dimensions. It preserves neighborhood relationships in the data.",
+    random_projection: "Random Projection reduces dimensions using random linear mappings. It is fast and suitable for very high-dimensional data.",
+    truncated_svd: "Truncated SVD reduces dimensions by keeping the most significant singular values. It is commonly used for sparse and text-based datasets.",
+    dictionary_learning: "Dictionary Learning represents data as a sparse combination of basis vectors. It captures important patterns with fewer components.",
+    mini_batch_dictionary_learning: "This is a scalable version of Dictionary Learning using mini-batches. It is suitable for large datasets.",
+    vae: "VAE is a probabilistic autoencoder that learns a latent variable distribution. It is used for both dimensionality reduction and data generation.",
+    ltsa: "LTSA is a non-linear dimensionality reduction technique that preserves the local geometric structure of data. It aligns local tangent spaces of neighboring data points to create a meaningful low-dimensional representation.",
+    isomap: "Isomap reduces dimensions by preserving geodesic distances between data points. It is effective for unfolding non-linear manifolds.",
+    mds: "MDS reduces dimensions by preserving pairwise distances between data points. It is mainly used for visualization and exploratory analysis.",
+    ica: "ICA is a dimensionality reduction and signal separation technique that transforms data into statistically independent components. It is commonly used to separate mixed signals and identify hidden underlying factors in the data."
+};
+
+const SearchableDropdown = ({
+    value,
+    onChange,
+    options,
+    placeholder = "Select an option...",
+    disabled = false,
+    label,
+    searchValue,
+    setSearchValue,
+    showDropdown,
+    setShowDropdown,
+    type = "dimensionality",
+}) => {
+    const triggerRef = useRef(null);
+    const menuRef = useRef(null);
+    const [hoveredOption, setHoveredOption] = useState(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (
+                triggerRef.current && !triggerRef.current.contains(event.target) &&
+                menuRef.current && !menuRef.current.contains(event.target)
+            ) {
+                setShowDropdown(false);
+                setSearchValue('');
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [setShowDropdown, setSearchValue]);
+
+    const filteredOptions = options.filter((option) =>
+        option.toLowerCase().includes(searchValue.toLowerCase())
+    );
+
+    const displayValue = value ? value.toUpperCase() : placeholder;
+
+    const getDescription = (option) => {
+        return DIMENSIONALITY_REDUCTION_DESCRIPTIONS[option] || null;
+    };
+
+    return (
+        <div className="relative w-[350px]" ref={triggerRef}>
+            {label && (
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    {label}
+                </label>
+            )}
+
+            {/* Dropdown Trigger */}
+            <div
+                onClick={() => !disabled && setShowDropdown(!showDropdown)}
+                className={`
+          w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm
+          ${disabled
+                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed opacity-70'
+                        : 'bg-white text-gray-800 cursor-pointer hover:border-[#8e78b7] focus:border-[#8e78b7] focus:ring-2 focus:ring-[#8e78b7]/30'
+                    }
+          transition-all duration-150
+        `}
+            >
+                {displayValue}
+            </div>
+
+            {/* Dropdown Menu */}
+            {showDropdown && !disabled && (
+                <div
+                    ref={menuRef}
+                    className="
+            absolute left-0 z-50 w-full mt-1
+            bg-white border border-gray-200 rounded-lg shadow-xl
+            max-h-72 flex flex-col overflow-hidden
+          "
+                >
+                    {/* Search input */}
+                    <div className="p-2 border-b border-gray-200">
+                        <input
+                            type="text"
+                            value={searchValue}
+                            onChange={(e) => setSearchValue(e.target.value)}
+                            placeholder="Search methods..."
+                            className="w-full px-3 py-2 border border-gray-200 rounded text-sm focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]/50 transition"
+                            onClick={(e) => e.stopPropagation()}
+                            autoFocus
+                        />
+                    </div>
+
+                    {/* Options list */}
+                    <div className="flex-1 overflow-y-auto max-h-60">
+                        <div
+                            onClick={() => {
+                                onChange('');
+                                setSearchValue('');
+                                setShowDropdown(false);
+                            }}
+                            className="px-4 py-2.5 text-sm text-gray-500 hover:bg-gray-50 cursor-pointer border-b border-gray-100"
+                        >
+                            {placeholder}
+                        </div>
+
+                        {filteredOptions.length > 0 ? (
+                            filteredOptions.map((option) => {
+                                const isSelected = value === option;
+                                const description = getDescription(option);
+
+                                return (
+                                    <div
+                                        key={option}
+                                        className={`
+                      px-4 py-2.5 text-sm cursor-pointer border-b border-gray-50 last:border-b-0
+                      ${isSelected
+                                                ? 'bg-purple-50 text-[#8e78b7] font-medium'
+                                                : 'text-gray-800 hover:bg-purple-50/60'
+                                            }
+                      transition-colors duration-100
+                    `}
+                                        onMouseEnter={() => setHoveredOption(option)}
+                                        onMouseLeave={() => setHoveredOption(null)}
+                                        onClick={() => {
+                                            onChange(option);
+                                            setSearchValue('');
+                                            setShowDropdown(false);
+                                        }}
+                                    >
+                                        {option.toUpperCase()}
+
+                                        {hoveredOption === option && description && (
+                                            <div
+                                                className="
+                          fixed z-[9999] w-80 p-4
+                          bg-gray-900 text-white text-xs leading-relaxed
+                          rounded-lg shadow-2xl pointer-events-none
+                        "
+                                                style={{
+                                                    left: menuRef.current
+                                                        ? `${menuRef.current.getBoundingClientRect().right + 12}px`
+                                                        : '0px',
+                                                    top: menuRef.current
+                                                        ? `${menuRef.current.getBoundingClientRect().top}px`
+                                                        : '0px',
+                                                    maxWidth: 'calc(100vw - 40px)',
+                                                }}
+                                            >
+                                                <div className="font-semibold mb-2 text-sm uppercase tracking-wide text-purple-300">
+                                                    {option.replace(/_/g, ' ')}
+                                                </div>
+                                                <p className="opacity-95 leading-5">{description}</p>
+
+                                                {/* Small arrow pointing left */}
+                                                <div
+                                                    className="
+                            absolute top-4 -left-2 w-0 h-0
+                            border-t-8 border-t-transparent
+                            border-r-8 border-r-gray-900
+                            border-b-8 border-b-transparent
+                          "
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div className="px-4 py-6 text-sm text-gray-400 text-center italic">
+                                No methods found
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const getAvailableFeatureImportanceMethods = (classificationType) => {
+    return FEATURE_IMPORTANCE_OPTIONS_CONFIG.methods
+        .filter(method => method.availability[classificationType] === 'yes')
+        .map(method => ({
+            ...method,
+            subMethods: method.subMethods.filter(
+                subMethod => subMethod.availability[classificationType] === 'yes'
+            )
+        }));
+};
+
+const getAvailableSubMethods = (methodValue, classificationType) => {
+    const method = FEATURE_IMPORTANCE_OPTIONS_CONFIG.methods.find(m => m.value === methodValue);
+    if (!method || !method.subMethods) return [];
+
+    return method.subMethods.filter(
+        subMethod => subMethod.availability[classificationType] === 'yes'
+    );
+};
+
+const MethodOption = ({ option, name, checked, onChange, readonly }) => {
+    return (
+        <div className="bg-white px-4 py-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors group relative">
+            <div className="flex items-center gap-2">
+                <label className={`flex items-center gap-2 ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                    <input
+                        type="radio"
+                        name={name}
+                        value={option.value}
+                        checked={checked}
+                        onChange={onChange}
+                        disabled={readonly}
+                        className="w-4 h-4 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7]"
+                    />
+                    <span className="text-sm text-gray-700">{option.label}</span>
+                </label>
+            </div>
+
+            {/* Tooltip */}
+            <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                <p className="leading-relaxed">{option.description}</p>
+                <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
             </div>
         </div>
-        {isToggled && isExpanded && (
-            <div className="px-4 pb-4 border-t border-gray-100">
-                <div className="mt-4">{children}</div>
-            </div>
-        )}
-    </div>
-);
+    );
+};
 
 function FeatureImportance({ onApiCall }) {
     const hostnameAI = window._env_?.VITE_AI_API;
@@ -76,14 +578,10 @@ function FeatureImportance({ onApiCall }) {
     const [numFeatures, setNumFeatures] = useState(0);
     const [reductionMethod, setReductionMethod] = useState('pca');
     const [nComponents, setNComponents] = useState(2);
+    const [searchValue, setSearchValue] = useState('');
+    const [showDropdown, setShowDropdown] = useState(false);
 
-    const subMethodMapping = {
-        random_forest: [],
-        filter: ["mutual_info", "fisher_score", "relief", "variance", "pca_loading", "correlation", "selectkbest_chi2", "selectkbest_f"],
-        wrapper: ["rfe", "sfs", "rfecv"],
-        embedded: ["lasso", "tree", "permutation", "selectfrommodel", "boruta"],
-        unsupervised: ["variance", "pca_loading", "cluster_mi"]
-    };
+    const classificationType = workflowState?.modelGenesis?.config?.modelling_type || 'binary';
 
     const reductionMethodsConfig = step5Response?.dimensionality_reduction?.dimentionality_reduction_n_components || [];
     const availableReductionMethods = reductionMethodsConfig.flatMap(config => config.methods);
@@ -94,6 +592,8 @@ function FeatureImportance({ onApiCall }) {
     };
 
     const currentRange = getNComponentsRange(reductionMethod);
+    const availableMethods = getAvailableFeatureImportanceMethods(classificationType);
+    const availableSubMethods = getAvailableSubMethods(methodCategory, classificationType);
 
     useEffect(() => {
         if ((mode === 'view' || mode === 'edit') && workflowState?.dataPreprocessing?.step6?.config) {
@@ -104,10 +604,10 @@ function FeatureImportance({ onApiCall }) {
                 dimensionalityReduction: config.dimensionality_reduction || false
             });
 
-            setMethodCategory(config.method);
-            setSubMethod(config.sub_method);
+            setMethodCategory(config.method || 'filter');
+            setSubMethod(config.sub_method || 'mutual_info');
             setNumFeatures(config.n_features || 0);
-            setReductionMethod(config.dimensionality_reduction_method);
+            setReductionMethod(config.dimensionality_reduction_method || 'pca');
             setNComponents(config.n_components || 2);
         }
     }, [mode, workflowState]);
@@ -116,6 +616,16 @@ function FeatureImportance({ onApiCall }) {
         const range = getNComponentsRange(reductionMethod);
         setNComponents(range.low);
     }, [reductionMethod]);
+
+    // Update subMethod when methodCategory changes
+    useEffect(() => {
+        const availableSubs = getAvailableSubMethods(methodCategory, classificationType);
+        if (availableSubs.length > 0) {
+            setSubMethod(availableSubs[0].value);
+        } else {
+            setSubMethod('');
+        }
+    }, [methodCategory, classificationType]);
 
     const handleApiCall = async () => {
         if (readonly) return true;
@@ -193,6 +703,7 @@ function FeatureImportance({ onApiCall }) {
         });
     };
 
+
     return (
         <div className="space-y-4">
             <FeatureSection
@@ -203,41 +714,39 @@ function FeatureImportance({ onApiCall }) {
                 onToggle={() => toggleSwitch('featureImportance')}
                 onExpand={() => setExpandedSections(prev => ({ ...prev, featureImportance: !prev.featureImportance }))}
                 readonly={readonly}
+                sectionKey='featureImportance'
+
             >
                 <div className="space-y-4">
-                    <div>
+                    <div className="mb-6">
                         <h5 className="text-sm font-medium text-gray-700 mb-3">Method Category</h5>
-                        <div className="grid grid-cols-2 gap-2">
-                            {Object.keys(subMethodMapping).map(cat => (
-                                <div key={cat} className={`px-3 py-2 rounded border ${methodCategory === cat ? 'bg-purple-50 border-[#8e78b7]' : 'bg-white border-gray-200'}`}>
-                                    <RadioOption
-                                        name="methodCategory"
-                                        value={cat}
-                                        checked={methodCategory === cat}
-                                        onChange={(e) => setMethodCategory(e.target.value)}
-                                        label={cat.replace('_', ' ')}
-                                        readonly={readonly}
-                                    />
-                                </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            {availableMethods.map(method => (
+                                <MethodOption
+                                    key={method.value}
+                                    option={method}
+                                    name="methodCategory"
+                                    checked={methodCategory === method.value}
+                                    onChange={(e) => !readonly && setMethodCategory(e.target.value)}
+                                    readonly={readonly}
+                                />
                             ))}
                         </div>
                     </div>
 
-                    {subMethodMapping[methodCategory].length > 0 && (
-                        <div className="pt-2">
+                    {availableSubMethods.length > 0 && (
+                        <div>
                             <h5 className="text-sm font-medium text-gray-700 mb-3">Sub-Method</h5>
-                            <div className="grid grid-cols-2 gap-2">
-                                {subMethodMapping[methodCategory].map(sub => (
-                                    <div key={sub} className={`px-3 py-2 rounded border ${subMethod === sub ? 'bg-purple-50 border-[#8e78b7]' : 'bg-white border-gray-200'}`}>
-                                        <RadioOption
-                                            name="subMethod"
-                                            value={sub}
-                                            checked={subMethod === sub}
-                                            onChange={(e) => setSubMethod(e.target.value)}
-                                            label={sub}
-                                            readonly={readonly}
-                                        />
-                                    </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                {availableSubMethods.map(subMethodOption => (
+                                    <MethodOption
+                                        key={subMethodOption.value}
+                                        option={subMethodOption}
+                                        name="subMethod"
+                                        checked={subMethod === subMethodOption.value}
+                                        onChange={(e) => !readonly && setSubMethod(e.target.value)}
+                                        readonly={readonly}
+                                    />
                                 ))}
                             </div>
                         </div>
@@ -272,20 +781,25 @@ function FeatureImportance({ onApiCall }) {
                 onToggle={() => toggleSwitch('dimensionalityReduction')}
                 onExpand={() => setExpandedSections(prev => ({ ...prev, dimensionalityReduction: !prev.dimensionalityReduction }))}
                 readonly={readonly}
+                sectionKey='dimensionalityReduction'
             >
                 <div className="space-y-4">
                     <div>
                         <h5 className="text-sm font-medium text-gray-700 mb-2">Reduction Method</h5>
-                        <select
+
+                        <SearchableDropdown
                             value={reductionMethod}
-                            onChange={(e) => setReductionMethod(e.target.value)}
+                            onChange={setReductionMethod}
+                            options={availableReductionMethods}
+                            placeholder="Select reduction method..."
                             disabled={readonly}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#8e78b7] bg-white outline-none"
-                        >
-                            {availableReductionMethods.map(method => (
-                                <option key={method} value={method}>{method.toUpperCase()}</option>
-                            ))}
-                        </select>
+                            label={null}                    // we already have h5 label above
+                            searchValue={searchValue}
+                            setSearchValue={setSearchValue}
+                            showDropdown={showDropdown}
+                            setShowDropdown={setShowDropdown}
+                            type="dimensionality"           // used as key in descriptions object
+                        />
                     </div>
 
                     {currentRange.low !== currentRange.high && (

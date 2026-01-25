@@ -160,18 +160,6 @@
       }
     }
   },
-  "Multinomial Naive Bayes": {
-    "category": "Probabilistic",
-    "backend_key": "MultinomialNB",
-    "info": "Multinomial Naive Bayes is a probabilistic classifier commonly used for discrete features such as word counts or frequencies, suitable for binary and multiclass classification.",
-    "hyperparameters": {
-      "alpha": {
-        "low": "0.0",
-        "high": "10.0"
-      },
-      "fit_prior": "true, false"
-    }
-  },
   "Bernoulli Naive Bayes": {
     "category": "Probabilistic",
     "backend_key": "BernoulliNB",
