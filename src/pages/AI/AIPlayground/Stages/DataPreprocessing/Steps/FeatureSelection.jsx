@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Plus, X, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, X, AlertCircle, Info } from 'lucide-react';
 import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
+import InfoButton from '../../../components/InfoButton';
 
 function FeatureSelection({ onValidationChange, onApiCall }) {
   const hostnameAI = window._env_?.VITE_AI_API;
@@ -45,6 +46,14 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
   const [columnOverrides, setColumnOverrides] = useState([]);
   const [basicFeatures, setBasicFeatures] = useState([]);
   const [outlierMethod, setOutlierMethod] = useState('zscore');
+  const [hoveredInfo, setHoveredInfo] = useState(null);
+  const [hoveredOutlier, setHoveredOutlier] = useState(null);
+  const [searchNumerical, setSearchNumerical] = useState('');
+  const [searchCategorical, setSearchCategorical] = useState('');
+  const [searchTimeSeries, setSearchTimeSeries] = useState('');
+  const [showNumericalDropdown, setShowNumericalDropdown] = useState(false);
+  const [showCategoricalDropdown, setShowCategoricalDropdown] = useState(false);
+  const [showTimeSeriesDropdown, setShowTimeSeriesDropdown] = useState(false);
 
   const [validationErrors, setValidationErrors] = useState({
     dropLowValue: '',
@@ -62,15 +71,84 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
   const categoricalImputationMethods = ['mode', 'constant', 'ffill', 'bfill'];
   const timeSeriesImputationMethods = ['mode', 'constant', 'ffill', 'bfill'];
   const operators = ['+', '-', '*', '/', '%'];
+
+  const sectionDescriptions = {
+    dropLowValue: "Drop Low-Value Column refers to the removal of features that provide little or no useful information for model learning, such as columns with very low variance or a single dominant value. Removing such columns helps reduce noise, improve model efficiency, and prevent unnecessary complexity.",
+    handleMissing: "Fix missing entries using dropping or imputation techniques.",
+    createBasic: "Add new domain features for enhanced model performance.",
+    detectOutliers: "Detect outliers in numerical fields using various statistical and machine learning methods to identify anomalous data points.",
+    dropColumns: "Remove columns exceeding missing value threshold",
+    imputation: "Imputation is the process of handling missing or null values by replacing them with meaningful estimates based on data patterns or predefined rules. It helps maintain dataset completeness, prevents errors during model training, and ensures reliable analytical results."
+  };
+
+  const imputationMethodDescriptions = {
+    numerical: {
+      knn: "KNN imputation replaces missing values by using the values from the most similar data points based on distance measures. It preserves local data patterns and relationships between features.",
+      mice: "MICE imputes missing values by iteratively modeling each feature using other related features. It captures dependencies between variables and improves overall data consistency.",
+      mean: "Mean imputation replaces missing values with the average value of the feature. It is simple and effective for normally distributed data.",
+      median: "Missing values are replaced with the median (50th percentile) of the feature. It is robust to outliers and skewed data distributions.",
+      constant: "Missing values are replaced with a predefined constant value (e.g., 0 or −1). This method explicitly preserves information about missingness.",
+      ffill: "A sequential imputation method that propagates the last observed value forward. Missing values are filled using the previous valid observation. Commonly applied to time-series or ordered datasets.",
+      bfill: "A sequential imputation method that uses the next available observation. Missing values are filled using the next valid value in sequence. Useful when future observations are more reliable.",
+      interpolate: "An imputation technique that estimates missing values based on surrounding data points. The method calculates values along a trend between known observations. Often used for numeric and time-dependent data.",
+      mice_bayes: "A Bayesian extension of MICE that uses probabilistic models for imputation. It estimates missing values while accounting for uncertainty and variability. This improves reliability in complex datasets.",
+      simple_cv: "A model-driven approach that evaluates multiple imputation strategies using cross-validation. The method selects the imputation technique that results in the best model performance. It ensures data quality is aligned with predictive accuracy."
+    },
+    categorical: {
+      mode: "A statistical imputation method that replaces missing categorical values with the most frequently occurring category. Missing values are filled using the category that appears most often in the data. This method preserves the dominant pattern in categorical features.",
+      constant: "A rule-based imputation method that replaces missing categorical values with a predefined category label. A fixed category such as \"Unknown\" or \"Not Available\" is used. This explicitly indicates missing data without altering existing category distributions.",
+      ffill: "A sequential imputation method that fills missing categorical values using the previous valid category. Missing entries are replaced with the last observed category in sequence. Commonly used for ordered or time-dependent categorical data.",
+      bfill: "A sequential imputation method that fills missing categorical values using the next valid category. Missing entries are replaced with the next available category. Useful when future category values are more reliable or consistent."
+    },
+    timeseries: {
+      mode: "A statistical imputation method that replaces missing values with the most frequently occurring value in the time series. Missing values are filled using the value that appears most often in the data. This method is useful when the time series has repeating or stable patterns.",
+      constant: "A rule-based imputation method that replaces missing time series values with a predefined constant. A fixed value (such as 0 or a domain-specific number) is used to fill gaps. This helps maintain continuity and clearly marks missing observations.",
+      ffill: "A sequential imputation method that propagates the last observed value forward in time. Missing values are replaced with the most recent known value. Commonly used when values are expected to change gradually over time.",
+      bfill: "A sequential imputation method that fills missing values using the next observed value. Missing values are replaced with the next available data point in the series. Useful when future values are more reliable than earlier ones."
+    }
+  };
+
   const outlierMethods = [
-    { value: 'zscore', label: 'Z-Score' },
-    { value: 'modified_zscore', label: 'Modified Z-Score' },
-    { value: 'iqr', label: 'IQR' },
-    { value: 'isolation_forest', label: 'Isolation Forest' },
-    { value: 'lof', label: 'LOF' },
-    { value: 'one_class_svm', label: 'One Class SVM' },
-    { value: 'elliptic_envelope', label: 'Elliptic Envelope' },
-    { value: 'dbscan', label: 'DBSCAN' }
+    {
+      value: 'zscore',
+      label: 'Z-Score',
+      description: 'A statistical method that identifies outliers based on how far a data point deviates from the mean in terms of standard deviation. Values with very high or low Z-scores are considered outliers. Best suited for data that follows a normal distribution.'
+    },
+    {
+      value: 'modified_zscore',
+      label: 'Modified Z-Score',
+      description: 'A robust version of Z-score that uses the median and median absolute deviation (MAD). It reduces the impact of extreme values. More reliable than standard Z-score for skewed data.'
+    },
+    {
+      value: 'iqr',
+      label: 'IQR',
+      description: 'A statistical method that identifies outliers using the range between the first and third quartiles. Values falling far below or above this range are treated as outliers. Commonly used for non-normal data distributions.'
+    },
+    {
+      value: 'isolation_forest',
+      label: 'Isolation Forest',
+      description: 'A tree-based anomaly detection algorithm that isolates outliers by randomly partitioning data. Outliers are detected because they require fewer splits to isolate. Effective for large and high-dimensional datasets.'
+    },
+    {
+      value: 'lof',
+      label: 'LOF',
+      description: 'A density-based method that detects outliers by comparing local data density. Points with significantly lower density than their neighbors are flagged as outliers. Captures local anomalies effectively.'
+    },
+    {
+      value: 'one_class_svm',
+      label: 'One Class SVM',
+      description: 'A machine learning algorithm that learns the boundary of normal data. Data points falling outside the learned boundary are treated as outliers. Useful when only normal data is available for training.'
+    },
+    {
+      value: 'elliptic_envelope',
+      label: 'Elliptic Envelope',
+      description: 'A statistical method that fits an elliptical boundary around normal data points. Observations outside the ellipse are considered outliers. Works best when data follows a Gaussian distribution.'
+    },
+    {
+      value: 'dbscan',
+      label: 'DBSCAN',
+      description: 'A density-based clustering algorithm that identifies noise points as outliers. Points not belonging to any dense cluster are labeled as outliers. Effective for detecting clusters of arbitrary shape.'
+    }
   ];
 
   useEffect(() => {
@@ -634,6 +712,136 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
     }
   }, [toggles.handleMissing, selectedColumns, numericalImputation, categoricalImputation, timeSeriesImputation, workflowState?.dataPreprocessing?.step1?.apiResponse]);
 
+  const SearchableDropdown = ({
+    value,
+    onChange,
+    options,
+    placeholder,
+    disabled,
+    label,
+    searchValue,
+    setSearchValue,
+    showDropdown,
+    setShowDropdown,
+    type
+  }) => {
+    const dropdownRef = React.useRef(null);
+    const [hoveredOption, setHoveredOption] = useState(null);
+
+    useEffect(() => {
+      const handleClickOutside = (event) => {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+          setShowDropdown(false);
+        }
+      };
+
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [setShowDropdown]);
+
+    const filteredOptions = options.filter(option =>
+      option.toLowerCase().includes(searchValue.toLowerCase())
+    );
+
+    const displayValue = value || placeholder;
+
+    return (
+      <div className="relative" ref={dropdownRef}>
+        <label className="block text-sm text-gray-600 mb-2">{label}</label>
+        <div
+          onClick={() => !disabled && setShowDropdown(!showDropdown)}
+          className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-[#8e78b7]'
+            } ${value ? 'text-gray-700' : 'text-gray-400'}`}
+        >
+          {displayValue}
+        </div>
+
+        {showDropdown && !disabled && (
+          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-visible">
+            <div className="p-2 border-b border-gray-200">
+              <input
+                type="text"
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                placeholder="Search methods..."
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
+                autoFocus
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+              />
+            </div>
+            <div className="overflow-y-auto max-h-48 overflow-x-visible">
+              <div
+                onClick={() => {
+                  onChange('');
+                  setSearchValue('');
+                  setShowDropdown(false);
+                }}
+                className="px-3 py-2 text-sm text-gray-400 hover:bg-gray-50 cursor-pointer"
+              >
+                {placeholder}
+              </div>
+              {filteredOptions.length > 0 ? (
+                filteredOptions.map(option => (
+                  <div
+                    key={option}
+                    className="relative group"
+                    onMouseEnter={() => setHoveredOption(option)}
+                    onMouseLeave={() => setHoveredOption(null)}
+                  >
+                    <div
+                      onClick={() => {
+                        onChange(option);
+                        setSearchValue('');
+                        setShowDropdown(false);
+                      }}
+                      className={`px-3 py-2 text-sm cursor-pointer hover:bg-purple-50 ${value === option ? 'bg-purple-50 text-[#8e78b7] font-medium' : 'text-gray-700'
+                        }`}
+                    >
+                      {option}
+                    </div>
+                    {hoveredOption === option && imputationMethodDescriptions[type]?.[option] && (
+                      <div className="fixed z-[9999] w-96 p-4 bg-gray-900 text-white text-xs leading-relaxed rounded-lg shadow-2xl pointer-events-none"
+                        style={{
+                          ...((() => {
+                            const rect = dropdownRef.current?.getBoundingClientRect();
+                            const spaceOnRight = window.innerWidth - (rect?.right || 0);
+                            const tooltipWidth = 384;
+
+                            if (spaceOnRight < tooltipWidth + 20) {
+                              return {
+                                right: `${window.innerWidth - (rect?.left || 0) + 10}px`,
+                                top: `${rect?.top || 0}px`
+                              };
+                            }
+
+                            return {
+                              left: `${(rect?.right || 0) + 10}px`,
+                              top: `${rect?.top || 0}px`
+                            };
+                          })()),
+                          maxWidth: 'calc(100vw - 20px)'
+                        }}
+                      >
+                        <div className="font-semibold mb-1 text-sm capitalize">{option}</div>
+                        {imputationMethodDescriptions[type]?.[option]}
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="px-3 py-2 text-sm text-gray-400 text-center">
+                  No methods found
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+
   return (
     <div className="space-y-4">
       {highCardinalityDropped.length > 0 && (
@@ -654,9 +862,12 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
       {workflowState?.dataPreprocessing?.step1?.config?.toggles?.uniquenessRatio && (
         <div className="bg-gray-50 rounded-lg border border-gray-200">
           <div className="p-4 flex items-center justify-between">
-            <div className="flex-1">
-              <h4 className="text-sm font-medium text-gray-900">Drop Low-Value Columns</h4>
-              <p className="text-xs text-gray-500 mt-1">Remove columns with zero or excessively high uniqueness.</p>
+            <div className="flex-1 flex items-center gap-2">
+              <div>
+                <h4 className="text-sm font-medium text-gray-900">Drop Low-Value Columns</h4>
+                {/* <p className="text-xs text-gray-500 mt-1">Remove columns with zero or excessively high uniqueness.</p> */}
+              </div>
+              <InfoButton sectionDescriptions={sectionDescriptions} section="dropLowValue" />
             </div>
             <div className="flex items-center gap-3">
               <ToggleSwitch checked={toggles.dropLowValue} onChange={() => toggleSwitch('dropLowValue')} />
@@ -722,15 +933,18 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
 
       <div className="bg-gray-50 rounded-lg border border-gray-200">
         <div className="p-4 flex items-center justify-between">
-          <div className="flex-1">
-            <h4 className="text-sm font-medium text-gray-900">Handle Missing Values</h4>
-            <p className="text-xs text-gray-500 mt-1">Fix missing entries using dropping or imputation techniques.</p>
+          <div className="flex-1 flex items-center gap-2">
+            <div>
+              <h4 className="text-sm font-medium text-gray-900">Handle Missing Values</h4>
+              {/* <p className="text-xs text-gray-500 mt-1">Fix missing entries using dropping or imputation techniques.</p> */}
+            </div>
+            <InfoButton sectionDescriptions={sectionDescriptions} section="handleMissing" />
           </div>
           <div className="flex items-center gap-3">
             <ToggleSwitch
               checked={toggles.handleMissing}
               onChange={() => toggleSwitch('handleMissing')}
-              disabled={checkHasMissingValues()} // Add this prop
+              disabled={checkHasMissingValues()}
             />
             {toggles.handleMissing && (
               <button onClick={() => toggleSection('handleMissing')} className="text-gray-400 hover:text-gray-600">
@@ -755,9 +969,12 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
               {/* Drop Columns Section */}
               <div className="bg-white rounded-lg border border-gray-200 p-4">
                 <div className="mb-3">
-                  <div>
-                    <h5 className="text-sm font-medium text-gray-900">Drop Columns</h5>
-                    <p className="text-xs text-gray-500">Remove columns exceeding missing value threshold</p>
+                  <div className="flex-1 flex items-center gap-2">
+                    <div>
+                      <h5 className="text-sm font-medium text-gray-900">Drop Columns</h5>
+                      {/* <p className="text-xs text-gray-500 mt-1">Remove columns exceeding missing value threshold</p> */}
+                    </div>
+                    <InfoButton sectionDescriptions={sectionDescriptions} section="dropColumns" />
                   </div>
                 </div>
 
@@ -783,27 +1000,63 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
               {/* Imputation Section */}
               <div className="bg-white rounded-lg border border-gray-200 p-4">
                 <div className="mb-3">
-                  <div>
-                    <h5 className="text-sm font-medium text-gray-900">Imputation</h5>
-                    <p className="text-xs text-gray-500">Fill missing values using statistical methods</p>
+                  <div className="flex-1 flex items-center gap-2">
+                    <div>
+                      <h5 className="text-sm font-medium text-gray-900">Imputation</h5>
+                      {/* <p className="text-xs text-gray-500 mt-1">Fill missing values using statistical methods</p> */}
+                    </div>
+                    <InfoButton sectionDescriptions={sectionDescriptions} section="imputation" />
                   </div>
                 </div>
 
-                <div className="mt-3 space-y-6">
+                <div className="mt-3 space-y-2">
+                  <div className="grid grid-cols-3 gap-4">
+                    <SearchableDropdown
+                      value={numericalImputation}
+                      onChange={(value) => !readonly && setNumericalImputation(value)}
+                      options={numericalImputationMethods}
+                      placeholder="Select"
+                      disabled={readonly}
+                      label="Numerical Imputation"
+                      searchValue={searchNumerical}
+                      setSearchValue={setSearchNumerical}
+                      showDropdown={showNumericalDropdown}
+                      setShowDropdown={setShowNumericalDropdown}
+                      type="numerical"
+                    />
+
+                    <SearchableDropdown
+                      value={categoricalImputation}
+                      onChange={(value) => !readonly && setCategoricalImputation(value)}
+                      options={categoricalImputationMethods}
+                      placeholder="Select"
+                      disabled={readonly}
+                      label="Categorical Imputation"
+                      searchValue={searchCategorical}
+                      setSearchValue={setSearchCategorical}
+                      showDropdown={showCategoricalDropdown}
+                      setShowDropdown={setShowCategoricalDropdown}
+                      type="categorical"
+                    />
+
+                    <SearchableDropdown
+                      value={timeSeriesImputation}
+                      onChange={(value) => !readonly && setTimeSeriesImputation(value)}
+                      options={timeSeriesImputationMethods}
+                      placeholder="Select"
+                      disabled={readonly}
+                      label="Time Series"
+                      searchValue={searchTimeSeries}
+                      setSearchValue={setSearchTimeSeries}
+                      showDropdown={showTimeSeriesDropdown}
+                      setShowDropdown={setShowTimeSeriesDropdown}
+                      type="timeseries"
+                    />
+                  </div>
+
+                  {/* Validation warnings */}
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm text-gray-600 mb-2">Numerical Imputation</label>
-                      <select
-                        value={numericalImputation}
-                        onChange={(e) => !readonly && setNumericalImputation(e.target.value)}
-                        disabled={readonly}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
-                      >
-                        <option value="">Select</option>
-                        {numericalImputationMethods.map(method => (
-                          <option key={method} value={method}>{method}</option>
-                        ))}
-                      </select>
                       {(() => {
                         const columnsToDropManually = Object.entries(selectedColumns)
                           .filter(([_, isSelected]) => isSelected)
@@ -816,7 +1069,7 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
 
                         if (numericColumnsWithMissing.length > 0 && !numericalImputation) {
                           return (
-                            <div className="mt-2 flex items-start gap-2 p-2 bg-amber-50 border border-amber-200 rounded">
+                            <div className="flex items-start gap-2 p-2 bg-amber-50 border border-amber-200 rounded">
                               <AlertCircle size={14} className="text-amber-600 mt-0.5 flex-shrink-0" />
                               <p className="text-xs text-amber-800">
                                 Required: Numerical columns have missing values
@@ -829,18 +1082,6 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
                     </div>
 
                     <div>
-                      <label className="block text-sm text-gray-600 mb-2">Categorical Imputation</label>
-                      <select
-                        value={categoricalImputation}
-                        onChange={(e) => !readonly && setCategoricalImputation(e.target.value)}
-                        disabled={readonly}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
-                      >
-                        <option value="">Select</option>
-                        {categoricalImputationMethods.map(method => (
-                          <option key={method} value={method}>{method}</option>
-                        ))}
-                      </select>
                       {(() => {
                         const columnsToDropManually = Object.entries(selectedColumns)
                           .filter(([_, isSelected]) => isSelected)
@@ -853,7 +1094,7 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
 
                         if (categoricalColumnsWithMissing.length > 0 && !categoricalImputation) {
                           return (
-                            <div className="mt-2 flex items-start gap-2 p-2 bg-amber-50 border border-amber-200 rounded">
+                            <div className="flex items-start gap-2 p-2 bg-amber-50 border border-amber-200 rounded">
                               <AlertCircle size={14} className="text-amber-600 mt-0.5 flex-shrink-0" />
                               <p className="text-xs text-amber-800">
                                 Required: Categorical columns have missing values
@@ -866,18 +1107,6 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
                     </div>
 
                     <div>
-                      <label className="block text-sm text-gray-600 mb-2">Time Series</label>
-                      <select
-                        value={timeSeriesImputation}
-                        onChange={(e) => !readonly && setTimeSeriesImputation(e.target.value)}
-                        disabled={readonly}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
-                      >
-                        <option value="">Select</option>
-                        {timeSeriesImputationMethods.map(method => (
-                          <option key={method} value={method}>{method}</option>
-                        ))}
-                      </select>
                       {(() => {
                         const columnsToDropManually = Object.entries(selectedColumns)
                           .filter(([_, isSelected]) => isSelected)
@@ -890,7 +1119,7 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
 
                         if (datetimeColumnsWithMissing.length > 0 && !timeSeriesImputation) {
                           return (
-                            <div className="mt-2 flex items-start gap-2 p-2 bg-amber-50 border border-amber-200 rounded">
+                            <div className="flex items-start gap-2 p-2 bg-amber-50 border border-amber-200 rounded">
                               <AlertCircle size={14} className="text-amber-600 mt-0.5 flex-shrink-0" />
                               <p className="text-xs text-amber-800">
                                 Required: Datetime columns have missing values
@@ -967,9 +1196,12 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
 
       <div className="bg-gray-50 rounded-lg border border-gray-200">
         <div className="p-4 flex items-center justify-between">
-          <div className="flex-1">
-            <h4 className="text-sm font-medium text-gray-900">Create Basic Features</h4>
-            <p className="text-xs text-gray-500 mt-1">Add new domain features for enhanced model performance.</p>
+          <div className="flex-1 flex items-center gap-2">
+            <div>
+              <h4 className="text-sm font-medium text-gray-900">Create Basic Features</h4>
+              {/* <p className="text-xs text-gray-500 mt-1">Add new domain features for enhanced model performance.</p> */}
+            </div>
+            <InfoButton sectionDescriptions={sectionDescriptions} section="createBasic" />
           </div>
           <div className="flex items-center gap-3">
             <ToggleSwitch checked={toggles.createBasic} onChange={() => toggleSwitch('createBasic')} />
@@ -1087,9 +1319,12 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
 
       <div className="bg-gray-50 rounded-lg border border-gray-200">
         <div className="p-4 flex items-center justify-between">
-          <div className="flex-1">
-            <h4 className="text-sm font-medium text-gray-900">Detect Outliers</h4>
-            <p className="text-xs text-gray-500 mt-1">Find and handle outliers in numerical fields.</p>
+          <div className="flex-1 flex items-center gap-2">
+            <div>
+              <h4 className="text-sm font-medium text-gray-900">Detect Outliers</h4>
+              {/* <p className="text-xs text-gray-500 mt-1">Find and handle outliers in numerical fields.</p> */}
+            </div>
+            <InfoButton sectionDescriptions={sectionDescriptions} section="detectOutliers" />
           </div>
           <div className="flex items-center gap-3">
             <ToggleSwitch checked={toggles.detectOutliers} onChange={() => toggleSwitch('detectOutliers')} />
@@ -1103,20 +1338,42 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
 
         {toggles.detectOutliers && expandedSections.detectOutliers && (
           <div className="px-4 pb-4 border-t border-gray-100">
-            <div className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3">
+            <div className="mt-4 mb-20 grid grid-cols-2 gap-3">
               {outlierMethods.map(method => (
-                <label key={method.value} className={`flex items-center gap-2 group ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-                  <input
-                    type="radio"
-                    name="outlierMethod"
-                    value={method.value}
-                    checked={outlierMethod === method.value}
-                    onChange={(e) => !readonly && setOutlierMethod(e.target.value)}
-                    disabled={readonly}
-                    className="w-4 h-4 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7]"
-                  />
-                  <span className="text-sm text-gray-700 group-hover:text-gray-900">{method.label}</span>
-                </label>
+                <div
+                  key={method.value}
+                  className="relative"
+                >
+                  <label
+                    className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${outlierMethod === method.value
+                      ? 'border-[#8e78b7] bg-purple-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                      } ${readonly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                    onMouseEnter={() => setHoveredOutlier(method.value)}
+                    onMouseLeave={() => setHoveredOutlier(null)}
+                  >
+                    <input
+                      type="radio"
+                      name="outlierMethod"
+                      value={method.value}
+                      checked={outlierMethod === method.value}
+                      onChange={(e) => !readonly && setOutlierMethod(e.target.value)}
+                      disabled={readonly}
+                      className="w-4 h-4 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7]"
+                    />
+                    <span className={`text-sm font-medium ${outlierMethod === method.value ? 'text-[#8e78b7]' : 'text-gray-700'
+                      }`}>
+                      {method.label}
+                    </span>
+                  </label>
+
+                  {hoveredOutlier === method.value && (
+                    <div className="absolute left-0 top-full mt-2 z-50 w-80 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg">
+                      <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+                      {method.description}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           </div>
