@@ -128,33 +128,28 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
     }
 
     const data = await response.json();
+
+    const toArray = (value) => {
+      if (!value || value === "" || value === null) {
+        return [];
+      }
+      if (Array.isArray(value)) {
+        return value;
+      }
+      return [value];
+    };
     
-
-
     const policies = data.map(policy => {
-       
+      return {
+        id: String(policy.id),
+        name: policy.policy_name || `Policy ${policy.id}`,
+        roles: toArray(policy.role || policy.roles),
+        persona: toArray(policy.persona || policy.personas), // ← Already correct
+        groups: toArray(policy.group || policy.groups),
+        subgroups: toArray(policy.subgroup || policy.subGroup || policy.subgroups)
+      };
+    });
 
-  const toArray = (value) => {
-    if (!value || value === "" || value === null) {
-      return [];
-    }
-    if (Array.isArray(value)) {
-      return value;
-    }
-    return [value];
-  };
-  
-  return {
-    id: String(policy.id),
-    name: policy.policy_name || `Policy ${policy.id}`,
-    roles: toArray(policy.role || policy.roles),
-    persona: toArray(policy.persona || policy.personas),
-    groups: toArray(policy.group || policy.groups),
-    subgroups: toArray(policy.subgroup || policy.subGroup || policy.subgroups)
-  };
-});
-
-    
     setExistingPolicies(prev => {
       const existingMap = new Map(prev.map(p => [String(p.id), p]));
       policies.forEach(p => existingMap.set(String(p.id), p));
@@ -166,7 +161,11 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
     console.error('Error fetching policy names:', error);
     const fallbackPolicies = policyIds.map(policyId => ({
       id: String(policyId),
-      name: `Policy ${policyId}`
+      name: `Policy ${policyId}`,
+      roles: [],
+      persona: [], // ← ADD THIS
+      groups: [],
+      subgroups: []
     }));
     setExistingPolicies(prev => {
       const existingMap = new Map(prev.map(p => [String(p.id), p]));
@@ -174,7 +173,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
       return Array.from(existingMap.values());
     });
 
-    return fallbackPolicies;  // ← ADD THIS RETURN
+    return fallbackPolicies;
   } finally {
     setIsFetchingPolicyNames(false);
   }
@@ -235,8 +234,6 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
   };
 
   const handleApplyPoliciesFromModal = async (appliedData) => {
-  
-
   const policyIds = appliedData.datapolicy;
   const fetchedPolicies = await fetchPolicyNames(policyIds);
 
@@ -249,49 +246,48 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
 
   const newExistingPolicies = policyIds.map((policyId) => {
     const policyName = fetchedPolicies.find(p => p.id === String(policyId))?.name || `Policy ${policyId}`;
-
     const policyIndividualData = appliedData.policiesData?.[policyId];
-    
 
-    // normalize group/subgroup/role keys from modal payload
+    // normalize group/subgroup/role/persona keys from modal payload
     const roles = policyIndividualData?.role ?? policyIndividualData?.roles ?? [];
-    const persona = policyIndividualData?.persona ?? policyIndividualData?.personas ?? [];
+    const persona = policyIndividualData?.persona ?? policyIndividualData?.personas ?? []; // ← Handle both
     const groups = policyIndividualData?.group ?? policyIndividualData?.groups ?? [];
     const subgroups = policyIndividualData?.subGroup ?? policyIndividualData?.subgroup ?? policyIndividualData?.subgroups ?? [];
-    
 
     return {
       id: String(policyId),
       name: policyName,
-      roles: Array.isArray(roles) ? roles : (roles ? [roles] : []),
-      persona: Array.isArray(persona) ? persona : (persona ? [persona] : []),
-      groups: Array.isArray(groups) ? groups : (groups ? [groups] : []),
-      subgroups: Array.isArray(subgroups) ? subgroups : (subgroups ? [subgroups] : [])
+      roles: toArray(roles), // ← Use toArray helper
+      persona: toArray(persona), // ← Use toArray helper
+      groups: toArray(groups), // ← Use toArray helper
+      subgroups: toArray(subgroups) // ← Use toArray helper
     };
   });
 
-  
-  newExistingPolicies.forEach(policy => {
-  });
-  
   setExistingPolicies(newExistingPolicies);
   updateFormDataFromPolicies(newExistingPolicies);
   setIsPolicyModalOpen(false);
 };
   const handlePolicyComplete = (policyDetails) => {
-    const newPolicy = {
-      id: String(policyDetails.id),
-      name: policyDetails.policy_type || `Policy ${policyDetails.id}`,
-      roles: policyDetails.roles || [],
-      persona: policyDetails.persona || [],
-      groups: policyDetails.group || [],
-      subgroups: policyDetails.subgroups || []
-    };
-
-    setNewPolicies(prev => [...prev, newPolicy]);
-    updateFormDataFromPolicies([...existingPolicies, ...newPolicies, newPolicy]);
-    setIsPolicyStepperOpen(false);
+  const toArray = (value) => {
+    if (!value || value === "" || value === null) return [];
+    if (Array.isArray(value)) return value;
+    return [value];
   };
+
+  const newPolicy = {
+    id: String(policyDetails.id),
+    name: policyDetails.policy_type || `Policy ${policyDetails.id}`,
+    roles: toArray(policyDetails.user_selections?.role || policyDetails.roles || []),
+    persona: toArray(policyDetails.user_selections?.persona || policyDetails.persona || []), // ← Normalize
+    groups: toArray(policyDetails.user_selections?.group || policyDetails.group || []),
+    subgroups: toArray(policyDetails.user_selections?.subGroup || policyDetails.subgroups || [])
+  };
+
+  setNewPolicies(prev => [...prev, newPolicy]);
+  updateFormDataFromPolicies([...existingPolicies, ...newPolicies, newPolicy]);
+  setIsPolicyStepperOpen(false);
+};
 
   const handleChange = (e) => {
     const { name, value } = e.target;
