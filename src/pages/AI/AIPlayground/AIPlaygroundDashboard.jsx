@@ -12,7 +12,8 @@ import {
   MoveRight,
   BarChart2,
   RotateCcw,
-  Search
+  Search,
+  AlertTriangle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CreateProjectModal } from './modals/Dashboard/CreateProjectModal';
@@ -70,7 +71,7 @@ const AIPlayground = () => {
   const navigate = useNavigate();
   const hostnameAI = window._env_?.VITE_AI_API;
 
-  const { projectState, setProjectState, datasetState, setDatasetState, setWorkflowState, setModelState, setMode, mode, setIsAIPlaygroundActive } = useAIPlayground();
+  const { projectState, setProjectState, datasetState, setDatasetState, setWorkflowState, setModelState, setMode, mode, setIsAIPlaygroundActive, isAIPlaygroundActive, resetAllStates } = useAIPlayground();
   const { token, decodedToken } = useAuth();
 
   const [selectedProject, setSelectedProject] = useState('');
@@ -90,6 +91,44 @@ const AIPlayground = () => {
     resetProject: false,
     chooseBuildMethod: false
   });
+
+  const [showCancelModal, setShowCancelModal] = useState(false);
+
+  useEffect(() => {
+    const handlePopState = (event) => {
+      const currentPath = window.location.pathname;
+
+      if (currentPath === '/ai/playground' && isAIPlaygroundActive) {
+        event.preventDefault();
+
+        window.history.pushState(null, '', currentPath);
+        setShowCancelModal(true);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    if (isAIPlaygroundActive) {
+      window.history.pushState(null, '', window.location.pathname);
+    }
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isAIPlaygroundActive]);
+
+  const handleConfirmCancel = () => {
+    setSelectedProject('')
+    setTempFile(null)
+    setUploadedFile(null);
+    resetAllStates();
+    setShowCancelModal(false);
+    navigate('/ai/playground')
+  };
+
+  const handleCancelModalClose = () => {
+    setShowCancelModal(false);
+  };
 
   useEffect(() => {
     fetchProjects();
@@ -340,6 +379,43 @@ const AIPlayground = () => {
 
   return (
     <div className="min-h-screen bg-[#fafbfc] p-6 font-sans text-slate-900">
+
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                  <AlertTriangle className="text-red-600" size={24} />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Cancel AI Playground Workflow?
+                </h2>
+              </div>
+
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to cancel? All unsaved progress and configurations will be lost. This action cannot be undone.
+              </p>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={handleCancelModalClose}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Continue Working
+                </button>
+                <button
+                  onClick={handleConfirmCancel}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+                >
+                  Yes, Discard Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showProfileReport && datasetState?.profileReportHtml ? (
         <div className="min-h-screen bg-white -m-6">
           <div className="sticky top-0 z-10 bg-gray-50 border-b border-purple-100 px-6 py-2 shadow-sm rounded-t-md">
