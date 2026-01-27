@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AIPlaygroundLayout } from '../AIPlaygroundLayout';
-import { Check, X } from 'lucide-react';
+import { Check, X, Search } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAIPlayground } from '../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
@@ -74,6 +74,253 @@ const NotebookModeModal = ({ isOpen, onCancel, onContinue, readonly }) => {
     </div>
   );
 };
+
+const SearchableSelect = ({ value, onChange, options, placeholder, disabled, readonly }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const dropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
+
+  const filteredOptions = options.filter(option =>
+    option.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+        setSearchTerm('');
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isOpen]);
+
+  const handleSelect = (option) => {
+    if (!readonly && !disabled) {
+      onChange(option);
+      setIsOpen(false);
+      setSearchTerm('');
+    }
+  };
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        disabled={disabled || readonly}
+        onClick={() => !disabled && !readonly && setIsOpen(!isOpen)}
+        className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-left focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent bg-white flex items-center justify-between ${disabled || readonly ? 'cursor-not-allowed opacity-50 bg-gray-50' : 'hover:border-gray-400'
+          }`}
+      >
+        <span className={value ? 'text-gray-700' : 'text-gray-500'}>
+          {value || placeholder}
+        </span>
+        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && !disabled && !readonly && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
+          <div className="p-2 border-b border-gray-200">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search..."
+                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          <div className="overflow-y-auto max-h-48">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => handleSelect(option)}
+                  className={`w-full px-3 py-2 text-sm text-left hover:bg-gray-100 transition-colors ${value === option ? 'bg-purple-50 text-[#8e78b7] font-medium' : 'text-gray-700'
+                    }`}
+                >
+                  {option}
+                </button>
+              ))
+            ) : (
+              <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                No results found
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const SearchableMultiSelect = ({ selectedOptions, onChange, options, maxSelections, disabled, readonly, excludeOption }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dropdownPosition, setDropdownPosition] = useState('bottom');
+  const dropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const buttonRef = useRef(null);
+
+  const availableOptions = options.filter(option =>
+    !selectedOptions.includes(option) && option !== excludeOption
+  );
+
+  const filteredOptions = availableOptions.filter(option =>
+    option.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+        setSearchTerm('');
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isOpen]);
+
+  // Calculate dropdown position when opening
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      const dropdownHeight = 300; // Approximate max height of dropdown
+      const spaceBelow = window.innerHeight - buttonRect.bottom;
+      const spaceAbove = buttonRect.top;
+
+      if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+        setDropdownPosition('top');
+      } else {
+        setDropdownPosition('bottom');
+      }
+    }
+  }, [isOpen]);
+
+  const handleSelect = (option) => {
+    if (!readonly && !disabled && selectedOptions.length < maxSelections) {
+      onChange([...selectedOptions, option]);
+      setSearchTerm('');
+    }
+  };
+
+  const handleRemove = (option) => {
+    if (!readonly && !disabled) {
+      onChange(selectedOptions.filter(o => o !== option));
+    }
+  };
+
+  const isMaxReached = selectedOptions.length >= maxSelections;
+  const isDisabled = disabled || readonly || isMaxReached || options.length === 0;
+
+  return (
+    <div className="space-y-3">
+      <div className="relative" ref={dropdownRef}>
+        <button
+          ref={buttonRef}
+          type="button"
+          disabled={isDisabled}
+          onClick={() => !isDisabled && setIsOpen(!isOpen)}
+          className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-left focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent bg-white flex items-center justify-between ${isDisabled ? 'cursor-not-allowed opacity-50 bg-gray-50' : 'hover:border-gray-400'
+            }`}
+        >
+          <span className="text-gray-600">
+            {options.length === 0
+              ? "No columns available"
+              : isMaxReached
+                ? "Maximum selection reached"
+                : `${selectedOptions.length}/${maxSelections} Options Selected`}
+          </span>
+          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {isOpen && !isDisabled && (
+          <div className={`absolute z-50 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden ${dropdownPosition === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'
+            }`}>
+            <div className="p-2 border-b border-gray-200">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search..."
+                  className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div className="overflow-y-auto max-h-48">
+              {filteredOptions.length > 0 ? (
+                filteredOptions.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => handleSelect(option)}
+                    className="w-full px-3 py-2 text-sm text-left hover:bg-gray-100 transition-colors text-gray-700"
+                  >
+                    {option}
+                  </button>
+                ))
+              ) : (
+                <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                  {availableOptions.length === 0 ? 'No more options available' : 'No results found'}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {selectedOptions.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {selectedOptions.map(option => (
+            <span
+              key={option}
+              className="inline-flex items-center gap-1 px-3 py-1 bg-white border border-gray-300 text-gray-700 text-sm rounded-md"
+            >
+              {option}
+              <button
+                type="button"
+                disabled={readonly || disabled}
+                onClick={() => handleRemove(option)}
+                className={`ml-1 ${readonly || disabled ? 'cursor-not-allowed' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 
 const ModeSelection = ({ config, setConfig, readonly }) => {
   const [showModal, setShowModal] = useState(false);
@@ -383,31 +630,23 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
             <div className="bg-white border border-gray-200 rounded-lg p-5">
               <label className="block text-sm font-medium text-gray-700 mb-3">Target Feature</label>
               {columnNames.length > 0 ? (
-                <div className="relative">
-                  <select
-                    value={config.targetFeature}
-                    disabled={readonly}
-                    onChange={
-                      readonly
-                        ? undefined
-                        : (e) => handleConfigChange({ ...config, targetFeature: e.target.value })
-                    }
-                    className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent appearance-none bg-white ${readonly ? 'cursor-not-allowed' : ''
-                      }`}
-                  >
-                    <option value="">Select...</option>
-                    {columnNames.map((column) => (
-                      <option key={column} value={column}>
-                        {column}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
+                <SearchableSelect
+                  value={config.targetFeature}
+                  onChange={(newTargetFeature) => {
+                    const updatedConfig = {
+                      ...config,
+                      targetFeature: newTargetFeature,
+                      fairnessAttributes: config.fairnessAttributes.filter(
+                        attr => attr !== newTargetFeature
+                      )
+                    };
+                    handleConfigChange(updatedConfig);
+                  }}
+                  options={columnNames}
+                  placeholder="Select..."
+                  disabled={readonly}
+                  readonly={readonly}
+                />
               ) : (
                 <div className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-500 bg-gray-50">
                   No columns found in the dataset
@@ -546,84 +785,25 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
 };
 
 const FairnessAttribute = ({ config, setConfig, readonly, columnNames = [] }) => {
-  const [showMore, setShowMore] = useState(false);
-
   const allOptions = Array.isArray(columnNames) ? columnNames : [];
 
-  const toggleOption = (option) => {
-    if (readonly) return;
-
-    const newSelected = config.fairnessAttributes.includes(option)
-      ? config.fairnessAttributes.filter(o => o !== option)
-      : config.fairnessAttributes.length < 3
-        ? [...config.fairnessAttributes, option]
-        : config.fairnessAttributes;
-
-    setConfig({ ...config, fairnessAttributes: newSelected });
+  const handleFairnessChange = (newSelected) => {
+    if (!readonly) {
+      setConfig({ ...config, fairnessAttributes: newSelected });
+    }
   };
-
-  const displayedOptions = showMore ? config.fairnessAttributes : config.fairnessAttributes.slice(0, 3);
-  const remainingCount = config.fairnessAttributes.length - 3;
-
-  const availableOptions = allOptions.filter(option => !config.fairnessAttributes.includes(option));
 
   return (
     <Section title="Fairness Attribute" className="!bg-gray-50 p-6 rounded-lg border border-gray-200">
-      <div className="space-y-3">
-        <div className="relative">
-          <select
-            disabled={readonly || config.fairnessAttributes.length >= 3 || allOptions.length === 0}
-            className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white ${readonly || config.fairnessAttributes.length >= 3 || allOptions.length === 0
-              ? 'cursor-not-allowed opacity-50 bg-gray-50'
-              : ''
-              }`}
-            value=""
-            onChange={(e) => {
-              if (e.target.value) toggleOption(e.target.value);
-            }}
-          >
-            {allOptions.length === 0 ? (
-              <option value="">No columns available</option>
-            ) : (
-              <option value="">
-                {config.fairnessAttributes.length >= 3
-                  ? "Maximum selection reached"
-                  : `${config.fairnessAttributes.length}/3 Options Selected`}
-              </option>
-            )}
-
-            {availableOptions.map(option => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
-
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-        </div>
-
-        {config.fairnessAttributes.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {displayedOptions.map(option => (
-              <span
-                key={option}
-                className="inline-flex items-center gap-1 px-3 py-1 bg-white border border-gray-300 text-gray-700 text-sm rounded-md"
-              >
-                {option}
-                <button
-                  disabled={readonly}
-                  onClick={() => toggleOption(option)}
-                  className={`ml-1 ${readonly ? 'cursor-not-allowed' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
+      <SearchableMultiSelect
+        selectedOptions={config.fairnessAttributes}
+        onChange={handleFairnessChange}
+        options={allOptions}
+        maxSelections={3}
+        disabled={false}
+        readonly={readonly}
+        excludeOption={config.targetFeature}
+      />
     </Section>
   );
 };
