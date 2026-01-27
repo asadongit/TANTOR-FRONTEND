@@ -5,8 +5,8 @@ import { useAuth } from "../../../../../context/AuthContext";
 
 const COLORS = {
   all: "#5B63D3",
-  deployed: "#10B981",
-  archived: "#64748B",
+  Deployed: "#10B981",
+  Archived: "#64748B",
   Saved: "#8B5CF6",
   Auto: "#EC4899",
   Manual: "#F59E0B",
@@ -109,8 +109,8 @@ export default function ModelFlow() {
 
   // Normalize case sensitivity
   const statusCounts = {
-    deployed: metrics.status_counts.deployed || 0,
-    archived: metrics.status_counts.archived || 0,
+    Deployed: metrics.status_counts.Deployed || 0,
+    Archived: metrics.status_counts.Archived || 0,
     Saved: metrics.status_counts.Saved || 0,
   };
 
@@ -147,7 +147,7 @@ export default function ModelFlow() {
   };
 
   // Status nodes (deployed, archived, saved) - distributed vertically
-  const statusLabels = ["deployed", "archived", "Saved"];
+  const statusLabels = ["Deployed", "Archived", "Saved"];
   const statusGap = 20;
   const statusTotalHeight = statusLabels.length * nodeH + (statusLabels.length - 1) * statusGap;
   const statusStartY = (H - statusTotalHeight) / 2;
