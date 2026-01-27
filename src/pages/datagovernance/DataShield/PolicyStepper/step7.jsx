@@ -11,74 +11,86 @@ const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData, isEd
     const [error, setError] = useState(null);
 
     const handleSavePolicy = async () => {
-        setIsSubmitting(true);
-        setError(null);
+    setIsSubmitting(true);
+    setError(null);
 
-        const finalPolicyData = {
-            ...policyData,
-            policy_status: "active",
-            owner: decodedToken?.preferred_username,
-        };
+    // Ensure persona is a flat array 
+    let personaValue;
+    if (Array.isArray(policyData.user_selections.persona)) {
+        const flattened = policyData.user_selections.persona.flat().filter(p => p); 
+        personaValue = flattened.length > 0 ? flattened : []; 
+        personaValue = policyData.user_selections.persona || []; 
+    }
 
-        try {
-            const url = isEditMode
-                ? `${window._env_?.VITE_FAST_API}/editpolicy/${editPolicyId}`
-                : `${window._env_?.VITE_FAST_API}/addpolicy`;
-
-            const method = isEditMode ? 'PATCH' : 'POST';
-
-            const response = await fetch(url, {
-                method,
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(finalPolicyData),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                // Extract the message after "400: " if it exists
-                const errorMessage = errorData.detail.includes("400: ")
-                    ? errorData.detail.split("400: ")[1]
-                    : errorData.detail;
-
-                if (errorMessage.includes("already exists")) {
-                    toast.error(errorMessage);
-                    return;
-                }
-                throw new Error((isEditMode ? "Error editing policy" : "Error adding policy"));
-            }
-
-            const data = await response.json();
-            toast.success(isEditMode ? "Policy edited successfully" : "Policy added successfully");
-
-            onPolicyComplete({
-                roles: policyData.user_selections.role ? [policyData.user_selections.role] : [],
-                group: policyData.user_selections.group || [],
-                subgroups: policyData.user_selections.subGroup || [],
-                persona: policyData.user_selections.persona ? [policyData.user_selections.persona] : [],
-                id: data.id,
-                sub_policy_name: policyData.sub_policy_name,
-                policy_type:policyData.policy_type,
-                datapolicy: [data.id],
-                start_date: policyData.start_date,
-                expiry_date: policyData.expiry_date
-            });
-
-            await fetchPolicyListData();
-            setIsOpen(false);
-            setActiveStep(0);
-
-        } catch (error) {
-            console.error("Error saving policy:", error);
-            if (!error.message.includes("already exists")) {
-                toast.error("Failed to save policy");
-            }
-        } finally {
-            setIsSubmitting(false);
-        }
+    const finalPolicyData = {
+        ...policyData,
+        user_selections: {
+            ...policyData.user_selections,
+            persona: personaValue
+        },
+        policy_status: "active",
+        owner: decodedToken?.preferred_username,
     };
+
+    try {
+        const url = isEditMode
+            ? `${window._env_?.VITE_FAST_API}/editpolicy/${editPolicyId}`
+            : `${window._env_?.VITE_FAST_API}/addpolicy`;
+
+        const method = isEditMode ? 'PATCH' : 'POST';
+
+        const response = await fetch(url, {
+            method,
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(finalPolicyData),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error("Error response:", errorData);
+            const errorMessage = errorData.detail.includes("400: ")
+                ? errorData.detail.split("400: ")[1]
+                : errorData.detail;
+
+            if (errorMessage.includes("already exists")) {
+                toast.error(errorMessage);
+                return;
+            }
+            throw new Error((isEditMode ? "Error editing policy" : "Error adding policy"));
+        }
+
+        const data = await response.json();
+        toast.success(isEditMode ? "Policy edited successfully" : "Policy added successfully");
+
+        onPolicyComplete({
+            roles: policyData.user_selections.role ? [policyData.user_selections.role] : [],
+            group: policyData.user_selections.group || [],
+            subgroups: policyData.user_selections.subGroup || [],
+            persona: personaValue === "" ? [] : (Array.isArray(personaValue) ? personaValue : [personaValue]),
+            id: data.id,
+            sub_policy_name: policyData.sub_policy_name,
+            policy_type: policyData.policy_type,
+            datapolicy: [data.id],
+            start_date: policyData.start_date,
+            expiry_date: policyData.expiry_date
+        });
+
+        await fetchPolicyListData();
+        setIsOpen(false);
+        setActiveStep(0);
+
+    } catch (error) {
+        console.error("Error saving policy:", error);
+        if (!error.message.includes("already exists")) {
+            toast.error("Failed to save policy");
+        }
+    } finally {
+        setIsSubmitting(false);
+    }
+};
 
     const handleEditPolicy = () => {
         setActiveStep(6);

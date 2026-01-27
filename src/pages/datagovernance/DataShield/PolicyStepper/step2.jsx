@@ -17,7 +17,7 @@ const Step2 = ({ onDataChange, initialData }) => {
     const [selectedRole, setSelectedRole] = useState(initialData.selectedRole || '');
     const [selectedGroup, setSelectedGroup] = useState(initialData.selectedGroup || '');
     const [selectedSubgroup, setSelectedSubgroup] = useState(initialData.selectedSubgroup || '');
-    const [selectedPersona, setSelectedPersona] = useState(initialData.selectedPersona || '');
+    const [selectedPersona, setSelectedPersona] = useState(initialData.selectedPersona || []);
     const [searchTerm, setSearchTerm] = useState('');
     const [data, setData] = useState({
         roles: [],
@@ -30,23 +30,23 @@ const Step2 = ({ onDataChange, initialData }) => {
     const [isFormValid, setIsFormValid] = useState(false);
 
     useEffect(() => {
-        const hasSelection = selectedRole !== '' || selectedGroup !== '' || selectedSubgroup !== '' || selectedPersona !== '';
+        const hasSelection = selectedRole !== '' || selectedGroup !== '' || selectedSubgroup !== '' || selectedPersona.length > 0;
         setIsFormValid(hasSelection);
 
-        onDataChange({
-            selectedRole,
-            selectedGroup,
-            selectedSubgroup,
-            selectedPersona,
-            isFormValid: hasSelection
-        });
-    }, [selectedRole, selectedGroup, selectedSubgroup, selectedPersona]);
+    onDataChange({
+        selectedRole,
+        selectedGroup,
+        selectedSubgroup,
+        selectedPersona,
+        isFormValid: hasSelection
+    });
+}, [selectedRole, selectedGroup, selectedSubgroup, selectedPersona]);;
 
     useEffect(() => {
         setSelectedRole(initialData.selectedRole || '');
         setSelectedGroup(initialData.selectedGroup || '');
         setSelectedSubgroup(initialData.selectedSubgroup || '');
-        setSelectedPersona(initialData.selectedPersona || '');
+        setSelectedPersona(initialData.selectedPersona || []);
     }, [initialData]);
 
     useEffect(() => {
@@ -140,26 +140,36 @@ const Step2 = ({ onDataChange, initialData }) => {
                 setSelectedSubgroup(item === selectedSubgroup ? '' : item);
                 break;
             case 'Persona':
-                setSelectedPersona(item === selectedPersona ? '' : item);
-                break;
-            default:
-                break;
-        }
-    };
+            setSelectedPersona(prev => 
+                prev.includes(item) 
+                    ? prev.filter(p => p !== item) 
+                    : [...prev, item]
+            );
+            break;
+        default:
+            break;
+    }
+};
 
     const isItemSelected = (item) => {
-        switch (selectedTab) {
-            case 'Role': return item === selectedRole;
-            case 'Group': return item === selectedGroup;
-            case 'Sub-group': return item === selectedSubgroup;
-            case 'Persona': return item === selectedPersona;
-            default: return false;
-        }
-    };
+    switch (selectedTab) {
+        case 'Role': return item === selectedRole;
+        case 'Group': return item === selectedGroup;
+        case 'Sub-group': return item === selectedSubgroup;
+        case 'Persona': return selectedPersona.includes(item);
+        default: return false;
+    }
+};
 
     const toggleSelectAll = () => {
+    if (selectedTab === 'Persona') {
+        const currentData = getCurrentTabData();
+        const allSelected = currentData.every(item => selectedPersona.includes(item));
+        setSelectedPersona(allSelected ? [] : currentData);
+    } else {
         toast.info('Please select one item at a time');
-    };
+    }
+};
 
     const getCurrentTabData = () => {
         const currentTab = roleDetails.find(rd => rd.role === selectedTab);
@@ -263,12 +273,16 @@ const Step2 = ({ onDataChange, initialData }) => {
                         <div className="bg-gray-800 text-white rounded-t-md px-4 py-2 flex items-center justify-between">
                             <span className="font-medium">Name</span>
                             <label className="flex items-center space-x-2 cursor-pointer">
-                                <span className="text-sm">Select one</span>
+                                <span className="text-sm">
+                                    {selectedTab === 'Persona' ? 'Select All' : 'Select one'}
+                                </span>
                                 <input
                                     type="checkbox"
-                                    checked={false}
+                                    checked={selectedTab === 'Persona' ? 
+                                        getCurrentTabData().length > 0 && getCurrentTabData().every(item => selectedPersona.includes(item)) : 
+                                        false}
                                     onChange={toggleSelectAll}
-                                    disabled
+                                    disabled={selectedTab !== 'Persona'}
                                 />
                             </label>
                         </div>
