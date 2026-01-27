@@ -29,7 +29,7 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
 
     const sectionDescriptions = {
         correlation: "Correlation graphs visually represent the strength and direction of relationships between numerical variables. They help identify strong positive or negative correlations, which can indicate redundant or highly related features.",
-        vif: "VIF Analysis measures how much a feature is linearly dependent on other features in the dataset. High VIF values indicate multicollinearity, which can reduce model stability and interpretability.Risk assessment for each feature"
+        vif: "VIF Analysis measures how much a feature is linearly dependent on other features in the dataset. High VIF indicate multicollinearity, which can reduce model stability and interpretability"
     };
 
     useEffect(() => {
@@ -244,7 +244,7 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                         <div>
                             <div className='flex flex-row'>
                                 <h4 className="text-sm font-medium text-gray-700 mr-2">VIF Analysis</h4>
-                                <InfoButton sectionDescriptions= {sectionDescriptions} section="vif"/>
+                                <InfoButton sectionDescriptions= {sectionDescriptions} section="vif" isLastSection={true}/>
                             </div>
                             <p className="text-xs text-gray-400 mt-0.5">{`${vifReport.length} features analyzed | ${selectedFeatures.length} selected to drop`}</p>
                         </div>

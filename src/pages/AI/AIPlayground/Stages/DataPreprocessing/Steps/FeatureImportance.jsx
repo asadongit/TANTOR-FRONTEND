@@ -17,10 +17,10 @@ const ToggleSwitch = ({ checked, onChange, readonly }) => (
     </label>
 );
 
-const FeatureSection = ({ title, description, isToggled, isExpanded, onToggle, onExpand, children, readonly, sectionKey }) => {
+const FeatureSection = ({ title, description, isToggled, isExpanded, onToggle, onExpand, children, readonly, sectionKey,isLastSection = false,  }) => {
     const sectionDescriptions = {
         featureImportance: "Feature Importance is the process of identifying and ranking input features based on how much they contribute to a model's predictions. It helps remove irrelevant or redundant features, improve model performance, and increase interpretability by focusing on the most influential variables.",
-        dimensionalityReduction: "Dimensional Reduction is the process of reducing the number of input features while retaining the most important information in the data. It helps simplify models, reduce noise and multicollinearity, improve computational efficiency, and make high-dimensional data easier to analyze and visualize."
+        dimensionalityReduction: "Dimensional Reduction is the process of reducing the number of input features while retaining the most important information in the data."
     };
     return (
         <div className="bg-gray-50 rounded-lg border border-gray-200">
@@ -30,7 +30,7 @@ const FeatureSection = ({ title, description, isToggled, isExpanded, onToggle, o
                         <h4 className="text-sm font-medium text-gray-900">{title}</h4>
                         {/* <p className="text-xs text-gray-500 mt-1">Modify column data types for accurate analysis.</p> */}
                     </div>
-                    <InfoButton sectionDescriptions={sectionDescriptions} section={sectionKey} />
+                    <InfoButton sectionDescriptions={sectionDescriptions} section={sectionKey} isLastSection={isLastSection}/>
                 </div>
                 <div className="flex items-center gap-3">
                     <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
@@ -782,6 +782,7 @@ function FeatureImportance({ onApiCall }) {
                 onExpand={() => setExpandedSections(prev => ({ ...prev, dimensionalityReduction: !prev.dimensionalityReduction }))}
                 readonly={readonly}
                 sectionKey='dimensionalityReduction'
+                isLastSection={true}
             >
                 <div className="space-y-4">
                     <div>
