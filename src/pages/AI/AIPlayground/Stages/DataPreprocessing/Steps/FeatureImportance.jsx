@@ -156,16 +156,6 @@ const FEATURE_IMPORTANCE_OPTIONS_CONFIG = {
             warnings: null,
             subMethods: [
                 {
-                    value: 'lasso',
-                    label: 'LASSO (L1 Regularization)',
-                    description: 'LASSO is an embedded feature selection method that adds an L1 penalty to the loss function, forcing some feature coefficients to become exactly zero.Penalizes the absolute magnitude of coefficients.Shrinks less important feature coefficients to zero, effectively selecting features.Works during model training itself. Commonly used with Linear Regression and Logistic Regression.',
-                    availability: {
-                        binary: 'yes',
-                        multiclass: 'yes'
-                    },
-                    warnings: null
-                },
-                {
                     value: 'tree',
                     label: 'Tree-Based',
                     description: 'Tree-based models compute feature importance based on impurity reduction or information gain during splits.Used in Decision Trees, Random Forest, Gradient Boosting. Features contributing more to splitting nodes are considered more important. Handles non-linearity and interactions automatically.',
