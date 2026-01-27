@@ -1324,7 +1324,7 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
               <h4 className="text-sm font-medium text-gray-900">Detect Outliers</h4>
               {/* <p className="text-xs text-gray-500 mt-1">Find and handle outliers in numerical fields.</p> */}
             </div>
-            <InfoButton sectionDescriptions={sectionDescriptions} section="detectOutliers" />
+            <InfoButton sectionDescriptions={sectionDescriptions} section="detectOutliers" isLastSection={true}/>
           </div>
           <div className="flex items-center gap-3">
             <ToggleSwitch checked={toggles.detectOutliers} onChange={() => toggleSwitch('detectOutliers')} />

@@ -625,7 +625,7 @@ function DataCleaning({ onValidationChange, onApiCall }) {
               <h4 className="text-sm font-medium text-gray-900">Missing Value Indicator</h4>
               {/* <p className="text-xs text-gray-500 mt-1">Create indicator columns for missing values.</p> */}
             </div>
-            <InfoButton sectionDescriptions= {sectionDescriptions} section="missingValue"/>
+            <InfoButton sectionDescriptions= {sectionDescriptions} section="missingValue" isLastSection={true}/>
           </div>
           <div className="flex items-center gap-3">
             <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
