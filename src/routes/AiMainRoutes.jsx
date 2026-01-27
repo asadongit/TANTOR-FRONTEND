@@ -2,6 +2,7 @@ import { Route } from 'react-router-dom';
 import { HubRoutes} from '../pages/AI/Hub/HubRoutes';
 import {AIPlaygroundRoutes} from '../pages/AI/AIPlayground/AIPlaygroundRoutes';
 import { OrchestrationRoutes } from '../pages/AI/Orchestration/OrchestrationRoutes';
+import Observability from '../pages/AI/Observability/Observability';
 
 
 export const AIRoutes = (
@@ -9,5 +10,6 @@ export const AIRoutes = (
     {HubRoutes}
     {AIPlaygroundRoutes}
     {OrchestrationRoutes}
+    <Route path="/ai/observability" element={<Observability />} />
   </>
 );
