@@ -636,7 +636,7 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
                     const updatedConfig = {
                       ...config,
                       targetFeature: newTargetFeature,
-                      fairnessAttributes: config.fairnessAttributes.filter(
+                      fairness_columns: config.fairness_columns.filter(
                         attr => attr !== newTargetFeature
                       )
                     };
@@ -789,14 +789,14 @@ const FairnessAttribute = ({ config, setConfig, readonly, columnNames = [] }) =>
 
   const handleFairnessChange = (newSelected) => {
     if (!readonly) {
-      setConfig({ ...config, fairnessAttributes: newSelected });
+      setConfig({ ...config, fairness_columns: newSelected });
     }
   };
 
   return (
     <Section title="Fairness Attribute" className="!bg-gray-50 p-6 rounded-lg border border-gray-200">
       <SearchableMultiSelect
-        selectedOptions={config.fairnessAttributes}
+        selectedOptions={config.fairness_columns}
         onChange={handleFairnessChange}
         options={allOptions}
         maxSelections={3}
@@ -838,7 +838,7 @@ function ModelGenesis() {
         trainSplit: Math.round((savedConfig.train_size || 0.7) * 100),
         testSplit: Math.round((savedConfig.test_size || 0.3) * 100),
 
-        fairnessAttributes: savedConfig.fairness_columns || []
+        fairness_columns: savedConfig.fairness_columns || []
       };
     }
 
@@ -854,7 +854,7 @@ function ModelGenesis() {
       trainSplit: 90,
       testSplit: 10,
 
-      fairnessAttributes: []
+      fairness_columns: []
     };
   };
 
@@ -976,7 +976,7 @@ function ModelGenesis() {
         test_size: testSize,
         train_size: trainSize,
         random_state: 42,
-        fairness_columns: config.fairnessAttributes,
+        fairness_columns: config.fairness_columns,
         data_preprocessing_mode: config.dataPreprocessing,
         model_mode: config.modelSelection,
         target_column: config.targetFeature,
