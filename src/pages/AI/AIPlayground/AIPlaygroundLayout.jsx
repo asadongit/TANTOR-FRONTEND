@@ -41,7 +41,7 @@ export function AIPlaygroundLayout({
 }) {
     const navigate = useNavigate();
     const location = useLocation();
-    const { workflowState, mode, setMode, resetAllStates} = useAIPlayground();
+    const { workflowState, mode, setMode, resetAllStates, isAIPlaygroundActive} = useAIPlayground();
     const readonly = mode === 'view';
     const ensembleCount = location.state?.ensembleCount ?? 1;
     const isEnsemble = location.state?.isEnsemble;
@@ -82,6 +82,27 @@ export function AIPlaygroundLayout({
             }
         }
     }, [isEnsemble, initialEnsembleCount, location.state?.activeModelIndex]);
+
+    useEffect(() => {
+    const handlePopState = (event) => {
+        const currentPath = window.location.pathname;
+        if (currentPath.startsWith('/ai/playground') && isAIPlaygroundActive) {
+            event.preventDefault();
+            
+            window.history.pushState(null, '', location.pathname);
+
+            setShowCancelModal(true);
+        }
+    };
+
+    window.history.pushState(null, '', location.pathname);
+    
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+        window.removeEventListener('popstate', handlePopState);
+    };
+}, [location.pathname]);
 
     const currentStageIndex = workflowStages.findIndex(
         stage => stage.path === location.pathname
