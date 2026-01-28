@@ -44,12 +44,13 @@ const FeatureSection = ({
     children,
     readonly,
     validationError,
-    sectionKey
+    sectionKey,
+    isLastSection = false,
 }) => {
     const sectionDescriptions = {
         advancedTransformation: "Advanced Transformation refers to mathematical techniques applied to numerical features to reshape their distributions, reduce skewness, and stabilize variance. These transformations help improve model performance by making data more suitable for algorithms that assume normality or consistent feature behavior.",
         nearZeroVariance: "Near Zero Variance refers to features that have very little variation, meaning most values are the same across records. Such features provide little to no useful information for prediction and are usually removed to improve model performance and efficiency.",
-        featureScaler: "Feature Scaling is the process of standardizing the range of numerical features so they are on a similar scale. It prevents features with large values from dominating the model and improves training stability and performance."
+        featureScaler: "Feature Scaling is the process of standardizing the range of numerical features so they are on a similar scale."
     };
 
     return (
@@ -58,7 +59,7 @@ const FeatureSection = ({
                 <div className="flex-1">
                     <div className='flex flex-row'>
                         <h4 className="text-sm font-medium text-gray-700 mr-2">{title}</h4>
-                        <InfoButton sectionDescriptions= {sectionDescriptions} section={sectionKey}/>
+                        <InfoButton sectionDescriptions= {sectionDescriptions} section={sectionKey} isLastSection={isLastSection}/>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -479,6 +480,7 @@ function ScalingTransformation({ onApiCall, onValidationChange }) {
                     hasExpandableContent={true}
                     readonly={readonly}
                     sectionKey="featureScaler"
+                    isLastSection={true}
                 >
                     <div>
                         <h5 className="text-sm font-medium text-gray-700 mb-3">Scaler Method</h5>

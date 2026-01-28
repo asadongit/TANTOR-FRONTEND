@@ -96,7 +96,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
         selectedRole: '',
         selectedGroup: '',
         selectedSubgroup: '',
-        selectedPersona: ''
+        selectedPersona: []
     });
     const [step3Data, setStep3Data] = useState({
         selectedConnections: [],
@@ -308,7 +308,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
                 ...policyData.user_selections,
                 role: data.selectedRole,
                 group: data.selectedGroup,
-                persona: data.selectedPersona || '',
+                persona: data.selectedPersona || [],
                 subGroup: data.selectedSubgroup
             }
         };
@@ -510,7 +510,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
             selectedRole: '',
             selectedGroup: '',
             selectedSubgroup: '',
-            selectedPersona: ''
+            selectedPersona: []
         });
         setStep3Data({
             selectedConnections: [],
@@ -713,7 +713,9 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
                 selectedRole: policyDetails.user_selections.role || "",
                 selectedGroup: policyDetails.user_selections.group || "",
                 selectedSubgroup: policyDetails.user_selections.subGroup || "",
-                selectedPersona: policyDetails.user_selections.persona || ""
+                selectedPersona: Array.isArray(policyDetails.user_selections.persona) 
+                    ? policyDetails.user_selections.persona 
+                    : (policyDetails.user_selections.persona ? [policyDetails.user_selections.persona] : [])
             });
             setStep3Data({
                 selectedConnections: policyDetails.data_connection?.map(dc => dc.connection) || [],
