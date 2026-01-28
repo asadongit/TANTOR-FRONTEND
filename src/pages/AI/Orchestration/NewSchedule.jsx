@@ -115,6 +115,20 @@ const NewSchedule = () => {
         setActiveTab('Delivery & Alerts');
     };
 
+    const getISTDateTime = () => {
+        const now = new Date();
+        const istOffset = 5.5 * 60 * 60 * 1000;
+        const istTime = new Date(now.getTime() + istOffset);
+
+        const year = istTime.getUTCFullYear();
+        const month = String(istTime.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(istTime.getUTCDate()).padStart(2, '0');
+        const hours = String(istTime.getUTCHours()).padStart(2, '0');
+        const minutes = String(istTime.getUTCMinutes()).padStart(2, '0');
+
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    };
+
     const handleCreateSchedule = async () => {
         setIsCreating(true);
 
@@ -136,7 +150,7 @@ const NewSchedule = () => {
                         endDateTime: schedulerState.scheduler.endDateTime || "",
                         intervalType: schedulerState.scheduler.intervalType || "",
                         intervalValue: schedulerState.scheduler.intervalValue,
-                        startDateTime: new Date().toISOString().slice(0, 16),
+                        startDateTime: getISTDateTime(),
                         timeZone: schedulerState.scheduler.timeZone
                     },
                     source: {

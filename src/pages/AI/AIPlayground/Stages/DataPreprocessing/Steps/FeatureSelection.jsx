@@ -5,6 +5,105 @@ import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 import InfoButton from '../../../components/InfoButton';
 
+const ColumnSearchableDropdown = ({
+  value,
+  onChange,
+  columns,
+  placeholder,
+  disabled,
+  label,
+  searchValue,
+  setSearchValue,
+  showDropdown,
+  setShowDropdown,
+  id
+}) => {
+  const dropdownRef = React.useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(prev => ({ ...prev, [id]: false }));
+      }
+    };
+
+    if (showDropdown[id]) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showDropdown, id]);
+
+  const currentSearch = searchValue[id] || '';
+  const filteredColumns = columns.filter(col =>
+    col.toLowerCase().includes(currentSearch.toLowerCase())
+  );
+
+  const displayValue = value || placeholder;
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      {label && <label className="block text-xs text-gray-500 mb-1.5">{label}</label>}
+      <div
+        onClick={() => !disabled && setShowDropdown(prev => ({ ...prev, [id]: !prev[id] }))}
+        className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-[#8e78b7]'
+          } ${value ? 'text-gray-700' : 'text-gray-400'}`}
+      >
+        {displayValue}
+      </div>
+
+      {showDropdown[id] && !disabled && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-hidden">
+          <div className="p-2 border-b border-gray-200">
+            <input
+              type="text"
+              value={currentSearch}
+              onChange={(e) => setSearchValue(prev => ({ ...prev, [id]: e.target.value }))}
+              placeholder="Search columns..."
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
+              autoFocus
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            />
+          </div>
+          <div className="overflow-y-auto max-h-48">
+            <div
+              onClick={() => {
+                onChange('');
+                setSearchValue(prev => ({ ...prev, [id]: '' }));
+                setShowDropdown(prev => ({ ...prev, [id]: false }));
+              }}
+              className="px-3 py-2 text-sm text-gray-400 hover:bg-gray-50 cursor-pointer"
+            >
+              {placeholder}
+            </div>
+            {filteredColumns.length > 0 ? (
+              filteredColumns.map(col => (
+                <div
+                  key={col}
+                  onClick={() => {
+                    onChange(col);
+                    setSearchValue(prev => ({ ...prev, [id]: '' }));
+                    setShowDropdown(prev => ({ ...prev, [id]: false }));
+                  }}
+                  className={`px-3 py-2 text-sm cursor-pointer hover:bg-purple-50 ${value === col ? 'bg-purple-50 text-[#8e78b7] font-medium' : 'text-gray-700'
+                    }`}
+                >
+                  {col}
+                </div>
+              ))
+            ) : (
+              <div className="px-3 py-2 text-sm text-gray-400 text-center">
+                No columns found
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 function FeatureSelection({ onValidationChange, onApiCall }) {
   const hostnameAI = window._env_?.VITE_AI_API;
   const { workflowState, updatePreprocessingStep, datasetState, mode } = useAIPlayground();
@@ -54,6 +153,12 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
   const [showNumericalDropdown, setShowNumericalDropdown] = useState(false);
   const [showCategoricalDropdown, setShowCategoricalDropdown] = useState(false);
   const [showTimeSeriesDropdown, setShowTimeSeriesDropdown] = useState(false);
+  const [searchColumnOverride, setSearchColumnOverride] = useState({});
+  const [searchBasicFeatureCol1, setSearchBasicFeatureCol1] = useState({});
+  const [searchBasicFeatureCol2, setSearchBasicFeatureCol2] = useState({});
+  const [showColumnOverrideDropdown, setShowColumnOverrideDropdown] = useState({});
+  const [showBasicFeatureCol1Dropdown, setShowBasicFeatureCol1Dropdown] = useState({});
+  const [showBasicFeatureCol2Dropdown, setShowBasicFeatureCol2Dropdown] = useState({});
 
   const [validationErrors, setValidationErrors] = useState({
     dropLowValue: '',
@@ -1139,21 +1244,22 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
                         <div key={override.id} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                           <div className="flex items-center gap-3">
                             <div className="flex-1">
-                              <label className="block text-xs text-gray-500 mb-1">Override {index + 1}</label>
-                              <select
+                              <ColumnSearchableDropdown
                                 value={override.column}
-                                onChange={(e) => updateColumnOverride(override.id, 'column', e.target.value)}
+                                onChange={(value) => updateColumnOverride(override.id, 'column', value)}
+                                columns={allColumns}
+                                placeholder="Column"
                                 disabled={readonly}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
-                              >
-                                <option value="">Column</option>
-                                {allColumns.map(col => (
-                                  <option key={col} value={col}>{col}</option>
-                                ))}
-                              </select>
+                                label={`Override ${index + 1}`}
+                                searchValue={searchColumnOverride}
+                                setSearchValue={setSearchColumnOverride}
+                                showDropdown={showColumnOverrideDropdown}
+                                setShowDropdown={setShowColumnOverrideDropdown}
+                                id={`override-${override.id}`}
+                              />
                             </div>
                             <div className="flex-1">
-                              <label className="block text-xs text-gray-500 mb-1">&nbsp;</label>
+                              <label className="block text-xs text-gray-500 mb-1.5">&nbsp;</label>
                               <select
                                 value={override.method}
                                 onChange={(e) => updateColumnOverride(override.id, 'method', e.target.value)}
@@ -1245,18 +1351,19 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
 
                     <div className="grid grid-cols-12 gap-3 items-start">
                       <div className="col-span-3">
-                        <label className="block text-xs text-gray-500 mb-1.5">First Column</label>
-                        <select
+                        <ColumnSearchableDropdown
                           value={feature.column1}
-                          onChange={(e) => updateBasicFeature(feature.id, 'column1', e.target.value)}
+                          onChange={(value) => updateBasicFeature(feature.id, 'column1', value)}
+                          columns={numericalColumns}
+                          placeholder="Select Column"
                           disabled={readonly}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent bg-white"
-                        >
-                          <option value="">Select Column</option>
-                          {numericalColumns.map(col => (
-                            <option key={col} value={col}>{col}</option>
-                          ))}
-                        </select>
+                          label="First Column"
+                          searchValue={searchBasicFeatureCol1}
+                          setSearchValue={setSearchBasicFeatureCol1}
+                          showDropdown={showBasicFeatureCol1Dropdown}
+                          setShowDropdown={setShowBasicFeatureCol1Dropdown}
+                          id={`col1-${feature.id}`}
+                        />
                       </div>
 
                       <div className="col-span-2">
@@ -1274,18 +1381,19 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
                       </div>
 
                       <div className="col-span-3">
-                        <label className="block text-xs text-gray-500 mb-1.5">Second Column</label>
-                        <select
+                        <ColumnSearchableDropdown
                           value={feature.column2}
-                          onChange={(e) => updateBasicFeature(feature.id, 'column2', e.target.value)}
+                          onChange={(value) => updateBasicFeature(feature.id, 'column2', value)}
+                          columns={numericalColumns}
+                          placeholder="Select Column"
                           disabled={readonly}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent bg-white"
-                        >
-                          <option value="">Select Column</option>
-                          {numericalColumns.map(col => (
-                            <option key={col} value={col}>{col}</option>
-                          ))}
-                        </select>
+                          label="Second Column"
+                          searchValue={searchBasicFeatureCol2}
+                          setSearchValue={setSearchBasicFeatureCol2}
+                          showDropdown={showBasicFeatureCol2Dropdown}
+                          setShowDropdown={setShowBasicFeatureCol2Dropdown}
+                          id={`col2-${feature.id}`}
+                        />
                       </div>
 
                       <div className="col-span-4">
@@ -1324,7 +1432,7 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
               <h4 className="text-sm font-medium text-gray-900">Detect Outliers</h4>
               {/* <p className="text-xs text-gray-500 mt-1">Find and handle outliers in numerical fields.</p> */}
             </div>
-            <InfoButton sectionDescriptions={sectionDescriptions} section="detectOutliers" />
+            <InfoButton sectionDescriptions={sectionDescriptions} section="detectOutliers" isLastSection={true} />
           </div>
           <div className="flex items-center gap-3">
             <ToggleSwitch checked={toggles.detectOutliers} onChange={() => toggleSwitch('detectOutliers')} />

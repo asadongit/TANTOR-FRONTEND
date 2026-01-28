@@ -17,10 +17,10 @@ const ToggleSwitch = ({ checked, onChange, readonly }) => (
     </label>
 );
 
-const FeatureSection = ({ title, description, isToggled, isExpanded, onToggle, onExpand, children, readonly, sectionKey }) => {
+const FeatureSection = ({ title, description, isToggled, isExpanded, onToggle, onExpand, children, readonly, sectionKey,isLastSection = false,  }) => {
     const sectionDescriptions = {
         featureImportance: "Feature Importance is the process of identifying and ranking input features based on how much they contribute to a model's predictions. It helps remove irrelevant or redundant features, improve model performance, and increase interpretability by focusing on the most influential variables.",
-        dimensionalityReduction: "Dimensional Reduction is the process of reducing the number of input features while retaining the most important information in the data. It helps simplify models, reduce noise and multicollinearity, improve computational efficiency, and make high-dimensional data easier to analyze and visualize."
+        dimensionalityReduction: "Dimensional Reduction is the process of reducing the number of input features while retaining the most important information in the data."
     };
     return (
         <div className="bg-gray-50 rounded-lg border border-gray-200">
@@ -30,7 +30,7 @@ const FeatureSection = ({ title, description, isToggled, isExpanded, onToggle, o
                         <h4 className="text-sm font-medium text-gray-900">{title}</h4>
                         {/* <p className="text-xs text-gray-500 mt-1">Modify column data types for accurate analysis.</p> */}
                     </div>
-                    <InfoButton sectionDescriptions={sectionDescriptions} section={sectionKey} />
+                    <InfoButton sectionDescriptions={sectionDescriptions} section={sectionKey} isLastSection={isLastSection}/>
                 </div>
                 <div className="flex items-center gap-3">
                     <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
@@ -86,7 +86,7 @@ const FEATURE_IMPORTANCE_OPTIONS_CONFIG = {
                 {
                     value: 'mutual_info',
                     label: 'Mutual Information',
-                    description: 'Mutual Information measures how much information a feature shares with the target variable. Higher values indicate a stronger dependency, even when the relationship is non-linear.',
+                    description: 'Measures how much information a feature provides about the target variable. Higher values indicate a stronger dependency, even when the relationship is non-linear.',
                     availability: {
                         binary: 'yes',
                         multiclass: 'yes'
@@ -96,7 +96,7 @@ const FEATURE_IMPORTANCE_OPTIONS_CONFIG = {
                 {
                     value: 'relief',
                     label: 'Relief',
-                    description: 'Relief evaluates feature importance by comparing differences between nearby data points. Features that help distinguish similar records with different outcomes are ranked higher.',
+                    description: 'Estimates feature relevance by distinguishing between nearby instances of different classes. Features that help distinguish similar records with different outcomes are ranked higher.',
                     availability: {
                         binary: 'yes',
                         multiclass: 'yes'
@@ -106,7 +106,7 @@ const FEATURE_IMPORTANCE_OPTIONS_CONFIG = {
                 {
                     value: 'variance',
                     label: 'Variance',
-                    description: 'Variance measures how much a feature\'s values spread across records. Features with very low variance provide little information and can be removed.',
+                    description: 'Variance measures how much a feature’s values spread across records. Features with very low variance provide little information and can be removed.',
                     availability: {
                         binary: 'yes',
                         multiclass: 'yes'
@@ -126,42 +126,22 @@ const FEATURE_IMPORTANCE_OPTIONS_CONFIG = {
                 {
                     value: 'correlation',
                     label: 'Correlation',
-                    description: 'Correlation measures the linear relationship between a feature and the target variable. Strongly correlated features are considered more important.',
+                    description: 'Measures the strength and direction of relationship between a feature and target.Strongly correlated features are considered more important.',
                     availability: {
                         binary: 'yes',
                         multiclass: 'yes'
                     },
                     warnings: null
-                },
-                {
-                    value: 'selectkbest_chi2',
-                    label: 'SelectKBest Chi² (Chi Square)',
-                    description: 'This method selects the top K features using the Chi-Square statistical test. It is mainly used for categorical features in classification problems.',
-                    availability: {
-                        binary: 'yes',
-                        multiclass: 'no'
-                    },
-                    warnings: 'Only available for binary classification; requires non-negative features'
                 },
                 {
                     value: 'selectkbest_f',
                     label: 'SelectKBest F (F-test)',
-                    description: 'This method selects the top K features based on the F-statistic. It evaluates whether feature values significantly differ across target classes.',
+                    description: 'Measures linear dependency between feature and target using variance ratio.This method selects the top K features based on the F-statistic. It evaluates whether feature values significantly differ across target classes.',
                     availability: {
                         binary: 'yes',
                         multiclass: 'yes'
                     },
                     warnings: null
-                },
-                {
-                    value: 'fisher_score',
-                    label: 'Fisher Score',
-                    description: 'Fisher Score ranks features based on how well they separate different classes. Features with large between-class differences and small within-class variance score higher.',
-                    availability: {
-                        binary: 'yes',
-                        multiclass: 'warning'
-                    },
-                    warnings: 'May be less effective for multiclass problems with many classes'
                 }
             ]
         },
@@ -176,19 +156,9 @@ const FEATURE_IMPORTANCE_OPTIONS_CONFIG = {
             warnings: null,
             subMethods: [
                 {
-                    value: 'lasso',
-                    label: 'Lasso',
-                    description: 'Lasso (Least Absolute Shrinkage and Selection Operator) uses L1 regularization to shrink less important feature coefficients to zero, effectively performing feature selection during model training.',
-                    availability: {
-                        binary: 'yes',
-                        multiclass: 'yes'
-                    },
-                    warnings: null
-                },
-                {
                     value: 'tree',
-                    label: 'Tree',
-                    description: 'Tree-based feature importance uses decision tree algorithms to measure how much each feature contributes to reducing impurity or error in the model.',
+                    label: 'Tree-Based',
+                    description: 'Tree-based models compute feature importance based on impurity reduction or information gain during splits.Used in Decision Trees, Random Forest, Gradient Boosting. Features contributing more to splitting nodes are considered more important. Handles non-linearity and interactions automatically.',
                     availability: {
                         binary: 'yes',
                         multiclass: 'yes'
@@ -198,7 +168,7 @@ const FEATURE_IMPORTANCE_OPTIONS_CONFIG = {
                 {
                     value: 'permutation',
                     label: 'Permutation',
-                    description: 'Permutation importance measures how much model performance decreases when a feature\'s values are randomly shuffled. Higher drops indicate more important features.',
+                    description: 'Permutation importance measures feature importance by randomly shuffling a feature and observing the drop in model performance.Breaks the relationship between feature and target.Larger performance drop → more important feature.Model-agnostic, works with any trained model.Captures non-linear effects.',
                     availability: {
                         binary: 'yes',
                         multiclass: 'yes'
@@ -208,7 +178,7 @@ const FEATURE_IMPORTANCE_OPTIONS_CONFIG = {
                 {
                     value: 'selectfrommodel',
                     label: 'Select From Model',
-                    description: 'Select From Model uses a trained machine learning model to select features based on their importance scores or coefficients learned during training.',
+                    description: 'SelectFromModel selects features based on importance or coefficients from a pre-trained model.Works with models that expose coef_ or feature_importances_.Supports LASSO, ElasticNet, Tree-based models.',
                     availability: {
                         binary: 'yes',
                         multiclass: 'yes'
@@ -218,7 +188,7 @@ const FEATURE_IMPORTANCE_OPTIONS_CONFIG = {
                 {
                     value: 'boruta',
                     label: 'Boruta',
-                    description: 'Boruta is an all-relevant feature selection algorithm that identifies all features that are statistically relevant to the outcome, including weakly relevant ones.',
+                    description: 'Boruta is an all-relevant feature selection algorithm built on top of Random Forest.Creates shadow features by shuffling original features.Compares real feature importance with shadow features.Keeps only features that are statistically more important.Ensures no important feature is missed.',
                     availability: {
                         binary: 'yes',
                         multiclass: 'yes'
@@ -240,7 +210,7 @@ const FEATURE_IMPORTANCE_OPTIONS_CONFIG = {
                 {
                     value: 'rfe',
                     label: 'RFE (Recursive Feature Elimination)',
-                    description: 'RFE recursively removes the least important features by training a model, ranking features, eliminating the weakest ones, and repeating until the desired number of features remains.',
+                    description: 'RFE is a wrapper feature selection method that recursively removes the least important features based on a models feature importance or coefficients.RFE recursively removes the least important features by training a model, ranking features, eliminating the weakest ones, and repeating until the desired number of features remains.',
                     availability: {
                         binary: 'yes',
                         multiclass: 'yes'
@@ -250,7 +220,7 @@ const FEATURE_IMPORTANCE_OPTIONS_CONFIG = {
                 {
                     value: 'sfs',
                     label: 'SFS (Sequential Feature Selection)',
-                    description: 'SFS either adds features one by one (forward) or removes them one by one (backward) based on which combination improves model performance the most.',
+                    description: 'SFS is a wrapper method that iteratively adds or removes features based on model performance.Therefore it either adds features one by one (forward) or removes them one by one (backward) based on which combination improves model performance the most.',
                     availability: {
                         binary: 'yes',
                         multiclass: 'yes'
@@ -260,7 +230,7 @@ const FEATURE_IMPORTANCE_OPTIONS_CONFIG = {
                 {
                     value: 'rfecv',
                     label: 'RFECV (RFE with Cross-Validation)',
-                    description: 'RFECV combines Recursive Feature Elimination with cross-validation to automatically determine the optimal number of features by evaluating model performance at each step.',
+                    description: 'RFECV extends RFE by using cross-validation to automatically determine the optimal number of features.It  recursively removes the least important features by training a model, ranking features, eliminating the weakest ones, and repeating until the desired number of features remains.',
                     availability: {
                         binary: 'yes',
                         multiclass: 'yes'
@@ -282,7 +252,7 @@ const FEATURE_IMPORTANCE_OPTIONS_CONFIG = {
                 {
                     value: 'variance',
                     label: 'Variance',
-                    description: 'Variance measures how much a feature\'s values spread across records. Features with very low variance provide little information and can be removed.',
+                    description: 'Variance Threshold removes features whose variance falls below a specified threshold.Variance measures how much a feature values spread across records. Features with very low variance provide little information and can be removed.',
                     availability: {
                         binary: 'yes',
                         multiclass: 'yes'
@@ -292,7 +262,7 @@ const FEATURE_IMPORTANCE_OPTIONS_CONFIG = {
                 {
                     value: 'pca_loading',
                     label: 'PCA Loading',
-                    description: 'PCA Loading represents how much each original feature contributes to a principal component. Features with higher loadings are considered more influential in explaining data variation.',
+                    description: 'PCA loadings represent the contribution (weight) of each original feature to the principal components.It represents how much each original feature contributes to a principal component. Features with higher loadings are considered more influential in explaining data variation.',
                     availability: {
                         binary: 'yes',
                         multiclass: 'yes'
@@ -302,7 +272,7 @@ const FEATURE_IMPORTANCE_OPTIONS_CONFIG = {
                 {
                     value: 'cluster_mi',
                     label: 'Cluster MI (Mutual Information)',
-                    description: 'Cluster MI measures how much information a feature provides about cluster assignments. Features that help distinguish different clusters are ranked higher.',
+                    description: 'Cluster Mutual Information measures how much information a feature shares with cluster assignments instead of target labels. It measures how much a feature values spread across records. Features with very low variance provide little information and can be removed.',
                     availability: {
                         binary: 'yes',
                         multiclass: 'yes'
@@ -782,6 +752,7 @@ function FeatureImportance({ onApiCall }) {
                 onExpand={() => setExpandedSections(prev => ({ ...prev, dimensionalityReduction: !prev.dimensionalityReduction }))}
                 readonly={readonly}
                 sectionKey='dimensionalityReduction'
+                isLastSection={true}
             >
                 <div className="space-y-4">
                     <div>
