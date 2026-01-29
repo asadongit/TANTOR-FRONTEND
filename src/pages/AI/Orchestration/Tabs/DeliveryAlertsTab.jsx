@@ -264,15 +264,16 @@ const DeliveryAlertsTab = () => {
             //   icon: <Webhook className="w-6 h-6 text-purple-600" />
             // }
           ].map(({ key, label, icon }) => (
-            <label key={key} className="flex items-center gap-3 cursor-pointer">
+            <label key={key} className={`flex items-center gap-3 ${key === 'emailEnabled' ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
               <input
                 type="checkbox"
-                checked={schedulerState[key]}
+                checked={key === 'emailEnabled' ? true : schedulerState[key]}
                 onChange={(e) => handleAlertChannelChange(key, e.target.checked)}
-                className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded focus:ring-[#8e78b7]"
+                // disabled={key === 'emailEnabled'}
+                className={`w-5 h-4 border-gray-300 rounded ${key === 'emailEnabled' ? 'cursor-not-allowed accent-[#8e78b7]' : 'text-[#8e78b7]'}`}
               />
               {icon}
-              <span className="text-base font-medium text-gray-900">{label}</span>
+              <span className={`text-base font-medium text-gray-900 ${key === 'emailEnabled' ? 'opacity-60' : ''}`}>{label}</span>
             </label>
           ))}
         </div>
