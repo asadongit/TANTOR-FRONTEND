@@ -57,13 +57,6 @@ const CAPABILITIES = [
     icon: <BarChart3 className="w-5 h-5 text-purple-500" />,
     bgColor: 'bg-purple-50',
     path: '/ai/playground/business-analysis'
-  },
-  {
-    title: 'Model Observability',
-    desc: 'Monitor model performance, behavior, and drift in production.',
-    icon: <Activity className="w-5 h-5 text-green-500" />,
-    bgColor: 'bg-green-50',
-    path: '/ai/playground/model-observability'
   }
 ];
 

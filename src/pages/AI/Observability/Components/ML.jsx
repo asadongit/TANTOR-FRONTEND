@@ -1,26 +1,26 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart, Line, ResponsiveContainer } from 'recharts';
-import { ArrowUp, ArrowDown, BookOpen, Rocket, Gauge, Bell } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart, Line, ResponsiveContainer, RadialBarChart, RadialBar, PolarAngleAxis, PieChart, Pie, Area, AreaChart } from 'recharts';
+import { ArrowUp, ArrowDown, BookOpen, Rocket, Gauge, Bell, Clock, Activity, TrendingUp, Target, Zap } from 'lucide-react';
 
-function ML({ project, model }) {
+function ML({ selectedPeriod, refreshKey }) {
+    const navigate = useNavigate();
     const { token } = useAuth();
     const hostnameAI = window._env_?.VITE_AI_API;
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [driftOrder, setDriftOrder] = useState('most');
+    const [selectedMetric, setSelectedMetric] = useState('all');
 
 
     useEffect(() => {
         async function fetchData() {
             setLoading(true);
             try {
-                let url;
-                if (project && project.id && model && model.model_id) {
-                    url = `${hostnameAI}/observability/reporting?model=true&model_id=${model.model_id}&project=true&project_id=${project.id}&overall=false`;
-                } else {
-                    url = `${hostnameAI}/observability/reporting?model=false&project=false&overall=true`;
-                }
+                const sevenDay = selectedPeriod === '7 Days';
+                const fifteenDay = selectedPeriod === '15 Days';
+                const thirtyDay = selectedPeriod === '30 Days';
+                const url = `${hostnameAI}/observability/overall-report?seven_day_avg=${sevenDay}&fifteen_day_avg=${fifteenDay}&thirty_day_avg=${thirtyDay}`;
                 const res = await fetch(
                     url,
                     {
@@ -35,7 +35,7 @@ function ML({ project, model }) {
             setLoading(false);
         }
         fetchData();
-    }, [hostnameAI, token, project, model]);
+    }, [hostnameAI, token, selectedPeriod, refreshKey]);
 
     if (loading) return (
         <div className="flex items-center justify-center py-12">
@@ -59,64 +59,43 @@ function ML({ project, model }) {
     let predictions = {};
     let dataDrift = {};
     let modelDrift = {};
-    let modelProjectModeLatency = {};
 
-    if (project && project.id && model && model.model_id && data.data) {
-        metrics = data.data.metrics || {};
-        predictions = data.data.predictions || {};
+    metrics = data.data?.metrics || {};
+    avgPerf = data.data?.avg_model_performance || {};
+    predictions = data.data?.predictions || {};
+    dataDrift = data.data?.data_drift?.average_scores || {};
+    modelDrift = data.data?.model_drift?.average_metric_shifts || {};
 
-        avgPerf = {
-            train: {
-                accuracy: metrics.train_metrics?.train_accuracy ?? 0,
-                precision: metrics.train_metrics?.train_precision ?? 0,
-                recall: metrics.train_metrics?.train_recall ?? 0,
-                f1: metrics.train_metrics?.train_f1 ?? 0
-            },
-            test: {
-                accuracy: metrics.test_metrics?.test_accuracy ?? 0,
-                precision: metrics.test_metrics?.test_precision ?? 0,
-                recall: metrics.test_metrics?.test_recall ?? 0,
-                f1: metrics.test_metrics?.test_f1 ?? 0
-            }
-        };
 
-        modelProjectModeLatency = data.data.latency?.average_latency || 'N/A';
+    const perfData = Object.entries(data.data?.model_performance_over_time || {}).map(([date, metrics]) => ({
+        date,
+        accuracy: metrics?.avg_accuracy != null ? metrics.avg_accuracy * 100 : null,
+        precision: metrics?.avg_precision != null ? metrics.avg_precision * 100 : null,
+        f1: metrics?.avg_f1 != null ? metrics.avg_f1 * 100 : null,
+    }));
 
-        dataDrift = data.data.data_drift?.latest_score?.aggregated_metrics || {};
 
-        modelDrift = data.data.model_drift?.current_metrics || {};
-    } else {
+    const handleLegendClick = (payload) => {
+        if (!payload) return;
+        const label = payload.value ?? payload.dataKey ?? payload;
+        let key = null;
+        if (label === 'Accuracy') key = 'accuracy';
+        else if (label === 'Precision') key = 'precision';
+        else if (label === 'F1 Score' || label === 'F1') key = 'f1';
+        if (!key) return;
+        setSelectedMetric(prev => prev === key ? 'all' : key);
+    };
 
-      metrics = data.data?.metrics || {};
-        avgPerf = data.data?.avg_model_performance || {};
-        predictions = data.data?.predictions || {};
-        dataDrift = data.data?.data_drift?.average_scores || {};
-        modelDrift = data.data?.model_drift?.average_metric_shifts || {};
-    }
+    const systemHealthScore = Math.round(data.data?.system_health?.score ?? 0);
+    const dataQuality = data.data?.system_health?.data_quality ?? data.data?.system_health?.data_quality ?? null;
+    const avgLatencyRaw = data.data?.latency?.average_latency_interval ?? data.data?.latency?.average_latency ?? 0;
 
-    const perfData = [
-        { name: 'Accuracy', Train: (avgPerf.train?.accuracy * 100).toFixed(2), Test: (avgPerf.test?.accuracy * 100).toFixed(2) },
-        { name: 'Precision', Train: (avgPerf.train?.precision * 100).toFixed(2), Test: (avgPerf.test?.precision * 100).toFixed(2) },
-        { name: 'Recall', Train: (avgPerf.train?.recall * 100).toFixed(2), Test: (avgPerf.test?.recall * 100).toFixed(2) },
-        { name: 'F1', Train: (avgPerf.train?.f1 * 100).toFixed(2), Test: (avgPerf.test?.f1 * 100).toFixed(2) }
-    ];
+    const avgLatencyMs = avgLatencyRaw ? Math.round(Number(avgLatencyRaw)) : 0;
 
-    const dataDriftEntries = Object.entries(dataDrift)
-        .map(([name, value]) => ({ name, value }));
-    const dataDriftData = dataDriftEntries
-        .sort((a, b) =>
-            driftOrder === 'most'
-                ? Math.abs(b.value) - Math.abs(a.value)
-                : Math.abs(a.value) - Math.abs(b.value)
-        )
-        .slice(0, 5);
+    const modelDriftVal = (data.data?.model_drift?.avg_metrics_shift ?? data.data?.model_drift?.avg_metrics_shift ?? data.data?.model_drift?.average_metrics_shift ?? data.data?.model_drift?.avg_metrics_shift) ?? data.data?.model_drift?.avg_metrics_shift ?? data.data?.model_drift?.avg_metrics_shift ?? null;
+    const modelDriftDisplay = modelDriftVal != null ? (typeof modelDriftVal === 'number' ? modelDriftVal.toFixed(3) : modelDriftVal) : '0.000';
 
-    const modelDriftData = [
-        { name: 'ROCAUC', value: modelDrift.roc_auc },
-        { name: 'Accuracy', value: modelDrift.accuracy },
-        { name: 'Log Loss', value: modelDrift.log_loss },
-        { name: 'Macro F1', value: modelDrift.macro_f1 }
-    ];
+    const predictionsCount = data.data?.predictions?.predictions_count ?? data.data?.predictions?.predictions ?? null;
 
     const StatsCardWithTrend = ({ label, value, icon: IconCmp, trend, trendValue }) => {
         const isUp = trend === "up";
@@ -150,154 +129,442 @@ function ML({ project, model }) {
         );
     };
 
-    const isProjectModelMode = project && project.id && model && model.model_id && data.data;
 
-    const metricsData = [
-        {
-            title: "Total Projects",
-            value: metrics.total_projects,
-            trend: null,
-            trendValue: "",
-            icon: BookOpen,
-            show: !isProjectModelMode,
-        },
-        {
-            title: "Total Models",
-            value: metrics.total_models,
-            trend: null,
-            trendValue: "",
-            icon: Rocket,
-            show: !isProjectModelMode,
-        },
-        {
-            title: "Predictions",
-            value: predictions.predictions_with_confidence ?? predictions.predictions,
-            trend: null,
-            trendValue: "",
-            icon: Gauge,
-            show: true,
-        },
-        {
-            title: isProjectModelMode ? "Avg Latency" : "Avg Accuracy",
-            value: isProjectModelMode ? modelProjectModeLatency : (avgPerf.train?.accuracy ? `${(avgPerf.train.accuracy * 100).toFixed(1)}%` : "0%"),
-            trend: null,
-            trendValue: "",
-            icon: Gauge,
-            show: true,
+    const recentAlerts = data.data?.alerts?.recent_alerts || [];
+
+
+    const activeModels = data.data?.metrics?.deployed_models ?? 0;
+    const avgAccuracy = avgPerf.train?.accuracy ? `${(avgPerf.train.accuracy * 100).toFixed(1)}%` : '0%';
+    const p95Latency = avgLatencyRaw ? `${Math.round(Number(avgLatencyRaw))}ms` : '0ms';
+
+    const handleModelClick = async (m) => {
+        try {
+            const res = await fetch(`${hostnameAI}/canvas/model_list?model_id=${encodeURIComponent(m.model_id)}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error('Failed to fetch model data');
+            const list = await res.json();
+            const modelData = Array.isArray(list) && list.length > 0 ? list[0] : m;
+            navigate("/ai/hub/models/library", { state: { modelData } });
+        } catch (e) {
+            console.error(e);
+
+            navigate("/ai/hub/models/library", { state: { modelData: m } });
         }
-    ].filter(stat => stat.show);
+    };
 
     return (
-        <div className="space-y-8 mt-4 px-4 sm:px-6 lg:px-8">
+        <div className="space-y-6 mt-4 px-4 sm:px-6 lg:px-8 max-w-[1400px] mx-auto">
 
-            <div className={`bg-gradient-to-r from-[#8e78b7] via-purple-300 to-purple-100 rounded-xl p-4`}>
-                <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${isProjectModelMode ? '2' : '4'} gap-4`}>
-                    {metricsData.map((stat, index) => (
-                        <StatsCardWithTrend
-                            key={index}
-                            label={stat.title}
-                            value={stat.value}
-                            icon={stat.icon}
-                            trend={stat.trend}
-                            trendValue={stat.trendValue}
-                        />
-                    ))}
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+
+                <div className="lg:col-span-3">
+                    <div className="bg-white rounded-2xl p-6 flex flex-col items-center h-full border border-gray-200 shadow-lg">
+                        <div className="w-64 h-52 relative">
+                            <RadialBarChart
+                                width={256}
+                                height={208}
+                                innerRadius="80%"
+                                outerRadius="100%"
+                                data={[{ value: systemHealthScore }]}
+                                startAngle={90}
+                                endAngle={-270}
+                            >
+                                <defs>
+                                    <linearGradient id="gr" x1="0" x2="1" y1="0" y2="1">
+                                        <stop offset="0%" stopColor="#8e78b7" />
+                                        <stop offset="100%" stopColor="#8e78b7" />
+                                    </linearGradient>
+                                </defs>
+
+                                <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
+
+                                <RadialBar
+                                    minAngle={15}
+                                    background
+                                    clockWise={false}
+                                    cornerRadius={999}
+                                    dataKey="value"
+                                    fill="url(#gr)"
+                                    isAnimationActive={true}
+                                    animationDuration={1200}
+                                />
+                            </RadialBarChart>
+
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                <div className="text-4xl sm:text-5xl font-extrabold tabular-nums text-gray-800">
+                                    {systemHealthScore}
+                                </div>
+                                <div className="text-xs tracking-widest text-gray-500 mt-1">HEALTH SCORE</div>
+                            </div>
+                        </div>
+
+                        <div className="mt-4 text-lg font-semibold text-gray-900">System Health</div>
+                    </div>
                 </div>
-            </div>
 
-            <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-6">Average Model Performance</h3>
-                <ResponsiveContainer width="100%" height={400}>
-                    <BarChart data={perfData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                        <YAxis tick={{ fontSize: 12 }} />
-                        <Tooltip contentStyle={{ fontSize: '12px' }} />
-                        <Legend />
-                        <Bar dataKey="Train" fill="#8e78b7" />
-                        <Bar dataKey="Test" fill="#a78bfa" />
-                    </BarChart>
-                </ResponsiveContainer>
-            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-md font-semibold text-gray-900">Data Drift</h3>
-                        <div className="flex gap-2">
-                            <button
-                                className={`px-3 py-1 rounded text-xs font-medium border ${driftOrder === 'most' ? 'bg-purple-200 border-purple-400 text-purple-900' : 'bg-white border-gray-300 text-gray-700'}`}
-                                onClick={() => setDriftOrder('most')}
-                            >
-                                Most Drift
-                            </button>
-                            <button
-                                className={`px-3 py-1 rounded text-xs font-medium border ${driftOrder === 'least' ? 'bg-purple-200 border-purple-400 text-purple-900' : 'bg-white border-gray-300 text-gray-700'}`}
-                                onClick={() => setDriftOrder('least')}
-                            >
-                                Least Drift
-                            </button>
+                <div className="lg:col-span-5">
+                    <div className="grid grid-cols-2 gap-4 h-full">
+                        <div className="bg-white rounded-xl p-3 flex flex-col justify-between border border-gray-200 shadow-lg">
+                            <div className="flex items-center gap-2">
+                                <BookOpen className="w-4 h-4 text-[#8e78b7] shrink-0" />
+                                <span className="text-sm font-medium text-gray-900">Model Drift</span>
+                            </div>
+                            <div className="mt-2">
+                                <div className="text-2xl font-bold text-gray-900 tabular-nums">
+                                    {modelDriftDisplay ? `${(modelDriftDisplay * 100).toFixed(1)}%` : '0%'}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl p-3 flex flex-col justify-between border border-gray-200 shadow-lg">
+                            <div className="flex items-center gap-2">
+                                <Rocket className="w-4 h-4 text-emerald-500 shrink-0" />
+                                <span className="text-sm font-medium text-gray-900">Accuracy</span>
+                            </div>
+                            <div className="mt-2">
+                                <div className="text-2xl font-bold text-gray-900 tabular-nums">
+                                    {avgPerf.train?.accuracy ? `${(avgPerf.train.accuracy * 100).toFixed(1)}%` : '0%'}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl p-3 flex flex-col justify-between border border-gray-200 shadow-lg">
+                            <div className="flex items-center gap-2">
+                                <Gauge className="w-4 h-4 text-sky-400 shrink-0" />
+                                <span className="text-sm font-medium text-gray-900">Avg Latency</span>
+                            </div>
+                            <div className="mt-2">
+                                <div className="text-2xl font-bold text-gray-900 tabular-nums">{avgLatencyMs}ms</div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl p-3 flex flex-col justify-between border border-gray-200 shadow-lg">
+                            <div className="flex items-center gap-2">
+                                <Clock className="w-4 h-4 text-[#8e78b7] shrink-0" />
+                                <span className="text-sm font-medium text-gray-900">Data Quality</span>
+                            </div>
+                            <div className="mt-2">
+                                <div className="text-2xl font-bold text-gray-900 tabular-nums">
+                                    {dataQuality != null ? `${dataQuality}%` : 'N/A'}
+                                </div>
+                            </div>
                         </div>
                     </div>
+                </div>
+
+
+                <div className="lg:col-span-4">
+                    <div className="bg-white rounded-xl p-4 h-full border border-gray-200 shadow-lg">
+                        <h3 className="text-sm font-semibold text-gray-900 mb-3">Recent Alerts</h3>
+                        <div className="flex flex-col gap-2">
+                            {recentAlerts.slice(0, 4).map((a, i) => {
+                                const iconColor =
+                                    a.severity === 'critical'
+                                        ? 'text-red-500'
+                                        : a.severity === 'warning'
+                                        ? 'text-yellow-400'
+                                        : 'text-cyan-400';
+
+                                return (
+                                    <div
+                                        key={i}
+                                        className="bg-gray-50 rounded-lg px-3 py-2 flex items-start gap-3"
+                                    >
+                                        <div className="flex-1 min-w-0">
+                                            <div
+                                                className="text-xs font-medium text-gray-900 truncate"
+                                                title={a.run_name ?? 'Unknown'}
+                                            >
+                                                {a.run_name ?? 'Unknown'}
+                                            </div>
+                                            <div className="text-[10px] text-gray-500">
+                                                {a.alert_type} · {new Date(a.timestamp).toLocaleDateString()}
+                                            </div>
+                                        </div>
+                                        <Bell className={`w-4 h-4 ${iconColor} shrink-0`} />
+                                    </div>
+                                );
+                            })}
+
+                            {recentAlerts.length === 0 && (
+                                <div className="text-xs text-gray-500 text-center py-4">No recent alerts</div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatsCardWithTrend
+                    label="Active Models"
+                    value={activeModels}
+                    icon={Activity}
+                />
+                <StatsCardWithTrend
+                    label="Predictions"
+                    value={predictionsCount}
+                    icon={TrendingUp}
+                />
+                <StatsCardWithTrend
+                    label="Avg Model Accuracy"
+                    value={avgAccuracy}
+                    icon={Target}
+                />
+                <StatsCardWithTrend
+                    label="P95 Latency"
+                    value={p95Latency}
+                    icon={Zap}
+                />
+            </div>
+
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <div className="lg:col-span-7 bg-white border border-gray-200 rounded-xl shadow-lg p-6">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-6">Model Performance Over Time</h3>
+
                     <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={dataDriftData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                            <YAxis tick={{ fontSize: 12 }} />
-                            <Tooltip contentStyle={{ fontSize: '12px' }} />
-                            <Line type="monotone" dataKey="value" stroke="#8e78b7" strokeWidth={3} />
-                        </LineChart>
+                        <AreaChart data={perfData}>
+                            <defs>
+                                <linearGradient id="colorAccuracy" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#34d399" stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor="#34d399" stopOpacity={0.1}/>
+                                </linearGradient>
+                                <linearGradient id="colorPrecision" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor="#a78bfa" stopOpacity={0.1}/>
+                                </linearGradient>
+                                <linearGradient id="colorF1" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#8e78b7" stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor="#8e78b7" stopOpacity={0.1}/>
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#6b7280" />
+                            <YAxis tick={{ fontSize: 12 }} stroke="#6b7280" />
+                            <Tooltip contentStyle={{ fontSize: '12px', backgroundColor: '#fff', border: '1px solid #e5e7eb' }} />
+
+                            <Legend onClick={handleLegendClick} wrapperStyle={{ cursor: 'pointer' }} />
+
+
+                            {(selectedMetric === 'all' || selectedMetric === 'f1') && (
+                                <Area type="monotone" dataKey="f1" stroke="#8e78b7" strokeWidth={2} fillOpacity={1} fill="url(#colorF1)" name="F1 Score" />
+                            )}
+                            {(selectedMetric === 'all' || selectedMetric === 'precision') && (
+                                <Area type="monotone" dataKey="precision" stroke="#a78bfa" strokeWidth={2} fillOpacity={1} fill="url(#colorPrecision)" name="Precision" />
+                            )}
+                            {(selectedMetric === 'all' || selectedMetric === 'accuracy') && (
+                                <Area type="monotone" dataKey="accuracy" stroke="#34d399" strokeWidth={2} fillOpacity={1} fill="url(#colorAccuracy)" name="Accuracy" />
+                            )}
+                        </AreaChart>
                     </ResponsiveContainer>
                 </div>
+
+
+                <div className="lg:col-span-5 bg-white border border-gray-200 rounded-xl shadow-lg p-6">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-6">Predictions Distribution</h3>
+                    <div className="flex items-center justify-between h-[300px]">
+
+                        <div className="flex-shrink-0" style={{ width: '60%', height: '100%' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Tooltip />
+                                    <Pie
+                                        data={Object.entries(data.data?.predictions_distribution || {}).map(([type, count]) => ({
+                                            name: type.charAt(0).toUpperCase() + type.slice(1),
+                                            value: count,
+                                        }))}
+                                        dataKey="value"
+                                        nameKey="name"
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={50}
+                                        outerRadius={80}
+                                        fill="#8e78b7"
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+
+
+                        <div className="flex flex-col justify-center gap-3 pl-4" style={{ width: '40%' }}>
+                            {Object.entries(data.data?.predictions_distribution || {}).map(([type, count], idx) => (
+                                <div key={type} className="flex items-center gap-2">
+                                    <div
+                                        className="w-3 h-3 rounded-full flex-shrink-0"
+                                        style={{
+                                            backgroundColor: idx === 0 ? '#8e78b7' : `hsl(${280 - idx * 40}, 70%, 65%)`
+                                        }}
+                                    />
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="text-sm font-medium text-gray-900 truncate">
+                                            {type.charAt(0).toUpperCase() + type.slice(1)}
+                                        </span>
+                                        <span className="text-xs text-gray-500">{count}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
                 <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
-                    <h3 className="text-md font-semibold text-gray-900 mb-6">Model Drift</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={modelDriftData}>
-                            <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                            <YAxis tick={{ fontSize: 12 }} />
-                            <Tooltip contentStyle={{ fontSize: '12px' }} />
-                            <Line type="monotone" dataKey="value" stroke="#a78bfa" strokeWidth={3} />
-                        </LineChart>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-6">Data Drift Over Time</h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                        <AreaChart
+                            data={Object.entries(data.data?.data_drift_over_time || {}).map(([date, val]) => ({
+                                date,
+                                value: val == null ? null : Number(val),
+                            }))}
+                            margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
+                        >
+                            <defs>
+                                <linearGradient id="colorDataDrift" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1}/>
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#6b7280" />
+                            <YAxis tick={{ fontSize: 12 }} stroke="#6b7280" />
+                            <Tooltip
+                                formatter={(value) => (value == null ? 'N/A' : value)}
+                                contentStyle={{ fontSize: '12px', backgroundColor: '#fff', border: '1px solid #e5e7eb' }}
+                            />
+                            <Area
+                                type="monotone"
+                                dataKey="value"
+                                stroke="#ef4444"
+                                strokeWidth={2}
+                                fillOpacity={1}
+                                fill="url(#colorDataDrift)"
+                                connectNulls={false}
+                                name="Data Drift"
+                            />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+
+
+                <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-6">Prediction Drift Over Time</h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                        <AreaChart
+                            data={Object.entries(data.data?.prediction_drift_over_time || {}).map(([date, val]) => ({
+                                date,
+                                value: val == null ? null : Number(val),
+                            }))}
+                            margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
+                        >
+                            <defs>
+                                <linearGradient id="colorPredictionDrift" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#6b7280" />
+                            <YAxis tick={{ fontSize: 12 }} stroke="#6b7280" />
+                            <Tooltip
+                                formatter={(value) => (value == null ? 'N/A' : value)}
+                                contentStyle={{ fontSize: '12px', backgroundColor: '#fff', border: '1px solid #e5e7eb' }}
+                            />
+                            <Area
+                                type="monotone"
+                                dataKey="value"
+                                stroke="#3b82f6"
+                                strokeWidth={2}
+                                fillOpacity={1}
+                                fill="url(#colorPredictionDrift)"
+                                connectNulls={false}
+                                name="Prediction Drift"
+                            />
+                        </AreaChart>
                     </ResponsiveContainer>
                 </div>
             </div>
 
-            {isProjectModelMode && (
-                <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-6">Feature Drift Details</h3>
-                    <div className="overflow-x-auto">
-                        {(() => {
-                            const features = data.data.data_drift?.latest_score?.report_1_raw_features || [];
-                            if (features.length === 0) return <p className="text-gray-500">No feature data available.</p>;
-                            const columns = Array.from(new Set(features.flatMap(f => Object.keys(f))));
-                            return (
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            {columns.map(col => (
-                                                <th key={col} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    {col.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                                </th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {features.map((feature, index) => (
-                                            <tr key={index} className="hover:bg-gray-50">
-                                                {columns.map(col => (
-                                                    <td key={col} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        {feature[col] != null ? (typeof feature[col] === 'number' ? feature[col].toFixed(4) : feature[col]) : 'N/A'}
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            );
-                        })()}
-                    </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
+                <h3 className="text-xl font-semibold text-gray-900 mb-4">Model Performance</h3>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr className="text-sm text-left text-gray-600">
+                                <th className="px-4 py-2">Model</th>
+                                <th className="px-4 py-2">Accuracy</th>
+                                <th className="px-4 py-2">F1</th>
+                                <th className="px-4 py-2">Latency</th>
+                                <th className="px-4 py-2">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {(data.data?.model_performance || []).map((m) => {
+                                const acc = m.train_metrics?.accuracy;
+                                const f1 = m.train_metrics?.f1;
+                                const latencyDisplay =
+                                    m.latency != null
+                                        ? `${Math.round(Number(m.latency))}ms`
+                                        : (avgLatencyMs ? `${avgLatencyMs}ms` : 'N/A');
+                                let statusLabel = 'No Data';
+                                let statusClass = 'bg-gray-100 text-gray-700';
+                                if (typeof acc === 'number') {
+                                    if (acc >= 0.9) {
+                                        statusLabel = 'Healthy';
+                                        statusClass = 'bg-emerald-100 text-emerald-800';
+                                    } else if (acc >= 0.7) {
+                                        statusLabel = 'Good';
+                                        statusClass = 'bg-sky-100 text-sky-800';
+                                    } else {
+                                        statusLabel = 'Low';
+                                        statusClass = 'bg-amber-100 text-amber-800';
+                                    }
+                                }
+                                return (
+                                    <tr key={m.model_id} className="text-sm text-gray-800">
+                                        <td className="px-4 py-3 max-w-[320px]">
+                                            <div className="truncate max-w-[400px] cursor-pointer text-[#8e78b7] hover:underline" title={m.model_name} onClick={() => handleModelClick(m)}>
+                                                {m.model_name}
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            {typeof acc === 'number' ? `${(acc * 100).toFixed(1)}%` : 'N/A'}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            {typeof f1 === 'number' ? `${(f1 * 100).toFixed(1)}%` : 'N/A'}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            {latencyDisplay}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${statusClass}`}>
+                                                {statusLabel}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                            {(data.data?.model_performance || []).length === 0 && (
+                                <tr>
+                                    <td colSpan={5} className="px-4 py-6 text-center text-sm text-gray-500">
+                                        No model performance data available.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
-            )}
+            </div>
+
         </div>
     );
 }
