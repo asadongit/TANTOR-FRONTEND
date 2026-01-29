@@ -76,6 +76,7 @@ const AIPlayground = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
   const [tempFile, setTempFile] = useState(null);
+  const dropdownRef = useRef(null);
 
   const [modals, setModals] = useState({
     createProject: false,
@@ -186,6 +187,23 @@ const AIPlayground = () => {
       setIsAIPlaygroundActive(true)
     }
   }, [projectState?.selectedProject]);
+
+useEffect(() => {
+  const handleClickOutside = (event) => {
+    if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      setIsDropdownOpen(false);
+      setSearchQuery('');
+    }
+  };
+
+  if (isDropdownOpen) {
+    document.addEventListener('mousedown', handleClickOutside);
+  }
+
+  return () => {
+    document.removeEventListener('mousedown', handleClickOutside);
+  };
+}, [isDropdownOpen]);
 
   const fetchProjects = async () => {
     try {
@@ -497,7 +515,7 @@ const AIPlayground = () => {
                     </button>
                   </div>
                 ) : (
-                  <div className=" mb-8 relative w-80">
+                  <div className=" mb-8 relative w-80" ref={dropdownRef}>
                     <button
                       onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                       className="w-full h-10 px-3 rounded-md border border-slate-200 bg-white text-sm text-left focus:outline-none focus:ring-2 focus:ring-violet-500/20 transition-all flex items-center justify-between"
