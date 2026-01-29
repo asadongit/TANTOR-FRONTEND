@@ -57,13 +57,6 @@ const CAPABILITIES = [
     icon: <BarChart3 className="w-5 h-5 text-purple-500" />,
     bgColor: 'bg-purple-50',
     path: '/ai/playground/business-analysis'
-  },
-  {
-    title: 'Model Observability',
-    desc: 'Monitor model performance, behavior, and drift in production.',
-    icon: <Activity className="w-5 h-5 text-green-500" />,
-    bgColor: 'bg-green-50',
-    path: '/ai/playground/model-observability'
   }
 ];
 
@@ -480,7 +473,7 @@ const AIPlayground = () => {
                 <div className="mb-8">
                   <h2 className="text-base font-semibold mb-2">Inject Your Data to Get Started</h2>
                   <p className="text-sm text-slate-500 max-w-3xl">
-                    Select an experiment and upload a dataset—or fetch data from tables—to begin machine learning, GenAI, analytics, and observability workflows.
+                    Select a project and fetch data from tables —to begin machine learning, GenAI, analytics, and observability workflows.
                   </p>
                 </div>
 

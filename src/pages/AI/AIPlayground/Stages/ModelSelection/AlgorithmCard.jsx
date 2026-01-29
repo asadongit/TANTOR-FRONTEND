@@ -334,17 +334,19 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate }) {
                         />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
                     </label>
-                    <button
-                        onClick={() => onExpand(algo.id)}
-                        className="text-gray-400 hover:text-gray-600 transition-colors"
-                        title={algo.expanded ? "Collapse" : "Expand"}
-                    >
-                        {algo.expanded ? (
-                            <ChevronUp className='w-5 h-5' />
-                        ) : (
-                            <ChevronDown className='w-5 h-5' />
-                        )}
-                    </button>
+                    {algo.enabled && (
+                        <button
+                            onClick={() => onExpand(algo.id)}
+                            className="text-gray-400 hover:text-gray-600 transition-colors"
+                            title={algo.expanded ? "Collapse" : "Expand"}
+                        >
+                            {algo.expanded ? (
+                                <ChevronUp className='w-5 h-5' />
+                            ) : (
+                                <ChevronDown className='w-5 h-5' />
+                            )}
+                        </button>
+                    )}
                 </div>
             </div>
 

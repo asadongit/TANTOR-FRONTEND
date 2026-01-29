@@ -6,3 +6,4 @@ export { default as XAI } from './XAI';
 export { default as Comments } from './Comments';
 export { default as Access } from './Access';
 export { default as QuickPredict } from './QuickPredict';
+export { default as Observability } from './Observability';
