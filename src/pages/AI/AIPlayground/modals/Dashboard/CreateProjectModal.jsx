@@ -24,6 +24,7 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit, projectList }) =
   const [createdProjectName, setCreatedProjectName] = useState('');
   const searchTimeoutRef = useRef(null);
   const MEMBERS_LIMIT = 12;
+  const memberDropdownRef = useRef(null);
 
   const projectNameExists = () => {
     if (!formData.projectName.trim() || !projectList) return false;
@@ -101,6 +102,22 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit, projectList }) =
       }
     };
   }, [memberSearchQuery, isMemberDropdownOpen]);
+
+  useEffect(() => {
+  const handleClickOutside = (event) => {
+    if (memberDropdownRef.current && !memberDropdownRef.current.contains(event.target)) {
+      setIsMemberDropdownOpen(false);
+    }
+  };
+
+  if (isMemberDropdownOpen) {
+    document.addEventListener('mousedown', handleClickOutside);
+  }
+
+  return () => {
+    document.removeEventListener('mousedown', handleClickOutside);
+  };
+}, [isMemberDropdownOpen]);
 
   const handleLoadMore = () => {
     if (!isLoadingMembers && hasMoreMembers) {
@@ -256,6 +273,11 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit, projectList }) =
     if (!name.trim()) {
       return null;
     }
+
+    if (!/^[A-Za-z]/.test(name.trim())) {
+      return 'Project name must start with an alphabet.';
+    }
+
     if (/^\d+$/.test(name.trim())) {
       return 'Project name cannot contain only digits';
     }
@@ -341,7 +363,7 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit, projectList }) =
             )}
           </div>
 
-          <div className="relative">
+          <div className="relative" ref={memberDropdownRef}>
             <label className="text-sm font-medium text-slate-700 mb-1 block">
               Member <span className="text-red-500">*</span> {formData.members.length > 0 && `(${formData.members.length} selected)`}
             </label>

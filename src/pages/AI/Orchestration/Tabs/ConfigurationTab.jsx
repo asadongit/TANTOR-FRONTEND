@@ -106,7 +106,7 @@ const ConfigurationTab = () => {
     const [modelsData, setModelsData] = useState(null);
     const [dataSources, setDataSources] = useState([]);
     const [destinationTables, setDestinationTables] = useState([]);
-    const [scheduleName, setScheduleName] = useState('');
+    const [scheduleName, setScheduleName] = useState(schedulerState?.workflow_name || '');
     const [existingSchedules, setExistingSchedules] = useState([]);
     const [loadingSchedules, setLoadingSchedules] = useState(false);
     const [scheduleNameError, setScheduleNameError] = useState('');
@@ -287,6 +287,10 @@ const ConfigurationTab = () => {
 
     const validateScheduleName = (name) => {
         if (!name.trim()) return null;
+
+        if (!/^[A-Za-z]/.test(name.trim())) {
+            return 'Schedule name must start with an alphabet character';
+        }
 
         if (/^\d+$/.test(name.trim())) {
             return 'Schedule name cannot contain only digits';

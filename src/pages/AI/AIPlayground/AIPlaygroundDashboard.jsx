@@ -57,13 +57,6 @@ const CAPABILITIES = [
     icon: <BarChart3 className="w-5 h-5 text-purple-500" />,
     bgColor: 'bg-purple-50',
     path: '/ai/playground/business-analysis'
-  },
-  {
-    title: 'Model Observability',
-    desc: 'Monitor model performance, behavior, and drift in production.',
-    icon: <Activity className="w-5 h-5 text-green-500" />,
-    bgColor: 'bg-green-50',
-    path: '/ai/playground/model-observability'
   }
 ];
 
@@ -83,6 +76,7 @@ const AIPlayground = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
   const [tempFile, setTempFile] = useState(null);
+  const dropdownRef = useRef(null);
 
   const [modals, setModals] = useState({
     createProject: false,
@@ -193,6 +187,23 @@ const AIPlayground = () => {
       setIsAIPlaygroundActive(true)
     }
   }, [projectState?.selectedProject]);
+
+useEffect(() => {
+  const handleClickOutside = (event) => {
+    if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      setIsDropdownOpen(false);
+      setSearchQuery('');
+    }
+  };
+
+  if (isDropdownOpen) {
+    document.addEventListener('mousedown', handleClickOutside);
+  }
+
+  return () => {
+    document.removeEventListener('mousedown', handleClickOutside);
+  };
+}, [isDropdownOpen]);
 
   const fetchProjects = async () => {
     try {
@@ -480,7 +491,7 @@ const AIPlayground = () => {
                 <div className="mb-8">
                   <h2 className="text-base font-semibold mb-2">Inject Your Data to Get Started</h2>
                   <p className="text-sm text-slate-500 max-w-3xl">
-                    Select an experiment and upload a dataset—or fetch data from tables—to begin machine learning, GenAI, analytics, and observability workflows.
+                    Select a project and fetch data from tables —to begin machine learning, GenAI, analytics, and observability workflows.
                   </p>
                 </div>
 
@@ -504,7 +515,7 @@ const AIPlayground = () => {
                     </button>
                   </div>
                 ) : (
-                  <div className=" mb-8 relative w-80">
+                  <div className=" mb-8 relative w-80" ref={dropdownRef}>
                     <button
                       onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                       className="w-full h-10 px-3 rounded-md border border-slate-200 bg-white text-sm text-left focus:outline-none focus:ring-2 focus:ring-violet-500/20 transition-all flex items-center justify-between"
