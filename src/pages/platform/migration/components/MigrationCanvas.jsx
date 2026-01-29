@@ -194,7 +194,7 @@ function MigrationCanvasInner() {
       description: metadataData.define?.description ?? "",
       project: project ?? "default",
       created_by: decodedToken?.preferred_username ?? "",
-      conn_type: metadataData.target?.connection_type ?? "",
+      conn_type: metadataData.source?.source_conn_type ?? "",
       source_conn_id: metadataData.source?.source_conn_id ?? "",
       target_conn_id: metadataData.target?.target_conn_id ?? "",
       table_list:
