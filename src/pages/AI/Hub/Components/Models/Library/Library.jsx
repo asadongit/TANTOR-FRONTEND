@@ -11,6 +11,7 @@ import {
   Comments,
   Access,
   QuickPredict,
+  Observability
 } from './Tabs';
 
 function Library() {
@@ -20,7 +21,7 @@ function Library() {
 
   const modelData = useMemo(() => {
     if (!rawModelData) return null;
-    // Normalize possible shapes (Models.jsx sends run_name/created_date/type/status/etc)
+
     return {
       ...rawModelData,
       name: rawModelData.name ?? rawModelData.run_name ?? '',
@@ -49,6 +50,7 @@ function Library() {
     { name: 'Comments', component: Comments },
     // { name: 'Access', component: Access },
     // { name: 'Quick Predict', component: QuickPredict },
+    { name: 'Observability', component: Observability },
   ];
 
   const handleBack = () => {
