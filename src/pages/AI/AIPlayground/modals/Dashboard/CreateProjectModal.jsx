@@ -256,6 +256,11 @@ export const CreateProjectModal = ({ isOpen, onClose, onSubmit, projectList }) =
     if (!name.trim()) {
       return null;
     }
+
+    if (!/^[A-Za-z]/.test(name.trim())) {
+      return 'Project name must start with an alphabet.';
+    }
+
     if (/^\d+$/.test(name.trim())) {
       return 'Project name cannot contain only digits';
     }

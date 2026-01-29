@@ -207,47 +207,25 @@ function Models() {
     ];
   }, [dashboardSummary, dashboardLoading]);
 
+  const truncate = (str, max = 20) =>
+  str.length > max ? `${str.slice(0, max)}…` : str;
+
   const alertsData = useMemo(() => {
-    const rows = dashboardSummary?.recent_alerted_runs_per_schedule;
-    if (!Array.isArray(rows)) return [];
-    return rows.slice(0, 6).map((r) => ({
-      name: r.model_run_name || r.schedule_name || "Run",
+  const rows = dashboardSummary?.recent_alerted_runs_per_schedule;
+  if (!Array.isArray(rows)) return [];
+
+  return rows.slice(0, 6).map((r) => {
+    const rawName = r.model_run_name || r.schedule_name || "Run";
+
+    return {
+      name: truncate(rawName, 40),
       issue: r.schedule_name ? `Schedule: ${r.schedule_name}` : "Alert",
       trend: "down",
       type: "drift",
-    }));
-  }, [dashboardSummary]);
-
-  const modelFlowData = useMemo(() => {
-    const count = dashboardSummary?.counts?.models?.current;
-    return {
-      aiModel: {
-        id: "ai-model",
-        label: String(count ?? 0),
-        sublabel: "All Models",
-        x: 30,
-        y: 100,
-      },
-      classificationAgents: [
-        { id: "class-1", label: "Classification\nAgent", x: 180, y: 60 },
-        { id: "class-2", label: "Classification\nAgent", x: 180, y: 140 },
-      ],
-      middleAgents: [
-        { id: "loan-agent", label: "Loan Agent", color: "#FB923C", x: 320, y: 20 },
-        { id: "gst-agent", label: "GST Agent", color: "#FB923C", x: 320, y: 60 },
-        { id: "loan-agent-1", label: "Loan Agent 1", color: "#FB923C", x: 320, y: 100 },
-        { id: "multi-agent", label: "Multi Agent", color: "#FB923C", x: 320, y: 140 },
-        { id: "gst-agent-1", label: "GST Agent 1", color: "#FB923C", x: 320, y: 180 },
-      ],
-      orchestrationLayer: {
-        id: "orchestration",
-        label: "Orchestration Agent",
-        x: 500,
-        y: 90,
-      },
-      output: { id: "output", label: "Output", x: 660, y: 100 },
     };
-  }, [dashboardSummary]);
+  });
+}, [dashboardSummary]);
+
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -673,7 +651,7 @@ function Models() {
               icon="material-symbols:notifications-outline"
               className="w-5 h-5 text-purple-600"
             />
-            <h3 className="text-sm font-semibold text-gray-800">Alerts</h3>
+            <h3 className="text-md font-semibold text-gray-800">Alerts</h3>
           </div>
           <div className="relative">
             <Info
@@ -688,7 +666,7 @@ function Models() {
             )}
           </div>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-3 mt-10">
           {alertsData.map((alert, index) => (
             <div key={index} className="flex justify-between items-center">
               <div className="flex items-center gap-2">
