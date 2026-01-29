@@ -4,7 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import ConfigurationModal from '../modals/XAI/ConfigurationModal';
 import { SaveModelSelectionModal } from '../modals/XAI/SaveModelSelectionModal';
 import GovernanceReportModal from '../modals/XAI/GovernanceReportModal';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import DataTable from '../../../../components/DataTable';
 import { useAIPlayground } from '../../../../context/AIPlaygroundContext';
@@ -38,6 +38,23 @@ function XAI() {
   const [reportData, setReportData] = useState(null);
   const [configuredModel, setConfiguredModel] = useState(''); // Track which model's config we have
   const [initialLoadComplete, setInitialLoadComplete] = useState(false); // Track if initial load in view mode is done
+  const menuDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuDropdownRef.current && !menuDropdownRef.current.contains(event.target)) {
+        setShowMenuDropdown(false);
+      }
+    };
+
+    if (showMenuDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMenuDropdown]);
 
   useEffect(() => {
     if (sessionId && !readonly) {
@@ -476,7 +493,7 @@ function XAI() {
                   {loadingConfig ? 'Loading...' : (reportGenerated ? 'Reconfigure' : 'Configure & Generate Report')}
                 </button>
 
-                <div className="relative">
+                <div className="relative" ref={menuDropdownRef}>
                   <button
                     onClick={() => setShowMenuDropdown(!showMenuDropdown)}
                     disabled={!selectedModel}
