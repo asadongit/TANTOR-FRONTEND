@@ -21,7 +21,6 @@ const OverviewTab = ({ datasetData }) => {
                 <InfoField label="Rows" value={datasetData?.row_count?.toLocaleString() ?? '-'} />
                 <InfoField label="Columns" value={datasetData?.column_count?.toLocaleString() ?? '-'} />
 
-                <InfoField label="Features" value={datasetData?.features || '-'} />
                 <InfoField label="Domain" value={datasetData?.domain || '-'} />
                 <InfoField label="Category" value={datasetData?.category || '-'} />
                 <InfoField label="Tag" value={datasetData?.tag || '-'} />
