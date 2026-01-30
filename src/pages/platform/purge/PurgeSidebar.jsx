@@ -6,6 +6,7 @@ import {
   Plus,
   Layers,
 } from "lucide-react";
+import { usePurgeContext } from "./PurgeContext";
 
 const components = [
   {
@@ -31,6 +32,8 @@ const components = [
 function PurgeSidebar({ presentNodeTypes }) {
   const [collapsed, setCollapsed] = useState(false);
   const [isHovering, setIsHovering] = useState(null);
+
+  const {purgeData} = usePurgeContext();
 
   const onDragStart = (event, nodeType) => {
     if (presentNodeTypes[nodeType]) return;
@@ -65,8 +68,13 @@ function PurgeSidebar({ presentNodeTypes }) {
         {!collapsed && (
           <div className="flex items-center space-x-3">
             <FileSpreadsheet className="w-5 h-5 text-purple-600" />
-            <span className="text-gray-800 text-lg font-bold">PURGE</span>
+
+            <div className="flex flex-col leading-tight">
+              <span className="text-gray-800 text-lg font-bold">PURGE</span>
+              {purgeData?.isEditMode && (<span className="text-sm font-medium text-gray-500">(Edit Mode)</span>)}
+            </div>
           </div>
+
         )}
         <button
           className="p-1 rounded-md hover:bg-gray-200 transition"
@@ -84,7 +92,7 @@ function PurgeSidebar({ presentNodeTypes }) {
       <div
         className={`p-3 ${
           collapsed ? "flex flex-col items-center space-y-3" : "space-y-4"
-        }`}
+          }`}
       >
         {/* Divider */}
         <div className="w-full mb-2">
@@ -129,7 +137,7 @@ function PurgeSidebar({ presentNodeTypes }) {
                 key={item.id}
                 className={`flex items-center p-3 rounded-lg border border-gray-300 transition cursor-move hover:bg-purple-50 hover:border-purple-300 ${
                   isPresent ? 'opacity-50 pointer-events-none' : ''
-                }`}
+                  }`}
                 draggable={!isPresent}
                 onMouseEnter={() => setIsHovering(item.id)}
                 onMouseLeave={() => setIsHovering(null)}

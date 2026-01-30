@@ -52,7 +52,7 @@ function PurgeCanvasInner() {
   const [isEditMode, setIsEditMode] = useState(false);
 
   const location = useLocation();
-  
+
   const presentNodeTypes = nodes.reduce((acc, node) => {
     acc[node.type] = true;
     return acc;
@@ -176,22 +176,22 @@ function PurgeCanvasInner() {
     return null;
   }
 
-  const buildWhereCondition = (currentTableFilter) => {
-    if (!currentTableFilter?.whereCondition?.length) return "";
+  const buildBulkWhereConditionPayload = (whereConditions = []) => {
+    if (!whereConditions.length) return [];
 
-    const complexFilter = currentTableFilter.whereCondition.find(
-      f => f?.type === "complex"
-    );
+    const complexFilter = whereConditions.find(f => f?.type === "complex");
 
-    if (complexFilter) {
-      return complexFilter.query ? `where ${complexFilter.query}` : "";
+    if (complexFilter?.query) {
+      return `where ${complexFilter.query}`;
     }
 
-    const whereClauses = currentTableFilter.whereCondition.map(
-      wc => `${wc.columnName} ${wc.filterOperator} ${wc.value}`
-    );
-    return "where " + whereClauses.join(" and ");
+    return whereConditions.map(wc => ({
+      wherecolumn: wc.columnName,
+      whereoperator: wc.filterOperator,
+      wherevalues: wc.value
+    }));
   };
+
 
   const findTableFilter = (filters, sourceTable, targetTable) => {
     return filters.find(
@@ -228,47 +228,47 @@ function PurgeCanvasInner() {
     };
   };
 
-const isPurgePayloadValid = (payload) => {
-  const showError = (message) => {
-    toast.error(message);
-    return false;
-  };
+  const isPurgePayloadValid = (payload) => {
+    const showError = (message) => {
+      toast.error(message);
+      return false;
+    };
 
-  const scope = purgeData?.source?.scope;
-  if (!scope) return showError("Select scope before proceeding!");
+    const scope = purgeData?.source?.scope;
+    if (!scope) return showError("Select scope before proceeding!");
 
-  if (scope === "bulk") {
-    if (!payload.source_schema) return showError("Source schema can't be empty!");
-    if (!payload.target_schema) return showError("Target schema can't be empty!");
-    if (!payload?.purge_list?.length) return showError("Select atleast one source and target table!");
+    if (scope === "bulk") {
+      if (!payload.source_schema) return showError("Source schema can't be empty!");
+      if (!payload.target_schema) return showError("Target schema can't be empty!");
+      if (!payload?.purge_list?.length) return showError("Select atleast one source and target table!");
 
-    const invalidItems = payload.purge_list.filter(item => !item?.source_table || !item?.target_table);
-    if (invalidItems.length > 0) return showError("Select source and target tables for each purge item");
-  }
-
-  if (scope === "subset") {
-    const validations = [
-      [payload.source_table, "Source table can't be empty!"],
-      [payload.target_table, "Target table can't be empty!"],
-      [payload.source_purge_info?.sourceConnName, "Source connection can't be empty!"],
-      [payload.source_purge_info?.sourceSchemaName, "Source schema can't be empty!"],
-      [payload.source_purge_info?.sourceObjectName, "Source table can't be empty!"],
-      [payload.target_purge_info?.targetConnName, "Target connection can't be empty!"],
-      [payload.target_purge_info?.targetSchemaName, "Target schema can't be empty!"],
-      [payload.target_purge_info?.targetObjectName, "Target table can't be empty!"]
-    ];
-
-    for (const [value, message] of validations) {
-      if (!value) return showError(message);
+      const invalidItems = payload.purge_list.filter(item => !item?.source_table || !item?.target_table);
+      if (invalidItems.length > 0) return showError("Select source and target tables for each purge item");
     }
-  }
 
-  if (!payload.source_conn_id) return showError("Source connection can't be empty!");
-  if (!payload.target_conn_id) return showError("Target connection can't be empty!");
-  if (!payload.purge_auto_name && !payload.purge_name) return showError("Purge name can't be empty!");
+    if (scope === "subset") {
+      const validations = [
+        [payload.source_table, "Source table can't be empty!"],
+        [payload.target_table, "Target table can't be empty!"],
+        [payload.source_purge_info?.sourceConnName, "Source connection can't be empty!"],
+        [payload.source_purge_info?.sourceSchemaName, "Source schema can't be empty!"],
+        [payload.source_purge_info?.sourceObjectName, "Source table can't be empty!"],
+        [payload.target_purge_info?.targetConnName, "Target connection can't be empty!"],
+        [payload.target_purge_info?.targetSchemaName, "Target schema can't be empty!"],
+        [payload.target_purge_info?.targetObjectName, "Target table can't be empty!"]
+      ];
 
-  return true;
-};
+      for (const [value, message] of validations) {
+        if (!value) return showError(message);
+      }
+    }
+
+    if (!payload.source_conn_id) return showError("Source connection can't be empty!");
+    if (!payload.target_conn_id) return showError("Target connection can't be empty!");
+    if (!payload.purge_auto_name && !payload.purge_name) return showError("Purge name can't be empty!");
+
+    return true;
+  };
   const handleSave = () => {
     const payload = {
       created_by: decodedToken?.preferred_username,
@@ -288,7 +288,7 @@ const isPurgePayloadValid = (payload) => {
       payload.target_schema = purgeData?.target?.schema;
 
       const targetToSourceMappings = purgeData?.target?.targetToSourceMapping || [];
-      
+
       if (!targetToSourceMappings.length) {
         toast.error("Select atleast one source and one target table.");
         return;
@@ -312,7 +312,7 @@ const isPurgePayloadValid = (payload) => {
           source_table: sourceTable,
           target_table: targetTable,
           schedule: {},
-          whereCondition: buildWhereCondition(currentTableFilter),
+          whereCondition: buildBulkWhereConditionPayload(currentTableFilter?.whereCondition || []),
           target_partition: targetPartition ?? {},
           source_partition: sourcePartition ?? {}
         };
@@ -387,8 +387,8 @@ const isPurgePayloadValid = (payload) => {
         status: "Pending"
       });
     }
-    
-    if(!isPurgePayloadValid(payload))
+
+    if (!isPurgePayloadValid(payload))
       return;
 
     // Confirmation Modal
@@ -404,10 +404,10 @@ const isPurgePayloadValid = (payload) => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-      };
+        };
         try {
           let request;
-          
+
           if (purgeData?.source?.scope === "bulk") {
             request = !isEditMode ? axios.post(`${hostnameV2}/create-purge`, payload, config) : axios.put(`${hostnameV2}/update-purge`, payload, config);
           } else if (purgeData?.source?.scope === "subset") {
