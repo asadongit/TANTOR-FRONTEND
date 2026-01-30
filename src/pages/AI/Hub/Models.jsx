@@ -71,7 +71,7 @@ function Models() {
           id: item.id,
           sno: index + 1,
           run_name: item.run_name,
-          description: item.target_variable || item.usecase || "",
+          description: item.description || "",
           created_date: item.created_at
             ? new Date(item.created_at).toLocaleDateString("en-GB")
             : "",

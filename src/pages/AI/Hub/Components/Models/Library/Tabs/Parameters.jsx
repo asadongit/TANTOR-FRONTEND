@@ -12,8 +12,8 @@ import Step7 from '../../../../../AIPlayground/Stages/DataPreprocessing/Steps/St
 const AUTO_MODES = ['Swift', 'Standard', 'Comprehensive']
 
 function Parameters({ modelData }) {
-  const { token, decodedToken } = useAuth()
-  const { setWorkflowState, setDatasetState, setProjectState, setModelState, setMode } = useAIPlayground()
+  const { token } = useAuth()
+  const { setWorkflowState, setMode } = useAIPlayground()
   const [details, setDetails] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -42,7 +42,7 @@ function Parameters({ modelData }) {
         const baseUrl = window._env_?.VITE_AI_API
         if (!baseUrl) throw new Error('VITE_AI_API is not configured')
 
-        // 1) model details (same as Models.jsx)
+        // Fetch model details
         const modelRes = await fetch(`${baseUrl}/canvas/model/${encodeURIComponent(runName)}`, {
           headers: { Authorization: `Bearer ${token}`, accept: 'application/json' },
           signal: controller.signal
@@ -55,47 +55,7 @@ function Parameters({ modelData }) {
         if (!alive) return
         setDetails(fetchedModel)
 
-        // 2) ingestion (same as Models.jsx)
-        const projectName = fetchedModel.project_name
-        const username = decodedToken?.preferred_username || 'admin'
-        const ingestionParams = new URLSearchParams({
-          domain: '',
-          project_name: projectName,
-          profiling_required: 'false',
-          tag: '',
-          source: '',
-          sub_tag: '',
-          table_name: fetchedModel.dataset_name,
-          category: '',
-          user_name: username
-        })
-
-        const ingestionRes = await fetch(`${baseUrl}/data/ingestion`, {
-          method: 'POST',
-          headers: {
-            accept: 'application/json',
-            'Content-Type': 'application/x-www-form-urlencoded'
-          },
-          body: ingestionParams.toString(),
-          signal: controller.signal
-        })
-        if (!ingestionRes.ok) {
-          const body = await safeReadText(ingestionRes)
-          throw new Error(`Failed to ingest data (${ingestionRes.status}). ${body?.slice(0, 200)}`)
-        }
-        const ingestionData = await ingestionRes.json()
-        if (!alive) return
-
-        // 3) set AIPlayground context (same mapping as Models.jsx)
-        setModelState({ selectedModel: fetchedModel.model_name })
-        setProjectState(prev => ({ ...prev, selectedProject: fetchedModel.project_name }))
-        setDatasetState({
-          tableName: fetchedModel.dataset_name,
-          sessionId: ingestionData.session_id || '',
-          columnNames: ingestionData.column_names || [],
-          profileReportHtml: ingestionData.profile_report_html || ''
-        })
-
+        // Set workflow state if prefill data exists
         if (fetchedModel?.prefill) {
           const newWorkflowState = {
             modelGenesis: {
@@ -160,7 +120,7 @@ function Parameters({ modelData }) {
       alive = false
       controller.abort()
     }
-  }, [runName, token, decodedToken, setWorkflowState, setDatasetState, setProjectState, setModelState, setMode])
+  }, [runName, token, setWorkflowState, setMode])
 
   // --- UI helpers (professional, consistent rendering) ---
   const cx = (...a) => a.filter(Boolean).join(' ')
@@ -585,13 +545,14 @@ function Parameters({ modelData }) {
 
   const manualTabs = useMemo(
     () => [
-      { label: 'Data Preprocessing', key: 'genesis' },
-      { label: 'Pre-processing', key: 'initial_clean' },
+      { label: 'Data Preprocessing', key: 'initial_clean' },
       { label: 'Feature Selection', key: 'feature_selection' },
       { label: 'Feature Engineering', key: 'feature_engineering' },
       { label: 'Scaling & Transformation', key: 'advanced_transformation' },
       { label: 'Statistical Analysis', key: 'statistical_analysis' },
-      { label: 'Feature Importance', key: 'feature_importance' }
+      { label: 'Feature Importance', key: 'feature_importance' },
+      { label: 'Imbalance Handling', key: 'imbalance_handling' }
+
     ],
     []
   )
@@ -689,19 +650,19 @@ function Parameters({ modelData }) {
     // Render the corresponding DataPreprocessing step component for each tabKey
     const renderStep = () => {
       switch (tabKey) {
-        case 'genesis':
-          return <DataCleaning onValidationChange={() => {}} onApiCall={() => {}} />
         case 'initial_clean':
-          return <FeatureSelection onValidationChange={() => {}} onApiCall={() => {}} />
+          return <DataCleaning onValidationChange={() => {}} onApiCall={() => {}} />
         case 'feature_selection':
-          return <FeatureEngineering onValidationChange={() => {}} onApiCall={() => {}} />
+          return <FeatureSelection onValidationChange={() => {}} onApiCall={() => {}} />
         case 'feature_engineering':
-          return <ScalingTransformation onValidationChange={() => {}} onApiCall={() => {}} />
+          return <FeatureEngineering onValidationChange={() => {}} onApiCall={() => {}} />
         case 'advanced_transformation':
-          return <StatisticalAnalysis onValidationChange={() => {}} onApiCall={() => {}} />
+          return <ScalingTransformation onValidationChange={() => {}} onApiCall={() => {}} />
         case 'statistical_analysis':
-          return <FeatureImportance onValidationChange={() => {}} onApiCall={() => {}} />
+          return <StatisticalAnalysis onValidationChange={() => {}} onApiCall={() => {}} />
         case 'feature_importance':
+          return <FeatureImportance onValidationChange={() => {}} onApiCall={() => {}} />
+        case 'imbalance_handling':
           return <Step7 showPreview={false} onApiCall={() => {}} />
         default:
           return <Empty title="No Playground view yet" hint="This step has no dedicated UI yet." />

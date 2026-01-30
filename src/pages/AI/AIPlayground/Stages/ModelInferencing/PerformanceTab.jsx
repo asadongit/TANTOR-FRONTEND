@@ -1,6 +1,23 @@
-import React from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState } from 'react';
 
 const PerformanceTab = ({ algorithmData }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
+
+  const totalPages = Math.ceil(algorithmData.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const currentData = algorithmData.slice(startIndex, endIndex);
+
+  const handlePrevious = () => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleNext = () => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  };
+
   return (
     <div>
       <h2 className="text-lg font-semibold text-gray-900 mb-1">Model Performance Overview</h2>
@@ -24,7 +41,7 @@ const PerformanceTab = ({ algorithmData }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {algorithmData.map((algo, idx) => (
+                    {currentData.map((algo, idx) => (
                       <tr key={idx} className="border-t border-gray-200 hover:bg-gray-50">
                         <td className="py-2 px-3 text-gray-700" title={algo.fullName}>
                           {algo.displayName}
@@ -56,7 +73,7 @@ const PerformanceTab = ({ algorithmData }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {algorithmData.map((algo, idx) => (
+                    {currentData.map((algo, idx) => (
                       <tr key={idx} className="border-t border-gray-200 hover:bg-gray-50">
                         <td className="py-2 px-3 text-gray-700" title={algo.fullName}>
                           {algo.displayName}
@@ -75,16 +92,35 @@ const PerformanceTab = ({ algorithmData }) => {
           </div>
 
           <div className="mt-4 text-xs text-gray-500 flex items-center justify-between">
-            <span>{algorithmData.length} to {algorithmData.length} of results</span>
+            <span>
+              Showing {startIndex + 1} to {Math.min(endIndex, algorithmData.length)} of {algorithmData.length} results
+            </span>
             <div className="flex items-center gap-2">
-              <span>Show per page:</span>
-              <select className="border border-gray-300 rounded px-2 py-1 text-xs">
-                <option>10</option>
-                <option>20</option>
-                <option>50</option>
-              </select>
-              <button className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-50">&lt;</button>
-              <button className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-50">&gt;</button>
+              <button
+                onClick={handlePrevious}
+                disabled={currentPage === 1}
+                className={`${currentPage === 1
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'hover:bg-gray-50 text-gray-700'
+                  }`}
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+
+              <span className="text-gray-600">
+                Page {currentPage} of {totalPages}
+              </span>
+
+              <button
+                onClick={handleNext}
+                disabled={currentPage === totalPages}
+                className={`${currentPage === totalPages
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'hover:bg-gray-50 text-gray-700'
+                  }`}
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </>
