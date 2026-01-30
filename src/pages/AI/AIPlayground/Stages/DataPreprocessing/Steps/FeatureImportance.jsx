@@ -52,20 +52,12 @@ const FeatureSection = ({ title, description, isToggled, isExpanded, onToggle, o
         </div>
     )
 }
-
-// const subMethodMapping = {
-//     random_forest: [],
-//     filter: ["mutual_info", "fisher_score", "relief", "variance", "pca_loading", "correlation", "selectkbest_chi2", "selectkbest_f"],
-//     wrapper: ["rfe", "sfs", "rfecv"],
-//     embedded: ["lasso", "tree", "permutation", "selectfrommodel", "boruta"],
-//     unsupervised: ["variance", "pca_loading", "cluster_mi"]
-// };
 const FEATURE_IMPORTANCE_OPTIONS_CONFIG = {
     methods: [
         {
             value: 'random',
-            label: 'Random',
-            description: 'Random feature importance assigns importance scores without using data relationships or model learning. It is mainly used as a baseline to compare against meaningful feature selection methods.',
+            label: 'Random Forest',
+            description: 'Random Forest feature importance assigns importance scores without using data relationships or model learning. It is mainly used as a baseline to compare against meaningful feature selection methods.',
             availability: {
                 binary: 'yes',
                 multiclass: 'yes'
@@ -604,7 +596,7 @@ function FeatureImportance({ onApiCall }) {
                 session_id: sessionId,
                 feature_importance_selection: toggles.featureImportance,
                 method: methodCategory,
-                sub_method: subMethod || null,
+                sub_method: subMethod || 'random',
                 n_features: numFeatures,
                 dimensionality_reduction: toggles.dimensionalityReduction,
                 dimensionality_reduction_method: reductionMethod,
