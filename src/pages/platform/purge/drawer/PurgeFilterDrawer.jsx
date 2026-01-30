@@ -257,8 +257,12 @@ export default function PurgeFilterDrawer({ table, onClose }) {
 
   const handleSave = async () => {
     if (activeTab === "dropPartition") {
-      if(!sourcepartitions?.length > 1)
+      if (!(sourcepartitions?.length > 1))
         return;
+      
+      if (purgeData?.source?.connection_type === "mssql")
+        return;
+
       const targetConn = purgeData["target"]?.connection;
 
       if (!targetConn || !activeTargetTable) {
@@ -283,7 +287,7 @@ export default function PurgeFilterDrawer({ table, onClose }) {
         const sourcePartitionToBeDropped = sourcepartitions[0];
 
         const targetPartition = sortedTargetPartitions.find(p => p?.partition_name === sourcePartitionToBeDropped?.partition_name);
-
+        
         if (!targetPartition) {
           toast.error(`Partition ${sourcePartitionToBeDropped.partition_name} doesn't exist on target table ${activeTargetTable}`);
           return;
@@ -616,104 +620,105 @@ export default function PurgeFilterDrawer({ table, onClose }) {
               </button>
             </div>
           </>
-        ) : (
+        ) :
           //partition code
-          <>
-            {/* Info Banner for Sequential Partition Drop */}
-            {sourcepartitions?.length > 1 && (
-              <div className="flex items-start bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-6">
-                <Info className="mr-3 text-blue-500 h-6 w-6 flex-shrink-0 mt-0.5" />
-                <div className="text-sm">
-                  <strong>Sequential Partition Drop is enforced for this database.</strong>{' '}
-                  The first available partition is auto-selected.
-                </div>
+          purgeData?.source?.connection_type === "mssql" ? (
+            <div className="flex items-start bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-6">
+              <Info className="mr-3 text-blue-500 h-6 w-6 flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <strong>MSSQL doesn't support drop partitions!</strong>
               </div>
-            )}
-
-            {/* No Partitions Warning */}
-            {sourcepartitions?.length === 0 && (
-              <div className="flex items-start bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-6">
-                <Info className="mr-3 text-blue-500 h-6 w-6 flex-shrink-0 mt-0.5" />
-                <div className="text-sm">
-                  <strong>Partition for this database doesn't exist.</strong>
+            </div>
+          ) : (
+            <>
+              {/* Info Banner for Sequential Partition Drop */}
+              {sourcepartitions?.length > 1 && (
+                <div className="flex items-start bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-6">
+                  <Info className="mr-3 text-blue-500 h-6 w-6 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <strong>Sequential Partition Drop is enforced for this database.</strong>{' '}
+                    The first available partition is auto-selected.
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Default Partitions Warning */}
-            {sourcepartitions?.length === 1 && (
-              <div className="flex items-start bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-6">
-                <Info className="mr-3 text-blue-500 h-6 w-6 flex-shrink-0 mt-0.5" />
-                <div className="text-sm">
-                  <strong>Can't drop default partition.</strong>
+              {/* No Partitions Warning */}
+              {sourcepartitions?.length === 0 && (
+                <div className="flex items-start bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-6">
+                  <Info className="mr-3 text-blue-500 h-6 w-6 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <strong>Partition for this database doesn't exist.</strong>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {sourcepartitions?.source_conn_type?.toLowerCase() === "mssql" && (
-              <div className="flex items-start bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-6">
-                <Info className="mr-3 text-blue-500 h-6 w-6 flex-shrink-0 mt-0.5" />
-                <div className="text-sm">
-                  <strong>MSSQL doesn't support drop partitions!</strong>
+              {/* Default Partitions Warning */}
+              {sourcepartitions?.length === 1 && (
+                <div className="flex items-start bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-6">
+                  <Info className="mr-3 text-blue-500 h-6 w-6 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <strong>Can't drop default partition.</strong>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Partition Table */}
-            {sourcepartitions?.length > 1 && (
-              <div className="w-full overflow-x-auto shadow rounded-lg mb-6">
-                <table className="w-full bg-white border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-gray-800 text-white">
-                      <th className="py-2 px-2 text-center font-medium border border-gray-700">Partition Name</th>
-                      <th className="py-2 px-2 text-center font-medium border border-gray-700">Column</th>
-                      <th className="py-2 px-2 text-center font-medium border border-gray-700">High Value</th>
-                      <th className="py-2 px-2 text-center font-medium border border-gray-700">Type</th>
-                      <th className="py-2 px-2 text-center font-medium border border-gray-700">Table</th>
-                      <th className="py-2 px-2 text-center font-medium border border-gray-700 w-16">Select</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sourcepartitions.map((partition, index) => (
-                      <tr
-                        key={index}
-                        className={
-                          index === 0
-                            ? 'bg-[#daf5ce]'
-                            : 'bg-gray-100 opacity-50'
-                        }
-                      >
-                        <td className="border border-gray-300 py-2 px-2 text-center">
-                          {partition.partition_name}
-                        </td>
-                        <td className="border border-gray-300 py-2 px-2 text-center">
-                          {partition.column_name}
-                        </td>
-                        <td className="border border-gray-300 py-2 px-2 text-center break-words">
-                          {partition.high_value}
-                        </td>
-                        <td className="border border-gray-300 py-2 px-2 text-center">
-                          {partition.partition_type}
-                        </td>
-                        <td className="border border-gray-300 py-2 px-2 text-center">
-                          {partition.table_name}
-                        </td>
-                        <td className="border border-gray-300 py-2 px-2 text-center">
-                          <input
-                            type="checkbox"
-                            checked={index === 0}
-                            readOnly
-                            className="w-3 h-3"
-                          />
-                        </td>
+
+              {/* Partition Table */}
+              {sourcepartitions?.length > 1 && (
+                <div className="w-full overflow-x-auto shadow rounded-lg mb-6">
+                  <table className="w-full bg-white border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-gray-800 text-white">
+                        <th className="py-2 px-2 text-center font-medium border border-gray-700">Partition Name</th>
+                        <th className="py-2 px-2 text-center font-medium border border-gray-700">Column</th>
+                        <th className="py-2 px-2 text-center font-medium border border-gray-700">High Value</th>
+                        <th className="py-2 px-2 text-center font-medium border border-gray-700">Type</th>
+                        <th className="py-2 px-2 text-center font-medium border border-gray-700">Table</th>
+                        <th className="py-2 px-2 text-center font-medium border border-gray-700 w-16">Select</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </>
-        )}
+                    </thead>
+                    <tbody>
+                      {sourcepartitions.map((partition, index) => (
+                        <tr
+                          key={index}
+                          className={
+                            index === 0
+                              ? 'bg-[#daf5ce]'
+                              : 'bg-gray-100 opacity-50'
+                          }
+                        >
+                          <td className="border border-gray-300 py-2 px-2 text-center">
+                            {partition.partition_name}
+                          </td>
+                          <td className="border border-gray-300 py-2 px-2 text-center">
+                            {partition.column_name}
+                          </td>
+                          <td className="border border-gray-300 py-2 px-2 text-center break-words">
+                            {partition.high_value}
+                          </td>
+                          <td className="border border-gray-300 py-2 px-2 text-center">
+                            {partition.partition_type}
+                          </td>
+                          <td className="border border-gray-300 py-2 px-2 text-center">
+                            {partition.table_name}
+                          </td>
+                          <td className="border border-gray-300 py-2 px-2 text-center">
+                            <input
+                              type="checkbox"
+                              checked={index === 0}
+                              readOnly
+                              className="w-3 h-3"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )
+        }
       </div>
 
       {/* Fixed Bottom Action Buttons */}
