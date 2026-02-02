@@ -104,7 +104,7 @@ const Dashboard = () => {
     { label: 'Projects', value: summaryData.counts?.projects?.current || '0', icon: FolderKanban, trend: summaryData.counts?.projects?.trend === 'increased' ? 'up' : 'down' },
     { label: 'Models', value: summaryData.counts?.models?.current || '0', icon: Box, trend: summaryData.counts?.models?.trend === 'increased' ? 'up' : 'down' },
     { label: 'Datasets', value: summaryData.counts?.datasets?.current || '0', icon: Bot, trend: summaryData.counts?.datasets?.trend === 'increased' ? 'up' : 'down' },
-    { label: 'Fairness', value: (summaryData.metrics?.avg_fairness_ratio?.current).toFixed(2) || '0', icon: Scale, },
+    { label: 'Fairness', value: summaryData.metrics?.avg_fairness_ratio?.current?.toFixed(2) || '0', icon: Scale,},
   ];
 
   const tokenUsageData = [
