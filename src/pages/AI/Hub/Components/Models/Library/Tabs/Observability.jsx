@@ -81,6 +81,7 @@ function Observability({ modelData }) {
     const modelDrift = data.data?.model_drift?.avg_metrics_shift ?? null;
     const predictionsCount = data.data?.predictions?.predictions_count ?? 0;
     const avgLatency = data.data?.latency?.average_latency_interval ?? 0;
+    const avgLatencyMin = avgLatency ? (Number(avgLatency) / 60000).toFixed(2) : '0.00';
 
     const dataDriftData = Object.entries(data.data?.data_drift_over_time || {}).map(([date, val]) => ({
         date,
@@ -214,7 +215,7 @@ function Observability({ modelData }) {
                 />
                 <StatsCard
                     label="Avg Latency"
-                    value={avgLatency ? `${Math.round(Number(avgLatency))}ms` : 'N/A'}
+                    value={`${avgLatencyMin} min`}
                     icon={Bell}
                 />
             </div>
