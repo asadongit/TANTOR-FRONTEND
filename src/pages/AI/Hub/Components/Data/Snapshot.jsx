@@ -31,6 +31,7 @@ function Snapshot({ datasetData }) {
                         key,
                         label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
                         sortable: true,
+                        width: '150px',
                     }));
                     setColumns(cols);
                 }
@@ -50,12 +51,14 @@ function Snapshot({ datasetData }) {
             {loading && <div>Loading...</div>}
             {error && <div className="text-red-500">{error}</div>}
             {!loading && !error && (
-                <DataTable
-                    columns={columns}
-                    data={data}
-                    isLoading={false}
-                    isError={false}
-                />
+                <div style={{ overflowX: 'auto' }}>
+                    <DataTable
+                        columns={columns}
+                        data={data}
+                        isLoading={false}
+                        isError={false}
+                    />
+                </div>
             )}
         </div>
     );
