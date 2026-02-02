@@ -88,9 +88,10 @@ function ML({ selectedPeriod, refreshKey }) {
 
     const systemHealthScore = Math.round(data.data?.system_health?.score ?? 0);
     const dataQuality = data.data?.system_health?.data_quality ?? data.data?.system_health?.data_quality ?? null;
-    const avgLatencyRaw = data.data?.latency?.average_latency_interval ?? data.data?.latency?.average_latency ?? 0;
+    const avgLatencyRaw = data.data?.latency?.average_latency_interval ?? 0;
 
     const avgLatencyMs = avgLatencyRaw ? Math.round(Number(avgLatencyRaw)) : 0;
+    const avgLatencyMin = avgLatencyRaw ? (Number(avgLatencyRaw) / 60000).toFixed(2) : '0.00';
 
     const modelDriftVal = (data.data?.model_drift?.avg_metrics_shift ?? data.data?.model_drift?.avg_metrics_shift ?? data.data?.model_drift?.average_metrics_shift ?? data.data?.model_drift?.avg_metrics_shift) ?? data.data?.model_drift?.avg_metrics_shift ?? data.data?.model_drift?.avg_metrics_shift ?? null;
     const modelDriftDisplay = modelDriftVal != null ? (typeof modelDriftVal === 'number' ? modelDriftVal.toFixed(3) : modelDriftVal) : '0.000';
@@ -238,7 +239,7 @@ function ML({ selectedPeriod, refreshKey }) {
                                 <span className="text-sm font-medium text-gray-900">Avg Latency</span>
                             </div>
                             <div className="mt-2">
-                                <div className="text-2xl font-bold text-gray-900 tabular-nums">{avgLatencyMs}ms</div>
+                                <div className="text-2xl font-bold text-gray-900 tabular-nums">{avgLatencyMin} min</div>
                             </div>
                         </div>
 
@@ -299,7 +300,7 @@ function ML({ selectedPeriod, refreshKey }) {
             </div>
 
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 <StatsCardWithTrend
                     label="Active Models"
                     value={activeModels}
@@ -311,14 +312,9 @@ function ML({ selectedPeriod, refreshKey }) {
                     icon={TrendingUp}
                 />
                 <StatsCardWithTrend
-                    label="Avg Model Accuracy"
-                    value={avgAccuracy}
-                    icon={Target}
-                />
-                <StatsCardWithTrend
-                    label="P95 Latency"
-                    value={p95Latency}
-                    icon={Zap}
+                    label="Average Model Drift"
+                    value={modelDriftVal != null ? `${(modelDriftVal * 100).toFixed(1)}%` : '0%'}
+                    icon={BookOpen}
                 />
             </div>
 
