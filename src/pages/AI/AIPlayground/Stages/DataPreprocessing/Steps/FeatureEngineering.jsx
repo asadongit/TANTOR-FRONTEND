@@ -180,16 +180,6 @@ const ENCODING_OPTIONS_CONFIG = [
         warnings: 'Requires prior label encoding'
     },
     {
-        value: 'hash',
-        label: 'Hash',
-        description: 'Hash Encoding maps categories to fixed-size numeric features using a hashing function. It efficiently handles large numbers of unique categories with controlled dimensionality.',
-        availability: {
-            binary: 'yes',
-            multiclass: 'yes'
-        },
-        warnings: 'Collisions possible; irreversible'
-    },
-    {
         value: 'hashing',
         label: 'Hashing',
         description: 'Hashing Encoding converts categories into numeric features using a hash function. It is memory-efficient and suitable for large-scale datasets.',

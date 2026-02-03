@@ -19,7 +19,7 @@ const ToggleSwitch = ({ checked, onChange, readonly }) => (
 );
 
 const RadioOption = ({ name, value, checked, onChange, label, readonly }) => (
-    <label className={`flex items-center gap-2 group ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+    <label className={`flex items-center gap-2 ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
         <input
             type="radio"
             name={name}
@@ -27,9 +27,9 @@ const RadioOption = ({ name, value, checked, onChange, label, readonly }) => (
             checked={checked}
             onChange={onChange}
             disabled={readonly}
-            className="w-4 h-4 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7]"
+            className={`w-4 h-4 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7] ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
         />
-        <span className="text-sm text-gray-700 group-hover:text-gray-900">{label}</span>
+        <span className="text-sm text-gray-700">{label}</span>
     </label>
 );
 
@@ -59,7 +59,7 @@ const FeatureSection = ({
                 <div className="flex-1">
                     <div className='flex flex-row'>
                         <h4 className="text-sm font-medium text-gray-700 mr-2">{title}</h4>
-                        <InfoButton sectionDescriptions= {sectionDescriptions} section={sectionKey} isLastSection={isLastSection}/>
+                        <InfoButton sectionDescriptions={sectionDescriptions} section={sectionKey} isLastSection={isLastSection} />
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -397,9 +397,9 @@ function ScalingTransformation({ onApiCall, onValidationChange }) {
                             {/* Scrollable Column List */}
                             <div className={`space-y-2 ${skewedColumns.length > 10 ? 'max-h-80 overflow-y-auto pr-2' : ''}`}>
                                 {filteredColumns.map((column) => (
-                                    <div
+                                    <label
                                         key={column.name}
-                                        className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-[#8e78b7] transition-colors"
+                                        className={`flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-[#8e78b7] transition-colors ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                                     >
                                         <div className="flex items-center gap-3">
                                             <input
@@ -407,17 +407,17 @@ function ScalingTransformation({ onApiCall, onValidationChange }) {
                                                 checked={selectedColumns.includes(column.name)}
                                                 onChange={() => toggleColumnSelection(column.name)}
                                                 disabled={readonly}
-                                                className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded focus:ring-[#8e78b7]"
+                                                className={`w-4 h-4 text-[#8e78b7] border-gray-300 rounded focus:ring-[#8e78b7] ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                                             />
                                             <span className="text-sm text-gray-700">{column.name}</span>
                                         </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 pointer-events-none">
                                             <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                                             </svg>
                                             <span className="text-xs text-gray-500">Skewness: {column.skewness.toFixed(4)}</span>
                                         </div>
-                                    </div>
+                                    </label>
                                 ))}
                                 {filteredColumns.length === 0 && (
                                     <p className="text-sm text-gray-500 text-center py-4">No columns found</p>
@@ -428,27 +428,25 @@ function ScalingTransformation({ onApiCall, onValidationChange }) {
                             <h5 className="text-sm font-medium text-gray-700 mb-3">Transformation Method</h5>
                             <div className="grid grid-cols-3 gap-3">
                                 {transformationOptions.map(option => (
-                                    <div
+                                    <label
                                         key={option.value}
-                                        className="bg-white px-4 py-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors group relative"
+                                        className={`bg-white px-4 py-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors group relative ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                                     >
-                                        <div className="flex items-center gap-2">
-                                            <RadioOption
-                                                name="transformationMethod"
-                                                value={option.value}
-                                                checked={transformationMethod === option.value}
-                                                onChange={(e) => !readonly && setTransformationMethod(e.target.value)}
-                                                label={option.label}
-                                                readonly={readonly}
-                                            />
-                                        </div>
+                                        <RadioOption
+                                            name="transformationMethod"
+                                            value={option.value}
+                                            checked={transformationMethod === option.value}
+                                            onChange={(e) => !readonly && setTransformationMethod(e.target.value)}
+                                            label={option.label}
+                                            readonly={readonly}
+                                        />
 
                                         {/* Tooltip */}
-                                        <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                                        <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 pointer-events-none">
                                             <p className="leading-relaxed">{option.description}</p>
                                             <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
                                         </div>
-                                    </div>
+                                    </label>
                                 ))}
                             </div>
                             <p className="text-xs text-gray-500 mt-3">
@@ -486,27 +484,25 @@ function ScalingTransformation({ onApiCall, onValidationChange }) {
                         <h5 className="text-sm font-medium text-gray-700 mb-3">Scaler Method</h5>
                         <div className="grid grid-cols-3 gap-3">
                             {scalerOptions.map(option => (
-                                <div
+                                <label
                                     key={option.value}
-                                    className="bg-white px-4 py-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors group relative"
+                                    className={`bg-white px-4 py-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors group relative ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                                 >
-                                    <div className="flex items-center gap-2">
-                                        <RadioOption
-                                            name="scalerMethod"
-                                            value={option.value}
-                                            checked={scalerMethod === option.value}
-                                            onChange={(e) => !readonly && setScalerMethod(e.target.value)}
-                                            label={option.label}
-                                            readonly={readonly}
-                                        />
-                                    </div>
+                                    <RadioOption
+                                        name="scalerMethod"
+                                        value={option.value}
+                                        checked={scalerMethod === option.value}
+                                        onChange={(e) => !readonly && setScalerMethod(e.target.value)}
+                                        label={option.label}
+                                        readonly={readonly}
+                                    />
 
                                     {/* Tooltip */}
-                                    <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                                    <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 pointer-events-none">
                                         <p className="leading-relaxed">{option.description}</p>
                                         <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
                                     </div>
-                                </div>
+                                </label>
                             ))}
                         </div>
                     </div>

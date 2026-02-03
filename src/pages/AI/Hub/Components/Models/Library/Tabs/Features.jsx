@@ -11,7 +11,7 @@ function Features({ modelData }) {
   const [dataType, setDataType] = useState("processed");
   const [statsCards, setStatsCards] = useState([
     { title: "Features", value: "-" },
-    { title: "Data points", value: "-" },
+    { title: "Rows", value: "-" },
   ]);
   const [sampleDrawerOpen, setSampleDrawerOpen] = useState(false);
   const [sampleDrawerTitle, setSampleDrawerTitle] = useState("");
@@ -104,7 +104,7 @@ function Features({ modelData }) {
           setTableData(rawToRows(json.data));
           setStatsCards([
             { title: "Features", value: json.data?.no_of_features ?? "-" },
-            { title: "Data points", value: json.data?.no_of_datapoints ?? "-" },
+            { title: "Rows", value: json.data?.no_of_datapoints ?? "-" },
           ]);
         }
       } catch (e) {
