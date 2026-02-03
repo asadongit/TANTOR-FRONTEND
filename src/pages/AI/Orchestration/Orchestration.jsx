@@ -61,6 +61,8 @@ const Orchestration = () => {
                     ...prevState,
                     owner_id: data.user_id
                 }));
+
+                fetchSummaryData(data.user_id);
             } catch (error) {
                 console.error('Error fetching user ID:', error);
             }
@@ -70,10 +72,6 @@ const Orchestration = () => {
     }, [decodedToken?.preferred_username]);
 
     useEffect(() => {
-        fetchSummaryData();
-    }, []);
-
-    useEffect(() => {
         if (activeTab === 'Scheduler') {
             fetchSchedulerData();
         } else if (activeTab === 'Recent Activity') {
@@ -81,9 +79,9 @@ const Orchestration = () => {
         }
     }, [activeTab]);
 
-    const fetchSummaryData = async () => {
+    const fetchSummaryData = async (userIdParam) => {
         try {
-            const response = await fetch(`${hostnameAI}/orchestration/schedules/dashboard/summary`);
+            const response = await fetch(`${hostnameAI}/orchestration/schedules/dashboard/summary?user_id=${userIdParam}`);
             const data = await response.json();
             setSummaryData(data);
             setLoading(false);
@@ -370,9 +368,9 @@ const Orchestration = () => {
         console.log("Edit schedule:", row);
     };
 
-    const handleDetails = (row) => {        
+    const handleDetails = (row) => {
         const validStatuses = ['Prediction Successful', 'Model Drift Detected', 'Data Drift Detected'];
-        
+
         if (!row.last_drift_check || !validStatuses.includes(row.last_drift_check)) {
             toast.error('Last run check value is not supported', {
                 duration: 4000,
