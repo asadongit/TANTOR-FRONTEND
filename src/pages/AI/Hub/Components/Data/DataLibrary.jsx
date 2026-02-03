@@ -119,22 +119,7 @@ const DataLibrary = () => {
                 </div>
             </div>
 
-            <div className="flex justify-end gap-3">
-                <button
-                    onClick={handleBack}
-                    className="px-10 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                    Back
-                </button>
-                {activeTab !== 'Access' && (
-                    <button
-                        onClick={handleNext}
-                        className="px-10 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7d6ba3] transition-colors"
-                    >
-                        Next
-                    </button>
-                )}
-            </div>
+
         </div>
     );
 };
