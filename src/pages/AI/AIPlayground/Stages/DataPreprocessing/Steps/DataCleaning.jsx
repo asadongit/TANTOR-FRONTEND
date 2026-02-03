@@ -149,7 +149,6 @@ function DataCleaning({ onValidationChange, onApiCall }) {
 
   const [expandedSections, setExpandedSections] = useState({
     changeDataType: false,
-    dropColumns: false,
     dropDuplicates: false,
     uniquenessRatio: false,
     missingValue: false,
@@ -157,7 +156,6 @@ function DataCleaning({ onValidationChange, onApiCall }) {
 
   const [toggles, setToggles] = useState({
     changeDataType: false,
-    dropColumns: false,
     dropDuplicates: false,
     uniquenessRatio: false,
     missingValue: false,
@@ -165,7 +163,6 @@ function DataCleaning({ onValidationChange, onApiCall }) {
 
   const sectionDescriptions = {
     changeDataType: "Change Data Type refers to converting a feature to its appropriate data format (e.g., string to numeric, date to datetime). Correct data types ensure accurate calculations, proper validation, and correct model behavior.",
-    dropColumns: "Drop Column is the process of removing a feature that is irrelevant, redundant, or low in informational value. This helps reduce noise and improves model efficiency.",
     dropDuplicates: "Drop Duplicate Rows removes repeated records that appear more than once in the dataset. It prevents data bias and ensures each observation is counted only once.",
     uniquenessRatio: "Uniqueness Ratio measures the proportion of unique values in a feature relative to total records. It helps identify identifier-like columns or features with very low variability.",
     missingValue: "Missing Value Indicator creates a binary flag to indicate whether a value was originally missing. It helps models learn patterns related to data missingness."
@@ -179,13 +176,9 @@ function DataCleaning({ onValidationChange, onApiCall }) {
     { columnName: '' }
   ]);
 
-  const [dropColumnsData, setDropColumnsData] = useState([
-    { columnName: '' }
-  ]);
 
   const [validationErrors, setValidationErrors] = useState({
     changeDataType: '',
-    dropColumns: '',
     missingValue: ''
   });
 
@@ -196,7 +189,6 @@ function DataCleaning({ onValidationChange, onApiCall }) {
     if ((mode === 'view' || mode === 'edit') && stepConfig) {
       const reconstructedToggles = {
         changeDataType: stepConfig.modify_data_types || false,
-        dropColumns: stepConfig.drop_columns_active || false,
         dropDuplicates: stepConfig.drop_duplicates_rows || false,
         uniquenessRatio: stepConfig.uniqueness_filter_active || false,
         missingValue: stepConfig.missing_value_indicator || false,
@@ -213,11 +205,6 @@ function DataCleaning({ onValidationChange, onApiCall }) {
         setDataTypeColumns(reconstructedDataTypes);
       }
 
-      if (stepConfig.drop_columns && stepConfig.drop_columns.length > 0) {
-        const reconstructedDropColumns = stepConfig.drop_columns.map(columnName => ({ columnName }));
-        setDropColumnsData(reconstructedDropColumns);
-      }
-
       if (stepConfig.missing_value_indicator_cols && stepConfig.missing_value_indicator_cols.length > 0) {
         const reconstructedMissingValue = stepConfig.missing_value_indicator_cols.map(columnName => ({ columnName }));
         setMissingValueColumns(reconstructedMissingValue);
@@ -232,12 +219,11 @@ function DataCleaning({ onValidationChange, onApiCall }) {
     if (onValidationChange) {
       onValidationChange(isValid);
     }
-  }, [toggles, dataTypeColumns, dropColumnsData, missingValueColumns]);
+  }, [toggles, dataTypeColumns, missingValueColumns]);
 
   const validateStep = () => {
     const errors = {
       changeDataType: '',
-      dropColumns: '',
       missingValue: ''
     };
     let isValid = true;
@@ -253,15 +239,6 @@ function DataCleaning({ onValidationChange, onApiCall }) {
         isValid = false;
       } else if (hasInvalidDataType) {
         errors.changeDataType = 'Please complete all selected rows with both column and new data type';
-        isValid = false;
-      }
-    }
-
-    if (toggles.dropColumns) {
-      const hasAnyColumn = dropColumnsData.some(col => col.columnName);
-
-      if (!hasAnyColumn) {
-        errors.dropColumns = 'Please select at least one column to drop';
         isValid = false;
       }
     }
@@ -283,8 +260,6 @@ function DataCleaning({ onValidationChange, onApiCall }) {
       session_id: datasetState.sessionId,
       modify_data_types: toggles.changeDataType,
       modify_data_types_map: {},
-      drop_columns_active: toggles.dropColumns,
-      drop_columns: [],
       drop_duplicates_rows: toggles.dropDuplicates,
       missing_value_indicator: toggles.missingValue,
       missing_value_indicator_cols: [],
@@ -299,12 +274,6 @@ function DataCleaning({ onValidationChange, onApiCall }) {
           payload.modify_data_types_map[col.columnName] = col.newDataType;
         }
       });
-    }
-
-    if (toggles.dropColumns) {
-      payload.drop_columns = dropColumnsData
-        .filter(col => col.columnName)
-        .map(col => col.columnName);
     }
 
     if (toggles.missingValue) {
@@ -362,12 +331,11 @@ function DataCleaning({ onValidationChange, onApiCall }) {
     if (onApiCall) {
       onApiCall(callInitialCleanApi);
     }
-  }, [toggles, dataTypeColumns, dropColumnsData, missingValueColumns, datasetState.sessionId]);
+  }, [toggles, dataTypeColumns, missingValueColumns, datasetState.sessionId]);
 
   const toggleSection = (section) => {
     setExpandedSections(prev => ({
       changeDataType: false,
-      dropColumns: false,
       dropDuplicates: false,
       uniquenessRatio: false,
       missingValue: false,
@@ -384,10 +352,9 @@ function DataCleaning({ onValidationChange, onApiCall }) {
       [key]: newToggleState
     }));
 
-    if (newToggleState && (key === 'changeDataType' || key === 'dropColumns' || key === 'missingValue')) {
+    if (newToggleState && (key === 'changeDataType' || key === 'missingValue')) {
       setExpandedSections({
         changeDataType: false,
-        dropColumns: false,
         dropDuplicates: false,
         uniquenessRatio: false,
         missingValue: false,
@@ -410,29 +377,13 @@ function DataCleaning({ onValidationChange, onApiCall }) {
     return columnNames.filter(name => !selected.includes(name));
   };
 
-  const getAvailableColumnsForDropColumns = (currentIndex) => {
-    const selected = dropColumnsData
-      .map((col, idx) => idx !== currentIndex ? col.columnName : null)
-      .filter(Boolean);
-
-    const fairnessColumns = workflowState?.modelGenesis?.config?.fairness_columns || [];
-
-    return columnNames.filter(name =>
-      !selected.includes(name) && !fairnessColumns.includes(name)
-    );
-  };
-
   const getAvailableColumnsForMissingValue = (currentIndex) => {
     const selectedInMissingValue = missingValueColumns
       .map((col, idx) => idx !== currentIndex ? col.columnName : null)
       .filter(Boolean);
 
-    const selectedInDropColumns = dropColumnsData
-      .map(col => col.columnName)
-      .filter(Boolean);
-
     return columnNames.filter(name =>
-      !selectedInMissingValue.includes(name) && !selectedInDropColumns.includes(name)
+      !selectedInMissingValue.includes(name)
     );
   };
 
@@ -580,92 +531,6 @@ function DataCleaning({ onValidationChange, onApiCall }) {
                 <Plus size={16} />
                 Add Column
               </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* UPDATED Drop Columns Section */}
-      <div className="bg-gray-50 rounded-lg border border-gray-200">
-        <div className="p-4 flex items-center justify-between">
-          <div className="flex-1 flex items-center gap-2">
-            <div>
-              <h4 className="text-sm font-medium text-gray-900">Drop Columns</h4>
-            </div>
-            <InfoButton sectionDescriptions={sectionDescriptions} section="dropColumns" />
-          </div>
-          <div className="flex items-center gap-3">
-            <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-              <input
-                type="checkbox"
-                checked={toggles.dropColumns}
-                onChange={() => toggleSwitch('dropColumns')}
-                disabled={readonly}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
-            </label>
-            {toggles.dropColumns && (
-              <button
-                onClick={() => toggleSection('dropColumns')}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                {expandedSections.dropColumns ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {toggles.dropColumns && validationErrors.dropColumns && (
-          <div className="px-4 pb-2">
-            <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <AlertCircle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-amber-800">{validationErrors.dropColumns}</p>
-            </div>
-          </div>
-        )}
-
-        {toggles.dropColumns && expandedSections.dropColumns && (
-          <div className="px-4 pb-4 border-t border-gray-100">
-            <div className="mt-4 space-y-4">
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-2 block">Select Column to Drop</label>
-                <SearchableDropdown
-                  selectedColumn=""
-                  onSelect={(columnName) => {
-                    const newColumns = [...dropColumnsData.filter(col => col.columnName)];
-                    newColumns.push({ columnName });
-                    setDropColumnsData(newColumns.length > 0 ? newColumns : [{ columnName: '' }]);
-
-                    const updatedMissingValueColumns = missingValueColumns.filter(
-                      col => col.columnName !== columnName
-                    );
-                    setMissingValueColumns(
-                      updatedMissingValueColumns.length > 0
-                        ? updatedMissingValueColumns
-                        : [{ columnName: '' }]
-                    );
-                  }}
-                  availableOptions={getAvailableColumnsForDropColumns(-1)}
-                  placeholder="Search and select column..."
-                  readonly={readonly}
-                  dropDirection="down"
-                />
-              </div>
-
-              {dropColumnsData.filter(col => col.columnName).length > 0 && (
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-2 block">Selected Columns</label>
-                  <SelectedColumnsList
-                    columns={dropColumnsData.filter(col => col.columnName).map(col => col.columnName)}
-                    onRemove={(columnName) => {
-                      const newColumns = dropColumnsData.filter(col => col.columnName !== columnName);
-                      setDropColumnsData(newColumns.length > 0 ? newColumns : [{ columnName: '' }]);
-                    }}
-                    readonly={readonly}
-                  />
-                </div>
-              )}
             </div>
           </div>
         )}
