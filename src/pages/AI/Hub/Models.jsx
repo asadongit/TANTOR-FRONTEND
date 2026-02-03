@@ -21,6 +21,7 @@ import Breadcrumb from "../../../components/Breadcrumb";
 import DataTable from "../../../components/DataTable";
 import QuickPredictModal from "./Components/Models/QuickPredictModal";
 import DeleteModal from "./Components/DeleteModal";
+import ArchiveModal from "./Components/ArchieveModal";
 import { useAuth } from "../../../context/AuthContext";
 import { useAIPlayground } from "../../../context/AIPlaygroundContext";
 import ModelFlow from "./Components/Models/ModelFlow";
@@ -42,6 +43,9 @@ function Models() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [archiveModalOpen, setArchiveModalOpen] = useState(false);
+  const [archiveTarget, setArchiveTarget] = useState(null);
+  const [archiveLoading, setArchiveLoading] = useState(false);
   const [deployModalOpen, setDeployModalOpen] = useState(false);
   const [deployTarget, setDeployTarget] = useState(null);
   const hostnameAI = window._env_?.VITE_AI_API;
@@ -300,6 +304,11 @@ function Models() {
     setDeleteModalOpen(true);
   };
 
+  const handleArchive = (row) => {
+    setArchiveTarget(row);
+    setArchiveModalOpen(true);
+  };
+
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     setDeleteLoading(true);
@@ -321,6 +330,31 @@ function Models() {
       alert(err.message || "Delete failed");
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  const confirmArchive = async () => {
+    if (!archiveTarget) return;
+    setArchiveLoading(true);
+    try {
+      const id = archiveTarget.id || archiveTarget._raw?.id;
+      const name = archiveTarget.run_name || archiveTarget.name;
+      const url = `${hostnameAI}/canvas/archive_model/${id}/${name}`;
+      const resp = await fetch(url, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          accept: "application/json",
+        },
+      });
+      if (!resp.ok) throw new Error("Failed to archive model");
+      setArchiveModalOpen(false);
+      setArchiveTarget(null);
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (err) {
+      alert(err.message || "Archive failed");
+    } finally {
+      setArchiveLoading(false);
     }
   };
 
@@ -582,7 +616,7 @@ function Models() {
     {
       label: "Archive",
       icon: <Archive className="w-4 h-4" />,
-      onClick: (row) => console.log("Archive:", row),
+      onClick: handleArchive,
       tooltip: "Archive",
     },
     {
@@ -929,6 +963,15 @@ function Models() {
         description={`Are you sure you want to delete "${deleteTarget?.run_name || deleteTarget?.id || ''}"? This action cannot be undone.`}
         loading={deleteLoading}
         confirmText="Delete"
+      />
+      <ArchiveModal
+        isOpen={archiveModalOpen}
+        onClose={() => setArchiveModalOpen(false)}
+        onConfirm={confirmArchive}
+        title="Archive Model"
+        description={`Are you sure you want to archive "${archiveTarget?.run_name || archiveTarget?.name || archiveTarget?.id || ''}"? This action can be undone.`}
+        loading={archiveLoading}
+        confirmText="Archive"
       />
       <DeployModal />
       {isCanvasLoading && (
