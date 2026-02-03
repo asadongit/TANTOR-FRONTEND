@@ -1015,7 +1015,7 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
           </div>
         </div>
       )}
-      {workflowState?.dataPreprocessing?.step1?.config?.toggles?.uniquenessRatio && (
+      {workflowState?.dataPreprocessing?.step1?.config?.uniqueness_filter_active && (
         <div className="bg-gray-50 rounded-lg border border-gray-200">
           <div className="p-4 flex items-center justify-between">
             <div className="flex-1 flex items-center gap-2">
@@ -1065,13 +1065,20 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
                   {columns.map((column, idx) => {
                     const columnKey = `${column.name}-${idx}`;
                     return (
-                      <div key={columnKey} className="flex items-center gap-2 bg-white p-2 rounded">
+                      <div
+                        key={columnKey}
+                        onClick={() => !readonly && handleColumnToggle(columnKey)}
+                        className={`flex items-center gap-2 p-2 rounded border-2 transition-all ${selectedColumns[columnKey]
+                            ? 'border-[#8e78b7] bg-purple-50'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                          } ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                      >
                         <input
                           type="checkbox"
                           checked={selectedColumns[columnKey] || false}
-                          onChange={() => handleColumnToggle(columnKey)}
+                          onChange={() => { }}
                           disabled={readonly}
-                          className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded mt-0.5"
+                          className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded mt-0.5 pointer-events-none"
                         />
                         <div className="flex-1">
                           <div className="text-sm text-gray-700">{column.name}</div>

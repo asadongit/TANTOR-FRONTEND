@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AIPlaygroundLayout } from '../AIPlaygroundLayout';
-import { Check, X, Search } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAIPlayground } from '../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
+import { Check, X, Search, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 
 const RadioButton = ({ label, checked, onChange, name, readonly }) => (
   <label
@@ -31,7 +31,9 @@ const RadioButton = ({ label, checked, onChange, name, readonly }) => (
 
 const Section = ({ title, children, className = '' }) => (
   <div className={`bg-white ${className}`}>
-    <h3 className="text-lg font-semibold text-gray-900 mb-4">{title} {title != "Fairness Attribute" && <span className="text-red-500">*</span>}</h3>
+    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+      {title} {title !== "Fairness Attribute" && title !== "Drop Columns" && <span className="text-red-500">*</span>}
+    </h3>
     {children}
   </div>
 );
@@ -501,6 +503,11 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
   const [isValidating, setIsValidating] = useState(false);
   const tabs = ['Supervised', 'Unsupervised', 'Time Series', 'Anomaly Detection'];
 
+  const getAvailableTargetColumns = () => {
+    const dropColumns = config.drop_columns || [];
+    return columnNames.filter(name => !dropColumns.includes(name));
+  };
+
   const handleValidate = async () => {
     if (!config.classification || !config.targetFeature) return;
 
@@ -629,7 +636,7 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
 
             <div className="bg-white border border-gray-200 rounded-lg p-5">
               <label className="block text-sm font-medium text-gray-700 mb-3">Target Feature</label>
-              {columnNames.length > 0 ? (
+              {getAvailableTargetColumns().length > 0 ? (
                 <SearchableSelect
                   value={config.targetFeature}
                   onChange={(newTargetFeature) => {
@@ -642,14 +649,14 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
                     };
                     handleConfigChange(updatedConfig);
                   }}
-                  options={columnNames}
+                  options={getAvailableTargetColumns()}
                   placeholder="Select..."
                   disabled={readonly}
                   readonly={readonly}
                 />
               ) : (
                 <div className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-500 bg-gray-50">
-                  No columns found in the dataset
+                  No columns available
                 </div>
               )}
             </div>
@@ -785,7 +792,15 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
 };
 
 const FairnessAttribute = ({ config, setConfig, readonly, columnNames = [] }) => {
-  const allOptions = Array.isArray(columnNames) ? columnNames : [];
+  const getAvailableFairnessColumns = () => {
+    const dropColumns = config.drop_columns || [];
+    const targetFeature = config.targetFeature || '';
+
+    return columnNames.filter(name =>
+      !dropColumns.includes(name) &&
+      name !== targetFeature
+    );
+  };
 
   const handleFairnessChange = (newSelected) => {
     if (!readonly) {
@@ -798,13 +813,219 @@ const FairnessAttribute = ({ config, setConfig, readonly, columnNames = [] }) =>
       <SearchableMultiSelect
         selectedOptions={config.fairness_columns}
         onChange={handleFairnessChange}
-        options={allOptions}
+        options={getAvailableFairnessColumns()}
         maxSelections={3}
         disabled={false}
         readonly={readonly}
-        excludeOption={config.targetFeature}
+        excludeOption=""
       />
     </Section>
+  );
+};
+
+const DropColumns = ({ config, setConfig, readonly, columnNames = [] }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
+  const dropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
+
+  const { workflowState } = useAIPlayground();
+
+  const getAvailableColumns = () => {
+    const selectedDropColumns = config.drop_columns || [];
+    const fairnessColumns = config.fairness_columns || [];
+    const targetFeature = config.targetFeature || '';
+
+    return columnNames.filter(name =>
+      !selectedDropColumns.includes(name) &&
+      !fairnessColumns.includes(name) &&
+      name !== targetFeature
+    );
+  };
+
+  const filteredOptions = getAvailableColumns().filter(option =>
+    option.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+        setSearchTerm('');
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isOpen]);
+
+  const handleToggle = () => {
+    if (readonly) return;
+
+    const newToggleState = !config.drop_columns_active;
+    setConfig({
+      ...config,
+      drop_columns_active: newToggleState,
+      drop_columns: newToggleState ? (config.drop_columns || []) : []
+    });
+
+    if (newToggleState) {
+      setIsExpanded(true);
+    } else {
+      setIsExpanded(false);
+    }
+  };
+
+  const handleSelect = (columnName) => {
+    if (!readonly) {
+      const newDropColumns = [...(config.drop_columns || []), columnName];
+
+      // Remove from target feature if it matches
+      const newTargetFeature = config.targetFeature === columnName ? '' : config.targetFeature;
+
+      // Remove from fairness columns if included
+      const newFairnessColumns = config.fairness_columns.filter(col => col !== columnName);
+
+      setConfig({
+        ...config,
+        drop_columns: newDropColumns,
+        targetFeature: newTargetFeature,
+        fairness_columns: newFairnessColumns
+      });
+
+      setSearchTerm('');
+      setIsOpen(false);
+    }
+  };
+
+  const handleRemove = (columnName) => {
+    if (!readonly) {
+      const newDropColumns = (config.drop_columns || []).filter(col => col !== columnName);
+      setConfig({ ...config, drop_columns: newDropColumns });
+    }
+  };
+
+  return (
+    <div className="bg-gray-50 rounded-lg border border-gray-200">
+      <div className="p-4 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Drop Columns</h3>
+            <p className='text-sm text-gray-600 mt-2 mryyy-2'>Drop Column is the process of removing a feature that is irrelevant, redundant, or low in informational value. This helps reduce noise and improves model efficiency.</p>
+          </div>
+        <div className="flex items-center gap-3">
+          <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+            <input
+              type="checkbox"
+              checked={config.drop_columns_active || false}
+              onChange={handleToggle}
+              disabled={readonly}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
+          </label>
+          {config.drop_columns_active && (
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {config.drop_columns_active && isExpanded && (
+        <div className="px-4 pb-4 border-t border-gray-100">
+          <div className="mt-4 space-y-4">
+            <div>
+              <label className="text-xs font-medium text-gray-600 mb-2 block">Select Column to Drop</label>
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  type="button"
+                  disabled={readonly}
+                  onClick={() => !readonly && setIsOpen(!isOpen)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-left focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent bg-white flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="text-gray-500">Search and select column...</span>
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {isOpen && !readonly && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
+                    <div className="p-2 border-b border-gray-200">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                          ref={searchInputRef}
+                          type="text"
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          placeholder="Search..."
+                          className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="overflow-y-auto max-h-48">
+                      {filteredOptions.length > 0 ? (
+                        filteredOptions.map((option) => (
+                          <button
+                            key={option}
+                            type="button"
+                            onClick={() => handleSelect(option)}
+                            className="w-full px-3 py-2 text-sm text-left hover:bg-gray-100 transition-colors text-gray-700"
+                          >
+                            {option}
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                          {getAvailableColumns().length === 0 ? 'No more columns available' : 'No results found'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {config.drop_columns && config.drop_columns.length > 0 && (
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-2 block">Selected Columns</label>
+                <div className="flex flex-wrap gap-2">
+                  {config.drop_columns.map(column => (
+                    <span
+                      key={column}
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-white border border-gray-300 text-gray-700 text-sm rounded-md"
+                    >
+                      {column}
+                      {!readonly && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemove(column)}
+                          className="ml-1 text-gray-500 hover:text-gray-700"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -832,13 +1053,16 @@ function ModelGenesis() {
         notebookMode: false,
 
         predictionType: 'Supervised',
-        classification: 'Multiclass',
-        targetFeature: 'next_product',
+        classification: savedConfig.modelling_type === 'binary' ? 'Binary' :
+          savedConfig.modelling_type === 'multiclass' ? 'Multiclass' : 'Regression',
+        targetFeature: savedConfig.target_column || '',
 
         trainSplit: Math.round((savedConfig.train_size || 0.7) * 100),
         testSplit: Math.round((savedConfig.test_size || 0.3) * 100),
 
-        fairness_columns: savedConfig.fairness_columns || []
+        fairness_columns: savedConfig.fairness_columns || [],
+        drop_columns_active: savedConfig.drop_columns_active || false,
+        drop_columns: savedConfig.drop_columns || []
       };
     }
 
@@ -854,7 +1078,9 @@ function ModelGenesis() {
       trainSplit: 90,
       testSplit: 10,
 
-      fairness_columns: []
+      fairness_columns: [],
+      drop_columns_active: false,
+      drop_columns: []
     };
   };
 
@@ -874,6 +1100,13 @@ function ModelGenesis() {
     'Binary': 'binary',
     'Multiclass': 'multiclass',
     'Regression': 'regression'
+  };
+
+  const isDropColumnsValid = () => {
+    if (config.drop_columns_active) {
+      return config.drop_columns && config.drop_columns.length > 0;
+    }
+    return true;
   };
 
   const handleValidate = () => {
@@ -977,6 +1210,8 @@ function ModelGenesis() {
         train_size: trainSize,
         random_state: 42,
         fairness_columns: config.fairness_columns,
+        drop_columns_active: config.drop_columns_active || false,
+        drop_columns: config.drop_columns || [],
         data_preprocessing_mode: config.dataPreprocessing,
         model_mode: config.modelSelection,
         target_column: config.targetFeature,
@@ -1034,11 +1269,18 @@ function ModelGenesis() {
 
   return (
     <AIPlaygroundLayout
-      isNextDisabled={!isValidated || isSubmitting}
+      isNextDisabled={!isValidated || isSubmitting || !isDropColumnsValid()}
       onNextClick={handleNextClick}
     >
       <div className="space-y-6">
         <ModeSelection config={config} setConfig={setConfig} readonly={readonly} />
+
+        <DropColumns
+          config={config}
+          setConfig={setConfig}
+          readonly={readonly}
+          columnNames={datasetState.columnNames}
+        />
 
         <PredictionType
           config={config}
