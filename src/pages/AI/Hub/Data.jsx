@@ -6,6 +6,7 @@ import DataTable from '../../../components/DataTable';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import DeleteModal from './Components/DeleteModal';
+import ArchiveModal from './Components/ArchieveModal';
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 // import { updateRecentAccess } from './Components/Hooks';
 import { updateRecentAccess } from './Components/Hooks';
@@ -26,6 +27,9 @@ const Data = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [archiveModalOpen, setArchiveModalOpen] = useState(false);
+  const [archiveTarget, setArchiveTarget] = useState(null);
+  const [archiveLoading, setArchiveLoading] = useState(false);
   const [aiCanvasLoading, setAiCanvasLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [recentAccessed, setRecentAccessed] = useState([]);
@@ -122,14 +126,14 @@ const Data = () => {
   const statsData = useMemo(() => {
     if (dashboardLoading || !dashboardData) {
       return [
-        { label: 'Sources', value: null, icon: FileText },
+        // { label: 'Sources', value: null, icon: FileText },
         { label: 'Datasets', value: null, icon: Database },
         { label: 'Size (GB)', value: null, icon: Box },
         { label: 'Additions (1week)', value: null, icon: FolderKanban },
       ];
     }
     return [
-      { label: 'Sources', value: dashboardData.counts.sources.current.toString(), icon: FileText },
+      // { label: 'Sources', value: dashboardData.counts.sources.current.toString(), icon: FileText },
       { label: 'Datasets', value: dashboardData.counts.datasets.current.toString(), icon: Database },
       { label: 'Size (GB)', value: dashboardData.metrics.dataset_size_gb.current.toString(), icon: Box },
       { label: 'Additions (1week)', value: dashboardData.weekly_additions?.datasets_added_last_7_days?.toString() ?? "0", icon: FolderKanban },
@@ -224,6 +228,30 @@ const Data = () => {
       alert(err.message || "Delete failed");
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  const confirmArchive = async () => {
+    if (!archiveTarget) return;
+    setArchiveLoading(true);
+    try {
+      const id = archiveTarget.id || archiveTarget.dataset_id || archiveTarget.uuid || archiveTarget.file_id || archiveTarget.file_name;
+      const url = `${hostnameAI}/canvas/archive_data/${id}`;
+      const resp = await fetch(url, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          accept: "application/json",
+        },
+      });
+      if (!resp.ok) throw new Error("Failed to archive data");
+      setArchiveModalOpen(false);
+      setArchiveTarget(null);
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (err) {
+      alert(err.message || "Archive failed");
+    } finally {
+      setArchiveLoading(false);
     }
   };
 
@@ -361,18 +389,9 @@ const Data = () => {
     }
   };
 
-  const handleArchive = async (row) => {
-    console.log('Archive:', row);
-    await updateRecentAccess({
-      row,
-      entityType: 'data',
-      hostnameAI,
-      token,
-      userId: decodedToken?.sub,
-      setRecentList: setRecentAccessed,
-      setRecentLoading: setRecentAccessedLoading,
-      limit: 5,
-    });
+  const handleArchive = (row) => {
+    setArchiveTarget(row);
+    setArchiveModalOpen(true);
   };
 
   const actions = [
@@ -566,7 +585,7 @@ const Data = () => {
           <>
             {/* --- Updated Stats Card Row --- */}
             <div className="bg-gradient-to-r from-[#8e78b7] via-purple-300 to-purple-100 rounded-xl p-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {statsData.map((stat, index) => (
                   <StatsCardSimple
                     key={index}
@@ -665,7 +684,11 @@ const Data = () => {
                               })
                               : ''}
                           </span>
-                          <button className="p-1 hover:bg-gray-100 rounded">
+                          <button
+                            className="p-1 hover:bg-gray-100 rounded cursor-pointer"
+                            onClick={() => handleLastAccessedClick(item)}
+                            title={`Open ${item.name}`}
+                          >
                             <BookOpenText className="w-4 h-4 text-[#8e78b7]" />
                           </button>
                         </div>
@@ -704,6 +727,16 @@ const Data = () => {
         description={`Are you sure you want to delete "${deleteTarget?.file_name || deleteTarget?.id || ''}"? This action cannot be undone.`}
         loading={deleteLoading}
         confirmText="Delete"
+      />
+
+      <ArchiveModal
+        isOpen={archiveModalOpen}
+        onClose={() => setArchiveModalOpen(false)}
+        onConfirm={confirmArchive}
+        title="Archive Dataset"
+        description={`Are you sure you want to archive "${archiveTarget?.file_name || archiveTarget?.id || ''}"? This action can be undone.`}
+        loading={archiveLoading}
+        confirmText="Archive"
       />
 
       {aiCanvasLoading && (

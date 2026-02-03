@@ -17,7 +17,7 @@ const ToggleSwitch = ({ checked, onChange, readonly }) => (
     </label>
 );
 
-const FeatureSection = ({ title, description, isToggled, isExpanded, onToggle, onExpand, children, readonly, sectionKey,isLastSection = false,  }) => {
+const FeatureSection = ({ title, description, isToggled, isExpanded, onToggle, onExpand, children, readonly, sectionKey, isLastSection = false, }) => {
     const sectionDescriptions = {
         featureImportance: "Feature Importance is the process of identifying and ranking input features based on how much they contribute to a model's predictions. It helps remove irrelevant or redundant features, improve model performance, and increase interpretability by focusing on the most influential variables.",
         dimensionalityReduction: "Dimensional Reduction is the process of reducing the number of input features while retaining the most important information in the data."
@@ -30,7 +30,7 @@ const FeatureSection = ({ title, description, isToggled, isExpanded, onToggle, o
                         <h4 className="text-sm font-medium text-gray-900">{title}</h4>
                         {/* <p className="text-xs text-gray-500 mt-1">Modify column data types for accurate analysis.</p> */}
                     </div>
-                    <InfoButton sectionDescriptions={sectionDescriptions} section={sectionKey} isLastSection={isLastSection}/>
+                    <InfoButton sectionDescriptions={sectionDescriptions} section={sectionKey} isLastSection={isLastSection} />
                 </div>
                 <div className="flex items-center gap-3">
                     <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
@@ -497,28 +497,26 @@ const getAvailableSubMethods = (methodValue, classificationType) => {
 
 const MethodOption = ({ option, name, checked, onChange, readonly }) => {
     return (
-        <div className="bg-white px-4 py-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors group relative">
+        <label className={`bg-white px-4 py-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors group relative ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
             <div className="flex items-center gap-2">
-                <label className={`flex items-center gap-2 ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-                    <input
-                        type="radio"
-                        name={name}
-                        value={option.value}
-                        checked={checked}
-                        onChange={onChange}
-                        disabled={readonly}
-                        className="w-4 h-4 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7]"
-                    />
-                    <span className="text-sm text-gray-700">{option.label}</span>
-                </label>
+                <input
+                    type="radio"
+                    name={name}
+                    value={option.value}
+                    checked={checked}
+                    onChange={onChange}
+                    disabled={readonly}
+                    className={`w-4 h-4 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7] ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                />
+                <span className="text-sm text-gray-700">{option.label}</span>
             </div>
 
             {/* Tooltip */}
-            <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+            <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 pointer-events-none">
                 <p className="leading-relaxed">{option.description}</p>
                 <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
             </div>
-        </div>
+        </label>
     );
 };
 
