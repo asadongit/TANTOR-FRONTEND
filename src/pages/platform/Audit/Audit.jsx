@@ -38,14 +38,17 @@ function Audit() {
         { value: "transformation", label: "Transformation" },
         { value: "migration", label: "Migration" },
         { value: "cdc", label: "CDC" },
-        { value: "reports", label: "Reports" },
+        { value: "user-report", label: "User Report" },
+        { value: "reports", label: "Dashboard Reports" },
     ];
 
     const actionOptions = [
         { value: "CREATE", label: "Create" },
         { value: "UPDATE", label: "Update" },
         { value: "DELETE", label: "Delete" },
+        { value: "READ", label: "Read" },
         { value: "TRIGGER", label: "Trigger" },
+        { value: "OTHER", label: "Other" },
     ];
 
     const limitOptions = [
@@ -85,6 +88,103 @@ function Audit() {
         setViewMode(viewMode === 'single' ? 'compare' : 'single');
     };
 
+    const isReportRow = selectedRow?.module === "reports";
+
+    const formatDateTime = (value) => {
+        if (!value) return "—";
+        const date = new Date(value);
+        return isNaN(date.getTime()) ? value : date.toLocaleString();
+    };
+
+    const renderKeyValue = (label, value) => (
+        <div>
+            <div className="text-[11px] uppercase tracking-wide text-gray-500">{label}</div>
+            <div className="text-sm font-medium break-words">{value ?? "—"}</div>
+        </div>
+    );
+
+    const renderReportState = (state) => {
+        if (!state) {
+            return <div className="text-sm text-gray-500">No data available</div>;
+        }
+
+        const chart = state.chart || {};
+        const dashboard = state.dashboard || {};
+        const api = state.api || {};
+
+        return (
+            <div className="space-y-4 text-sm">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {renderKeyValue("Summary", state.summary)}
+                    {renderKeyValue("Object", state.object_type)}
+                    {renderKeyValue("Operation", state.operation)}
+                    {renderKeyValue("User", state.username)}
+                    {renderKeyValue("Event Time", formatDateTime(state.event_time))}
+                    {renderKeyValue("Log Id", state.log_id)}
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-3">
+                    <div className="border rounded p-3 bg-white/50">
+                        <div className="font-semibold mb-2">Chart</div>
+                        <div className="space-y-2">
+                            {renderKeyValue("Name", chart.name)}
+                            {renderKeyValue("Id", chart.id)}
+                            {renderKeyValue("Created", formatDateTime(chart.created_on))}
+                            {renderKeyValue("Updated", formatDateTime(chart.updated_on))}
+                            {renderKeyValue("Parent Dashboards", (chart.parent_dashboard_titles || chart.parent_dashboard_ids || [])?.join(", ") || "—")}
+                        </div>
+                    </div>
+                    <div className="border rounded p-3 bg-white/50">
+                        <div className="font-semibold mb-2">Dashboard</div>
+                        <div className="space-y-2">
+                            {renderKeyValue("Title", dashboard.title)}
+                            {renderKeyValue("Id", dashboard.id)}
+                            {renderKeyValue("Created", formatDateTime(dashboard.created_on))}
+                            {renderKeyValue("Updated", formatDateTime(dashboard.updated_on))}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="border rounded p-3 bg-white/50">
+                    <div className="font-semibold mb-2">API Request</div>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {renderKeyValue("Path", api.path)}
+                        {renderKeyValue("Page", api.page)}
+                        {renderKeyValue("Page Size", api.page_size)}
+                        {renderKeyValue("Order By", api.order_by)}
+                        {renderKeyValue("Direction", api.order_direction)}
+                        {renderKeyValue("Has Filters", api.has_filters)}
+                    </div>
+                </div>
+
+                {state.raw_details && (
+                    <div>
+                        <div className="font-semibold mb-2">Raw Details</div>
+                        <pre className="bg-gray-50 p-3 rounded overflow-auto text-xs">
+                            {JSON.stringify(state.raw_details, null, 2)}
+                        </pre>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const renderStatePanel = (data, emptyMessage = "No state data available") => {
+        if (isReportRow) {
+            return (
+                <div className="bg-gray-50 p-4 rounded overflow-auto h-full text-sm">
+                    {renderReportState(data) || <div className="text-sm text-gray-500">{emptyMessage}</div>}
+                </div>
+            );
+        }
+
+        return (
+            <pre className="bg-gray-50 p-4 rounded overflow-auto h-full text-sm">
+                {data ? JSON.stringify(data, null, 2) : emptyMessage}
+            </pre>
+        );
+    };
+
     const columns = useMemo(() => {
         const baseColumns = [
             { key: "user_id", label: "User" },
@@ -99,7 +199,7 @@ function Audit() {
                     </span>
                 )
             },
-            { key: "ip_address", label: "IP Address" },
+            // { key: "ip_address", label: "IP Address" },
         ];
 
         if (showPreviousState) {
@@ -526,28 +626,20 @@ function Audit() {
 
                         <div className="p-4 flex-grow overflow-auto">
                             {viewMode === 'single' ? (
-                                <pre className="bg-gray-50 p-4 rounded overflow-auto h-full text-sm">
-                                    {JSON.stringify(modalContent.data, null, 2)}
-                                </pre>
+                                renderStatePanel(modalContent.data)
                             ) : (
-                                <div className="grid grid-cols-2 gap-4 h-full">
-                                    <div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
+                                    <div className="flex flex-col h-full">
                                         <h4 className="font-medium text-blue-600 mb-2">Previous State</h4>
-                                        <pre className="bg-gray-50 p-4 rounded overflow-auto h-[calc(100%-30px)] text-sm">
-                                            {selectedRow.previous_state ?
-                                                JSON.stringify(selectedRow.previous_state, null, 2) :
-                                                'No previous state data available'
-                                            }
-                                        </pre>
+                                        <div className="flex-1">
+                                            {renderStatePanel(selectedRow.previous_state, 'No previous state data available')}
+                                        </div>
                                     </div>
-                                    <div>
+                                    <div className="flex flex-col h-full">
                                         <h4 className="font-medium text-green-600 mb-2">New State</h4>
-                                        <pre className="bg-gray-50 p-4 rounded overflow-auto h-[calc(100%-30px)] text-sm">
-                                            {selectedRow.new_state ?
-                                                JSON.stringify(selectedRow.new_state, null, 2) :
-                                                'No new state data available'
-                                            }
-                                        </pre>
+                                        <div className="flex-1">
+                                            {renderStatePanel(selectedRow.new_state, 'No new state data available')}
+                                        </div>
                                     </div>
                                 </div>
                             )}
