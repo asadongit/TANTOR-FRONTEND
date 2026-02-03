@@ -116,21 +116,7 @@ function Library() {
         <ActiveTabComponent modelData={modelData} />
       </div>
 
-      <div className="flex items-center justify-end gap-3">
-        <button
-          onClick={handleBack}
-          className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
-        >
-          Back
-        </button>
-        <button
-          onClick={handleNext}
-          disabled={activeTab === tabs.length - 1}
-          className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Next
-        </button>
-      </div>
+
     </div>
   );
 }

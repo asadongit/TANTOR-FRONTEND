@@ -18,30 +18,28 @@ const ToggleSwitch = ({ checked, onChange, readonly }) => (
 );
 
 const RadioOption = ({ name, value, checked, onChange, label, description, readonly }) => (
-    <div className="bg-white px-4 py-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors group relative">
+    <label className={`bg-white px-4 py-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors group relative ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
         <div className="flex items-center gap-2">
-            <label className={`flex items-center gap-2 ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-                <input
-                    type="radio"
-                    name={name}
-                    value={value}
-                    checked={checked}
-                    onChange={onChange}
-                    disabled={readonly}
-                    className="w-4 h-4 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7]"
-                />
-                <span className="text-sm text-gray-700">{label}</span>
-            </label>
+            <input
+                type="radio"
+                name={name}
+                value={value}
+                checked={checked}
+                onChange={onChange}
+                disabled={readonly}
+                className={`w-4 h-4 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7] ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+            />
+            <span className="text-sm text-gray-700">{label}</span>
         </div>
 
         {/* Tooltip */}
         {description && (
-            <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+            <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 pointer-events-none">
                 <p className="leading-relaxed">{description}</p>
                 <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
             </div>
         )}
-    </div>
+    </label>
 );
 
 const FeatureSection = ({
@@ -67,7 +65,7 @@ const FeatureSection = ({
                     <div className="flex-1">
                         <div className='flex flex-row'>
                             <h4 className="text-sm font-medium text-gray-700 mr-2">{title}</h4>
-                            <InfoButton sectionDescriptions= {sectionDescriptions} section={sectionKey}/>
+                            <InfoButton sectionDescriptions={sectionDescriptions} section={sectionKey} />
                         </div>
                     </div>
                 </div>
