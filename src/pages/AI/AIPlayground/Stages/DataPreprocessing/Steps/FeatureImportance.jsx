@@ -17,7 +17,7 @@ const ToggleSwitch = ({ checked, onChange, readonly }) => (
     </label>
 );
 
-const FeatureSection = ({ title, description, isToggled, isExpanded, onToggle, onExpand, children, readonly, sectionKey,isLastSection = false,  }) => {
+const FeatureSection = ({ title, description, isToggled, isExpanded, onToggle, onExpand, children, readonly, sectionKey, isLastSection = false, }) => {
     const sectionDescriptions = {
         featureImportance: "Feature Importance is the process of identifying and ranking input features based on how much they contribute to a model's predictions. It helps remove irrelevant or redundant features, improve model performance, and increase interpretability by focusing on the most influential variables.",
         dimensionalityReduction: "Dimensional Reduction is the process of reducing the number of input features while retaining the most important information in the data."
@@ -30,7 +30,7 @@ const FeatureSection = ({ title, description, isToggled, isExpanded, onToggle, o
                         <h4 className="text-sm font-medium text-gray-900">{title}</h4>
                         {/* <p className="text-xs text-gray-500 mt-1">Modify column data types for accurate analysis.</p> */}
                     </div>
-                    <InfoButton sectionDescriptions={sectionDescriptions} section={sectionKey} isLastSection={isLastSection}/>
+                    <InfoButton sectionDescriptions={sectionDescriptions} section={sectionKey} isLastSection={isLastSection} />
                 </div>
                 <div className="flex items-center gap-3">
                     <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
@@ -281,21 +281,15 @@ const DIMENSIONALITY_REDUCTION_DESCRIPTIONS = {
     lda: "LDA reduces dimensions by maximizing class separability using labeled data. It is mainly used for supervised classification tasks.",
     tsne: "t-SNE maps high-dimensional data into a lower-dimensional space while preserving local similarities. It is primarily used for visualization, not model training.",
     umap: "UMAP reduces dimensions by preserving both local and global data structure. It is faster and more scalable than t-SNE.",
-    autoencoder: "Autoencoders are neural networks that learn a compressed representation of data. They are effective for capturing complex non-linear relationships.",
     sparse_pca: "Sparse PCA is a variant of PCA that enforces feature sparsity in components. It improves interpretability by using fewer original features.",
     factor_analysis: "Factor Analysis models data using a smaller number of latent factors. It focuses on explaining correlations among observed variables.",
-    nmf: "NMF decomposes data into non-negative components. It is useful when features represent additive quantities, such as text or image data.",
     lsa: "LSA reduces dimensions using Singular Value Decomposition on text data. It captures underlying semantic relationships between terms.",
-    lle: "LLE reduces dimensions by preserving local linear relationships among data points. It is effective for non-linear manifolds.",
-    modified_lle: "Modified LLE improves stability by adjusting neighborhood reconstruction. It performs better when data is noisy or unevenly distributed.",
-    hessian_lle: "Hessian LLE preserves local curvature of the data manifold. It is useful for complex non-linear structures.",
     spectral_embedding: "Spectral Embedding uses graph-based techniques to reduce dimensions. It preserves neighborhood relationships in the data.",
     random_projection: "Random Projection reduces dimensions using random linear mappings. It is fast and suitable for very high-dimensional data.",
     truncated_svd: "Truncated SVD reduces dimensions by keeping the most significant singular values. It is commonly used for sparse and text-based datasets.",
     dictionary_learning: "Dictionary Learning represents data as a sparse combination of basis vectors. It captures important patterns with fewer components.",
     mini_batch_dictionary_learning: "This is a scalable version of Dictionary Learning using mini-batches. It is suitable for large datasets.",
     vae: "VAE is a probabilistic autoencoder that learns a latent variable distribution. It is used for both dimensionality reduction and data generation.",
-    ltsa: "LTSA is a non-linear dimensionality reduction technique that preserves the local geometric structure of data. It aligns local tangent spaces of neighboring data points to create a meaningful low-dimensional representation.",
     isomap: "Isomap reduces dimensions by preserving geodesic distances between data points. It is effective for unfolding non-linear manifolds.",
     mds: "MDS reduces dimensions by preserving pairwise distances between data points. It is mainly used for visualization and exploratory analysis.",
     ica: "ICA is a dimensionality reduction and signal separation technique that transforms data into statistically independent components. It is commonly used to separate mixed signals and identify hidden underlying factors in the data."
@@ -497,28 +491,26 @@ const getAvailableSubMethods = (methodValue, classificationType) => {
 
 const MethodOption = ({ option, name, checked, onChange, readonly }) => {
     return (
-        <div className="bg-white px-4 py-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors group relative">
+        <label className={`bg-white px-4 py-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors group relative ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
             <div className="flex items-center gap-2">
-                <label className={`flex items-center gap-2 ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-                    <input
-                        type="radio"
-                        name={name}
-                        value={option.value}
-                        checked={checked}
-                        onChange={onChange}
-                        disabled={readonly}
-                        className="w-4 h-4 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7]"
-                    />
-                    <span className="text-sm text-gray-700">{option.label}</span>
-                </label>
+                <input
+                    type="radio"
+                    name={name}
+                    value={option.value}
+                    checked={checked}
+                    onChange={onChange}
+                    disabled={readonly}
+                    className={`w-4 h-4 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7] ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                />
+                <span className="text-sm text-gray-700">{option.label}</span>
             </div>
 
             {/* Tooltip */}
-            <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+            <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 pointer-events-none">
                 <p className="leading-relaxed">{option.description}</p>
                 <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
             </div>
-        </div>
+        </label>
     );
 };
 

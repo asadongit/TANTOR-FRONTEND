@@ -1,4 +1,4 @@
-import { FileText, Clock, AlertTriangle, TrendingUp, Search, Plus, RefreshCw } from 'lucide-react';
+import { FileText, Clock, AlertTriangle, TrendingUp, Search, Plus, RefreshCw, MoreVertical, Edit, Eye } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import DataTable from '../../../components/DataTable';
@@ -7,6 +7,7 @@ import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 import { useAuth } from '../../../context/AuthContext';
 import InterventionsTab from '../Orchestration/Tabs/InterventionsTab';
 import toast from 'react-hot-toast';
+import ScheduleDetailsModal from './modals/ScheduleDetailsModal';
 
 const Orchestration = () => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -19,6 +20,8 @@ const Orchestration = () => {
     const [schedulerLoading, setSchedulerLoading] = useState(false);
     const [activityLoading, setActivityLoading] = useState(false);
     const [refreshLoading, setRefreshLoading] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedSchedule, setSelectedSchedule] = useState(null);
     const navigate = useNavigate();
     const hostnameAI = window._env_?.VITE_AI_API;
     const { token, decodedToken } = useAuth();
@@ -58,6 +61,8 @@ const Orchestration = () => {
                     ...prevState,
                     owner_id: data.user_id
                 }));
+
+                fetchSummaryData(data.user_id);
             } catch (error) {
                 console.error('Error fetching user ID:', error);
             }
@@ -67,10 +72,6 @@ const Orchestration = () => {
     }, [decodedToken?.preferred_username]);
 
     useEffect(() => {
-        fetchSummaryData();
-    }, []);
-
-    useEffect(() => {
         if (activeTab === 'Scheduler') {
             fetchSchedulerData();
         } else if (activeTab === 'Recent Activity') {
@@ -78,9 +79,9 @@ const Orchestration = () => {
         }
     }, [activeTab]);
 
-    const fetchSummaryData = async () => {
+    const fetchSummaryData = async (userIdParam) => {
         try {
-            const response = await fetch(`${hostnameAI}/orchestration/schedules/dashboard/summary`);
+            const response = await fetch(`${hostnameAI}/orchestration/schedules/dashboard/summary?user_id=${userIdParam}`);
             const data = await response.json();
             setSummaryData(data);
             setLoading(false);
@@ -103,7 +104,12 @@ const Orchestration = () => {
                 frequency: item.frequency || '-',
                 last_drift_check: item.last_drift_check || null,
                 next_run: item.next_run || '-',
-                status: item.status || '-'
+                status: item.status || '-',
+                project_name: item.project_name || null,
+                model_name: item.model_name || null,
+                data_drift_check: item.data_drift_check || 0,
+                model_drift_check: item.model_drift_check || 0,
+                created_by: item.created_by || null
             }));
 
             setSchedulerData(transformedData);
@@ -247,12 +253,25 @@ const Orchestration = () => {
             return <span className="text-gray-500">-</span>;
         }
 
-        const driftStatus = row.last_drift_check.toLowerCase() === 'detected' ? 'Detected' : 'Safe';
-        const statusColor = driftStatus === 'Detected' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
+        const status = row.last_drift_check;
+        let statusColor = '';
+        let displayText = status;
+
+        switch (status) {
+            case 'Prediction Successful':
+                statusColor = 'bg-green-100 text-green-700';
+                break;
+            case 'Data Drift Detected':
+            case 'Model Drift Detected':
+                statusColor = 'bg-red-100 text-red-700';
+                break;
+            default:
+                statusColor = 'bg-gray-100 text-gray-700';
+        }
 
         return (
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor}`}>
-                • {driftStatus}
+                {displayText}
             </span>
         );
     };
@@ -278,12 +297,10 @@ const Orchestration = () => {
     const getStatusColor = (status) => {
         switch (status) {
             case 'Running':
-            case 'Active':
+            case 'active':
                 return 'bg-green-100 text-green-700';
             case 'Blocked':
                 return 'bg-red-100 text-red-700';
-            case 'Waiting':
-                return 'bg-gray-100 text-gray-700';
             default:
                 return 'bg-gray-100 text-gray-700';
         }
@@ -346,6 +363,47 @@ const Orchestration = () => {
         navigate('/ai/orchestration/new')
 
     }
+
+    const handleEdit = (row) => {
+        console.log("Edit schedule:", row);
+    };
+
+    const handleDetails = (row) => {
+        const validStatuses = ['Prediction Successful', 'Model Drift Detected', 'Data Drift Detected'];
+
+        if (!row.last_drift_check || !validStatuses.includes(row.last_drift_check)) {
+            toast.error('Last run check value is not supported', {
+                duration: 4000,
+                position: 'top-right',
+            });
+            return;
+        }
+
+        setSelectedSchedule(row);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setTimeout(() => {
+            setSelectedSchedule(null);
+        }, 300);
+    };
+
+    const actions = [
+        {
+            label: "Edit",
+            icon: <Edit className="w-4 h-4" />,
+            onClick: handleEdit,
+            tooltip: "Edit Schedule",
+        },
+        {
+            label: "Details",
+            icon: <Eye className="w-4 h-4" />,
+            onClick: handleDetails,
+            tooltip: "View Details",
+        },
+    ];
 
     return (
         <div className="p-3 sm:p-4 lg:p-6 bg-gray-50 min-h-screen">
@@ -479,7 +537,7 @@ const Orchestration = () => {
                                             { key: 'frequency', label: 'Frequency', sortable: true },
                                             {
                                                 key: 'last_drift_check',
-                                                label: 'Last Drift Check',
+                                                label: 'Last Run Check',
                                                 sortable: true,
                                                 render: renderLastDriftCheck
                                             },
@@ -490,9 +548,10 @@ const Orchestration = () => {
                                                 sortable: true,
                                                 render: renderStatus
                                             },
+                                            { label: 'Action', sortable: false, width: '100px' },
                                         ]}
                                         data={filteredSchedulerData}
-                                        actions={[]}
+                                        actions={actions}
                                         isLoading={false}
                                         isError={false}
                                     />
@@ -506,6 +565,12 @@ const Orchestration = () => {
                     </div>
                 </div>
             </div>
+
+            <ScheduleDetailsModal
+                isOpen={isModalOpen}
+                onClose={handleCloseModal}
+                scheduleData={selectedSchedule}
+            />
         </div>
     );
 };

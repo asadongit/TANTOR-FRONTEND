@@ -28,6 +28,13 @@ const Dashboard = () => {
     return name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
   };
 
+  const formatPct = (n) => {
+    const num = Number(n);
+    if (!Number.isFinite(num)) return "0%";
+    const rounded = Math.abs(num) >= 10 ? Math.round(num) : Math.round(num * 10) / 10;
+    return `${rounded}%`;
+  };
+
   useEffect(() => {
     setMode('write');
   }, []);
@@ -99,12 +106,12 @@ const Dashboard = () => {
   }, [hostnameAI, token]);
 
   const statsData = [
-    { label: 'Sources', value: summaryData.counts?.sources?.current || '0', icon: FileText, trend: summaryData.counts?.sources?.trend === 'increased' ? 'up' : 'down' },
-    { label: 'Size (GB)', value: summaryData.metrics?.total_dataset_size_gb?.current?.toFixed(2) || '0', icon: Database, trend: summaryData.metrics?.total_dataset_size_gb?.trend === 'increased' ? 'up' : 'down' },
-    { label: 'Projects', value: summaryData.counts?.projects?.current || '0', icon: FolderKanban, trend: summaryData.counts?.projects?.trend === 'increased' ? 'up' : 'down' },
-    { label: 'Models', value: summaryData.counts?.models?.current || '0', icon: Box, trend: summaryData.counts?.models?.trend === 'increased' ? 'up' : 'down' },
-    { label: 'Datasets', value: summaryData.counts?.datasets?.current || '0', icon: Bot, trend: summaryData.counts?.datasets?.trend === 'increased' ? 'up' : 'down' },
-    { label: 'Fairness', value: summaryData.metrics?.avg_fairness_ratio?.current?.toFixed(2) || '0', icon: Scale,},
+    { label: 'Sources', value: summaryData.counts?.sources?.current || '0', icon: FileText, trend: summaryData.counts?.sources?.trend === 'increased' ? 'up' : summaryData.counts?.sources?.trend === 'decreased' ? 'down' : null, trendValue: formatPct(summaryData.counts?.sources?.percentage_change) },
+    { label: 'Size (GB)', value: summaryData.metrics?.total_dataset_size_gb?.current?.toFixed(2) || '0', icon: Database, trend: summaryData.metrics?.total_dataset_size_gb?.trend === 'increased' ? 'up' : summaryData.metrics?.total_dataset_size_gb?.trend === 'decreased' ? 'down' : null, trendValue: formatPct(summaryData.metrics?.total_dataset_size_gb?.percentage_change) },
+    { label: 'Projects', value: summaryData.counts?.projects?.current || '0', icon: FolderKanban, trend: summaryData.counts?.projects?.trend === 'increased' ? 'up' : summaryData.counts?.projects?.trend === 'decreased' ? 'down' : null, trendValue: formatPct(summaryData.counts?.projects?.percentage_change), onClick: () => navigate('/ai/hub/projects') },
+    { label: 'Models', value: summaryData.counts?.models?.current || '0', icon: Box, trend: summaryData.counts?.models?.trend === 'increased' ? 'up' : summaryData.counts?.models?.trend === 'decreased' ? 'down' : null, trendValue: formatPct(summaryData.counts?.models?.percentage_change), onClick: () => navigate('/ai/hub/models') },
+    { label: 'Datasets', value: summaryData.counts?.datasets?.current || '0', icon: Bot, trend: summaryData.counts?.datasets?.trend === 'increased' ? 'up' : summaryData.counts?.datasets?.trend === 'decreased' ? 'down' : null, trendValue: formatPct(summaryData.counts?.datasets?.percentage_change), onClick: () => navigate('/ai/hub/data') },
+    { label: 'Fairness', value: summaryData.metrics?.avg_fairness_ratio?.current?.toFixed(2) || '0', icon: Scale, trend: null, trendValue: null },
   ];
 
   const tokenUsageData = [
@@ -139,18 +146,23 @@ const Dashboard = () => {
     { name: 'Cybersecurity Experts', description: 'protecting against threats', rating: 4.9 },
   ];
 
-  const StatCard = ({ label, value, icon: Icon, trend }) => (
-    <div className="bg-white rounded-xl px-5 py-4 border border-purple-200 shadow-sm">
+  const StatCard = ({ label, value, icon: Icon, trend, trendValue, onClick }) => (
+    <div className={`bg-white rounded-xl px-5 py-4 border border-purple-200 shadow-sm ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`} onClick={onClick}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-purple-50 rounded-lg">
-            <Icon className="w-5 h-5 text-purple-600" />
+            <Icon className="w-5 h-5 text-[#8e78b7]" />
           </div>
           <span className="text-gray-600 text-sm">{label}</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xl font-bold text-gray-800">{value}</span>
-          {trend === 'up' && <ArrowUp className="w-4 h-4 text-orange-500" />}
+          {trend && trendValue && (
+            <div className={`flex items-center gap-1 ${trend === 'up' ? 'text-emerald-500' : 'text-red-500'}`}>
+              {trend === 'up' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
+              <span className="text-sm font-medium">{trendValue}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -231,7 +243,7 @@ const Dashboard = () => {
       <div className="bg-gradient-to-r from-purple-400 via-purple-300 to-purple-200 rounded-2xl p-4">
         <div className="grid grid-cols-4 gap-4">
           <div className="col-span-3 grid grid-cols-3 gap-4">
-            <StatCard {...statsData[0]} />
+            {/* <StatCard {...statsData[0]} /> */}
             <StatCard {...statsData[1]} />
             <StatCard {...statsData[2]} />
             <StatCard {...statsData[3]} />
@@ -249,7 +261,12 @@ const Dashboard = () => {
               <p className="text-sm text-gray-500">Model</p>
               <p className="text-2xl font-bold text-orange-500 flex items-center justify-center">
                 {summaryData.metrics?.avg_model_accuracy?.current ? `${(summaryData.metrics.avg_model_accuracy.current * 100).toFixed(1)}%` : '0%'}
-                {summaryData.metrics?.avg_model_accuracy?.trend === 'decreased' ? <ArrowDown className="w-4 h-4 ml-1" /> : <ArrowUp className="w-4 h-4 ml-1" />}
+                {summaryData.metrics?.avg_model_accuracy?.trend && summaryData.metrics?.avg_model_accuracy?.percentage_change && (
+                  <div className={`flex items-center gap-1 ml-2 ${summaryData.metrics.avg_model_accuracy.trend === 'increased' ? 'text-emerald-500' : 'text-red-500'}`}>
+                    {summaryData.metrics.avg_model_accuracy.trend === 'increased' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
+                    <span className="text-sm font-medium">{formatPct(summaryData.metrics.avg_model_accuracy.percentage_change)}</span>
+                  </div>
+                )}
               </p>
             </div>
           </div>
