@@ -37,6 +37,7 @@ const CommentsTab = ({ projectData }) => {
         component: 'Project',
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [addCommentError, setAddCommentError] = useState(null);
 
     const [isRepliesOpen, setIsRepliesOpen] = useState(false);
     const [activeCommentId, setActiveCommentId] = useState(null);
@@ -56,7 +57,7 @@ const CommentsTab = ({ projectData }) => {
             setIsLoading(true);
             setError(null);
             try {
-                const url = `${hostnameAI}/canvas/comments/by-component?component=project&component_id=${encodeURIComponent(projectId)}`;
+                const url = `${hostnameAI}/canvas/comments/by-project-all-components?project_id=${encodeURIComponent(projectId)}`;
                 const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
                 if (!res.ok) throw new Error('Failed to fetch comments');
                 const data = await res.json();
@@ -232,34 +233,35 @@ const CommentsTab = ({ projectData }) => {
         setComponentOptions([]);
         setIsComponentNameDisabled(true);
         setComponentId(projectId);
+        setAddCommentError(null);
     };
 
     const canCallApis = Boolean(hostnameAI && token && decodedToken?.sub && projectId);
 
     const submitAddComment = async () => {
         if (!canCallApis) {
-            setError('Missing required context (token/user/project).');
+            setAddCommentError('Missing required context (token/user/project).');
             return;
         }
         if (!addForm.subject.trim() || !addForm.comment.trim()) {
-            setError('Subject and Comment are required.');
+            setAddCommentError('Subject and Comment are required.');
             return;
         }
         if (wordCount(addForm.subject) > 120) {
-            setError('Subject cannot exceed 120 words.');
+            setAddCommentError('Subject cannot exceed 120 words.');
             return;
         }
         if (wordCount(addForm.comment) > 500) {
-            setError('Comment cannot exceed 500 words.');
+            setAddCommentError('Comment cannot exceed 500 words.');
             return;
         }
         if (!componentId) {
-            setError('Please select a valid component name.');
+            setAddCommentError('Please select a valid component name.');
             return;
         }
 
         setIsSubmitting(true);
-        setError(null);
+        setAddCommentError(null);
         try {
             const payload = {
                 user_id: decodedToken.sub,
@@ -282,7 +284,7 @@ const CommentsTab = ({ projectData }) => {
             closeAdd();
             setRefreshTick((x) => x + 1);
         } catch (e) {
-            setError(e?.message || 'Failed to add comment');
+            setAddCommentError(e?.message || 'Failed to add comment');
         } finally {
             setIsSubmitting(false);
         }
@@ -612,7 +614,8 @@ const CommentsTab = ({ projectData }) => {
                                     <input
                                         value={addForm.subject}
                                         onChange={(e) => {
-                                            const value = e.target.value;
+                                            let value = e.target.value;
+                                            value = value.replace(/[^a-zA-Z0-9\s\/\-]/g, '');
                                             if (wordCount(value) <= 120) {
                                                 setAddForm((s) => ({ ...s, subject: value }));
                                             } else {
@@ -643,6 +646,7 @@ const CommentsTab = ({ projectData }) => {
                                 />
                                 <div className="text-xs text-gray-400 text-right">{wordCount(addForm.comment)}/500 words</div>
                             </div>
+                            {addCommentError && <p className="text-red-500 text-xs mt-2">{addCommentError}</p>}
 
                             <div className="flex items-center gap-2">
                                 <input

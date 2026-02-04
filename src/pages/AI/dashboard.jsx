@@ -223,7 +223,7 @@ const Dashboard = () => {
         if (!response.ok) throw new Error('Failed to fetch model');
         const data = await response.json();
         const model = Array.isArray(data) ? data[0] : data;
-        navigate('/ai/hub/models/library', { state: { modelData: model } });
+        navigate(`/ai/hub/models/library/${encodeURIComponent(String(entity_id))}`, { state: { modelData: model } });
       } else if (entity_type === 'project') {
         const response = await fetch(`${hostnameAI}/canvas/project_list/?project_id=${encodeURIComponent(entity_id)}`, {
           headers: { 'Authorization': `Bearer ${token}` }

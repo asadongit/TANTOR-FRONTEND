@@ -433,7 +433,8 @@ function Models() {
   const openModelLibrary = useCallback(
     (row) => {
       const raw = row?._raw ?? row;
-      navigate("/ai/hub/models/library", {
+      const modelId = raw?.id || raw?.model_id;
+      navigate(`/ai/hub/models/library/${encodeURIComponent(String(modelId))}`, {
         state: { modelData: raw },
       });
     },

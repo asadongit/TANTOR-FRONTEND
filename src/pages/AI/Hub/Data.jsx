@@ -687,7 +687,7 @@ const Data = () => {
                 ) : recentAccessedError ? (
                   <div className="text-center py-8 text-red-500">{recentAccessedError}</div>
                 ) : lastAccessedData.length > 0 ? (
-                  <div className="max-h-[240px] overflow-y-auto">
+                  <div className="max-h-[240px]">
                     {lastAccessedData.map((item, index) => (
                       <div key={index}>
                         <div className="flex items-center justify-between py-3 px-2 hover:bg-gray-50">
