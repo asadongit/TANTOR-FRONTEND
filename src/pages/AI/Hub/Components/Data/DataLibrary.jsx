@@ -1,19 +1,57 @@
 // DataLibrary.jsx
-import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { ChevronLeft, LayoutDashboard } from 'lucide-react';
 import OverviewTab from './OverviewTab';
 import ProjectsTab from './ProjectsTab';
 import CommentsTab from './CommentsTab';
 import AccessTab from './AccessTab';
 import Snapshot from './Snapshot';
+import { useAuth } from '../../../../../context/AuthContext';
 
 const DataLibrary = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const { projectId } = useParams();
     const [activeTab, setActiveTab] = useState('Overview');
+    const [datasetData, setDatasetData] = useState(location.state?.datasetData || null);
+    const [isLoading, setIsLoading] = useState(!datasetData);
+    const [error, setError] = useState(null);
+    const { token } = useAuth();
+    const hostnameAI = window._env_?.VITE_AI_API;
 
-    const datasetData = location.state?.datasetData;
+    useEffect(() => {
+        if (!datasetData && projectId) {
+            const fetchDatasetData = async () => {
+                setIsLoading(true);
+                setError(null);
+                try {
+                    const response = await fetch(`${hostnameAI}/canvas/list_data_info?data_id=${encodeURIComponent(projectId)}`, {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    });
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch dataset data');
+                    }
+                    const data = await response.json();
+                    // Handle different response formats (array, object with data, or direct object)
+                    const dataset = (Array.isArray(data) ? data[0] : data?.data?.[0] || data?.dataset || data) || null;
+                    if (dataset) {
+                        setDatasetData(dataset);
+                    } else {
+                        throw new Error('Dataset not found');
+                    }
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            fetchDatasetData();
+        }
+    }, [datasetData, projectId, hostnameAI, token]);
 
     const tabs = ['Overview', 'Projects', 'Comments', 'Snapshot'];
 
@@ -48,6 +86,49 @@ const DataLibrary = () => {
         return datasetData?.file_name || 'Dataset';
     };
 
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8e78b7] mx-auto"></div>
+                    <p className="mt-4 text-gray-600">Loading dataset...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+                <div className="text-center">
+                    <p className="text-red-600 mb-4">Error: {error}</p>
+                    <button
+                        onClick={() => navigate('/ai/hub/data')}
+                        className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a5fa8] transition-colors"
+                    >
+                        Back to Data Hub
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (!datasetData) {
+        return (
+            <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+                <div className="text-center">
+                    <p className="text-gray-600 mb-4">Dataset not found</p>
+                    <button
+                        onClick={() => navigate('/ai/hub/data')}
+                        className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a5fa8] transition-colors"
+                    >
+                        Back to Data Hub
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     const DatasetName = getDatasetName();
 
     return (
@@ -67,11 +148,7 @@ const DataLibrary = () => {
                             <span className="text-lg font-semibold text-[#8e78b7]">{DatasetName}</span>
                         </div>
                     </div>
-                    <button className="px-3 py-1.5 rounded bg-purple-100 text-[#8e78b7] font-medium text-sm flex items-center gap-1.5 hover:bg-purple-200 transition-colors"
-                        onClick={() => navigate('/ai/hub/data')}>
-                        <LayoutDashboard className="w-4 h-4" />
-                        AI/ML
-                    </button>
+
                 </div>
 
                 <div className="flex items-center gap-8 px-6 pt-4">
