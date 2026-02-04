@@ -87,11 +87,13 @@ const ComponentsTab = ({ projectData }) => {
         setEntityNavLoading(true);
         try {
             const fullRow = await fetchModelById(row);
-            navigate("/ai/hub/models/library", {
+            const modelId = fullRow?.id || fullRow?.model_id;
+            navigate(`/ai/hub/models/library/${encodeURIComponent(String(modelId))}`, {
                 state: { modelData: fullRow },
             });
         } catch (e) {
-            navigate("/ai/hub/models/library", {
+            const modelId = row?.id || row?.model_id;
+            navigate(`/ai/hub/models/library/${encodeURIComponent(String(modelId))}`, {
                 state: { modelData: row },
             });
         } finally {

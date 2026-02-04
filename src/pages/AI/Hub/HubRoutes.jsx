@@ -18,7 +18,7 @@ export const HubRoutes = (
     <Route path={`${PREFIX}/data/library/:projectId`} element={<DataLibrary />} />
     <Route path={`${PREFIX}/projects`} element={<Projects />} />
     <Route path={`${PREFIX}/projects/:projectId/library`} element={<ProjectLibrary />} />
-    <Route path={`${PREFIX}/models/library`} element={<Library />} />
+    <Route path={`${PREFIX}/models/library/:modelId`} element={<Library />} />
 
   </>
 );

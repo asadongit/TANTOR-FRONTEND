@@ -27,6 +27,7 @@ const CommentsTab = ({ projectData }) => {
     );
     const [filters, setFilters] = useState(defaultFilters);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [addForm, setAddForm] = useState({
@@ -37,7 +38,7 @@ const CommentsTab = ({ projectData }) => {
         component: 'Project',
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
-
+    const [addCommentError, setAddCommentError] = useState(null);
     const [isRepliesOpen, setIsRepliesOpen] = useState(false);
     const [activeCommentId, setActiveCommentId] = useState(null);
     const [replyText, setReplyText] = useState('');
@@ -56,7 +57,7 @@ const CommentsTab = ({ projectData }) => {
             setIsLoading(true);
             setError(null);
             try {
-                const url = `${hostnameAI}/canvas/comments/by-component?component=project&component_id=${encodeURIComponent(projectId)}`;
+                const url = `${hostnameAI}/canvas/comments/by-project-all-components?project_id=${encodeURIComponent(projectId)}`;
                 const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
                 if (!res.ok) throw new Error('Failed to fetch comments');
                 const data = await res.json();
@@ -232,34 +233,35 @@ const CommentsTab = ({ projectData }) => {
         setComponentOptions([]);
         setIsComponentNameDisabled(true);
         setComponentId(projectId);
+        setAddCommentError(null);
     };
 
     const canCallApis = Boolean(hostnameAI && token && decodedToken?.sub && projectId);
 
     const submitAddComment = async () => {
         if (!canCallApis) {
-            setError('Missing required context (token/user/project).');
+            setAddCommentError('Missing required context (token/user/project).');
             return;
         }
         if (!addForm.subject.trim() || !addForm.comment.trim()) {
-            setError('Subject and Comment are required.');
+            setAddCommentError('Subject and Comment are required.');
             return;
         }
         if (wordCount(addForm.subject) > 120) {
-            setError('Subject cannot exceed 120 words.');
+            setAddCommentError('Subject cannot exceed 120 words.');
             return;
         }
         if (wordCount(addForm.comment) > 500) {
-            setError('Comment cannot exceed 500 words.');
+            setAddCommentError('Comment cannot exceed 500 words.');
             return;
         }
         if (!componentId) {
-            setError('Please select a valid component name.');
+            setAddCommentError('Please select a valid component name.');
             return;
         }
 
         setIsSubmitting(true);
-        setError(null);
+        setAddCommentError(null);
         try {
             const payload = {
                 user_id: decodedToken.sub,
@@ -282,7 +284,7 @@ const CommentsTab = ({ projectData }) => {
             closeAdd();
             setRefreshTick((x) => x + 1);
         } catch (e) {
-            setError(e?.message || 'Failed to add comment');
+            setAddCommentError(e?.message || 'Failed to add comment');
         } finally {
             setIsSubmitting(false);
         }
@@ -342,15 +344,15 @@ const CommentsTab = ({ projectData }) => {
 
     const columns = useMemo(
         () => [
-            { key: 'user_name', label: 'User Name', sortable: true, width: '160px' },
-            { key: 'component', label: 'Component', sortable: true, width: '180px' },
-            { key: 'component_name', label: 'Component Name', sortable: true, width: '180px' },
+            { key: 'user_name', label: 'User Name', sortable: true, width: '130px' },
+            { key: 'component', label: 'Component', sortable: true, width: '100px' },
+            { key: 'component_name', label: 'Component Name', sortable: false, width: '180px' },
 
             {
                 key: 'subject',
                 label: 'Subject',
-                sortable: true,
-                width: '240px',
+                sortable: false,
+                width: '160px',
                 render: (row) => (
                     <span className="text-gray-900 font-medium truncate block" title={row.subject}>
                         {row.subject}
@@ -361,6 +363,7 @@ const CommentsTab = ({ projectData }) => {
                 key: 'comment',
                 label: 'Comment',
                 sortable: false,
+                width: '150px',
                 render: (row) => (
                     <span className="text-gray-700 line-clamp-2 block" title={row.comment}>
                         {row.comment}
@@ -372,13 +375,14 @@ const CommentsTab = ({ projectData }) => {
             {
                 key: 'repliesCount',
                 label: '',
-                // sortable: true,
-                width: '130px',
+                sortable: false,
+
+                width: '100px',
                 render: (row) => (
                     <button
                         type="button"
                         onClick={() => openReplies(row.__raw)}
-                        className="inline-flex items-center gap-2 px-2.5 py-1 border border-[#8e78b7]  rounded-lg text-xs hover:bg-gray-50"
+                        className="inline-flex items-center gap-1 px-1.5 py-1 border border-[#8e78b7]  rounded-lg text-xs hover:bg-gray-50"
                         title="View replies"
                     >
                         <MessageSquare className="w-4 h-4 text-gray-500" />
@@ -477,6 +481,7 @@ const CommentsTab = ({ projectData }) => {
                             type="date"
                             value={filters.fromDate}
                             onChange={(e) => setFilters((s) => ({ ...s, fromDate: e.target.value }))}
+                            max={today}
                             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                         />
                     </div>
@@ -487,6 +492,7 @@ const CommentsTab = ({ projectData }) => {
                             type="date"
                             value={filters.toDate}
                             onChange={(e) => setFilters((s) => ({ ...s, toDate: e.target.value }))}
+                            max={today}
                             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                         />
                     </div>
@@ -612,7 +618,8 @@ const CommentsTab = ({ projectData }) => {
                                     <input
                                         value={addForm.subject}
                                         onChange={(e) => {
-                                            const value = e.target.value;
+                                            let value = e.target.value;
+                                            value = value.replace(/[^a-zA-Z0-9\s\/\-]/g, '');
                                             if (wordCount(value) <= 120) {
                                                 setAddForm((s) => ({ ...s, subject: value }));
                                             } else {
@@ -643,6 +650,7 @@ const CommentsTab = ({ projectData }) => {
                                 />
                                 <div className="text-xs text-gray-400 text-right">{wordCount(addForm.comment)}/500 words</div>
                             </div>
+                            {addCommentError && <p className="text-red-500 text-xs mt-2">{addCommentError}</p>}
 
                             <div className="flex items-center gap-2">
                                 <input

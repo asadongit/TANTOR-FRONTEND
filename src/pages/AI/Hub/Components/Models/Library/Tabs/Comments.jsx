@@ -26,6 +26,7 @@ const Comments = (modelData) => {
     );
     const [filters, setFilters] = useState(defaultFilters);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [addForm, setAddForm] = useState({
@@ -271,13 +272,13 @@ const Comments = (modelData) => {
 
     const columns = useMemo(
         () => [
-            { key: 'user_name', label: 'User Name', sortable: true, width: '160px' },
-            { key: 'component', label: 'Component', sortable: true, width: '180px' },
+            { key: 'user_name', label: 'User Name', sortable: true, width: '130px' },
+            { key: 'component', label: 'Component', sortable: true, width: '100px' },
             {
                 key: 'subject',
                 label: 'Subject',
-                sortable: true,
-                width: '240px',
+                sortable: false,
+                width: '160px',
                 render: (row) => (
                     <span className="text-gray-900 font-medium truncate block" title={row.subject}>
                         {row.subject}
@@ -288,6 +289,7 @@ const Comments = (modelData) => {
                 key: 'comment',
                 label: 'Comment',
                 sortable: false,
+                width: '150px',
                 render: (row) => (
                     <span className="text-gray-700 line-clamp-2 block" title={row.comment}>
                         {row.comment}
@@ -299,7 +301,7 @@ const Comments = (modelData) => {
             {
                 key: 'repliesCount',
                 label: '',
-                sortable: true,
+                sortable: false,
                 width: '130px',
                 render: (row) => (
                     <button
@@ -404,6 +406,7 @@ const Comments = (modelData) => {
                             type="date"
                             value={filters.fromDate}
                             onChange={(e) => setFilters((s) => ({ ...s, fromDate: e.target.value }))}
+                            max={today}
                             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                         />
                     </div>
@@ -414,6 +417,7 @@ const Comments = (modelData) => {
                             type="date"
                             value={filters.toDate}
                             onChange={(e) => setFilters((s) => ({ ...s, toDate: e.target.value }))}
+                            max={today}
                             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                         />
                     </div>

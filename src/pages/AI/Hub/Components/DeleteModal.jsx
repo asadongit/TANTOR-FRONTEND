@@ -20,7 +20,7 @@ const DeleteModal = ({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="mb-6 text-gray-700">{description}</div>
+        <div className="mb-6 text-gray-700 break-words whitespace-normal">{description}</div>
         <div className="flex justify-end gap-2">
           <button
             className="px-4 py-2 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
