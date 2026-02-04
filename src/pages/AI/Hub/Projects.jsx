@@ -1,4 +1,4 @@
-import { Search, List, RefreshCw, CheckCircle, Target, BookOpenText, Trash2, Plus, LayoutGrid, Folder, Database, Bot, ArrowUp, ArrowDown } from 'lucide-react';
+import { Search, List, RefreshCw, CheckCircle, Target, BookOpenText, Trash2, Plus, LayoutGrid, Folder, Database, Bot, ArrowUp, ArrowDown, Archive } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Breadcrumb from '../../../components/Breadcrumb';
@@ -6,6 +6,8 @@ import DataTable from '../../../components/DataTable';
 import { useAuth } from '../../../context/AuthContext';
 import { CreateProjectModal } from '../AIPlayground/modals/Dashboard/CreateProjectModal';
 import DeleteModal from './Components/DeleteModal';
+import ArchiveModal from './Components/ArchieveModal';
+import StatusFilterDropdown from './Components/StateSelector';
 import { updateRecentAccess } from './Components/Hooks';
 
 const Projects = () => {
@@ -14,7 +16,7 @@ const Projects = () => {
     const hostnameAI = window._env_?.VITE_AI_API;
 
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
+    const [statusFilter, setStatusFilter] = useState(['active']); // Array of selected statuses: active, archived
     const [isLoading, setIsLoading] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [dashboardRefreshTrigger, setDashboardRefreshTrigger] = useState(0);
@@ -26,6 +28,10 @@ const Projects = () => {
     const [error, setError] = useState(null);
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
+
+    const [archiveModalOpen, setArchiveModalOpen] = useState(false);
+    const [archiveTarget, setArchiveTarget] = useState(null);
+    const [archiveLoading, setArchiveLoading] = useState(false);
 
     const [dashboardData, setDashboardData] = useState(null);
     const [dashboardLoading, setDashboardLoading] = useState(false);
@@ -239,6 +245,36 @@ const Projects = () => {
         }
     };
 
+    const handleArchive = (row) => {
+        setArchiveTarget(row);
+        setArchiveModalOpen(true);
+    };
+
+    const confirmArchive = async () => {
+        if (!archiveTarget) return;
+        setArchiveLoading(true);
+        try {
+            const id = archiveTarget.id;
+            const url = `${hostnameAI}/canvas/archive_project/${id}`;
+            const resp = await fetch(url, {
+                method: "PATCH",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ project_id: id }),
+            });
+            if (!resp.ok) throw new Error("Failed to archive project");
+            setArchiveModalOpen(false);
+            setArchiveTarget(null);
+            setRefreshTrigger((prev) => prev + 1);
+        } catch (err) {
+            alert(err.message || "Archive failed");
+        } finally {
+            setArchiveLoading(false);
+        }
+    };
+
     const columns = [
         {
             key: 'sno',
@@ -289,6 +325,12 @@ const Projects = () => {
             tooltip: 'Project Library',
         },
         {
+            label: 'Archive',
+            icon: <Archive className="w-4 h-4" />,
+            onClick: handleArchive,
+            tooltip: 'Archive',
+        },
+        {
             label: 'Delete',
             icon: <Trash2 className="w-4 h-4" />,
             onClick: handleDelete,
@@ -298,18 +340,12 @@ const Projects = () => {
 
     const filteredData = useMemo(() => {
         const base = tableData.filter(row => String(row.status).toLowerCase() !== "deleted");
-        let statusFiltered = base;
-        if (statusFilter === 'active') {
-            statusFiltered = base.filter(row => {
-                const s = String(row.status ?? '').toLowerCase();
-                return s === 'active';
-            });
-        } else if (statusFilter === 'archived') {
-            statusFiltered = base.filter(row => {
-                const s = String(row.status ?? '').toLowerCase();
-                return s === 'archived';
-            });
-        }
+
+        const statusFiltered = base.filter(row => {
+            const rowStatus = String(row.status ?? '').toLowerCase();
+            return statusFilter.includes(rowStatus);
+        });
+
         if (!searchTerm.trim()) return statusFiltered;
         const q = searchTerm.toLowerCase();
         return statusFiltered.filter((row) =>
@@ -398,16 +434,14 @@ const Projects = () => {
                 <div className="flex items-center gap-2 sm:gap-3">
                     {/* ADD: Status filter dropdown */}
                     <div className="relative">
-                        <select
-                            value={statusFilter}
-                            onChange={e => setStatusFilter(e.target.value)}
-                            className="h-10 border border-gray-300 rounded-lg text-sm px-3 bg-white"
-                            title="Filter by Status"
-                        >
-                            <option value="all">All Status</option>
-                            <option value="active">Active</option>
-                            <option value="archived">Archived</option>
-                        </select>
+                        <StatusFilterDropdown
+                            selectedStatuses={statusFilter}
+                            onStatusChange={setStatusFilter}
+                            statusOptions={[
+                                { value: 'active', label: 'Active' },
+                                { value: 'archived', label: 'Archived' }
+                            ]}
+                        />
                     </div>
                     <div className="relative flex-1 sm:flex-initial">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -490,6 +524,15 @@ const Projects = () => {
                 description={`Are you sure you want to delete "${deleteTarget?.name || deleteTarget?.id || ''}"? This action cannot be undone.`}
                 loading={deleteLoading}
                 confirmText="Delete"
+            />
+            <ArchiveModal
+                isOpen={archiveModalOpen}
+                onClose={() => setArchiveModalOpen(false)}
+                onConfirm={confirmArchive}
+                title="Archive Project"
+                description={`Are you sure you want to archive "${archiveTarget?.name || archiveTarget?.id || ''}"?`}
+                loading={archiveLoading}
+                confirmText="Archive"
             />
         </div>
     );
