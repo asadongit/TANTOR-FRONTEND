@@ -299,7 +299,6 @@ const SearchableDropdown = ({
     value,
     onChange,
     options,
-    placeholder = "Select an option...",
     disabled = false,
     label,
     searchValue,
@@ -330,7 +329,7 @@ const SearchableDropdown = ({
         option.toLowerCase().includes(searchValue.toLowerCase())
     );
 
-    const displayValue = value ? value.toUpperCase() : placeholder;
+    const displayValue = value.toUpperCase()
 
     const getDescription = (option) => {
         return DIMENSIONALITY_REDUCTION_DESCRIPTIONS[option] || null;
@@ -384,16 +383,6 @@ const SearchableDropdown = ({
 
                     {/* Options list */}
                     <div className="flex-1 overflow-y-auto max-h-60">
-                        <div
-                            onClick={() => {
-                                onChange('');
-                                setSearchValue('');
-                                setShowDropdown(false);
-                            }}
-                            className="px-4 py-2.5 text-sm text-gray-500 hover:bg-gray-50 cursor-pointer border-b border-gray-100"
-                        >
-                            {placeholder}
-                        </div>
 
                         {filteredOptions.length > 0 ? (
                             filteredOptions.map((option) => {
@@ -538,7 +527,7 @@ function FeatureImportance({ onApiCall }) {
     const classificationType = workflowState?.modelGenesis?.config?.modelling_type || 'binary';
 
     const reductionMethodsConfig = step5Response?.dimensionality_reduction?.dimentionality_reduction_n_components || [];
-    const availableReductionMethods = reductionMethodsConfig.flatMap(config => config.methods);
+    const availableReductionMethods = Object.keys(DIMENSIONALITY_REDUCTION_DESCRIPTIONS);
 
     const getNComponentsRange = (method) => {
         const config = reductionMethodsConfig.find(c => c.methods.includes(method));
@@ -746,7 +735,6 @@ function FeatureImportance({ onApiCall }) {
                             value={reductionMethod}
                             onChange={setReductionMethod}
                             options={availableReductionMethods}
-                            placeholder="Select reduction method..."
                             disabled={readonly}
                             label={null}                    // we already have h5 label above
                             searchValue={searchValue}
