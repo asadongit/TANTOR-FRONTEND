@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, ChevronDown, Search, FileText, Loader, Info } from 'lucide-react';
+import { X, ChevronDown, Search, FileText, Loader } from 'lucide-react';
 import toast from 'react-hot-toast';
+ 
 
 const MultiSelectDropdown = ({
     title,
@@ -97,8 +98,8 @@ const MultiSelectDropdown = ({
                                         <label className="flex items-center space-x-2 cursor-pointer">
                                             <input
                                                 type="checkbox"
-                                                onChange={() => toggleOption(options.map(opt => opt.value), true)}
-                                                checked={selected.length === options.length}
+                                                onChange={() => toggleOption(filteredOptions.map(opt => opt.value), true)}
+                                                checked={filteredOptions.length > 0 && filteredOptions.every(opt => selected.includes(opt.value))}
                                                 className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded focus:ring-[#8e78b7]"
                                             />
                                             <span className="text-sm text-gray-700">Select All</span>
@@ -134,6 +135,7 @@ const MultiSelectDropdown = ({
 
 const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
     const [formData, setFormData] = useState({
+        reportType: '',
         reportName: '',
         dateFrom: '',
         dateTo: '',
@@ -145,6 +147,8 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [stakeholders, setStakeholders] = useState([]);
     const [isLoadingStakeholders, setIsLoadingStakeholders] = useState(false);
+    const [reportTypes, setReportTypes] = useState([]);
+    const [isLoadingReportTypes, setIsLoadingReportTypes] = useState(false);
 
     const resourceTypeOptions = [
         { value: 'USER', label: 'User' },
@@ -164,9 +168,25 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
 
     useEffect(() => {
         if (isOpen) {
+            fetchReportTypes();
             fetchStakeholders();
         }
     }, [isOpen]);
+
+    const fetchReportTypes = async () => {
+        setIsLoadingReportTypes(true);
+        try {
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/list_report_type`);
+            if (!response.ok) throw new Error('Failed to fetch report types');
+            const data = await response.json();
+            setReportTypes(data);
+        } catch (error) {
+            console.error('Error fetching report types:', error);
+            toast.error('Failed to load report types');
+        } finally {
+            setIsLoadingReportTypes(false);
+        }
+    };
 
     const fetchStakeholders = async () => {
         setIsLoadingStakeholders(true);
@@ -186,6 +206,7 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
     useEffect(() => {
         if (!isOpen) {
             setFormData({
+                reportType: '',
                 reportName: '',
                 dateFrom: '',
                 dateTo: '',
@@ -196,6 +217,16 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
             setErrors({});
         }
     }, [isOpen]);
+
+    useEffect(() => {
+        if (formData.reportType === 'Authentication Reporting') {
+            setFormData(prev => ({
+                ...prev,
+                resourceTypes: [],
+                operationTypes: []
+            }));
+        }
+    }, [formData.reportType]);
 
     useEffect(() => {
         const availableOps = getAvailableOperations();
@@ -243,13 +274,18 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
 
     const toggleUser = (values, isSelectAll = false) => {
         const userOptions = getUserOptions();
-        const allUserIds = userOptions.map(opt => opt.value);
-
+        
         if (isSelectAll) {
-            const newUsers = formData.users.length === allUserIds.length
-                ? []
-                : allUserIds;
-            setFormData(prev => ({ ...prev, users: newUsers }));
+            const filteredUserIds = values; 
+            const allFilteredSelected = filteredUserIds.every(id => formData.users.includes(id));
+            
+            if (allFilteredSelected) {
+                const newUsers = formData.users.filter(u => !filteredUserIds.includes(u));
+                setFormData(prev => ({ ...prev, users: newUsers }));
+            } else {
+                const newUsers = [...new Set([...formData.users, ...filteredUserIds])];
+                setFormData(prev => ({ ...prev, users: newUsers }));
+            }
         } else {
             const value = values[0];
             const newUsers = formData.users.includes(value)
@@ -293,6 +329,14 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
         }
     };
 
+    const handleReportTypeChange = (e) => {
+        setFormData(prev => ({
+            ...prev,
+            reportType: e.target.value
+        }));
+        setErrors(prev => ({ ...prev, reportType: '' }));
+    };
+
     const handleDateFromChange = (e) => {
         setFormData(prev => ({
             ...prev,
@@ -319,6 +363,10 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
 
     const validateForm = () => {
         const newErrors = {};
+
+        if (!formData.reportType) {
+            newErrors.reportType = 'Report Type is required';
+        }
 
         if (!formData.reportName || formData.reportName.trim() === '') {
             newErrors.reportName = 'Report Name is required';
@@ -348,11 +396,12 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
         }
 
         setIsSubmitting(true);
-        const toastId = toast.loading('Generating report...');
+        const loadingMsg = 'Generating report...';
+        console.log(loadingMsg);
 
         try {
             const requestBody = {
-                criteria: 'governanceReporting',
+                criteria: formData.reportType === 'Authentication Reporting' ? 'authenticationReporting' : 'governanceReporting',
                 reportName: formData.reportName.trim()
             };
 
@@ -404,9 +453,10 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
             }
 
             const data = await response.json();
-            toast.success('Report generation started successfully!', { id: toastId });
+            toast.success('Report generation started successfully!');
 
             setFormData({
+                reportType: '',
                 reportName: '',
                 dateFrom: '',
                 dateTo: '',
@@ -421,7 +471,7 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
             }
         } catch (error) {
             console.error('Error generating report:', error);
-            toast.error(error.message || 'Failed to generate report. Please try again.', { id: toastId });
+            toast.error(error.message || 'Failed to generate report. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -429,6 +479,7 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
 
     const handleCancel = () => {
         setFormData({
+            reportType: '',
             reportName: '',
             dateFrom: '',
             dateTo: '',
@@ -444,6 +495,7 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
 
     const availableOperations = getAvailableOperations();
     const userOptions = getUserOptions();
+    const isAuthenticationReport = formData.reportType === 'Authentication Reporting';
 
     return (
         <>
@@ -472,6 +524,24 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
                         <div className="space-y-6">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Report Type <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                    value={formData.reportType}
+                                    onChange={handleReportTypeChange}
+                                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent ${errors.reportType ? 'border-red-500' : 'border-gray-300'}`}
+                                    disabled={isSubmitting || isLoadingReportTypes}
+                                >
+                                    <option value="">Select report type</option>
+                                    {reportTypes.map((type) => (
+                                        <option key={type} value={type}>{type}</option>
+                                    ))}
+                                </select>
+                                {errors.reportType && <p className="mt-1 text-xs text-red-500">{errors.reportType}</p>}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Report Name <span className="text-red-500">*</span>
                                 </label>
                                 <input
@@ -479,50 +549,34 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
                                     value={formData.reportName}
                                     onChange={handleReportNameChange}
                                     placeholder="Enter report name"
-                                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent ${errors.reportName ? 'border-red-500' : 'border-gray-300'
-                                        }`}
-                                    disabled={isSubmitting}
+                                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] ${errors.reportName ? 'border-red-500' : 'border-gray-300'} ${!formData.reportType ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                                    disabled={!formData.reportType || isSubmitting}
                                 />
-                                {errors.reportName && (
-                                    <p className="mt-1 text-xs text-red-500">{errors.reportName}</p>
-                                )}
+                                {errors.reportName && <p className="mt-1 text-xs text-red-500">{errors.reportName}</p>}
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Start Date
-                                    </label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
                                     <input
                                         type="date"
                                         value={formData.dateFrom}
                                         onChange={handleDateFromChange}
                                         max={maxDate}
-                                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent ${errors.dateFrom ? 'border-red-500' : 'border-gray-300'
-                                            }`}
-                                        disabled={isSubmitting}
+                                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] ${!formData.reportType ? 'bg-gray-50' : ''}`}
+                                        disabled={!formData.reportType || isSubmitting}
                                     />
-                                    {errors.dateFrom && (
-                                        <p className="mt-1 text-xs text-red-500">{errors.dateFrom}</p>
-                                    )}
                                 </div>
-
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        End Date {formData.dateFrom && <span className="text-red-500">*</span>}
-                                    </label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
                                     <input
                                         type="date"
                                         value={formData.dateTo}
                                         onChange={handleDateToChange}
                                         max={maxDate}
-                                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent ${errors.dateTo ? 'border-red-500' : 'border-gray-300'
-                                            }`}
-                                        disabled={isSubmitting}
+                                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] ${!formData.reportType ? 'bg-gray-50' : ''}`}
+                                        disabled={!formData.reportType || isSubmitting}
                                     />
-                                    {errors.dateTo && (
-                                        <p className="mt-1 text-xs text-red-500">{errors.dateTo}</p>
-                                    )}
                                 </div>
                             </div>
 
@@ -532,29 +586,34 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
                                 selected={formData.users}
                                 toggleOption={toggleUser}
                                 hasSelectAll={true}
-                                disabled={isSubmitting}
+                                disabled={!formData.reportType || isSubmitting}
+                                disabledText="Select report type first"
                                 isLoading={isLoadingStakeholders}
                             />
 
-                            <MultiSelectDropdown
-                                title="Resource Types"
-                                options={resourceTypeOptions}
-                                selected={formData.resourceTypes}
-                                toggleOption={toggleResourceType}
-                                hasSelectAll={true}
-                                disabled={isSubmitting}
-                            />
+                            {!isAuthenticationReport && (
+                                <div className="space-y-6 pt-2">
+                                    <MultiSelectDropdown
+                                        title="Resource Types"
+                                        options={resourceTypeOptions}
+                                        selected={formData.resourceTypes}
+                                        toggleOption={toggleResourceType}
+                                        hasSelectAll={true}
+                                        disabled={!formData.reportType || isSubmitting}
+                                        disabledText="Select report type first"
+                                    />
 
-                            <MultiSelectDropdown
-                                title="Operation Types"
-                                options={availableOperations}
-                                selected={formData.operationTypes}
-                                toggleOption={toggleOperationType}
-                                hasSelectAll={true}
-                                disabled={isSubmitting || formData.resourceTypes.length === 0}
-                                disabledText="Select resource types first"
-                            />
-
+                                    <MultiSelectDropdown
+                                        title="Operation Types"
+                                        options={availableOperations}
+                                        selected={formData.operationTypes}
+                                        toggleOption={toggleOperationType}
+                                        hasSelectAll={true}
+                                        disabled={!formData.reportType || isSubmitting || formData.resourceTypes.length === 0}
+                                        disabledText="Select resource types first"
+                                    />
+                                </div>
+                            )}
                         </div>
                     </div>
 
