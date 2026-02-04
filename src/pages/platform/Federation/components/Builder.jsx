@@ -23,6 +23,8 @@ export default function Builder({ handleSwitch, checked }) {
     const [shownViews, setShownViews] = useState([]);
     const [toast, setToast] = useState({ show: false, message: '', type: '' }); // Added toast state
 
+    const [pageSize, setPageSize] = useState(100);
+
     useEffect(() => {
         const fetchViews = async () => {
             try {
@@ -87,7 +89,7 @@ export default function Builder({ handleSwitch, checked }) {
                                 const colns = Object.keys(rows[0]);
                                 setColumnDefs(colns);
                                 setData(rows);
-                                setHasMore(rows.length === 100);
+                                setHasMore(rows.length === pageSize);
                             }
                         } else {
                             if (data) {
@@ -159,7 +161,7 @@ export default function Builder({ handleSwitch, checked }) {
                                 const columns = Object.keys(rows[0]);
                                 setColumnDefs(columns);
                                 setData(rows);
-                                setHasMore(rows.length === 100);
+                                setHasMore(rows.length === pageSize);
                             }
                         } else {
                             if (data) {
@@ -210,6 +212,7 @@ export default function Builder({ handleSwitch, checked }) {
 
         const payload = {
             page: page,
+            page_size: pageSize,
         };
 
         checkCaching(payload);
@@ -415,7 +418,7 @@ export default function Builder({ handleSwitch, checked }) {
                                         </Accordion>
                                     </div>
                                     <div className="w-[100%] flex justify-between">
-                                        <div>
+                                        <div className="flex gap-4 items-center">
                                             <button
                                                 type="button"
                                                 onClick={handleQueryDetails}
@@ -423,6 +426,17 @@ export default function Builder({ handleSwitch, checked }) {
                                             >
                                                 Query Details
                                             </button>
+                                            <select
+                                                value={pageSize}
+                                                onChange={(e) => setPageSize(Number(e.target.value))}
+                                                className="px-4 py-1.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#8e78b7]"
+                                            >
+                                                <option value={100}>100</option>
+                                                <option value={200}>200</option>
+                                                <option value={500}>500</option>
+                                                <option value={800}>800</option>
+                                                <option value={1000}>1000</option>
+                                            </select>
                                         </div>
                                         <div className="w-[60%] flex justify-end">
                                             <button
@@ -457,7 +471,7 @@ export default function Builder({ handleSwitch, checked }) {
                             toast.type === "success"
                                 ? "bg-green-100 text-green-800 border-l-4 border-green-500"
                                 : "bg-red-100 text-red-800 border-l-4 border-red-500"
-                        }`}
+                            }`}
                     >
                         <Icon
                             icon={toast.type === "success" ? "mdi:check-circle" : "mdi:alert-circle"}
