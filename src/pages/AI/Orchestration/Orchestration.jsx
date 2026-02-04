@@ -19,6 +19,7 @@ const Orchestration = () => {
     const [loading, setLoading] = useState(true);
     const [schedulerLoading, setSchedulerLoading] = useState(false);
     const [activityLoading, setActivityLoading] = useState(false);
+    const [editLoading, setEditLoading] = useState(false);
     const [refreshLoading, setRefreshLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedSchedule, setSelectedSchedule] = useState(null);
@@ -26,6 +27,7 @@ const Orchestration = () => {
     const hostnameAI = window._env_?.VITE_AI_API;
     const { token, decodedToken } = useAuth();
     const { setSchedulerState, setMode } = useAIPlayground();
+    const [userId, setUserId] = useState(null);
 
     useEffect(() => {
         setMode('write')
@@ -56,6 +58,8 @@ const Orchestration = () => {
                 }
 
                 const data = await response.json();
+
+                setUserId(data.user_id);
 
                 setSchedulerState(prevState => ({
                     ...prevState,
@@ -231,8 +235,13 @@ const Orchestration = () => {
         setActiveTab('Recent Activity');
 
         try {
-            await fetchSummaryData();
+            if (!userId) {
+                console.log('User ID not available');
+            }
+
+            await fetchSummaryData(userId);
             await fetchRecentActivity();
+
             toast.success('Refreshed Successfully', {
                 duration: 4000,
                 position: 'top-right',
@@ -358,14 +367,97 @@ const Orchestration = () => {
             model_drift_check: 0,
             recipients: [],
             created_by: '',
-            workflow_name: ''
+            workflow_name: '',
+            mode: 'read'
         })
         navigate('/ai/orchestration/new')
 
     }
 
-    const handleEdit = (row) => {
-        console.log("Edit schedule:", row);
+    const handleEdit = async (row) => {
+        const currentUsername = decodedToken?.preferred_username;
+
+        if (!currentUsername || currentUsername !== row.created_by) {
+            toast.error('You do not have permission to edit this schedule', {
+                duration: 4000,
+                position: 'top-right',
+            });
+            return;
+        }
+        setEditLoading(true);
+        try {
+            const response = await fetch(
+                `${hostnameAI}/orchestration/schedules/${row.id}/details`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'accept': 'application/json'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch schedule details');
+            }
+
+            const data = await response.json();
+
+            setSchedulerState({
+                owner_id: data.owner_id || '',
+                project: data.project || '',
+                model: data.model || '',
+                model_id: data.model_id || '',
+                project_id: data.project_id || '',
+                flow_type: data.flow_type || 'single_run',
+                scheduler: {
+                    mode: data.scheduler?.mode || 'auto',
+                    frequency: data.scheduler?.frequency || '',
+                    runningDays: data.scheduler?.runningDays || [],
+                    endDateTime: data.scheduler?.endDateTime || '',
+                    intervalType: data.scheduler?.intervalType || 'single_run',
+                    intervalValue: data.scheduler?.intervalValue || '',
+                    startDateTime: data.scheduler?.startDateTime || '',
+                    timeZone: data.scheduler?.timeZone || 'ist'
+                },
+                source: {
+                    source_conn_type: data.source?.source_conn_type || '',
+                    source_schema: data.source?.source_schema || '',
+                    source_table: data.source?.source_table || ''
+                },
+                target: {
+                    destination_conn_type: data.target?.destination_conn_type || '',
+                    destination_schema: data.target?.destination_schema || '',
+                    destination_table: data.target?.destination_table || ''
+                },
+                data_drift_threshold: {
+                    distribution_drift_threshold: data.data_drift_threshold?.distribution_drift_threshold || 0,
+                    statistical_significance_level: data.data_drift_threshold?.statistical_significance_level || 0,
+                    information_stability_threshold: data.data_drift_threshold?.information_stability_threshold || 0,
+                    target_stability_threshold: data.data_drift_threshold?.target_stability_threshold || 0
+                },
+                model_drift_threshold: {
+                    prediction_drift_threshold: data.model_drift_threshold?.prediction_drift_threshold || 0,
+                    performance_drift_threshold: data.model_drift_threshold?.performance_drift_threshold || 0
+                },
+                data_drift_check: data.data_drift_check || 0,
+                model_drift_check: data.model_drift_check || 0,
+                recipients: data.recipients || [],
+                created_by: data.created_by || '',
+                workflow_name: data.workflow_name || '',
+                mode: 'edit'
+            });
+
+            navigate('/ai/orchestration/new');
+
+        } catch (error) {
+            console.error('Error fetching schedule details:', error);
+            toast.error('Failed to load schedule details', {
+                duration: 4000,
+                position: 'top-right',
+            });
+        } finally {
+            setEditLoading(false);
+        }
     };
 
     const handleDetails = (row) => {
@@ -407,6 +499,14 @@ const Orchestration = () => {
 
     return (
         <div className="p-3 sm:p-4 lg:p-6 bg-gray-50 min-h-screen">
+            {editLoading && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 flex flex-col items-center gap-4">
+                        <RefreshCw className="w-8 h-8 text-[#8e78b7] animate-spin" />
+                        <p className="text-gray-700 font-medium">Loading schedule details...</p>
+                    </div>
+                </div>
+            )}
             <Breadcrumb />
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
