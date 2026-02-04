@@ -10,11 +10,14 @@ import ArchiveModal from './Components/ArchieveModal';
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 // import { updateRecentAccess } from './Components/Hooks';
 import { updateRecentAccess } from './Components/Hooks';
+import StatusFilterDropdown from './Components/StateSelector';
 import { toast } from 'react-hot-toast';
+
+
 
 const Data = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // ADDED: all | active | inactive | archived
+  const [statusFilter, setStatusFilter] = useState(['active']); // Array of selected statuses: active, archived
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [dashboardRefreshTrigger, setDashboardRefreshTrigger] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -199,6 +202,34 @@ const Data = () => {
     { key: 'column_count', width: '100px', label: 'Columns', sortable: true },
     { key: 'project_name', label: 'Project', sortable: true },
     { key: 'username', label: 'Created By', sortable: true },
+    {
+      key: 'status',
+      label: 'Status',
+      sortable: true,
+      width: '120px',
+      render: (row) => {
+        const status = String(row.status || '').toLowerCase();
+        let statusClass = '';
+        let statusText = status.charAt(0).toUpperCase() + status.slice(1);
+
+        switch (status) {
+          case 'active':
+            statusClass = 'bg-green-100 text-green-800 border-green-200';
+            break;
+          case 'archived':
+            statusClass = 'bg-gray-100 text-gray-800 border-gray-200';
+            break;
+          default:
+            statusClass = 'bg-blue-100 text-blue-800 border-blue-200';
+        }
+
+        return (
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusClass}`}>
+            {statusText}
+          </span>
+        );
+      },
+    },
     { label: 'Action', sortable: false },
   ];
 
@@ -430,10 +461,10 @@ const Data = () => {
   const filteredData = useMemo(() => {
     const base = tableData.filter(row => String(row.status).toLowerCase() !== "deleted");
 
-    const statusFiltered =
-      statusFilter === 'all'
-        ? base
-        : base.filter(row => String(row.status ?? '').toLowerCase() === statusFilter);
+    const statusFiltered = base.filter(row => {
+      const rowStatus = String(row.status ?? '').toLowerCase();
+      return statusFilter.includes(rowStatus);
+    });
 
     if (!searchTerm.trim()) return statusFiltered;
 
@@ -536,17 +567,14 @@ const Data = () => {
         <h1 className="text-2xl sm:text-3xl font-medium text-gray-900">Data</h1>
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="relative">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-10 border border-gray-300 rounded-lg text-sm px-3 bg-white"
-              title="Filter by Status"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="archived">Archived</option>
-            </select>
+            <StatusFilterDropdown
+              selectedStatuses={statusFilter}
+              onStatusChange={setStatusFilter}
+              statusOptions={[
+                { value: 'active', label: 'Active' },
+                { value: 'archived', label: 'Archived' }
+              ]}
+            />
           </div>
 
           <div className="relative flex-1 sm:flex-initial">

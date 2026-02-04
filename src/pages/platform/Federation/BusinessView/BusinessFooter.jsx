@@ -13,7 +13,7 @@ import { X } from "lucide-react"; // Added for close button
 
 export function BusinessFooter() {
   const navigate = useNavigate();
-  const { finalPayload, handleFinalPayload, connectionPayload, viewPayload, columnSettings } = useStateContext("");
+  const { finalPayload, handleFinalPayload, connectionPayload, viewPayload, columnSettings, consolidationPayload} = useStateContext("");
   const [preview, setPreview] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -329,7 +329,61 @@ export function BusinessFooter() {
     }
   };
 
+  const validateNodes = () => {
+
+    const joins = finalPayload?.joins || [];
+    const operation = finalPayload?.operation;
+
+    const numberOfConnectionNodes = Array.isArray(connectionPayload) ? connectionPayload.length : 0;
+    const numberOfViewNodes = Array.isArray(viewPayload) ? viewPayload.length : 0;
+    let numberOfConsolidationNodes = 0;
+
+    try {
+      if ((numberOfConnectionNodes + numberOfViewNodes) === 0) {
+        throw new Error("Configure atleast two nodes (Connection/Source View)!");
+      }
+
+      if ((numberOfConnectionNodes + numberOfViewNodes) === 1) {
+        throw new Error("Configure another node (Connection/Source View)!");
+      }
+
+      if (joins && joins?.length && joins.length > 0) {
+        numberOfConsolidationNodes += joins.length;
+      }
+
+      if (["Union", "Union All", "Intersect", "Intersect All"].includes(operation) && finalPayload?.union && finalPayload.union?.length && finalPayload.union.length > 0) {
+         numberOfConsolidationNodes += finalPayload.union.length;
+      }
+
+      if (numberOfConsolidationNodes === 0) {
+        throw new Error("Please configure atleast one consolidation node!");
+      }
+
+      const numberOfConnectionAndViewNodes = numberOfConnectionNodes + numberOfViewNodes;
+      if((numberOfConnectionAndViewNodes - 1) !== numberOfConsolidationNodes){
+        throw new Error(`For ${numberOfConnectionAndViewNodes} source/connection nodes, ${numberOfConnectionAndViewNodes -1 } configured consolidations are required.`);
+      }
+    } catch (err) {
+
+      setToast({
+        show: true,
+        message: err?.message,
+        type: "error",
+      });
+      setTimeout(() => {
+        setToast({ show: false, message: "", type: "" });
+      }, 3000);
+
+      return false;
+    }
+
+    return true;
+  }
+
   const handleClick = async () => {
+    if(!validateNodes())
+      return;
+
     if (finalPayload && Object.keys(finalPayload).length > 0) {
       if (modalState.queryType == "Regular") setIsFilterModalOpen(true);
       else {
