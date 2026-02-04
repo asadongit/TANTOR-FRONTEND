@@ -1,7 +1,13 @@
 import { X, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Link as LinkIcon, Play, Send } from 'lucide-react';
 
-const AddCommentModal = ({ isOpen, onClose, formData, onInputChange, onSubmit, onReset }) => {
+const AddCommentModal = ({ isOpen, onClose, formData, onInputChange, onSubmit, onReset, error }) => {
     if (!isOpen) return null;
+
+    const handleSubjectChange = (e) => {
+        let value = e.target.value;
+        value = value.replace(/[^a-zA-Z0-9\s\/\-]/g, '');
+        onInputChange({ target: { name: 'subject', value } });
+    };
 
     const handleCancel = () => {
         onReset();
@@ -90,7 +96,7 @@ const AddCommentModal = ({ isOpen, onClose, formData, onInputChange, onSubmit, o
                                 type="text"
                                 name="subject"
                                 value={formData.subject}
-                                onChange={onInputChange}
+                                onChange={handleSubjectChange}
                                 placeholder="Subject"
                                 maxLength="120"
                                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -117,6 +123,7 @@ const AddCommentModal = ({ isOpen, onClose, formData, onInputChange, onSubmit, o
                                 className="w-full px-3 py-2 text-sm focus:outline-none resize-none"
                             ></textarea>
                         </div>
+                        {error && <p className="text-red-500 text-xs mt-2">{error}</p>}
                     </div>
                 </div>
 

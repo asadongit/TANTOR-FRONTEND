@@ -259,11 +259,12 @@ function Models() {
   };
 
   const columns = [
-    { key: "sno", label: "Sno", sortable: true, width: "90px" },
+    { key: "sno", label: "Sno", sortable: true, width: "50px" },
     {
       key: "run_name",
       label: "Name",
       sortable: true,
+      width: '250px',
       render: (row) => (
         <span
           className="text-purple-600 hover:underline cursor-pointer whitespace-normal break-words break-all"
@@ -279,7 +280,7 @@ function Models() {
       ),
     }
     ,
-    { key: "description", width: '250px', label: "Description", sortable: true },
+    { key: "description", width: '150px', label: "Description", sortable: false },
     { key: "created_date", width: '150px', label: "Created Date", sortable: true },
     { key: 'project_name', width: '150px', label: 'Project', sortable: true },
     { key: 'user_name', width: '120px', label: 'Created By', sortable: true },
@@ -329,8 +330,9 @@ function Models() {
       setDeleteModalOpen(false);
       setDeleteTarget(null);
       setRefreshTrigger((prev) => prev + 1);
+      toast.success('Model deleted successfully');
     } catch (err) {
-      alert(err.message || "Delete failed");
+      toast.error(err.message || "Delete failed");
     } finally {
       setDeleteLoading(false);
     }
@@ -354,8 +356,9 @@ function Models() {
       setArchiveModalOpen(false);
       setArchiveTarget(null);
       setRefreshTrigger((prev) => prev + 1);
+      toast.success('Model archived successfully');
     } catch (err) {
-      alert(err.message || "Archive failed");
+      toast.error(err.message || "Archive failed");
     } finally {
       setArchiveLoading(false);
     }
@@ -433,7 +436,8 @@ function Models() {
   const openModelLibrary = useCallback(
     (row) => {
       const raw = row?._raw ?? row;
-      navigate("/ai/hub/models/library", {
+      const modelId = raw?.id || raw?.model_id;
+      navigate(`/ai/hub/models/library/${encodeURIComponent(String(modelId))}`, {
         state: { modelData: raw },
       });
     },
@@ -448,12 +452,12 @@ function Models() {
       onClick: openModelLibrary,
       tooltip: "Library",
     },
-    {
-      label: "F1 Mode",
-      icon: <Gauge className="w-4 h-4" />,
-      onClick: (row) => console.log("F1 Mode:", row),
-      tooltip: "F1 Mode",
-    },
+    // {
+    //   label: "F1 Mode",
+    //   icon: <Gauge className="w-4 h-4" />,
+    //   onClick: (row) => console.log("F1 Mode:", row),
+    //   tooltip: "F1 Mode",
+    // },
     {
       label: "AI Playground",
       icon: <Palette className="w-4 h-4" />,
@@ -621,6 +625,14 @@ function Models() {
       icon: <Archive className="w-4 h-4" />,
       onClick: handleArchive,
       tooltip: "Archive",
+      show: (row) => String(row.status ?? '').toLowerCase() !== 'archived',
+    },
+    {
+      label: "Unarchive",
+      icon: <Archive className="w-4 h-4" />,
+      onClick: (row) => console.log('Unarchive model:', row),
+      tooltip: "Unarchive",
+      show: (row) => String(row.status ?? '').toLowerCase() === 'archived',
     },
     {
       label: "Quick Predict",

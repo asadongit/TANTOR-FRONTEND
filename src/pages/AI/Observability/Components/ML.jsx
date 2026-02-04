@@ -146,11 +146,11 @@ function ML({ selectedPeriod, refreshKey }) {
             if (!res.ok) throw new Error('Failed to fetch model data');
             const list = await res.json();
             const modelData = Array.isArray(list) && list.length > 0 ? list[0] : m;
-            navigate("/ai/hub/models/library", { state: { modelData } });
+            navigate(`/ai/hub/models/library/${encodeURIComponent(String(m.model_id))}`, { state: { modelData } });
         } catch (e) {
             console.error(e);
 
-            navigate("/ai/hub/models/library", { state: { modelData: m } });
+            navigate(`/ai/hub/models/library/${encodeURIComponent(String(m.model_id))}`, { state: { modelData: m } });
         }
     };
 
