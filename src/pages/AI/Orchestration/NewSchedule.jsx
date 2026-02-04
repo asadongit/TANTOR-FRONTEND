@@ -167,7 +167,8 @@ const NewSchedule = () => {
                     model_drift_threshold: schedulerState.model_drift_threshold,
                     data_drift_check: schedulerState.data_drift_check,
                     model_drift_check: schedulerState.model_drift_check,
-                    recipients: schedulerState.recipients || []
+                    recipients: schedulerState.recipients || [],
+                    mode: schedulerState.mode || 'read'
                 }
             };
 
