@@ -39,7 +39,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPe
 
 const TableRowSkeleton = () => (
   <tr className="border-b animate-pulse">
-    {Array.from({ length: 7 }).map((_, i) => (
+    {Array.from({ length: 8 }).map((_, i) => (
       <td key={i} className="p-3">
         <div className="h-4 bg-gray-200 rounded w-full"></div>
       </td>
@@ -79,7 +79,7 @@ const Reports = () => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${window._env_?.VITE_FAST_API}/listReport/governance Reporting`, {
+      const reportTypesResponse = await fetch(`${window._env_?.VITE_FAST_API}/list_report_type`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -87,11 +87,28 @@ const Reports = () => {
         }
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch reports: ${response.statusText}`);
+      if (!reportTypesResponse.ok) {
+        throw new Error(`Failed to fetch report types: ${reportTypesResponse.statusText}`);
       }
 
-      const data = await response.json();
+      const reportTypes = await reportTypesResponse.json();
+
+      const reportsResponse = await fetch(`${window._env_?.VITE_FAST_API}/listReport`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          report_types: reportTypes
+        })
+      });
+
+      if (!reportsResponse.ok) {
+        throw new Error(`Failed to fetch reports: ${reportsResponse.statusText}`);
+      }
+
+      const data = await reportsResponse.json();
       setReports(data.reports || []);
       setLoading(false);
     } catch (error) {
@@ -108,7 +125,7 @@ const Reports = () => {
     const toastId = toast.loading('Refreshing reports...');
 
     try {
-      const response = await fetch(`${window._env_?.VITE_FAST_API}/listReport/governance Reporting`, {
+      const reportTypesResponse = await fetch(`${window._env_?.VITE_FAST_API}/list_report_type`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -116,11 +133,28 @@ const Reports = () => {
         }
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch reports: ${response.statusText}`);
+      if (!reportTypesResponse.ok) {
+        throw new Error(`Failed to fetch report types: ${reportTypesResponse.statusText}`);
       }
 
-      const data = await response.json();
+      const reportTypes = await reportTypesResponse.json();
+
+      const reportsResponse = await fetch(`${window._env_?.VITE_FAST_API}/listReport`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          report_types: reportTypes
+        })
+      });
+
+      if (!reportsResponse.ok) {
+        throw new Error(`Failed to fetch reports: ${reportsResponse.statusText}`);
+      }
+
+      const data = await reportsResponse.json();
       setReports(data.reports || []);
       setError(null);
       setCurrentPage(1);
@@ -166,6 +200,7 @@ const Reports = () => {
     const searchLower = searchQuery.toLowerCase();
     return (
       report.report_name?.toLowerCase().includes(searchLower) ||
+      report.report_type?.toLowerCase().includes(searchLower) ||
       report.status?.toLowerCase().includes(searchLower) ||
       report.remarks?.toLowerCase().includes(searchLower) ||
       report.user_id?.toLowerCase().includes(searchLower) ||
@@ -326,6 +361,7 @@ const Reports = () => {
                   <tr>
                     <th className="text-left p-3 font-semibold tracking-wider" style={{ width: '80px' }}>S.No</th>
                     <th className="text-left p-3 font-semibold tracking-wider">Owner</th>
+                    <th className="text-left p-3 font-semibold tracking-wider">Report Type</th>
                     <th className="text-left p-3 font-semibold tracking-wider">Report Name</th>
                     <th className="text-left p-3 font-semibold tracking-wider">Date</th>
                     <th className="text-left p-3 font-semibold tracking-wider" style={{ width: '120px' }}>Status</th>
@@ -388,6 +424,12 @@ const Reports = () => {
                     </th>
                     <th
                       className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors bg-gray-800"
+                      onClick={() => handleSort('report_type')}
+                    >
+                      Report Type {getSortIcon('report_type')}
+                    </th>
+                    <th
+                      className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors bg-gray-800"
                       onClick={() => handleSort('report_name')}
                     >
                       Report Name {getSortIcon('report_name')}
@@ -420,6 +462,7 @@ const Reports = () => {
                         {(currentPage - 1) * itemsPerPage + index + 1}
                       </td>
                       <td className="p-3 text-gray-600">{report.user_id}</td>
+                      <td className="p-3 text-gray-600">{report.report_type}</td>
                       <td className="p-3 text-gray-600">{report.report_name}</td>
                       <td className="p-3 text-gray-600">{formatDateTime(report.report_date_time)}</td>
                       <td className="p-3">{getStatusBadge(report.status)}</td>

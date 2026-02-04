@@ -330,13 +330,13 @@ export function BusinessFooter() {
   };
 
   const validateNodes = () => {
-
+    
     const joins = finalPayload?.joins || [];
     const operation = finalPayload?.operation;
 
     const numberOfConnectionNodes = Array.isArray(connectionPayload) ? connectionPayload.length : 0;
     const numberOfViewNodes = Array.isArray(viewPayload) ? viewPayload.length : 0;
-    let numberOfConsolidationNodes = 0;
+    let consolidationNodeExists = false;
 
     try {
       if ((numberOfConnectionNodes + numberOfViewNodes) === 0) {
@@ -348,20 +348,15 @@ export function BusinessFooter() {
       }
 
       if (joins && joins?.length && joins.length > 0) {
-        numberOfConsolidationNodes += joins.length;
+        consolidationNodeExists = true;
       }
 
       if (["Union", "Union All", "Intersect", "Intersect All"].includes(operation) && finalPayload?.union && finalPayload.union?.length && finalPayload.union.length > 0) {
-         numberOfConsolidationNodes += finalPayload.union.length;
+         consolidationNodeExists = true;
       }
 
-      if (numberOfConsolidationNodes === 0) {
+      if (!consolidationNodeExists) {
         throw new Error("Please configure atleast one consolidation node!");
-      }
-
-      const numberOfConnectionAndViewNodes = numberOfConnectionNodes + numberOfViewNodes;
-      if((numberOfConnectionAndViewNodes - 1) !== numberOfConsolidationNodes){
-        throw new Error(`For ${numberOfConnectionAndViewNodes} source/connection nodes, ${numberOfConnectionAndViewNodes -1 } configured consolidations are required.`);
       }
     } catch (err) {
 
