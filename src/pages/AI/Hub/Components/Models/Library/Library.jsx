@@ -176,11 +176,7 @@ function Library() {
               Model Library - <span className="text-purple-600">{modelName}</span>
             </h1>
           </div>
-          <button className="px-3 py-1.5 rounded bg-purple-100 text-[#8e78b7] font-medium text-sm flex items-center gap-1.5 hover:bg-purple-200 transition-colors"
-            onClick={() => navigate('/ai/hub/models')}>
-            <LayoutDashboard className="w-4 h-4" />
-            AI/ML
-          </button>
+
         </div>
 
         <div className="mt-4 border-t border-gray-200 pt-4">

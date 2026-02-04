@@ -52,6 +52,8 @@ const ProjectLibrary = () => {
         }
     }, [projectData, projectId, hostnameAI, token]);
 
+    const handleLibraryBack = () => navigate('/ai/hub/projects');
+
     const tabs = ['Overview', 'Components', 'Comments'];
 
     const getProjectName = () => {
@@ -123,11 +125,7 @@ const ProjectLibrary = () => {
                             <span className="text-lg font-semibold text-[#8e78b7]">{ProjectName}</span>
                         </div>
                     </div>
-                    <button className="px-3 py-1.5 rounded bg-purple-100 text-[#8e78b7] font-medium text-sm flex items-center gap-1.5 hover:bg-purple-200 transition-colors"
-                        onClick={() => navigate('/ai/hub/projects')}>
-                        <LayoutDashboard className="w-4 h-4" />
-                        AI/ML
-                    </button>
+
                 </div>
 
                 <div className="flex items-center gap-8 px-6 pt-4">

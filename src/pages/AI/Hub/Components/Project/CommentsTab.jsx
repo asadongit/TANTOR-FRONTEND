@@ -27,6 +27,7 @@ const CommentsTab = ({ projectData }) => {
     );
     const [filters, setFilters] = useState(defaultFilters);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [addForm, setAddForm] = useState({
@@ -38,7 +39,6 @@ const CommentsTab = ({ projectData }) => {
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [addCommentError, setAddCommentError] = useState(null);
-
     const [isRepliesOpen, setIsRepliesOpen] = useState(false);
     const [activeCommentId, setActiveCommentId] = useState(null);
     const [replyText, setReplyText] = useState('');
@@ -344,15 +344,15 @@ const CommentsTab = ({ projectData }) => {
 
     const columns = useMemo(
         () => [
-            { key: 'user_name', label: 'User Name', sortable: true, width: '160px' },
-            { key: 'component', label: 'Component', sortable: true, width: '180px' },
-            { key: 'component_name', label: 'Component Name', sortable: true, width: '180px' },
+            { key: 'user_name', label: 'User Name', sortable: true, width: '130px' },
+            { key: 'component', label: 'Component', sortable: true, width: '100px' },
+            { key: 'component_name', label: 'Component Name', sortable: false, width: '180px' },
 
             {
                 key: 'subject',
                 label: 'Subject',
-                sortable: true,
-                width: '240px',
+                sortable: false,
+                width: '160px',
                 render: (row) => (
                     <span className="text-gray-900 font-medium truncate block" title={row.subject}>
                         {row.subject}
@@ -363,6 +363,7 @@ const CommentsTab = ({ projectData }) => {
                 key: 'comment',
                 label: 'Comment',
                 sortable: false,
+                width: '150px',
                 render: (row) => (
                     <span className="text-gray-700 line-clamp-2 block" title={row.comment}>
                         {row.comment}
@@ -374,13 +375,14 @@ const CommentsTab = ({ projectData }) => {
             {
                 key: 'repliesCount',
                 label: '',
-                // sortable: true,
-                width: '130px',
+                sortable: false,
+
+                width: '100px',
                 render: (row) => (
                     <button
                         type="button"
                         onClick={() => openReplies(row.__raw)}
-                        className="inline-flex items-center gap-2 px-2.5 py-1 border border-[#8e78b7]  rounded-lg text-xs hover:bg-gray-50"
+                        className="inline-flex items-center gap-1 px-1.5 py-1 border border-[#8e78b7]  rounded-lg text-xs hover:bg-gray-50"
                         title="View replies"
                     >
                         <MessageSquare className="w-4 h-4 text-gray-500" />
@@ -479,6 +481,7 @@ const CommentsTab = ({ projectData }) => {
                             type="date"
                             value={filters.fromDate}
                             onChange={(e) => setFilters((s) => ({ ...s, fromDate: e.target.value }))}
+                            max={today}
                             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                         />
                     </div>
@@ -489,6 +492,7 @@ const CommentsTab = ({ projectData }) => {
                             type="date"
                             value={filters.toDate}
                             onChange={(e) => setFilters((s) => ({ ...s, toDate: e.target.value }))}
+                            max={today}
                             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                         />
                     </div>
