@@ -25,12 +25,15 @@ import ArchiveModal from "./Components/ArchieveModal";
 import { useAuth } from "../../../context/AuthContext";
 import { useAIPlayground } from "../../../context/AIPlaygroundContext";
 import ModelFlow from "./Components/Models/ModelFlow";
+import StatusFilterDropdown from "./Components/StateSelector";
 import toast from 'react-hot-toast';
+
+
 
 function Models() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(['saved', 'deployed']);
   const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState("both");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -639,28 +642,12 @@ function Models() {
   const filteredData = useMemo(() => {
     // ADD: status filter logic
     const base = modelsData.filter(row => String(row.status).toLowerCase() !== "deleted");
-    let statusFiltered = base;
-    if (statusFilter === "saved") {
-      statusFiltered = base.filter(row => {
-        const s = String(row.status ?? '').toLowerCase();
-        return s === "saved";
-      });
-    } else if (statusFilter === "deployed") {
-      statusFiltered = base.filter(row => {
-        const s = String(row.status ?? '').toLowerCase();
-        return s === "deployed";
-      });
-    } else if (statusFilter === "archived") {
-      statusFiltered = base.filter(row => {
-        const s = String(row.status ?? '').toLowerCase();
-        return s === "archived";
-      });
-    } else if (statusFilter === "completed") {
-      statusFiltered = base.filter(row => {
-        const s = String(row.status ?? '').toLowerCase();
-        return s === "completed";
-      });
-    }
+
+    const statusFiltered = base.filter(row => {
+      const rowStatus = String(row.status ?? '').toLowerCase();
+      return statusFilter.includes(rowStatus);
+    });
+
     if (!searchTerm.trim()) {
       return statusFiltered;
     }
@@ -858,18 +845,15 @@ function Models() {
         <div className="flex items-center gap-2">
           {/* ADD: Status filter dropdown */}
           <div className="relative">
-            <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              className="h-10 border border-gray-300 rounded-lg text-sm px-3 bg-white"
-              title="Filter by Status"
-            >
-              <option value="all">All Status</option>
-              <option value="saved">Saved</option>
-              <option value="deployed">Deployed</option>
-              <option value="archived">Archived</option>
-              <option value="completed">Completed</option>
-            </select>
+            <StatusFilterDropdown
+              selectedStatuses={statusFilter}
+              onStatusChange={setStatusFilter}
+              statusOptions={[
+                { value: 'saved', label: 'Saved' },
+                { value: 'deployed', label: 'Deployed' },
+                { value: 'archived', label: 'Archived' }
+              ]}
+            />
           </div>
 
           <div className="relative">
