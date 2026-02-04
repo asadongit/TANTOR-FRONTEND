@@ -310,6 +310,7 @@ const NewSchedule = () => {
                     {activeTab === 'Recipients' &&
                         <RecipientsTab
                             onRecipientsChange={handleRecipientsChange}
+                            initialRecipients={schedulerState?.recipients || []}
                         />}
                 </div>
             </div>
