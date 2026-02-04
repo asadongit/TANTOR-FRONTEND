@@ -65,21 +65,27 @@ export const validateAlgorithm = (algo) => {
                 const value = algo.hyperparameterValues[paramName];
 
                 if (typeof paramValue === 'string') {
-                    if (!value || value === '') return false;
+                    if (!value || value === '') {
+                        return false;
+                    }
                 }
-
                 else if (typeof paramValue === 'object' && paramValue.low && paramValue.high) {
-                    if (value && value.trim() !== '') {
-                        const result = validateHyperparameterValue(paramName, paramValue, value, true);
-                        if (!result) return false;
+                    if (!value || value.trim() === '') {
+                        return false;
+                    }
+                    const result = validateHyperparameterValue(paramName, paramValue, value, true);
+                    if (result !== true) {
+                        return false;
                     }
                 }
             }
         }
+
+        return true;
     }
 
     if (configMode === 'Grid Search') {
-        if (algo.gridSearchErrors && Object.values(algo.gridSearchErrors).some(errors => 
+        if (algo.gridSearchErrors && Object.values(algo.gridSearchErrors).some(errors =>
             errors && errors.some(error => error))) {
             return false;
         }
@@ -90,20 +96,26 @@ export const validateAlgorithm = (algo) => {
 
                 if (typeof paramValue === 'string') {
                     const validValues = values.filter(v => v && v.trim() !== '');
-                    if (validValues.length === 0) return false;
+                    if (validValues.length === 0) {
+                        return false;
+                    }
                 }
-
                 else if (typeof paramValue === 'object' && paramValue.low && paramValue.high) {
                     const filledValues = values.filter(v => v && v.trim() !== '');
-                    if (filledValues.length > 0) {
-                        const allValid = filledValues.every(val => 
-                            validateHyperparameterValue(paramName, paramValue, val, true)
-                        );
-                        if (!allValid) return false;
+                    if (filledValues.length === 0) {
+                        return false;
+                    }
+                    const allValid = filledValues.every(val =>
+                        validateHyperparameterValue(paramName, paramValue, val, true) === true
+                    );
+                    if (!allValid) {
+                        return false;
                     }
                 }
             }
         }
+
+        return true;
     }
 
     return true;
