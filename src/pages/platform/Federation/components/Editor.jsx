@@ -53,6 +53,8 @@ export default function Editor() {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
 
+  const [pageSize, setPageSize] = useState(100);
+
   useEffect(() => {
     const fetchConnections = async () => {
       try {
@@ -320,6 +322,7 @@ export default function Editor() {
 
       const payload = {
         page: page,
+        page_size: pageSize,
         query: secureQuery,
         project: (project === "default" || project === "none") ? "default" : project,
         created_by: decodedToken?.preferred_username,
@@ -381,7 +384,7 @@ export default function Editor() {
         const columns = Object.keys(rows[0]);
         setColumnDefs(columns);
         setData(rows);
-        setHasMore(rows.length === 100);
+        setHasMore(rows.length === pageSize);
       }
 
       const historyPayload = {
@@ -1080,8 +1083,8 @@ export default function Editor() {
                           </table>
                         </div>
                       </div>
-                      <div className="w-full mt-2 flex justify-between">
-                        <div>
+                     <div className="w-full mt-2 flex justify-between">
+                        <div className="flex gap-4 items-center">
                           <button
                             type="button"
                             onClick={handleQueryDetails}
@@ -1089,6 +1092,17 @@ export default function Editor() {
                           >
                             Query Details
                           </button>
+                          <select
+                            value={pageSize}
+                            onChange={(e) => setPageSize(Number(e.target.value))}
+                            className="px-4 py-1.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#8e78b7]"
+                          >
+                            <option value={100}>100</option>
+                            <option value={200}>200</option>
+                            <option value={500}>500</option>
+                            <option value={800}>800</option>
+                            <option value={1000}>1000</option>
+                          </select>
                         </div>
                         <div className="flex justify-end">
                           <button
