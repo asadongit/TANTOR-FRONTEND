@@ -9,6 +9,7 @@ import DeleteModal from './Components/DeleteModal';
 import ArchiveModal from './Components/ArchieveModal';
 import StatusFilterDropdown from './Components/StateSelector';
 import { updateRecentAccess } from './Components/Hooks';
+import toast from 'react-hot-toast';
 
 const Projects = () => {
     const navigate = useNavigate();
@@ -238,8 +239,9 @@ const Projects = () => {
             setDeleteModalOpen(false);
             setDeleteTarget(null);
             setRefreshTrigger((prev) => prev + 1);
+            toast.success('Project deleted successfully');
         } catch (err) {
-            alert(err.message || "Delete failed");
+            toast.error(err.message || "Delete failed");
         } finally {
             setDeleteLoading(false);
         }
@@ -268,8 +270,9 @@ const Projects = () => {
             setArchiveModalOpen(false);
             setArchiveTarget(null);
             setRefreshTrigger((prev) => prev + 1);
+            toast.success('Project archived successfully');
         } catch (err) {
-            alert(err.message || "Archive failed");
+            toast.error(err.message || "Archive failed");
         } finally {
             setArchiveLoading(false);
         }
@@ -329,6 +332,14 @@ const Projects = () => {
             icon: <Archive className="w-4 h-4" />,
             onClick: handleArchive,
             tooltip: 'Archive',
+            show: (row) => String(row.status ?? '').toLowerCase() !== 'archived',
+        },
+        {
+            label: 'Unarchive',
+            icon: <Archive className="w-4 h-4" />,
+            onClick: (row) => console.log('Unarchive project:', row),
+            tooltip: 'Unarchive',
+            show: (row) => String(row.status ?? '').toLowerCase() === 'archived',
         },
         {
             label: 'Delete',

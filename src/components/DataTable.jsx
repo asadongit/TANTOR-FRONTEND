@@ -37,6 +37,57 @@ const DataTable = ({
   const [hoveredAction, setHoveredAction] = useState(null);
   const menuRef = useRef(null);
   const { project } = useAuth();
+  const columnCount = columns.length;
+
+  const density = useMemo(() => {
+    const relativeWidthPercent = Math.max(
+      6,
+      Math.floor(100 / Math.max(columnCount, 1))
+    );
+
+    if (columnCount > 12) {
+      return {
+        minColumnWidth: 80,
+        cellFontSize: "12px",
+        headerFontSize: "12px",
+        paddingX: 8,
+        paddingY: 8,
+        lineHeight: "1.3",
+        relativeWidthPercent,
+      };
+    }
+
+    if (columnCount > 9) {
+      return {
+        minColumnWidth: 100,
+        cellFontSize: "13px",
+        headerFontSize: "13px",
+        paddingX: 10,
+        paddingY: 10,
+        lineHeight: "1.4",
+        relativeWidthPercent,
+      };
+    }
+
+    return {
+      minColumnWidth: 120,
+      cellFontSize: "14px",
+      headerFontSize: "14px",
+      paddingX: 12,
+      paddingY: 12,
+      lineHeight: "1.5",
+      relativeWidthPercent,
+    };
+  }, [columnCount]);
+
+  const cellBaseStyle = useMemo(
+    () => ({
+      padding: `${density.paddingY}px ${density.paddingX}px`,
+      fontSize: density.cellFontSize,
+      lineHeight: density.lineHeight,
+    }),
+    [density]
+  );
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -143,7 +194,7 @@ const DataTable = ({
     ) {
       return;
     }
-    
+
     if (onRowClick) {
       onRowClick(row);
     }
@@ -156,11 +207,12 @@ const DataTable = ({
 
   const renderSkeletonRows = () => {
     return Array.from({ length: itemsPerPage }).map((_, rowIndex) => (
-      <tr key={`skeleton-${rowIndex}`} className="border-b animate-pulse">
+      <tr key={`skeleton-${rowIndex}`} className="border-b animate-pulse align-middle">
         {columns.map((column, colIndex) => (
           <td
             key={`skeleton-cell-${rowIndex}-${colIndex}`}
-            className="py-3 px-4"
+            className="whitespace-normal break-words"
+            style={cellBaseStyle}
           >
             {column.label === "Action" ? (
               <div className="flex justify-center">
@@ -178,26 +230,32 @@ const DataTable = ({
   };
 
   return (
-    <div className="w-full mt-6">
+    <div className="w-full mt-6" style={{ fontSize: density.cellFontSize, lineHeight: density.lineHeight }}>
       <div
-        className="overflow-auto border rounded-lg mb-4"
+        className="overflow-y-auto overflow-x-hidden border rounded-lg mb-4"
         style={{ maxHeight: "calc(100vh - 240px)" }}
       >
         <table
           className="w-full bg-white table-fixed"
           aria-label={title || "Data table"}
+          style={{ tableLayout: columnCount > 10 ? "auto" : "fixed" }}
         >
           <thead>
             <tr className="bg-gray-800 text-white sticky top-0 z-10">
               {columns.map((column, index) => (
                 <th
                   key={column.key || column.label}
-                  className="py-3 px-4 text-left sticky top-0 bg-gray-800 z-10"
+                  className="text-left sticky top-0 bg-gray-800 z-10 whitespace-normal break-words"
                   style={{
                     width:
                       column.width ||
                       (column.label === "Action" ? "100px" : "auto"),
-                    minWidth: column.minWidth || "120px",
+                    minWidth:
+                      column.minWidth ||
+                      `clamp(${density.minColumnWidth}px, ${density.relativeWidthPercent}%, 200px)`,
+                    padding: `${density.paddingY}px ${density.paddingX}px`,
+                    fontSize: density.headerFontSize,
+                    lineHeight: density.lineHeight,
                   }}
                   onClick={() =>
                     column.key &&
@@ -256,7 +314,7 @@ const DataTable = ({
               paginatedData.map((row, rowIndex) => (
                 <tr
                   key={rowIndex}
-                  className={`border-b transition-colors ${
+                  className={`border-b transition-colors align-middle ${
                     onRowClick ? 'cursor-pointer' : ''
                   } ${
                     selectedRowId && row.sno === selectedRowId
@@ -270,7 +328,8 @@ const DataTable = ({
                       return (
                         <td
                           key={cellIndex}
-                          className="py-3 px-4 text-center relative action-menu"
+                          className="text-center align-middle relative action-menu"
+                          style={cellBaseStyle}
                         >
                           <button
                             className="p-2 text-gray-600 hover:text-gray-800 rounded-full hover:bg-gray-100"
@@ -372,28 +431,35 @@ const DataTable = ({
 
                     if (column.render) {
                       return (
-                        <td key={cellIndex} className="py-3 px-4">
+                        <td
+                          key={cellIndex}
+                          className="whitespace-nowrap overflow-hidden text-ellipsis align-middle"
+                          style={{ ...cellBaseStyle, maxWidth: "100%" }}
+                          title={column.renderTitle ? column.renderTitle(row, rowIndex) : undefined}
+                        >
                           {column.render(row, rowIndex)}
                         </td>
                       );
                     }
 
                     return (
-                      <td key={cellIndex} className="py-3 px-4 text-gray-600">
+                      <td
+                        key={cellIndex}
+                        className="text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis align-middle"
+                        style={{ ...cellBaseStyle, maxWidth: "100%" }}
+                        title={column.key ? row[column.key] : undefined}
+                      >
                         {column.key ? (
                           column.key === "status" ? (
                             <span
-                              className={`px-3 py-1 rounded-full text-sm ${getStatusStyles(
+                              className={`px-3 py-1 rounded-full text-xs ${getStatusStyles(
                                 row[column.key]
                               )}`}
                             >
                               {row[column.key]}
                             </span>
                           ) : (
-                            <div
-                              className="truncate max-w-[200px]"
-                              title={row[column.key]}
-                            >
+                            <div className="truncate">
                               {row[column.key] === 0
                                 ? 0
                                 : row[column.key] || "-"}

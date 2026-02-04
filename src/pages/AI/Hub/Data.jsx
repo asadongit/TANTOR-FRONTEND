@@ -255,8 +255,9 @@ const Data = () => {
       setDeleteModalOpen(false);
       setDeleteTarget(null);
       setRefreshTrigger((prev) => prev + 1);
+      toast.success('Dataset deleted successfully');
     } catch (err) {
-      alert(err.message || "Delete failed");
+      toast.error(err.message || "Delete failed");
     } finally {
       setDeleteLoading(false);
     }
@@ -279,8 +280,9 @@ const Data = () => {
       setArchiveModalOpen(false);
       setArchiveTarget(null);
       setRefreshTrigger((prev) => prev + 1);
+      toast.success('Dataset archived successfully');
     } catch (err) {
-      alert(err.message || "Archive failed");
+      toast.error(err.message || "Archive failed");
     } finally {
       setArchiveLoading(false);
     }
@@ -425,6 +427,10 @@ const Data = () => {
     setArchiveModalOpen(true);
   };
 
+  const handleUnarchive = (row) => {
+    console.log('Unarchive dataset:', row);
+  };
+
   const actions = [
     {
       label: 'Library',
@@ -432,12 +438,12 @@ const Data = () => {
       onClick: handleLibrary,
       tooltip: 'Library',
     },
-    {
-      label: 'F1 Mode',
-      icon: <Gauge className="w-4 h-4" />,
-      onClick: handleF1Mode,
-      tooltip: 'F1 Mode',
-    },
+    // {
+    //   label: 'F1 Mode',
+    //   icon: <Gauge className="w-4 h-4" />,
+    //   onClick: handleF1Mode,
+    //   tooltip: 'F1 Mode',
+    // },
     {
       label: 'AI Playground',
       icon: <Palette className="w-4 h-4" />,
@@ -449,6 +455,14 @@ const Data = () => {
       icon: <Archive className="w-4 h-4" />,
       onClick: handleArchive,
       tooltip: 'Archive',
+      show: (row) => String(row.status ?? '').toLowerCase() !== 'archived',
+    },
+    {
+      label: 'Unarchive',
+      icon: <Archive className="w-4 h-4" />,
+      onClick: handleUnarchive,
+      tooltip: 'Unarchive',
+      show: (row) => String(row.status ?? '').toLowerCase() === 'archived',
     },
     {
       label: 'Delete',
@@ -687,7 +701,7 @@ const Data = () => {
                 ) : recentAccessedError ? (
                   <div className="text-center py-8 text-red-500">{recentAccessedError}</div>
                 ) : lastAccessedData.length > 0 ? (
-                  <div className="max-h-[240px] overflow-y-auto">
+                  <div className="max-h-[240px]">
                     {lastAccessedData.map((item, index) => (
                       <div key={index}>
                         <div className="flex items-center justify-between py-3 px-2 hover:bg-gray-50">
