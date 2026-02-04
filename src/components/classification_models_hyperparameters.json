@@ -204,7 +204,8 @@
         "low": "2",
         "high": "20"
       },
-      "criterion": "gini, entropy, log_loss"
+      "criterion": "gini, entropy, log_loss",
+      "class_weight": "None, balanced, custom"
     }
   },
   "Random Forest Classifier": {
@@ -223,7 +224,8 @@
           "None"
         ]
       },
-      "max_features": "sqrt, log2, None"
+      "max_features": "sqrt, log2, None",
+      "class_weight": "None, balanced, custom"
     }
   },
   "Extra Trees Classifier": {
@@ -312,7 +314,8 @@
       "n_estimators": {
         "low": "50",
         "high": "1000"
-      }
+      },
+      "class_weight": "None, balanced, custom"
     }
   },
   "LightGBM Classifier": {
@@ -331,7 +334,8 @@
       "n_estimators": {
         "low": "50",
         "high": "1000"
-      }
+      },
+      "class_weight": "None, balanced, custom"
     }
   },
   "CatBoost Classifier": {
@@ -350,7 +354,8 @@
       "learning_rate": {
         "low": "0.01",
         "high": "0.3"
-      }
+      },
+      "class_weight": "None, balanced, custom"
     }
   },
   "AdaBoost Classifier": {

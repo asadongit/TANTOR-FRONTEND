@@ -186,7 +186,7 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate }) {
                         {paramName.replace(/_/g, ' ')}
                     </label>
                     
-                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
                         {values.map((value, index) => {
                             const availableOptions = options.filter(opt => 
                                 opt === value || !selectedValues.includes(opt)
@@ -251,7 +251,7 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate }) {
                         {paramName.replace(/_/g, ' ')}
                     </label>
 
-                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="space-y-2 max-h-48 overflow-y-auto p-0.5 custom-scrollbar">
                         {values.map((value, index) => (
                             <div key={index} className="space-y-1">
                                 <div className="flex items-center gap-2">
@@ -373,7 +373,7 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate }) {
                     </div>
 
                     {algo.configMode === 'Hyper Parameter' && algo.hyperparameters && (
-                        <div className="grid grid-cols-2 gap-4 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                        <div className="grid grid-cols-2 gap-4 max-h-96 overflow-y-auto px-1 custom-scrollbar">
                             {Object.entries(algo.hyperparameters).map(([paramName, paramValue]) =>
                                 renderHyperparameterField(paramName, paramValue)
                             )}
@@ -381,7 +381,7 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate }) {
                     )}
 
                     {algo.configMode === 'Grid Search' && algo.hyperparameters && (
-                        <div className="grid grid-cols-2 gap-4 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                        <div className="grid grid-cols-2 gap-4 max-h-96 overflow-y-auto custom-scrollbar">
                             {Object.entries(algo.hyperparameters).map(([paramName, paramValue]) =>
                                 renderGridSearchField(paramName, paramValue)
                             )}
