@@ -320,7 +320,7 @@ const DataTable = ({
                     selectedRowId && row.sno === selectedRowId
                       ? 'bg-[#f3f0f8] border-l-4 border-l-[#8e78b7]'
                       : 'hover:bg-gray-50'
-                  }`}
+                  } ${row.rowClassName || ''}`}
                   onClick={(e) => handleRowClickInternal(row, e)}
                 >
                   {columns.map((column, cellIndex) => {

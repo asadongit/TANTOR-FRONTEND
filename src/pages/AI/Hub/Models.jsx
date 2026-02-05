@@ -22,10 +22,12 @@ import DataTable from "../../../components/DataTable";
 import QuickPredictModal from "./Components/Models/QuickPredictModal";
 import DeleteModal from "./Components/DeleteModal";
 import ArchiveModal from "./Components/ArchieveModal";
+import UnarchiveModal from "./Components/UnarchieveModal";
 import { useAuth } from "../../../context/AuthContext";
 import { useAIPlayground } from "../../../context/AIPlaygroundContext";
 import ModelFlow from "./Components/Models/ModelFlow";
 import StatusFilterDropdown from "./Components/StateSelector";
+import { unarchiveEntity } from "./Components/Hooks";
 import toast from 'react-hot-toast';
 
 
@@ -49,6 +51,9 @@ function Models() {
   const [archiveModalOpen, setArchiveModalOpen] = useState(false);
   const [archiveTarget, setArchiveTarget] = useState(null);
   const [archiveLoading, setArchiveLoading] = useState(false);
+  const [unarchiveModalOpen, setUnarchiveModalOpen] = useState(false);
+  const [unarchiveTarget, setUnarchiveTarget] = useState(null);
+  const [unarchiveLoading, setUnarchiveLoading] = useState(false);
   const [deployModalOpen, setDeployModalOpen] = useState(false);
   const [deployTarget, setDeployTarget] = useState(null);
   const hostnameAI = window._env_?.VITE_AI_API;
@@ -313,6 +318,11 @@ function Models() {
     setArchiveModalOpen(true);
   };
 
+  const handleUnarchive = (row) => {
+    setUnarchiveTarget(row);
+    setUnarchiveModalOpen(true);
+  };
+
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     setDeleteLoading(true);
@@ -361,6 +371,28 @@ function Models() {
       toast.error(err.message || "Archive failed");
     } finally {
       setArchiveLoading(false);
+    }
+  };
+
+  const confirmUnarchive = async () => {
+    if (!unarchiveTarget) return;
+    setUnarchiveLoading(true);
+    try {
+      const id = unarchiveTarget.id || unarchiveTarget._raw?.id;
+      await unarchiveEntity({
+        component: 'model',
+        component_id: id,
+        hostnameAI,
+        token,
+      });
+      setUnarchiveModalOpen(false);
+      setUnarchiveTarget(null);
+      setRefreshTrigger((prev) => prev + 1);
+      toast.success('Model unarchived successfully');
+    } catch (err) {
+      toast.error(err.message || "Unarchive failed");
+    } finally {
+      setUnarchiveLoading(false);
     }
   };
 
@@ -630,7 +662,7 @@ function Models() {
     {
       label: "Unarchive",
       icon: <Archive className="w-4 h-4" />,
-      onClick: (row) => console.log('Unarchive model:', row),
+      onClick: handleUnarchive,
       tooltip: "Unarchive",
       show: (row) => String(row.status ?? '').toLowerCase() === 'archived',
     },
@@ -968,6 +1000,15 @@ function Models() {
         description={`Are you sure you want to archive "${archiveTarget?.run_name || archiveTarget?.name || archiveTarget?.id || ''}"? This action can be undone.`}
         loading={archiveLoading}
         confirmText="Archive"
+      />
+      <UnarchiveModal
+        isOpen={unarchiveModalOpen}
+        onClose={() => setUnarchiveModalOpen(false)}
+        onConfirm={confirmUnarchive}
+        title="Unarchive Model"
+        description={`Are you sure you want to unarchive "${unarchiveTarget?.run_name || unarchiveTarget?.name || unarchiveTarget?.id || ''}"? This action can be undone.`}
+        loading={unarchiveLoading}
+        confirmText="Unarchive"
       />
       <DeployModal />
       {isCanvasLoading && (
