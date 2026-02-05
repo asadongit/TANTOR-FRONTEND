@@ -260,7 +260,6 @@ const Data = () => {
       setDeleteTarget(null);
       setRefreshTrigger((prev) => prev + 1);
       toast.success('Dataset deleted successfully');
-      toast.success('Dataset deleted successfully');
     } catch (err) {
       toast.error(err.message || "Delete failed");
     } finally {
