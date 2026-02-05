@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { RefreshCw, Pin, Eye, Trash2, Plus, MessageSquare, X, MoreVertical } from 'lucide-react';
+import { RefreshCw, Pin, Eye, Trash2, Plus, MessageSquare, X, MoreVertical, Send } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../../../../context/AuthContext';
 import DataTable from '../../../../../components/DataTable';
 
@@ -39,6 +40,7 @@ const CommentsTab = ({ datasetId, projectId }) => {
     const [isRepliesOpen, setIsRepliesOpen] = useState(false);
     const [activeCommentId, setActiveCommentId] = useState(null); // <-- was activeComment object
     const [replyText, setReplyText] = useState('');
+    const [showOnlyPinned, setShowOnlyPinned] = useState(false);
 
     const activeComment = useMemo(() => {
         if (!activeCommentId) return null;
@@ -120,9 +122,11 @@ const CommentsTab = ({ datasetId, projectId }) => {
         }
 
         out.sort((a, b) => {
-            const ap = Number(a?.pinned || 0);
-            const bp = Number(b?.pinned || 0);
-            if (bp !== ap) return bp - ap;
+            if (showOnlyPinned) {
+                const ap = Number(a?.pinned || 0);
+                const bp = Number(b?.pinned || 0);
+                if (bp !== ap) return bp - ap;
+            }
 
             const s = filters.sortBy || 'date';
             if (s === 'replies') {
@@ -130,8 +134,8 @@ const CommentsTab = ({ datasetId, projectId }) => {
                 const br = Array.isArray(b?.replies) ? b.replies.length : 0;
                 if (br !== ar) return br - ar; // more replies first
                 // tie-breaker: newest first
-                const at = new Date(a?.created_at || 0).getTime();
-                const bt = new Date(b?.created_at || 0).getTime();
+                const at = new Date(a?.updated_at || a?.created_at || 0).getTime();
+                const bt = new Date(b?.updated_at || b?.created_at || 0).getTime();
                 return bt - at;
             }
 
@@ -139,13 +143,13 @@ const CommentsTab = ({ datasetId, projectId }) => {
             if (s === 'subject') return (a?.subject || '').localeCompare(b?.subject || '');
             if (s === 'component') return (a?.component || '').localeCompare(b?.component || '');
 
-            const at = new Date(a?.created_at || 0).getTime();
-            const bt = new Date(b?.created_at || 0).getTime();
+            const at = new Date(a?.updated_at || a?.created_at || 0).getTime();
+            const bt = new Date(b?.updated_at || b?.created_at || 0).getTime();
             return bt - at; // date desc
         });
 
         return out;
-    }, [comments, filters]);
+    }, [comments, filters, showOnlyPinned]);
 
     const openReplies = (rawComment) => {
         setActiveCommentId(rawComment?.id ?? null);
@@ -264,6 +268,7 @@ const CommentsTab = ({ datasetId, projectId }) => {
             if (!res.ok) throw new Error('Failed to add reply');
 
             setReplyText('');
+            toast.success('Reply added successfully!');
             setRefreshTick((x) => x + 1);
         } catch (e) {
             setError(e?.message || 'Failed to add reply');
@@ -284,8 +289,9 @@ const CommentsTab = ({ datasetId, projectId }) => {
             repliesCount: Array.isArray(c.replies) ? c.replies.length : 0,
             replies: Array.isArray(c.replies) ? c.replies : [],
             __raw: c,
+            rowClassName: showOnlyPinned && Number(c?.pinned) ? 'bg-blue-50' : '',
         }));
-    }, [filteredSortedComments]);
+    }, [filteredSortedComments, showOnlyPinned]);
 
     const columns = useMemo(
         () => [
@@ -480,6 +486,19 @@ const CommentsTab = ({ datasetId, projectId }) => {
                             />
                         </div>
                     </div>
+
+                    <div>
+                        <label className="block text-xs text-gray-600 mb-1">&nbsp;</label>
+                        <button
+                            onClick={() => setShowOnlyPinned(!showOnlyPinned)}
+                            className={`inline-flex items-center justify-center w-10 h-10 border rounded-lg ${
+                                showOnlyPinned ? 'bg-[#8e78b7] text-white border-[#8e78b7]' : 'border-gray-300 hover:bg-gray-50'
+                            }`}
+                            title={showOnlyPinned ? 'Stop highlighting pinned comments' : 'Highlight pinned comments'}
+                        >
+                            <Pin className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -490,7 +509,7 @@ const CommentsTab = ({ datasetId, projectId }) => {
             )}
 
             <div className=" text-xs text-gray-500">
-                Pinned comments will be at top.
+                {showOnlyPinned ? 'Pinned comments are highlighted and shown at top.' : ''}
             </div>
 
             <DataTable
@@ -600,71 +619,120 @@ const CommentsTab = ({ datasetId, projectId }) => {
 
             {/* Replies Modal */}
             {isRepliesOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-                    <div className="w-full max-w-3xl rounded-xl bg-white border border-gray-200 shadow-lg">
-                        <div className="flex items-start justify-between px-5 py-4 border-b">
-                            <div className="min-w-0">
-                                <div className="text-base font-semibold text-gray-900 truncate">
-                                    {activeComment?.subject || 'Comment'}
+                <div className="fixed inset-0 z-50 flex bg-black/30" onClick={closeReplies}>
+                    <div className="ml-auto w-full max-w-4xl h-full bg-white shadow-2xl border-l border-gray-200 flex flex-col" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-start justify-between px-6 py-4 border-b">
+                            <div className="space-y-1">
+                                <div className="text-sm text-gray-900 font-semibold flex items-center gap-2 flex-wrap">
+                                    <span>Dataset Comments</span>
+                                    <span className="text-gray-400">• {Array.isArray(activeComment?.replies) ? String(activeComment.replies.length).padStart(2, '0') : '00'} Total Replies</span>
                                 </div>
-                                <div className="text-xs text-gray-500 mt-0.5">
-                                    By <span className="font-medium">{activeComment?.user_name || activeComment?.user_id || 'Unknown'}</span>
-                                    {activeComment?.created_at ? <> • {fmt(activeComment.created_at)}</> : null}
-                                </div>
+                                <div className="text-xs text-[#8e78b7] font-semibold">3 new comments</div>
                             </div>
                             <button className="p-2 hover:bg-gray-50 rounded-lg" onClick={closeReplies} title="Close">
                                 <X className="w-4 h-4 text-gray-600" />
                             </button>
                         </div>
 
-                        <div className="p-5 space-y-4">
-                            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                                <div className="text-sm text-gray-800 whitespace-pre-wrap">{activeComment?.comment || ''}</div>
+                        <div className="px-6 py-3 border-b flex items-center gap-6 text-sm text-gray-700">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-gray-900">Subject :</span>
+                                <span>{activeComment?.subject || 'Comment'}</span>
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-gray-900">Component :</span>
+                                <span>{activeComment?.component_name || 'Dataset'}</span>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+                            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                                <div className="flex items-start gap-3">
+                                    <div className="w-9 h-9 rounded-full bg-[#8e78b7]/15 text-[#8e78b7] font-semibold flex items-center justify-center text-sm">
+                                        {(activeComment?.user_name || activeComment?.user_id || '?').slice(0, 1).toUpperCase()}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <div>
+                                                <div className="text-sm font-semibold text-gray-900">{activeComment?.user_name || activeComment?.user_id || 'Unknown'}</div>
+                                                {activeComment?.created_at ? (
+                                                    <div className="text-xs text-gray-500">{fmt(activeComment.created_at)}</div>
+                                                ) : null}
+                                            </div>
+                                        </div>
+                                        <div className="mt-3 text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+                                            {activeComment?.comment || ''}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="mt-2 text-xs text-[#8e78b7] font-semibold cursor-pointer">{Array.isArray(activeComment?.replies) ? `${activeComment.replies.length} replies` : 'Replies'}</div>
                             </div>
 
-                            <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1">
+                            <div className="space-y-5">
                                 {(activeComment?.replies || []).length === 0 ? (
                                     <div className="text-sm text-gray-500">No replies yet.</div>
                                 ) : (
                                     activeComment.replies.map((r) => (
-                                        <div key={r.id} className="rounded-lg border border-gray-200 p-3">
-                                            <div className="text-xs text-gray-500">
-                                                Reply by <span className="font-medium">{r.user_name || r.user_id || 'Unknown'}</span>
-                                                {r.created_at ? <> • {fmt(r.created_at)}</> : null}
+                                        <div key={r.id} className="border-b pb-4 last:border-b-0 bg-gray-50 rounded-lg p-3">
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-700 font-semibold flex items-center justify-center text-xs">
+                                                    {(r.user_name || r.user_id || '?').slice(0, 1).toUpperCase()}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <div>
+                                                            <div className="text-sm font-semibold text-gray-900">{r.user_name || r.user_id || 'Unknown'}</div>
+                                                            {r.created_at ? (
+                                                                <div className="text-xs text-gray-500">{fmt(r.created_at)}</div>
+                                                            ) : null}
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-2 text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{r.comment || ''}</div>
+                                                </div>
                                             </div>
-                                            <div className="mt-1 text-sm text-gray-800 whitespace-pre-wrap">{r.comment || ''}</div>
                                         </div>
                                     ))
                                 )}
                             </div>
-
-                            <div className="border-t pt-4">
-                                <label className="block text-xs text-gray-600 mb-1">Add Reply</label>
-                                <div className="flex gap-2">
-                                    <input
-                                        value={replyText}
-                                        onChange={(e) => setReplyText(e.target.value)}
-                                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                                        placeholder="Write a reply..."
-                                    />
-                                    <button
-                                        className="px-3 py-2 text-sm rounded-lg bg-[#8e78b7] text-white hover:opacity-90 disabled:opacity-50"
-                                        onClick={submitReply}
-                                        disabled={isSubmitting || !replyText.trim()}
-                                    >
-                                        {isSubmitting ? 'Sending...' : 'Reply'}
-                                    </button>
-                                </div>
-                            </div>
                         </div>
 
-                        <div className="flex justify-end gap-2 px-5 py-4 border-t">
-                            <button
-                                className="px-3 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50"
-                                onClick={closeReplies}
-                            >
-                                Close
-                            </button>
+                        <div className="border-t px-6 py-4 bg-white">
+                            <div className="flex gap-2 items-end">
+                                <div className="flex-1">
+                                    <textarea
+                                        value={replyText}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            if (value.length <= 500) {
+                                                setReplyText(value);
+                                            } else {
+                                                setReplyText(value.substring(0, 500));
+                                            }
+                                        }}
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-vertical min-h-[40px] max-h-[120px]"
+                                        placeholder="Add Reply"
+                                        rows={1}
+                                        style={{ overflow: 'hidden' }}
+                                        onInput={(e) => {
+                                            e.target.style.height = 'auto';
+                                            e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+                                        }}
+                                    />
+                                    <div className="text-xs text-gray-400 text-right mt-1">{replyText.length}/500 characters</div>
+                                </div>
+                                <button
+                                    className="px-3 py-2 text-sm rounded-lg bg-[#8e78b7] text-white hover:opacity-90 disabled:opacity-50 h-fit"
+                                    onClick={submitReply}
+                                    disabled={isSubmitting || !replyText.trim()}
+                                    title="Send"
+                                >
+                                    {isSubmitting ? (
+                                        <RefreshCw className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <Send className="w-4 h-4" />
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
