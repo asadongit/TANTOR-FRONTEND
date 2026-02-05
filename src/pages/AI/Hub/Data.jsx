@@ -7,9 +7,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import DeleteModal from './Components/DeleteModal';
 import ArchiveModal from './Components/ArchieveModal';
+import UnarchiveModal from './Components/UnarchieveModal';
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 // import { updateRecentAccess } from './Components/Hooks';
-import { updateRecentAccess } from './Components/Hooks';
+import { updateRecentAccess, unarchiveEntity } from './Components/Hooks';
 import StatusFilterDropdown from './Components/StateSelector';
 import { toast } from 'react-hot-toast';
 
@@ -33,6 +34,9 @@ const Data = () => {
   const [archiveModalOpen, setArchiveModalOpen] = useState(false);
   const [archiveTarget, setArchiveTarget] = useState(null);
   const [archiveLoading, setArchiveLoading] = useState(false);
+  const [unarchiveModalOpen, setUnarchiveModalOpen] = useState(false);
+  const [unarchiveTarget, setUnarchiveTarget] = useState(null);
+  const [unarchiveLoading, setUnarchiveLoading] = useState(false);
   const [aiCanvasLoading, setAiCanvasLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [recentAccessed, setRecentAccessed] = useState([]);
@@ -288,6 +292,28 @@ const Data = () => {
     }
   };
 
+  const confirmUnarchive = async () => {
+    if (!unarchiveTarget) return;
+    setUnarchiveLoading(true);
+    try {
+      const id = unarchiveTarget.id || unarchiveTarget.dataset_id || unarchiveTarget.uuid || unarchiveTarget.file_id || unarchiveTarget.file_name;
+      await unarchiveEntity({
+        component: 'data',
+        component_id: id,
+        hostnameAI,
+        token,
+      });
+      setUnarchiveModalOpen(false);
+      setUnarchiveTarget(null);
+      setRefreshTrigger((prev) => prev + 1);
+      toast.success('Dataset unarchived successfully');
+    } catch (err) {
+      toast.error(err.message || "Unarchive failed");
+    } finally {
+      setUnarchiveLoading(false);
+    }
+  };
+
   const handleLibrary = async (row) => {
     const datasetId =
       row?.id ||
@@ -428,7 +454,8 @@ const Data = () => {
   };
 
   const handleUnarchive = (row) => {
-    console.log('Unarchive dataset:', row);
+    setUnarchiveTarget(row);
+    setUnarchiveModalOpen(true);
   };
 
   const actions = [
@@ -779,6 +806,16 @@ const Data = () => {
         description={`Are you sure you want to archive "${archiveTarget?.file_name || archiveTarget?.id || ''}"? This action can be undone.`}
         loading={archiveLoading}
         confirmText="Archive"
+      />
+
+      <UnarchiveModal
+        isOpen={unarchiveModalOpen}
+        onClose={() => setUnarchiveModalOpen(false)}
+        onConfirm={confirmUnarchive}
+        title="Unarchive Dataset"
+        description={`Are you sure you want to unarchive "${unarchiveTarget?.file_name || unarchiveTarget?.id || ''}"? This action can be undone.`}
+        loading={unarchiveLoading}
+        confirmText="Unarchive"
       />
 
       {aiCanvasLoading && (

@@ -57,3 +57,38 @@ export async function updateRecentAccess({
     setRecentLoading(false);
   }
 }
+
+/**
+ * Unarchives an entity (data/project/model).
+ * @param {Object} params
+ * @param {string} params.component - 'data', 'project', or 'model'.
+ * @param {string} params.component_id - The ID of the component.
+ * @param {string} params.hostnameAI - API host.
+ * @param {string} params.token - Auth token.
+ * @returns {Promise<boolean>} - True if successful, throws error otherwise.
+ */
+export async function unarchiveEntity({
+  component,
+  component_id,
+  hostnameAI,
+  token,
+}) {
+  const response = await fetch(`${hostnameAI}/canvas/unarchive`, {
+    method: 'POST',
+    headers: {
+      'accept': 'application/json',
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      component,
+      component_id,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to unarchive: ${response.statusText}`);
+  }
+
+  return true;
+}
