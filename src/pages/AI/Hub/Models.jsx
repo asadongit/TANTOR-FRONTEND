@@ -68,7 +68,7 @@ function Models() {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch(`${hostnameAI}/canvas/model_list/`, {
+        const response = await fetch(`${hostnameAI}/canvas/model_list`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
