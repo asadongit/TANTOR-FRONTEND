@@ -265,7 +265,6 @@ function Models() {
 
   const columns = [
     { key: "sno", label: "Sno", sortable: true, width: "50px" },
-    { key: "sno", label: "Sno", sortable: true, width: "50px" },
     {
       key: "run_name",
       label: "Name",
