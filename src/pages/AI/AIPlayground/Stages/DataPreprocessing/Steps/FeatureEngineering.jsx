@@ -323,7 +323,7 @@ function FeatureEngineering({ onApiCall }) {
     const categoricalColumns = workflowState?.dataPreprocessing?.step2?.apiResponse?.categorical_columns || [];
     const hasCategoricalColumns = categoricalColumns.length > 0;
 
-    const detectOutliersEnabled = workflowState?.dataPreprocessing?.step2?.config?.toggles?.detectOutliers || false;
+    const detectOutliersEnabled = workflowState?.dataPreprocessing?.step2?.config?.outlier_detection_active || false;
     const outlierCount = workflowState?.dataPreprocessing?.step2?.apiResponse?.outlier_count || 0;
     const hasOutliers = detectOutliersEnabled && outlierCount > 0;
 
