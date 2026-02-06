@@ -1,15 +1,24 @@
 import { X, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Link as LinkIcon, Play, Send } from 'lucide-react';
+import { useState } from 'react';
 
 const AddCommentModal = ({ isOpen, onClose, formData, onInputChange, onSubmit, onReset, error }) => {
+    const [subjectError, setSubjectError] = useState('');
+
     if (!isOpen) return null;
 
     const handleSubjectChange = (e) => {
-        let value = e.target.value;
-        value = value.replace(/[^a-zA-Z0-9\s\/\-]/g, '');
-        onInputChange({ target: { name: 'subject', value } });
+        const input = e.target.value;
+        const cleaned = input.replace(/[^a-zA-Z0-9\s\/\-]/g, '');
+        if (cleaned !== input) {
+            setSubjectError('Only letters, numbers, spaces, / and - are allowed for subject name');
+        } else {
+            setSubjectError('');
+        }
+        onInputChange({ target: { name: 'subject', value: cleaned } });
     };
 
     const handleCancel = () => {
+        setSubjectError('');
         onReset();
         onClose();
     };
@@ -101,6 +110,7 @@ const AddCommentModal = ({ isOpen, onClose, formData, onInputChange, onSubmit, o
                                 maxLength="120"
                                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                             />
+                            {subjectError && <p className="text-red-500 text-xs mt-2">{subjectError}</p>}
                         </div>
                     </div>
 

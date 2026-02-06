@@ -171,6 +171,8 @@ const Data = () => {
   const handleRefresh = () => {
     setRefreshTrigger(prev => prev + 1);
     setDashboardRefreshTrigger(prev => prev + 1);
+    setSearchTerm('');
+    toast.success('Refresh successfully');
   };
 
   const toggleView = () => {

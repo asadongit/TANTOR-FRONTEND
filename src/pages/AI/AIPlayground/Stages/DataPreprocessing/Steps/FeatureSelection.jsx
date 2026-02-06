@@ -550,20 +550,6 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
         outlier_detection_method: outlierMethod
       };
 
-      const currentConfig = {
-        toggles,
-        selectedColumns,
-        dropColumnsEnabled,
-        imputationEnabled,
-        threshold,
-        numericalImputation,
-        categoricalImputation,
-        timeSeriesImputation,
-        columnOverrides,
-        basicFeatures,
-        outlierMethod
-      };
-
       const response = await fetch(`${hostnameAI}/data/preprocess/feature_selection`, {
         method: 'POST',
         headers: {
@@ -581,7 +567,7 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
       const apiResponse = await response.json();
 
       updatePreprocessingStep('step2', {
-        config: currentConfig,
+        config: requestBody,
         apiResponse: apiResponse
       });
 
