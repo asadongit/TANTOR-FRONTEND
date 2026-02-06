@@ -40,6 +40,7 @@ const CommentsTab = ({ projectData }) => {
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [addCommentError, setAddCommentError] = useState(null);
+    const [subjectError, setSubjectError] = useState('');
     const [isRepliesOpen, setIsRepliesOpen] = useState(false);
     const [activeCommentId, setActiveCommentId] = useState(null);
     const [replyText, setReplyText] = useState('');
@@ -238,6 +239,7 @@ const CommentsTab = ({ projectData }) => {
         setIsComponentNameDisabled(true);
         setComponentId(projectId);
         setAddCommentError(null);
+        setSubjectError('');
     };
 
     const canCallApis = Boolean(hostnameAI && token && decodedToken?.sub && projectId);
@@ -640,8 +642,14 @@ const CommentsTab = ({ projectData }) => {
                                     <input
                                         value={addForm.subject}
                                         onChange={(e) => {
-                                            let value = e.target.value;
-                                            value = value.replace(/[^a-zA-Z0-9\s\/\-]/g, '');
+                                            const input = e.target.value;
+                                            const cleaned = input.replace(/[^a-zA-Z0-9\s\/\-]/g, '');
+                                            if (cleaned !== input) {
+                                                setSubjectError('Only letters, numbers, spaces, / and - are allowed');
+                                            } else {
+                                                setSubjectError('');
+                                            }
+                                            let value = cleaned;
                                             if (value.length <= 120) {
                                                 setAddForm((s) => ({ ...s, subject: value }));
                                             } else {
@@ -652,6 +660,7 @@ const CommentsTab = ({ projectData }) => {
                                         placeholder="Subject"
                                     />
                                     <div className="text-xs text-gray-400 text-right">{addForm.subject.length}/120 characters</div>
+                                    {subjectError && <p className="text-red-500 text-xs mt-2">{subjectError}</p>}
                                 </div>
                             </div>
 
@@ -697,7 +706,7 @@ const CommentsTab = ({ projectData }) => {
                             <button
                                 className="px-3 py-2 text-sm rounded-lg bg-[#8e78b7] text-white hover:opacity-90 disabled:opacity-50"
                                 onClick={submitAddComment}
-                                disabled={isSubmitting}
+                                disabled={isSubmitting || !addForm.subject.trim() || !addForm.comment.trim()}
                             >
                                 {isSubmitting ? 'Saving...' : 'Save'}
                             </button>

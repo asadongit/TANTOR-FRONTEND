@@ -246,6 +246,8 @@ function Models() {
   const handleRefresh = () => {
     setRefreshTrigger((prev) => prev + 1);
     setDashboardRefreshTrigger((prev) => prev + 1);
+    setSearchTerm('');
+    toast.success('Refresh successfully');
   };
 
   const getStatusStyle = (status) => {
@@ -958,7 +960,7 @@ function Models() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="col-span-1">
               <ModelFlow />
             </div>
