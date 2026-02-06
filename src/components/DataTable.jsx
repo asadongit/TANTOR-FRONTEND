@@ -232,7 +232,7 @@ const DataTable = ({
   return (
     <div className="w-full mt-6" style={{ fontSize: density.cellFontSize, lineHeight: density.lineHeight }}>
       <div
-        className="overflow-y-auto overflow-x-hidden border rounded-lg mb-4"
+        className="overflow-y-auto overflow-x-auto border rounded-lg mb-4"
         style={{ maxHeight: "calc(100vh - 240px)" }}
       >
         <table
@@ -433,7 +433,7 @@ const DataTable = ({
                       return (
                         <td
                           key={cellIndex}
-                          className="whitespace-nowrap overflow-hidden text-ellipsis align-middle"
+                          className="whitespace-nowrap text-ellipsis align-middle"
                           style={{ ...cellBaseStyle, maxWidth: "100%" }}
                           title={column.renderTitle ? column.renderTitle(row, rowIndex) : undefined}
                         >

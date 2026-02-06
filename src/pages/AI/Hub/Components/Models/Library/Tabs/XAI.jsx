@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {  Download, X as CloseIcon } from 'lucide-react';
+import { Download, X as CloseIcon, Search } from 'lucide-react';
 import { useAuth } from '../../../../../../../context/AuthContext';
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
 const XAI = ({ modelData }) => {
-    const [searchTerm, setSearchTerm] = useState('');
+    const [searchTermFeatureFlip, setSearchTermFeatureFlip] = useState('');
+    const [searchTermCounterfactual, setSearchTermCounterfactual] = useState('');
+    const [searchTermLime, setSearchTermLime] = useState('');
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [xaiReport, setXaiReport] = useState(null);
@@ -44,10 +46,6 @@ const XAI = ({ modelData }) => {
         };
         fetchXAI();
     }, [hostnameAI, token, modelData.run_name]);
-
-    const handleSearchChange = (e) => {
-        setSearchTerm(e.target.value);
-    };
 
     const handleRefresh = () => {
         setIsLoading(true);
@@ -215,7 +213,19 @@ const XAI = ({ modelData }) => {
                 {/* Feature Flip Summary Table */}
                 {xaiReport.feature_flip_summary && (
                     <div className="bg-white rounded-lg shadow p-4 overflow-x-auto">
-                        <div className="font-semibold mb-2">Feature Flip Summary</div>
+                        <div className="flex justify-between items-center mb-4">
+                            <div className="font-semibold">Feature Flip Summary</div>
+                            <div className="relative max-w-sm">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search features..."
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-400"
+                                    value={searchTermFeatureFlip}
+                                    onChange={(e) => setSearchTermFeatureFlip(e.target.value)}
+                                />
+                            </div>
+                        </div>
                         <table className="min-w-full text-sm">
                             <thead>
                                 <tr className="bg-gray-50">
@@ -226,14 +236,16 @@ const XAI = ({ modelData }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {xaiReport.feature_flip_summary.map((row, idx) => (
-                                    <tr key={idx} className="border-t">
-                                        <td className="px-2 py-1">{row["Feature"]}</td>
-                                        <td className="px-2 py-1">{row["% of Users Affected"]}</td>
-                                        <td className="px-2 py-1">{row["Avg Change"]}</td>
-                                        <td className="px-2 py-1">{row["Common Direction"]}</td>
-                                    </tr>
-                                ))}
+                                {xaiReport.feature_flip_summary
+                                    .filter(row => row["Feature"].toLowerCase().includes(searchTermFeatureFlip.toLowerCase()))
+                                    .map((row, idx) => (
+                                        <tr key={idx} className="border-t">
+                                            <td className="px-2 py-1">{row["Feature"]}</td>
+                                            <td className="px-2 py-1">{row["% of Users Affected"]}</td>
+                                            <td className="px-2 py-1">{row["Avg Change"]}</td>
+                                            <td className="px-2 py-1">{row["Common Direction"]}</td>
+                                        </tr>
+                                    ))}
                             </tbody>
                         </table>
                     </div>
@@ -242,7 +254,19 @@ const XAI = ({ modelData }) => {
                 {/* Counterfactual Report Table */}
                 {xaiReport.counterfactual_report && (
                     <div className="bg-white rounded-lg shadow p-4 overflow-x-auto">
-                        <div className="font-semibold mb-2">Counterfactual Report</div>
+                        <div className="flex justify-between items-center mb-4">
+                            <div className="font-semibold">Counterfactual Report</div>
+                            <div className="relative max-w-sm">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search features..."
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-400"
+                                    value={searchTermCounterfactual}
+                                    onChange={(e) => setSearchTermCounterfactual(e.target.value)}
+                                />
+                            </div>
+                        </div>
                         <table className="min-w-full text-sm">
                             <thead>
                                 <tr className="bg-gray-50">
@@ -253,14 +277,16 @@ const XAI = ({ modelData }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {xaiReport.counterfactual_report.map((row, idx) => (
-                                    <tr key={idx} className="border-t">
-                                        <td className="px-2 py-1">{row["Feature"]}</td>
-                                        <td className="px-2 py-1">{row["Original"]}</td>
-                                        <td className="px-2 py-1">{row["Counterfactual"]}</td>
-                                        <td className="px-2 py-1">{row["Change"]}</td>
-                                    </tr>
-                                ))}
+                                {xaiReport.counterfactual_report
+                                    .filter(row => row["Feature"].toLowerCase().includes(searchTermCounterfactual.toLowerCase()))
+                                    .map((row, idx) => (
+                                        <tr key={idx} className="border-t">
+                                            <td className="px-2 py-1">{row["Feature"]}</td>
+                                            <td className="px-2 py-1">{row["Original"]}</td>
+                                            <td className="px-2 py-1">{row["Counterfactual"]}</td>
+                                            <td className="px-2 py-1">{row["Change"]}</td>
+                                        </tr>
+                                    ))}
                             </tbody>
                         </table>
                     </div>
@@ -269,9 +295,23 @@ const XAI = ({ modelData }) => {
                 {/* LIME Report Table */}
                 {xaiReport.lime_report && (
                     <div className="bg-white rounded-lg shadow p-4 overflow-x-auto">
-                        <div className="font-semibold mb-2">LIME Explanation (Instance {xaiReport.lime_report.instance_index})</div>
-                        <div className="mb-2 text-xs text-gray-500">
-                            Predicted Class: <span className="font-semibold">{xaiReport.lime_report.predicted_class_name}</span>
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <div className="font-semibold">LIME Explanation (Instance {xaiReport.lime_report.instance_index})</div>
+                                <div className="text-xs text-gray-500">
+                                    Predicted Class: <span className="font-semibold">{xaiReport.lime_report.predicted_class_name}</span>
+                                </div>
+                            </div>
+                            <div className="relative max-w-sm">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search features..."
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-400"
+                                    value={searchTermLime}
+                                    onChange={(e) => setSearchTermLime(e.target.value)}
+                                />
+                            </div>
                         </div>
                         <table className="min-w-full text-sm">
                             <thead>
@@ -281,12 +321,14 @@ const XAI = ({ modelData }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {xaiReport.lime_report.explanation_for_class.map(([feature, weight], idx) => (
-                                    <tr key={idx} className="border-t">
-                                        <td className="px-2 py-1">{feature}</td>
-                                        <td className="px-2 py-1">{weight}</td>
-                                    </tr>
-                                ))}
+                                {xaiReport.lime_report.explanation_for_class
+                                    .filter(([feature, weight]) => feature.toLowerCase().includes(searchTermLime.toLowerCase()))
+                                    .map(([feature, weight], idx) => (
+                                        <tr key={idx} className="border-t">
+                                            <td className="px-2 py-1">{feature}</td>
+                                            <td className="px-2 py-1">{weight}</td>
+                                        </tr>
+                                    ))}
                             </tbody>
                         </table>
                         <div className="mt-2 text-xs text-gray-500">
