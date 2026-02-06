@@ -222,9 +222,7 @@ function Features({ modelData }) {
         <StatsRow
           statsCards={statsCards}
           linkCards={[
-            { title: "Raw Data" },
-            { title: "DQ Report" },
-            { title: "Feature Impact" },
+            { title: "DQ Report"},
           ]}
           variant="default"
           gap={4}

@@ -363,7 +363,7 @@ export default function ModelFlow() {
       </div>
 
       <div
-        className="h-[200px] overflow-hidden rounded-lg bg-gradient-to-br from-gray-50 to-white relative border border-gray-100"
+        className="h-[200px] overflow-x-auto overflow-y-hidden rounded-lg bg-gradient-to-br from-gray-50 to-white relative border border-gray-100"
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         style={{ cursor: isDragging ? "grabbing" : "grab" }}
