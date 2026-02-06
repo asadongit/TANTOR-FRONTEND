@@ -289,7 +289,6 @@ const DIMENSIONALITY_REDUCTION_DESCRIPTIONS = {
     truncated_svd: "Truncated SVD reduces dimensions by keeping the most significant singular values. It is commonly used for sparse and text-based datasets.",
     dictionary_learning: "Dictionary Learning represents data as a sparse combination of basis vectors. It captures important patterns with fewer components.",
     mini_batch_dictionary_learning: "This is a scalable version of Dictionary Learning using mini-batches. It is suitable for large datasets.",
-    vae: "VAE is a probabilistic autoencoder that learns a latent variable distribution. It is used for both dimensionality reduction and data generation.",
     isomap: "Isomap reduces dimensions by preserving geodesic distances between data points. It is effective for unfolding non-linear manifolds.",
     mds: "MDS reduces dimensions by preserving pairwise distances between data points. It is mainly used for visualization and exploratory analysis.",
     ica: "ICA is a dimensionality reduction and signal separation technique that transforms data into statistically independent components. It is commonly used to separate mixed signals and identify hidden underlying factors in the data."
