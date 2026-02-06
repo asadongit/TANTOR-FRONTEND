@@ -7,8 +7,10 @@ import { useAuth } from '../../../context/AuthContext';
 import { CreateProjectModal } from '../AIPlayground/modals/Dashboard/CreateProjectModal';
 import DeleteModal from './Components/DeleteModal';
 import ArchiveModal from './Components/ArchieveModal';
+import UnarchiveModal from './Components/UnarchieveModal';
 import StatusFilterDropdown from './Components/StateSelector';
-import { updateRecentAccess } from './Components/Hooks';
+import { updateRecentAccess, unarchiveEntity } from './Components/Hooks';
+import toast from 'react-hot-toast';
 
 const Projects = () => {
     const navigate = useNavigate();
@@ -32,6 +34,10 @@ const Projects = () => {
     const [archiveModalOpen, setArchiveModalOpen] = useState(false);
     const [archiveTarget, setArchiveTarget] = useState(null);
     const [archiveLoading, setArchiveLoading] = useState(false);
+
+    const [unarchiveModalOpen, setUnarchiveModalOpen] = useState(false);
+    const [unarchiveTarget, setUnarchiveTarget] = useState(null);
+    const [unarchiveLoading, setUnarchiveLoading] = useState(false);
 
     const [dashboardData, setDashboardData] = useState(null);
     const [dashboardLoading, setDashboardLoading] = useState(false);
@@ -238,8 +244,9 @@ const Projects = () => {
             setDeleteModalOpen(false);
             setDeleteTarget(null);
             setRefreshTrigger((prev) => prev + 1);
+            toast.success('Project deleted successfully');
         } catch (err) {
-            alert(err.message || "Delete failed");
+            toast.error(err.message || "Delete failed");
         } finally {
             setDeleteLoading(false);
         }
@@ -248,6 +255,11 @@ const Projects = () => {
     const handleArchive = (row) => {
         setArchiveTarget(row);
         setArchiveModalOpen(true);
+    };
+
+    const handleUnarchive = (row) => {
+        setUnarchiveTarget(row);
+        setUnarchiveModalOpen(true);
     };
 
     const confirmArchive = async () => {
@@ -268,10 +280,33 @@ const Projects = () => {
             setArchiveModalOpen(false);
             setArchiveTarget(null);
             setRefreshTrigger((prev) => prev + 1);
+            toast.success('Project archived successfully');
         } catch (err) {
-            alert(err.message || "Archive failed");
+            toast.error(err.message || "Archive failed");
         } finally {
             setArchiveLoading(false);
+        }
+    };
+
+    const confirmUnarchive = async () => {
+        if (!unarchiveTarget) return;
+        setUnarchiveLoading(true);
+        try {
+            const id = unarchiveTarget.id;
+            await unarchiveEntity({
+                component: 'project',
+                component_id: id,
+                hostnameAI,
+                token,
+            });
+            setUnarchiveModalOpen(false);
+            setUnarchiveTarget(null);
+            setRefreshTrigger((prev) => prev + 1);
+            toast.success('Project unarchived successfully');
+        } catch (err) {
+            toast.error(err.message || "Unarchive failed");
+        } finally {
+            setUnarchiveLoading(false);
         }
     };
 
@@ -329,6 +364,14 @@ const Projects = () => {
             icon: <Archive className="w-4 h-4" />,
             onClick: handleArchive,
             tooltip: 'Archive',
+            show: (row) => String(row.status ?? '').toLowerCase() !== 'archived',
+        },
+        {
+            label: 'Unarchive',
+            icon: <Archive className="w-4 h-4" />,
+            onClick: handleUnarchive,
+            tooltip: 'Unarchive',
+            show: (row) => String(row.status ?? '').toLowerCase() === 'archived',
         },
         {
             label: 'Delete',
@@ -533,6 +576,15 @@ const Projects = () => {
                 description={`Are you sure you want to archive "${archiveTarget?.name || archiveTarget?.id || ''}"?`}
                 loading={archiveLoading}
                 confirmText="Archive"
+            />
+            <UnarchiveModal
+                isOpen={unarchiveModalOpen}
+                onClose={() => setUnarchiveModalOpen(false)}
+                onConfirm={confirmUnarchive}
+                title="Unarchive Project"
+                description={`Are you sure you want to unarchive "${unarchiveTarget?.name || unarchiveTarget?.id || ''}"?`}
+                loading={unarchiveLoading}
+                confirmText="Unarchive"
             />
         </div>
     );

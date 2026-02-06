@@ -1,10 +1,11 @@
 // ProjectLibrary.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, Cloud, LayoutDashboard } from 'lucide-react';
 import CommentsTab from './CommentsTab';
 import OverviewTab from './OverviewTab';
 import ComponentsTab from './ComponentsTab';
+import { useAuth } from '../../../../../context/AuthContext';
 
 const ProjectLibrary = () => {
     const { projectId } = useParams();
@@ -12,39 +13,98 @@ const ProjectLibrary = () => {
     const location = useLocation();
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('Overview');
+    const [projectData, setProjectData] = useState(location.state?.ProjectData || null);
+    const [isLoading, setIsLoading] = useState(!projectData);
+    const [error, setError] = useState(null);
+    const { token } = useAuth();
+    const hostnameAI = window._env_?.VITE_AI_API;
 
-    const ProjectData = location.state?.ProjectData || {};
+    useEffect(() => {
+        if (!projectData && projectId) {
+            const fetchProjectData = async () => {
+                setIsLoading(true);
+                setError(null);
+                try {
+                    const response = await fetch(`${hostnameAI}/canvas/project_list/?project_id=${encodeURIComponent(projectId)}`, {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    });
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch project data');
+                    }
+                    const data = await response.json();
+                    // Handle different response formats
+                    const project = (Array.isArray(data) ? data[0] : data?.data?.[0] || data?.project || data) || null;
+                    if (project) {
+                        setProjectData(project);
+                    } else {
+                        throw new Error('Project not found');
+                    }
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            fetchProjectData();
+        }
+    }, [projectData, projectId, hostnameAI, token]);
+
+    const handleLibraryBack = () => navigate('/ai/hub/projects');
 
     const tabs = ['Overview', 'Components', 'Comments'];
 
     const getProjectName = () => {
-        if (ProjectData?.name) {
-            return ProjectData.name.replace('Project - ', '');
+        if (projectData?.name) {
+            return projectData.name.replace('Project - ', '');
         }
         return projectId; // fallback label
     };
 
-    const handleLibraryBack = () => {
-        navigate('/ai/hub/projects');
-    };
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8e78b7] mx-auto"></div>
+                    <p className="mt-4 text-gray-600">Loading project...</p>
+                </div>
+            </div>
+        );
+    }
 
-    const handleBack = () => {
-        const currentIndex = tabs.indexOf(activeTab);
-        if (currentIndex > 0) {
-            setActiveTab(tabs[currentIndex - 1]);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        } else {
-            navigate('/ai/hub/projects');
-        }
-    };
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+                <div className="text-center">
+                    <p className="text-red-600 mb-4">Error: {error}</p>
+                    <button
+                        onClick={() => navigate('/ai/hub/projects')}
+                        className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a5fa8] transition-colors"
+                    >
+                        Back to Projects
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
-    const handleNext = () => {
-        const currentIndex = tabs.indexOf(activeTab);
-        if (currentIndex < tabs.length - 1) {
-            setActiveTab(tabs[currentIndex + 1]);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    };
+    if (!projectData) {
+        return (
+            <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+                <div className="text-center">
+                    <p className="text-gray-600 mb-4">Project not found</p>
+                    <button
+                        onClick={() => navigate('/ai/hub/projects')}
+                        className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a5fa8] transition-colors"
+                    >
+                        Back to Projects
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     const ProjectName = getProjectName();
 
@@ -65,11 +125,7 @@ const ProjectLibrary = () => {
                             <span className="text-lg font-semibold text-[#8e78b7]">{ProjectName}</span>
                         </div>
                     </div>
-                    <button className="px-3 py-1.5 rounded bg-purple-100 text-[#8e78b7] font-medium text-sm flex items-center gap-1.5 hover:bg-purple-200 transition-colors"
-                        onClick={() => navigate('/ai/hub/projects')}>
-                        <LayoutDashboard className="w-4 h-4" />
-                        AI/ML
-                    </button>
+
                 </div>
 
                 <div className="flex items-center gap-8 px-6 pt-4">
@@ -92,9 +148,9 @@ const ProjectLibrary = () => {
             </div>
 
             <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                {activeTab === 'Overview' && <OverviewTab projectData={ProjectData} />}
-                {activeTab === 'Components' && <ComponentsTab projectData={ProjectData} />}
-                {activeTab === 'Comments' && <CommentsTab projectData={ProjectData} />}
+                {activeTab === 'Overview' && <OverviewTab projectData={projectData} />}
+                {activeTab === 'Components' && <ComponentsTab projectData={projectData} />}
+                {activeTab === 'Comments' && <CommentsTab projectData={projectData} />}
             </div>
 
 

@@ -7,9 +7,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import DeleteModal from './Components/DeleteModal';
 import ArchiveModal from './Components/ArchieveModal';
+import UnarchiveModal from './Components/UnarchieveModal';
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 // import { updateRecentAccess } from './Components/Hooks';
-import { updateRecentAccess } from './Components/Hooks';
+import { updateRecentAccess, unarchiveEntity } from './Components/Hooks';
 import StatusFilterDropdown from './Components/StateSelector';
 import { toast } from 'react-hot-toast';
 
@@ -33,6 +34,9 @@ const Data = () => {
   const [archiveModalOpen, setArchiveModalOpen] = useState(false);
   const [archiveTarget, setArchiveTarget] = useState(null);
   const [archiveLoading, setArchiveLoading] = useState(false);
+  const [unarchiveModalOpen, setUnarchiveModalOpen] = useState(false);
+  const [unarchiveTarget, setUnarchiveTarget] = useState(null);
+  const [unarchiveLoading, setUnarchiveLoading] = useState(false);
   const [aiCanvasLoading, setAiCanvasLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [recentAccessed, setRecentAccessed] = useState([]);
@@ -255,8 +259,9 @@ const Data = () => {
       setDeleteModalOpen(false);
       setDeleteTarget(null);
       setRefreshTrigger((prev) => prev + 1);
+      toast.success('Dataset deleted successfully');
     } catch (err) {
-      alert(err.message || "Delete failed");
+      toast.error(err.message || "Delete failed");
     } finally {
       setDeleteLoading(false);
     }
@@ -279,10 +284,33 @@ const Data = () => {
       setArchiveModalOpen(false);
       setArchiveTarget(null);
       setRefreshTrigger((prev) => prev + 1);
+      toast.success('Dataset archived successfully');
     } catch (err) {
-      alert(err.message || "Archive failed");
+      toast.error(err.message || "Archive failed");
     } finally {
       setArchiveLoading(false);
+    }
+  };
+
+  const confirmUnarchive = async () => {
+    if (!unarchiveTarget) return;
+    setUnarchiveLoading(true);
+    try {
+      const id = unarchiveTarget.id || unarchiveTarget.dataset_id || unarchiveTarget.uuid || unarchiveTarget.file_id || unarchiveTarget.file_name;
+      await unarchiveEntity({
+        component: 'data',
+        component_id: id,
+        hostnameAI,
+        token,
+      });
+      setUnarchiveModalOpen(false);
+      setUnarchiveTarget(null);
+      setRefreshTrigger((prev) => prev + 1);
+      toast.success('Dataset unarchived successfully');
+    } catch (err) {
+      toast.error(err.message || "Unarchive failed");
+    } finally {
+      setUnarchiveLoading(false);
     }
   };
 
@@ -425,6 +453,11 @@ const Data = () => {
     setArchiveModalOpen(true);
   };
 
+  const handleUnarchive = (row) => {
+    setUnarchiveTarget(row);
+    setUnarchiveModalOpen(true);
+  };
+
   const actions = [
     {
       label: 'Library',
@@ -432,12 +465,12 @@ const Data = () => {
       onClick: handleLibrary,
       tooltip: 'Library',
     },
-    {
-      label: 'F1 Mode',
-      icon: <Gauge className="w-4 h-4" />,
-      onClick: handleF1Mode,
-      tooltip: 'F1 Mode',
-    },
+    // {
+    //   label: 'F1 Mode',
+    //   icon: <Gauge className="w-4 h-4" />,
+    //   onClick: handleF1Mode,
+    //   tooltip: 'F1 Mode',
+    // },
     {
       label: 'AI Playground',
       icon: <Palette className="w-4 h-4" />,
@@ -449,6 +482,14 @@ const Data = () => {
       icon: <Archive className="w-4 h-4" />,
       onClick: handleArchive,
       tooltip: 'Archive',
+      show: (row) => String(row.status ?? '').toLowerCase() !== 'archived',
+    },
+    {
+      label: 'Unarchive',
+      icon: <Archive className="w-4 h-4" />,
+      onClick: handleUnarchive,
+      tooltip: 'Unarchive',
+      show: (row) => String(row.status ?? '').toLowerCase() === 'archived',
     },
     {
       label: 'Delete',
@@ -687,7 +728,7 @@ const Data = () => {
                 ) : recentAccessedError ? (
                   <div className="text-center py-8 text-red-500">{recentAccessedError}</div>
                 ) : lastAccessedData.length > 0 ? (
-                  <div className="max-h-[240px] overflow-y-auto">
+                  <div className="max-h-[240px]">
                     {lastAccessedData.map((item, index) => (
                       <div key={index}>
                         <div className="flex items-center justify-between py-3 px-2 hover:bg-gray-50">
@@ -765,6 +806,16 @@ const Data = () => {
         description={`Are you sure you want to archive "${archiveTarget?.file_name || archiveTarget?.id || ''}"? This action can be undone.`}
         loading={archiveLoading}
         confirmText="Archive"
+      />
+
+      <UnarchiveModal
+        isOpen={unarchiveModalOpen}
+        onClose={() => setUnarchiveModalOpen(false)}
+        onConfirm={confirmUnarchive}
+        title="Unarchive Dataset"
+        description={`Are you sure you want to unarchive "${unarchiveTarget?.file_name || unarchiveTarget?.id || ''}"? This action can be undone.`}
+        loading={unarchiveLoading}
+        confirmText="Unarchive"
       />
 
       {aiCanvasLoading && (

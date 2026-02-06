@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, LayoutDashboard } from 'lucide-react';
 import { Icon } from '@iconify-icon/react';
 import {
@@ -13,29 +13,69 @@ import {
   QuickPredict,
   Observability
 } from './Tabs';
+import { useAuth } from '../../../../../../context/AuthContext';
 
 function Library() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { modelId } = useParams();
   const rawModelData = location.state?.modelData;
+  const { token } = useAuth();
+  const hostnameAI = window._env_?.VITE_AI_API;
 
-  const modelData = useMemo(() => {
-    if (!rawModelData) return null;
+  const [modelData, setModelData] = useState(rawModelData || null);
+  const [isLoading, setIsLoading] = useState(!modelData);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState(0);
+
+  useEffect(() => {
+    if (!modelData && modelId) {
+      const fetchModelData = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+          const response = await fetch(`${hostnameAI}/canvas/model_list?model_id=${encodeURIComponent(modelId)}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          if (!response.ok) {
+            throw new Error('Failed to fetch model data');
+          }
+          const data = await response.json();
+          // Handle different response formats
+          const model = (Array.isArray(data) ? data[0] : data?.data?.[0] || data?.model || data) || null;
+          if (model) {
+            setModelData(model);
+          } else {
+            throw new Error('Model not found');
+          }
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchModelData();
+    }
+  }, [modelData, modelId, hostnameAI, token]);
+
+  const processedModelData = useMemo(() => {
+    if (!modelData) return null;
 
     return {
-      ...rawModelData,
-      name: rawModelData.name ?? rawModelData.run_name ?? '',
-      run_name: rawModelData.run_name ?? rawModelData.name ?? '',
-      description: rawModelData.description ?? '',
-      created_date: rawModelData.created_date ?? rawModelData.createdDate ?? '',
-      createdDate: rawModelData.createdDate ?? rawModelData.created_date ?? '',
-      type: rawModelData.type ?? '',
-      status: rawModelData.status ?? '',
-      id: rawModelData.id,
+      ...modelData,
+      name: modelData.name ?? modelData.run_name ?? '',
+      run_name: modelData.run_name ?? modelData.name ?? '',
+      description: modelData.description ?? '',
+      created_date: modelData.created_date ?? modelData.createdDate ?? '',
+      createdDate: modelData.createdDate ?? modelData.created_date ?? '',
+      type: modelData.type ?? '',
+      status: modelData.status ?? '',
+      id: modelData.id,
     };
-  }, [rawModelData]);
-
-  const [activeTab, setActiveTab] = useState(0);
+  }, [modelData]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -69,8 +109,57 @@ function Library() {
 
   const ActiveTabComponent = tabs[activeTab].component;
   const modelName =
-    (modelData?.name || modelData?.run_name || '')
+    (processedModelData?.name || processedModelData?.run_name || '')
       ?.replace('Project - ', '') || 'Model';
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-center min-h-[200px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8e78b7] mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading model...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-center min-h-[200px]">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">Error: {error}</p>
+            <button
+              onClick={() => navigate('/ai/hub/models')}
+              className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a5fa8] transition-colors"
+            >
+              Back to Models
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!processedModelData) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-center min-h-[200px]">
+          <div className="text-center">
+            <p className="text-gray-600 mb-4">Model not found</p>
+            <button
+              onClick={() => navigate('/ai/hub/models')}
+              className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a5fa8] transition-colors"
+            >
+              Back to Models
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-4">
@@ -87,11 +176,7 @@ function Library() {
               Model Library - <span className="text-purple-600">{modelName}</span>
             </h1>
           </div>
-          <button className="px-3 py-1.5 rounded bg-purple-100 text-[#8e78b7] font-medium text-sm flex items-center gap-1.5 hover:bg-purple-200 transition-colors"
-            onClick={() => navigate('/ai/hub/models')}>
-            <LayoutDashboard className="w-4 h-4" />
-            AI/ML
-          </button>
+
         </div>
 
         <div className="mt-4 border-t border-gray-200 pt-4">
@@ -113,7 +198,7 @@ function Library() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <ActiveTabComponent modelData={modelData} />
+        <ActiveTabComponent modelData={processedModelData} />
       </div>
 
 
