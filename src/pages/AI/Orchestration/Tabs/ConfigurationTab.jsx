@@ -1,4 +1,4 @@
-import { Calendar, Clock, Search, X } from 'lucide-react';
+import { Calendar, Clock, Search, X, CheckCircle } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useAIPlayground } from '../../../../context/AIPlaygroundContext';
@@ -116,9 +116,11 @@ const ConfigurationTab = () => {
     const [loadingDataSources, setLoadingDataSources] = useState(false);
     const [loadingDestinations, setLoadingDestinations] = useState(false);
 
-    const [scheduleType, setScheduleType] = useState('Single Run');
+    const [validationStatus, setValidationStatus] = useState(null);
+    const [isValidating, setIsValidating] = useState(false);
+
+    const [scheduleType, setScheduleType] = useState(schedulerState?.flow_type || 'Single Run');
     const [showDateModal, setShowDateModal] = useState(false);
-    const [summary, setSummary] = useState('');
     const hostnameAI = window._env_?.VITE_AI_API;
 
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -135,12 +137,17 @@ const ConfigurationTab = () => {
     };
 
     const handleInputChange = (field, value) => {
+        if (['project', 'model', 'dataSource', 'destinationTable'].includes(field)) {
+            setValidationStatus(null);
+        }
+
         switch (field) {
             case 'project':
                 const selectedProject = projects.find(p => p.name === value);
                 setSchedulerState(prev => ({
                     ...prev,
                     project: value,
+                    model: '',
                     project_id: selectedProject ? selectedProject.id : ''
                 }));
                 break;
@@ -200,11 +207,9 @@ const ConfigurationTab = () => {
             default:
                 break;
         }
-        setSummary('')
     };
 
     const handleScheduleTypeChange = (type) => {
-        setSummary('')
         setScheduleType(type);
         let flowType = 'single_run';
         let intervalType = '';
@@ -214,7 +219,7 @@ const ConfigurationTab = () => {
         } else if (type === 'Recurring') {
             flowType = 'Recurring';
             intervalType = 'recurring';
-        } else if (type === 'Periodic (Interval)') {
+        } else if (type === 'Periodic') {
             flowType = 'Periodic';
             intervalType = 'periodic';
         }
@@ -231,7 +236,6 @@ const ConfigurationTab = () => {
         }));
     };
 
-    // Handle date/time selection from modal
     const handleDateModalAdd = (dateTimeData) => {
         if (!dateTimeData) {
             toast.error('Invalid date/time data', {
@@ -251,12 +255,10 @@ const ConfigurationTab = () => {
             return;
         }
 
-        // Format as ISO datetime: YYYY-MM-DDTHH:MM
         const day = String(date).padStart(2, '0');
         const monthStr = String(month + 1).padStart(2, '0');
         const isoDateTime = `${year}-${monthStr}-${day}T${hour}:${minute}`;
 
-        // Update context with the formatted datetime
         setSchedulerState(prev => ({
             ...prev,
             scheduler: {
@@ -312,64 +314,53 @@ const ConfigurationTab = () => {
         return null;
     };
 
-    const isGenerateSummaryDisabled = () => {
-        const commonFieldsFilled =
-            scheduleName &&
-            !scheduleNameError &&
-            schedulerState.project &&
-            schedulerState.model &&
-            schedulerState.source.source_table &&
-            schedulerState.target.destination_table &&
-            schedulerState.scheduler.timeZone &&
-            schedulerState.scheduler.intervalValue;
-
-        if (!commonFieldsFilled) return true;
-
-        if (scheduleType === 'Single Run') {
-            return false;
-        } else if (scheduleType === 'Recurring') {
-            return !schedulerState.scheduler.runningDays ||
-                schedulerState.scheduler.runningDays.length === 0;
-        } else if (scheduleType === 'Periodic (Interval)') {
-            return !schedulerState.scheduler.frequency;
-        }
-
-        return false;
+    const isValidateDisabled = () => {
+        return !schedulerState.model ||
+            !schedulerState.source.source_table ||
+            !schedulerState.target.destination_table;
     };
 
-    const generateSummary = () => {
-        const intervalValue = schedulerState.scheduler.intervalValue;
-        const timeZone = schedulerState.scheduler.timeZone;
+    const validateTables = async () => {
+        setIsValidating(true);
+        setValidationStatus(null);
 
-        if (!intervalValue || !timeZone) {
-            toast.error('Please fill in all required fields', {
-                duration: 3000,
+        try {
+            const url = `${hostnameAI}/orchestration/validate-tables?run_name=${encodeURIComponent(schedulerState.model)}&source_table=${encodeURIComponent(schedulerState.source.source_table)}&destination_table=${encodeURIComponent(schedulerState.target.destination_table)}`;
+
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Validation failed`);
+            }
+
+            const data = await response.json();
+            setValidationStatus(data.validation_status);
+
+            if (data.validation_status === 'valid') {
+                toast.success(data.message || 'Validated successfully!', {
+                    duration: 4000,
+                    position: 'top-right',
+                });
+            } else {
+                toast.error('Tables are incompatible for prediction workflow - base columns or datatypes do not match across all three tables', {
+                    duration: 4000,
+                    position: 'top-right',
+                });
+            }
+        } catch (error) {
+            toast.error('Failed to validate. Please try again.', {
+                duration: 4000,
                 position: 'top-right',
             });
-            return;
+            setValidationStatus('error');
+        } finally {
+            setIsValidating(false);
         }
-
-        const [datePart, timePart] = intervalValue.split('T');
-        const [year, month, day] = datePart.split('-');
-        const displayDate = `${day}/${month}/${year}`;
-        const displayTime = timePart;
-
-        let summaryText = '';
-
-        if (scheduleType === 'Single Run') {
-            summaryText = `This model will run once on ${displayDate} at ${displayTime} (${timeZone})`;
-        } else if (scheduleType === 'Recurring') {
-            const daysText = schedulerState.scheduler.runningDays?.length > 0
-                ? schedulerState.scheduler.runningDays.join(', ')
-                : 'All days';
-            const frequency = schedulerState.scheduler.frequency || 'daily';
-            summaryText = `This model will run ${frequency} on ${daysText}\nStarting from ${displayDate} at ${displayTime} (${timeZone})`;
-        } else if (scheduleType === 'Periodic (Interval)') {
-            const frequency = schedulerState.scheduler.frequency || 'Not set';
-            summaryText = `This model will run ${frequency}\nStarting from ${displayDate} at ${displayTime} (${timeZone})`;
-        }
-
-        setSummary(summaryText);
     };
 
     useEffect(() => {
@@ -620,6 +611,15 @@ const ConfigurationTab = () => {
         schedulerState.project &&
         schedulerState.model;
 
+    useEffect(() => {
+        if (setSchedulerState) {
+            setSchedulerState(prev => ({
+                ...prev,
+                isValidated: validationStatus === 'valid'
+            }));
+        }
+    }, [validationStatus]);
+
     return (
         <div className="max-w-6xl space-y-6">
             <div>
@@ -654,10 +654,10 @@ const ConfigurationTab = () => {
                         disabled={schedulerState?.mode === 'edit'}
                         placeholder="Enter a unique name for this schedule"
                         className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-1 ${schedulerState.mode === 'edit'
-                                ? 'bg-gray-100 cursor-not-allowed text-gray-600 border-gray-300'
-                                : scheduleNameError
-                                    ? 'border-red-500 focus:ring-red-500 focus:border-red-500 text-gray-700 bg-white'
-                                    : 'border-gray-300 focus:ring-[#8e78b7] focus:border-[#8e78b7] text-gray-700 bg-white'
+                            ? 'bg-gray-100 cursor-not-allowed text-gray-600 border-gray-300'
+                            : scheduleNameError
+                                ? 'border-red-500 focus:ring-red-500 focus:border-red-500 text-gray-700 bg-white'
+                                : 'border-gray-300 focus:ring-[#8e78b7] focus:border-[#8e78b7] text-gray-700 bg-white'
                             }`}
                     />
                     {scheduleNameError && schedulerState?.mode !== 'edit' && (
@@ -741,6 +741,31 @@ const ConfigurationTab = () => {
                             isLoading={loadingDestinations}
                         />
                     </div>
+
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={validateTables}
+                            disabled={isValidateDisabled() || isValidating || validationStatus === 'valid'}
+                            className={`px-8 py-2 rounded text-sm font-medium transition-colors flex items-center gap-2 ${validationStatus === 'valid'
+                                    ? 'bg-green-100 text-green-700 border border-green-300 cursor-default'
+                                    : !isValidateDisabled() && !isValidating
+                                        ? 'bg-[#8e78b7] text-white hover:bg-[#b5a3cc] cursor-pointer'
+                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                }`}
+                        >
+                            {validationStatus === 'valid' ? (
+                                <>
+                                    Validated
+                                    <CheckCircle className="w-4 h-4" />
+                                </>
+                            ) : isValidating ? (
+                                'Validating...'
+                            ) : (
+                                'Validate'
+                            )}
+                        </button>
+
+                    </div>
                 </div>
             </div>
 
@@ -748,7 +773,7 @@ const ConfigurationTab = () => {
                 <h2 className="text-base font-bold text-gray-900 mb-0.5">Schedule Type <span className="text-red-500">*</span></h2>
                 <p className="text-xs text-gray-500 mb-3">Select how and when this model should run.</p>
                 <div className="flex flex-wrap gap-3">
-                    {['Single Run', 'Recurring', 'Periodic (Interval)'].map((type) => (
+                    {['Single Run', 'Recurring', 'Periodic'].map((type) => (
                         <label
                             key={type}
                             className={`flex items-center gap-2 px-4 py-2 rounded-md cursor-pointer transition-colors ${scheduleType === type ? 'text-[#8e78b7] bg-purple-50' : 'text-gray-700'
@@ -803,7 +828,7 @@ const ConfigurationTab = () => {
                         </div>
                     </>
                 )}
-                {scheduleType === 'Periodic (Interval)' && (
+                {scheduleType === 'Periodic' && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
                         {renderSelect('Frequency', schedulerState.scheduler.frequency, [
                             { value: '', label: 'Select' },
@@ -845,36 +870,6 @@ const ConfigurationTab = () => {
                     </div>
                 </div>
             </div>
-
-            {/* <div className="pt-2 space-y-4">
-                <button
-                    onClick={generateSummary}
-                    disabled={isGenerateSummaryDisabled()}
-                    className={`px-5 py-2 rounded text-sm font-medium transition-colors ${!isGenerateSummaryDisabled()
-                        ? 'bg-[#8e78b7] text-white hover:bg-[#b5a3cc] cursor-pointer'
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        }`}
-                >
-                    Generate Summary
-                </button>
-
-                {summary && (
-                    <div className="border border-gray-200 rounded-lg p-4 bg-purple-50">
-                        <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-[#8e78b7] flex items-center justify-center flex-shrink-0">
-                                <Clock className="w-5 h-5 text-white" />
-                            </div>
-                            <div className="flex-1">
-                                <h3 className="text-sm font-semibold text-gray-900 mb-0.5">Summary</h3>
-                                <p className="text-xs text-gray-600 mb-2">{scheduleType}</p>
-                                <div className="text-sm text-gray-700 space-y-1">
-                                    {summary.split('\n').map((line, idx) => line.trim() && <div key={idx}>{line}</div>)}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div> */}
 
             <DatePickerModal
                 isOpen={showDateModal}

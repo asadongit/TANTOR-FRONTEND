@@ -104,7 +104,8 @@ const NewSchedule = () => {
             schedulerState.source.source_table &&
             schedulerState.target.destination_table &&
             schedulerState.scheduler.timeZone &&
-            schedulerState.scheduler.intervalValue;
+            schedulerState.scheduler.intervalValue && 
+            schedulerState.isValidated;
 
         if (isConfigurationComplete) {
             setActiveTab('Delivery & Alerts');
@@ -261,7 +262,8 @@ const NewSchedule = () => {
         schedulerState.source.source_table &&
         schedulerState.target.destination_table &&
         schedulerState.scheduler.timeZone &&
-        schedulerState.scheduler.intervalValue;
+        schedulerState.scheduler.intervalValue &&
+        schedulerState.isValidated;
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
