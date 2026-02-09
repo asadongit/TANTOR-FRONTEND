@@ -23,6 +23,9 @@ const Orchestration = () => {
     const [refreshLoading, setRefreshLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedSchedule, setSelectedSchedule] = useState(null);
+    const [errorData, setErrorData] = useState(null);
+    const [errorLoading, setErrorLoading] = useState(false);
+    const [detailsLoading, setDetailsLoading] = useState(false);
     const navigate = useNavigate();
     const hostnameAI = window._env_?.VITE_AI_API;
     const { token, decodedToken } = useAuth();
@@ -142,6 +145,20 @@ const Orchestration = () => {
         } catch (error) {
             console.error('Error fetching recent activity:', error);
             setActivityLoading(false);
+        }
+    };
+
+    const fetchErrorData = async (dagId) => {
+        setErrorLoading(true);
+        try {
+            const response = await fetch(`${hostnameAI}/orchestration/airflow/error?dag_id=${dagId}`);
+            const data = await response.json();
+            setErrorLoading(false);
+            return data;
+        } catch (error) {
+            console.error('Error fetching error data:', error);
+            setErrorLoading(false);
+            return null;
         }
     };
 
@@ -270,9 +287,14 @@ const Orchestration = () => {
             case 'Prediction Successful':
                 statusColor = 'bg-green-100 text-green-700';
                 break;
+            case 'Data Drift Failed':
+            case 'Model Drift Failed':
+            case 'Prediction Failed':
+                statusColor = 'bg-red-100 text-red-700';
+                break;
             case 'Data Drift Detected':
             case 'Model Drift Detected':
-                statusColor = 'bg-red-100 text-red-700';
+                statusColor = 'bg-yellow-100 text-yellow-700';
                 break;
             default:
                 statusColor = 'bg-gray-100 text-gray-700';
@@ -460,10 +482,8 @@ const Orchestration = () => {
         }
     };
 
-    const handleDetails = (row) => {
-        const validStatuses = ['Prediction Successful', 'Model Drift Detected', 'Data Drift Detected'];
-
-        if (!row.last_drift_check || !validStatuses.includes(row.last_drift_check)) {
+    const handleDetails = async (row) => {
+        if (!row.last_drift_check) {
             toast.error('Last run check value is not supported', {
                 duration: 4000,
                 position: 'top-right',
@@ -471,14 +491,36 @@ const Orchestration = () => {
             return;
         }
 
-        setSelectedSchedule(row);
-        setIsModalOpen(true);
+        const shouldFetchError = ['Data Drift Failed', 'Model Drift Failed', 'Prediction Failed'].includes(row.last_drift_check);
+        
+        setDetailsLoading(true);
+        
+        try {
+            if (shouldFetchError) {
+                const errorResponse = await fetchErrorData(row.schedule_name);
+                setErrorData(errorResponse);
+            } else {
+                setErrorData(null);
+            }
+            
+            setSelectedSchedule(row);
+            setIsModalOpen(true);
+        } catch (error) {
+            console.error('Error loading details:', error);
+            toast.error('Failed to load schedule details', {
+                duration: 4000,
+                position: 'top-right',
+            });
+        } finally {
+            setDetailsLoading(false);
+        }
     };
 
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setTimeout(() => {
             setSelectedSchedule(null);
+            setErrorData(null);
         }, 300);
     };
 
@@ -507,6 +549,16 @@ const Orchestration = () => {
                     </div>
                 </div>
             )}
+            
+            {detailsLoading && (
+                <div className="w-full fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="w-80 bg-white rounded-lg p-6 flex flex-col items-center gap-4">
+                        <RefreshCw className="w-8 h-8 text-[#8e78b7] animate-spin" />
+                        <p className="text-gray-700 font-medium">Loading details...</p>
+                    </div>
+                </div>
+            )}
+            
             <Breadcrumb />
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -670,6 +722,8 @@ const Orchestration = () => {
                 isOpen={isModalOpen}
                 onClose={handleCloseModal}
                 scheduleData={selectedSchedule}
+                errorData={errorData}
+                errorLoading={errorLoading}
             />
         </div>
     );
