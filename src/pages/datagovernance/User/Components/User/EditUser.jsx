@@ -247,7 +247,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
   };
 
   const newExistingPolicies = policyIds.map((policyId) => {
-    const policyName = fetchedPolicies.find(p => p.id === String(policyId))?.name || `Policy ${policyId}`;
+    const fetched = fetchedPolicies.find(p => p.id === String(policyId));
     const policyIndividualData = appliedData.policiesData?.[policyId];
 
     // normalize group/subgroup/role/persona keys from modal payload
