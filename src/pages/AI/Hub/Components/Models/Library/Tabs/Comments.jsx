@@ -76,6 +76,12 @@ const Comments = (modelData) => {
     const fmt = (iso) => {
         if (!iso) return '';
         const d = new Date(iso);
+        return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-GB');
+    };
+
+    const fmtFull = (iso) => {
+        if (!iso) return '';
+        const d = new Date(iso);
         return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('en-GB');
     };
 
@@ -302,8 +308,8 @@ const Comments = (modelData) => {
                     </span>
                 ),
             },
-            { key: 'post_date', label: 'Post Date', sortable: true, width: '130px', render: (row) => fmt(row.post_date) },
-            { key: 'last_date', label: 'Last Date', sortable: true, width: '130px', render: (row) => fmt(row.last_date) },
+            { key: 'post_date', label: 'Post Date', sortable: true, width: '120px', render: (row) => <span title={fmtFull(row.post_date)}>{fmt(row.post_date)}</span> },
+            { key: 'last_date', label: 'Last Date', sortable: true, width: '120px', render: (row) => <span title={fmtFull(row.last_date)}>{fmt(row.last_date)}</span> },
             {
                 key: 'repliesCount',
                 label: '',
