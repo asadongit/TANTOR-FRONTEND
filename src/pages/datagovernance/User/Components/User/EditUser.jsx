@@ -142,9 +142,11 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
     const policies = data.map(policy => {
       return {
         id: String(policy.id),
-        name: policy.policy_name || `Policy ${policy.id}`,
+        name: policy.name || `Policy ${policy.id}`,   // ← MAIN DISPLAY NAME
+        policyName: policy.policy_name || '',
+        subPolicyName: policy.sub_policy_name || '',
         roles: toArray(policy.role || policy.roles),
-        persona: toArray(policy.persona || policy.personas), // ← Already correct
+        persona: toArray(policy.persona || policy.personas),
         groups: toArray(policy.group || policy.groups),
         subgroups: toArray(policy.subgroup || policy.subGroup || policy.subgroups)
       };
@@ -245,7 +247,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
   };
 
   const newExistingPolicies = policyIds.map((policyId) => {
-    const policyName = fetchedPolicies.find(p => p.id === String(policyId))?.name || `Policy ${policyId}`;
+    const fetched = fetchedPolicies.find(p => p.id === String(policyId));
     const policyIndividualData = appliedData.policiesData?.[policyId];
 
     // normalize group/subgroup/role/persona keys from modal payload
@@ -256,11 +258,13 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
 
     return {
       id: String(policyId),
-      name: policyName,
-      roles: toArray(roles), // ← Use toArray helper
-      persona: toArray(persona), // ← Use toArray helper
-      groups: toArray(groups), // ← Use toArray helper
-      subgroups: toArray(subgroups) // ← Use toArray helper
+      name: fetched?.name || `Policy ${policyId}`,
+      policyName: fetched?.policyName || '',
+      subPolicyName: fetched?.subPolicyName || '',
+      roles: toArray(roles),
+      persona: toArray(persona),
+      groups: toArray(groups),
+      subgroups: toArray(subgroups)
     };
   });
 
@@ -277,7 +281,9 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
 
   const newPolicy = {
     id: String(policyDetails.id),
-    name: policyDetails.policy_type || `Policy ${policyDetails.id}`,
+    name: policyDetails.policy_name || `Policy ${policyDetails.id}`,
+    policyName: policyDetails.policy_name || '',
+    subPolicyName: policyDetails.sub_policy_name || '',
     roles: toArray(policyDetails.user_selections?.role || policyDetails.roles || []),
     persona: toArray(policyDetails.user_selections?.persona || policyDetails.persona || []), // ← Normalize
     groups: toArray(policyDetails.user_selections?.group || policyDetails.group || []),
@@ -511,9 +517,25 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
           >
             <div className="flex items-start gap-2 flex-1">
               <span className="text-sm text-gray-500 flex-shrink-0">{index + 1}.</span>
-              <p className="text-sm font-medium text-gray-900 truncate" title={policy.name}>
-                {policy.name}
-              </p>
+              <div className="flex flex-col min-w-0">
+                <p
+                  className="text-sm font-semibold text-gray-900 truncate"
+                  title={policy.name}
+                >
+                  {policy.name}
+                </p>
+
+                {(policy.policyName || policy.subPolicyName) && (
+                  <p
+                    className="text-xs text-gray-500 truncate"
+                    title={`${policy.policyName} | ${policy.subPolicyName}`}
+                  >
+                    {policy.policyName}
+                    {policy.subPolicyName && ` | ${policy.subPolicyName}`}
+                  </p>
+                )}
+              </div>
+
             </div>
             
             {/* Remove button - visible on hover */}
