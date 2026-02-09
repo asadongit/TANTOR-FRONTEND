@@ -15,6 +15,7 @@ const AssignPolicyModal = ({ isOpen, onClose, onApplyPolicies, initialSelectedPo
     const [detailsModalItems, setDetailsModalItems] = useState([]);
     const [detailsModalType, setDetailsModalType] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
     useEffect(() => {
         setSearchQuery("")
@@ -85,6 +86,20 @@ const AssignPolicyModal = ({ isOpen, onClose, onApplyPolicies, initialSelectedPo
         setSelectedPolicyIds((prev) =>
             prev.includes(policyId) ? prev.filter((id) => id !== policyId) : [...prev, policyId]
         );
+    };
+    const handleSort = (key) => {
+        let direction = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const getSortIcon = (columnKey) => {
+        if (sortConfig.key !== columnKey) {
+            return '⇅'; // Both arrows
+        }
+        return sortConfig.direction === 'asc' ? '↑' : '↓';
     };
 
     const handleApply = () => {
@@ -164,14 +179,38 @@ onApplyPolicies({
         setDetailsModalType('');
     };
 
-    const filteredPolicies = policies.filter((policy) => {
-        const query = searchQuery.toLowerCase();
-        return (
-            policy.id.toString().includes(query) ||
-            policy.policy_type.toLowerCase().includes(query) ||
-            policy.sub_policy_name.toLowerCase().includes(query)
-        );
-    });
+    const filteredPolicies = policies
+        .filter((policy) => {
+            const query = searchQuery.toLowerCase();
+            return (
+                (policy.name && policy.name.toLowerCase().includes(query)) ||
+                policy.policy_type.toLowerCase().includes(query) ||
+                policy.sub_policy_name.toLowerCase().includes(query)
+            );
+        })
+        .sort((a, b) => {
+            if (!sortConfig.key) return 0;
+
+            let aValue = '';
+            let bValue = '';
+
+            if (sortConfig.key === 'policy_type') {
+                aValue = a.policy_type || '';
+                bValue = b.policy_type || '';
+            } else if (sortConfig.key === 'sub_policy_name') {
+                aValue = a.sub_policy_name || '';
+                bValue = b.sub_policy_name || '';
+            } else if (sortConfig.key === 'name') {
+                aValue = a.name || '';
+                bValue = b.name || '';
+            }
+
+            if (sortConfig.direction === 'asc') {
+                return aValue.localeCompare(bValue);
+            } else {
+                return bValue.localeCompare(aValue);
+            }
+        });
 
     // Function to count enabled permissions
     const countEnabledPermissions = (permissions) => {
@@ -194,7 +233,7 @@ onApplyPolicies({
                 <div className="mb-4">
                     <input
                         type="text"
-                        placeholder="Search by ID / Type / Name"
+                        placeholder="Search by Policy / Sub Policy / Name"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] w-full max-w-md"
@@ -245,19 +284,34 @@ onApplyPolicies({
                                             scope="col"
                                             className="p-3 text-left text-xs font-medium uppercase tracking-wider"
                                         >
+                                            #
+                                        </th>
+                                        {/* <th
+                                            scope="col"
+                                            className="p-3 text-left text-xs font-medium uppercase tracking-wider"
+                                        >
                                             ID
+                                        </th> */}
+                                        <th
+                                            scope="col"
+                                            className="p-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer hover:bg-[#7a64a3]"
+                                            onClick={() => handleSort('policy_type')}
+                                        >
+                                            Policy {getSortIcon('policy_type')}
                                         </th>
                                         <th
                                             scope="col"
-                                            className="p-3 text-left text-xs font-medium uppercase tracking-wider"
+                                            className="p-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer hover:bg-[#7a64a3]"
+                                            onClick={() => handleSort('sub_policy_name')}
                                         >
-                                            Type
+                                            Sub Policy {getSortIcon('sub_policy_name')}
                                         </th>
                                         <th
                                             scope="col"
-                                            className="p-3 text-left text-xs font-medium uppercase tracking-wider"
+                                            className="p-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer hover:bg-[#7a64a3]"
+                                            onClick={() => handleSort('name')}
                                         >
-                                            Name
+                                            Name {getSortIcon('name')}
                                         </th>
                                         <th
                                             scope="col"
@@ -301,14 +355,14 @@ onApplyPolicies({
                                     {filteredPolicies.length === 0 ? (
                                         <tr>
                                             <td
-                                                colSpan="10"
+                                                colSpan="11"
                                                 className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center"
                                             >
                                                 No policies found matching your search.
                                             </td>
                                         </tr>
                                     ) : (
-                                        filteredPolicies.map((policy) => {
+                                        filteredPolicies.map((policy, index) => {
                                             const rowAccessControlCount = policy.row_access_control
                                                 ? Object.keys(policy.row_access_control).length
                                                 : 0;
@@ -329,13 +383,19 @@ onApplyPolicies({
                                                         />
                                                     </td>
                                                     <td className="p-3 whitespace-nowrap text-sm text-gray-800">
-                                                        {policy.id}
+                                                        {index + 1}
                                                     </td>
+                                                    {/* <td className="p-3 whitespace-nowrap text-sm text-gray-800">
+                                                        {policy.id}
+                                                    </td> */}
                                                     <td className="p-3 whitespace-nowrap text-sm text-gray-800 max-w-[150px] truncate tooltip">
                                                         {policy.policy_type}
                                                     </td>
                                                     <td className="p-3 whitespace-nowrap text-sm text-gray-800 max-w-[150px] truncate tooltip">
                                                         {policy.sub_policy_name}
+                                                    </td>
+                                                    <td className="p-3 whitespace-nowrap text-sm text-gray-800 max-w-[150px] truncate tooltip">
+                                                        {policy.name}
                                                     </td>
                                                     <td className="p-3 whitespace-nowrap text-sm text-gray-800">
                                                         <button

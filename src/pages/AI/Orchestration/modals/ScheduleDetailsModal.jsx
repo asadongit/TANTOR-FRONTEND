@@ -1,7 +1,7 @@
-import { X, CheckCircle, AlertTriangle, Activity, Minus } from 'lucide-react';
+import { X, CheckCircle, AlertTriangle, Activity, Minus, AlertCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-const ScheduleDetailsModal = ({ isOpen, onClose, scheduleData }) => {
+const ScheduleDetailsModal = ({ isOpen, onClose, scheduleData, errorData, errorLoading }) => {
     const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
@@ -25,9 +25,57 @@ const ScheduleDetailsModal = ({ isOpen, onClose, scheduleData }) => {
         last_drift_check
     } = scheduleData || {};
 
-    // Determine which boxes to show
     const showDataDrift = data_drift_check === 1;
     const showModelDrift = model_drift_check === 1;
+
+    const parseErrorMessage = (errorData) => {
+        if (!errorData || !errorData.error || !errorData.error.value) {
+            return null;
+        }
+
+        try {
+            const valueStr = errorData.error.value;
+
+            const errorMatch = valueStr.match(/'error':\s*'(.+)'(?:\})?$/);
+            if (!errorMatch) return null;
+
+            let errorStr = errorMatch[1];
+
+            const detailMatch = errorStr.match(/\{\\?"detail\\?":\\?"(.+?)\\?"\}/);
+            if (detailMatch) {
+                let detail = detailMatch[1];
+                detail = detail.replace(/\\'/g, "'")
+                    .replace(/\\"/g, '"')
+                    .replace(/\\\\/g, '\\');
+                return detail;
+            }
+            const simpleMatch = errorStr.match(/Predict API failed: \d+ - (.+)/);
+            if (simpleMatch) {
+                let errorText = simpleMatch[1];
+                if (errorText.startsWith('{')) {
+                    try {
+                        errorText = errorText.replace(/\\"/g, '"');
+                        const jsonMatch = errorText.match(/\{"detail":"(.+)"\}/);
+                        if (jsonMatch) {
+                            return jsonMatch[1].replace(/\\'/g, "'");
+                        }
+                    } catch (e) {
+                    }
+                }
+                return errorText;
+            }
+
+            return errorStr;
+        } catch (e) {
+            console.error('Error parsing error message:', e);
+            return null;
+        }
+    };
+
+    const errorMessage = parseErrorMessage(errorData);
+
+    const hasValidDriftCheck = last_drift_check &&
+        ['Prediction Successful', 'Model Drift Detected', 'Data Drift Detected', 'Data Drift Failed', 'Model Drift Failed'].includes(last_drift_check);
 
     // Determine box colors and status
     const getBoxStatus = () => {
@@ -49,15 +97,23 @@ const ScheduleDetailsModal = ({ isOpen, onClose, scheduleData }) => {
                 modelDrift: { color: 'gray', text: '', icon: Minus },
                 prediction: { color: 'gray', text: '', icon: Activity }
             };
+        } else if (last_drift_check === 'Data Drift Failed') {
+            return {
+                dataDrift: { color: 'red', text: 'Data Drift Failed', icon: AlertTriangle },
+                modelDrift: { color: 'gray', text: '', icon: Minus },
+                prediction: { color: 'gray', text: '', icon: Activity }
+            };
+        } else if (last_drift_check === 'Model Drift Failed') {
+            return {
+                dataDrift: { color: 'green', text: 'No Drift Detected', icon: CheckCircle },
+                modelDrift: { color: 'red', text: 'Model Drift Failed', icon: AlertTriangle },
+                prediction: { color: 'gray', text: '', icon: Activity }
+            };
         }
         return null;
     };
 
     const boxStatus = getBoxStatus();
-    
-    if (!boxStatus) {
-        return null;
-    }
 
     const getColorClasses = (color) => {
         switch (color) {
@@ -136,9 +192,9 @@ const ScheduleDetailsModal = ({ isOpen, onClose, scheduleData }) => {
             ></div>
 
             {/* Modal */}
-            <div className={`relative bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto transform transition-all duration-300 ${isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
+            <div className={`relative bg-white shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto transform transition-all duration-300 ${isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
                 {/* Header */}
-                <div className="sticky top-0 bg-gradient-to-r from-[#8e78b7] to-[#9d8ac4] px-7 py-5 rounded-t-2xl shadow-md z-10">
+                <div className="sticky top-0 bg-gradient-to-r from-[#8e78b7] to-[#9d8ac4] px-7 py-5 shadow-md z-10">
                     <div className="flex items-start justify-between">
                         <div className="space-y-3 flex-1">
                             <h2 className="text-2xl font-bold text-white">
@@ -172,44 +228,78 @@ const ScheduleDetailsModal = ({ isOpen, onClose, scheduleData }) => {
                     </div>
                 </div>
 
-                {/* Content */}
                 <div className="p-7">
-                    <div className="mb-6">
-                        <h3 className="text-xl font-bold text-gray-800 mb-1">Drift Analysis</h3>
-                        <p className="text-sm text-gray-600">Monitor data quality, model performance, and prediction status</p>
-                    </div>
+                    {hasValidDriftCheck && boxStatus && (
+                        <>
+                            <div className="mb-6">
+                                <h3 className="text-xl font-bold text-gray-800 mb-1">Drift Analysis</h3>
+                                <p className="text-sm text-gray-600">Monitor data quality, model performance, and prediction status</p>
+                            </div>
 
-                    {/* Drift Flow Boxes */}
-                    <div className="flex flex-col md:flex-row items-stretch gap-4 mb-6">
-                        {showDataDrift && (
-                            <>
+                            {/* Drift Flow Boxes */}
+                            <div className="flex flex-col md:flex-row items-stretch gap-4 mb-6">
+                                {showDataDrift && (
+                                    <>
+                                        <DriftBox
+                                            title="Data Drift"
+                                            status={boxStatus.dataDrift}
+                                            icon={boxStatus.dataDrift.icon}
+                                        />
+                                        <Connector />
+                                    </>
+                                )}
+
+                                {showModelDrift && (
+                                    <>
+                                        <DriftBox
+                                            title="Model Drift"
+                                            status={boxStatus.modelDrift}
+                                            icon={boxStatus.modelDrift.icon}
+                                        />
+                                        <Connector />
+                                    </>
+                                )}
+
                                 <DriftBox
-                                    title="Data Drift"
-                                    status={boxStatus.dataDrift}
-                                    icon={boxStatus.dataDrift.icon}
+                                    title="Prediction"
+                                    status={boxStatus.prediction}
+                                    icon={boxStatus.prediction.icon}
                                 />
-                                <Connector />
-                            </>
-                        )}
+                            </div>
+                        </>
+                    )}
 
-                        {showModelDrift && (
-                            <>
-                                <DriftBox
-                                    title="Model Drift"
-                                    status={boxStatus.modelDrift}
-                                    icon={boxStatus.modelDrift.icon}
-                                />
-                                <Connector />
-                            </>
-                        )}
-
-                        <DriftBox
-                            title="Prediction"
-                            status={boxStatus.prediction}
-                            icon={boxStatus.prediction.icon}
-                        />
-                    </div>
-
+                    {errorMessage ? (
+                        <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6">
+                            <div className="flex items-start gap-4">
+                                <div className="flex-shrink-0 bg-red-100 p-3 rounded-full">
+                                    <AlertCircle className="w-6 h-6 text-red-600" strokeWidth={2.5} />
+                                </div>
+                                <div className="flex-1 space-y-2">
+                                    <h4 className="text-lg font-semibold text-red-800">Error Details</h4>
+                                    <div className="bg-white rounded-lg p-4 border border-red-200">
+                                        <p className="text-sm text-gray-800 leading-relaxed break-words">
+                                            {errorMessage}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : !hasValidDriftCheck ? (
+                        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
+                            <div className="flex items-start gap-4">
+                                <div className="flex-shrink-0 bg-blue-100 p-3 rounded-full">
+                                    <AlertCircle className="w-6 h-6 text-blue-600" strokeWidth={2.5} />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="text-lg font-semibold text-blue-800 mb-2">No Run Data Available</h4>
+                                    <p className="text-sm text-blue-700">
+                                        This schedule hasn't run yet or the last run data is not available.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    ) : null}
                 </div>
             </div>
         </div>

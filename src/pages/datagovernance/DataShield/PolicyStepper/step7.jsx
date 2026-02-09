@@ -24,6 +24,7 @@ const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData, isEd
 
     const finalPolicyData = {
         ...policyData,
+        policy_name: policyData.policy_name,
         user_selections: {
             ...policyData.user_selections,
             persona: personaValue
@@ -73,6 +74,7 @@ const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData, isEd
             id: data.id,
             sub_policy_name: policyData.sub_policy_name,
             policy_type: policyData.policy_type,
+            policy_name: policyData.policy_name,
             datapolicy: [data.id],
             start_date: policyData.start_date,
             expiry_date: policyData.expiry_date

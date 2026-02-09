@@ -89,6 +89,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
         description: '',
         selectedSubPolicy: '',
         subPolicyDescription: '',
+        policy_name: '',
         start_date: '',
         expiry_date: ''
     });
@@ -178,9 +179,9 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
             const data = await response.json();
             const transformedData = data?.policies.map(policy => ({
                 id: policy.id,
-                Type: policy.policy_type,
-                Name: policy.sub_policy_name,
-                Description: policy.sub_policy_description,
+                Policy: policy.policy_type,
+                SubPolicy: policy.sub_policy_name,
+                Name: policy.policy_name,  
                 Status: policy.policy_status,
                 CreatedDate: policy.created_date,
                 expiryDate: policy.expiry_date,
@@ -256,10 +257,19 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
         setActiveMenu(null);
     };
 
-    const handleNext = () => {
+    const handleNext = async () => {
         switch (activeStep) {
             case 0:
                 if (step1Data.isFormValid) {
+                    // Validate policy name before proceeding
+                    if (step1Data.checkPolicyName) {
+                        // Pass the original policy name from policyData when editing
+                        const originalName = isEditMode ? policyData.policy_name : '';
+                        const isValid = await step1Data.checkPolicyName(isEditMode, originalName);
+                        if (!isValid) {
+                            return; // Stop if validation fails
+                        }
+                    }
                     updateStep1Data(step1Data);
                 } else {
                     return;
@@ -296,6 +306,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
             policy_description: data.description,
             sub_policy_name: data.sub_policy_name,
             sub_policy_description: data.sub_policy_description,
+            policy_name: data.policy_name,
             start_date: data.start_date,
             expiry_date: data.expiry_date
         }));
@@ -418,7 +429,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
     const renderStepContent = (step) => {
         switch (step) {
             case 0:
-                return <Step1 onDataChange={setStep1Data} initialData={step1Data} />;
+                return <Step1 onDataChange={setStep1Data} initialData={step1Data} isEditMode={isEditMode} />;
             case 1:
                 return <Step2 onDataChange={setStep2Data} initialData={step2Data} />;
             case 2:
@@ -539,6 +550,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
                     description: '',
                     selectedSubPolicy: '',
                     subPolicyDescription: '',
+                    policy_name: '', 
                     start_date: '',
                     expiry_date: ''
                 });
@@ -611,8 +623,9 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
         let filtered = searchTerm
             ? sampleData.filter(
                 (item) =>
-                    item.Type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    item.Name.toLowerCase().includes(searchTerm.toLowerCase())
+                    item.Policy?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    item.SubPolicy?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    item.Name?.toLowerCase().includes(searchTerm.toLowerCase())
             )
             : sampleData;
 
@@ -706,6 +719,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
                 description: policyDetails.policy_description || "",
                 sub_policy_name: policyDetails.sub_policy_name || "",
                 sub_policy_description: policyDetails.sub_policy_description || "",
+                policy_name: policyDetails.policy_name || "",
                 start_date: policyDetails.start_date || "",
                 expiry_date: policyDetails.expiry_date || ""
             });
@@ -1148,42 +1162,30 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
                         <table className="w-full table-auto min-w-[1000px]">
                             <thead>
                                 <tr className="bg-[#29304a] text-white text-sm">
-                                    <th className="text-left p-4 whitespace-nowrap">
-                                        <button
-                                            onClick={() => handleSort('id')}
-                                            className="flex items-center gap-2 hover:bg-[#3a415a] px-2 py-1 rounded transition-colors"
-                                        >
-                                            Id
-                                            {getSortIcon('id')}
-                                        </button>
+                                    <th className="text-left p-4 whitespace-nowrap text-gray-300">
+                                    #
                                     </th>
+
                                     <th className="text-left p-4 whitespace-nowrap">
-                                        <button
-                                            onClick={() => handleSort('Type')}
-                                            className="flex items-center gap-2 hover:bg-[#3a415a] px-2 py-1 rounded transition-colors"
-                                        >
-                                            Type
-                                            {getSortIcon('Type')}
-                                        </button>
-                                    </th>
-                                    <th className="text-left p-4 whitespace-nowrap">
-                                        <button
-                                            onClick={() => handleSort('Name')}
-                                            className="flex items-center gap-2 hover:bg-[#3a415a] px-2 py-1 rounded transition-colors"
-                                        >
+                                        <button onClick={() => handleSort('Name')} className="flex items-center gap-2">
                                             Name
                                             {getSortIcon('Name')}
                                         </button>
-                                    </th>
+                                        </th>
                                     <th className="text-left p-4 whitespace-nowrap">
-                                        <button
-                                            onClick={() => handleSort('Description')}
-                                            className="flex items-center gap-2 hover:bg-[#3a415a] px-2 py-1 rounded transition-colors"
-                                        >
-                                            Description
-                                            {getSortIcon('Description')}
+                                        <button onClick={() => handleSort('Policy')} className="flex items-center gap-2">
+                                            Policy
+                                            {getSortIcon('Policy')}
                                         </button>
-                                    </th>
+                                        </th>
+
+                                        <th className="text-left p-4 whitespace-nowrap">
+                                        <button onClick={() => handleSort('SubPolicy')} className="flex items-center gap-2">
+                                            Sub Policy
+                                            {getSortIcon('SubPolicy')}
+                                        </button>
+                                        </th>
+
                                     <th className="text-center p-4 whitespace-nowrap">
                                         <button
                                             onClick={() => handleSort('Status')}
@@ -1244,18 +1246,22 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
                                 ) : (
                                     paginatedData.map((policy, index) => (
                                         <tr key={index} className="border-b">
-                                            <td className="p-4 text-gray-500 whitespace-nowrap truncate max-w-[100px] sm:max-w-[150px] tooltip" title={policy.id}>
-                                                {policy.id}
+                                            <td className="p-4 text-gray-500 whitespace-nowrap">
+                                            {(currentPage - 1) * rowsPerPage + index + 1}
+                                        </td>
+
+                                            <td className="p-4 text-gray-500 truncate">
+                                                {policy.Name || "-"}
                                             </td>
-                                            <td className="p-4 text-gray-500 max-w-xs truncate tooltip" title={policy.Type}>
-                                                {policy.Type}
+
+                                            <td className="p-4 text-gray-500 truncate">
+                                                {policy.Policy}
                                             </td>
-                                            <td className="p-4 text-gray-500 max-w-xs truncate tooltip" title={policy.Name}>
-                                                {policy.Name}
+
+                                            <td className="p-4 text-gray-500 truncate">
+                                                {policy.SubPolicy}
                                             </td>
-                                            <td className="p-4 text-gray-500 max-w-xs truncate tooltip" title={policy.Description}>
-                                                {policy.Description}
-                                            </td>
+
                                             <td className="p-4 text-center whitespace-nowrap">
                                                 <span
                                                     className={`px-5 py-1 rounded text-sm font-normal inline-block ${policy.Status?.toLowerCase() === "active" ? "text-green-600 bg-green-200" : "text-gray-400 bg-gray-200"}`}
