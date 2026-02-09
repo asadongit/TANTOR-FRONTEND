@@ -132,7 +132,9 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
 
       const policies = data.map(policy => ({
         id: String(policy.id),
-        name: policy.policy_name || `Policy ${policy.id}`
+        name: policy.name || `Policy ${policy.id}`,
+        policyName: policy.policy_name || '',
+        subPolicyName: policy.sub_policy_name || ''
       }));
 
       return policies;
@@ -192,20 +194,22 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
 
   // Map each policy with ITS OWN individual data
   const newExistingPolicies = policyIds.map((policyId) => {
-    const policyName = fetchedPolicies.find(p => p.id === String(policyId))?.name || `Policy ${policyId}`;
-    
-    // Get individual data for THIS policy
-    const policyIndividualData = appliedData.policiesData?.[policyId];
-    
-    return {
-      id: String(policyId),
-      name: policyName,
-      roles: policyIndividualData?.role ? [policyIndividualData.role] : [],
-      persona: policyIndividualData?.persona || [],
-      groups: policyIndividualData?.group ? [policyIndividualData.group] : [],
-      subgroups: policyIndividualData?.subGroup ? [policyIndividualData.subGroup] : []
-    };
-  });
+  const fetchedPolicy = fetchedPolicies.find(
+    p => p.id === String(policyId)
+  );
+  const policyIndividualData = appliedData.policiesData?.[policyId];
+  return {
+    id: String(policyId),
+    name: fetchedPolicy?.name || `Policy ${policyId}`,
+    policyName: fetchedPolicy?.policyName || '',
+    subPolicyName: fetchedPolicy?.subPolicyName || '',
+    roles: policyIndividualData?.role ? [policyIndividualData.role] : [],
+    persona: policyIndividualData?.persona || [],
+    groups: policyIndividualData?.group ? [policyIndividualData.group] : [],
+    subgroups: policyIndividualData?.subGroup ? [policyIndividualData.subGroup] : []
+  };
+});
+
 
   setExistingPolicies(newExistingPolicies);
   updateFormDataFromPolicies(newExistingPolicies);
@@ -562,9 +566,25 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
           >
             <div className="flex items-start gap-2 flex-1">
               <span className="text-sm text-gray-500 flex-shrink-0">{index + 1}.</span>
-              <p className="text-sm font-medium text-gray-900 truncate" title={policy.name}>
-                {policy.name}
-              </p>
+              <div className="flex flex-col min-w-0">
+                <p
+                  className="text-sm font-semibold text-gray-900 truncate"
+                  title={policy.name}
+                >
+                  {policy.name}
+                </p>
+
+                {(policy.policyName || policy.subPolicyName) && (
+                  <p
+                    className="text-xs text-gray-500 truncate"
+                    title={`${policy.policyName} | ${policy.subPolicyName}`}
+                  >
+                    {policy.policyName}
+                    {policy.subPolicyName && ` | ${policy.subPolicyName}`}
+                  </p>
+                )}
+              </div>
+
             </div>
             
             {/* Remove button - visible on hover */}
