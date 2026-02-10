@@ -69,6 +69,8 @@ const Reports = () => {
   const [refreshing, setRefreshing] = useState(false);
   const itemsPerPage = 10;
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const REPORT_PATH = "governance";
+
 
   useEffect(() => {
     fetchReports();
@@ -79,7 +81,7 @@ const Reports = () => {
       setLoading(true);
       setError(null);
 
-      const reportTypesResponse = await fetch(`${window._env_?.VITE_FAST_API}/list_report_type`, {
+      const reportTypesResponse = await fetch(`${window._env_?.VITE_FAST_API}/list_report_type/${REPORT_PATH}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -125,7 +127,7 @@ const Reports = () => {
     const toastId = toast.loading('Refreshing reports...');
 
     try {
-      const reportTypesResponse = await fetch(`${window._env_?.VITE_FAST_API}/list_report_type`, {
+      const reportTypesResponse = await fetch(`${window._env_?.VITE_FAST_API}/list_report_type/${REPORT_PATH}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
