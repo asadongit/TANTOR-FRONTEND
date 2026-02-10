@@ -89,19 +89,20 @@ function EditSubgroup({ showModal, setShowModal, subgroupData, onSubgroupUpdated
           onSubmit={handleSubmit}
           className="inline-block w-full max-w-xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg"
         >
-          <div className="flex items-center gap-2 mb-6">
-            <Icon icon="material-symbols:edit-outline" width="20" height="20" className="text-[#8f79b8]" />
-            <h3 className="text-md font-bold text-[#8f79b8]">
-              Edit Subgroup: {formData.new_name || subgroupData?.name}
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-bold">
+              <span className="text-[#332849]">Edit Subgroup - </span>
+              <span className="text-[#8f79b8]">{formData.new_name || subgroupData?.name}</span>
             </h3>
 
             <button
               type="button"
               onClick={() => !loading && setShowModal(false)}
-              className="ml-auto p-1 rounded-full hover:bg-gray-100"
+              className="text-gray-400 hover:text-gray-600 transition-colors"
               aria-label="Close"
+              disabled={loading}
             >
-              <X className="h-5 w-5 text-gray-500" />
+              <X className="h-5 w-5" />
             </button>
           </div>
 
@@ -121,19 +122,19 @@ function EditSubgroup({ showModal, setShowModal, subgroupData, onSubgroupUpdated
 
           <div className="space-y-6">
             <div>
-              <label className="block text-sm text-gray-700 mb-1">
+              <label className="block text-sm text-[#332849] font-bold mb-1">
                 Current Name
               </label>
               <input
                 type="text"
                 value={subgroupData?.name || ""}
-                className="w-full px-3 py-2 border border-gray-400 rounded-lg bg-gray-100 cursor-not-allowed"
+                className="w-full px-3 py-2 border border-gray-400 rounded-lg bg-gray-100 cursor-not-allowed text-[#818181]"
                 disabled
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-700 mb-1">
+              <label className="block text-sm text-[#332849] font-bold mb-1">
                 New Name <span className="text-red-500">*</span>
               </label>
               <input
@@ -141,51 +142,49 @@ function EditSubgroup({ showModal, setShowModal, subgroupData, onSubgroupUpdated
                 name="new_name"
                 value={formData.new_name}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent text-[#818181]"
                 disabled={loading}
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-700 mb-1">
+              <label className="block text-sm text-[#332849] font-bold mb-1">
                 Description
               </label>
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent text-[#818181]"
                 rows="6"
                 disabled={loading}
               ></textarea>
             </div>
 
-            <div className="flex justify-between items-center mt-6">
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  disabled={loading}
-                  className="w-20 px-4 py-2 text-white bg-[#8e78b7] border border-[#8e78b7] hover:bg-[#7d69a3] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-20 px-4 py-2 text-white bg-[#8e78b7] border border-[#8e78b7] hover:bg-[#7d69a3] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-                      Updating...
-                    </>
-                  ) : (
-                    "Update"
-                  )}
-                </button>
-              </div>
+            <div className="flex justify-end items-center gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                disabled={loading}
+                className="w-24 px-4 py-2 text-gray-700 bg-white border border-gray-400 hover:bg-gray-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-24 px-4 py-2 text-white bg-[#8e78b7] hover:bg-[#7d69a3] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                    Updating...
+                  </>
+                ) : (
+                  "Update"
+                )}
+              </button>
             </div>
           </div>
         </form>

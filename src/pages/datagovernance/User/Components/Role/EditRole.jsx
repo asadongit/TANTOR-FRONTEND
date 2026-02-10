@@ -87,10 +87,10 @@ const EditRole = ({ show, onClose, onSave, roleData }) => {
         </div>
 
         <div className="inline-block w-full max-w-xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
-          <div className="flex items-center gap-2 mb-6">
-            <Icon icon="material-symbols:edit-outline" width="24" height="24" className="text-[#8f79b8]" />
-            <h3 className="text-md font-bold text-[#8f79b8]">Edit Role: {formData.originalName}</h3>
-          </div>
+          <h3 className="text-md font-bold mb-6">
+            <span className="text-[#282F49]">Edit Role - </span>
+            <span className="text-[#8f79b8]">{formData.originalName}</span>
+          </h3>
 
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg">
@@ -101,29 +101,29 @@ const EditRole = ({ show, onClose, onSave, roleData }) => {
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <div className="flex-1">
-                <label className="block text-sm text-gray-700 mb-1">Name <span className="text-red-500">*</span></label>
+                <label className="block text-sm text-[#332849] font-bold mb-1">Name <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent text-[#818181]"
                   disabled={loading}
                 />
               </div>
               <div className="flex-1">
-                <label className="block text-sm text-gray-700 mb-1">Description</label>
+                <label className="block text-sm text-[#332849] font-bold mb-1">Description</label>
                 <input
                   type="text"
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent text-[#818181]"
                   disabled={loading}
                 />
               </div>
             </div>
 
             <div>
-              <h4 className="text-sm font-medium text-[#8f79b8]">Duration</h4>
+              <h4 className="text-sm font-bold text-[#332849]">Duration</h4>
               <div className="flex items-center gap-4 mt-2">
                 <input
                   type="date"
@@ -151,28 +151,26 @@ const EditRole = ({ show, onClose, onSave, roleData }) => {
               </div>
             </div>
 
-            <div className="flex justify-between items-center mt-6">
-              <div className="flex items-center gap-3">
-                <button
-                  className="w-20 px-4 py-2 text-base bg-[#8e78b7] text-white rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                  onClick={onClose}
-                  disabled={loading}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  className="w-20 flex items-center justify-center gap-2 px-4 py-2 text-base bg-[#8e78b7] text-white rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : "Save"}
-                </button>
-              </div>
+            <div className="flex justify-end items-center gap-3 mt-6">
+              <button
+                className="w-24 px-4 py-2 text-base bg-white text-gray-700 border border-gray-400 rounded-lg hover:bg-gray-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                onClick={onClose}
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                className="w-24 flex items-center justify-center gap-2 px-4 py-2 text-base bg-[#8e78b7] text-white rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : "Save"}
+              </button>
             </div>
           </div>
         </div>

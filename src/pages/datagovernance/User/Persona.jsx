@@ -2,7 +2,6 @@ import React, { useEffect, useState, useRef } from "react";
 import {
   MoreVertical,
   LayoutGrid,
-  Search,
   Plus,
   MoreHorizontal,
   Pencil,
@@ -20,6 +19,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAuth } from "../../../context/AuthContext";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import Search from "../../../assets/governance/search.svg"
 
 const rotateAnimation = `
   @keyframes rotate {
@@ -451,7 +451,8 @@ const Persona = () => {
   const handleClickOutside = () => { setActiveMenu(null); setShowViewModeMenu(false); };
 
   return (
-    <div className="p-4 bg-[#F3F5F7] min-h-screen">
+    // <div className="p-4 bg-[#F3F5F7] min-h-screen">
+    <div className="p-4  min-h-screen">
       <style>{rotateAnimation}</style>
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
 
@@ -475,7 +476,7 @@ const Persona = () => {
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" style={{ color: '#818181' }} />
+            <img src={Search} alt="search" className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" />
             <input
               type="text"
               value={searchTerm}
@@ -586,6 +587,9 @@ const Persona = () => {
                             </div>
 
                             <div className="flex items-center gap-2">
+  <span className={`text-sm ${card.enabled ? "text-[#1a9962]" : "text-gray-400"}`}>
+    {card.enabled ? "Enabled" : "Disabled"}
+  </span>
   <div className={togglingStatus === card.title ? 'toggle-disabled' : ''}>
     <Toggle
       enabled={togglingStatus === card.title ? !card.enabled : card.enabled}
@@ -594,9 +598,6 @@ const Persona = () => {
       size="md"
     />
   </div>
-  <span className={`text-sm ${card.enabled ? "text-[#1a9962]" : "text-gray-400"}`}>
-    {card.enabled ? "Enabled" : "Disabled"}
-  </span>
 </div>
                           </div>
                         </div>
@@ -778,27 +779,17 @@ const Persona = () => {
             <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => { if (!isSubmitting) { setShowModal(false); setShowEditModal(false); } }}></div>
             <div className="inline-block w-full max-w-xl p-6 my-8 text-left bg-white shadow-xl rounded-lg z-10">
               <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-bold text-[#8f79b8]">{personaToEdit ? 'Edit Persona' : 'Add Persona'}</h3>
-                  {!personaToEdit && (
-                    <div className="relative group">
-                      <Info className="h-4 w-4 text-gray-400 cursor-help hover:text-gray-600 transition-colors" />
-                      <div className="absolute left-0 mt-2 w-64 bg-gray-900 text-white text-xs rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-50 whitespace-normal bottom-full mb-2">
-                        Create a new persona to define roles, permissions and access controls for users.
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <h3 className="text-lg font-bold text-[#282F49]">{personaToEdit ? 'Edit Persona' : 'Add Persona'}</h3>
                 {/* right side reserved for future controls (close button, etc.) */}
               </div>
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Persona Name <span className="text-red-500">*</span></label>
-                  <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 border border-gray-400 rounded-lg focus:outline-none" placeholder="Enter a unique name" />
+                  <label className="block text-sm text-[#332849] font-bold mb-1">Persona Name <span className="text-red-500">*</span></label>
+                  <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent text-[#818181]" placeholder="Enter a unique name" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description <span className="text-red-500">*</span></label>
-                  <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-3 py-2 border border-gray-400 rounded-lg focus:outline-none" rows="4" placeholder="Provide details about the persona's purpose"></textarea>
+                  <label className="block text-sm text-[#332849] font-bold mb-1">Description <span className="text-red-500">*</span></label>
+                  <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-3 py-2 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent text-[#818181]" rows="4" placeholder="Provide details about the persona's purpose"></textarea>
                 </div>
 
                 {!personaToEdit && (
