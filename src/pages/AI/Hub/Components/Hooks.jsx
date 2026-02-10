@@ -29,6 +29,9 @@ export async function updateRecentAccess({
     } else if (entityType === 'project') {
       itemId = row.id;
       itemName = row.name;
+    } else if (entityType === 'model') {
+      itemId = row.id;
+      itemName = row.run_name || row.name;
     }
     if (!itemId || !itemName) return;
     await fetch(
