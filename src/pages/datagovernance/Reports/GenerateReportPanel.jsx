@@ -172,11 +172,12 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
             fetchStakeholders();
         }
     }, [isOpen]);
+    const REPORT_PATH = "governance";
 
     const fetchReportTypes = async () => {
         setIsLoadingReportTypes(true);
         try {
-            const response = await fetch(`${window._env_?.VITE_FAST_API}/list_report_type`);
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/list_report_type/${REPORT_PATH}`);
             if (!response.ok) throw new Error('Failed to fetch report types');
             const data = await response.json();
             setReportTypes(data);
