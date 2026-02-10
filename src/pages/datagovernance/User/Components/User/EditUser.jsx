@@ -570,7 +570,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
         <div className="flex justify-start gap-4 mt-8">
           <button
             onClick={handleClose}
-            className="w-20 px-6 py-2.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a6a9e] transition-colors font-medium flex items-center justify-center"
+            className="w-24 px-6 py-2.5 bg-white text-gray-700 border border-gray-400 rounded-lg hover:bg-gray-100 transition-colors font-medium flex items-center justify-center"
             disabled={isLoading}
           >
             Cancel
@@ -578,7 +578,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
           <button
             onClick={handleSubmit}
             disabled={isLoading}
-            className="w-20 px-6 py-2.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a6a9e] transition-colors font-medium flex items-center gap-2 flex items-center justify-center"
+            className="w-24 px-6 py-2.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a6a9e] transition-colors font-medium flex items-center gap-2 flex items-center justify-center"
           >
             {isLoading ? (
               <>

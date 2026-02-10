@@ -7,6 +7,14 @@ import EditUser from './Components/User/EditUser';
 import DeleteUser from './Components/User/DeleteUser';
 import { useAuth } from '../../../context/AuthContext';
 import { createPortal } from 'react-dom';
+import RoleIcon from "../../../assets/governance/robot_2.svg"
+import UserManagericon from "../../../assets/governance/manage_accounts.svg"
+import DataAuditorIcon from "../../../assets/governance/fact_check.svg"
+import DataStewardIcon from "../../../assets/governance/database.svg"
+import PolicyManagerIcon from "../../../assets/governance/policy.svg"
+import DataownerIcon from "../../../assets/governance/account_box.svg"
+import ConnectionCreationIcon from "../../../assets/governance/hub.svg"
+import SearchIcon from "../../../assets/governance/search.svg"
 
 const rotateAnimation = `
   @keyframes rotate {
@@ -420,7 +428,8 @@ const currentUsers = users;
   };
 
   return (
-    <div className="px-6 py-4 bg-[#F3F5F7] min-h-screen">
+    // <div className="px-6 py-4 bg-[#F3F5F7] min-h-screen">
+    <div className="px-6 py-4  min-h-screen">
       <style>{rotateAnimation}</style>
 
       {toast.show && (
@@ -448,7 +457,7 @@ const currentUsers = users;
 
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" style={{ color: '#818181' }} />
+            <img src={SearchIcon} alt="search" className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" />
             <input
               type="text"
               placeholder="Search all user"
@@ -634,14 +643,14 @@ const currentUsers = users;
               {searchTerm && ` (filtered by "${searchTerm}")`}
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4" style={{ transform: 'translateX(-20px)' }}>
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-500">Show per page</label>
               <div className="relative">
-                <select value={itemsPerPage} onChange={handleItemsPerPageChange} className="border border-gray-400 rounded-md focus:outline-none text-sm text-center pl-2 pr-8" style={{ height: '31px', width: '55px', WebkitAppearance: 'none', appearance: 'none', paddingRight: '24px'}}>
-                  <option value={12}>12</option>
-                  <option value={24}>24</option>
-                  <option value={48}>48</option>
+                <select value={itemsPerPage} onChange={handleItemsPerPageChange} className="border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm text-center pl-2 pr-8" style={{ height: '31px', width: '55px', WebkitAppearance: 'none', appearance: 'none', paddingRight: '24px'}}>
+                  <option value={12} style={{ color: '#282F49' }}>12</option>
+                  <option value={24} style={{ color: '#282F49' }}>24</option>
+                  <option value={48} style={{ color: '#282F49' }}>48</option>
                 </select>
                 <ChevronDown 
                   className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-700" 
@@ -651,7 +660,7 @@ const currentUsers = users;
               </div>
             </div>
 
-            <div className="flex items-center border border-gray-400 rounded-md bg-gray-50" style={{ height: '31px', width: '95px', overflow: 'hidden' }}>
+            <div className="flex items-center border border-gray-400 rounded-md bg-gray-50" style={{ height: '31px', width: '55px', overflow: 'hidden' }}>
               <button onClick={goToPreviousPage} disabled={currentPage === 1 || isPaginationLoading} title="Previous page" className={`flex-1 h-full flex items-center justify-center ${currentPage === 1 || isPaginationLoading ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`} style={{ padding: 0, border: 'none' }}>
                 {isPaginationLoading && currentPage > 1 ? <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div> : <ChevronLeft size={14} />}
               </button>
@@ -688,38 +697,39 @@ const currentUsers = users;
           <div className="bg-white rounded-2xl w-[800px] max-w-[95vw] p-8">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-2">
-                <UserRound className="h-5 w-5 text-gray-600 flex-shrink-0" />
-                <h2 className="text-md font-bold text-gray-600">User Details</h2>
+                {/* <UserRound className="h-5 w-5 text-gray-600 flex-shrink-0" /> */}
+                <h2 className="text-md font-bold" style={{ color: '#282F49' }}>User Details</h2>
               </div>
               <button onClick={() => setIsDetailsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="space-y-6 bg-gray-50 p-6 rounded-lg">
-              <div className="flex items-center justify-start ">
-                <div className="h-24 w-24 rounded-full bg-[#8e78b7] text-white flex items-center justify-center text-3xl">
-                  {selectedUser.username.charAt(0).toUpperCase()}
+            <div className="space-y-4 bg-gray-50 p-6 rounded-lg">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white p-4 rounded-lg flex gap-3 items-start">
+                  <div className="h-12 w-12 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-sm font-semibold flex-shrink-0">
+                    {selectedUser.username.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-500">Username</p>
+                    <p className="font-medium text-md truncate" title={selectedUser.username}>{selectedUser.username}</p>
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-lg space-y-1">
+                  <p className="text-sm text-gray-500">User ID</p>
+                  <p className="font-medium text-md truncate max-w-xs" title={selectedUser.id}>{selectedUser.id}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <p className="text-sm text-gray-500">Username</p>
-                  <p className="font-medium  text-md truncate" title={selectedUser.username}>{selectedUser.username}</p>
-                </div>
-
-                <div className="space-y-1">
-                  <p className="text-sm text-gray-500">User ID</p>
-                  <p className="font-medium text-md break-word truncate">{selectedUser.id}</p>
-                </div>
-
-                <div className="space-y-1">
+                <div className="bg-white p-4 rounded-lg space-y-1">
                   <p className="text-sm text-gray-500">Email</p>
-                  <p className="font-medium truncate">{selectedUser.email || "-"}</p>
+                  <p className="font-medium text-md truncate">{selectedUser.email || "-"}</p>
                 </div>
 
-                <div className="space-y-1">
+                <div className="bg-white p-4 rounded-lg space-y-1">
                   <p className="text-sm text-gray-500">Status</p>
                   <p className="font-medium text-md">
                     {selectedUser.enabled ?
@@ -728,15 +738,17 @@ const currentUsers = users;
                     }
                   </p>
                 </div>
+              </div>
 
-                <div className="space-y-1">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white p-4 rounded-lg space-y-1">
                   <p className="text-sm text-gray-500">First Name</p>
-                  <p className="font-medium truncate">{selectedUser.firstName || "-"}</p>
+                  <p className="font-medium text-md truncate">{selectedUser.firstName || "-"}</p>
                 </div>
 
-                <div className="space-y-1">
+                <div className="bg-white p-4 rounded-lg space-y-1">
                   <p className="text-sm text-gray-500">Last Name</p>
-                  <p className="font-medium truncate">{selectedUser.lastName || "-"}</p>
+                  <p className="font-medium text-md truncate">{selectedUser.lastName || "-"}</p>
                 </div>
               </div>
             </div>
@@ -751,11 +763,7 @@ const currentUsers = users;
           <div className="bg-white rounded-2xl w-[800px] max-w-[95vw] p-8">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
-                {detailModalData.type === 'role' && <Icon icon="carbon:user-role" className="h-5 w-5 text-gray-700" />}
-                {detailModalData.type === 'persona' && <SquareUserRound className="h-5 w-5 text-gray-600 flex-shrink-0" />}
-                {detailModalData.type === 'group' && <Icon icon="mdi:account-group" className="h-5 w-5 text-gray-600" />}
-                {detailModalData.type === 'subgroup' && <Icon icon="mdi:account-group-outline" className="h-5 w-5 text-gray-600" />}
-                <h2 className=" text-gray-600 text-md font-bold">{detailModalData.title}</h2>
+                <h2 className=" text-md font-bold" style={{ color: '#282F49' }}>User Details</h2>
               </div>
               <button onClick={() => setIsDetailModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="h-5 w-5" />
@@ -779,7 +787,7 @@ const currentUsers = users;
               </div>
 
               {detailModalData.data.length > 0 ? (
-                <div className="space-y-2">
+                <div className={detailModalData.type === 'persona' ? 'grid grid-cols-2 gap-3' : 'space-y-2'}>
                   {detailModalData.data.map((item, index) => (
                     <div
                       key={index}
@@ -791,8 +799,12 @@ const currentUsers = users;
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        {detailModalData.type === 'role' && <Icon icon="carbon:user-role" className="h-5 w-5 text-gray-500" />}
-                        {detailModalData.type === 'persona' && <SquareUserRound className="h-5 w-5 text-gray-500 flex-shrink-0" />}
+                        {detailModalData.type === 'role' && (
+                          <img src={RoleIcon} alt="role" className="w-5 h-5" />
+                        )}
+                        {detailModalData.type === 'persona' && (
+                          <img src={UserManagericon} alt="user-manager" className="w-5 h-5" />
+                        )}
                         {detailModalData.type === 'group' && <Icon icon="mdi:account-group" className="h-5 w-5 text-gray-500" />}
                         {detailModalData.type === 'subgroup' && <Icon icon="mdi:account-group-outline" className="h-5 w-5 text-gray-500" />}
                         <p className="font-medium">{item}</p>
