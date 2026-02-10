@@ -28,6 +28,7 @@ import { useAIPlayground } from "../../../context/AIPlaygroundContext";
 import ModelFlow from "./Components/Models/ModelFlow";
 import StatusFilterDropdown from "./Components/StateSelector";
 import { unarchiveEntity } from "./Components/Hooks";
+import { updateRecentAccess } from './Components/Hooks';
 import toast from 'react-hot-toast';
 
 
@@ -61,6 +62,9 @@ function Models() {
   const [isCanvasLoading, setIsCanvasLoading] = useState(false);
   const { setWorkflowState, setDatasetState, setMode, setModelState, setProjectState, setSchedulerState, setIsAIPlaygroundActive } = useAIPlayground();
   const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [recentAccessed, setRecentAccessed] = useState([]);
+  const [recentAccessedLoading, setRecentAccessedLoading] = useState(false);
+  const [recentAccessedError, setRecentAccessedError] = useState(null);
 
 
   useEffect(() => {
@@ -137,6 +141,34 @@ function Models() {
 
     fetchDashboardSummary();
   }, [hostnameAI, token, dashboardRefreshTrigger]);
+
+  useEffect(() => {
+    if (!hostnameAI || !token || !decodedToken?.sub) return;
+
+    const fetchRecentAccessed = async () => {
+      setRecentAccessedLoading(true);
+      try {
+        const resp = await fetch(
+          `${hostnameAI}/canvas/entity/recent_access/list?user_id=${decodedToken.sub}&entity_type=model&limit=5`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        if (resp.ok) {
+          const data = await resp.json();
+          setRecentAccessed(Array.isArray(data?.recent_entities) ? data.recent_entities : Array.isArray(data) ? data : []);
+        } else {
+          setRecentAccessedError('Failed to fetch recent accessed');
+        }
+      } catch (error) {
+        setRecentAccessedError(error.message);
+      } finally {
+        setRecentAccessedLoading(false);
+      }
+    };
+
+    fetchRecentAccessed();
+  }, [hostnameAI, token, decodedToken?.sub, dashboardRefreshTrigger]);
 
   const formatPct = (n) => {
     const num = Number(n);
@@ -238,6 +270,17 @@ function Models() {
   });
 }, [dashboardSummary]);
 
+  const lastAccessedData = useMemo(() => {
+    if (recentAccessedLoading || !recentAccessed) {
+      return [];
+    }
+    return recentAccessed.slice(0, 5).map((item) => ({
+      id: item.item_id,
+      name: item.item_name,
+      accessed_at: item.accessed_at,
+    }));
+  }, [recentAccessed, recentAccessedLoading]);
+
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -248,6 +291,36 @@ function Models() {
     setDashboardRefreshTrigger((prev) => prev + 1);
     setSearchTerm('');
     toast.success('Refresh successfully');
+  };
+
+  const handleLastAccessedClick = async (item) => {
+    try {
+      const modelResponse = await fetch(`${hostnameAI}/canvas/model/${item.name}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          accept: "application/json",
+        },
+      });
+
+      if (!modelResponse.ok) {
+        toast.error('Failed to load model details', {
+          duration: 4000,
+          position: 'top-right',
+        });
+        return;
+      }
+
+      const modelData = await modelResponse.json();
+
+      navigate(`/ai/hub/models/library/${encodeURIComponent(String(item.id))}`, {
+        state: { modelData },
+      });
+    } catch (error) {
+      toast.error('Failed to open model', {
+        duration: 4000,
+        position: 'top-right',
+      });
+    }
   };
 
   const getStatusStyle = (status) => {
@@ -468,14 +541,23 @@ function Models() {
   };
 
   const openModelLibrary = useCallback(
-    (row) => {
+    async (row) => {
+      await updateRecentAccess({
+        row,
+        entityType: 'model',
+        hostnameAI,
+        token,
+        userId: decodedToken.sub,
+        setRecentList: setRecentAccessed,
+        setRecentLoading: setRecentAccessedLoading,
+      });
       const raw = row?._raw ?? row;
       const modelId = raw?.id || raw?.model_id;
       navigate(`/ai/hub/models/library/${encodeURIComponent(String(modelId))}`, {
         state: { modelData: raw },
       });
     },
-    [navigate]
+    [navigate, hostnameAI, token, decodedToken.sub]
   );
 
 
@@ -496,6 +578,15 @@ function Models() {
       label: "AI Playground",
       icon: <Palette className="w-4 h-4" />,
       onClick: async (row) => {
+        await updateRecentAccess({
+          row,
+          entityType: 'model',
+          hostnameAI,
+          token,
+          userId: decodedToken.sub,
+          setRecentList: setRecentAccessed,
+          setRecentLoading: setRecentAccessedLoading,
+        });
         setIsCanvasLoading(true);
 
         try {
@@ -966,6 +1057,52 @@ function Models() {
             </div>
             <div>
               <AlertsPanel />
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <Icon
+                icon="material-symbols:history"
+                className="w-5 h-5 text-purple-600"
+              />
+              <h3 className="text-md font-semibold text-gray-800">Recent Accessed Models</h3>
+            </div>
+            <div className="space-y-3">
+              {recentAccessedLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+                </div>
+              ) : recentAccessedError ? (
+                <div className="text-center py-8 text-red-500">
+                  {recentAccessedError}
+                </div>
+              ) : lastAccessedData.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  No recent models accessed
+                </div>
+              ) : (
+                lastAccessedData.map((item, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+                    onClick={() => handleLastAccessedClick(item)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                        <BookOpen className="w-4 h-4 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{item.name}</p>
+                        <p className="text-xs text-gray-500">
+                          Accessed {new Date(item.accessed_at).toLocaleDateString('en-GB')}
+                        </p>
+                      </div>
+                    </div>
+                    <ArrowUp className="w-4 h-4 text-gray-400 rotate-45" />
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </>
