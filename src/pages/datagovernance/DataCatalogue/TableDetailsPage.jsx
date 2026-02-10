@@ -808,8 +808,8 @@ function TableDetailsPage() {
                                     )}
 
                                     {!loadingSampleData && !sampleDataError && sampleData.length > 0 && (
-                                        <div className="overflow-hidden mt-2 rounded-lg shadow border">
-                                            <table className="min-w-full">
+                                        <div className="overflow-x-auto mt-2 rounded-lg shadow border">
+                                            <table className="min-w-max w-full">
                                                 <thead>
                                                     <tr className="bg-[#29304a] text-white">
                                                         {sampleDataHeaders.map(header => (

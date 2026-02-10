@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { MoreVertical, LayoutGrid, Search, Plus, Info, MoreHorizontal, Pencil, Trash2, RefreshCcw, ChevronLeft, ChevronRight, List , ChevronDown} from "lucide-react";
+import { MoreVertical, LayoutGrid, Plus, Info, MoreHorizontal, Pencil, Trash2, RefreshCcw, ChevronLeft, ChevronRight, List , ChevronDown} from "lucide-react";
 import Breadcrumb from "../../../components/Breadcrumb";
 import { Icon } from "@iconify-icon/react";
 import AddGroup from "./Components/Group/AddGroup";
@@ -8,6 +8,7 @@ import EditGroup from "./Components/Group/EditGroup";
 import { useAuth } from "../../../context/AuthContext";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import Search from "../../../assets/governance/search.svg"
 
 const rotateAnimation = `
   @keyframes rotate {
@@ -559,7 +560,8 @@ function Group() {
 
   return (
     //changed bg color and and reduced padding to p-4 , initially was p-6
-    <div className="p-4 bg-[#F3F5F7] min-h-screen">
+    // <div className="p-4 bg-[#F3F5F7] min-h-screen">
+    <div className="p-4  min-h-screen">
       <style>{rotateAnimation}</style>
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
 
@@ -587,7 +589,7 @@ function Group() {
         <h1 className="text-2xl font-semibold">Group</h1>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" style={{ color: '#818181' }} />
+            <img src={Search} alt="search" className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" />
             <input
               type="text"
               value={searchTerm}
@@ -791,6 +793,11 @@ function Group() {
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
+                                <span
+                                  className={`text-sm ${group.enabled ? "text-[#1a9962]" : "text-gray-400"}`}
+                                >
+                                  {group.enabled ? "Enabled" : "Disabled"}
+                                </span>
                                 <div className={togglingStatus === group.title ? 'toggle-disabled' : ''}>
                                   <Toggle
                                     enabled={togglingStatus === group.title ? !group.enabled : group.enabled}
@@ -799,11 +806,6 @@ function Group() {
                                     size="md"
                                   />
                                 </div>
-                                <span
-                                  className={`text-sm ${group.enabled ? "text-[#1a9962]" : "text-gray-400"}`}
-                                >
-                                  {group.enabled ? "Enabled" : "Disabled"}
-                                </span>
                               </div>
                           </div>
                         </div>
