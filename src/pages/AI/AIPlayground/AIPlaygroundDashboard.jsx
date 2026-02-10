@@ -111,13 +111,29 @@ const AIPlayground = () => {
     };
   }, [isAIPlaygroundActive]);
 
-  const handleConfirmCancel = () => {
-    setSelectedProject('')
-    setTempFile(null)
+  const handleConfirmCancel = async () => {
+    try {
+      await fetch(`${hostnameAI}/model/cleanup`, {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          session_id: datasetState.sessionId,
+          training_flag: false
+        })
+      });
+    } catch (error) {
+      console.error('Cleanup API error:', error);
+    }
+
+    setSelectedProject('');
+    setTempFile(null);
     setUploadedFile(null);
     resetAllStates();
     setShowCancelModal(false);
-    navigate('/ai/playground')
+    navigate('/ai/playground');
   };
 
   const handleCancelModalClose = () => {
@@ -188,22 +204,22 @@ const AIPlayground = () => {
     }
   }, [projectState?.selectedProject]);
 
-useEffect(() => {
-  const handleClickOutside = (event) => {
-    if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-      setIsDropdownOpen(false);
-      setSearchQuery('');
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+        setSearchQuery('');
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
     }
-  };
 
-  if (isDropdownOpen) {
-    document.addEventListener('mousedown', handleClickOutside);
-  }
-
-  return () => {
-    document.removeEventListener('mousedown', handleClickOutside);
-  };
-}, [isDropdownOpen]);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
 
   const fetchProjects = async () => {
     try {
