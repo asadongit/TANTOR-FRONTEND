@@ -77,6 +77,7 @@ const AIPlayground = () => {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [tempFile, setTempFile] = useState(null);
   const dropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   const [modals, setModals] = useState({
     createProject: false,
@@ -219,6 +220,12 @@ const AIPlayground = () => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
+  }, [isDropdownOpen]);
+
+  useEffect(() => {
+    if (isDropdownOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
   }, [isDropdownOpen]);
 
   const fetchProjects = async () => {
@@ -555,6 +562,7 @@ const AIPlayground = () => {
                           <div className="relative">
                             <Search className='w-4 h-4 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2' />
                             <input
+                              ref={searchInputRef}
                               type="text"
                               placeholder="Search"
                               value={searchQuery}
