@@ -41,11 +41,12 @@ export function AIPlaygroundLayout({
 }) {
     const navigate = useNavigate();
     const location = useLocation();
-    const { workflowState, mode, setMode, resetAllStates, isAIPlaygroundActive} = useAIPlayground();
+    const { workflowState, datasetState, mode, setMode, resetAllStates, isAIPlaygroundActive } = useAIPlayground();
     const readonly = mode === 'view';
     const ensembleCount = location.state?.ensembleCount ?? 1;
     const isEnsemble = location.state?.isEnsemble;
     const initialEnsembleCount = ensembleCount;
+    const hostnameAI = window._env_?.VITE_AI_API;
 
     const modelGenesisConfig = workflowState?.modelGenesis?.config;
 
@@ -84,25 +85,25 @@ export function AIPlaygroundLayout({
     }, [isEnsemble, initialEnsembleCount, location.state?.activeModelIndex]);
 
     useEffect(() => {
-    const handlePopState = (event) => {
-        const currentPath = window.location.pathname;
-        if (currentPath.startsWith('/ai/playground') && isAIPlaygroundActive) {
-            event.preventDefault();
-            
-            window.history.pushState(null, '', location.pathname);
+        const handlePopState = (event) => {
+            const currentPath = window.location.pathname;
+            if (currentPath.startsWith('/ai/playground') && isAIPlaygroundActive) {
+                event.preventDefault();
 
-            setShowCancelModal(true);
-        }
-    };
+                window.history.pushState(null, '', location.pathname);
 
-    window.history.pushState(null, '', location.pathname);
-    
-    window.addEventListener('popstate', handlePopState);
+                setShowCancelModal(true);
+            }
+        };
 
-    return () => {
-        window.removeEventListener('popstate', handlePopState);
-    };
-}, [location.pathname]);
+        window.history.pushState(null, '', location.pathname);
+
+        window.addEventListener('popstate', handlePopState);
+
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+        };
+    }, [location.pathname]);
 
     const currentStageIndex = workflowStages.findIndex(
         stage => stage.path === location.pathname
@@ -273,7 +274,23 @@ export function AIPlaygroundLayout({
         setShowCancelModal(true);
     };
 
-    const handleConfirmCancel = () => {
+    const handleConfirmCancel = async () => {
+        try {
+            await fetch(`${hostnameAI}/model/cleanup`, {
+                method: 'POST',
+                headers: {
+                    'accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    session_id: datasetState.sessionId,
+                    training_flag: workflowState.modelSelection.apiResponse !== null
+                })
+            });
+        } catch (error) {
+            console.error('Cleanup API error:', error);
+        }
+
         resetAllStates();
         setShowCancelModal(false);
         navigate('/ai/playground');
