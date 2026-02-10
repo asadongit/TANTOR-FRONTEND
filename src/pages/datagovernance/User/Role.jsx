@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   MoreVertical,
   LayoutGrid,
-  Search,
   Plus,
   MoreHorizontal,
   Pencil,
@@ -21,6 +20,7 @@ import DeleteRole from "./Components/Role/DeleteRole";
 import { useAuth } from "../../../context/AuthContext";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import Search from "../../../assets/governance/search.svg"
 
 const rotateAnimation = `
   @keyframes rotate {
@@ -355,7 +355,8 @@ const Role = () => {
   const listEndItem = Math.min(listEndIndex, filteredTableData.length);
 
   return (
-    <div className="px-6 py-4 bg-[#F3F5F7] min-h-screen">
+    // <div className="px-6 py-4 bg-[#F3F5F7] min-h-screen">
+    <div className="px-6 py-4  min-h-screen"> 
       <style>{rotateAnimation}</style>
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
 
@@ -374,7 +375,7 @@ const Role = () => {
         <h1 className="text-2xl font-semibold">Role</h1>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" style={{ color: '#818181' }} />
+            <img src={Search} alt="search" className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" />
             <input
               type="text"
               value={searchTerm}
@@ -495,6 +496,7 @@ const Role = () => {
                             </div>
 
                             <div className="flex items-center gap-2">
+                              <span className={`text-sm ${role.enabled ? "text-[#1a9962]" : "text-gray-400"}`}>{role.enabled ? "Enabled" : "Disabled"}</span>
                               {/* show a disabled toggle that visually flips while request is pending  --- no timeout implemented*/}
                               <div className={togglingStatus === role.title ? 'toggle-disabled' : ''}>
                               <Toggle
@@ -504,7 +506,6 @@ const Role = () => {
                                 size="md"
                               />
                             </div>
-                              <span className={`text-sm ${role.enabled ? "text-[#1a9962]" : "text-gray-400"}`}>{role.enabled ? "Enabled" : "Disabled"}</span>
                             </div>
                           </div>
                         </div>

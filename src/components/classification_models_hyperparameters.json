@@ -631,7 +631,7 @@
         "low": "10",
         "high": "200"
       },
-      "sampling_strategy": "auto, float, dict",
+      "sampling_strategy": "auto, majority, not majority",
       "replacement": "true, false",
       "estimator__max_depth": {
         "low": "3",

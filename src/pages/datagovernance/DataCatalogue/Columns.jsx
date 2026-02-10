@@ -304,8 +304,8 @@ function Columns() {
                     <p>Loading data...</p>
                 </div>
             ) : (
-                <div className="bg-white rounded-lg shadow overflow-hidden mt-5 text-sm">
-                    <table className="w-full">
+                <div className="bg-white rounded-lg shadow overflow-x-auto mt-5 text-sm">
+                    <table className="min-w-max w-full">
                         <thead>
                             <tr className="bg-[#29304a] text-white">
                                 <th className="text-left p-4">ID</th>

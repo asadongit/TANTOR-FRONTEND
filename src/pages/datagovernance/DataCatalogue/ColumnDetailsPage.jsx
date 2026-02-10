@@ -745,8 +745,8 @@ function ColumnDetailsPage() {
                                         <p className="text-gray-500">No sample data is available for this column.</p>
                                     )}
                                     {!loadingSampleData && !sampleDataError && sampleData.length > 0 && (
-                                        <div className="overflow-hidden mt-2 rounded-lg shadow border">
-                                            <table className="min-w-full">
+                                        <div className="overflow-x-auto mt-2 rounded-lg shadow border">
+                                            <table className="min-w-max w-full">
                                                 <thead>
                                                     <tr className="bg-[#29304a] text-white">
                                                         {sampleDataHeaders.map(header => (
@@ -786,7 +786,7 @@ function ColumnDetailsPage() {
                                     {accessDataError && <p className="text-center text-red-600 p-4">Error: {accessDataError}</p>}
                                     {!loadingAccessData && !accessDataError && (
                                         accessData.length > 0 ? (
-                                            <div className="overflow-hidden mt-2 rounded-lg shadow border">
+                                            <div className="overflow-x-auto mt-2 rounded-lg shadow border">
                                                 <table className="min-w-full">
                                                     <thead className="bg-gray-50">
                                                         <tr>

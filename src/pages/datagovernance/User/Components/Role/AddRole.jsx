@@ -94,17 +94,9 @@ const AddRole = ({ show, onClose, onSave }) => {
         </div>
 
         <div className="inline-block w-full max-w-xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
-          <div className="flex items-center mb-6">
-            <h3 className="text-md font-bold text-[#8f79b8] mr-2">
-              Add Role
-            </h3>
-            <div className="relative group">
-              <Info className="h-4 w-4 text-gray-400 cursor-help hover:text-gray-600 transition-colors" />
-              <div className="absolute left-0 mt-2 w-48 bg-gray-900 text-white text-xs rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-10 whitespace-normal">
-                Create a new role with a name, description, and optional validity period.
-              </div>
-            </div>
-          </div>
+          <h3 className="text-lg font-bold text-[#282F49] mb-6">
+            Add Role
+          </h3>
 
           {error && (
             <div
@@ -174,36 +166,26 @@ const AddRole = ({ show, onClose, onSave }) => {
               </div>
             </div>
 
-            <div className="flex justify-between items-center mt-6">
-              <div className="flex items-center gap-3">
-                <button
-                  className="w-20 px-4 py-2 text-base bg-[#8e78b7] text-white rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                  onClick={onClose}
-                  disabled={loading}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  className="w-20 flex items-center justify-center gap-2 px-4 py-2 text-base bg-[#8e78b7] text-white rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : "Save"}
-                </button>
-              </div>
-              {/* <button
-                className="flex items-center gap-2 px-4 py-2 text-[#8e78b7] border border-[#8e78b7] hover:bg-[#8e78b7] hover:text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={handleNewRole}
+            <div className="flex justify-end items-center gap-3 mt-6">
+              <button
+                className="w-24 px-4 py-2 text-base bg-white text-gray-700 border border-gray-400 rounded-lg hover:bg-gray-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                onClick={onClose}
                 disabled={loading}
               >
-                <Plus className="h-5 w-5" />
-                New Role
-              </button> */}
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                className="w-24 flex items-center justify-center gap-2 px-4 py-2 text-base bg-[#8e78b7] text-white rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : "Save"}
+              </button>
             </div>
           </div>
         </div>

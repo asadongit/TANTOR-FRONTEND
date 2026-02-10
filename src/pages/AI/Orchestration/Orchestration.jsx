@@ -239,11 +239,13 @@ const Orchestration = () => {
     const filteredSchedulerData = schedulerData.filter(item => {
         const searchLower = schedulerSearchTerm.toLowerCase();
         return (
-            item.schedule_name.toLowerCase().includes(searchLower) ||
-            item.frequency.toLowerCase().includes(searchLower) ||
-            item.next_run.toLowerCase().includes(searchLower) ||
-            item.status.toLowerCase().includes(searchLower) ||
-            item.sno.toString().includes(searchLower)
+            (item.schedule_name && item.schedule_name.toLowerCase().includes(searchLower)) ||
+            (item.created_by && item.created_by.toLowerCase().includes(searchLower)) ||
+            (item.frequency && item.frequency.toLowerCase().includes(searchLower)) ||
+            (item.last_drift_check && item.last_drift_check.toLowerCase().includes(searchLower)) ||
+            (item.next_run && item.next_run.toLowerCase().includes(searchLower)) ||
+            (item.status && item.status.toLowerCase().includes(searchLower)) ||
+            (item.sno && item.sno.toString().includes(searchLower))
         );
     });
 
@@ -492,9 +494,9 @@ const Orchestration = () => {
         }
 
         const shouldFetchError = ['Data Drift Failed', 'Model Drift Failed', 'Prediction Failed'].includes(row.last_drift_check);
-        
+
         setDetailsLoading(true);
-        
+
         try {
             if (shouldFetchError) {
                 const errorResponse = await fetchErrorData(row.schedule_name);
@@ -502,7 +504,7 @@ const Orchestration = () => {
             } else {
                 setErrorData(null);
             }
-            
+
             setSelectedSchedule(row);
             setIsModalOpen(true);
         } catch (error) {
@@ -549,7 +551,7 @@ const Orchestration = () => {
                     </div>
                 </div>
             )}
-            
+
             {detailsLoading && (
                 <div className="w-full fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="w-80 bg-white rounded-lg p-6 flex flex-col items-center gap-4">
@@ -558,7 +560,7 @@ const Orchestration = () => {
                     </div>
                 </div>
             )}
-            
+
             <Breadcrumb />
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -686,6 +688,7 @@ const Orchestration = () => {
                                         columns={[
                                             { key: 'sno', label: 'Sno', sortable: true, width: '80px' },
                                             { key: 'schedule_name', label: 'Schedule Name', sortable: true },
+                                            { key: 'created_by', label: 'Created By', sortable: true },
                                             { key: 'frequency', label: 'Frequency', sortable: true },
                                             {
                                                 key: 'last_drift_check',
