@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { MoreVertical, LayoutGrid, Search, Plus, MoreHorizontal, Pencil, Trash2, RefreshCcw, ChevronLeft, ChevronRight, List, ChevronDown } from "lucide-react";
+import { MoreVertical, LayoutGrid, Plus, MoreHorizontal, Pencil, Trash2, RefreshCcw, ChevronLeft, ChevronRight, List, ChevronDown } from "lucide-react";
 import Breadcrumb from "../../../components/Breadcrumb";
 import { Icon } from "@iconify-icon/react";
 import { useAuth } from "../../../context/AuthContext";
@@ -8,6 +8,7 @@ import DeleteSubgroup from "./Components/Subgroup/DeleteSubgroup";
 import EditSubgroup from "./Components/Subgroup/EditSubgroup";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import Search from "../../../assets/governance/search.svg"
 
 const rotateAnimation = `
   @keyframes rotate {
@@ -399,7 +400,8 @@ function Subgroup() {
   };
 
   return (
-    <div className="px-6 py-4 bg-[#F3F5F7] min-h-screen">
+    // <div className="px-6 py-4 bg-[#F3F5F7] min-h-screen">
+    <div className="px-6 py-4  min-h-screen">
       <style>{rotateAnimation}</style>
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
 
@@ -418,7 +420,7 @@ function Subgroup() {
         <h1 className="text-2xl font-semibold">Subgroup</h1>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" style={{ color: '#818181' }} />
+            <img src={Search} alt="search" className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" />
             <input
               type="text"
               value={searchTerm}
@@ -542,6 +544,7 @@ function Subgroup() {
                               <span className="text-sm">{subgroup.users.toString().padStart(2, "0")}</span>
                             </div>
                             <div className="flex items-center gap-2">
+                              <span className={`text-sm ${subgroup.enabled ? "text-[#1a9962]" : "text-gray-400"}`}>{subgroup.enabled ? "Enabled" : "Disabled"}</span>
                               {togglingStatus === subgroup.title ? (
                                 <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]"></div>
                               ) : (
@@ -554,7 +557,6 @@ function Subgroup() {
                                   />
                                 </div>
                               )}
-                              <span className={`text-sm ${subgroup.enabled ? "text-[#1a9962]" : "text-gray-400"}`}>{subgroup.enabled ? "Enabled" : "Disabled"}</span>
                             </div>
                           </div>
                         </div>
