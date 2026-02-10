@@ -47,9 +47,10 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const [currentActiveSection, setCurrentActiveSection] = useState(activeSection);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState(null);
+  const hostnameAI = window._env_?.VITE_AI_API;
 
   const { decodedToken } = useAuth();
-  const { isAIPlaygroundActive, resetAllStates } = useAIPlayground();
+  const { isAIPlaygroundActive, resetAllStates, datasetState, workflowState } = useAIPlayground();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -96,7 +97,23 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     setPendingNavigation(null);
   };
 
-  const handleConfirmCancel = () => {
+  const handleConfirmCancel = async () => {
+    try {
+      await fetch(`${hostnameAI}/model/cleanup`, {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          session_id: datasetState.sessionId,
+          training_flag: workflowState.modelSelection.apiResponse !== null
+        })
+      });
+    } catch (error) {
+      console.error('Cleanup API error:', error);
+    }
+
     resetAllStates();
     setShowCancelModal(false);
 
