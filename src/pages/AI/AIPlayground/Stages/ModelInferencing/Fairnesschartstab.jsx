@@ -7,6 +7,14 @@ const FairnessTab = ({
   apiResults, 
   selectedModelFairnessData 
 }) => {
+  
+  const formatMetricName = (metricKey) => {
+    return metricKey
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
   return (
     <div>
       <div className="flex items-start justify-between mb-4">
@@ -52,29 +60,26 @@ const FairnessTab = ({
                 if (!data) return null;
 
                 const displayName = demographic.charAt(0).toUpperCase() + demographic.slice(1);
+                
+                // Get all available metrics for this demographic (excluding null values)
+                const availableMetrics = Object.entries(data).filter(([key, value]) => value !== null);
+
+                if (availableMetrics.length === 0) return null;
 
                 return (
                   <div key={demographic}>
                     <h3 className="text-base font-semibold text-gray-900 mb-4">{displayName} Fairness Metrics</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <h4 className="text-xs text-gray-600 mb-2">Demographic Parity Difference ({displayName})</h4>
-                        <p className="text-2xl font-semibold text-gray-900">
-                          {data.demographic_parity_difference !== null ? data.demographic_parity_difference.toFixed(4) : 'N/A'}
-                        </p>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <h4 className="text-xs text-gray-600 mb-2">Demographic Parity Ratio ({displayName})</h4>
-                        <p className="text-2xl font-semibold text-gray-900">
-                          {data.demographic_parity_ratio !== null ? data.demographic_parity_ratio.toFixed(4) : 'N/A'}
-                        </p>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <h4 className="text-xs text-gray-600 mb-2">Accuracy Score Difference ({displayName})</h4>
-                        <p className="text-2xl font-semibold text-gray-900">
-                          {data.accuracy_score_difference !== null ? data.accuracy_score_difference.toFixed(4) : 'N/A'}
-                        </p>
-                      </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {availableMetrics.map(([metricKey, metricValue]) => (
+                        <div key={metricKey} className="bg-gray-50 rounded-lg p-4">
+                          <h4 className="text-xs text-gray-600 mb-2">
+                            {formatMetricName(metricKey)} ({displayName})
+                          </h4>
+                          <p className="text-2xl font-semibold text-gray-900">
+                            {typeof metricValue === 'number' ? metricValue.toFixed(4) : metricValue}
+                          </p>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 );
