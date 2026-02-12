@@ -280,40 +280,52 @@ const ModelInferencing = () => {
     const metrics = selectedModel.metrics || {};
 
     const fairnessData = {};
-    const demographicColumns = new Set();
+    const demographicMetrics = {};
 
     Object.keys(metrics).forEach(key => {
       if (key.startsWith('fairness_')) {
         const withoutPrefix = key.substring(9);
-
-        const metricTypes = [
-          '_demographic_parity_difference',
-          '_demographic_parity_ratio',
-          '_accuracy_score_difference'
-        ];
-
-        for (const metricType of metricTypes) {
-          if (withoutPrefix.endsWith(metricType)) {
-            const demographic = withoutPrefix.substring(0, withoutPrefix.length - metricType.length);
-            demographicColumns.add(demographic);
+        
+        const parts = withoutPrefix.split('_');
+        
+        let demographic = '';
+        let metricName = '';
+        
+        const metricKeywords = ['difference', 'ratio', 'score', 'odds', 'opportunity', 'disparity', 'parity'];
+        
+        for (let i = 0; i < parts.length; i++) {
+          if (metricKeywords.some(keyword => parts.slice(i).join('_').includes(keyword))) {
+            demographic = parts.slice(0, i).join('_');
+            metricName = parts.slice(i).join('_');
             break;
           }
+        }
+        
+        if (!demographic || !metricName) {
+          demographic = parts[0];
+          metricName = parts.slice(1).join('_');
+        }
+        
+        if (demographic && metricName) {
+          if (!demographicMetrics[demographic]) {
+            demographicMetrics[demographic] = {};
+          }
+          
+          demographicMetrics[demographic][metricName] = metrics[key];
         }
       }
     });
 
-    demographicColumns.forEach(demo => {
-      fairnessData[demo] = {
-        demographic_parity_difference: metrics[`fairness_${demo}_demographic_parity_difference`] ?? null,
-        demographic_parity_ratio: metrics[`fairness_${demo}_demographic_parity_ratio`] ?? null,
-        accuracy_score_difference: metrics[`fairness_${demo}_accuracy_score_difference`] ?? null,
-      };
+    const demographics = Object.keys(demographicMetrics).sort();
+    
+    demographics.forEach(demo => {
+      fairnessData[demo] = demographicMetrics[demo] || {};
     });
 
     return {
       modelName: selectedModel.run_name,
       fairnessAssessment: selectedModel.fairness_assessment_message || 'N/A',
-      demographics: Array.from(demographicColumns),
+      demographics: demographics,
       ...fairnessData
     };
   }, [apiResults, selectedFairnessModel]);
