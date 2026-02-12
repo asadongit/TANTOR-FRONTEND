@@ -376,6 +376,7 @@ const AIPlayground = () => {
       columnNames: [],
       profileReportHtml: ''
     });
+    setIsAIPlaygroundActive(false);
     toggleModal('resetProject', false);
     setMode('write')
     toast.success('Project has been reset successfully', {
