@@ -59,6 +59,26 @@ tbody tr:last-child td:last-child {
   border-bottom-right-radius: 0.5rem;
 }
 `;
+const Toggle = ({ enabled, onToggle, disabled = false, size = "md" }) => {
+  const sizes = {
+    sm: { w: "w-8", h: "h-4", knob: "h-3 w-3", translate: "translate-x-4" },
+    md: { w: "w-10", h: "h-5", knob: "h-4 w-4", translate: "translate-x-5" },
+  };
+  const s = sizes[size] || sizes.md;
+
+  return (
+    <div
+      onClick={() => !disabled && onToggle && onToggle()}
+      role="button"
+      aria-disabled={disabled}
+      className={`relative inline-flex ${s.h} ${s.w} ${disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"} rounded-full transition-colors ease-in-out duration-200 ${enabled ? "bg-[#1a9962]" : "bg-gray-200"}`}
+    >
+      <span
+        className={`inline-block ${s.knob} transform rounded-full bg-white transition ease-in-out duration-200 m-0.5 ${enabled ? s.translate : "translate-x-0"}`}
+      />
+    </div>
+  );
+};
 
 const User = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -81,6 +101,7 @@ const User = () => {
   const [hasMore, setHasMore] = useState(false);
   const initialFetchDone = useRef(false);
   const [itemsPerPage, setItemsPerPage] = useState(12);
+  const [togglingStatus, setTogglingStatus] = useState(null);
   const rowsPerPage = itemsPerPage;
   
 
@@ -371,6 +392,64 @@ const currentUsers = users;
     fetchUserData(currentPage, searchTerm);
   };
 
+  const toggleUser = async (userId) => {
+    const userToUpdate = users.find(u => u.id === userId);
+    if (!userToUpdate) return;
+
+    const newStatus = !userToUpdate.enabled;
+    setTogglingStatus(userId);
+
+    try {
+      const endpoint = userToUpdate.enabled ? 'userdisable' : 'userenable';
+      const response = await fetch(
+        `${window._env_?.VITE_FAST_API}/auth/${endpoint}/${userId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Error: ${response.status} ${response.statusText}`);
+      }
+
+      // Update user status in local state
+      setUsers(prevUsers =>
+        prevUsers.map(u =>
+          u.id === userId ? { ...u, enabled: newStatus } : u
+        )
+      );
+
+      // Show success toast
+      setToast({
+        show: true,
+        message: `User ${userToUpdate.enabled ? 'disabled' : 'enabled'} successfully`,
+        type: 'success'
+      });
+
+      setTimeout(() => {
+        setToast({ show: false, message: '', type: '' });
+      }, 3000);
+    } catch (error) {
+      console.error(`Error updating user status:`, error);
+      setToast({
+        show: true,
+        message: `Failed to update user status`,
+        type: 'error'
+      });
+
+      setTimeout(() => {
+        setToast({ show: false, message: '', type: '' });
+      }, 3000);
+    } finally {
+      setTogglingStatus(null);
+    }
+  };
+
   const handleRefresh = async () => {
     setSearchTerm('');
     setCurrentPage(1);
@@ -615,6 +694,27 @@ const currentUsers = users;
                               >
                                 <Pencil className="h-4 w-4" />
                               </button>
+
+                              <button
+                                className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 transition-colors"
+                                onClick={async () => {
+                                  setActiveMenu(null);
+                                  await toggleUser(user.id);
+                                }}
+                                disabled={togglingStatus === user.id}
+                                title={user.enabled ? 'Disable' : 'Enable'}
+                              >
+                                <Toggle
+                                  enabled={togglingStatus === user.id ? !user.enabled : user.enabled}
+                                  onToggle={async () => {
+                                    setActiveMenu(null);
+                                    await toggleUser(user.id);
+                                  }}
+                                  disabled={togglingStatus === user.id}
+                                  size="sm"
+                                />
+                              </button>
+
                               <button
                                 className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 transition-colors"
                                 onClick={() => handleDeleteClick(user)}
