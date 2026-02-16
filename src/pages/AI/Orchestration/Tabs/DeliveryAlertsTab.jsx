@@ -61,7 +61,7 @@ const DeliveryAlertsTab = () => {
     }));
   };
 
-  const renderSlider = (label, value, onChange, min = 0, max = 1, step = 0.01) => {
+  const renderSlider = (label, value, onChange, min = 0, max = 1, step = 0.01, reversedLabels = false) => {
     const range = max - min;
     const percentage = ((value - min) / range) * 100;
 
@@ -95,8 +95,8 @@ const DeliveryAlertsTab = () => {
           </div>
         </div>
         <div className="flex items-center justify-between mt-1">
-          <span className="text-sm text-gray-600">Strict</span>
-          <span className="text-sm text-gray-600">Loose</span>
+          <span className="text-sm text-gray-600">{reversedLabels ? 'Lenient' : 'Strict'}</span>
+          <span className="text-sm text-gray-600">{reversedLabels ? 'Strict' : 'Lenient'}</span>
         </div>
       </div>
     );
@@ -158,7 +158,11 @@ const DeliveryAlertsTab = () => {
                 {renderSlider(
                   'Statistical Significance Level',
                   schedulerState.data_drift_threshold.statistical_significance_level,
-                  (e) => handleDataDriftChange('statistical_significance_level', parseFloat(e.target.value))
+                  (e) => handleDataDriftChange('statistical_significance_level', parseFloat(e.target.value)),
+                  0,
+                  1,
+                  0.01,
+                  true
                 )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -226,7 +230,8 @@ const DeliveryAlertsTab = () => {
                 (e) => handleModelDriftChange('performance_drift_threshold', parseFloat(e.target.value)),
                 -1,
                 0,
-                0.01
+                0.01,
+                true
               )}
             </div>
           )}

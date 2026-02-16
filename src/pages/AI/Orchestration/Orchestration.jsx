@@ -385,7 +385,7 @@ const Orchestration = () => {
             },
             model_drift_threshold: {
                 prediction_drift_threshold: 0,
-                performance_drift_threshold: 0
+                performance_drift_threshold: -1
             },
             data_drift_check: 0,
             model_drift_check: 0,
@@ -461,7 +461,7 @@ const Orchestration = () => {
                 },
                 model_drift_threshold: {
                     prediction_drift_threshold: data.model_drift_threshold?.prediction_drift_threshold || 0,
-                    performance_drift_threshold: data.model_drift_threshold?.performance_drift_threshold || 0
+                    performance_drift_threshold: data.model_drift_threshold?.performance_drift_threshold || -1
                 },
                 data_drift_check: data.data_drift_check || 0,
                 model_drift_check: data.model_drift_check || 0,
