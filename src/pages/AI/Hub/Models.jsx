@@ -270,17 +270,6 @@ function Models() {
   });
 }, [dashboardSummary]);
 
-  const lastAccessedData = useMemo(() => {
-    if (recentAccessedLoading || !recentAccessed) {
-      return [];
-    }
-    return recentAccessed.slice(0, 5).map((item) => ({
-      id: item.item_id,
-      name: item.item_name,
-      accessed_at: item.accessed_at,
-    }));
-  }, [recentAccessed, recentAccessedLoading]);
-
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -1060,51 +1049,6 @@ function Models() {
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <Icon
-                icon="material-symbols:history"
-                className="w-5 h-5 text-purple-600"
-              />
-              <h3 className="text-md font-semibold text-gray-800">Recent Accessed Models</h3>
-            </div>
-            <div className="space-y-3">
-              {recentAccessedLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
-                </div>
-              ) : recentAccessedError ? (
-                <div className="text-center py-8 text-red-500">
-                  {recentAccessedError}
-                </div>
-              ) : lastAccessedData.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  No recent models accessed
-                </div>
-              ) : (
-                lastAccessedData.map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
-                    onClick={() => handleLastAccessedClick(item)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-                        <BookOpen className="w-4 h-4 text-purple-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{item.name}</p>
-                        <p className="text-xs text-gray-500">
-                          Accessed {new Date(item.accessed_at).toLocaleDateString('en-GB')}
-                        </p>
-                      </div>
-                    </div>
-                    <ArrowUp className="w-4 h-4 text-gray-400 rotate-45" />
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
         </>
       )}
 

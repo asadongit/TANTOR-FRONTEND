@@ -38,6 +38,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen
 } from 'lucide-react';
+import { Flag } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useAIPlayground } from '../context/AIPlaygroundContext';
 
@@ -243,6 +244,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
       ]
     },
     { name: 'AI Playground', icon: Sparkles, path: `${AI_PREFIX}/playground` },
+    { name: 'F1 Mode', icon: Flag, path: `${AI_PREFIX}/f1mode` },
     { name: 'Orchestration', icon: Workflow, path: `${AI_PREFIX}/orchestration` },
     { name: 'Agent Mesh', icon: GitBranch, path: `${AI_PREFIX}/agent-mesh` },
     { name: 'Marketplace', icon: Store, path: `${AI_PREFIX}/marketplace` },
