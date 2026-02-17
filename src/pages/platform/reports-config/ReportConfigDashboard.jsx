@@ -41,6 +41,8 @@ const ReportConfigDashboard = () => {
   const [filteredReportData,setFilteredReportData] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
 
+  const [viewMode, setViewMode] = useState("list");
+
   const navigate = useNavigate();
 
   const handleRefresh = () => {
@@ -170,13 +172,11 @@ const ReportConfigDashboard = () => {
   const [reportError, setReportError] = useState(null);
 
   const columns = [
-    { key: "s_no", label: "#" },
-    { key: "report_id", label: "ID" },
-    { key: "report_name", label: "Name" },
-    { key: "report_type", label: "type" },
-    { key: "report_desc", label: "Description" },
-    { key: "is_active", label: "Is Active" },
-    { label: "Action", sortable: false },
+    { key: "report_id", label: "ID", width: "80px" },
+    { key: "report_name", label: "Name", wrap: true, width: "50%" },
+    { key: "report_type", label: "type", width: "120px" },
+    { key: "report_desc", label: "Description", wrap: true, width: "35%" },
+    { label: "Action", sortable: false, width: "100px" },
   ];
 
   const fetchReports = async () => {
@@ -364,22 +364,17 @@ const ReportConfigDashboard = () => {
           <button
             type="button"
             className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
-          >
-            <Download className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
             onClick={handleRefresh}
           >
             <RefreshCcw className={`h-5 w-5 ${isReportsLoading ? 'animate-spin' : ''}`} />
           </button>
+          
           <button
             type="button"
             className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
-            onClick={handleRefresh}
+            onClick={() => {setViewMode(prev => prev === "list" ? "both" : "list")}}
           >
-            <List className={`h-5 w-5 ${isReportsLoading ? 'animate-spin' : ''}`} />
+            <List className="h-5 w-5" />
           </button>
           {/* <button
             type="button"
@@ -392,11 +387,12 @@ const ReportConfigDashboard = () => {
       </div>
 
 
-      <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={false} />
+      {viewMode === "both" && (<CardGrid cards={cards} onCardClick={handleCardClick} isLoading={false} />)}
 
 
       {/* Chart container */}
-      <div className="w-full md:w-[calc(60%-1rem)] h-96 pt-4 pb-4">
+      {viewMode === "both" && (
+        <div className="w-full md:w-[calc(60%-1rem)] h-96 pt-4 pb-4">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             layout="vertical"
@@ -422,6 +418,7 @@ const ReportConfigDashboard = () => {
           </BarChart>
         </ResponsiveContainer>
       </div>
+      )}
 
 
       
