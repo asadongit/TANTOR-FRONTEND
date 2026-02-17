@@ -11,7 +11,7 @@ const COLORS = {
   Auto: "#EC4899",
   Manual: "#F59E0B",
   Swift: "#06B6D4",
-  edge: "#E5E7EB",
+  edge: "#b9bdc6",
 };
 
 export default function ModelFlow() {
