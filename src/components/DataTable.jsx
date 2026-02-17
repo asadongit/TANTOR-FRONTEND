@@ -430,25 +430,25 @@ const DataTable = ({
                     }
 
                     if (column.render) {
-                      return (
-                        <td
-                          key={cellIndex}
-                          className="whitespace-nowrap text-ellipsis align-middle"
-                          style={{ ...cellBaseStyle, maxWidth: "100%" }}
-                          title={column.renderTitle ? column.renderTitle(row, rowIndex) : undefined}
-                        >
-                          {column.render(row, rowIndex)}
-                        </td>
-                      );
-                    }
+  return (
+    <td
+      key={cellIndex}
+      className={`align-middle ${column.wrap ? 'whitespace-normal break-words' : 'whitespace-nowrap text-ellipsis overflow-hidden'}`}
+      style={{ ...cellBaseStyle, maxWidth: "100%" }}
+      title={column.renderTitle ? column.renderTitle(row, rowIndex) : undefined}
+    >
+      {column.render(row, rowIndex)}
+    </td>
+  );
+}
 
                     return (
                       <td
-                        key={cellIndex}
-                        className="text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis align-middle"
-                        style={{ ...cellBaseStyle, maxWidth: "100%" }}
-                        title={column.key ? row[column.key] : undefined}
-                      >
+                      key={cellIndex}
+                      className={`text-gray-600 align-middle ${column.wrap ? 'whitespace-normal break-words' : 'whitespace-nowrap overflow-hidden text-ellipsis'}`}
+                      style={{ ...cellBaseStyle, maxWidth: "100%" }}
+                      title={column.key ? row[column.key] : undefined}
+                    >
                         {column.key ? (
                           column.key === "status" ? (
                             <span
@@ -458,12 +458,9 @@ const DataTable = ({
                             >
                               {row[column.key]}
                             </span>
-                          ) : (
-                            <div className="truncate">
-                              {row[column.key] === 0
+                          ) : (row[column.key] === 0
                                 ? 0
-                                : row[column.key] || "-"}
-                            </div>
+                                : row[column.key] || "-"
                           )
                         ) : null}
                       </td>

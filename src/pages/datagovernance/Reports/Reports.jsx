@@ -248,6 +248,9 @@ const Reports = () => {
   };
 
   const handleDownload = async (fileUrl, refnum, reportName) => {
+  // Dismiss any existing toasts first
+  toast.dismiss();
+  
     const toastId = toast.loading('Downloading report...');
 
     try {
@@ -285,7 +288,9 @@ const Reports = () => {
       toast.success('Report downloaded successfully!', { id: toastId });
     } catch (error) {
       console.error('Error downloading report:', error);
-      toast.error(error.message || 'Failed to download report. Please try again.', { id: toastId });
+      toast.error(error.message || 'Failed to download report. Please try again.', { 
+        id: toastId 
+      });
     }
   };
 
