@@ -920,26 +920,26 @@ function Models() {
     const trendColor = isUp ? "text-emerald-500" : "text-red-500";
 
     return (
-      <div className="bg-white rounded-xl px-6 py-5 border border-purple-200 flex flex-col justify-between min-h-[120px]">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <IconCmp className="w-5 h-5 text-[#8e78b7] shrink-0" />
-            <span className="text-gray-900 text-xl font-medium truncate">{label}</span>
+      <div className="bg-white rounded-xl px-4 py-4 border border-purple-200 flex flex-col justify-between min-h-[110px]">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <IconCmp className="w-4 h-4 text-[#8e78b7] shrink-0" />
+            <span className="text-gray-900 text-sm font-medium truncate">{label}</span>
           </div>
         </div>
 
-        <div className="flex items-end justify-between mt-6">
-          <div className="text-2xl font-bold text-gray-900 tabular-nums leading-none">
-            {value == null ? <div className="h-10 w-16 bg-gray-200 rounded animate-pulse" /> : value}
+        <div className="flex items-end justify-between mt-4">
+          <div className="text-xl font-bold text-gray-900 tabular-nums leading-none">
+            {value == null ? <div className="h-8 w-14 bg-gray-200 rounded animate-pulse" /> : value}
           </div>
 
           {(trend && trendValue && value != null) ? (
-            <div className={`flex items-center gap-2 ${trendColor} text-xl font-semibold leading-none`}>
-              <TrendIcon className="w-7 h-7" />
+            <div className={`flex items-center gap-1 ${trendColor} text-sm font-semibold leading-none`}>
+              <TrendIcon className="w-4 h-4" />
               <span className="tabular-nums">{trendValue}</span>
             </div>
           ) : (
-            <div className="h-7 w-14" />
+            <div className="h-5 w-10" />
           )}
         </div>
       </div>
@@ -978,13 +978,13 @@ function Models() {
   }, [metricsData]);
 
   return (
-    <div className="p-6 space-y-4">
-      <Breadcrumb link="/" />
+    <div className="p-3 sm:p-4 lg:p-6 space-y-4 min-w-0 overflow-x-hidden">
+      <Breadcrumb link="/" skipLinkSegments={['hub']} />
 
-      <div className="flex gap-4 items-center justify-between">
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
         <h1 className="text-2xl font-semibold">Models</h1>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* ADD: Status filter dropdown */}
           <div className="relative">
             <StatusFilterDropdown
@@ -998,11 +998,11 @@ function Models() {
             />
           </div>
 
-          <div className="relative">
+          <div className="relative flex-1 min-w-[160px] sm:flex-initial">
             <input
               type="text"
               placeholder="Search"
-              className="pl-10 pr-4 py-2 w-[250px] border border-gray-300 rounded-lg focus:outline-none focus:border-purple-400"
+              className="pl-10 pr-4 py-2 w-full sm:w-56 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-400"
               value={searchTerm}
               onChange={handleSearchChange}
             />
@@ -1042,7 +1042,7 @@ function Models() {
       {viewMode !== "list" && (
         <>
           <div className="bg-gradient-to-r from-[#8e78b7] via-purple-300 to-purple-100 rounded-xl p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
               {statsCards.map((stat) => (
                 <StatsCardWithTrend
                   key={stat.key}
@@ -1056,7 +1056,7 @@ function Models() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="col-span-1">
               <ModelFlow />
             </div>
