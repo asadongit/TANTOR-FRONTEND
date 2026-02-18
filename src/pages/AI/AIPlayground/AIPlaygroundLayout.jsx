@@ -47,6 +47,7 @@ export function AIPlaygroundLayout({
     const isEnsemble = location.state?.isEnsemble;
     const initialEnsembleCount = ensembleCount;
     const hostnameAI = window._env_?.VITE_AI_API;
+    const [isCancelLoading, setIsCancelLoading] = useState(false);
 
     const modelGenesisConfig = workflowState?.modelGenesis?.config;
 
@@ -275,13 +276,11 @@ export function AIPlaygroundLayout({
     };
 
     const handleConfirmCancel = async () => {
+        setIsCancelLoading(true);
         try {
             await fetch(`${hostnameAI}/model/cleanup`, {
                 method: 'POST',
-                headers: {
-                    'accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     session_id: datasetState.sessionId,
                     training_flag: workflowState.modelSelection.apiResponse !== null
@@ -290,8 +289,8 @@ export function AIPlaygroundLayout({
         } catch (error) {
             console.error('Cleanup API error:', error);
         }
-
         resetAllStates();
+        setIsCancelLoading(false);
         setShowCancelModal(false);
         navigate('/ai/playground');
     };
@@ -417,9 +416,13 @@ export function AIPlaygroundLayout({
                                 </button>
                                 <button
                                     onClick={handleConfirmCancel}
-                                    className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+                                    disabled={isCancelLoading}
+                                    className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
                                 >
-                                    Yes, Discard Changes
+                                    {isCancelLoading && (
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    )}
+                                    {isCancelLoading ? 'Cancelling...' : 'Yes, Discard Changes'}
                                 </button>
                             </div>
                         </div>

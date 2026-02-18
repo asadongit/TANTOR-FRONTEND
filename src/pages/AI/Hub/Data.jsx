@@ -66,7 +66,7 @@ const Data = () => {
           throw new Error('Failed to fetch data');
         }
         const data = await response.json();
-        setTableData(data);
+        setTableData(data.map((item, index) => ({ ...item, sno: index + 1 })));
       } catch (err) {
         setError(err.message);
       } finally {
@@ -181,7 +181,7 @@ const Data = () => {
 
 
   const columns = [
-    { key: 'sno', label: 'Sno', sortable: true, width: '90px', render: (row, index) => index + 1 },
+    { key: 'sno', label: 'Sno', sortable: true, width: '90px' },
     {
       key: 'file_name',
       label: 'Name',
@@ -535,16 +535,16 @@ const Data = () => {
   }, [searchTerm, tableData, statusFilter]);
 
   const StatsCardSimple = ({ label, value, icon: Icon }) => (
-    <div className="bg-white rounded-xl px-6 py-5 border border-purple-200 flex items-center min-h-[90px]">
-      <div className="flex items-center gap-3 flex-1">
-        <Icon className="w-5 h-5 text-[#8e78b7]" />
-        <span className="text-black text-xl font-medium">{label}</span>
+    <div className="bg-white rounded-xl px-4 py-4 border border-purple-200 flex items-center min-h-[80px] min-w-0">
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <Icon className="w-4 h-4 text-[#8e78b7] shrink-0" />
+        <span className="text-black text-sm font-medium truncate">{label}</span>
       </div>
-      <div className="flex items-center justify-end min-w-[40px]">
+      <div className="flex items-center justify-end ml-2 shrink-0">
         {value == null ? (
-          <div className="h-7 w-10 bg-gray-200 rounded animate-pulse"></div>
+          <div className="h-6 w-10 bg-gray-200 rounded animate-pulse"></div>
         ) : (
-          <span className="text-2xl font-medium text-gray-900 tabular-nums">{value}</span>
+          <span className="text-xl font-medium text-gray-900 tabular-nums">{value}</span>
         )}
       </div>
     </div>
@@ -619,7 +619,7 @@ const Data = () => {
 
   return (
     <div className="p-3 sm:p-4 lg:p-6 bg-gray-50 min-h-screen">
-      <Breadcrumb />
+      <Breadcrumb skipLinkSegments={['hub']} />
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h1 className="text-2xl sm:text-3xl font-medium text-gray-900">Data</h1>
@@ -690,31 +690,33 @@ const Data = () => {
                 icon={Scale}
                 infoText="Data quality distribution across all datasets"
               >
-                <div className="flex flex-col items-center">
-                  <PieChart width={350} height={170}>
-                    <Pie
-                      data={qualityData}
-                      cx={170}
-                      cy={170}
-                      startAngle={180}
-                      endAngle={0}
-                      innerRadius={150}
-                      outerRadius={160}
-                      dataKey="value"
-                    >
-                      {qualityData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                  <div className="flex items-end justify-center">
-                    <div className="text-center mb-10">
-                      <div className="bg-[#8e78b7] text-white px-7 py-1 rounded-full text-xs font-medium">
+                <div className="flex flex-col items-center w-full">
+                  <div className="w-full max-w-[350px] mx-auto">
+                    <PieChart width={280} height={150}>
+                      <Pie
+                        data={qualityData}
+                        cx={138}
+                        cy={148}
+                        startAngle={180}
+                        endAngle={0}
+                        innerRadius={120}
+                        outerRadius={130}
+                        dataKey="value"
+                      >
+                        {qualityData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </div>
+                  <div className="flex items-end justify-center -mt-2">
+                    <div className="text-center mb-6">
+                      <div className="bg-[#8e78b7] text-white px-5 py-1 rounded-full text-xs font-medium">
                         Good Quality
                       </div>
                     </div>
                   </div>
-                  <div className="flex justify-center gap-6">
+                  <div className="flex justify-center gap-4">
                     {qualityData.map((item, index) => (
                       <div key={index} className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
@@ -745,12 +747,12 @@ const Data = () => {
                 ) : recentAccessedError ? (
                   <div className="text-center py-8 text-red-500">{recentAccessedError}</div>
                 ) : lastAccessedData.length > 0 ? (
-                  <div className="max-h-[240px]">
+                  <div className="max-h-[240px] overflow-y-auto">
                     {lastAccessedData.map((item, index) => (
                       <div key={index}>
-                        <div className="flex items-center justify-between py-3 px-2 hover:bg-gray-50">
+                        <div className="flex items-center gap-2 py-3 px-2 hover:bg-gray-50 min-w-0">
                           <span
-                            className="text-sm text-gray-700 flex-1 cursor-pointer hover:underline"
+                            className="text-sm text-gray-700 flex-1 min-w-0 truncate cursor-pointer hover:underline"
                             onClick={() => handleLastAccessedClick(item)}
                             role="button"
                             tabIndex={0}
@@ -759,7 +761,7 @@ const Data = () => {
                           >
                             {item.name}
                           </span>
-                          <span className="text-xs text-gray-500 mx-4">
+                          <span className="text-xs text-gray-500 shrink-0 whitespace-nowrap">
                             {item.accessed_at
                               ? item.accessed_at.toLocaleString('en-GB', {
                                 year: 'numeric',
@@ -771,7 +773,7 @@ const Data = () => {
                               : ''}
                           </span>
                           <button
-                            className="p-1 hover:bg-gray-100 rounded cursor-pointer"
+                            className="p-1 hover:bg-gray-100 rounded cursor-pointer shrink-0"
                             onClick={() => handleLastAccessedClick(item)}
                             title={`Open ${item.name}`}
                           >
