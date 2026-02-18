@@ -4,14 +4,14 @@ import { TrendingUp, ChevronLeft, ChevronRight, Search, X, ArrowUpDown, ArrowUp,
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const UNIQUE_COLORS = [
-  '#e6194b','#3cb44b','#4363d8','#f58231','#911eb4','#42d4f4','#f032e6','#bfef45',
-  '#fabed4','#469990','#dcbeff','#9A6324','#fffac8','#800000','#aaffc3','#808000',
-  '#ffd8b1','#000075','#a9a9a9','#ffffff','#e6beff','#4a86e8','#ff9900','#0d7377',
-  '#14a085','#f7dc6f','#2e86c1','#cb4335','#1abc9c','#8e44ad','#f39c12','#27ae60',
-  '#2980b9','#c0392b','#16a085','#d35400','#7d3c98','#1f618d','#117a65','#b7950b',
-  '#784212','#1a5276','#0e6655','#6e2f1a','#4d5656','#1b4f72','#0b5345','#7b241c',
-  '#6c3483','#1f618d','#148f77','#9a7d0a','#6e2f1a','#922b21','#1a5276','#196f3d',
-  '#7d6608','#784212','#512e5f','#154360','#0e6655','#78281f','#4a235a','#1b2631',
+  '#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#bfef45',
+  '#fabed4', '#469990', '#dcbeff', '#9A6324', '#fffac8', '#800000', '#aaffc3', '#808000',
+  '#ffd8b1', '#000075', '#a9a9a9', '#ffffff', '#e6beff', '#4a86e8', '#ff9900', '#0d7377',
+  '#14a085', '#f7dc6f', '#2e86c1', '#cb4335', '#1abc9c', '#8e44ad', '#f39c12', '#27ae60',
+  '#2980b9', '#c0392b', '#16a085', '#d35400', '#7d3c98', '#1f618d', '#117a65', '#b7950b',
+  '#784212', '#1a5276', '#0e6655', '#6e2f1a', '#4d5656', '#1b4f72', '#0b5345', '#7b241c',
+  '#6c3483', '#1f618d', '#148f77', '#9a7d0a', '#6e2f1a', '#922b21', '#1a5276', '#196f3d',
+  '#7d6608', '#784212', '#512e5f', '#154360', '#0e6655', '#78281f', '#4a235a', '#1b2631',
 ];
 
 const getUniqueColor = (index) => UNIQUE_COLORS[index % UNIQUE_COLORS.length];
@@ -99,8 +99,17 @@ const MetricsChart = ({ metricsData, apiResults, truncateName, legendTruncateLen
         setTooltipData(null);
       }
     };
+    const handleScroll = (e) => {
+      if (tooltipRef.current && tooltipRef.current.contains(e.target)) return;
+      setTooltipData(null);
+    };
+
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    window.addEventListener('scroll', handleScroll, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      window.removeEventListener('scroll', handleScroll, true);
+    };
   }, []);
 
   const handleChartMouseMove = (state, e) => {
@@ -293,11 +302,10 @@ const MetricsChart = ({ metricsData, apiResults, truncateName, legendTruncateLen
                 <button
                   key={metric}
                   onClick={() => handleMetricSortClick(metric)}
-                  className={`group flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
-                    sortKey
-                      ? 'bg-[#8e78b7] text-white border-[#8e78b7] shadow-sm'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-[#8e78b7] hover:text-[#8e78b7]'
-                  }`}
+                  className={`group flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${sortKey
+                    ? 'bg-[#8e78b7] text-white border-[#8e78b7] shadow-sm'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-[#8e78b7] hover:text-[#8e78b7]'
+                    }`}
                   title={`Sort by ${metric}`}
                 >
                   {priority && <span className="opacity-75 text-[10px] font-bold">#{priority}</span>}
@@ -344,7 +352,7 @@ const MetricsChart = ({ metricsData, apiResults, truncateName, legendTruncateLen
                   data={paginatedMetricsData}
                   margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   onMouseMove={handleChartMouseMove}
-                  onMouseLeave={() => {}}
+                  onMouseLeave={() => { }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="metric" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={{ stroke: '#e5e7eb' }} />
