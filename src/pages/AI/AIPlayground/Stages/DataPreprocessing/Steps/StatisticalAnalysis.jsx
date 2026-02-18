@@ -192,7 +192,7 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                             <h4 className="text-sm font-medium text-gray-900">Correlation Graphs</h4>
                             {/* <p className="text-xs text-gray-500 mt-1">Feature relationship visualization</p> */}
                         </div>
-                        <InfoButton sectionDescriptions= {sectionDescriptions} section="correlation"/>
+                        <InfoButton sectionDescriptions={sectionDescriptions} section="correlation" />
                     </div>
                     <div className="flex items-center gap-3">
                         <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -244,7 +244,7 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                         <div>
                             <div className='flex flex-row'>
                                 <h4 className="text-sm font-medium text-gray-700 mr-2">VIF Analysis</h4>
-                                <InfoButton sectionDescriptions= {sectionDescriptions} section="vif" isLastSection={true}/>
+                                <InfoButton sectionDescriptions={sectionDescriptions} section="vif" isLastSection={true} />
                             </div>
                             <p className="text-xs text-gray-400 mt-0.5">{`${vifReport.length} features analyzed | ${selectedFeatures.length} selected to drop`}</p>
                         </div>
@@ -359,7 +359,7 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-100">
-                                    {vifReport.length > 0 ? vifReport.map((row, i) => (
+                                    {vifReport.length > 0 ? [...vifReport].sort((a, b) => (b.VIF ?? 0) - (a.VIF ?? 0)).map((row, i) => (
                                         <tr key={i} className="hover:bg-gray-50">
                                             <td className="px-4 py-3 text-sm text-gray-700 font-medium">{row.Feature}</td>
                                             <td className="px-4 py-3 text-sm text-gray-700">{row.VIF != null && typeof row.VIF === 'number' ? row.VIF.toFixed(4) : row.VIF != null ? row.VIF : '-'}</td>
