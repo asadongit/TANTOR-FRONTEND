@@ -118,7 +118,7 @@ const ReportConfigDashboard = () => {
 
         // ----------- SUPERSET CODE START -----------
         if ((reportType || "").toUpperCase() === "LIST" || (reportType || "").toUpperCase() === "DASHBOARD") {
-          
+
           if(!embedID){
             toast.error("Dashboard not configured!");
             return;
@@ -174,7 +174,7 @@ const ReportConfigDashboard = () => {
   const columns = [
     { key: "report_id", label: "ID", width: "80px" },
     { key: "report_name", label: "Name", wrap: true, width: "50%" },
-    { key: "report_type", label: "type", width: "120px" },
+    { key: "report_type", label: "Type", width: "120px" },
     { key: "report_desc", label: "Description", wrap: true, width: "35%" },
     { label: "Action", sortable: false, width: "100px" },
   ];
@@ -216,7 +216,7 @@ const ReportConfigDashboard = () => {
 
       setReportsData(reportsWithSerial);
       setFilteredReportData(reportsWithSerial);
-      
+
     } catch (error) {
       setReportError(error.message);
       console.error('Error fetching reports:', error);
@@ -368,7 +368,7 @@ const ReportConfigDashboard = () => {
           >
             <RefreshCcw className={`h-5 w-5 ${isReportsLoading ? 'animate-spin' : ''}`} />
           </button>
-          
+
           <button
             type="button"
             className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
@@ -421,7 +421,7 @@ const ReportConfigDashboard = () => {
       )}
 
 
-      
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 mt-10">
         {/* {title && <h2 className="text-xl font-bold mb-2 md:mb-0">{title}</h2>} */}
         <div className="relative w-full md:w-64">
@@ -457,7 +457,7 @@ const ReportConfigDashboard = () => {
       <ReportSummaryComponent
         isOpen={isReportSummaryOpen}
         onClose={() => {setIsReportSummaryOpen(false)}}
-        reportName={currentReportData.reportName || ""} 
+        reportName={currentReportData.reportName || ""}
         lineItemsData={currentReportData?.lineItemsConfig || []}
         />
     </div>

@@ -78,6 +78,7 @@ const AIPlayground = () => {
   const [tempFile, setTempFile] = useState(null);
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
+  const [isCancelLoading, setIsCancelLoading] = useState(false);
 
   const [modals, setModals] = useState({
     createProject: false,
@@ -113,26 +114,21 @@ const AIPlayground = () => {
   }, [isAIPlaygroundActive]);
 
   const handleConfirmCancel = async () => {
+    setIsCancelLoading(true);
     try {
       await fetch(`${hostnameAI}/model/cleanup`, {
         method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          session_id: datasetState.sessionId,
-          training_flag: false
-        })
+        headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: datasetState.sessionId, training_flag: false })
       });
     } catch (error) {
       console.error('Cleanup API error:', error);
     }
-
     setSelectedProject('');
     setTempFile(null);
     setUploadedFile(null);
     resetAllStates();
+    setIsCancelLoading(false);
     setShowCancelModal(false);
     navigate('/ai/playground');
   };
@@ -441,9 +437,13 @@ const AIPlayground = () => {
                 </button>
                 <button
                   onClick={handleConfirmCancel}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+                  disabled={isCancelLoading}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
                 >
-                  Yes, Discard Changes
+                  {isCancelLoading && (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  )}
+                  {isCancelLoading ? 'Cancelling...' : 'Yes, Discard Changes'}
                 </button>
               </div>
             </div>

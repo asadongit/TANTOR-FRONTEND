@@ -57,7 +57,7 @@ const Projects = () => {
                 });
                 if (!response.ok) throw new Error('Failed to fetch projects');
                 const data = await response.json();
-                setTableData(Array.isArray(data) ? data : []);
+                setTableData((Array.isArray(data) ? data : []).map((item, index) => ({ ...item, sno: index + 1 })));
             } catch (err) {
                 setError(err?.message || 'Failed to fetch projects');
             } finally {
@@ -112,7 +112,13 @@ const Projects = () => {
         fetchRecentProjects();
     }, [hostnameAI, token, decodedToken?.sub, dashboardRefreshTrigger]);
 
-    const trendUp = (t) => String(t || '').toLowerCase() === 'increased';
+    const toTrend = (t, pct) => {
+        if (t === "increased") return "up";
+        if (t === "decreased") return "down";
+        const num = Number(pct);
+        if (!Number.isFinite(num)) return "up";
+        return num >= 0 ? "up" : "down";
+    };
     const pct = (v) => (v == null ? 0 : Number(v));
 
     const statsCards = useMemo(() => {
@@ -131,21 +137,21 @@ const Projects = () => {
                 label: 'Projects',
                 value: String(counts.projects?.current ?? 0),
                 icon: Folder,
-                trend: trendUp(counts.projects?.trend) ? 'up' : 'down',
+                trend: toTrend(counts.projects?.trend, counts.projects?.percentage_change),
                 trendValue: `${pct(counts.projects?.percentage_change)}%`,
             },
             {
                 label: 'Models',
                 value: String(counts.models?.current ?? 0),
                 icon: Bot,
-                trend: trendUp(counts.models?.trend) ? 'up' : 'down',
+                trend: toTrend(counts.models?.trend, counts.models?.percentage_change),
                 trendValue: `${pct(counts.models?.percentage_change)}%`,
             },
             {
                 label: 'Datasets',
                 value: String(counts.datasets?.current ?? 0),
                 icon: Database,
-                trend: trendUp(counts.datasets?.trend) ? 'up' : 'down',
+                trend: toTrend(counts.datasets?.trend, counts.datasets?.percentage_change),
                 trendValue: `${pct(counts.datasets?.percentage_change)}%`,
             },
         ];
@@ -157,30 +163,30 @@ const Projects = () => {
         const trendColor = isUp ? 'text-emerald-500' : 'text-red-500';
 
         return (
-            <div className="bg-white rounded-xl px-6 py-5 border border-purple-200 flex flex-col justify-between min-h-[120px]">
-                <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                        <Icon className="w-5 h-5 text-[#8e78b7] shrink-0" />
-                        <span className="text-gray-900 text-2xl font-medium truncate">{label}</span>
+            <div className="bg-white rounded-xl px-4 py-4 border border-purple-200 flex flex-col justify-between min-h-[110px] min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <Icon className="w-4 h-4 text-[#8e78b7] shrink-0" />
+                        <span className="text-gray-900 text-sm font-medium truncate">{label}</span>
                     </div>
                 </div>
 
-                <div className="flex items-end justify-between mt-6">
-                    <div className="text-2xl font-bold text-gray-900 tabular-nums leading-none">
+                <div className="flex items-end justify-between mt-4">
+                    <div className="text-xl font-bold text-gray-900 tabular-nums leading-none">
                         {value == null ? (
-                            <div className="h-10 w-16 bg-gray-200 rounded animate-pulse"></div>
+                            <div className="h-8 w-14 bg-gray-200 rounded animate-pulse"></div>
                         ) : (
                             value
                         )}
                     </div>
 
                     {(trend && trendValue && value != null) ? (
-                        <div className={`flex items-center gap-2 ${trendColor} text-2xl font-semibold leading-none`}>
-                            <TrendIcon className="w-7 h-7" />
+                        <div className={`flex items-center gap-1 ${trendColor} text-sm font-semibold leading-none`}>
+                            <TrendIcon className="w-4 h-4" />
                             <span className="tabular-nums">{trendValue}</span>
                         </div>
                     ) : (
-                        <div className="h-7 w-14" />
+                        <div className="h-5 w-10" />
                     )}
                 </div>
             </div>
@@ -316,9 +322,8 @@ const Projects = () => {
         {
             key: 'sno',
             label: 'S.No',
-            sortable: false,
+            sortable: true,
             width: '100px',
-            render: (_row, idx) => idx + 1,
         },
         {
             key: 'name',
@@ -472,7 +477,7 @@ const Projects = () => {
 
     return (
         <div className="p-3 sm:p-4 lg:p-6 bg-gray-50 min-h-screen">
-            <Breadcrumb />
+            <Breadcrumb skipLinkSegments={['hub']} />
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">Projects</h1>
@@ -526,7 +531,7 @@ const Projects = () => {
             <div className="space-y-6">
                 {viewMode === 'both' && (
                     <div className="bg-gradient-to-r from-[#8e78b7] via-purple-300 to-purple-100 rounded-xl p-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                             {statsCards.map((stat, index) => (
                                 <StatsCardWithTrend
                                     key={index}
