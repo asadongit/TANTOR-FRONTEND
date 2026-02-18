@@ -106,11 +106,11 @@ const Dashboard = () => {
   }, [hostnameAI, token]);
 
   const statsData = [
-    { label: 'Sources', value: summaryData.counts?.sources?.current || '0', icon: FileText, trend: summaryData.counts?.sources?.trend === 'increased' ? 'up' : summaryData.counts?.sources?.trend === 'decreased' ? 'down' : null, trendValue: formatPct(summaryData.counts?.sources?.percentage_change) },
-    { label: 'Size (GB)', value: summaryData.metrics?.total_dataset_size_gb?.current?.toFixed(2) || '0', icon: Database, trend: summaryData.metrics?.total_dataset_size_gb?.trend === 'increased' ? 'up' : summaryData.metrics?.total_dataset_size_gb?.trend === 'decreased' ? 'down' : null, trendValue: formatPct(summaryData.metrics?.total_dataset_size_gb?.percentage_change) },
-    { label: 'Projects', value: summaryData.counts?.projects?.current || '0', icon: FolderKanban, trend: summaryData.counts?.projects?.trend === 'increased' ? 'up' : summaryData.counts?.projects?.trend === 'decreased' ? 'down' : null, trendValue: formatPct(summaryData.counts?.projects?.percentage_change), onClick: () => navigate('/ai/hub/projects') },
-    { label: 'Models', value: summaryData.counts?.models?.current || '0', icon: Box, trend: summaryData.counts?.models?.trend === 'increased' ? 'up' : summaryData.counts?.models?.trend === 'decreased' ? 'down' : null, trendValue: formatPct(summaryData.counts?.models?.percentage_change), onClick: () => navigate('/ai/hub/models') },
-    { label: 'Datasets', value: summaryData.counts?.datasets?.current || '0', icon: Bot, trend: summaryData.counts?.datasets?.trend === 'increased' ? 'up' : summaryData.counts?.datasets?.trend === 'decreased' ? 'down' : null, trendValue: formatPct(summaryData.counts?.datasets?.percentage_change), onClick: () => navigate('/ai/hub/data') },
+    { label: 'Sources', value: summaryData.counts?.sources?.current || '0', icon: FileText, trend: summaryData.counts?.sources?.trend === 'increased' ? 'up' : summaryData.counts?.sources?.trend === 'decreased' ? 'down' : null, trendValue: summaryData.counts?.sources?.percentage_change },
+    { label: 'Size (GB)', value: summaryData.metrics?.total_dataset_size_gb?.current?.toFixed(2) || '0', icon: Database, trend: summaryData.metrics?.total_dataset_size_gb?.trend === 'increased' ? 'up' : summaryData.metrics?.total_dataset_size_gb?.trend === 'decreased' ? 'down' : null, trendValue: summaryData.metrics?.total_dataset_size_gb?.percentage_change },
+    { label: 'Projects', value: summaryData.counts?.projects?.current || '0', icon: FolderKanban, trend: summaryData.counts?.projects?.trend === 'increased' ? 'up' : summaryData.counts?.projects?.trend === 'decreased' ? 'down' : null, trendValue: summaryData.counts?.projects?.percentage_change, onClick: () => navigate('/ai/hub/projects') },
+    { label: 'Models', value: summaryData.counts?.models?.current || '0', icon: Box, trend: summaryData.counts?.models?.trend === 'increased' ? 'up' : summaryData.counts?.models?.trend === 'decreased' ? 'down' : null, trendValue: summaryData.counts?.models?.percentage_change, onClick: () => navigate('/ai/hub/models') },
+    { label: 'Datasets', value: summaryData.counts?.datasets?.current || '0', icon: Bot, trend: summaryData.counts?.datasets?.trend === 'increased' ? 'up' : summaryData.counts?.datasets?.trend === 'decreased' ? 'down' : null, trendValue: summaryData.counts?.datasets?.percentage_change, onClick: () => navigate('/ai/hub/data') },
     { label: 'Fairness', value: summaryData.metrics?.avg_fairness_ratio?.current?.toFixed(2) || '0', icon: Scale, trend: null, trendValue: null },
   ];
 
@@ -147,20 +147,20 @@ const Dashboard = () => {
   ];
 
   const StatCard = ({ label, value, icon: Icon, trend, trendValue, onClick }) => (
-    <div className={`bg-white rounded-xl px-5 py-4 border border-purple-200 shadow-sm ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`} onClick={onClick}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-purple-50 rounded-lg">
-            <Icon className="w-5 h-5 text-[#8e78b7]" />
+    <div className={`bg-white rounded-xl px-4 py-3 border border-purple-200 shadow-sm min-w-0 ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`} onClick={onClick}>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="p-2 bg-purple-50 rounded-lg shrink-0">
+            <Icon className="w-4 h-4 text-[#8e78b7]" />
           </div>
-          <span className="text-gray-600 text-sm">{label}</span>
+          <span className="text-gray-600 text-sm truncate">{label}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xl font-bold text-gray-800">{value}</span>
+        <div className="flex items-center gap-1 shrink-0">
+          <span className="text-lg font-bold text-gray-800 tabular-nums">{value}</span>
           {trend && trendValue && (
-            <div className={`flex items-center gap-1 ${trend === 'up' ? 'text-emerald-500' : 'text-red-500'}`}>
-              {trend === 'up' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
-              <span className="text-sm font-medium">{trendValue}</span>
+            <div className={`flex items-center gap-0.5 ${trend === 'up' ? 'text-emerald-500' : 'text-red-500'}`}>
+              {trend === 'up' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
+              <span className="text-xs font-medium">{trendValue}</span>
             </div>
           )}
         </div>
@@ -239,10 +239,10 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 p-3 sm:p-4 lg:p-6 min-w-0 overflow-x-hidden">
       <div className="bg-gradient-to-r from-purple-400 via-purple-300 to-purple-200 rounded-2xl p-4">
-        <div className="grid grid-cols-4 gap-4">
-          <div className="col-span-3 grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* <StatCard {...statsData[0]} /> */}
             <StatCard {...statsData[1]} />
             <StatCard {...statsData[2]} />
@@ -259,10 +259,10 @@ const Dashboard = () => {
             </div>
             <div className="text-center">
               <p className="text-sm text-gray-500">Model</p>
-              <p className="text-2xl font-bold text-orange-500 flex items-center justify-center">
+              <p className="text-xl font-bold text-orange-500 flex flex-wrap items-center justify-center gap-1">
                 {summaryData.metrics?.avg_model_accuracy?.current ? `${(summaryData.metrics.avg_model_accuracy.current * 100).toFixed(1)}%` : '0%'}
                 {summaryData.metrics?.avg_model_accuracy?.trend && summaryData.metrics?.avg_model_accuracy?.percentage_change && (
-                  <div className={`flex items-center gap-1 ml-2 ${summaryData.metrics.avg_model_accuracy.trend === 'increased' ? 'text-emerald-500' : 'text-red-500'}`}>
+                  <div className={`flex items-center gap-1 ${summaryData.metrics.avg_model_accuracy.trend === 'increased' ? 'text-emerald-500' : 'text-red-500'}`}>
                     {summaryData.metrics.avg_model_accuracy.trend === 'increased' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
                     <span className="text-sm font-medium">{formatPct(summaryData.metrics.avg_model_accuracy.percentage_change)}</span>
                   </div>
@@ -273,20 +273,20 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <ChartCard
           title="Model Lifecycle"
           icon={Box}
           infoText="Shows the distribution of models across different lifecycle stages: Saved, Deployed, and Archived."
         >
-          <div className="flex items-center justify-center">
-            <PieChart width={180} height={180}>
+          <div className="flex items-center justify-center overflow-hidden">
+            <PieChart width={160} height={160}>
               <Pie
                 data={modelLifecycleData}
-                cx={90}
-                cy={90}
-                innerRadius={50}
-                outerRadius={80}
+                cx={80}
+                cy={80}
+                innerRadius={45}
+                outerRadius={72}
                 dataKey="value"
               >
                 {modelLifecycleData.map((entry, index) => (
@@ -363,7 +363,7 @@ const Dashboard = () => {
         </ChartCard>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <ChartCard
           title="Popular use cases"
           icon={Lightbulb}
