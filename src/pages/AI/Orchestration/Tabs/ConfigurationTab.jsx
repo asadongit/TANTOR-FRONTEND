@@ -326,13 +326,37 @@ const ConfigurationTab = () => {
         setValidationStatus(null);
 
         try {
-            const url = `${hostnameAI}/orchestration/validate-tables?run_name=${encodeURIComponent(schedulerState.model)}&source_table=${encodeURIComponent(schedulerState.source.source_table)}&destination_table=${encodeURIComponent(schedulerState.target.destination_table)}`;
-
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'accept': 'application/json'
+            const secureQueryResponse = await fetch(
+                `${window._env_?.VITE_FAST_API}/secure-query`,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ user_query: "" }),
                 }
+            );
+
+            if (!secureQueryResponse.ok) {
+                throw new Error("Failed to fetch policy IDs");
+            }
+
+            const secureQueryData = await secureQueryResponse.json();
+            const policyIds = secureQueryData.matched_policy_ids;
+
+            const response = await fetch(`${hostnameAI}/orchestration/validate-tables`, {
+                method: 'POST',
+                headers: {
+                    'accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    run_name: schedulerState.model,
+                    source_table: schedulerState.source.source_table,
+                    destination_table: schedulerState.target.destination_table,
+                    policy_id: policyIds
+                })
             });
 
             if (!response.ok) {

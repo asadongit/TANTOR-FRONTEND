@@ -14,6 +14,7 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
   const [isIngesting, setIsIngesting] = useState(false);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [schemaInfo, setSchemaInfo] = useState(null); // store schema/connection from tables API response
 
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
@@ -86,6 +87,12 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
       }
 
       const data = await response.json();
+
+      setSchemaInfo({
+        schema: data.schema,
+        connection: data.connection,
+      });
+
       const tables = data.tables.map((table) => ({
         value: table,
         label: table,
@@ -99,6 +106,54 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
     }
   };
 
+  const fetchBusinessTags = async (tableName) => {
+    try {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/business_tab`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'accept': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          connection_set: [{
+            connection_name: schemaInfo?.connection,
+            table_schema: schemaInfo?.schema,
+            table_name: tableName,
+          }],
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Failed to fetch business tags, proceeding without them');
+        return null;
+      }
+
+      const data = await response.json();
+
+      const key = `${schemaInfo?.connection}:${schemaInfo?.schema}:${tableName}`;
+      const tableData = data[key];
+
+      if (!tableData?.table_tags) return null;
+
+      const { domain, category, sub_category, tag, sub_tag } = tableData.table_tags;
+
+      const extractNames = (arr) =>
+        arr?.length ? arr.map((item) => item.name).join(',') : '';
+
+      return {
+        domain: extractNames(domain),
+        category: extractNames(category),
+        sub_category: extractNames(sub_category),
+        tag: extractNames(tag),
+        sub_tag: extractNames(sub_tag),
+      };
+    } catch (err) {
+      console.error('Error fetching business tags, proceeding without them:', err);
+      return null;
+    }
+  };
+
   const handleProceed = async () => {
     if (!selectedTable) return;
 
@@ -106,28 +161,49 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
     setError(null);
 
     try {
-      // Get the selected project name
-      const projectName = projectState.selectedProject
+      const projectName = projectState.selectedProject;
 
-      // Prepare form data
-      const formData = new URLSearchParams();
-      formData.append('domain', '');
-      formData.append('project_name', projectName);
-      formData.append('profiling_required', 'true');
-      formData.append('tag', '');
-      formData.append('source', '');
-      formData.append('sub_tag', '');
-      formData.append('table_name', selectedTable);
-      formData.append('category', '');
-      formData.append('user_name', decodedToken.preferred_username);
+      const secureQueryResponse = await fetch(
+        `${window._env_?.VITE_FAST_API}/secure-query`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ user_query: "" }),
+        }
+      );
+
+      if (!secureQueryResponse.ok) {
+        throw new Error("Failed to fetch policy IDs");
+      }
+
+      const secureQueryData = await secureQueryResponse.json();
+      const policyIds = secureQueryData.matched_policy_ids;
+
+      const businessTags = await fetchBusinessTags(selectedTable);
+
+      const payload = {
+        table_name: selectedTable,
+        project_name: projectName,
+        profiling_required: true,
+        user_name: decodedToken.preferred_username,
+        domain: businessTags?.domain ? businessTags.domain.split(',') : [],
+        category: businessTags?.category ? businessTags.category.split(',') : [],
+        sub_category: businessTags?.sub_category ? businessTags.sub_category.split(',') : [],
+        tag: businessTags?.tag ? businessTags.tag.split(',') : [],
+        sub_tag: businessTags?.sub_tag ? businessTags.sub_tag.split(',') : [],
+        policy_id: policyIds,
+      };
 
       const response = await fetch(`${hostnameAI}/data/ingestion`, {
         method: 'POST',
         headers: {
           'accept': 'application/json',
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/json',
         },
-        body: formData.toString()
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -136,18 +212,15 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
 
       const data = await response.json();
 
-      // Update context with session data
       setDatasetState({
         tableName: selectedTable,
         sessionId: data.session_id,
         columnNames: data.column_names || [],
-        profileReportHtml: data.profile_report_html || ''
+        profileReportHtml: data.profile_report_html || '',
       });
 
       const selectedTableData = availableTables.find(v => v.value === selectedTable);
-
       onProceed(selectedTableData);
-
       handleClose();
     } catch (err) {
       setError(err.message);
