@@ -31,12 +31,16 @@ const RuleDashboard = () => {
   const [ruleData, setRuleData] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
 
+  const [viewMode, setViewMode] = useState("list");
+
   const {
     data: ruleList = [],
     isLoading: isRuleLoading,
+    isFetching: isRuleFetching,
     isError: ruleError,
     refetch: refetchRules,
   } = useRuleData();
+
   const {
     data: cardData,
     isLoading: isCardLoading,
@@ -397,25 +401,19 @@ const RuleDashboard = () => {
           <button
             type="button"
             className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
-          >
-            <Download className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
             onClick={handleRefresh}
           >
             <RefreshCcw
-              className={`h-5 w-5 ${isRuleLoading ? "animate-spin" : ""}`}
+              className={`h-5 w-5 ${isRuleFetching ? "animate-spin" : ""}`}
             />
           </button>
           <button
             type="button"
             className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
-            onClick={handleRefresh}
+            onClick={() => {setViewMode(prev => prev === "list" ? "both" : "list")}}
           >
             <List
-              className={`h-5 w-5 ${isRuleLoading ? "animate-spin" : ""}`}
+              className={`h-5 w-5`}
             />
           </button>
           <button
@@ -428,11 +426,11 @@ const RuleDashboard = () => {
         </div>
       </div>
 
-      <CardGrid
+      {viewMode === "both" && (<CardGrid
         cards={cards}
         onCardClick={handleCardClick}
         isLoading={isCardLoading}
-      />
+      />)}
 
       {/* Chart container */}
       {/* <div className="mt-6 w-full md:w-2/5">
@@ -474,10 +472,10 @@ const RuleDashboard = () => {
           }}
         />
       </div> */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        <RuleMovement />
+      {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6"> */}
+        {/* <RuleMovement /> */}
         {/* <SchemaOverallScore /> */}
-      </div>
+      {/* </div> */}
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 mt-10">
         {/* {title && <h2 className="text-xl font-bold mb-2 md:mb-0">{title}</h2>} */}
