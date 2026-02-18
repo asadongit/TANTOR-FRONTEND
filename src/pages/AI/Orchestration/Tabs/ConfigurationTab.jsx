@@ -2,6 +2,7 @@ import { Calendar, Clock, Search, X, CheckCircle } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useAIPlayground } from '../../../../context/AIPlaygroundContext';
+import { useAuth } from '../../../../context/AuthContext';
 import DatePickerModal from '../modals/DatePickerModal';
 
 const SearchableSelect = ({ label, value, options, field, onChange, isLoading = false, isDisabled = false }) => {
@@ -100,6 +101,7 @@ const SearchableSelect = ({ label, value, options, field, onChange, isLoading = 
 
 const ConfigurationTab = () => {
     const { schedulerState, setSchedulerState, mode } = useAIPlayground();
+    const { token } = useAuth();
 
     const [projects, setProjects] = useState([]);
     const [models, setModels] = useState([]);
@@ -324,13 +326,37 @@ const ConfigurationTab = () => {
         setValidationStatus(null);
 
         try {
-            const url = `${hostnameAI}/orchestration/validate-tables?run_name=${encodeURIComponent(schedulerState.model)}&source_table=${encodeURIComponent(schedulerState.source.source_table)}&destination_table=${encodeURIComponent(schedulerState.target.destination_table)}`;
-
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'accept': 'application/json'
+            const secureQueryResponse = await fetch(
+                `${window._env_?.VITE_FAST_API}/secure-query`,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ user_query: "" }),
                 }
+            );
+
+            if (!secureQueryResponse.ok) {
+                throw new Error("Failed to fetch policy IDs");
+            }
+
+            const secureQueryData = await secureQueryResponse.json();
+            const policyIds = secureQueryData.matched_policy_ids;
+
+            const response = await fetch(`${hostnameAI}/orchestration/validate-tables`, {
+                method: 'POST',
+                headers: {
+                    'accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    run_name: schedulerState.model,
+                    source_table: schedulerState.source.source_table,
+                    destination_table: schedulerState.target.destination_table,
+                    policy_id: policyIds
+                })
             });
 
             if (!response.ok) {
@@ -475,13 +501,34 @@ const ConfigurationTab = () => {
     const fetchDataSources = async () => {
         setLoadingDataSources(true);
         try {
+            const secureQueryResponse = await fetch(
+                `${window._env_?.VITE_FAST_API}/secure-query`,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ user_query: "" }),
+                }
+            );
+
+            if (!secureQueryResponse.ok) {
+                throw new Error("Failed to fetch policy IDs");
+            }
+
+            const secureQueryData = await secureQueryResponse.json();
+            const policyIds = secureQueryData.matched_policy_ids;
+
             const response = await fetch(
                 `${hostnameAI}/schemas/predictions-source-schema/tables`,
                 {
-                    method: 'GET',
+                    method: 'POST',
                     headers: {
-                        'accept': 'application/json'
-                    }
+                        'accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ policy_id: policyIds })
                 }
             );
 
@@ -674,7 +721,6 @@ const ConfigurationTab = () => {
                 <div className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {isPreFilledFromDeploy ? (
-                            // Read-only text input when in schedule mode
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                                     Project <span className="text-red-500">*</span>
@@ -698,7 +744,6 @@ const ConfigurationTab = () => {
                         )}
 
                         {isPreFilledFromDeploy ? (
-                            // Read-only text input when in schedule mode
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                                     Model <span className="text-red-500">*</span>
@@ -763,7 +808,6 @@ const ConfigurationTab = () => {
                                 'Validate'
                             )}
                         </button>
-
                     </div>
                 </div>
             </div>
