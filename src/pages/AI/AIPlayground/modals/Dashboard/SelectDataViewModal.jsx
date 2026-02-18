@@ -51,25 +51,49 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${hostnameAI}/schemas/source-schema/tables`, {
-        headers: {
-          'accept': 'application/json'
+      const secureQueryResponse = await fetch(
+        `${window._env_?.VITE_FAST_API}/secure-query`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ user_query: "" }),
         }
+      );
+
+      if (!secureQueryResponse.ok) {
+        throw new Error("Failed to fetch policy IDs");
+      }
+
+      const secureQueryData = await secureQueryResponse.json();
+      const policyIds = secureQueryData.matched_policy_ids;
+
+      const response = await fetch(`${hostnameAI}/schemas/source-schema/tables`, {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          policy_id: policyIds,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch tables');
+        throw new Error("Failed to fetch tables");
       }
 
       const data = await response.json();
-      const tables = data.tables.map(table => ({
+      const tables = data.tables.map((table) => ({
         value: table,
-        label: table
+        label: table,
       }));
       setAvailableTables(tables);
     } catch (err) {
       setError(err.message);
-      console.error('Error fetching tables:', err);
+      console.error("Error fetching tables:", err);
     } finally {
       setIsLoading(false);
     }
