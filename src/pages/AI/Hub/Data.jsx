@@ -389,17 +389,32 @@ const Data = () => {
 
       const username = decodedToken?.preferred_username || "admin";
 
-      const ingestionParams = new URLSearchParams({
-        domain: '',
-        project_name: project_name,
-        profiling_required: 'false',
-        tag: '',
-        source: '',
-        sub_tag: '',
+      const secureQueryResponse = await fetch(
+        `${window._env_?.VITE_FAST_API}/secure-query`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ user_query: "" }),
+        }
+      );
+
+      if (!secureQueryResponse.ok) {
+        throw new Error("Failed to fetch policy IDs");
+      }
+
+      const secureQueryData = await secureQueryResponse.json();
+      const policyIds = secureQueryData.matched_policy_ids;
+
+      const ingestionParams = {
         table_name: dataset_name,
-        category: '',
-        user_name: username
-      });
+        project_name: project_name,
+        profiling_required: false,
+        user_name: username,
+        policy_id: policyIds
+      };
 
       const ingestionResponse = await fetch(
         `${hostnameAI}/data/ingestion`,
@@ -407,10 +422,10 @@ const Data = () => {
           method: 'POST',
           headers: {
             'accept': 'application/json',
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: ingestionParams.toString()
+          body: JSON.stringify(ingestionParams),
         }
       );
 
