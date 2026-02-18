@@ -134,6 +134,25 @@ const NewSchedule = () => {
         setIsCreating(true);
 
         try {
+            const secureQueryResponse = await fetch(
+                `${window._env_?.VITE_FAST_API}/secure-query`,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ user_query: "" }),
+                }
+            );
+
+            if (!secureQueryResponse.ok) {
+                throw new Error("Failed to fetch policy IDs");
+            }
+
+            const secureQueryData = await secureQueryResponse.json();
+            const policyIds = secureQueryData.matched_policy_ids;
+
             const dagConfig = {
                 dag_config: {
                     owner_id: schedulerState?.owner_id,
@@ -169,7 +188,8 @@ const NewSchedule = () => {
                     data_drift_check: schedulerState.data_drift_check,
                     model_drift_check: schedulerState.model_drift_check,
                     recipients: schedulerState.recipients || [],
-                    mode: schedulerState.mode || 'read'
+                    mode: schedulerState.mode || 'read',
+                    policy_id: policyIds
                 }
             };
 
@@ -383,35 +403,27 @@ const NewSchedule = () => {
                 {showSuccessModal &&
                     (
                         <div className="fixed inset-0 z-50 flex items-center justify-center">
-                            {/* Backdrop */}
                             <div
                                 className="absolute inset-0 bg-black bg-opacity-50"
                                 onClick={handleSuccessModalClose}
                             />
-
-                            {/* Modal */}
                             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-                                {/* Close button */}
                                 <button
                                     onClick={handleSuccessModalClose}
                                     className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
-
                                 <div className="flex flex-col items-center text-center">
                                     <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
                                         <CheckCircle className="w-10 h-10 text-green-600" />
                                     </div>
-
                                     <h2 className="text-2xl font-semibold text-gray-900 mb-2">
                                         Schedule Created Successfully!
                                     </h2>
-
                                     <p className="text-gray-600 mb-6">
                                         Your schedule has been created and will run according to the configured settings.
                                     </p>
-
                                     <button
                                         onClick={handleSuccessModalClose}
                                         className="px-6 py-2.5 bg-[#8e78b7] text-white rounded text-sm font-medium hover:bg-[#7a6aa0] transition-colors"
