@@ -188,21 +188,41 @@ const MetricsChart = ({ metricsData, apiResults, truncateName, legendTruncateLen
   const CustomLegend = ({ payload }) => {
     if (!payload || payload.length === 0) return null;
     return (
-      <div className="flex flex-wrap gap-x-6 gap-y-2 pt-3 px-2">
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+          gap: '8px 16px',
+          paddingTop: '12px',
+          paddingLeft: '4px',
+        }}
+      >
         {payload.map((entry, index) => {
           const dataKeyParts = entry.dataKey?.split('_') || [];
           const globalIdx = parseInt(dataKeyParts[dataKeyParts.length - 1]);
           const fullName = apiResults[globalIdx]?.run_name || entry.value;
-          const displayName = fullName.length > 45 ? '...' + fullName.slice(-42) : fullName;
           return (
-            <div key={index} className="flex items-center gap-1.5" style={{ maxWidth: '280px', minWidth: '220px' }}>
-              <span style={{ color: entry.color, flexShrink: 0, fontSize: '10px' }}>●</span>
+            <div
+              key={index}
+              title={fullName}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}
+            >
+              <span style={{ color: entry.color, flexShrink: 0, fontSize: '10px', lineHeight: 1 }}>●</span>
               <span
-                className="text-xs text-gray-600 cursor-default"
-                style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}
-                title={fullName}
+                style={{
+                  fontSize: '12px',
+                  color: '#4b5563',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  minWidth: 0,
+                  flex: 1,
+                  cursor: 'default',
+                  direction: 'rtl',
+                  textAlign: 'left',
+                }}
               >
-                {displayName}
+                {fullName}
               </span>
             </div>
           );
