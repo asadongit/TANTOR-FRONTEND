@@ -1,7 +1,7 @@
 import React from "react";
 import { useLocation, Link } from "react-router-dom";
 
-const Breadcrumb = ({ title, link }) => {
+const Breadcrumb = ({ title, link, skipLinkSegments = [] }) => {
   const location = useLocation();
   const pathSegments = location.pathname.split("/").filter((segment) => segment);
 
@@ -41,7 +41,7 @@ const Breadcrumb = ({ title, link }) => {
           return (
             <li key={index} style={styles.breadcrumbItem}>
               {index > 0 && <span style={styles.separator}>&gt;</span>}
-              {index === pathSegments.length - 1 ? (
+              {index === pathSegments.length - 1 || skipLinkSegments.includes(segment.toLowerCase()) ? (
                 <span style={styles.active}>{formatText(segment)}</span>
               ) : (
                 <Link to={to} style={styles.link}>
