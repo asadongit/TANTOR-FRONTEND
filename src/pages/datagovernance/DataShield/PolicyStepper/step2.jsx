@@ -1,8 +1,6 @@
-import { Box, Typography, TextField, InputAdornment } from '@mui/material';
+import { Box, Typography, TextField, InputAdornment, Snackbar, Alert } from '@mui/material';
 import { User, Users, UserPlus, UserRoundCog, Loader, Search } from "lucide-react";
-import { useState, useEffect } from 'react';
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
 
 const Step2 = ({ onDataChange, initialData }) => {
@@ -25,22 +23,81 @@ const Step2 = ({ onDataChange, initialData }) => {
         subgroups: [],
         persona: []
     });
+    const checkUserSelectionsRef = useRef(null);
     const [loading, setLoading] = useState(true);
     const [loadingSubgroups, setLoadingSubgroups] = useState(false);
     const [isFormValid, setIsFormValid] = useState(false);
+    const [toast, setToast] = useState({
+        open: false,
+        message: '',
+        severity: 'success'
+    });
 
     useEffect(() => {
         const hasSelection = selectedRole !== '' || selectedGroup !== '' || selectedSubgroup !== '' || selectedPersona.length > 0;
         setIsFormValid(hasSelection);
 
-    onDataChange({
-        selectedRole,
-        selectedGroup,
-        selectedSubgroup,
-        selectedPersona,
-        isFormValid: hasSelection
-    });
-}, [selectedRole, selectedGroup, selectedSubgroup, selectedPersona]);;
+        const checkUserSelections = async () => {
+            if (!hasSelection) {
+                return { exists: false };
+            }
+
+            try {
+                const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/datapolicy/user_selections/check`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_selections: {
+                            role: selectedRole || '',
+                            group: selectedGroup || '',
+                            subGroup: selectedSubgroup || '',
+                            persona: selectedPersona || []
+                        },
+                        policy_id: null
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || errorData.detail || 'Failed to check user selections');
+                }
+
+                const result = await response.json();
+                
+                if (result.exists) {
+                    setToast({
+                        open: true,
+                        message: result.message || 'This user selection already exists',
+                        severity: 'error'
+                    });
+                }
+
+                return result;
+            } catch (error) {
+                console.error('Error checking user selections:', error);
+                setToast({
+                    open: true,
+                    message: error.message || 'Failed to validate user selections',
+                    severity: 'error'
+                });
+                return { exists: false, error: error.message };
+            }
+        };
+
+        checkUserSelectionsRef.current = checkUserSelections;
+
+        onDataChange({
+            selectedRole,
+            selectedGroup,
+            selectedSubgroup,
+            selectedPersona,
+            isFormValid: hasSelection,
+            checkUserSelections: checkUserSelectionsRef.current
+        });
+    }, [selectedRole, selectedGroup, selectedSubgroup, selectedPersona, token]);
 
     useEffect(() => {
         setSelectedRole(initialData.selectedRole || '');
@@ -111,7 +168,11 @@ const Step2 = ({ onDataChange, initialData }) => {
             }));
         } catch (error) {
             console.error('Error fetching subgroups:', error);
-            toast.error('Failed to load subgroups');
+            setToast({
+                open: true,
+                message: 'Failed to load subgroups',
+                severity: 'error'
+            });
             setData(prev => ({
                 ...prev,
                 subgroups: []
@@ -134,7 +195,11 @@ const Step2 = ({ onDataChange, initialData }) => {
                 break;
             case 'Sub-group':
                 if (!selectedGroup) {
-                    toast.error('Please select a group first');
+                    setToast({
+                        open: true,
+                        message: 'Please select a group first',
+                        severity: 'info'
+                    });
                     return;
                 }
                 setSelectedSubgroup(item === selectedSubgroup ? '' : item);
@@ -162,15 +227,18 @@ const Step2 = ({ onDataChange, initialData }) => {
 };
 
     const toggleSelectAll = () => {
-    if (selectedTab === 'Persona') {
-        const currentData = getCurrentTabData();
-        const allSelected = currentData.every(item => selectedPersona.includes(item));
-        setSelectedPersona(allSelected ? [] : currentData);
-    } else {
-        toast.info('Please select one item at a time');
-    }
-};
-
+        if (selectedTab === 'Persona') {
+            const currentData = getCurrentTabData();
+            const allSelected = currentData.every(item => selectedPersona.includes(item));
+            setSelectedPersona(allSelected ? [] : currentData);
+        } else {
+            setToast({
+                open: true,
+                message: 'Please select one item at a time',
+                severity: 'info'
+            });
+        }
+    };
     const getCurrentTabData = () => {
         const currentTab = roleDetails.find(rd => rd.role === selectedTab);
         const tabData = currentTab ? data[currentTab.key] || [] : [];
@@ -237,6 +305,12 @@ const Step2 = ({ onDataChange, initialData }) => {
             </div>
         ));
     };
+    const handleCloseToast = (event, reason) => {
+            if (reason === 'clickaway') {
+                return;
+            }
+            setToast({...toast, open: false});
+        };
 
     if (loading) {
         return (
@@ -312,6 +386,16 @@ const Step2 = ({ onDataChange, initialData }) => {
                     </div>
                 </div>
             </div>
+            <Snackbar
+                open={toast.open}
+                autoHideDuration={6000}
+                onClose={handleCloseToast}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <Alert onClose={handleCloseToast} severity={toast.severity} sx={{ width: '100%' }}>
+                    {toast.message}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 };

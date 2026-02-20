@@ -539,84 +539,87 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
                                     ))}
                                 </select>
                                 {errors.reportType && <p className="mt-1 text-xs text-red-500">{errors.reportType}</p>}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Report Name <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.reportName}
-                                    onChange={handleReportNameChange}
-                                    placeholder="Enter report name"
-                                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] ${errors.reportName ? 'border-red-500' : 'border-gray-300'} ${!formData.reportType ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-                                    disabled={!formData.reportType || isSubmitting}
-                                />
-                                {errors.reportName && <p className="mt-1 text-xs text-red-500">{errors.reportName}</p>}
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
-                                    <input
-                                        type="date"
-                                        value={formData.dateFrom}
-                                        onChange={handleDateFromChange}
-                                        max={maxDate}
-                                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] ${!formData.reportType ? 'bg-gray-50' : ''}`}
-                                        disabled={!formData.reportType || isSubmitting}
-                                    />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
-                                    <input
-                                        type="date"
-                                        value={formData.dateTo}
-                                        onChange={handleDateToChange}
-                                        max={maxDate}
-                                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] ${!formData.reportType ? 'bg-gray-50' : ''}`}
-                                        disabled={!formData.reportType || isSubmitting}
-                                    />
+
+                                {formData.reportType && (
+                                    <>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Report Name <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={formData.reportName}
+                                                onChange={handleReportNameChange}
+                                                placeholder="Enter report name"
+                                                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] ${errors.reportName ? 'border-red-500' : 'border-gray-300'}`}
+                                                disabled={isSubmitting}
+                                            />
+                                            {errors.reportName && <p className="mt-1 text-xs text-red-500">{errors.reportName}</p>}
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                                                <input
+                                                    type="date"
+                                                    value={formData.dateFrom}
+                                                    onChange={handleDateFromChange}
+                                                    max={maxDate}
+                                                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
+                                                    disabled={isSubmitting}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                                                <input
+                                                    type="date"
+                                                    value={formData.dateTo}
+                                                    onChange={handleDateToChange}
+                                                    max={maxDate}
+                                                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
+                                                    disabled={isSubmitting}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <MultiSelectDropdown
+                                            title="Users"
+                                            options={userOptions}
+                                            selected={formData.users}
+                                            toggleOption={toggleUser}
+                                            hasSelectAll={true}
+                                            disabled={isSubmitting}
+                                            disabledText="Select report type first"
+                                            isLoading={isLoadingStakeholders}
+                                        />
+
+                                        {!isAuthenticationReport && (
+                                            <div className="space-y-6 pt-2">
+                                                <MultiSelectDropdown
+                                                    title="Resource Types"
+                                                    options={resourceTypeOptions}
+                                                    selected={formData.resourceTypes}
+                                                    toggleOption={toggleResourceType}
+                                                    hasSelectAll={true}
+                                                    disabled={isSubmitting}
+                                                    disabledText="Select report type first"
+                                                />
+                                                <MultiSelectDropdown
+                                                    title="Operation Types"
+                                                    options={availableOperations}
+                                                    selected={formData.operationTypes}
+                                                    toggleOption={toggleOperationType}
+                                                    hasSelectAll={true}
+                                                    disabled={isSubmitting || formData.resourceTypes.length === 0}
+                                                    disabledText="Select resource types first"
+                                                />
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                                    </div>
                                 </div>
-                            </div>
-
-                            <MultiSelectDropdown
-                                title="Users"
-                                options={userOptions}
-                                selected={formData.users}
-                                toggleOption={toggleUser}
-                                hasSelectAll={true}
-                                disabled={!formData.reportType || isSubmitting}
-                                disabledText="Select report type first"
-                                isLoading={isLoadingStakeholders}
-                            />
-
-                            {!isAuthenticationReport && (
-                                <div className="space-y-6 pt-2">
-                                    <MultiSelectDropdown
-                                        title="Resource Types"
-                                        options={resourceTypeOptions}
-                                        selected={formData.resourceTypes}
-                                        toggleOption={toggleResourceType}
-                                        hasSelectAll={true}
-                                        disabled={!formData.reportType || isSubmitting}
-                                        disabledText="Select report type first"
-                                    />
-
-                                    <MultiSelectDropdown
-                                        title="Operation Types"
-                                        options={availableOperations}
-                                        selected={formData.operationTypes}
-                                        toggleOption={toggleOperationType}
-                                        hasSelectAll={true}
-                                        disabled={!formData.reportType || isSubmitting || formData.resourceTypes.length === 0}
-                                        disabledText="Select resource types first"
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    </div>
 
                     <div className="flex items-center justify-end gap-3 p-3 border-t bg-gray-50">
                         <button

@@ -277,6 +277,23 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
                 break;
             case 1:
                 if (step2Data.isFormValid) {
+                    if (step2Data.checkUserSelections) {
+                        const result = await step2Data.checkUserSelections();
+                        // Remove this section - Step2 handles the toast now
+                        // if (result?.exists) {
+                        //     setToast({
+                        //         show: true,
+                        //         message: result.message || 'Selection already exists',
+                        //         type: 'error'
+                        //     });
+                        //     return;
+                        // }
+                        
+                        // Just check if it exists to prevent advancing
+                        if (result?.exists) {
+                            return;
+                        }
+                    }
                     updateStep2Data(step2Data);
                 } else {
                     return;
