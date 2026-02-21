@@ -260,7 +260,7 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
             <div className="mx-6 mt-4 flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg">
               <AlertTriangle size={16} className="text-amber-500 flex-shrink-0" />
               <p className="text-sm text-amber-800">
-                <strong>{alreadyStartedCount}</strong> model{alreadyStartedCount > 1 ? 's are' : ' is'} still running
+                <strong>{alreadyStartedCount}</strong> model{alreadyStartedCount > 1 ? 's are' : ' is'} still running. You can proceed now or wait for all models to finish.
               </p>
             </div>
           )}
