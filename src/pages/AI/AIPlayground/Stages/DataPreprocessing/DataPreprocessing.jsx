@@ -23,7 +23,8 @@ const preprocessingSteps = [
 ];
 
 function DataPreprocessing() {
-  const { workflowState, mode, datasetState } = useAIPlayground();
+  const hostnameAI = window._env_?.VITE_AI_API;
+  const { workflowState, mode, datasetState, updateWorkflowStage } = useAIPlayground();
   const readonly = mode === 'view';
   const navigate = useNavigate();
 
@@ -43,6 +44,9 @@ function DataPreprocessing() {
   const isDataPreprocessingAuto = dataPreprocessingMode &&
     ['Swift', 'Standard', 'Comprehensive'].includes(dataPreprocessingMode);
 
+  const isModelSelectionAuto = modelSelectionMode &&
+    ['Swift', 'Standard', 'Comprehensive'].includes(modelSelectionMode);
+
   const [currentStep, setCurrentStep] = useState(isDataPreprocessingAuto ? 7 : 1);
   const [isStep7Preview, setIsStep7Preview] = useState(isDataPreprocessingAuto);
   const [isStep1Valid, setIsStep1Valid] = useState(true);
@@ -50,6 +54,7 @@ function DataPreprocessing() {
   const [isStep4Valid, setIsStep4Valid] = useState(true);
   const [isStep5Valid, setIsStep5Valid] = useState(true);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+
 
   const step1ApiCallRef = useRef(null);
   const step2ApiCallRef = useRef(null);
@@ -60,7 +65,32 @@ function DataPreprocessing() {
   const step7ApiCallRef = useRef(null);
 
   const handleNextClick = async () => {
-    let apiCallFn = null;
+    if (currentStep === 7 && isStep7Preview && isModelSelectionAuto) {
+      try {
+        const jobId = isDataPreprocessingAuto
+          ? workflowState?.modelGenesis?.apiResponse?.job_id
+          : workflowState?.dataPreprocessing?.step7?.apiResponse?.job_id;
+
+        if (jobId) {
+          const response = await fetch(`${hostnameAI}/jobs/${jobId}`, {
+            method: 'GET',
+            headers: { 'accept': 'application/json' }
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            updateWorkflowStage('completedJobs', {
+              config: { job_id: jobId },
+              apiResponse: data
+            });
+            
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching job details:', error);
+      }
+      return true;
+    }
 
     if (currentStep === 7 && isStep7Preview && isDataPreprocessingAuto) {
       return true;
@@ -70,30 +100,16 @@ function DataPreprocessing() {
       return true;
     }
 
+    let apiCallFn = null;
     switch (currentStep) {
-      case 1:
-        apiCallFn = step1ApiCallRef.current;
-        break;
-      case 2:
-        apiCallFn = step2ApiCallRef.current;
-        break;
-      case 3:
-        apiCallFn = step3ApiCallRef.current;
-        break;
-      case 4:
-        apiCallFn = step4ApiCallRef.current;
-        break;
-      case 5:
-        apiCallFn = step5ApiCallRef.current;
-        break;
-      case 6:
-        apiCallFn = step6ApiCallRef.current;
-        break;
-      case 7:
-        apiCallFn = step7ApiCallRef.current;
-        break;
-      default:
-        break;
+      case 1: apiCallFn = step1ApiCallRef.current; break;
+      case 2: apiCallFn = step2ApiCallRef.current; break;
+      case 3: apiCallFn = step3ApiCallRef.current; break;
+      case 4: apiCallFn = step4ApiCallRef.current; break;
+      case 5: apiCallFn = step5ApiCallRef.current; break;
+      case 6: apiCallFn = step6ApiCallRef.current; break;
+      case 7: apiCallFn = step7ApiCallRef.current; break;
+      default: break;
     }
 
     if (apiCallFn) {
