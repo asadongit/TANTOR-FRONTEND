@@ -3,6 +3,7 @@ import { X, AlertTriangle, Download } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 
 export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, modelsList = [], sessionId }) {
   const hostnameAI = window._env_?.VITE_AI_API;
@@ -12,7 +13,9 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
   const [downloadingReports, setDownloadingReports] = useState(false);
   const [currentReportData, setCurrentReportData] = useState(null);
   const [currentModelName, setCurrentModelName] = useState('');
+  const [alreadyStartedCount, setAlreadyStartedCount] = useState(null);
   const reportRef = useRef(null);
+  const { workflowState } = useAIPlayground();
 
   useEffect(() => {
     if (!isOpen) {
@@ -21,8 +24,40 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
       setShowConfirmation(false);
       setCurrentReportData(null);
       setCurrentModelName('');
+      setAlreadyStartedCount(null);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      cancelJob();
+    }
+  }, [isOpen]);
+
+  const cancelJob = async () => {
+    const jobId = workflowState?.completedJobs?.config?.job_id;
+    if (!jobId) return;
+
+    try {
+      const response = await fetch(
+        `${hostnameAI}/jobs/${jobId}/cancel`,
+        {
+          method: 'POST',
+          headers: {
+            'accept': 'application/json'
+          },
+          body: ''
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setAlreadyStartedCount(data.already_started_count ?? null);
+      }
+    } catch (error) {
+      console.error('Error cancelling job:', error);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -121,10 +156,8 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
 
       const reportData = await response.json();
 
-      // Download PDF for each selected model
       for (const modelName of selectedModelNames) {
         await generatePDFForModel(modelName, reportData);
-        // Add a small delay between downloads to prevent browser blocking
         await new Promise(resolve => setTimeout(resolve, 800));
       }
 
@@ -155,11 +188,9 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
       return;
     }
 
-    // Set the current report data and model name
     setCurrentReportData({ models: { [modelName]: modelData }, project: projectData, dataset: datasetData });
     setCurrentModelName(modelName);
 
-    // Wait for React to render the component
     await new Promise(resolve => setTimeout(resolve, 300));
 
     if (!reportRef.current) {
@@ -178,8 +209,8 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
       });
       
       const imgData = canvas.toDataURL("image/png");
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 297; // A4 height in mm
+      const imgWidth = 210;
+      const pageHeight = 297;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       let heightLeft = imgHeight;
       let position = 0;
@@ -190,11 +221,9 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
         format: "a4",
       });
 
-      // Add first page
       pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
 
-      // Add additional pages if content is longer
       while (heightLeft > 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
@@ -226,6 +255,15 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
               <X size={24} />
             </button>
           </div>
+
+          {alreadyStartedCount !== null && alreadyStartedCount > 0 && (
+            <div className="mx-6 mt-4 flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <AlertTriangle size={16} className="text-amber-500 flex-shrink-0" />
+              <p className="text-sm text-amber-800">
+                <strong>{alreadyStartedCount}</strong> model{alreadyStartedCount > 1 ? 's are' : ' is'} still running. You can proceed now or wait for all models to finish.
+              </p>
+            </div>
+          )}
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-6">
