@@ -271,11 +271,8 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
           <button
             onClick={handleClose}
             disabled={isIngesting}
-            className="px-4 py-2 rounded-md border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-satoshi text-sm font-medium leading-none tracking-normal"
-            style={{
-              color: '#8E77BB',
-              boxShadow: '0 1px 3px 0 rgba(0,0,0,0.10), 0 1px 2px -1px rgba(0,0,0,0.06)',
-            }}
+            className={`${tw.secondaryButton} px-4 py-2 rounded-md border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+           
           >
             Cancel
           </button>

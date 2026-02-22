@@ -1,8 +1,8 @@
 export const aithemestyle = {
     statsCardGradient: 'from-[#2B125C] via-[#8E77BB] to-[#EFE7FF]',
     iconColor: '#8E77BB',
-    trendup:'#82BC66',
-    trendDown:'#DF7E39',
+    trendup: '#82BC66',
+    trendDown: '#DF7E39',
     piechart: {
         good: '#82BC66',
         average: '#FFEFC7',
@@ -29,9 +29,9 @@ export const aithemestyle = {
     recentActivityStatus: {
         deployed: { bg: '#F9E1D6', text: '#000000' },
         archived: { bg: '#F9EDC1', text: '#000000' },
-        active:   { bg: '#2AC79240', text: '#000000' },
+        active: { bg: '#2AC79240', text: '#000000' },
         inactive: { bg: '#F276A74D', text: '#000000' },
-        default:  { bg: '#E5E7EB', text: '#000000' }
+        default: { bg: '#E5E7EB', text: '#000000' }
     },
     agentIconColors: [
         { icon: '#D3967A', bg: '#F9E1D6' },
@@ -53,13 +53,15 @@ export const aithemestyle = {
 }
 
 export const tw = {
-    pageHeading:    'font-satoshi text-2xl font-medium text-[#332849] leading-none tracking-normal',
+    pageHeading: 'font-satoshi text-2xl font-medium text-[#332849] leading-none tracking-normal',
     sectionHeading: 'font-satoshi text-base font-medium text-[#332849] leading-none tracking-normal',
-    cardTitle:      'font-satoshi text-sm font-medium text-[#332849] leading-none tracking-normal',
-    label:          'font-satoshi text-sm font-normal text-[#332849] leading-none tracking-normal',
-    body:           'font-satoshi text-base font-normal text-[#818181] leading-none tracking-normal',
-    caption:        'font-satoshi text-xs font-normal text-[#818181] leading-none tracking-normal',
-    icon:           'text-[#818181]'
+    cardTitle: 'font-satoshi text-sm font-medium text-[#332849] leading-none tracking-normal',
+    label: 'font-satoshi text-sm font-normal text-[#332849] leading-none tracking-normal',
+    body: 'font-satoshi text-base font-normal text-[#818181] leading-none tracking-normal',
+    caption: 'font-satoshi text-xs font-normal text-[#818181] leading-none tracking-normal',
+    icon: 'text-[#818181]',
+    resetIcon: 'bg-[#EF4D5F]',
+    secondaryButton: 'text-[#8e78b7] border border-[#8e78b7] shadow-[0_1px_4px_0_rgba(142,120,183,0.15)] font-satoshi text-sm font-medium leading-none tracking-normal'
 };
 
 export const backgrounds = {
