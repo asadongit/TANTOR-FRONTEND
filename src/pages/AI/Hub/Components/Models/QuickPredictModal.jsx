@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, ChevronDown, ChevronUp } from 'lucide-react';
 
 const QuickPredictModal = ({ isOpen, onClose, modelData }) => {
+  console.log('Model Data in Modal:', modelData);
   const [selectedView, setSelectedView] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [activeTab, setActiveTab] = useState('data-drift');
@@ -64,7 +65,19 @@ const QuickPredictModal = ({ isOpen, onClose, modelData }) => {
           <div className="space-y-2">
             <div className="text-sm text-gray-600">
               <span className="font-medium">Model Name:</span>{' '}
-              <span className="text-[#8e78b7]">{modelData?.name || 'Project - Analysis'}</span>
+              <span className="text-[#8e78b7]">{modelData?.run_name || 'Project - Analysis'}</span>
+            </div>
+            <div className="text-sm text-gray-600">
+              <span className="font-medium">Model ID:</span>{' '}
+              <span className="text-[#8e78b7]">{modelData?.id || 'N/A'}</span>
+            </div>
+            <div className="text-sm text-gray-600">
+              <span className="font-medium">Project:</span>{' '}
+              <span className="text-[#8e78b7]">{modelData?.project_name || 'N/A'}</span>
+            </div>
+            <div className="text-sm text-gray-600">
+              <span className="font-medium">Status:</span>{' '}
+              <span className="text-[#8e78b7]">{modelData?.status || 'N/A'}</span>
             </div>
             <p className="text-sm text-gray-600">
               Run a quick prediction using a sample or uploaded dataset and review drift insights before proceeding.
