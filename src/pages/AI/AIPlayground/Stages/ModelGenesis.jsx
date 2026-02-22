@@ -3,7 +3,8 @@ import { AIPlaygroundLayout } from '../AIPlaygroundLayout';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAIPlayground } from '../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
-import { Check, X, Search, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
+import { Check, X, Search, ChevronDown, ChevronUp, AlertCircle, CheckCircle } from 'lucide-react';
+import { tw, backgrounds } from '../../../../components/themeContext';
 
 const RadioButton = ({ label, checked, onChange, name, readonly }) => (
   <label
@@ -32,7 +33,7 @@ const RadioButton = ({ label, checked, onChange, name, readonly }) => (
 const Section = ({ title, children, className = '' }) => (
   <div className={`bg-white ${className}`}>
     <h3 className="text-lg font-semibold text-gray-900 mb-4">
-      {title} {title !== "Fairness Attribute" && title !== "Drop Columns" && <span className="text-red-500">*</span>}
+      {title} {title !== "Fairness Attribute" && title !== "Drop Columns"}
     </h3>
     {children}
   </div>
@@ -42,26 +43,47 @@ const NotebookModeModal = ({ isOpen, onCancel, onContinue, readonly }) => {
   if (!isOpen || readonly) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black bg-opacity-50" onClick={onCancel}></div>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+      {/* Backdrop - full cover */}
+      <div
+        className="fixed inset-0 bg-black/50"
+        onClick={onCancel}
+      />
 
-      <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-        <button onClick={onCancel} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-          <X className="w-5 h-5" />
-        </button>
+      {/* Modal */}
+      <div className="relative z-10 bg-white rounded-lg shadow-xl w-[440px] mx-4 overflow-hidden">
 
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">Switch to Notebook Mode?</h3>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4">
+          <h3 className="text-base font-semibold text-gray-900 m-0 p-0">
+            Switch to Notebook Mode?
+          </h3>
+          <button
+            onClick={onCancel}
+            className="text-gray-400 hover:text-gray-600 flex items-center justify-center"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Divider */}
+        <div className="h-px bg-gray-100 mx-5" />
+
+        {/* Body */}
+        <div className="px-5 py-4">
           <p className="text-sm text-gray-600 leading-relaxed">
             In Notebook mode, all pipeline setup and execution must be done through code instead of the visual workflow.
           </p>
-          <p className="text-sm text-gray-600 leading-relaxed mt-2">Do you want to continue?</p>
+          <p className="text-sm text-gray-600 leading-relaxed mt-2">
+            Do you want to continue?
+          </p>
         </div>
 
-        <div className="flex justify-end gap-3">
+        {/* Footer */}
+        <div className="flex justify-end gap-3 px-5 pb-5">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-4 py-2 bg-white border border-[#8e78b7] rounded-lg hover:bg-gray-50 transition-colors text-[#8e78b7] text-sm font-medium"
           >
             Cancel
           </button>
@@ -119,7 +141,7 @@ const SearchableSelect = ({ value, onChange, options, placeholder, disabled, rea
         type="button"
         disabled={disabled || readonly}
         onClick={() => !disabled && !readonly && setIsOpen(!isOpen)}
-        className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-left focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent bg-white flex items-center justify-between ${disabled || readonly ? 'cursor-not-allowed opacity-50 bg-gray-50' : 'hover:border-gray-400'
+        className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-left focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent bg-white flex items-center justify-between ${disabled || readonly ? 'cursor-not-allowed opacity-50 bg-[#FAFAFA]' : 'hover:border-gray-400'
           }`}
       >
         <span className={value ? 'text-gray-700' : 'text-gray-500'}>
@@ -245,7 +267,7 @@ const SearchableMultiSelect = ({ selectedOptions, onChange, options, maxSelectio
           type="button"
           disabled={isDisabled}
           onClick={() => !isDisabled && setIsOpen(!isOpen)}
-          className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-left focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent bg-white flex items-center justify-between ${isDisabled ? 'cursor-not-allowed opacity-50 bg-gray-50' : 'hover:border-gray-400'
+          className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-left focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent bg-white flex items-center justify-between ${isDisabled ? 'cursor-not-allowed opacity-50 bg-[#FAFAFA]' : 'hover:border-gray-400'
             }`}
         >
           <span className="text-gray-600">
@@ -355,7 +377,7 @@ const ModeSelection = ({ config, setConfig, readonly }) => {
       <Section title="Mode Selection">
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_auto_1fr] gap-4">
           <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
-            <div className="grid grid-cols-[1fr_1fr_1fr] bg-gray-50 border-b border-gray-200">
+            <div className="grid grid-cols-[1fr_1fr_1fr] bg-[#FAFAFA] border-b border-gray-200">
               <div className="px-4 py-3 text-sm font-medium text-gray-700 border-r border-gray-200">
                 Feature Type
               </div>
@@ -366,7 +388,7 @@ const ModeSelection = ({ config, setConfig, readonly }) => {
             </div>
 
             <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-gray-200">
-              <div className="px-4 bg-gray-50 py-4 text-sm text-gray-700 border-r border-gray-200 flex items-center">
+              <div className="px-4 bg-[#FAFAFA] py-4 text-sm text-gray-700 border-r border-gray-200 flex items-center">
                 Data Pre-processing
               </div>
 
@@ -406,7 +428,7 @@ const ModeSelection = ({ config, setConfig, readonly }) => {
             </div>
 
             <div className="grid grid-cols-[1fr_1fr_1fr]">
-              <div className="px-4 bg-gray-50 py-4 text-sm text-gray-700 border-r border-gray-200 flex items-center">
+              <div className="px-4 bg-[#FAFAFA] py-4 text-sm text-gray-700 border-r border-gray-200 flex items-center">
                 Model Selection
               </div>
 
@@ -453,34 +475,43 @@ const ModeSelection = ({ config, setConfig, readonly }) => {
           </div>
 
           <div className="flex items-stretch">
-            <div className="border border-gray-200 rounded-lg p-5 w-full bg-white">
-              <div className="mb-4">
-                <div className="text-sm font-medium text-gray-700 mb-4">Notebook Mode</div>
-                <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
-                  <span className="text-sm text-gray-700">Notebook</span>
-
-                  <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-                    <input
-                      type="checkbox"
-                      checked={config.notebookMode}
-                      disabled={readonly}
-                      onChange={readonly ? undefined : (e) => handleNotebookToggle(e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
-                  </label>
-                </div>
+            <div className="border border-gray-200 rounded-lg w-full bg-white overflow-hidden">
+              {/* Header */}
+              <div className="px-4 py-3 border-b border-gray-200 bg-[#FAFAFA]">
+                <div className="text-sm font-medium text-gray-800">Notebook Mode</div>
               </div>
 
-              <div className="space-y-2 text-sm text-gray-600">
-                <p className="flex items-start gap-2">
-                  <span className="text-gray-400 mt-0.5">•</span>
-                  <span>Work in a dedicated notebook environment for full code-based control.</span>
-                </p>
-                <p className="flex items-start gap-2">
-                  <span className="text-gray-400 mt-0.5">•</span>
-                  <span>Your pipeline must be defined and executed entirely through code.</span>
-                </p>
+              {/* Body */}
+              <div className="p-3 bg-white">
+                {/* Inner card */}
+                <div className="rounded-lg bg-[#FAFAFA] p-4">
+                  {/* Toggle row */}
+                  <div className="flex items-center justify-between bg-white rounded-lg px-4 py-2.5 mb-4">
+                    <span className="text-sm text-gray-700">Notebook</span>
+                    <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                      <input
+                        type="checkbox"
+                        checked={config.notebookMode}
+                        disabled={readonly}
+                        onChange={readonly ? undefined : (e) => handleNotebookToggle(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
+                    </label>
+                  </div>
+
+                  {/* Bullet points */}
+                  <div className="space-y-1.5 text-sm text-gray-500">
+                    <p className="flex items-start gap-2">
+                      <span className="mt-0.5">•</span>
+                      <span>Work in a dedicated notebook environment for full code-based control.</span>
+                    </p>
+                    <p className="flex items-start gap-2">
+                      <span className="mt-0.5">•</span>
+                      <span>Your pipeline must be defined and executed entirely through code.</span>
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -575,7 +606,7 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
   const isValidateDisabled = !config.classification || !config.targetFeature || isValidating;
 
   return (
-    <Section title="Prediction Type" className="!bg-gray-50 p-6 rounded-lg border border-gray-200">
+    <Section title="Prediction Type" className="!bg-[#FAFAFA] p-6 rounded-lg ">
       <div className="flex gap-1 border-b border-gray-300 -mx-6 px-6">
         {tabs.map((tab) => (
           <button
@@ -593,11 +624,11 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
       </div>
 
       {config.predictionType === 'Supervised' && (
-        <div className="bg-gray-50 rounded-lg p-6 -mx-6 -mb-6 mt-0 pt-6">
+        <div className="bg-[#FAFAFA] rounded-lg p-6 -mx-6 -mb-6 mt-0 pt-6">
           <h4 className="text-sm font-semibold text-gray-900 mb-5">Supervised Learning Configuration</h4>
 
           <div className="grid grid-cols-1 md:grid-cols-[60%_40%] gap-3">
-            <div className="bg-white border border-gray-200 rounded-lg p-5">
+            <div className="bg-white rounded-lg p-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">Classification</label>
@@ -634,7 +665,7 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
               </div>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-lg p-5">
+            <div className="bg-white rounded-lg p-5">
               <label className="block text-sm font-medium text-gray-700 mb-3">Target Feature</label>
               {getAvailableTargetColumns().length > 0 ? (
                 <SearchableSelect
@@ -655,7 +686,7 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
                   readonly={readonly}
                 />
               ) : (
-                <div className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-500 bg-gray-50">
+                <div className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-500 bg-[#FAFAFA]">
                   No columns available
                 </div>
               )}
@@ -680,7 +711,7 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
                 </>
               ) : isValidated ? (
                 <>
-                  Validated <Check className="w-5 h-5" />
+                  Validated <CheckCircle className="w-5 h-5" />
                 </>
               ) : (
                 'Validate'
@@ -712,7 +743,7 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
   };
 
   return (
-    <Section title="Split Setting" className="!bg-gray-50 p-6 rounded-lg border border-gray-200">
+    <Section title="Split Setting" className="!bg-[#FAFAFA] p-6 rounded-lg">
       <div className="space-y-6">
         <div>
           <div className="flex justify-between items-center mb-2">
@@ -727,8 +758,9 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
         </div>
 
         <div className="grid grid-cols-2 gap-6">
-          <div>
-            <div className="flex justify-between items-center mb-2">
+          {/* Train Card */}
+          <div className="bg-white rounded-lg p-3">
+            <div className="flex justify-between items-center mb-3">
               <span className="text-sm font-medium text-gray-700">Train</span>
             </div>
             <div className="flex items-center gap-3">
@@ -743,8 +775,7 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
                     ? undefined
                     : (e) => handleSliderChange('train', parseInt(e.target.value))
                 }
-                className={`flex-1 h-2 bg-gray-200 rounded-lg appearance-none ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'
-                  }`}
+                className={`flex-1 h-2 bg-gray-200 rounded-lg appearance-none ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                 style={{
                   background: `linear-gradient(to right, #8e78b7 0%, #8e78b7 ${config.trainSplit}%, #e5e7eb ${config.trainSplit}%, #e5e7eb 100%)`
                 }}
@@ -753,8 +784,9 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
             </div>
           </div>
 
-          <div>
-            <div className="flex justify-between items-center mb-2">
+          {/* Test Card */}
+          <div className="bg-white rounded-lg p-3">
+            <div className="flex justify-between items-center mb-3">
               <span className="text-sm font-medium text-gray-700">Test</span>
             </div>
             <div className="flex items-center gap-3">
@@ -769,8 +801,7 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
                     ? undefined
                     : (e) => handleSliderChange('test', parseInt(e.target.value))
                 }
-                className={`flex-1 h-2 bg-gray-200 rounded-lg appearance-none ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'
-                  }`}
+                className={`flex-1 h-2 bg-gray-200 rounded-lg appearance-none ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                 style={{
                   background: `linear-gradient(to right, #fc842eff 0%, #fc842eff ${config.testSplit}%, #e5e7eb ${config.testSplit}%, #e5e7eb 100%)`
                 }}
@@ -781,7 +812,7 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
         </div>
 
         <div className="bg-white border border-[#8e78b7] rounded-md p-2">
-          <p className="text-sm ">
+          <p className="text-sm">
             <span className="font-medium text-[#8e78b7]">Note:</span> To proceed, make sure the Train and Test
             percentages together equal 100%. You can adjust the sliders to balance the data as needed.
           </p>
@@ -809,16 +840,18 @@ const FairnessAttribute = ({ config, setConfig, readonly, columnNames = [] }) =>
   };
 
   return (
-    <Section title="Fairness Attribute" className="!bg-gray-50 p-6 rounded-lg border border-gray-200">
-      <SearchableMultiSelect
-        selectedOptions={config.fairness_columns}
-        onChange={handleFairnessChange}
-        options={getAvailableFairnessColumns()}
-        maxSelections={3}
-        disabled={false}
-        readonly={readonly}
-        excludeOption=""
-      />
+    <Section title="Fairness Attribute" className="!bg-[#FAFAFA] p-6 rounded-lg">
+      <div className="w-1/2">
+        <SearchableMultiSelect
+          selectedOptions={config.fairness_columns}
+          onChange={handleFairnessChange}
+          options={getAvailableFairnessColumns()}
+          maxSelections={3}
+          disabled={false}
+          readonly={readonly}
+          excludeOption=""
+        />
+      </div>
     </Section>
   );
 };
@@ -838,7 +871,6 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [] }) => {
     const targetFeature = config.targetFeature || '';
 
     return columnNames.filter(name =>
-      !selectedDropColumns.includes(name) &&
       !fairnessColumns.includes(name) &&
       name !== targetFeature
     );
@@ -848,6 +880,10 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [] }) => {
     option.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const selectedDropColumns = config.drop_columns || [];
+  const allFilteredSelected = filteredOptions.length > 0 && filteredOptions.every(opt => selectedDropColumns.includes(opt));
+  const someFilteredSelected = filteredOptions.some(opt => selectedDropColumns.includes(opt));
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -855,7 +891,6 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [] }) => {
         setSearchTerm('');
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -868,57 +903,78 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [] }) => {
 
   const handleToggle = () => {
     if (readonly) return;
-
     const newToggleState = !config.drop_columns_active;
     setConfig({
       ...config,
       drop_columns_active: newToggleState,
       drop_columns: newToggleState ? (config.drop_columns || []) : []
     });
-
-    if (newToggleState) {
-      setIsExpanded(true);
-    } else {
-      setIsExpanded(false);
-    }
+    setIsExpanded(newToggleState);
   };
 
-  const handleSelect = (columnName) => {
-    if (!readonly) {
-      const newDropColumns = [...(config.drop_columns || []), columnName];
+  const handleCheckboxChange = (columnName, checked) => {
+    if (readonly) return;
 
-      // Remove from target feature if it matches
-      const newTargetFeature = config.targetFeature === columnName ? '' : config.targetFeature;
-
-      // Remove from fairness columns if included
-      const newFairnessColumns = config.fairness_columns.filter(col => col !== columnName);
-
-      setConfig({
-        ...config,
-        drop_columns: newDropColumns,
-        targetFeature: newTargetFeature,
-        fairness_columns: newFairnessColumns
-      });
-
-      setSearchTerm('');
-      setIsOpen(false);
+    let newDropColumns;
+    if (checked) {
+      newDropColumns = [...selectedDropColumns, columnName];
+    } else {
+      newDropColumns = selectedDropColumns.filter(col => col !== columnName);
     }
+
+    const newTargetFeature = checked && config.targetFeature === columnName ? '' : config.targetFeature;
+    const newFairnessColumns = checked
+      ? config.fairness_columns.filter(col => col !== columnName)
+      : config.fairness_columns;
+
+    setConfig({
+      ...config,
+      drop_columns: newDropColumns,
+      targetFeature: newTargetFeature,
+      fairness_columns: newFairnessColumns
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (readonly) return;
+
+    let newDropColumns;
+    if (allFilteredSelected) {
+      // Deselect all filtered options
+      newDropColumns = selectedDropColumns.filter(col => !filteredOptions.includes(col));
+    } else {
+      // Select all filtered options
+      const toAdd = filteredOptions.filter(opt => !selectedDropColumns.includes(opt));
+      newDropColumns = [...selectedDropColumns, ...toAdd];
+    }
+
+    const newFairnessColumns = config.fairness_columns.filter(col => !newDropColumns.includes(col));
+    const newTargetFeature = newDropColumns.includes(config.targetFeature) ? '' : config.targetFeature;
+
+    setConfig({
+      ...config,
+      drop_columns: newDropColumns,
+      fairness_columns: newFairnessColumns,
+      targetFeature: newTargetFeature
+    });
   };
 
   const handleRemove = (columnName) => {
     if (!readonly) {
-      const newDropColumns = (config.drop_columns || []).filter(col => col !== columnName);
+      const newDropColumns = selectedDropColumns.filter(col => col !== columnName);
       setConfig({ ...config, drop_columns: newDropColumns });
     }
   };
 
   return (
-    <div className="bg-gray-50 rounded-lg border border-gray-200">
+    <div className="bg-[#FAFAFA] rounded-lg">
       <div className="p-4 flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Drop Columns</h3>
-            <p className='text-sm text-gray-600 mt-2 mryyy-2'>Drop Column is the process of removing a feature that is irrelevant, redundant, or low in informational value. This helps reduce noise and improves model efficiency.</p>
-          </div>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">Drop Columns</h3>
+          <p className='text-sm text-gray-600 mt-2'>
+            Drop Column is the process of removing a feature that is irrelevant, redundant, or low in informational value. This helps reduce noise and improves model efficiency.
+          </p>
+        </div>
         <div className="flex items-center gap-3">
           <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
             <input
@@ -945,7 +1001,7 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [] }) => {
         <div className="px-4 pb-4 border-t border-gray-100">
           <div className="mt-4 space-y-4">
             <div>
-              <label className="text-xs font-medium text-gray-600 mb-2 block">Select Column to Drop</label>
+              <label className="text-xs font-medium text-gray-600 mb-2 block">Select Columns to Drop</label>
               <div className="relative" ref={dropdownRef}>
                 <button
                   type="button"
@@ -953,14 +1009,19 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [] }) => {
                   onClick={() => !readonly && setIsOpen(!isOpen)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-left focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent bg-white flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span className="text-gray-500">Search and select column...</span>
+                  <span className="text-gray-500">
+                    {selectedDropColumns.length > 0
+                      ? `${selectedDropColumns.length} column(s) selected`
+                      : 'Search and select columns...'}
+                  </span>
                   <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
 
                 {isOpen && !readonly && (
-                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg overflow-hidden">
+                    {/* Search */}
                     <div className="p-2 border-b border-gray-200">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -975,20 +1036,46 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [] }) => {
                       </div>
                     </div>
 
-                    <div className="overflow-y-auto max-h-48">
+                    {/* Select All */}
+                    {filteredOptions.length > 0 && (
+                      <div className="px-3 py-2 border-b border-gray-100">
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={allFilteredSelected}
+                            ref={el => {
+                              if (el) el.indeterminate = !allFilteredSelected && someFilteredSelected;
+                            }}
+                            onChange={handleSelectAll}
+                            className="w-4 h-4 rounded border-gray-300 accent-[#8e78b7] cursor-pointer"
+                          />
+                          <span className="text-sm font-medium text-gray-700">Select All</span>
+                          <span className="text-xs text-gray-400 ml-auto">
+                            {filteredOptions.filter(o => selectedDropColumns.includes(o)).length}/{filteredOptions.length}
+                          </span>
+                        </label>
+                      </div>
+                    )}
+
+                    {/* Options — increased height so last item isn't cut off */}
+                    <div className="overflow-y-auto" style={{ maxHeight: '220px' }}>
                       {filteredOptions.length > 0 ? (
                         filteredOptions.map((option) => (
-                          <button
+                          <label
                             key={option}
-                            type="button"
-                            onClick={() => handleSelect(option)}
-                            className="w-full px-3 py-2 text-sm text-left hover:bg-gray-100 transition-colors text-gray-700"
+                            className="flex items-center gap-2 px-3 py-2.5 hover:bg-gray-50 cursor-pointer select-none border-b border-gray-50 last:border-b-0"
                           >
-                            {option}
-                          </button>
+                            <input
+                              type="checkbox"
+                              checked={selectedDropColumns.includes(option)}
+                              onChange={(e) => handleCheckboxChange(option, e.target.checked)}
+                              className="w-4 h-4 rounded border-gray-300 accent-[#8e78b7] cursor-pointer flex-shrink-0"
+                            />
+                            <span className="text-sm text-gray-700">{option}</span>
+                          </label>
                         ))
                       ) : (
-                        <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                        <div className="px-3 py-3 text-sm text-gray-500 text-center">
                           {getAvailableColumns().length === 0 ? 'No more columns available' : 'No results found'}
                         </div>
                       )}
@@ -998,11 +1085,12 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [] }) => {
               </div>
             </div>
 
-            {config.drop_columns && config.drop_columns.length > 0 && (
+            {/* Selected tags */}
+            {selectedDropColumns.length > 0 && (
               <div>
                 <label className="text-xs font-medium text-gray-600 mb-2 block">Selected Columns</label>
                 <div className="flex flex-wrap gap-2">
-                  {config.drop_columns.map(column => (
+                  {selectedDropColumns.map(column => (
                     <span
                       key={column}
                       className="inline-flex items-center gap-1 px-3 py-1 bg-white border border-gray-300 text-gray-700 text-sm rounded-md"

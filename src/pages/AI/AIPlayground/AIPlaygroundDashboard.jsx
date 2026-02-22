@@ -412,7 +412,7 @@ const AIPlayground = () => {
   };
 
   return (
-    <div className={`min-h-screen ${backgrounds.page} p-6 font-sans`}>
+    <div className={`h-full overflow-y-auto ${backgrounds.page} p-6 font-satoshi`}>
 
       {showCancelModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
