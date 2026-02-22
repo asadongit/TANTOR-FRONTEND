@@ -213,7 +213,7 @@ function DataPreprocessing() {
             {!(currentStep === 7 && isStep7Preview) && (
               <div className="w-full lg:w-72 flex-shrink-0">
                 <div className="bg-white rounded-lg p-4 lg:p-6 border border-gray-200">
-                  <h3 className="bg-gray-100 text-sm font-medium text-gray-700 mb-2 px-3 py-2 rounded-md">
+                  <h3 className="bg-[#FAFAFA] text-sm font-medium text-gray-700 mb-2 px-3 py-2 rounded-md">
                     Pre-processing Steps <span className="text-gray-400 ml-2">{currentStep} of {preprocessingSteps.length}</span>
                   </h3>
 
