@@ -47,7 +47,6 @@ function Snapshot({ datasetData }) {
 
     return (
         <div>
-            <h2 className="text-lg font-semibold mb-4">Snapshot</h2>
             {loading && <div>Loading...</div>}
             {error && <div className="text-red-500">{error}</div>}
             {!loading && !error && (

@@ -37,14 +37,14 @@ function Overview({ modelData }) {
   };
 
   const InfoCard = ({ label, value }) => (
-    <div className="bg-white rounded-lg p-4 border border-gray-200">
-      <p className="text-xs text-gray-500 mb-1">{label}</p>
-      <p className="text-sm font-semibold text-gray-800 break-words">{value}</p>
+    <div className="bg-white rounded-lg p-4 space-y-2">
+      <p className="text-xs text-gray-500">{label}</p>
+      <p className="text-sm text-gray-900 font-medium break-words">{value}</p>
     </div>
   );
 
   return (
-    <div className="space-y-4">
+    <div className="bg-gray-50 p-6 rounded-xl">
       <div className="grid grid-cols-3 gap-4">
         <InfoCard label="Name" value={overviewData.name} />
         <InfoCard label="Description" value={overviewData.description} />

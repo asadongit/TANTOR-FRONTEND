@@ -1,5 +1,5 @@
 import { FileText, Database, FolderKanban, Box, Scale, ArrowUp, ArrowDown, Info, Activity, Search, List, RefreshCw, BookOpenText, Archive, Trash2, Rocket, Palette, BookOpen, Gauge, LayoutGrid, Loader2 } from 'lucide-react';
-import { PieChart, Pie, Cell } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { useState, useMemo, useEffect } from 'react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import DataTable from '../../../components/DataTable';
@@ -13,7 +13,10 @@ import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 import { updateRecentAccess, unarchiveEntity } from './Components/Hooks';
 import StatusFilterDropdown from './Components/StateSelector';
 import { toast } from 'react-hot-toast';
-
+import { aithemestyle } from '../../../components/themeContext';
+import DatasetsIcon from '../../../assets/ai/datadataseticon.svg';
+import SizeIcon from '../../../assets/ai/datasizeicon.svg';
+import AdditionIcons from '../../../assets/ai/dataadditionicon.svg';
 
 
 const Data = () => {
@@ -133,17 +136,15 @@ const Data = () => {
   const statsData = useMemo(() => {
     if (dashboardLoading || !dashboardData) {
       return [
-        // { label: 'Sources', value: null, icon: FileText },
-        { label: 'Datasets', value: null, icon: Database },
-        { label: 'Size (GB)', value: null, icon: Box },
-        { label: 'Additions (1week)', value: null, icon: FolderKanban },
+        { label: 'Datasets', value: null, icon: DatasetsIcon },
+        { label: 'Size (GB)', value: null, icon: SizeIcon },
+        { label: 'Additions (1week)', value: null, icon: AdditionIcons },
       ];
     }
     return [
-      // { label: 'Sources', value: dashboardData.counts.sources.current.toString(), icon: FileText },
-      { label: 'Datasets', value: dashboardData.counts.datasets.current.toString(), icon: Database },
-      { label: 'Size (GB)', value: dashboardData.metrics.dataset_size_gb.current.toString(), icon: Box },
-      { label: 'Additions (1week)', value: dashboardData.weekly_additions?.datasets_added_last_7_days?.toString() ?? "0", icon: FolderKanban },
+      { label: 'Datasets', value: dashboardData.counts.datasets.current.toString(), icon: DatasetsIcon },
+      { label: 'Size (GB)', value: dashboardData.metrics.dataset_size_gb.current.toString(), icon: SizeIcon },
+      { label: 'Additions (1week)', value: dashboardData.weekly_additions?.datasets_added_last_7_days?.toString() ?? "0", icon: AdditionIcons },
     ];
   }, [dashboardData, dashboardLoading]);
 
@@ -159,9 +160,9 @@ const Data = () => {
   }, [recentAccessed]);
 
   const qualityData = [
-    { name: 'Good', value: 45, color: '#10B981' },
-    { name: 'Average', value: 30, color: '#FBBF24' },
-    { name: 'Poor', value: 25, color: '#EF4444' },
+    { name: 'Good', value: 45, color: aithemestyle.piechart.good },
+    { name: 'Average', value: 30, color: aithemestyle.piechart.average },
+    { name: 'Poor', value: 25, color: aithemestyle.piechart.poor },
   ];
 
   const handleSearchChange = (e) => {
@@ -186,23 +187,23 @@ const Data = () => {
       key: 'file_name',
       label: 'Name',
       sortable: true,
-      width: '300px',
+      width: '200px',
       render: (row) => (
         <span
-          className="block min-w-0 whitespace-normal break-words text-[#8e78b7] hover:underline cursor-pointer"
+          className="block min-w-0 whitespace-normal break-words hover:underline cursor-pointer"
           onClick={() => handleLibrary(row)}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => e.key === 'Enter' && handleLibrary(row)}
           title={row.file_name ?? ''}
-          style={{ overflowWrap: 'anywhere' }}
+          style={{ overflowWrap: 'anywhere', color: aithemestyle.iconColor }}
         >
           {row.file_name}
         </span>
       ),
     },
     { key: 'created_at', label: 'Created Date', sortable: true, render: (row) => new Date(row.created_at).toLocaleDateString('en-GB') },
-    { key: 'last_used_at', label: 'Last Used Date', sortable: true, render: (row) => row.updated_at ? new Date(row.updated_at).toLocaleDateString('en-GB') : '' },
+    { key: 'last_used_at', label: 'Last Used', width: '100px', sortable: true, render: (row) => row.updated_at ? new Date(row.updated_at).toLocaleDateString('en-GB') : '' },
     { key: 'size_mb', label: 'Size', width: '100px', sortable: true, render: (row) => (row?.size_mb ?? row?.size_mb === 0) ? `${row.size_mb} MB` : '' },
     { key: 'row_count', width: '100px', label: 'Rows', sortable: true },
     { key: 'column_count', width: '100px', label: 'Columns', sortable: true },
@@ -212,7 +213,7 @@ const Data = () => {
       key: 'status',
       label: 'Status',
       sortable: true,
-      width: '120px',
+      width: '100px',
       render: (row) => {
         const status = String(row.status || '').toLowerCase();
         let statusClass = '';
@@ -236,7 +237,7 @@ const Data = () => {
         );
       },
     },
-    { label: 'Action', sortable: false },
+    { label: 'Action', width: '50px', sortable: false },
   ];
 
   const handleDelete = (row) => {
@@ -537,7 +538,7 @@ const Data = () => {
   const StatsCardSimple = ({ label, value, icon: Icon }) => (
     <div className="bg-white rounded-xl px-4 py-4 border border-purple-200 flex items-center min-h-[80px] min-w-0">
       <div className="flex items-center gap-2 flex-1 min-w-0">
-        <Icon className="w-4 h-4 text-[#8e78b7] shrink-0" />
+        <img src={Icon} alt={label} width={24} height={24} className="shrink-0 mr-1" />
         <span className="text-black text-sm font-medium truncate">{label}</span>
       </div>
       <div className="flex items-center justify-end ml-2 shrink-0">
@@ -557,7 +558,7 @@ const Data = () => {
       <div className={`bg-white rounded-lg p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow ${className}`}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-[#8e78b7]" />
+            <Icon className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: aithemestyle.iconColor }} />
             <span className="text-gray-700 font-medium text-sm sm:text-base">{title}</span>
           </div>
           <div className="relative">
@@ -622,7 +623,17 @@ const Data = () => {
       <Breadcrumb skipLinkSegments={['hub']} />
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <h1 className="text-2xl sm:text-3xl font-medium text-gray-900">Data</h1>
+        <h1
+          style={{
+            fontWeight: 700,
+            fontStyle: 'bold',
+            fontSize: '24px',
+            lineHeight: '100%'
+          }}
+          className="text-gray-900"
+        >
+          Data
+        </h1>
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="relative">
             <StatusFilterDropdown
@@ -670,7 +681,7 @@ const Data = () => {
         {!isTableView && (
           <>
             {/* --- Updated Stats Card Row --- */}
-            <div className="bg-gradient-to-r from-[#8e78b7] via-purple-300 to-purple-100 rounded-xl p-4">
+            <div className={`bg-gradient-to-r ${aithemestyle.statsCardGradient} rounded-xl p-4`}>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {statsData.map((stat, index) => (
                   <StatsCardSimple
@@ -684,39 +695,61 @@ const Data = () => {
             </div>
             {/* --- End Stats Card Row --- */}
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <ChartCard
                 title="Quality"
                 icon={Scale}
                 infoText="Data quality distribution across all datasets"
+                className="lg:col-span-2"
               >
                 <div className="flex flex-col items-center w-full">
-                  <div className="w-full max-w-[350px] mx-auto">
-                    <PieChart width={280} height={150}>
-                      <Pie
-                        data={qualityData}
-                        cx={138}
-                        cy={148}
-                        startAngle={180}
-                        endAngle={0}
-                        innerRadius={120}
-                        outerRadius={130}
-                        dataKey="value"
-                      >
-                        {qualityData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </div>
-                  <div className="flex items-end justify-center -mt-2">
-                    <div className="text-center mb-6">
-                      <div className="bg-[#8e78b7] text-white px-5 py-1 rounded-full text-xs font-medium">
+                  <div className="relative w-full">
+                    <ResponsiveContainer width="100%" height={200}>
+                      <PieChart>
+                        <defs>
+                          <linearGradient id="qualityInnerGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={aithemestyle.piechart.innerGradientFrom} />
+                            <stop offset="100%" stopColor={aithemestyle.piechart.innerGradientTo} />
+                          </linearGradient>
+                        </defs>
+                        <Pie
+                          data={qualityData}
+                          cx="50%"
+                          cy="100%"
+                          startAngle={180}
+                          endAngle={0}
+                          innerRadius={130}
+                          outerRadius={150}
+                          paddingAngle={3}
+                          dataKey="value"
+                        >
+                          {qualityData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Pie
+                          data={[{ value: 1 }]}
+                          cx="50%"
+                          cy="100%"
+                          startAngle={180}
+                          endAngle={0}
+                          innerRadius={0}
+                          outerRadius={129}
+                          dataKey="value"
+                          isAnimationActive={false}
+                          stroke="none"
+                        >
+                          <Cell fill="url(#qualityInnerGradient)" />
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
+                      <div className="text-white text-xs font-semibold px-5 py-1.5 rounded-full whitespace-nowrap" style={{ backgroundColor: aithemestyle.piechart.labelColor }}>
                         Good Quality
                       </div>
                     </div>
                   </div>
-                  <div className="flex justify-center gap-4">
+                  <div className="flex justify-center gap-6 mt-3">
                     {qualityData.map((item, index) => (
                       <div key={index} className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
@@ -731,26 +764,24 @@ const Data = () => {
                 title="Last Accessed"
                 icon={Activity}
                 infoText="Recently accessed datasets and their last access time"
+                className="lg:col-span-1"
               >
                 {recentAccessedLoading ? (
-                  <div className="py-8">
-                    <div className="space-y-3">
-                      {[...Array(5)].map((_, idx) => (
-                        <div key={idx} className="flex items-center justify-between px-2">
-                          <div className="h-4 bg-gray-200 rounded w-1/3 animate-pulse"></div>
-                          <div className="h-3 bg-gray-200 rounded w-1/4 mx-4 animate-pulse"></div>
-                          <div className="h-4 w-6 bg-gray-200 rounded animate-pulse"></div>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="space-y-3">
+                    {[...Array(5)].map((_, idx) => (
+                      <div key={idx} className="flex items-center justify-between px-2 py-2">
+                        <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+                        <div className="h-4 w-6 bg-gray-200 rounded animate-pulse"></div>
+                      </div>
+                    ))}
                   </div>
                 ) : recentAccessedError ? (
                   <div className="text-center py-8 text-red-500">{recentAccessedError}</div>
                 ) : lastAccessedData.length > 0 ? (
-                  <div className="max-h-[240px] overflow-y-auto">
+                  <div  style={{ maxHeight: '220px' }}>
                     {lastAccessedData.map((item, index) => (
                       <div key={index}>
-                        <div className="flex items-center gap-2 py-3 px-2 hover:bg-gray-50 min-w-0">
+                        <div className="flex items-center py-2.5 px-2 hover:bg-gray-50 min-w-0 gap-2">
                           <span
                             className="text-sm text-gray-700 flex-1 min-w-0 truncate cursor-pointer hover:underline"
                             onClick={() => handleLastAccessedClick(item)}
@@ -761,27 +792,25 @@ const Data = () => {
                           >
                             {item.name}
                           </span>
-                          <span className="text-xs text-gray-500 shrink-0 whitespace-nowrap">
+                          <span className="text-xs text-gray-400 shrink-0 w-[110px] text-right tabular-nums">
                             {item.accessed_at
                               ? item.accessed_at.toLocaleString('en-GB', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })
-                              : ''}
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                })
+                              : '—'}
                           </span>
                           <button
                             className="p-1 hover:bg-gray-100 rounded cursor-pointer shrink-0"
                             onClick={() => handleLastAccessedClick(item)}
                             title={`Open ${item.name}`}
                           >
-                            <BookOpenText className="w-4 h-4 text-[#8e78b7]" />
+                            <BookOpenText className="w-4 h-4" style={{ color: aithemestyle.iconColor }} />
                           </button>
                         </div>
                         {index < lastAccessedData.length - 1 && (
-                          <div className="border-b border-gray-200"></div>
+                          <div className="border-b border-gray-100"></div>
                         )}
                       </div>
                     ))}

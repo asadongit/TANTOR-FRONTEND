@@ -3,7 +3,14 @@ export const aithemestyle = {
     iconColor: '#8E77BB',
     trendup:'#82BC66',
     trendDown:'#DF7E39',
-    piechart: {},
+    piechart: {
+        good: '#82BC66',
+        average: '#FFEFC7',
+        poor: '#FF565680',
+        innerGradientFrom: '#EFE7FF',
+        innerGradientTo: '#FFFFFF',
+        labelColor: '#2B125C',
+    },
     modelLifecycleColors: {
         deployed: '#FF9500',
         saved: '#268EDD',
@@ -34,6 +41,14 @@ export const aithemestyle = {
     popularUsecaseColors: {
         iconBackground: '#E4F6FF',
         iconColor: '#5F83B0'
+    },
+    tab: {
+        activeBackground: '#FAF8FF',
+        activeBorderColor: '#8E77BB',
+        activeBorderWidth: '3px',
+        activeTextColor: '#8E77BB',
+        inactiveTextColor: '#818181',
+        fontSize: '16px'
     }
 }
 
