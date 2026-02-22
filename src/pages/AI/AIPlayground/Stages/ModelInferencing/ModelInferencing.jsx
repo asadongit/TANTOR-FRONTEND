@@ -3,25 +3,28 @@ import { AIPlaygroundLayout } from '../../AIPlaygroundLayout';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
+import { RefreshCw } from 'lucide-react';
 import BestModelCard from './BestModelCard';
 import MetricsChart from './MetricsChart';
 import PerformanceTab from './PerformanceTab';
-import { FairnessTab, ChartsTab } from './Fairnesschartstab'
+import { FairnessTab, ChartsTab } from './Fairnesschartstab';
 
 const ModelInferencing = () => {
   const hostnameAI = window._env_?.VITE_AI_API;
-  const { workflowState, datasetState, mode } = useAIPlayground();
+  const { workflowState, datasetState, mode, updateWorkflowStage } = useAIPlayground();
   const readonly = mode === 'view';
   const [activeTab, setActiveTab] = useState('performance');
   const [selectedFairnessModel, setSelectedFairnessModel] = useState('');
   const [selectedChartsModel, setSelectedChartsModel] = useState('');
-  const [selectedChartDemographic, setSelectedChartDemographic] = useState('age');
+  const [selectedChartDemographic, setSelectedChartDemographic] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isReloading, setIsReloading] = useState(false);
+  const [showAllPending, setShowAllPending] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     if (datasetState.sessionId == '') {
-      navigate('/ai/playground')
+      navigate('/ai/playground');
     }
   }, []);
 
@@ -43,18 +46,44 @@ const ModelInferencing = () => {
   const isModelSelectionAuto = modelSelectionMode &&
     ['Swift', 'Standard', 'Comprehensive'].includes(modelSelectionMode);
 
+  const completedJobsResponse = workflowState?.completedJobs?.apiResponse;
+
+  const allTasks = useMemo(() => {
+    if (readonly) return [];
+    return completedJobsResponse?.tasks || [];
+  }, [readonly, completedJobsResponse]);
+
+  const successTasks = useMemo(() => {
+    return allTasks.filter(t => t.status === 'SUCCESS');
+  }, [allTasks]);
+
+  const nonSuccessTasks = useMemo(() => {
+    return allTasks.filter(t => t.status !== 'SUCCESS');
+  }, [allTasks]);
+
+  const completedJobsApiResults = useMemo(() => {
+    return successTasks.map(task => ({
+      run_name: task.result?.run_name || task.algorithm,
+      run_id: task.result?.run_id || task.task_id,
+      metrics: task.result?.metrics || {},
+      fairness_bar_charts: task.result?.fairness_bar_charts || {},
+      profile_radial_charts: task.result?.profile_radial_charts || {},
+      fairness_assessment_message: task.result?.fairness_assessment_message || 'N/A',
+    }));
+  }, [successTasks]);
+
   const apiResults = useMemo(() => {
-    // When both data preprocessing and model selection are auto
+    if (!readonly) {
+      return completedJobsApiResults;
+    }
     if (isDataPreprocessingAuto && isModelSelectionAuto) {
       return workflowState?.modelGenesis?.apiResponse?.training_results || [];
     }
-    // When data preprocessing is manual and model selection is auto
     if (!isDataPreprocessingAuto && isModelSelectionAuto) {
       return workflowState?.dataPreprocessing?.step7?.apiResponse?.training_results || [];
     }
-    // Default case
     return workflowState?.modelSelection?.apiResponse?.results || [];
-  }, [isDataPreprocessingAuto, isModelSelectionAuto, workflowState]);
+  }, [readonly, completedJobsApiResults, isDataPreprocessingAuto, isModelSelectionAuto, workflowState]);
 
   const legendTruncateLength = useMemo(() => {
     const modelCount = apiResults.length;
@@ -74,144 +103,90 @@ const ModelInferencing = () => {
 
   const bestModel = useMemo(() => {
     if (apiResults.length === 0) {
-      return {
-        metricName: 'N/A',
-        name: 'N/A',
-        value: '0%',
-      };
+      return { metricName: 'N/A', name: 'N/A', value: '0%' };
     }
 
-    if ((isDataPreprocessingAuto && isModelSelectionAuto) ||
-      (!isDataPreprocessingAuto && isModelSelectionAuto)) {
-
+    if (
+      readonly
+        ? (isDataPreprocessingAuto && isModelSelectionAuto) || (!isDataPreprocessingAuto && isModelSelectionAuto)
+        : true
+    ) {
       const autoMetricOrder = ['train_accuracy', 'train_precision', 'train_recall', 'train_f1', 'train_log_loss'];
-
       const best = apiResults.reduce((prev, current) => {
         for (const metricKey of autoMetricOrder) {
           const prevValue = prev.metrics?.[metricKey] || 0;
           const currValue = current.metrics?.[metricKey] || 0;
-
-          // For log_loss, lower is better
           if (metricKey === 'train_log_loss') {
             if (currValue < prevValue) return current;
             if (currValue > prevValue) return prev;
           } else {
-            // For other metrics, higher is better
             if (currValue > prevValue) return current;
             if (currValue < prevValue) return prev;
           }
         }
-
         return prev;
       });
-
       const bestValue = best.metrics?.['train_accuracy'] || 0;
-      const formattedValue = `${(bestValue * 100).toFixed(2)}%`;
-
       return {
         metricName: 'Accuracy',
         name: best.run_name,
-        value: formattedValue,
+        value: `${(bestValue * 100).toFixed(2)}%`,
       };
     }
 
     const performanceMetrics = workflowState?.modelSelection?.config?.performance_metrics || [];
+    const metricNameMap = {
+      accuracy: 'train_accuracy', precision: 'train_precision',
+      recall: 'train_recall', f1: 'train_f1', log_loss: 'train_log_loss',
+    };
+    const orderedMetricKeys = performanceMetrics.map(m => metricNameMap[m]).filter(Boolean);
 
-    if (performanceMetrics.length === 0) {
-      const metricKey = 'train_accuracy';
-      const best = apiResults.reduce((prev, current) => {
-        const prevValue = prev.metrics?.[metricKey] || 0;
-        const currValue = current.metrics?.[metricKey] || 0;
-        return currValue > prevValue ? current : prev;
+    const fallbackBest = () => {
+      const best = apiResults.reduce((prev, curr) => {
+        return (curr.metrics?.['train_accuracy'] || 0) > (prev.metrics?.['train_accuracy'] || 0) ? curr : prev;
       });
-
-      const bestValue = best.metrics?.[metricKey] || 0;
-      const formattedValue = `${(bestValue * 100).toFixed(2)}%`;
-
       return {
         metricName: 'Accuracy',
         name: best.run_name,
-        value: formattedValue,
+        value: `${((best.metrics?.['train_accuracy'] || 0) * 100).toFixed(2)}%`,
       };
-    }
-
-    const metricNameMap = {
-      'accuracy': 'train_accuracy',
-      'precision': 'train_precision',
-      'recall': 'train_recall',
-      'f1': 'train_f1',
-      'log_loss': 'train_log_loss',
     };
 
-    const orderedMetricKeys = performanceMetrics.map(metric => metricNameMap[metric]).filter(Boolean);
+    if (orderedMetricKeys.length === 0) return fallbackBest();
 
-    if (orderedMetricKeys.length === 0) {
-      const metricKey = 'train_accuracy';
-      const best = apiResults.reduce((prev, current) => {
-        const prevValue = prev.metrics?.[metricKey] || 0;
-        const currValue = current.metrics?.[metricKey] || 0;
-        return currValue > prevValue ? current : prev;
-      });
-
-      const bestValue = best.metrics?.[metricKey] || 0;
-      const formattedValue = `${(bestValue * 100).toFixed(2)}%`;
-
-      return {
-        metricName: 'Accuracy',
-        name: best.run_name,
-        value: formattedValue,
-      };
-    }
     const best = apiResults.reduce((prev, current) => {
       for (const metricKey of orderedMetricKeys) {
         const prevValue = prev.metrics?.[metricKey] || 0;
         const currValue = current.metrics?.[metricKey] || 0;
-
-        // For log_loss, lower is better
         if (metricKey === 'train_log_loss') {
           if (currValue < prevValue) return current;
           if (currValue > prevValue) return prev;
         } else {
-          // For other metrics, higher is better
           if (currValue > prevValue) return current;
           if (currValue < prevValue) return prev;
         }
       }
-
       return prev;
     });
 
     const firstMetricKey = orderedMetricKeys[0];
     const bestValue = best.metrics?.[firstMetricKey] || 0;
-
     const metricDisplayNameMap = {
-      'train_accuracy': 'Accuracy',
-      'train_precision': 'Precision',
-      'train_recall': 'Recall',
-      'train_f1': 'F1 Score',
-      'train_log_loss': 'Log Loss',
+      train_accuracy: 'Accuracy', train_precision: 'Precision',
+      train_recall: 'Recall', train_f1: 'F1 Score', train_log_loss: 'Log Loss',
     };
-
-    const displayMetricName = metricDisplayNameMap[firstMetricKey] || 'Accuracy';
-
-    let formattedValue;
-    if (firstMetricKey === 'train_log_loss') {
-      formattedValue = bestValue.toFixed(4);
-    } else {
-      formattedValue = `${(bestValue * 100).toFixed(2)}%`;
-    }
-
     return {
-      metricName: displayMetricName,
+      metricName: metricDisplayNameMap[firstMetricKey] || 'Accuracy',
       name: best.run_name,
-      value: formattedValue,
+      value: firstMetricKey === 'train_log_loss'
+        ? bestValue.toFixed(4)
+        : `${(bestValue * 100).toFixed(2)}%`,
     };
-  }, [apiResults, workflowState, isDataPreprocessingAuto, isModelSelectionAuto]);
+  }, [apiResults, workflowState, isDataPreprocessingAuto, isModelSelectionAuto, readonly]);
 
   const algorithmData = useMemo(() => {
     return apiResults.map((result) => {
       const metrics = result.metrics || {};
-
       return {
         name: result.run_name,
         fullName: result.run_name,
@@ -232,108 +207,70 @@ const ModelInferencing = () => {
 
   const availableMetrics = useMemo(() => {
     if (apiResults.length === 0) return [];
-
-    const firstResult = apiResults[0];
-    const metrics = firstResult.metrics || {};
-
-    const allPossibleMetrics = [
+    const metrics = apiResults[0].metrics || {};
+    return [
       { name: 'Accuracy', key: 'accuracy' },
       { name: 'Precision', key: 'precision' },
       { name: 'Recall', key: 'recall' },
       { name: 'F1 Score', key: 'f1' },
-      { name: 'Log Loss', key: 'log_loss' }
-    ];
-
-    return allPossibleMetrics.filter(metric => {
-      const trainKey = `train_${metric.key}`;
-      const testKey = `test_${metric.key}`;
-      return metrics.hasOwnProperty(trainKey) || metrics.hasOwnProperty(testKey);
-    });
+      { name: 'Log Loss', key: 'log_loss' },
+    ].filter(m => metrics.hasOwnProperty(`train_${m.key}`) || metrics.hasOwnProperty(`test_${m.key}`));
   }, [apiResults]);
 
   const metricsData = useMemo(() => {
     if (availableMetrics.length === 0) return [];
-
     return availableMetrics.map(metricObj => {
       const dataPoint = { metric: metricObj.name };
-
       apiResults.forEach((result, index) => {
         const modelName = `${truncateName(result.run_name, legendTruncateLength)}_${index}`;
-
         const metricValue = result.metrics?.[`train_${metricObj.key}`];
-
-        if (metricValue !== undefined && metricValue !== null && !isNaN(metricValue)) {
-          dataPoint[modelName] = parseFloat((metricValue * 100).toFixed(2));
-        } else {
-          dataPoint[modelName] = 0;
-        }
+        dataPoint[modelName] = (metricValue !== undefined && metricValue !== null && !isNaN(metricValue))
+          ? parseFloat((metricValue * 100).toFixed(2))
+          : 0;
       });
-
       return dataPoint;
     });
   }, [apiResults, availableMetrics, legendTruncateLength]);
 
   const selectedModelFairnessData = useMemo(() => {
-    const selectedModel = apiResults.find(result => result.run_name === selectedFairnessModel);
+    const selectedModel = apiResults.find(r => r.run_name === selectedFairnessModel);
     if (!selectedModel) return null;
-
     const metrics = selectedModel.metrics || {};
-
-    const fairnessData = {};
     const demographicMetrics = {};
-
     Object.keys(metrics).forEach(key => {
       if (key.startsWith('fairness_')) {
         const withoutPrefix = key.substring(9);
-        
         const parts = withoutPrefix.split('_');
-        
-        let demographic = '';
-        let metricName = '';
-        
         const metricKeywords = ['difference', 'ratio', 'score', 'odds', 'opportunity', 'disparity', 'parity'];
-        
+        let demographic = '', metricName = '';
         for (let i = 0; i < parts.length; i++) {
-          if (metricKeywords.some(keyword => parts.slice(i).join('_').includes(keyword))) {
+          if (metricKeywords.some(kw => parts.slice(i).join('_').includes(kw))) {
             demographic = parts.slice(0, i).join('_');
             metricName = parts.slice(i).join('_');
             break;
           }
         }
-        
-        if (!demographic || !metricName) {
-          demographic = parts[0];
-          metricName = parts.slice(1).join('_');
-        }
-        
+        if (!demographic || !metricName) { demographic = parts[0]; metricName = parts.slice(1).join('_'); }
         if (demographic && metricName) {
-          if (!demographicMetrics[demographic]) {
-            demographicMetrics[demographic] = {};
-          }
-          
+          if (!demographicMetrics[demographic]) demographicMetrics[demographic] = {};
           demographicMetrics[demographic][metricName] = metrics[key];
         }
       }
     });
-
     const demographics = Object.keys(demographicMetrics).sort();
-    
-    demographics.forEach(demo => {
-      fairnessData[demo] = demographicMetrics[demo] || {};
-    });
-
+    const fairnessData = {};
+    demographics.forEach(d => { fairnessData[d] = demographicMetrics[d] || {}; });
     return {
       modelName: selectedModel.run_name,
       fairnessAssessment: selectedModel.fairness_assessment_message || 'N/A',
-      demographics: demographics,
-      ...fairnessData
+      demographics,
+      ...fairnessData,
     };
   }, [apiResults, selectedFairnessModel]);
 
   const selectedModelChartData = useMemo(() => {
-    const selectedModel = apiResults.find(result => result.run_name === selectedChartsModel);
+    const selectedModel = apiResults.find(r => r.run_name === selectedChartsModel);
     if (!selectedModel) return null;
-
     return {
       modelName: selectedModel.run_name,
       fairnessBarCharts: selectedModel.fairness_bar_charts || {},
@@ -344,41 +281,67 @@ const ModelInferencing = () => {
 
   const chartColors = ['#9ca3af', '#a78bfa', '#6ee7b7', '#fb923c', '#f472b6', '#60a5fa'];
 
-  const fetchModelRuns = async () => {
-    const sessionId = datasetState?.sessionId;
+  const handleReload = async () => {
+    let jobId = workflowState?.completedJobs?.config?.job_id
 
-    if (!sessionId) {
-      toast.error('Session ID not found', {
-        duration: 4000,
-        position: 'top-right',
-      });
-      return false;
+    // if (isModelSelectionAuto) {
+    //   // Model selection is auto — job_id depends on dataPreprocessing mode
+    //   jobId = isDataPreprocessingAuto
+    //     ? workflowState?.modelGenesis?.apiResponse?.job_id
+    //     : workflowState?.dataPreprocessing?.step7?.apiResponse?.job_id;
+    // } else {
+    //   // Model selection is manual
+    //   jobId = workflowState?.modelSelection?.apiResponse?.job_id;
+    // }
+
+    if (!jobId) {
+      toast.error('Job ID not found', { duration: 4000, position: 'top-right' });
+      return;
     }
 
-    setIsLoading(true);
-
+    setIsReloading(true);
     try {
-      const response = await fetch(
-        `${hostnameAI}/model/runs_logged/${sessionId}`,
-        {
-          method: 'GET',
-          headers: {
-            'accept': 'application/json'
-          }
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
+      const response = await fetch(`${hostnameAI}/jobs/${jobId}`, {
+        method: 'GET',
+        headers: { accept: 'application/json' },
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
 
-      toast.success('Model Inferencing completed successfully!', {
+      updateWorkflowStage('completedJobs', { apiResponse: data });
+
+      const successCount = (data.tasks || []).filter(t => t.status === 'SUCCESS').length;
+      const totalCount = (data.tasks || []).length;
+      toast.success(`Refreshed: ${successCount}/${totalCount} models ready`, {
         duration: 3000,
         position: 'top-right',
       });
+    } catch (error) {
+      console.error('Error reloading job status:', error);
+      toast.error(error.message || 'Failed to reload. Please try again.', {
+        duration: 4000,
+        position: 'top-right',
+      });
+    } finally {
+      setIsReloading(false);
+    }
+  };
 
+  const fetchModelRuns = async () => {
+    const sessionId = datasetState?.sessionId;
+    if (!sessionId) {
+      toast.error('Session ID not found', { duration: 4000, position: 'top-right' });
+      return false;
+    }
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${hostnameAI}/model/runs_logged/${sessionId}`, {
+        method: 'GET',
+        headers: { accept: 'application/json' },
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      await response.json();
+      toast.success('Model Inferencing completed successfully!', { duration: 3000, position: 'top-right' });
       setIsLoading(false);
       return true;
     } catch (error) {
@@ -400,15 +363,75 @@ const ModelInferencing = () => {
   return (
     <AIPlaygroundLayout onNextClick={handleNextClick} isNextDisabled={isLoading}>
       <div className="min-h-screen">
-        <div className='px-4 py-2'>
-          <div className="mb-4">
-            <h1 className="text-base sm:text-lg font-semibold text-gray-900">Model Performance Dashboard</h1>
-            <p className="text-xs text-gray-500 mt-0.5">Evaluate and compare model performance.</p>
+        <div className="px-4 py-2">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h1 className="text-base sm:text-lg font-semibold text-gray-900">Model Performance Dashboard</h1>
+              <p className="text-xs text-gray-500 mt-0.5">Evaluate and compare model performance.</p>
+            </div>
+
+            {!readonly && nonSuccessTasks.length > 0 && (
+              <button
+                onClick={handleReload}
+                disabled={isReloading}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-[#8e78b7] text-[#8e78b7] hover:bg-[#f3f0fa] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Refresh job status"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isReloading ? 'animate-spin' : ''}`} />
+                {isReloading ? 'Refreshing…' : 'Reload'}
+              </button>
+            )}
           </div>
 
           <BestModelCard bestModel={bestModel} truncateName={truncateName} />
         </div>
 
+        {!readonly && nonSuccessTasks.length > 0 && (() => {
+          const PREVIEW_COUNT = 12;
+          const visibleTasks = showAllPending ? nonSuccessTasks : nonSuccessTasks.slice(0, PREVIEW_COUNT);
+          const hiddenCount = nonSuccessTasks.length - PREVIEW_COUNT;
+
+          return (
+            <div className="px-4 mb-2">
+              <div className="bg-[#f3f0fa] border border-[#c4b5e8] rounded-lg px-4 py-3">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-[#6d4fa8]">
+                    {nonSuccessTasks.length} model{nonSuccessTasks.length > 1 ? 's' : ''} still training — results will appear after reload
+                  </p>
+                  {nonSuccessTasks.length > PREVIEW_COUNT && (
+                    <button
+                      onClick={() => setShowAllPending(prev => !prev)}
+                      className="text-xs font-medium text-[#8e78b7] underline underline-offset-2 hover:text-[#6d4fa8] transition-colors flex-shrink-0 ml-3"
+                    >
+                      {showAllPending ? 'Show less' : `Show all ${nonSuccessTasks.length}`}
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {visibleTasks.map(task => (
+                    <span
+                      key={task.task_id}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#ede9f7] text-[#6d4fa8] border border-[#c4b5e8]"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#8e78b7] animate-pulse flex-shrink-0" />
+                      <span className="truncate max-w-[160px]" title={task.algorithm}>{task.algorithm}</span>
+                    </span>
+                  ))}
+
+                  {!showAllPending && hiddenCount > 0 && (
+                    <button
+                      onClick={() => setShowAllPending(true)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#ddd6f3] text-[#6d4fa8] border border-[#b39ddb] hover:bg-[#c4b5e8] transition-colors"
+                    >
+                      +{hiddenCount} more
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
         <MetricsChart
           metricsData={metricsData}
           apiResults={apiResults}
@@ -417,36 +440,21 @@ const ModelInferencing = () => {
           chartColors={chartColors}
         />
 
-        <div className='p-2'>
+        <div className="p-2">
           <div className="bg-white rounded-t-lg border-b border-gray-200">
             <div className="flex gap-6 px-4">
-              <button
-                onClick={() => setActiveTab('performance')}
-                className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'performance'
-                  ? 'border-[#8e78b7] text-[#8e78b7]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                Performance
-              </button>
-              <button
-                onClick={() => setActiveTab('fairness')}
-                className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'fairness'
-                  ? 'border-[#8e78b7] text-[#8e78b7]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                Fairness
-              </button>
-              <button
-                onClick={() => setActiveTab('charts')}
-                className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'charts'
-                  ? 'border-[#8e78b7] text-[#8e78b7]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                Charts
-              </button>
+              {['performance', 'fairness', 'charts'].map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors capitalize ${activeTab === tab
+                    ? 'border-[#8e78b7] text-[#8e78b7]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                >
+                  {tab}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -454,7 +462,6 @@ const ModelInferencing = () => {
             {activeTab === 'performance' && (
               <PerformanceTab algorithmData={algorithmData} />
             )}
-
             {activeTab === 'fairness' && (
               <FairnessTab
                 selectedFairnessModel={selectedFairnessModel}
@@ -463,7 +470,6 @@ const ModelInferencing = () => {
                 selectedModelFairnessData={selectedModelFairnessData}
               />
             )}
-
             {activeTab === 'charts' && (
               <ChartsTab
                 selectedChartsModel={selectedChartsModel}
