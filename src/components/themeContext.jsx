@@ -36,3 +36,17 @@ export const aithemestyle = {
         iconColor: '#5F83B0'
     }
 }
+
+export const tw = {
+    pageHeading:    'font-satoshi text-2xl font-medium text-[#332849] leading-none tracking-normal',
+    sectionHeading: 'font-satoshi text-base font-medium text-[#332849] leading-none tracking-normal',
+    cardTitle:      'font-satoshi text-sm font-medium text-[#332849] leading-none tracking-normal',
+    label:          'font-satoshi text-sm font-normal text-[#332849] leading-none tracking-normal',
+    body:           'font-satoshi text-base font-normal text-[#818181] leading-none tracking-normal',
+    caption:        'font-satoshi text-xs font-normal text-[#818181] leading-none tracking-normal',
+    icon:           'text-[#818181]'
+};
+
+export const backgrounds = {
+    page: 'bg-gray-50'
+};

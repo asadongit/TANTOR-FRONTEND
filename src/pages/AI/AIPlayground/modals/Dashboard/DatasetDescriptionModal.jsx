@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
+import { tw } from '../../../../../components/themeContext';
 
 export const DatasetDescriptionModal = ({ isOpen, onClose, onSave, onSkip }) => {
   const hostnameAI = window._env_?.VITE_AI_API;
@@ -95,52 +96,75 @@ export const DatasetDescriptionModal = ({ isOpen, onClose, onSave, onSkip }) => 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 relative">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-slate-900">Add Dataset Description</h2>
-          <button 
-            onClick={handleClose} 
+      <div
+        className="bg-white rounded-xl w-full max-w-lg p-6 relative"
+        style={{ boxShadow: '0 -4px 9px 0 rgba(0, 0, 0, 0.10)' }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
+          <h2 className={tw.sectionHeading}>Add Dataset Description</h2>
+          <button
+            onClick={handleClose}
             className="text-slate-400 hover:text-slate-600 transition-colors"
             disabled={isLoading}
           >
-            <X className="w-5 h-5" />
+            <X className={`${tw.icon} w-5 h-5`} />
           </button>
         </div>
 
-        <div className="mb-6">
-          <p className="text-sm text-slate-600 mb-4">
-            <span className="font-medium">Note:</span> Provide a brief description to help identify and understand this dataset later.
+        {/* Note */}
+        <div className="mb-4">
+          <p className={tw.label}>
+            <span className="font-semibold" style={{ color: '#8e78b7' }}>Note:</span>{' '}
+            Provide a brief description to help identify and understand this dataset later.
           </p>
+        </div>
 
-          <div>
-            <label className="text-sm font-medium text-slate-700 mb-2 block">Description</label>
-            <textarea
-              placeholder="Describe the uploaded data"
-              value={description}
-              onChange={handleDescriptionChange}
-              rows={4}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500/20 resize-none"
-              disabled={isLoading}
-            />
-            <div className="flex justify-end mt-1">
-              <span className={`text-xs ${description.length >= MAX_LENGTH ? 'text-red-500' : 'text-slate-400'}`}>
-                {description.length}/{MAX_LENGTH}
-              </span>
-            </div>
+        {/* Textarea */}
+        <div className="mb-6">
+          <label className={`${tw.label} mb-2 block`}>Description</label>
+          <textarea
+            placeholder="Describe the uploaded data"
+            value={description}
+            onChange={handleDescriptionChange}
+            rows={4}
+            className={`w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500/20 resize-none ${tw.body}`}
+            disabled={isLoading}
+          />
+          <div className="flex justify-end mt-1">
+            <span className={`${tw.caption} ${description.length >= MAX_LENGTH ? '!text-red-500' : ''}`}>
+              {description.length}/{MAX_LENGTH}
+            </span>
           </div>
         </div>
 
+        {/* Divider */}
+        <div className="border-t border-slate-100 -mx-6 mb-4" />
+
+        {/* Actions */}
         <div className="flex justify-end gap-3">
           <button
             onClick={handleSkip}
-            className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`px-4 py-2 bg-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${tw.label}`}
+            style={{
+              color: '#8e78b7',
+              border: '1px solid #8e78b7',
+              boxShadow: '0 1px 4px 0 rgba(142,120,183,0.15)'
+            }}
             disabled={isLoading}
           >
             Skip for Now
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 text-sm font-medium text-white bg-[#8e78b7] rounded-md hover:bg-[#7d6ba0] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`px-4 py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${tw.label}`}
+            style={{
+              color: '#ffffff',
+              backgroundColor: isSaveDisabled ? '#b8a9d4' : '#8e78b7',
+              boxShadow: '0 1px 4px 0 rgba(142,120,183,0.18)'
+            }}
+            onMouseEnter={e => { if (!isSaveDisabled) e.currentTarget.style.backgroundColor = '#7d6ba0'; }}
+            onMouseLeave={e => { if (!isSaveDisabled) e.currentTarget.style.backgroundColor = '#8e78b7'; }}
             disabled={isSaveDisabled}
           >
             {isLoading ? 'Saving...' : 'Save & Continue'}

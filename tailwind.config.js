@@ -5,30 +5,47 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        scrollbarThumb: '#8e78b7',
-        scrollbarTrack: '#f0f0f0',
+        scrollbarThumb: '#C8C9CB',
+        scrollbarTrack: 'transparent',
       },
       spacing: {
-        scrollbarWidth: '8px',
+        scrollbarWidth: '4px',
       },
     },
   },
   plugins: [
-    function ({ addComponents, theme }) {
+    function ({ addComponents }) {
       addComponents({
+        '::-webkit-scrollbar-button': {
+          display: 'none',
+          width: '0px',
+          height: '0px',
+        },
         '::-webkit-scrollbar': {
-          width: theme('spacing.scrollbarWidth'),
-          height: theme('spacing.scrollbarWidth'),
+          width: '4px',
+          height: '4px',
         },
+        // Track
         '::-webkit-scrollbar-track': {
-          background: theme('colors.scrollbarTrack'),
+          background: 'transparent',
         },
+        // Thumb
         '::-webkit-scrollbar-thumb': {
-          background: theme('colors.scrollbarThumb'),
+          background: '#C8C9CB',
           borderRadius: '10px',
         },
+        // Thumb hover
         '::-webkit-scrollbar-thumb:hover': {
-          background: '#6e5a99', 
+          background: '#6e5a99',
+        },
+        // Corner where both scrollbars meet
+        '::-webkit-scrollbar-corner': {
+          background: 'transparent',
+        },
+        // Firefox
+        '*': {
+          'scrollbar-width': 'thin',
+          'scrollbar-color': '#C8C9CB transparent',
         },
       });
     },
