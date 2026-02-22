@@ -13,7 +13,8 @@ import {
   BarChart2,
   RotateCcw,
   Search,
-  AlertTriangle
+  AlertTriangle,
+  Download
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CreateProjectModal } from './modals/Dashboard/CreateProjectModal';
@@ -24,6 +25,8 @@ import { ChooseBuildMethodModal } from './modals/Dashboard/ChooseBuildMethodModa
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 import { useAuth } from '../../../context/AuthContext';
 import { toast } from 'react-hot-toast';
+import { tw, backgrounds } from '../../../components/themeContext';
+import SearchIcon from '../../../assets/ai/search.svg';
 
 // Constants
 const OWNER_OPTIONS = [
@@ -409,7 +412,7 @@ const AIPlayground = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#fafbfc] p-6 font-sans text-slate-900">
+    <div className={`min-h-screen ${backgrounds.page} p-6 font-sans`}>
 
       {showCancelModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -419,26 +422,26 @@ const AIPlayground = () => {
                 <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
                   <AlertTriangle className="text-red-600" size={24} />
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className={tw.pageHeading}>
                   Cancel AI Playground Workflow?
                 </h2>
               </div>
 
-              <p className="text-gray-600 mb-6">
+              <p className={tw.body + " mb-6"}>
                 Are you sure you want to cancel? All unsaved progress and configurations will be lost. This action cannot be undone.
               </p>
 
               <div className="flex gap-3 justify-end">
                 <button
                   onClick={handleCancelModalClose}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 border border-slate-200 rounded-md text-sm font-medium text-[#332849] leading-normal hover:bg-slate-50 transition-colors"
                 >
                   Continue Working
                 </button>
                 <button
                   onClick={handleConfirmCancel}
                   disabled={isCancelLoading}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                  className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
                 >
                   {isCancelLoading && (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -458,7 +461,7 @@ const AIPlayground = () => {
               <div className="flex items-center gap-4">
                 <button
                   onClick={handleBackToDashboard}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-white rounded-md transition-all"
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-[#332849] leading-normal hover:text-[#332849] hover:bg-white rounded-md transition-all"
                 >
                   <svg
                     className="w-4 h-4"
@@ -481,10 +484,10 @@ const AIPlayground = () => {
                     <BarChart2 className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900">
+                    <h2 className={tw.pageHeading}>
                       Data Profiling Report
                     </h2>
-                    <p className="text-sm text-slate-600 flex items-center gap-2">
+                    <p className={tw.caption + " flex items-center gap-2"}>
                       <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
                       {datasetState?.tableName || 'Dataset Analysis'}
                     </p>
@@ -506,28 +509,28 @@ const AIPlayground = () => {
       ) : (
         <>
           <div className="">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold">AI playground</h1>
+            <div className="flex items-center justify-between mb-6">
+              <h1 className={tw.pageHeading}>AI playground</h1>
             </div>
 
             {!uploadedFile && (
               <>
                 <div className="mb-8">
-                  <h2 className="text-base font-semibold mb-2">Inject Your Data to Get Started</h2>
-                  <p className="text-sm text-slate-500 max-w-3xl">
-                    Select a project and fetch data from tables —to begin machine learning, GenAI, analytics, and observability workflows.
+                  <h2 className={tw.sectionHeading + " mb-3"}>Inject Your Data to Get Started</h2>
+                  <p className={tw.body}>
+                    Select a project and fetch data from tables — to begin machine learning, GenAI, analytics, and observability workflows.
                   </p>
                 </div>
 
                 {mode === 'schedule' ? (
-                  <div className='flex items-start justify-between'>
-                    <div className="mb-8 relative w-80">
+                  <div className='flex items-start justify-between mb-8'>
+                    <div className="relative w-80">
                       <input
                         type="text"
                         value={selectedProject || 'No project selected'}
                         readOnly
                         disabled
-                        className="w-full h-10 px-3 rounded-md border border-slate-200 bg-white text-sm text-slate-600 cursor-not-allowed"
+                        className="w-full h-10 px-3 rounded-md border border-slate-200 bg-white text-sm font-normal text-[#818181] cursor-not-allowed"
                       />
                     </div>
                     <button
@@ -539,13 +542,25 @@ const AIPlayground = () => {
                     </button>
                   </div>
                 ) : (
-                  <div className=" mb-8 relative w-80" ref={dropdownRef}>
+                  <div className="mb-8 relative w-80" ref={dropdownRef}>
+                    <label className={tw.label + " block mb-1.5"}>Project Name</label>
+
+                    {/* Trigger Button */}
                     <button
                       onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                      className="w-full h-10 px-3 rounded-md border border-slate-200 bg-white text-sm text-left focus:outline-none focus:ring-2 focus:ring-violet-500/20 transition-all flex items-center justify-between"
                       disabled={loading}
+                      className={`
+      w-full h-10 px-3 rounded-md border text-sm text-left
+      flex items-center justify-between
+      transition-all focus:outline-none
+      font-satoshi font-normal leading-none tracking-normal
+      ${isDropdownOpen
+                          ? 'border-[#8e78b7] bg-[#F5F0FF] text-[#332849]'
+                          : 'border-slate-200 bg-white text-[#818181]'}
+      disabled:cursor-not-allowed
+    `}
                     >
-                      <span className={selectedProject ? 'text-slate-900' : 'text-slate-400'}>
+                      <span className={selectedProject ? 'font-satoshi text-sm font-medium text-[#332849] leading-none tracking-normal' : 'font-satoshi text-sm font-normal text-[#818181] leading-none tracking-normal'}>
                         {loading
                           ? 'Loading projects...'
                           : error
@@ -554,61 +569,84 @@ const AIPlayground = () => {
                               ? projects.find(opt => opt.label === selectedProject)?.label
                               : 'Select'}
                       </span>
-                      <ChevronDown className="w-4 h-4 text-slate-400" />
+                      <ChevronDown className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'text-[#8e78b7]' : 'text-[#818181]'}`} />
                     </button>
 
+                    {/* Dropdown Panel */}
                     {isDropdownOpen && !loading && !error && (
-                      <div className="absolute top-full mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg z-10">
-                        <div className="p-2 border-b border-slate-200">
+                      <div className="absolute top-full mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg z-10 overflow-hidden">
+
+                        {/* Search Input */}
+                        <div className="p-2">
                           <div className="relative">
-                            <Search className='w-4 h-4 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2' />
+                            <img
+                              src={SearchIcon}
+                              alt="search"
+                              className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 opacity-50"
+                            />
                             <input
                               ref={searchInputRef}
                               type="text"
                               placeholder="Search"
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
-                              className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+                              className="
+              w-full pl-9 pr-3 py-1.5 rounded-md
+              border border-slate-200
+              font-satoshi text-sm font-normal text-[#332849] leading-none tracking-normal
+              placeholder:text-[#818181]
+              focus:outline-none focus:border-[#8e78b7]
+              transition-colors
+            "
                             />
                           </div>
                         </div>
+
+                        {/* List Items */}
                         <div className="max-h-48 overflow-y-auto">
                           {filteredOptions.length > 0 ? (
                             filteredOptions.map((opt) => (
                               <button
                                 key={opt.value}
                                 onClick={() => handleSelectExperiment(opt.label)}
-                                className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                                className={`w-full px-4 py-2.5 text-left ${tw.label} hover:bg-slate-50 transition-colors`}
                               >
                                 {opt.label}
                               </button>
                             ))
                           ) : (
-                            <div className="px-3 py-2 text-sm text-slate-400">
+                            <div className={`px-4 py-2.5 ${tw.caption}`}>
                               No projects found
                             </div>
                           )}
                         </div>
+
+                        {/* Create Button */}
                         <button
                           onClick={() => {
                             setIsDropdownOpen(false);
                             toggleModal('createProject', true);
                           }}
-                          className="w-full px-3 py-2 text-left text-sm text-[#8e78b7] hover:bg-violet-50 transition-colors border-t border-slate-200 flex items-center gap-2"
+                          className="
+  w-full px-4 py-3 text-left
+  font-satoshi text-sm font-medium text-[#8e78b7] bg-[#F9F9F9] leading-none tracking-normal
+  hover:bg-violet-50 transition-colors
+  border-t border-slate-200
+  flex items-center gap-1.5
+  shadow-[0_-2px_10px_0px_rgba(0,0,0,0.07)]
+"
                         >
-                          <span className="text-lg leading-none">+</span>
+                          <span className="text-base leading-none">+</span>
                           <span>Create</span>
                         </button>
                       </div>
                     )}
 
+                    {/* Error State */}
                     {error && (
-                      <div className="mt-2 text-xs text-red-500 flex items-center gap-1">
+                      <div className="mt-2 flex items-center gap-1 font-satoshi text-xs font-normal text-red-500 leading-none tracking-normal">
                         <span>Failed to load projects.</span>
-                        <button
-                          onClick={fetchProjects}
-                          className="text-[#8e78b7] hover:underline"
-                        >
+                        <button onClick={fetchProjects} className="text-[#8e78b7] hover:underline">
                           Retry
                         </button>
                       </div>
@@ -623,14 +661,11 @@ const AIPlayground = () => {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4 flex-1">
-                        <div className="w-12 h-12 bg-cyan-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Database className="w-6 h-6 text-cyan-600" />
-                        </div>
                         <div className="flex-1">
-                          <div className="text-sm font-semibold text-slate-700 mb-1">
+                          <div className={tw.cardTitle + " mb-3"}>
                             Fetch Data from Table
                           </div>
-                          <div className="text-xs text-slate-400">
+                          <div className={tw.caption}>
                             Load data directly from available database tables
                           </div>
                         </div>
@@ -638,9 +673,9 @@ const AIPlayground = () => {
                       <button
                         disabled={isDisabled}
                         onClick={handleFetchData}
-                        className="px-6 py-2.5 bg-[#8e78b7] text-white rounded-md text-sm font-medium disabled:cursor-not-allowed disabled:bg-slate-300 transition-colors flex items-center gap-2 shadow-sm"
+                        className="px-6 py-2.5 border border-[#8e78b7] bg-white text-[#8e78b7] rounded-md text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50 disabled:border-slate-300 disabled:text-slate-300 transition-colors flex items-center gap-2 shadow-sm"
                       >
-                        <Database size={16} />
+                        <Download size={16} />
                         Fetch Data
                       </button>
                     </div>
@@ -651,11 +686,11 @@ const AIPlayground = () => {
 
             {/* Data Ingestion Section */}
             {uploadedFile && (
-              <div className="bg-white rounded-lg p-6 mb-6">
+              <div className="bg-white rounded-lg p-6 mb-6 border border-slate-200">
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-900 mb-1">Data Ingestion</h2>
-                    <p className="text-sm text-slate-500">
+                    <h2 className={tw.sectionHeading + " mb-1"}>Data Ingestion</h2>
+                    <p className={tw.body}>
                       Your dataset has been successfully injected and will be used across all selected workflows.
                     </p>
                   </div>
@@ -669,9 +704,9 @@ const AIPlayground = () => {
                 </div>
 
                 <div className="mb-4">
-                  <div className="text-md text-slate-500">
+                  <div className={tw.body}>
                     Project Name:{' '}
-                    <span className="text-slate-900 font-medium">
+                    <span className={tw.cardTitle}>
                       {selectedProject}
                     </span>
                   </div>
@@ -686,12 +721,12 @@ const AIPlayground = () => {
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium text-slate-900 mb-0.5">
+                        <div className={tw.cardTitle + " mb-0.5"}>
                           {uploadedFile.type === 'database'
                             ? uploadedFile.displayName || uploadedFile.name
                             : uploadedFile.name}
                         </div>
-                        <div className="text-xs text-slate-400">
+                        <div className={tw.caption}>
                           {uploadedFile.type === 'database'
                             ? 'Table • Fetched just now'
                             : `CSV • ${(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB`}
@@ -700,7 +735,7 @@ const AIPlayground = () => {
                     </div>
                   </div>
 
-                  <MoveRight className="text-slate-400" />
+                  <MoveRight className="text-[#818181]" />
 
                   {/* Data Profiling Card */}
                   <div className="flex-1 bg-white border border-slate-200 rounded-lg p-3">
@@ -710,12 +745,12 @@ const AIPlayground = () => {
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium text-slate-900">Data Profiling</div>
+                        <div className={tw.cardTitle}>Data Profiling</div>
                       </div>
 
                       <button
                         onClick={handleViewProfiling}
-                        className="text-sm text-[#8e78b7] hover:text-purple-700 font-medium flex-shrink-0"
+                        className="text-sm font-medium text-[#8e78b7] hover:text-purple-700 flex-shrink-0"
                       >
                         View
                       </button>
@@ -740,8 +775,8 @@ const AIPlayground = () => {
                       >
                         {cap.icon}
                       </div>
-                      <h3 className="text-[15px] font-bold text-slate-800 mb-2">{cap.title}</h3>
-                      <p className="text-xs leading-relaxed text-slate-400">{cap.desc}</p>
+                      <h3 className={tw.cardTitle + " mb-2"}>{cap.title}</h3>
+                      <p className={tw.caption}>{cap.desc}</p>
                     </div>
                   ))}
                 </div>
@@ -787,7 +822,7 @@ const AIPlayground = () => {
 
         </>
       )}
-    </div>
+    </div >
   );
 };
 

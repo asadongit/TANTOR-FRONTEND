@@ -81,6 +81,7 @@ const ProjectsTab = ({ datasetId, projectId }) => {
             key: 'sno',
             label: 'S.No',
             sortable: false,
+            width:`60px`,
             render: (_row, idx) => idx + 1,
         },
         {
@@ -132,7 +133,7 @@ const ProjectsTab = ({ datasetId, projectId }) => {
     ], [hostnameAI, token]);
 
     return (
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+        <div >
             <DataTable
                 columns={columns}
                 data={projects}
