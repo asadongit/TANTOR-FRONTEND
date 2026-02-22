@@ -29,8 +29,14 @@ function ModelSelection() {
     const hostnameAI = window._env_?.VITE_AI_API;
     const location = useLocation();
     const { workflowState, datasetState, updateWorkflowStage, mode } = useAIPlayground();
-     const readonly = mode === 'view';
+    const readonly = mode === 'view';
     const navigate = useNavigate();
+    const modelGenesisConfig = workflowState?.modelGenesis?.config;
+    const modelSelectionMode = readonly
+        ? modelGenesisConfig?.model_mode
+        : modelGenesisConfig?.modelSelection;
+    const isModelSelectionAuto = modelSelectionMode &&
+        ['Swift', 'Standard', 'Comprehensive'].includes(modelSelectionMode);
 
     useEffect(() => {
         if (datasetState.sessionId == '') {
@@ -451,6 +457,25 @@ function ModelSelection() {
                 apiResponse: result
             });
 
+            if (!isModelSelectionAuto) {
+                const jobId = result?.job_id;
+
+                if (jobId) {
+                    const jobResponse = await fetch(`${hostnameAI}/jobs/${jobId}`, {
+                        method: 'GET',
+                        headers: { 'accept': 'application/json' }
+                    });
+
+                    if (jobResponse.ok) {
+                        const data = await jobResponse.json();
+                        updateWorkflowStage('completedJobs', {
+                            config: { job_id: jobId },
+                            apiResponse: data
+                        });
+                    }
+                }
+            }
+
             toast.success('Model training completed successfully!', {
                 duration: 3000,
                 position: 'top-right',
@@ -539,11 +564,10 @@ function ModelSelection() {
                         )}
                     </div>
 
-                    <div className={`space-y-4 ${
-                        filteredAlgorithms.length > 4 
-                            ? 'max-h-[calc(100vh-280px)] overflow-y-auto pr-2 custom-scrollbar' 
-                            : 'min-h-[500px]'
-                    }`}>
+                    <div className={`space-y-4 ${filteredAlgorithms.length > 4
+                        ? 'max-h-[calc(100vh-280px)] overflow-y-auto pr-2 custom-scrollbar'
+                        : 'min-h-[500px]'
+                        }`}>
                         {filteredAlgorithms.length === 0 ? (
                             <div className="text-center py-12">
                                 <p className="text-gray-500 text-sm">No algorithms found matching "{searchQuery}"</p>
