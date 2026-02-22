@@ -159,9 +159,8 @@ const Projects = () => {
     }, [dashboardData, dashboardLoading]);
 
     const StatsCardWithTrend = ({ label, value, icon: Icon, trend, trendValue }) => {
-        const isUp = trend === 'up';
-        const TrendIcon = isUp ? ArrowUp : ArrowDown;
-        const trendColor = isUp ? 'text-emerald-500' : 'text-red-500';
+            const isUp = trend === 'up';
+            const TrendIcon = isUp ? ArrowUp : ArrowDown;
 
         return (
             <div className="bg-white rounded-xl px-4 py-4 border border-purple-200 flex flex-col justify-between min-h-[110px] min-w-0">
@@ -198,7 +197,7 @@ const Projects = () => {
                     </div>
 
                     {(trend && trendValue && value != null) ? (
-                        <div className={`flex items-center gap-1 ${trendColor} text-sm font-semibold leading-none`}>
+                        <div className={`flex items-center gap-1 text-sm font-semibold leading-none`} style={{ color: isUp ? aithemestyle.trendup : aithemestyle.trendDown }}>
                             <TrendIcon className="w-4 h-4" />
                             <span className="tabular-nums">{trendValue}</span>
                         </div>
