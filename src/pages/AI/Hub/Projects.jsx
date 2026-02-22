@@ -11,6 +11,7 @@ import UnarchiveModal from './Components/UnarchieveModal';
 import StatusFilterDropdown from './Components/StateSelector';
 import { updateRecentAccess, unarchiveEntity } from './Components/Hooks';
 import toast from 'react-hot-toast';
+import { aithemestyle } from '../../../components/themeContext';
 
 const Projects = () => {
     const navigate = useNavigate();
@@ -167,16 +168,32 @@ const Projects = () => {
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                         <Icon className="w-4 h-4 text-[#8e78b7] shrink-0" />
-                        <span className="text-gray-900 text-sm font-medium truncate">{label}</span>
+                        <span className="text-gray-900 text-[24px] font-medium truncate leading-none">{label}</span>
                     </div>
                 </div>
 
                 <div className="flex items-end justify-between mt-4">
-                    <div className="text-xl font-bold text-gray-900 tabular-nums leading-none">
+                    <div className="font-bold text-gray-900 tabular-nums leading-none">
                         {value == null ? (
-                            <div className="h-8 w-14 bg-gray-200 rounded animate-pulse"></div>
+                            <div
+                                className="bg-gray-200 rounded animate-pulse"
+                                style={{ width: '19px', height: '27px', opacity: 1 }}
+                            />
                         ) : (
-                            value
+                            <span
+                                className="text-[19px]"
+                                style={{
+                                    display: 'inline-block',
+                                    width: '19px',
+                                    height: '27px',
+                                    lineHeight: '27px',
+                                    transform: 'rotate(0deg)',
+                                    opacity: 1,
+                                    textAlign: 'center'
+                                }}
+                            >
+                                {value}
+                            </span>
                         )}
                     </div>
 
@@ -330,17 +347,17 @@ const Projects = () => {
             label: 'Name',
             sortable: true,
             render: (row) => (
-                <span
-                    className="text-[#8e78b7] hover:underline cursor-pointer whitespace-normal break-words"
-                    style={{ overflowWrap: 'anywhere' }}
-                    onClick={() => handleProjectLibrary(row)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && handleProjectLibrary(row)}
-                    title={row.name ?? ''}
-                >
-                    {row.name}
-                </span>
+                    <span
+                        className="hover:underline cursor-pointer whitespace-normal break-words"
+                        style={{ overflowWrap: 'anywhere', color: aithemestyle.iconColor }}
+                        onClick={() => handleProjectLibrary(row)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => e.key === 'Enter' && handleProjectLibrary(row)}
+                        title={row.name ?? ''}
+                    >
+                        {row.name}
+                    </span>
             ),
         },
         { key: 'description', label: 'Description', sortable: true },
@@ -441,7 +458,7 @@ const Projects = () => {
         <div className="bg-white rounded-xl px-5 py-4 border border-purple-200 shadow-sm flex flex-col h-full min-h-[110px]">
             <div className="flex items-center gap-2 mb-3">
                 <CheckCircle className="w-5 h-5 text-[#8e78b7]" />
-                <span className="text-gray-700 text-sm font-medium">Last Accessed</span>
+                <span className="text-gray-700 text-[24px] font-medium">Last Accessed</span>
             </div>
             <div className="flex-1 flex flex-col justify-center">
                 {(recentProjectsLoading || dashboardLoading) ? (
@@ -449,7 +466,7 @@ const Projects = () => {
                 ) : recentProjectsError ? (
                     <div className="text-sm text-red-600">{recentProjectsError}</div>
                 ) : recentProjects.length ? (
-                    <div className="grid grid-cols-1 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                         {recentProjects.map((project, idx) => {
                             const fullName = project.entity_name ?? '—';
                             return (
@@ -476,11 +493,21 @@ const Projects = () => {
     );
 
     return (
-        <div className="p-3 sm:p-4 lg:p-6 bg-gray-50 min-h-screen">
-            <Breadcrumb skipLinkSegments={['hub']} />
+                <div className="p-3 sm:p-4 lg:p-6 bg-gray-50 min-h-screen">
+                        <Breadcrumb skipLinkSegments={['hub']} />
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">Projects</h1>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                                <h1
+                                    style={{
+                                        fontWeight: 700,
+                                        fontStyle: 'bold',
+                                        fontSize: '24px',
+                                        lineHeight: '100%'
+                                    }}
+                                    className="text-gray-900"
+                                >
+                                    Projects
+                                </h1>
                 <div className="flex items-center gap-2 sm:gap-3">
                     {/* ADD: Status filter dropdown */}
                     <div className="relative">
@@ -530,7 +557,7 @@ const Projects = () => {
 
             <div className="space-y-6">
                 {viewMode === 'both' && (
-                    <div className="bg-gradient-to-r from-[#8e78b7] via-purple-300 to-purple-100 rounded-xl p-4">
+                    <div className={`bg-gradient-to-r ${aithemestyle.statsCardGradient} rounded-xl p-4`}>
                         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                             {statsCards.map((stat, index) => (
                                 <StatsCardWithTrend
