@@ -8,6 +8,7 @@ import CommentsTab from './CommentsTab';
 import AccessTab from './AccessTab';
 import Snapshot from './Snapshot';
 import { useAuth } from '../../../../../context/AuthContext';
+import { aithemestyle } from '../../../../../components/themeContext';
 
 const DataLibrary = () => {
     const navigate = useNavigate();
@@ -144,27 +145,34 @@ const DataLibrary = () => {
                             <ChevronLeft className="w-5 h-5 text-gray-600" />
                         </button>
                         <div className="flex items-center gap-2">
-                            <h1 className="text-lg font-semibold text-gray-900">Data Library - </h1>
-                            <span className="text-lg font-semibold text-[#8e78b7]">{DatasetName}</span>
+                            <h1 style={{ fontWeight: 700, fontSize: '24px', lineHeight: '100%' }} className="text-gray-900">Data Library - </h1>
+                            <span style={{ fontWeight: 700, fontSize: '24px', lineHeight: '100%', color: aithemestyle.iconColor }}>{DatasetName}</span>
                         </div>
                     </div>
 
                 </div>
 
-                <div className="flex items-center gap-8 px-6 pt-4">
+                <div className="flex items-center gap-2 px-6 pt-2">
                     {tabs.map((tab) => (
                         <button
                             key={tab}
                             onClick={() => handleTabChange(tab)}
-                            className={`pb-3 px-4 text-sm font-medium transition-colors relative ${activeTab === tab
-                                ? 'text-[#8e78b7]'
-                                : 'text-gray-500 hover:text-gray-700'
-                                }`}
+                            style={activeTab === tab ? {
+                                backgroundColor: aithemestyle.tab.activeBackground,
+                                borderBottom: `${aithemestyle.tab.activeBorderWidth} solid ${aithemestyle.tab.activeBorderColor}`,
+                                color: aithemestyle.tab.activeTextColor,
+                                fontSize: aithemestyle.tab.fontSize,
+                                paddingTop: '12px',
+                                paddingBottom: '6px',
+                            } : {
+                                fontSize: aithemestyle.tab.fontSize,
+                                color: aithemestyle.tab.inactiveTextColor,
+                                paddingTop: '12px',
+                                paddingBottom: '6px',
+                            }}
+                            className={`px-4 font-medium transition-colors relative rounded-t hover:text-gray-700`}
                         >
                             {tab}
-                            {activeTab === tab && (
-                                <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#8e78b7] rounded-t"></div>
-                            )}
                         </button>
                     ))}
                 </div>

@@ -2,9 +2,9 @@ import React from 'react';
 
 const OverviewTab = ({ datasetData }) => {
     const InfoField = ({ label, value }) => (
-        <div className="space-y-1">
+        <div className="bg-white rounded-lg p-4 space-y-2">
             <div className="text-xs text-gray-500">{label}</div>
-            <div className="text-base text-gray-900 font-medium truncate">{value}</div>
+            <div className="text-sm text-gray-900 font-medium break-words">{value}</div>
         </div>
     );
 

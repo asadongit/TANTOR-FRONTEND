@@ -30,6 +30,7 @@ import StatusFilterDropdown from "./Components/StateSelector";
 import { unarchiveEntity } from "./Components/Hooks";
 import { updateRecentAccess } from './Components/Hooks';
 import toast from 'react-hot-toast';
+import { aithemestyle } from "../../../components/themeContext";
 
 
 
@@ -335,17 +336,17 @@ function Models() {
       sortable: true,
       width: '250px',
       render: (row) => (
-        <span
-          className="text-purple-600 hover:underline cursor-pointer whitespace-normal break-words break-all"
-          onClick={() => openModelLibrary(row)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === "Enter" && openModelLibrary(row)}
-          title={row?.run_name ?? ""}
-          style={{ overflowWrap: "anywhere" }}
-        >
-          {row.run_name}
-        </span>
+          <span
+            className="hover:underline cursor-pointer whitespace-normal break-words break-all"
+            onClick={() => openModelLibrary(row)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === "Enter" && openModelLibrary(row)}
+            title={row?.run_name ?? ""}
+            style={{ overflowWrap: "anywhere", color: aithemestyle.iconColor }}
+          >
+            {row.run_name}
+          </span>
       ),
     }
     ,
@@ -982,7 +983,17 @@ function Models() {
       <Breadcrumb link="/" skipLinkSegments={['hub']} />
 
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
-        <h1 className="text-2xl font-semibold">Models</h1>
+        <h1
+          style={{
+            fontWeight: 700,
+            fontStyle: 'bold',
+            fontSize: '24px',
+            lineHeight: '100%'
+          }}
+          className="text-gray-900"
+        >
+          Models
+        </h1>
 
         <div className="flex flex-wrap items-center gap-2">
           {/* ADD: Status filter dropdown */}
@@ -1041,7 +1052,7 @@ function Models() {
 
       {viewMode !== "list" && (
         <>
-          <div className="bg-gradient-to-r from-[#8e78b7] via-purple-300 to-purple-100 rounded-xl p-4">
+          <div className={`bg-gradient-to-r ${aithemestyle.statsCardGradient} rounded-xl p-4`}>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
               {statsCards.map((stat) => (
                 <StatsCardWithTrend

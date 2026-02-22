@@ -1,5 +1,6 @@
 import React from "react";
 import { useLocation, Link } from "react-router-dom";
+import ChevronForward from '../assets/chevron-forward.svg';
 
 const Breadcrumb = ({ title, link, skipLinkSegments = [] }) => {
   const location = useLocation();
@@ -31,7 +32,9 @@ const Breadcrumb = ({ title, link, skipLinkSegments = [] }) => {
             ) : (
               <span style={styles.link}>{title}</span>
             )}
-            {pathSegments.length > 0 && <span style={styles.separator}>&gt;</span>}
+            {pathSegments.length > 0 && (
+              <img src={ChevronForward} alt="Chevron Forward" style={styles.separatorIcon} />
+            )}
           </li>
         )}
         {pathSegments.map((segment, index) => {
@@ -40,7 +43,9 @@ const Breadcrumb = ({ title, link, skipLinkSegments = [] }) => {
             : "/" + pathSegments.slice(0, index + 1).join("/");
           return (
             <li key={index} style={styles.breadcrumbItem}>
-              {index > 0 && <span style={styles.separator}>&gt;</span>}
+              {index > 0 && (
+                <img src={ChevronForward} alt="Chevron Forward" style={styles.separatorIcon} />
+              )}
               {index === pathSegments.length - 1 || skipLinkSegments.includes(segment.toLowerCase()) ? (
                 <span style={styles.active}>{formatText(segment)}</span>
               ) : (
@@ -73,9 +78,11 @@ const styles = {
     display: "flex",
     alignItems: "center",
   },
-  separator: {
+  separatorIcon: {
     margin: "0 8px",
-    color: "#6c757d",
+    width: "12px",
+    height: "12px",
+    verticalAlign: "middle",
   },
   link: {
     textDecoration: "none",

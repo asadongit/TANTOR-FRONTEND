@@ -25,6 +25,10 @@ const ModelInferencing = () => {
   useEffect(() => {
     if (datasetState.sessionId == '') {
       navigate('/ai/playground');
+      return;
+    }
+    if (!readonly) {
+      handleReloadAndFetchRuns();
     }
   }, []);
 
@@ -286,69 +290,63 @@ const ModelInferencing = () => {
 
   const chartColors = ['#9ca3af', '#a78bfa', '#6ee7b7', '#fb923c', '#f472b6', '#60a5fa'];
 
-  const handleReload = async () => {
-    let jobId = workflowState?.completedJobs?.config?.job_id;
-    if (!jobId) {
-      toast.error('Job ID not found', { duration: 4000, position: 'top-right' });
-      return;
-    }
-    setIsReloading(true);
-    try {
-      const response = await fetch(`${hostnameAI}/jobs/${jobId}`, {
-        method: 'GET',
-        headers: { accept: 'application/json' },
-      });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const data = await response.json();
-      updateWorkflowStage('completedJobs', { apiResponse: data });
-      const successCount = (data.tasks || []).filter(t => t.status === 'SUCCESS').length;
-      const totalCount = (data.tasks || []).length;
-      toast.success(`Refreshed: ${successCount}/${totalCount} models ready`, {
-        duration: 3000,
-        position: 'top-right',
-      });
-    } catch (error) {
-      console.error('Error reloading job status:', error);
-      toast.error(error.message || 'Failed to reload. Please try again.', {
-        duration: 4000,
-        position: 'top-right',
-      });
-    } finally {
-      setIsReloading(false);
-    }
-  };
-
-  const fetchModelRuns = async () => {
+  const handleReloadAndFetchRuns = async () => {
     const sessionId = datasetState?.sessionId;
+    const jobId = workflowState?.completedJobs?.config?.job_id;
+
     if (!sessionId) {
       toast.error('Session ID not found', { duration: 4000, position: 'top-right' });
       return false;
     }
+    if (!jobId) {
+      toast.error('Job ID not found', { duration: 4000, position: 'top-right' });
+      return false;
+    }
     setIsLoading(true);
+    setIsReloading(true);
+
     try {
-      const response = await fetch(`${hostnameAI}/model/runs_logged/${sessionId}`, {
+      const runsResponse = await fetch(`${hostnameAI}/model/runs_logged/${sessionId}`, {
         method: 'GET',
         headers: { accept: 'application/json' },
       });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      await response.json();
-      toast.success('Model Inferencing completed successfully!', { duration: 3000, position: 'top-right' });
-      setIsLoading(false);
+      if (!runsResponse.ok) throw new Error(`Runs logged error! status: ${runsResponse.status}`);
+      await runsResponse.json();
+
+      const jobsResponse = await fetch(`${hostnameAI}/jobs/${jobId}`, {
+        method: 'GET',
+        headers: { accept: 'application/json' },
+      });
+      if (!jobsResponse.ok) throw new Error(`Jobs error! status: ${jobsResponse.status}`);
+      const data = await jobsResponse.json();
+
+      updateWorkflowStage('completedJobs', { apiResponse: data });
+
+      const successCount = (data.tasks || []).filter(t => t.status === 'SUCCESS').length;
+      const totalCount = (data.tasks || []).length;
+
+      toast.success(`Model Inferencing completed! ${successCount}/${totalCount} models ready`, {
+        duration: 3000,
+        position: 'top-right',
+      });
+
       return true;
     } catch (error) {
-      console.error('Error fetching model runs:', error);
-      toast.error(error.message || 'Model Inferencing failed. Please try again.', {
+      console.error('Error during model inferencing:', error);
+      toast.error(error.message || 'Failed. Please try again.', {
         duration: 4000,
         position: 'top-right',
       });
-      setIsLoading(false);
       return false;
+    } finally {
+      setIsLoading(false);
+      setIsReloading(false);
     }
   };
 
   const handleNextClick = async () => {
     if (readonly) return true;
-    return await fetchModelRuns();
+    return await handleReloadAndFetchRuns();
   };
 
   return (
@@ -369,8 +367,8 @@ const ModelInferencing = () => {
             {!readonly && nonSuccessTasks.length > 0 && (
               <div className="flex justify-end mb-2">
                 <button
-                  onClick={handleReload}
-                  disabled={isReloading}
+                  onClick={handleReloadAndFetchRuns}
+                  disabled={isReloading || isLoading}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[#8e78b7] text-sm font-medium text-[#8e78b7] hover:bg-[#f3f0fa] disabled:opacity-50 transition-colors"
                 >
                   <RefreshCw size={14} className={isReloading ? 'animate-spin' : ''} />

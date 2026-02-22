@@ -14,6 +14,7 @@ import {
   Observability
 } from './Tabs';
 import { useAuth } from '../../../../../../context/AuthContext';
+import { aithemestyle } from '../../../../../../components/themeContext';
 
 function Library() {
   const location = useLocation();
@@ -172,23 +173,33 @@ function Library() {
             >
               <ChevronLeft className="w-6 h-6 text-gray-600" />
             </button>
-            <h1 className="text-xl font-semibold">
-              Model Library - <span className="text-purple-600">{modelName}</span>
+            <h1 style={{ fontWeight: 700, fontSize: '24px', lineHeight: '100%' }}>
+              Model Library - <span style={{ color: aithemestyle.iconColor }}>{modelName}</span>
             </h1>
           </div>
 
         </div>
 
-        <div className="mt-4 border-t border-gray-200 pt-4">
-          <nav className="flex gap-6">
+        <div className="mt-4 border-t border-gray-200 pt-2">
+          <nav className="flex gap-2">
             {tabs.map((tab, index) => (
               <button
                 key={tab.name}
                 onClick={() => setActiveTab(index)}
-                className={`px-3 py-2 text-sm font-medium transition-colors ${activeTab === index
-                    ? 'border-b-2 border-purple-600 text-purple-600'
-                    : 'text-gray-500 hover:text-gray-700'
-                  }`}
+                style={activeTab === index ? {
+                  backgroundColor: aithemestyle.tab.activeBackground,
+                  borderBottom: `${aithemestyle.tab.activeBorderWidth} solid ${aithemestyle.tab.activeBorderColor}`,
+                  color: aithemestyle.tab.activeTextColor,
+                  fontSize: aithemestyle.tab.fontSize,
+                  paddingTop: '12px',
+                  paddingBottom: '6px',
+                } : {
+                  fontSize: aithemestyle.tab.fontSize,
+                  color: aithemestyle.tab.inactiveTextColor,
+                  paddingTop: '12px',
+                  paddingBottom: '6px',
+                }}
+                className="px-4 font-medium transition-colors relative rounded-t hover:text-gray-700"
               >
                 {tab.name}
               </button>
