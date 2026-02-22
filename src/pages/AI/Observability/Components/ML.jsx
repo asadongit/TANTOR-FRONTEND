@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
+import { aithemestyle } from '../../../../components/themeContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart, Line, ResponsiveContainer, RadialBarChart, RadialBar, PolarAngleAxis, PieChart, Pie, Area, AreaChart } from 'recharts';
 import { ArrowUp, ArrowDown, BookOpen, Rocket, Gauge, Bell, Clock, Activity, TrendingUp, Target, Zap } from 'lucide-react';
 
@@ -104,26 +105,24 @@ function ML({ selectedPeriod, refreshKey }) {
         const trendColor = isUp ? "text-emerald-500" : "text-red-500";
 
         return (
-            <div className="bg-white rounded-xl px-6 py-5 border border-purple-200 flex flex-col justify-between min-h-[120px]">
-                <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                        <IconCmp className="w-5 h-5 text-[#8e78b7] shrink-0" />
-                        <span className="text-gray-900 text-xl font-medium truncate">{label}</span>
-                    </div>
+            <div className="bg-white rounded-xl px-4 py-3 border border-purple-200 flex flex-col justify-between min-h-[90px]">
+                <div className="flex items-center gap-2 min-w-0">
+                    <IconCmp className="w-4 h-4 shrink-0" style={{ color: aithemestyle.iconColor }} />
+                    <span className="text-gray-800 text-xl font-bold truncate">{label}</span>
                 </div>
 
-                <div className="flex items-end justify-between mt-6">
-                    <div className="text-2xl font-bold text-gray-900 tabular-nums leading-none">
-                        {value == null ? <div className="h-10 w-16 bg-gray-200 rounded animate-pulse" /> : value}
+                <div className="flex items-end justify-between mt-3">
+                    <div className="text-lg font-normal text-gray-600 tabular-nums leading-none">
+                        {value == null ? <div className="h-6 w-14 bg-gray-200 rounded animate-pulse" /> : value}
                     </div>
 
                     {(trend && trendValue && value != null) ? (
-                        <div className={`flex items-center gap-2 ${trendColor} text-xl font-semibold leading-none`}>
-                            <TrendIcon className="w-7 h-7" />
+                        <div className={`flex items-center gap-1 ${trendColor} text-sm font-semibold leading-none`}>
+                            <TrendIcon className="w-4 h-4" />
                             <span className="tabular-nums">{trendValue}</span>
                         </div>
                     ) : (
-                        <div className="h-7 w-14" />
+                        <div className="h-4 w-10" />
                     )}
                 </div>
             </div>
@@ -211,11 +210,11 @@ function ML({ selectedPeriod, refreshKey }) {
                     <div className="grid grid-cols-2 gap-4 h-full">
                         <div className="bg-white rounded-xl p-3 flex flex-col justify-between border border-gray-200 shadow-lg">
                             <div className="flex items-center gap-2">
-                                <BookOpen className="w-4 h-4 text-[#8e78b7] shrink-0" />
-                                <span className="text-sm font-medium text-gray-900">Model Drift</span>
+                                <BookOpen className="w-5 h-5 shrink-0" style={{ color: aithemestyle.iconColor }} />
+                                <span className="text-xl font-bold text-gray-700">Model Drift</span>
                             </div>
                             <div className="mt-2">
-                                <div className="text-2xl font-bold text-gray-900 tabular-nums">
+                                <div className="text-2xl font-normal text-gray-600 tabular-nums">
                                     {modelDriftDisplay ? `${(modelDriftDisplay * 100).toFixed(1)}%` : '0%'}
                                 </div>
                             </div>
@@ -223,11 +222,11 @@ function ML({ selectedPeriod, refreshKey }) {
 
                         <div className="bg-white rounded-xl p-3 flex flex-col justify-between border border-gray-200 shadow-lg">
                             <div className="flex items-center gap-2">
-                                <Rocket className="w-4 h-4 text-emerald-500 shrink-0" />
-                                <span className="text-sm font-medium text-gray-900">Accuracy</span>
+                                <Rocket className="w-5 h-5 shrink-0" style={{ color: aithemestyle.iconColor }} />
+                                <span className="text-xl font-bold text-gray-700">Accuracy</span>
                             </div>
                             <div className="mt-2">
-                                <div className="text-2xl font-bold text-gray-900 tabular-nums">
+                                <div className="text-2xl font-normal text-gray-600 tabular-nums">
                                     {avgPerf.train?.accuracy ? `${(avgPerf.train.accuracy * 100).toFixed(1)}%` : '0%'}
                                 </div>
                             </div>
@@ -235,21 +234,21 @@ function ML({ selectedPeriod, refreshKey }) {
 
                         <div className="bg-white rounded-xl p-3 flex flex-col justify-between border border-gray-200 shadow-lg">
                             <div className="flex items-center gap-2">
-                                <Gauge className="w-4 h-4 text-sky-400 shrink-0" />
-                                <span className="text-sm font-medium text-gray-900">Avg Latency</span>
+                                <Gauge className="w-5 h-5 shrink-0" style={{ color: aithemestyle.iconColor }} />
+                                <span className="text-xl font-bold text-gray-700">Avg Latency</span>
                             </div>
                             <div className="mt-2">
-                                <div className="text-2xl font-bold text-gray-900 tabular-nums">{avgLatencyMin} min</div>
+                                <div className="text-2xl font-normal text-gray-600 tabular-nums">{avgLatencyMin} min</div>
                             </div>
                         </div>
 
                         <div className="bg-white rounded-xl p-3 flex flex-col justify-between border border-gray-200 shadow-lg">
                             <div className="flex items-center gap-2">
-                                <Clock className="w-4 h-4 text-[#8e78b7] shrink-0" />
-                                <span className="text-sm font-medium text-gray-900">Data Quality</span>
+                                <Clock className="w-5 h-5 shrink-0" style={{ color: aithemestyle.iconColor }} />
+                                <span className="text-xl font-bold text-gray-700">Data Quality</span>
                             </div>
                             <div className="mt-2">
-                                <div className="text-2xl font-bold text-gray-900 tabular-nums">
+                                <div className="text-2xl font-normal text-gray-600 tabular-nums">
                                     {dataQuality != null ? `${dataQuality}%` : 'N/A'}
                                 </div>
                             </div>
@@ -260,7 +259,7 @@ function ML({ selectedPeriod, refreshKey }) {
 
                 <div className="lg:col-span-4">
                     <div className="bg-white rounded-xl p-4 h-full border border-gray-200 shadow-lg">
-                        <h3 className="text-sm font-semibold text-gray-900 mb-3">Recent Alerts</h3>
+                        <h3 className="text-xl font-semibold text-gray-700 mb-3">Recent Alerts</h3>
                         <div className="flex flex-col gap-2">
                             {recentAlerts.slice(0, 4).map((a, i) => {
                                 const iconColor =

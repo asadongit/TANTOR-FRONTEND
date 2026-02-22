@@ -680,11 +680,6 @@ function Parameters({ modelData }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="text-sm font-semibold text-gray-800">Parameters</div>
-        <div className="flex items-center gap-2">
-          <Badge tone="gray">Run: {runName || '—'}</Badge>
-          <Badge tone={isAuto ? 'green' : isManual ? 'purple' : 'gray'}>{dpMode || 'Unknown mode'}</Badge>
-        </div>
       </div>
 
       {(isAuto || isManual) ? (
