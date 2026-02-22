@@ -75,24 +75,10 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
     }
     return [];
   };
-  const handleRemovePolicy = (policyIdToRemove) => {
-  // Remove from both policy arrays
-  const updatedExisting = existingPolicies.filter(
-    policy => String(policy.id) !== String(policyIdToRemove)
-  );
-  const updatedNew = newPolicies.filter(
-    policy => String(policy.id) !== String(policyIdToRemove)
-  );
 
-  // Update UI
-  setExistingPolicies(updatedExisting);
-  setNewPolicies(updatedNew);
-
-  // IMPORTANT: Rebuild formData from remaining policies
-  const remainingPolicies = [...updatedExisting, ...updatedNew];
-  
-  if (remainingPolicies.length === 0) {
-    // If no policies left, clear everything
+  const handleRemovePolicy = () => {
+    setExistingPolicies([]);
+    setNewPolicies([]);
     setFormData(prev => ({
       ...prev,
       roles: [],
@@ -101,11 +87,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
       subgroups: [],
       datapolicy: []
     }));
-  } else {
-    // Rebuild from remaining policies
-    updateFormDataFromPolicies(remainingPolicies);
-  }
-};
+  };
 
   const fetchPolicyNames = async (policyIds) => {
   if (!policyIds || policyIds.length === 0) return [];
@@ -148,6 +130,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
         roles: toArray(policy.role || policy.roles),
         persona: toArray(policy.persona || policy.personas),
         groups: toArray(policy.group || policy.groups),
+        status: policy.status || 'active',
         subgroups: toArray(policy.subgroup || policy.subGroup || policy.subgroups)
       };
     });
@@ -236,64 +219,62 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
   };
 
   const handleApplyPoliciesFromModal = async (appliedData) => {
-  const policyIds = appliedData.datapolicy;
-  const fetchedPolicies = await fetchPolicyNames(policyIds);
+    const policyId = appliedData.datapolicy[0]; // Single policy only
+    const fetchedPolicies = await fetchPolicyNames([policyId]);
 
-  // helper to normalize values to arrays
-  const toArray = (value) => {
-    if (value === null || value === undefined || value === "") return [];
-    if (Array.isArray(value)) return value;
-    return [value];
-  };
+    const toArray = (value) => {
+      if (value === null || value === undefined || value === "") return [];
+      if (Array.isArray(value)) return value;
+      return [value];
+    };
 
-  const newExistingPolicies = policyIds.map((policyId) => {
-    const fetched = fetchedPolicies.find(p => p.id === String(policyId));
+    const fetched = fetchedPolicies[0];
     const policyIndividualData = appliedData.policiesData?.[policyId];
 
-    // normalize group/subgroup/role/persona keys from modal payload
-    const roles = policyIndividualData?.role ?? policyIndividualData?.roles ?? [];
-    const persona = policyIndividualData?.persona ?? policyIndividualData?.personas ?? []; // ← Handle both
-    const groups = policyIndividualData?.group ?? policyIndividualData?.groups ?? [];
-    const subgroups = policyIndividualData?.subGroup ?? policyIndividualData?.subgroup ?? policyIndividualData?.subgroups ?? [];
-
-    return {
+    const newPolicy = {
       id: String(policyId),
       name: fetched?.name || `Policy ${policyId}`,
       policyName: fetched?.policyName || '',
       subPolicyName: fetched?.subPolicyName || '',
-      roles: toArray(roles),
-      persona: toArray(persona),
-      groups: toArray(groups),
-      subgroups: toArray(subgroups)
+      roles: toArray(policyIndividualData?.role ?? policyIndividualData?.roles ?? fetched?.roles),
+      persona: toArray(policyIndividualData?.persona ?? policyIndividualData?.personas ?? fetched?.persona),
+      groups: toArray(policyIndividualData?.group ?? policyIndividualData?.groups ?? fetched?.groups),
+      subgroups: toArray(policyIndividualData?.subGroup ?? policyIndividualData?.subgroup ?? policyIndividualData?.subgroups ?? fetched?.subgroups),
+      status: fetched?.status || 'active',
     };
-  });
 
-  setExistingPolicies(newExistingPolicies);
-  updateFormDataFromPolicies(newExistingPolicies);
-  setIsPolicyModalOpen(false);
-};
+    // Clear existing policies and set only the new one
+    setExistingPolicies([newPolicy]);
+    setNewPolicies([]);
+    updateFormDataFromPolicies([newPolicy]);
+    setIsPolicyModalOpen(false);
+  };
+
   const handlePolicyComplete = (policyDetails) => {
-  const toArray = (value) => {
-    if (!value || value === "" || value === null) return [];
-    if (Array.isArray(value)) return value;
-    return [value];
-  };
+    const toArray = (value) => {
+      if (!value || value === "" || value === null) return [];
+      if (Array.isArray(value)) return value;
+      return [value];
+    };
 
-  const newPolicy = {
-    id: String(policyDetails.id),
-    name: policyDetails.policy_name || `Policy ${policyDetails.id}`,
-    policyName: policyDetails.policy_name || '',
-    subPolicyName: policyDetails.sub_policy_name || '',
-    roles: toArray(policyDetails.user_selections?.role || policyDetails.roles || []),
-    persona: toArray(policyDetails.user_selections?.persona || policyDetails.persona || []), // ← Normalize
-    groups: toArray(policyDetails.user_selections?.group || policyDetails.group || []),
-    subgroups: toArray(policyDetails.user_selections?.subGroup || policyDetails.subgroups || [])
-  };
+    const newPolicy = {
+      id: String(policyDetails.id),
+      name: policyDetails.policy_name || `Policy ${policyDetails.id}`,
+      policyName: policyDetails.policy_name || '',
+      subPolicyName: policyDetails.sub_policy_name || '',
+      roles: toArray(policyDetails.user_selections?.role || policyDetails.roles || []),
+      persona: toArray(policyDetails.user_selections?.persona || policyDetails.persona || []),
+      groups: toArray(policyDetails.user_selections?.group || policyDetails.group || []),
+      subgroups: toArray(policyDetails.user_selections?.subGroup || policyDetails.subgroups || []),
+      status: policyDetails.policy_status || 'active'
+    };
 
-  setNewPolicies(prev => [...prev, newPolicy]);
-  updateFormDataFromPolicies([...existingPolicies, ...newPolicies, newPolicy]);
-  setIsPolicyStepperOpen(false);
-};
+    // Clear existing policies and set only the new one
+    setExistingPolicies([]);
+    setNewPolicies([newPolicy]);
+    updateFormDataFromPolicies([newPolicy]);
+    setIsPolicyStepperOpen(false);
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -519,10 +500,20 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
               <span className="text-sm text-gray-500 flex-shrink-0">{index + 1}.</span>
               <div className="flex flex-col min-w-0">
                 <p
-                  className="text-sm font-semibold text-gray-900 truncate"
+                  className="text-sm font-semibold text-gray-900 truncate flex items-center"
                   title={policy.name}
                 >
                   {policy.name}
+
+                  <span
+                    className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                      policy.status === "inactive"
+                        ? "bg-gray-200 text-gray-600"
+                        : "bg-green-100 text-green-600"
+                    }`}
+                  >
+                    {policy.status === "inactive" ? "Inactive" : "Active"}
+                  </span>
                 </p>
 
                 {(policy.policyName || policy.subPolicyName) && (
@@ -540,7 +531,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
             
             {/* Remove button - visible on hover */}
             <button
-              onClick={() => handleRemovePolicy(policy.id)}
+              onClick={() => handleRemovePolicy()}
               className="ml-2 text-gray-500 hover:text-red-600 hover:bg-red-100 p-1.5 rounded-md transition-all"
               type="button"
               title="Remove policy"
@@ -596,7 +587,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
         isOpen={isPolicyModalOpen}
         onClose={() => setIsPolicyModalOpen(false)}
         onApplyPolicies={handleApplyPoliciesFromModal}
-        initialSelectedPolicyIds={[...existingPolicies.map(policy => policy.id), ...newPolicies.map(policy => policy.id)]}
+        initialSelectedPolicyIds={allPolicies.length > 0 ? [allPolicies[0].id] : []}
         setNewPolicies={setNewPolicies}
       />
       <Policy

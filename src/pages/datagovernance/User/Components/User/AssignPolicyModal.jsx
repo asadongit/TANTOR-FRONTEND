@@ -81,11 +81,8 @@ const AssignPolicyModal = ({ isOpen, onClose, onApplyPolicies, initialSelectedPo
             setIsFetchingConnections(false);
         }
     };
-
     const handlePolicySelect = (policyId) => {
-        setSelectedPolicyIds((prev) =>
-            prev.includes(policyId) ? prev.filter((id) => id !== policyId) : [...prev, policyId]
-        );
+        setSelectedPolicyIds([policyId]);
     };
     const handleSort = (key) => {
         let direction = 'asc';
@@ -253,39 +250,7 @@ onApplyPolicies({
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-[#8e78b7] text-white sticky top-0">
                                     <tr>
-                                        <th
-                                            scope="col"
-                                            className="p-3 text-left text-xs font-medium uppercase tracking-wider w-12"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                className="form-checkbox h-4 w-4 text-[#8e78b7] rounded"
-                                                onChange={(e) => {
-                                                    if (e.target.checked) {
-                                                        setSelectedPolicyIds(filteredPolicies.map((p) => p.id));
-                                                    } else {
-                                                        setSelectedPolicyIds([]);
-                                                    }
-                                                }}
-                                                checked={
-                                                    selectedPolicyIds.length === filteredPolicies.length &&
-                                                    filteredPolicies.length > 0
-                                                }
-                                                ref={(el) => {
-                                                    if (el) {
-                                                        el.indeterminate =
-                                                            selectedPolicyIds.length > 0 &&
-                                                            selectedPolicyIds.length < filteredPolicies.length;
-                                                    }
-                                                }}
-                                            />
-                                        </th>
-                                        <th
-                                            scope="col"
-                                            className="p-3 text-left text-xs font-medium uppercase tracking-wider"
-                                        >
-                                            #
-                                        </th>
+                                        <th scope="col" className="p-3 text-left text-xs font-medium uppercase tracking-wider w-12"></th>
                                         {/* <th
                                             scope="col"
                                             className="p-3 text-left text-xs font-medium uppercase tracking-wider"
@@ -362,7 +327,7 @@ onApplyPolicies({
                                             </td>
                                         </tr>
                                     ) : (
-                                        filteredPolicies.map((policy, index) => {
+                                        filteredPolicies.map((policy) => {
                                             const rowAccessControlCount = policy.row_access_control
                                                 ? Object.keys(policy.row_access_control).length
                                                 : 0;
@@ -376,14 +341,12 @@ onApplyPolicies({
                                                 <tr key={policy.id} className="hover:bg-gray-50">
                                                     <td className="p-3 whitespace-nowrap">
                                                         <input
-                                                            type="checkbox"
-                                                            className="form-checkbox h-4 w-4 text-[#8e78b7] rounded"
+                                                            type="radio"
+                                                            name="policy_select"
+                                                            className="form-radio h-4 w-4 text-[#8e78b7]"
                                                             checked={selectedPolicyIds.includes(policy.id)}
-                                                            onChange={() => handlePolicySelect(policy.id)}
+                                                            onChange={() => setSelectedPolicyIds([policy.id])}
                                                         />
-                                                    </td>
-                                                    <td className="p-3 whitespace-nowrap text-sm text-gray-800">
-                                                        {index + 1}
                                                     </td>
                                                     {/* <td className="p-3 whitespace-nowrap text-sm text-gray-800">
                                                         {policy.id}
@@ -510,7 +473,7 @@ onApplyPolicies({
                                         : 'bg-[#8e78b7] hover:bg-[#7a64a3]'
                                 }`}
                             >
-                                Apply Policies ({selectedPolicyIds.length})
+                                Apply Policy
                             </button>
                         </div>
                     </>
