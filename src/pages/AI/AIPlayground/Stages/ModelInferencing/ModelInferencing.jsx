@@ -302,7 +302,6 @@ const ModelInferencing = () => {
       toast.error('Job ID not found', { duration: 4000, position: 'top-right' });
       return false;
     }
-
     setIsLoading(true);
     setIsReloading(true);
 
