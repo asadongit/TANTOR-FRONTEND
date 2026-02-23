@@ -66,7 +66,7 @@ export const getActionConfigurations = ({ token, project, hostnameV2, navigate }
       {
         label: "Run",
         icon: React.createElement(Play, { size: 16, fill: "currentColor" }),
-        show: (row) => row?.status?.toLowerCase() !== "running",
+        show: (row) => !(["running", "pending"].includes(row?.status?.toLowerCase())),
         onClick: async (row) => {
           try {
             const response = await axios.get(`${hostnameV2}/cdc/trigger/${row.cdc_id}`, {
