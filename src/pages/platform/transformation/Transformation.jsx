@@ -616,19 +616,27 @@ function Transformation() {
       key: "status",
       label: "Status",
       sortable: true,
-      render: (row) =>
-        row.status === "Failed" ? (
-          <button
-            onClick={() => fetchDagFailure(row.transformation_name)}
-            className="flex items-center gap-1 text-red-600 hover:text-red-800 font-medium"
-            title="View failure details"
-          >
-            <span>Failed</span>
-            <ExternalLink className="ml-1 w-3 h-3" />
-          </button>
-        ) : (
-          <span>{row.status}</span>
-        ),
+      render: (row) => {
+        let className = "px-2 py-1 rounded-full font-medium";
+        if (row.status === "Failed") {
+          className += " bg-red-100 text-red-600";
+          return (
+            <button
+              onClick={() => fetchDagFailure(row.transformation_name)}
+              className={`flex items-center gap-1 ${className} hover:bg-red-200`}
+              title="View failure details"
+            >
+              <span>Failed</span>
+              <ExternalLink className="ml-1 w-3 h-3" />
+            </button>
+          );
+        } else if (row.status === "Success") {
+          className += " bg-green-100 text-green-600";
+        } else {
+          className += " bg-gray-100 text-gray-600";
+        }
+        return <span className={className}>{row.status}</span>;
+      },
     },
     { label: "Action", sortable: false },
   ];

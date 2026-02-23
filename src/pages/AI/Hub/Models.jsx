@@ -179,9 +179,7 @@ function Models() {
   const formatPct = (n) => {
     const num = Number(n);
     if (!Number.isFinite(num)) return "0%";
-    const rounded =
-      Math.abs(num) >= 10 ? Math.round(num) : Math.round(num * 10) / 10;
-    return `${rounded}%`;
+    return `${num.toFixed(2)}%`;
   };
 
   const formatLatency = (ms) => {
