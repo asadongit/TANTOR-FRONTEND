@@ -425,6 +425,17 @@ const CommentsTab = ({ projectData }) => {
 
     return (
         <div className="bg-white rounded-xl">
+            <div className="flex justify-between items-center p-4 border-b border-gray-200">
+                <h2 className="text-lg font-semibold text-gray-900">Comments</h2>
+                <button
+                    onClick={openAdd}
+                    className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-[#8E77BB] text-white border border-gray-300"
+                    // style={{ color: aithemestyle.iconColor }}
+                >
+                    <Plus className="w-4 h-4" />
+                     Comment
+                </button>
+            </div>
 
             <div className="flex flex-col gap-3 mb-4">
                 <div className="flex flex-wrap items-end gap-3">
