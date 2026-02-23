@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import InfoIcons from '../../../../../assets/ai/infoIcon.svg'
-import CloseIcon from '../../../../../assets/ai/closeIcon.svg'
 import { tw, aithemestyle } from '../../../../../components/themeContext';
 
 function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly = false, isGenerating = false }) {
