@@ -505,7 +505,7 @@ export function AIPlaygroundLayout({
                             <button onClick={() => navigate('/ai/playground')} className="text-gray-600 hover:text-gray-900">
                                 <ChevronLeft size={24} />
                             </button>
-                            <h1 className="text-xl font-semibold text-gray-700">Build Machine Learning</h1>
+                            <h1 className="text-xl font-bold text-gray-700">Build Machine Learning</h1>
                         </div>
                         {readonly ? (
                             <div className="flex items-center gap-3">

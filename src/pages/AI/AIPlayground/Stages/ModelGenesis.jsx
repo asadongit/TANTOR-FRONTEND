@@ -528,7 +528,7 @@ const ModeSelection = ({ config, setConfig, readonly }) => {
   );
 };
 
-const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, columnNames }) => {
+const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, columnNames, hasError, errorMessage, sectionRef }) => {
   const hostnameAI = window._env_?.VITE_AI_API;
   const { datasetState } = useAIPlayground();
   const [isValidating, setIsValidating] = useState(false);
@@ -606,7 +606,11 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
   const isValidateDisabled = !config.classification || !config.targetFeature || isValidating;
 
   return (
-    <Section title="Prediction Type" className="!bg-[#FAFAFA] p-6 rounded-lg ">
+    <div ref={sectionRef} className="p-6 rounded-lg bg-[#FAFAFA]">
+      <h3 className={`text-lg font-semibold mb-4 ${hasError ? 'text-red-600' : 'text-gray-900'}`}>
+        Prediction Type
+      </h3>
+
       <div className="flex gap-1 border-b border-gray-300 -mx-6 px-6">
         {tabs.map((tab) => (
           <button
@@ -720,7 +724,11 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
           </div>
         </div>
       )}
-    </Section>
+
+      {hasError && (
+        <p className="mt-3 text-sm text-red-600">{errorMessage}</p>
+      )}
+    </div>
   );
 };
 
@@ -856,7 +864,7 @@ const FairnessAttribute = ({ config, setConfig, readonly, columnNames = [] }) =>
   );
 };
 
-const DropColumns = ({ config, setConfig, readonly, columnNames = [] }) => {
+const DropColumns = ({ config, setConfig, readonly, columnNames = [], hasError, errorMessage, sectionRef }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
@@ -940,10 +948,8 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [] }) => {
 
     let newDropColumns;
     if (allFilteredSelected) {
-      // Deselect all filtered options
       newDropColumns = selectedDropColumns.filter(col => !filteredOptions.includes(col));
     } else {
-      // Select all filtered options
       const toAdd = filteredOptions.filter(opt => !selectedDropColumns.includes(opt));
       newDropColumns = [...selectedDropColumns, ...toAdd];
     }
@@ -966,14 +972,22 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [] }) => {
     }
   };
 
+  const displayError = hasError;
+  const displayMessage = errorMessage;
+
   return (
-    <div className="bg-[#FAFAFA] rounded-lg">
+    <div ref={sectionRef} className="rounded-lg bg-[#FAFAFA]">
       <div className="p-4 flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Drop Columns</h3>
-          <p className='text-sm text-gray-600 mt-2'>
+          <h3 className={`text-lg font-semibold ${hasError ? 'text-red-600' : 'text-gray-900'}`}>
+            Drop Columns
+          </h3>
+          <p className="text-sm text-gray-600 mt-2">
             Drop Column is the process of removing a feature that is irrelevant, redundant, or low in informational value. This helps reduce noise and improves model efficiency.
           </p>
+          {displayError && (
+            <p className="mt-1 text-sm text-red-600">{displayMessage}</p>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -1021,7 +1035,6 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [] }) => {
 
                 {isOpen && !readonly && (
                   <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg overflow-hidden">
-                    {/* Search */}
                     <div className="p-2 border-b border-gray-200">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -1036,7 +1049,6 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [] }) => {
                       </div>
                     </div>
 
-                    {/* Select All */}
                     {filteredOptions.length > 0 && (
                       <div className="px-3 py-2 border-b border-gray-100">
                         <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -1057,7 +1069,6 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [] }) => {
                       </div>
                     )}
 
-                    {/* Options — increased height so last item isn't cut off */}
                     <div className="overflow-y-auto" style={{ maxHeight: '220px' }}>
                       {filteredOptions.length > 0 ? (
                         filteredOptions.map((option) => (
@@ -1085,7 +1096,6 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [] }) => {
               </div>
             </div>
 
-            {/* Selected tags */}
             {selectedDropColumns.length > 0 && (
               <div>
                 <label className="text-xs font-medium text-gray-600 mb-2 block">Selected Columns</label>
@@ -1123,6 +1133,9 @@ function ModelGenesis() {
   const navigate = useNavigate();
 
   const { datasetState, updateWorkflowStage, workflowState, mode } = useAIPlayground();
+  const [validationErrors, setValidationErrors] = useState({});
+  const predictionTypeRef = useRef(null);
+  const dropColumnsRef = useRef(null);
 
   useEffect(() => {
     if (datasetState.sessionId == '') {
@@ -1255,10 +1268,34 @@ function ModelGenesis() {
   };
 
   const handleNextClick = async () => {
+    // Run client-side validation first
+    const errors = {};
+
+    if (!isValidated) {
+      errors.predictionType = 'Please validate your configuration before proceeding.';
+    }
+
+    if (config.drop_columns_active && (!config.drop_columns || config.drop_columns.length === 0)) {
+      errors.dropColumns = 'Please select at least one column to drop, or disable Drop Columns.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      // Scroll to first error
+      setTimeout(() => {
+        if (errors.dropColumns && dropColumnsRef.current) {
+          dropColumnsRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (errors.predictionType && predictionTypeRef.current) {
+          predictionTypeRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 50);
+      return false;
+    }
+
+    setValidationErrors({});
     setIsSubmitting(true);
 
     try {
-      // In view mode, only run validation and skip model genesis API
       if (mode === 'view') {
         const validationSuccess = await runValidation();
         if (!validationSuccess) {
@@ -1268,15 +1305,6 @@ function ModelGenesis() {
         setIsValidated(true);
         setIsSubmitting(false);
         return true;
-      }
-
-      if (!isValidated) {
-        toast.error('Please validate your configuration before proceeding.', {
-          duration: 4000,
-          position: 'top-right',
-        });
-        setIsSubmitting(false);
-        return false;
       }
 
       const trainSize = config.trainSplit / 100;
@@ -1317,7 +1345,6 @@ function ModelGenesis() {
 
       if (response.ok) {
         const data = await response.json();
-
         updateWorkflowStage('modelGenesis', {
           config: {
             ...config,
@@ -1327,14 +1354,11 @@ function ModelGenesis() {
           },
           apiResponse: data
         });
-
         toast.success('Model genesis completed successfully!', {
           duration: 3000,
           position: 'top-right',
         });
-
         return true;
-
       } else {
         const errorData = await response.json().catch(() => ({}));
         toast.error(errorData.message || 'Failed to complete model genesis. Please try again.', {
@@ -1357,7 +1381,7 @@ function ModelGenesis() {
 
   return (
     <AIPlaygroundLayout
-      isNextDisabled={!isValidated || isSubmitting || !isDropColumnsValid()}
+      isNextDisabled={isSubmitting}
       onNextClick={handleNextClick}
     >
       <div className="space-y-6">
@@ -1365,18 +1389,35 @@ function ModelGenesis() {
 
         <DropColumns
           config={config}
-          setConfig={setConfig}
+          setConfig={(newConfig) => {
+            setConfig(newConfig);
+
+            if (validationErrors.dropColumns && newConfig.drop_columns?.length > 0) {
+              setValidationErrors(prev => ({ ...prev, dropColumns: undefined }));
+            }
+
+            if (!newConfig.drop_columns_active) {
+              setValidationErrors(prev => ({ ...prev, dropColumns: undefined }));
+            }
+          }}
           readonly={readonly}
           columnNames={datasetState.columnNames}
+          hasError={!!validationErrors.dropColumns}
+          errorMessage={validationErrors.dropColumns}
         />
 
         <PredictionType
           config={config}
           setConfig={setConfig}
           isValidated={isValidated}
-          onValidate={handleValidate}
+          onValidate={() => {
+            handleValidate();
+            setValidationErrors(prev => ({ ...prev, predictionType: undefined }));
+          }}
           readonly={readonly}
           columnNames={datasetState.columnNames}
+          hasError={!!validationErrors.predictionType}
+          errorMessage={validationErrors.predictionType}
         />
 
         <SplitSetting config={config} setConfig={setConfig} readonly={readonly} />
@@ -1390,27 +1431,26 @@ function ModelGenesis() {
       </div>
 
       <style jsx>{`
-        input[type="range"]::-webkit-slider-thumb {
-          appearance: none;
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
-          background: white;
-          border: 2px solid currentColor;
-          cursor: pointer;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        input[type="range"]::-moz-range-thumb {
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
-          background: white;
-          border: 2px solid currentColor;
-          cursor: pointer;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-      `}</style>
+      input[type="range"]::-webkit-slider-thumb {
+        appearance: none;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: white;
+        border: 2px solid currentColor;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      input[type="range"]::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: white;
+        border: 2px solid currentColor;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+    `}</style>
     </AIPlaygroundLayout>
   );
 }

@@ -8,6 +8,7 @@ import AlgorithmCard from './AlgorithmCard';
 import SidePanel from './SidePanel';
 import { validateAlgorithm } from './validationUtils';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { tw } from '../../../../../components/themeContext';
 
 const METRIC_NAME_MAPPING = {
     "Accuracy": "accuracy",
@@ -37,6 +38,9 @@ function ModelSelection() {
         : modelGenesisConfig?.modelSelection;
     const isModelSelectionAuto = modelSelectionMode &&
         ['Swift', 'Standard', 'Comprehensive'].includes(modelSelectionMode);
+
+    // Tracks whether user has attempted to proceed (triggers inline validation)
+    const [showValidation, setShowValidation] = useState(false);
 
     useEffect(() => {
         if (datasetState.sessionId == '') {
@@ -96,7 +100,6 @@ function ModelSelection() {
 
     const algorithms = Object.values(allAlgorithmsState).filter(algo => {
         const matchesCategory = algo.category === selectedTab;
-        // In readonly mode, only show enabled algorithms
         if (readonly) {
             return matchesCategory && algo.enabled;
         }
@@ -104,7 +107,6 @@ function ModelSelection() {
     });
 
     const [normalizeData, setNormalizeData] = useState(false);
-    const [isModelInferencingEnabled, setIsModelInferencingEnabled] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [metrics, setMetrics] = useState([
@@ -260,19 +262,6 @@ function ModelSelection() {
         }
     }, [searchQuery, filteredCategories, selectedTab]);
 
-    useEffect(() => {
-        const enabledAlgos = Object.values(allAlgorithmsState).filter(algo => algo.enabled);
-        const hasEnabledMetrics = metrics.some(m => m.enabled);
-
-        if (enabledAlgos.length === 0 || !hasEnabledMetrics) {
-            setIsModelInferencingEnabled(false);
-            return;
-        }
-
-        const allValid = enabledAlgos.every(algo => validateAlgorithm(algo));
-        setIsModelInferencingEnabled(allValid);
-    }, [allAlgorithmsState, metrics]);
-
     const updateAlgorithmState = (algoId, updates) => {
         setAllAlgorithmsState(prevState => ({
             ...prevState,
@@ -291,6 +280,11 @@ function ModelSelection() {
         if (readonly) return;
         const algo = allAlgorithmsState[id];
         const newEnabled = !algo.enabled;
+
+        // Reset validation state so newly added algorithms don't show red immediately
+        if (newEnabled) {
+            setShowValidation(false);
+        }
 
         let initializedGridSearchValues = { ...algo.gridSearchValues };
         let initializedGridSearchErrors = { ...algo.gridSearchErrors };
@@ -393,15 +387,9 @@ function ModelSelection() {
             .map(m => METRIC_NAME_MAPPING[m.name] || m.name.toLowerCase());
 
         const finalParamGrid = Object.keys(paramGrid).length > 0 ? paramGrid : {
-            "additionalProp1": {
-                "additionalProp1": {}
-            },
-            "additionalProp2": {
-                "additionalProp1": {}
-            },
-            "additionalProp3": {
-                "additionalProp1": {}
-            }
+            "additionalProp1": { "additionalProp1": {} },
+            "additionalProp2": { "additionalProp1": {} },
+            "additionalProp3": { "additionalProp1": {} }
         };
 
         const payload = {
@@ -421,9 +409,50 @@ function ModelSelection() {
         return payload;
     };
 
+    // Validate the whole form — returns true if all good
+    const isFormValid = () => {
+        const enabledAlgos = Object.values(allAlgorithmsState).filter(algo => algo.enabled);
+        const hasEnabledMetrics = metrics.some(m => m.enabled);
+        if (enabledAlgos.length === 0 || !hasEnabledMetrics) return false;
+        return enabledAlgos.every(algo => validateAlgorithm(algo));
+    };
+
     const handleNextClick = async () => {
         if (readonly) return true;
         if (isSubmitting) return false;
+
+        // Trigger inline validation display
+        setShowValidation(true);
+
+        if (!isFormValid()) {
+            // Auto-expand algorithms that have errors so user can see them
+            const enabledAlgos = Object.values(allAlgorithmsState).filter(algo => algo.enabled);
+            const invalidAlgo = enabledAlgos.find(algo => !validateAlgorithm(algo));
+            if (invalidAlgo) {
+                // Switch to the tab of the first invalid algorithm
+                setSelectedTab(invalidAlgo.category);
+                // Expand it
+                const updates = {};
+                Object.keys(allAlgorithmsState).forEach(key => {
+                    updates[key] = {
+                        ...allAlgorithmsState[key],
+                        expanded: key === invalidAlgo.id ? true : allAlgorithmsState[key].expanded
+                    };
+                });
+                setAllAlgorithmsState(updates);
+            }
+
+            const enabledCount = enabledAlgos.length;
+            const hasMetrics = metrics.some(m => m.enabled);
+            if (enabledCount === 0) {
+                toast.error('Please select at least one algorithm.', { duration: 3000, position: 'top-right' });
+            } else if (!hasMetrics) {
+                toast.error('Please select at least one metric.', { duration: 3000, position: 'top-right' });
+            } else {
+                toast.error('Please complete all required fields in the selected algorithms.', { duration: 3000, position: 'top-right' });
+            }
+            return false;
+        }
 
         setIsSubmitting(true);
 
@@ -496,9 +525,19 @@ function ModelSelection() {
 
     const hasEnabledMetrics = metrics.some(m => m.enabled);
 
+    // Check if current tab has any invalid algorithms (for red tab indicator)
+    const categoryHasErrors = (category) => {
+        if (!showValidation) return false;
+        return Object.values(allAlgorithmsState).some(algo =>
+            algo.category === category &&
+            algo.enabled &&
+            !validateAlgorithm(algo)
+        );
+    };
+
     return (
         <AIPlaygroundLayout
-            isNextDisabled={!isModelInferencingEnabled || isSubmitting}
+            isNextDisabled={isSubmitting}
             onNextClick={handleNextClick}
         >
             <style>{`
@@ -529,7 +568,7 @@ function ModelSelection() {
                 <div className="lg:col-span-2 bg-white rounded-xl p-6 border border-gray-200">
                     <div className="mb-6">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-semibold text-gray-900">Algorithms <span className="text-red-500">*</span></h3>
+                            <h3 className={`${tw.sectionHeading} text-xl`}>Algorithms</h3>
                             <div className="relative w-64">
                                 <input
                                     type="text"
@@ -549,12 +588,16 @@ function ModelSelection() {
                                             <button
                                                 key={category}
                                                 onClick={() => handleTabChange(category)}
-                                                className={`px-4 py-2 font-medium whitespace-nowrap ${selectedTab === category
+                                                className={`px-4 py-2 ${tw.sectionHeading} whitespace-nowrap flex items-center gap-1.5 ${selectedTab === category
                                                     ? 'text-[#8e78b7] border-b-4 border-[#8e78b7]'
                                                     : 'text-gray-600 hover:text-gray-900'
                                                     }`}
                                             >
                                                 {category}
+                                                {/* Red dot indicator if category has errors */}
+                                                {categoryHasErrors(category) && (
+                                                    <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
+                                                )}
                                             </button>
                                         ))}
                                     </div>
@@ -565,8 +608,8 @@ function ModelSelection() {
                     </div>
 
                     <div className={`space-y-4 ${filteredAlgorithms.length > 4
-                        ? 'max-h-[calc(100vh-280px)] overflow-y-auto pr-2 custom-scrollbar'
-                        : 'min-h-[500px]'
+                        ? 'max-h-[calc(100vh-280px)] overflow-y-auto px-1 pb-1 custom-scrollbar'
+                        : 'min-h-[500px] px-1 pb-1'
                         }`}>
                         {filteredAlgorithms.length === 0 ? (
                             <div className="text-center py-12">
@@ -581,6 +624,8 @@ function ModelSelection() {
                                     onToggle={toggleAlgorithm}
                                     onExpand={toggleExpanded}
                                     onUpdate={updateAlgorithmState}
+                                    showValidation={showValidation}
+                                    onResetValidation={() => setShowValidation(false)}
                                 />
                             ))
                         )}
@@ -594,6 +639,7 @@ function ModelSelection() {
                     setMetrics={setMetrics}
                     readonly={readonly}
                     hasEnabledMetrics={hasEnabledMetrics}
+                    showValidation={showValidation}
                 />
             </div>
         </AIPlaygroundLayout>

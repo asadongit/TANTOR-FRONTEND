@@ -1085,7 +1085,6 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
 
                   {/* Column Overrides */}
                   <div className="mt-2">
-                    <label className="block text-sm text-gray-600 mb-3">Column Overrides</label>
                     <div className="space-y-3">
                       {columnOverrides.map((override, index) => {
                         const overrideColError = showFieldErrors && !override.column;
