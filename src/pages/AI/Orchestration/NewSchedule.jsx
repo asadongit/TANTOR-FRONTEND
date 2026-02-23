@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import DiscardModal from "./modals/DiscardModal";
 import { CheckCircle, ChevronLeft, Loader2, X } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
@@ -7,6 +7,7 @@ import ConfigurationTab from "./Tabs/ConfigurationTab";
 import RecipientsTab from "./Tabs/RecipientsTab";
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 import { useAuth } from "../../../context/AuthContext";
+import { tw } from '../../../components/themeContext';
 
 const NewSchedule = () => {
     const navigate = useNavigate();
@@ -28,128 +29,80 @@ const NewSchedule = () => {
         reportFormat: ''
     });
 
+    // Ref to trigger validation inside ConfigurationTab
+    const validateConfigRef = useRef(null);
+
     const tabs = ['Configuration', 'Delivery & Alerts', 'Recipients'];
 
     useEffect(() => {
         const fetchUserId = async () => {
-            if (!decodedToken?.preferred_username) {
-                console.error('Username not found in decoded token');
-                return;
-            }
-
+            if (!decodedToken?.preferred_username) return;
             try {
                 const response = await fetch(
                     `${hostnameAI}/users/users/get-id?username=${decodedToken.preferred_username}`,
-                    {
-                        method: 'GET',
-                        headers: {
-                            'accept': 'application/json'
-                        }
-                    }
+                    { method: 'GET', headers: { 'accept': 'application/json' } }
                 );
-
-                if (!response.ok) {
-                    throw new Error('Failed to fetch user ID');
-                }
-
+                if (!response.ok) throw new Error('Failed to fetch user ID');
                 const data = await response.json();
-
-                setSchedulerState(prev => ({
-                    ...prev,
-                    owner_id: data.user_id
-                }));
-
+                setSchedulerState(prev => ({ ...prev, owner_id: data.user_id }));
             } catch (error) {
                 console.error('Error fetching user ID:', error);
             }
         };
-
         fetchUserId();
     }, [decodedToken?.preferred_username, setSchedulerState]);
 
     const handleAlertInputChange = (field, value) => setAlertFormData(prev => ({ ...prev, [field]: value }));
 
     const hasUnsavedChanges = () =>
-        schedulerState.project ||
-        schedulerState.model ||
-        schedulerState.source.source_table ||
-        schedulerState.target.destination_table ||
-        schedulerState.scheduler.timeZone ||
-        schedulerState.scheduler.startDateTime ||
-        schedulerState.scheduler.frequency;
+        schedulerState.project || schedulerState.model || schedulerState.source.source_table ||
+        schedulerState.target.destination_table || schedulerState.scheduler.timeZone ||
+        schedulerState.scheduler.startDateTime || schedulerState.scheduler.frequency;
 
     const handleBackClick = () =>
         hasUnsavedChanges() ? setShowDiscardModal(true) : navigate('/ai/orchestration');
 
-    const handleNextFromDeliveryAlerts = () => {
-        setActiveTab('Recipients');
-    };
-
-    const handleBackFromDeliveryAlerts = () => {
-        setActiveTab('Configuration');
-    };
+    const handleNextFromDeliveryAlerts = () => setActiveTab('Recipients');
+    const handleBackFromDeliveryAlerts = () => setActiveTab('Configuration');
+    const handleBackFromRecipients = () => setActiveTab('Delivery & Alerts');
 
     const handleRecipientsChange = (recipientNames) => {
-        setSchedulerState(prev => ({
-            ...prev,
-            recipients: recipientNames
-        }));
+        setSchedulerState(prev => ({ ...prev, recipients: recipientNames }));
     };
 
     const handleSaveAndContinue = () => {
-        const isConfigurationComplete =
-            schedulerState.workflow_name &&
-            schedulerState.project &&
-            schedulerState.model &&
-            schedulerState.source.source_table &&
-            schedulerState.target.destination_table &&
-            schedulerState.scheduler.timeZone &&
-            schedulerState.scheduler.intervalValue && 
-            schedulerState.isValidated;
-
-        if (isConfigurationComplete) {
-            setActiveTab('Delivery & Alerts');
+        if (validateConfigRef.current) {
+            const errors = validateConfigRef.current();
+            if (Object.keys(errors).length === 0) {
+                setActiveTab('Delivery & Alerts');
+            }
         }
-    };
-
-    const handleBackFromRecipients = () => {
-        setActiveTab('Delivery & Alerts');
     };
 
     const getISTDateTime = () => {
         const now = new Date();
         const istOffset = 5.5 * 60 * 60 * 1000;
         const istTime = new Date(now.getTime() + istOffset);
-
         const year = istTime.getUTCFullYear();
         const month = String(istTime.getUTCMonth() + 1).padStart(2, '0');
         const day = String(istTime.getUTCDate()).padStart(2, '0');
         const hours = String(istTime.getUTCHours()).padStart(2, '0');
         const minutes = String(istTime.getUTCMinutes()).padStart(2, '0');
-
         return `${year}-${month}-${day}T${hours}:${minutes}`;
     };
 
     const handleCreateSchedule = async () => {
         setIsCreating(true);
-
         try {
             const secureQueryResponse = await fetch(
                 `${window._env_?.VITE_FAST_API}/secure-query`,
                 {
                     method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        "Content-Type": "application/json",
-                    },
+                    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
                     body: JSON.stringify({ user_query: "" }),
                 }
             );
-
-            if (!secureQueryResponse.ok) {
-                throw new Error("Failed to fetch policy IDs");
-            }
-
+            if (!secureQueryResponse.ok) throw new Error("Failed to fetch policy IDs");
             const secureQueryData = await secureQueryResponse.json();
             const policyIds = secureQueryData.matched_policy_ids;
 
@@ -193,28 +146,18 @@ const NewSchedule = () => {
                 }
             };
 
-            const triggerResponse = await fetch(
-                `${hostnameAI}/orchestration/trigger-dag`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(dagConfig)
-                }
-            );
-
+            const triggerResponse = await fetch(`${hostnameAI}/orchestration/trigger-dag`, {
+                method: 'POST',
+                headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
+                body: JSON.stringify(dagConfig)
+            });
             if (!triggerResponse.ok) {
                 const errorData = await triggerResponse.json();
                 throw new Error(errorData.detail || 'Failed to create schedule');
             }
-
             const result = await triggerResponse.json();
             console.log('Schedule created successfully:', result);
-
             setShowSuccessModal(true);
-
         } catch (error) {
             console.error('Error creating schedule:', error);
             alert(`Failed to create schedule: ${error.message}`);
@@ -230,64 +173,23 @@ const NewSchedule = () => {
 
     const handleConfirmDiscard = () => {
         setSchedulerState({
-            owner_id: '',
-            project: '',
-            model: '',
-            model_id: '',
-            project_id: '',
+            owner_id: '', project: '', model: '', model_id: '', project_id: '',
             flow_type: 'single_run',
-            scheduler: {
-                mode: 'auto',
-                frequency: '',
-                runningDays: [],
-                endDateTime: '',
-                intervalType: 'single_run',
-                intervalValue: '',
-                startDateTime: '',
-            },
-            source: {
-                source_conn_type: '',
-                source_schema: '',
-                source_table: ''
-            },
-            target: {
-                destination_conn_type: '',
-                destination_schema: '',
-                destination_table: ''
-            },
-            data_drift_threshold: {
-                distribution_drift_threshold: 0,
-                statistical_significance_level: 0,
-                information_stability_threshold: 0,
-                target_stability_threshold: 0
-            },
-            model_drift_threshold: {
-                prediction_drift_threshold: 0,
-                performance_drift_threshold: -1
-            },
-            data_drift_check: 0,
-            model_drift_check: 0,
-            recipients: [],
-            created_by: '',
-            workflow_name: ''
-        })
+            scheduler: { mode: 'auto', frequency: '', runningDays: [], endDateTime: '', intervalType: 'single_run', intervalValue: '', startDateTime: '' },
+            source: { source_conn_type: '', source_schema: '', source_table: '' },
+            target: { destination_conn_type: '', destination_schema: '', destination_table: '' },
+            data_drift_threshold: { distribution_drift_threshold: 0, statistical_significance_level: 0, information_stability_threshold: 0, target_stability_threshold: 0 },
+            model_drift_threshold: { prediction_drift_threshold: 0, performance_drift_threshold: -1 },
+            data_drift_check: 0, model_drift_check: 0, recipients: [], created_by: '', workflow_name: ''
+        });
         navigate('/ai/orchestration');
     };
 
-
-    const isConfigurationComplete =
-        schedulerState.workflow_name &&
-        schedulerState.project &&
-        schedulerState.model &&
-        schedulerState.source.source_table &&
-        schedulerState.target.destination_table &&
-        schedulerState.scheduler.timeZone &&
-        schedulerState.scheduler.intervalValue &&
-        schedulerState.isValidated;
-
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col">
-            <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
+        <div className="h-full flex flex-col overflow-hidden bg-gray-50 px-4 ">
+
+            {/* ── Header ── */}
+            <div className="flex-shrink-0 bg-white border-b border-gray-200 px-6 py-4 mt-4">
                 <div className="flex items-center gap-2">
                     <button
                         onClick={handleBackClick}
@@ -296,152 +198,151 @@ const NewSchedule = () => {
                     >
                         <ChevronLeft className="w-5 h-5" />
                     </button>
-                    <h1 className="text-lg sm:text-xl font-semibold text-gray-900">New Schedule</h1>
+                    <h1 className="text-2xl font-bold text-[#332849] leading-none tracking-normal" style={{ fontFamily: 'Satoshi, sans-serif' }}>New Schedule</h1>
                 </div>
             </div>
 
-            <div className="bg-white border-b border-gray-200 px-4 sm:px-6">
+            {/* ── Tabs ── */}
+            <div className="flex-shrink-0 bg-white border-b border-gray-200 px-8">
                 <div className="flex gap-6">
                     {tabs.map((tab) => (
                         <button
                             key={tab}
                             className={`py-3 px-1 text-sm font-normal relative whitespace-nowrap ${activeTab === tab
-                                ? 'text-[#8e78b7]'
-                                : 'text-gray-500 hover:text-gray-700'
+                                    ? 'text-[#8e78b7]'
+                                    : 'text-gray-500 hover:text-gray-700'
                                 }`}
                         >
                             {tab}
                             {activeTab === tab && (
-                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#8e78b7]"></div>
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#8e78b7]" />
                             )}
                         </button>
                     ))}
                 </div>
             </div>
 
-            <div className="flex-1 pt-4">
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                    {activeTab === 'Configuration' && <ConfigurationTab />}
+            {/* ── Scrollable content area + pinned footer ── */}
+            <div className="flex flex-col flex-1 overflow-hidden min-h-0">
 
-                    {activeTab === 'Delivery & Alerts' && (
-                        <DeliveryAlertsTab
-                            alertFormData={alertFormData}
-                            handleAlertInputChange={handleAlertInputChange}
-                        />
-                    )}
-
-                    {activeTab === 'Recipients' &&
-                        <RecipientsTab
-                            onRecipientsChange={handleRecipientsChange}
-                            initialRecipients={schedulerState?.recipients || []}
-                        />}
-                </div>
-            </div>
-
-            <div className="bg-white border-t border-gray-200 px-4 py-3 mt-auto">
-                <div className="flex justify-end gap-3">
-                    {activeTab === 'Configuration' && (
-                        <button
-                            onClick={handleSaveAndContinue}
-                            disabled={!isConfigurationComplete}
-                            className={`px-6 py-2 rounded text-sm font-medium transition-colors ${isConfigurationComplete && !isCreating
-                                ? 'bg-[#8e78b7] text-white hover:bg-[#b5a3cc] cursor-pointer'
-                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                }`}
-                        >
-                            Save & Continue
-                        </button>
-                    )}
-
-                    {activeTab === 'Delivery & Alerts' && (
-                        <>
-                            <button
-                                onClick={handleBackFromDeliveryAlerts}
-                                disabled={isCreating}
-                                className="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
-                            >
-                                Back
-                            </button>
-                            <button
-                                onClick={handleNextFromDeliveryAlerts}
-                                className="px-6 py-2 bg-[#8e78b7] text-white rounded text-sm font-medium hover:bg-[#7a6aa0] transition-colors disabled:opacity-50"
-                            >
-                                Next
-                            </button>
-                        </>
-                    )}
-
-                    {activeTab === 'Recipients' && (
-                        <>
-                            <button
-                                onClick={handleBackFromRecipients}
-                                disabled={isCreating}
-                                className="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
-                            >
-                                Back
-                            </button>
-                            <button
-                                onClick={handleCreateSchedule}
-                                disabled={isCreating}
-                                className={`px-6 py-2 rounded text-sm font-medium transition-colors flex items-center gap-2 ${isCreating
-                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                    : 'bg-[#8e78b7] text-white hover:bg-[#7a6aa0] cursor-pointer'
-                                    }`}
-                            >
-                                {isCreating ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        Creating Schedule...
-                                    </>
-                                ) : (
-                                    'Create Schedule'
-                                )}
-                            </button>
-                        </>
-                    )}
-                </div>
-                {showSuccessModal &&
-                    (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center">
-                            <div
-                                className="absolute inset-0 bg-black bg-opacity-50"
-                                onClick={handleSuccessModalClose}
+                {/* Only this scrolls */}
+                <div className="flex-1 overflow-y-auto min-h-0 pt-5">
+                    <div className="bg-white rounded-t-lg shadow-sm p-6">
+                        {activeTab === 'Configuration' && (
+                            <ConfigurationTab
+                                onValidationErrors={(fn) => { validateConfigRef.current = fn(); }}
                             />
-                            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+                        )}
+                        {activeTab === 'Delivery & Alerts' && (
+                            <DeliveryAlertsTab
+                                alertFormData={alertFormData}
+                                handleAlertInputChange={handleAlertInputChange}
+                            />
+                        )}
+                        {activeTab === 'Recipients' && (
+                            <RecipientsTab
+                                onRecipientsChange={handleRecipientsChange}
+                                initialRecipients={schedulerState?.recipients || []}
+                            />
+                        )}
+                    </div>
+                </div>
+
+                {/* ── Pinned bottom bar (no fixed positioning needed) ── */}
+                <div className="flex-shrink-0 bg-white border-t border-gray-200 px-8 py-3">
+                    <div className="flex justify-end gap-3">
+                        {activeTab === 'Configuration' && (
+                            <button
+                                onClick={handleSaveAndContinue}
+                                className="px-6 py-2 rounded text-sm font-medium transition-colors bg-[#8e78b7] text-white hover:bg-[#b5a3cc] cursor-pointer"
+                            >
+                                Save & Continue
+                            </button>
+                        )}
+                        {activeTab === 'Delivery & Alerts' && (
+                            <>
                                 <button
-                                    onClick={handleSuccessModalClose}
-                                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                                    onClick={handleBackFromDeliveryAlerts}
+                                    disabled={isCreating}
+                                    className="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
                                 >
-                                    <X className="w-5 h-5" />
+                                    Back
                                 </button>
-                                <div className="flex flex-col items-center text-center">
-                                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                                        <CheckCircle className="w-10 h-10 text-green-600" />
-                                    </div>
-                                    <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-                                        Schedule Created Successfully!
-                                    </h2>
-                                    <p className="text-gray-600 mb-6">
-                                        Your schedule has been created and will run according to the configured settings.
-                                    </p>
-                                    <button
-                                        onClick={handleSuccessModalClose}
-                                        className="px-6 py-2.5 bg-[#8e78b7] text-white rounded text-sm font-medium hover:bg-[#7a6aa0] transition-colors"
-                                    >
-                                        OK
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                                <button
+                                    onClick={handleNextFromDeliveryAlerts}
+                                    className="px-6 py-2 bg-[#8e78b7] text-white rounded text-sm font-medium hover:bg-[#7a6aa0] transition-colors"
+                                >
+                                    Next
+                                </button>
+                            </>
+                        )}
+                        {activeTab === 'Recipients' && (
+                            <>
+                                <button
+                                    onClick={handleBackFromRecipients}
+                                    disabled={isCreating}
+                                    className="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                                >
+                                    Back
+                                </button>
+                                <button
+                                    onClick={handleCreateSchedule}
+                                    disabled={isCreating}
+                                    className={`px-6 py-2 rounded text-sm font-medium transition-colors flex items-center gap-2 ${isCreating
+                                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                            : 'bg-[#8e78b7] text-white hover:bg-[#7a6aa0] cursor-pointer'
+                                        }`}
+                                >
+                                    {isCreating
+                                        ? (<><Loader2 className="w-4 h-4 animate-spin" />Creating Schedule...</>)
+                                        : 'Create Schedule'
+                                    }
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </div>
+
             </div>
+            {/* ── END scrollable content ── */}
+
+            {/* ── Success Modal ── */}
+            {showSuccessModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black bg-opacity-50" onClick={handleSuccessModalClose} />
+                    <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+                        <button
+                            onClick={handleSuccessModalClose}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                                <CheckCircle className="w-10 h-10 text-green-600" />
+                            </div>
+                            <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+                                Schedule Created Successfully!
+                            </h2>
+                            <p className="text-gray-600 mb-6">
+                                Your schedule has been created and will run according to the configured settings.
+                            </p>
+                            <button
+                                onClick={handleSuccessModalClose}
+                                className="px-6 py-2.5 bg-[#8e78b7] text-white rounded text-sm font-medium hover:bg-[#7a6aa0] transition-colors"
+                            >
+                                OK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <DiscardModal
                 isOpen={showDiscardModal}
                 onDiscard={handleConfirmDiscard}
                 onStay={() => setShowDiscardModal(false)}
             />
-
         </div>
     );
 };
