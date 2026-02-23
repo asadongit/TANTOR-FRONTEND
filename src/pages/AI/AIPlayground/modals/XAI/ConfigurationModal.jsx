@@ -1,5 +1,7 @@
-import { Info, X } from "lucide-react";
 import { useState, useEffect } from "react";
+import InfoIcons from '../../../../../assets/ai/infoIcon.svg'
+import CloseIcon from '../../../../../assets/ai/closeIcon.svg'
+import { tw, aithemestyle } from '../../../../../components/themeContext';
 
 function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly = false, isGenerating = false }) {
   const [showInfoTooltip, setShowInfoTooltip] = useState(false);
@@ -33,12 +35,23 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
     }));
   };
 
+  const toggleSelectAll = () => {
+    if (readonly || isGenerating) return;
+    const featuresList = Object.keys(xaiConfig.feature_metadata || {});
+    const allSelected = featuresList.every(f => configData.pdpFeatures.includes(f));
+    setConfigData(prev => ({
+      ...prev,
+      pdpFeatures: allSelected ? [] : featuresList
+    }));
+  };
+
   if (!isOpen || !xaiConfig) return null;
 
   const featuresList = Object.keys(xaiConfig.feature_metadata || {});
   const maxIndex = xaiConfig.indices?.max_index || 0;
   const pdpTargetClasses = xaiConfig.pdp_target_classes || [];
   const cfDesiredClasses = xaiConfig.cf_desired_classes || [];
+  const allSelected = featuresList.length > 0 && featuresList.every(f => configData.pdpFeatures.includes(f));
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -52,7 +65,8 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                 onMouseEnter={() => setShowInfoTooltip(true)}
                 onMouseLeave={() => setShowInfoTooltip(false)}
               >
-                <Info size={20} />
+                {/* Info SVG icon, color #818181 */}
+                <img src={InfoIcons} alt="info" style={{ width: 20, height: 20, filter: 'brightness(0) saturate(100%) invert(54%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(95%) contrast(88%)' }} />
               </button>
 
               {showInfoTooltip && (
@@ -70,7 +84,10 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
               className="text-gray-400 hover:text-gray-600"
               disabled={isGenerating}
             >
-              <X size={20} />
+              {/* Close SVG icon, color #818181 */}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18 6L6 18M6 6L18 18" stroke="#818181" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </button>
           </div>
         </div>
@@ -95,7 +112,7 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                 value={configData.pdpTargetClass}
                 onChange={(e) => !readonly && !isGenerating && setConfigData({ ...configData, pdpTargetClass: e.target.value })}
                 disabled={readonly || isGenerating}
-                className={`w-full px-3 py-2 border rounded-lg text-sm ${readonly || isGenerating && 'bg-gray-50 cursor-not-allowed border-gray-300'} border-gray-300`}
+                className={`w-full px-3 py-2 border rounded-lg text-sm ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
               >
                 <option value="">Select</option>
                 {pdpTargetClasses.map((cls) => (
@@ -104,9 +121,6 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                   </option>
                 ))}
               </select>
-              {/* {!configData.pdpTargetClass && (
-                <p className="text-xs text-red-500 mt-1">Please select at least one value</p>
-              )} */}
             </div>
 
             <div>
@@ -117,8 +131,7 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                 value={configData.cfDesiredClass}
                 onChange={(e) => !readonly && !isGenerating && setConfigData({ ...configData, cfDesiredClass: e.target.value })}
                 disabled={readonly || isGenerating}
-                className={`w-full px-3 py-2 border rounded-lg text-sm ${readonly || isGenerating && 'bg-gray-50 cursor-not-allowed border-gray-300 '} 'border-gray-300'
-                  }`}
+                className={`w-full px-3 py-2 border rounded-lg text-sm ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
               >
                 <option value="">Select</option>
                 {cfDesiredClasses.map((cls) => (
@@ -127,9 +140,6 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                   </option>
                 ))}
               </select>
-              {/* {!configData.cfDesiredClass && (
-                <p className="text-xs text-red-500 mt-1">Please select at least one value</p>
-              )} */}
             </div>
           </div>
 
@@ -151,8 +161,7 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                   }
                 }}
                 disabled={readonly || isGenerating}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''
-                  }`}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''}`}
               />
               {!(configData.cfInstanceIndex >= 0 && configData.cfInstanceIndex <= maxIndex) && (
                 <p className="text-xs text-red-500 mt-1">CF Instance Index should be between 0 and {maxIndex}</p>
@@ -175,8 +184,7 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                   }
                 }}
                 disabled={readonly || isGenerating}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''
-                  }`}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''}`}
               />
               {!(configData.limeInstanceIndex >= 0 && configData.limeInstanceIndex <= maxIndex) && (
                 <p className="text-xs text-red-500 mt-1">LIME Instance Index should be between 0 and {maxIndex}</p>
@@ -185,8 +193,22 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
           </div>
 
           {/* PDP Features */}
-          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <label className="block text-sm font-medium text-gray-900 mb-2">PDP Features</label>
+          <div className="rounded-lg p-4" style={{ backgroundColor: '#FAFAFA' }}>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-900">PDP Features</label>
+              {/* Select All */}
+              <label className={`flex items-center gap-2 ${readonly || isGenerating ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleSelectAll}
+                  disabled={readonly || isGenerating}
+                  className="w-4 h-4 border-gray-300 rounded"
+                  style={{ accentColor: '#8e78b7' }}
+                />
+                <span className="text-sm font-medium text-gray-700">Select All</span>
+              </label>
+            </div>
             <p className="text-xs text-gray-500 mb-3">
               Select features to include in the PDP analysis. If none are selected, all features will be used.
             </p>
@@ -199,7 +221,8 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                     checked={configData.pdpFeatures.includes(feature)}
                     onChange={() => toggleFeature(feature)}
                     disabled={readonly || isGenerating}
-                    className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded"
+                    className="w-4 h-4 border-gray-300 rounded"
+                    style={{ accentColor: '#8e78b7' }}
                   />
                   <span className="text-sm text-gray-700 break-words">{feature}</span>
                 </label>
@@ -212,7 +235,7 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
           <button
             onClick={onClose}
             disabled={isGenerating}
-            className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`px-6 py-2 rounded-lg ${tw.secondaryButton} disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             Cancel
           </button>

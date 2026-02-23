@@ -27,6 +27,10 @@ import { useAuth } from '../../../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import { tw, backgrounds } from '../../../components/themeContext';
 import SearchIcon from '../../../assets/ai/search.svg';
+import RefreshIcon from '../../../assets/ai/replay.svg'
+import SchemaIcon from '../../../assets/ai/schema.svg'
+import RobotIcon from '../../../assets/ai/robotIcon.svg';
+import BidLandscapeIcons from '../../../assets/ai/bid_landscape.svg';
 
 // Constants
 const OWNER_OPTIONS = [
@@ -43,22 +47,25 @@ const CAPABILITIES = [
   {
     title: 'Build Machine Learning',
     desc: 'Design, train, and deploy machine learning models using your injected dataset.',
-    icon: <Network className="w-5 h-5 text-cyan-500" />,
-    bgColor: 'bg-cyan-50',
+    icon: <img src={SchemaIcon} alt="schema" className="w-5 h-5" style={{ filter: 'invert(55%) sepia(80%) saturate(500%) hue-rotate(155deg) brightness(95%) contrast(95%)' }} />,
+    iconColor: '#16ABC2',
+    bgColor: '#C5EAF0',
     path: '/ai/playground/model-genesis'
   },
   {
     title: 'GenAI',
     desc: 'Build generative AI workflows powered by your data and models.',
-    icon: <Bot className="w-5 h-5 text-orange-400" />,
-    bgColor: 'bg-orange-50',
+    icon: <img src={RobotIcon} alt="robot" className="w-5 h-5" style={{ filter: 'invert(60%) sepia(90%) saturate(700%) hue-rotate(360deg) brightness(105%) contrast(105%)' }} />,
+    iconColor: '#FF9500',
+    bgColor: '#FFF1CF',
     path: '/ai/playground/gen-ai'
   },
   {
     title: 'Business Analysis',
     desc: 'Explore trends, patterns, and insights to support business decisions.',
-    icon: <BarChart3 className="w-5 h-5 text-purple-500" />,
-    bgColor: 'bg-purple-50',
+    icon: <img src={BidLandscapeIcons} alt="bid landscape" className="w-5 h-5" style={{ filter: 'invert(45%) sepia(60%) saturate(600%) hue-rotate(255deg) brightness(100%) contrast(95%)' }} />,
+    iconColor: '#AF52DE',
+    bgColor: '#EBD4F7',
     path: '/ai/playground/business-analysis'
   }
 ];
@@ -545,7 +552,7 @@ const AIPlayground = () => {
                       onClick={() => toggleModal('resetProject', true)}
                       className="px-4 py-2 text-sm font-medium text-[#8e78b7] border border-slate-200 rounded-md hover:bg-slate-50 transition-colors flex items-center gap-2"
                     >
-                      <RotateCcw className="w-4 h-4" />
+                      <img src={RefreshIcon} alt="reset" className="w-4 h-4" />
                       Reset project
                     </button>
                   </div>
@@ -705,7 +712,7 @@ const AIPlayground = () => {
                   onClick={() => toggleModal('resetProject', true)}
                   className="px-4 py-2 text-sm font-medium text-[#8e78b7] border border-[#8e78b7] rounded-md hover:bg-slate-50 transition-colors flex items-center gap-2"
                 >
-                  <RotateCcw className="w-4 h-4" />
+                  <img src={RefreshIcon} alt="reset" className="w-4 h-4" />
                   Reset project
                 </button>
               </div>
@@ -778,7 +785,8 @@ const AIPlayground = () => {
                     className="bg-white border border-slate-200 p-5 rounded-lg shadow-sm transition-all hover:shadow-md hover:border-violet-300 cursor-pointer hover:scale-105"
                   >
                     <div
-                      className={`w-10 h-10 ${cap.bgColor} rounded-md flex items-center justify-center mb-4`}
+                      className="w-10 h-10 rounded-md flex items-center justify-center mb-4"
+                      style={{ backgroundColor: cap.bgColor }}
                     >
                       {cap.icon}
                     </div>
