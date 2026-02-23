@@ -22,7 +22,7 @@ const Dashboard = ({ activeSection, setActiveSection }) => {
 
   return (
     <div className="max-w-7xl mx-auto">
-      <div className="mb-4">
+      <div className="my-4">
         <h1 className="text-2xl font-semibold mb-1">👋 Welcome User!</h1>
         <p className="text-gray-600">Dashboard overview</p>
       </div>
