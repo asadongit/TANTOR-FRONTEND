@@ -3,6 +3,7 @@ import { Icon } from "@iconify-icon/react";
 import DataTable from "../../../../../../../components/DataTable";
 import { StatCard, LinkCard, StatsContainer, StatsRow } from "../../../StatsCard";
 import { useAuth } from "../../../../../../../context/AuthContext";
+import { aithemestyle } from "../../../../../../../components/themeContext";
 
 function Features({ modelData }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -218,11 +219,11 @@ function Features({ modelData }) {
 
   return (
     <div>
-      <StatsContainer gradient="from-purple-400 via-purple-300 to-purple-100">
+      <StatsContainer gradient={aithemestyle.statsCardGradient}>
         <StatsRow
           statsCards={statsCards}
           linkCards={[
-            { title: "DQ Report"},
+            { title: "DQ Report", style: { color: aithemestyle.iconColor } },
           ]}
           variant="default"
           gap={4}
@@ -231,7 +232,7 @@ function Features({ modelData }) {
 
       <div className="flex justify-end items-center mb-2 mt-2">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-purple-600">Raw Data</span>
+          <span className="font-medium" style={{ color: aithemestyle.iconColor }}>Raw Data</span>
           <button
             type="button"
             aria-pressed={dataType === "raw"}
@@ -239,12 +240,18 @@ function Features({ modelData }) {
             className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors focus:outline-none ${
               dataType === "raw" ? "bg-purple-400" : "bg-gray-200"
             }`}
-            style={{ minWidth: "48px" }}
+            style={{
+              minWidth: "48px",
+              color: dataType === "raw" ? aithemestyle.iconColor : "inherit",
+            }}
           >
             <span
               className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform ${
                 dataType === "raw" ? "translate-x-6" : "translate-x-1"
               }`}
+              style={{
+                backgroundColor: dataType === "raw" ? aithemestyle.iconColor : "white",
+              }}
             />
           </button>
         </div>

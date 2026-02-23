@@ -167,7 +167,7 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-[390px] overflow-hidden">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-[390px]">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-4">
@@ -217,7 +217,7 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
                   : selectedTable
                   ? availableTables.find((v) => v.value === selectedTable)?.label
                   : availableTables.length === 0
-                  ? 'No views available'
+                  ? 'No tables available'
                   : 'Select'}
               </span>
               <ChevronDown className="w-4 h-4 text-[#818181]" />
@@ -255,7 +255,7 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
                       </button>
                     ))
                   ) : (
-                    <div className={`px-3 py-2 text-center ${tw.caption}`}>No views found</div>
+                    <div className={`px-3 py-2 text-center ${tw.caption}`}>No tables found</div>
                   )}
                 </div>
               </div>
