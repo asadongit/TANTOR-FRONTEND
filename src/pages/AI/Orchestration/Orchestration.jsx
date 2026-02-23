@@ -564,7 +564,17 @@ const Orchestration = () => {
             <Breadcrumb />
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">Orchestration</h1>
+                <h1
+                    style={{
+                        fontWeight: 700,
+                        fontStyle: 'bold',
+                        fontSize: '24px',
+                        lineHeight: '100%'
+                    }}
+                    className="text-gray-900"
+                >
+                    Orchestration
+                </h1>
                 <div className="flex items-center gap-2 sm:gap-3">
                     <button
                         onClick={handleRefresh}

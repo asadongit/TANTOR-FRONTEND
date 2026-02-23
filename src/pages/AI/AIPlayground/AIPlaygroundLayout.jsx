@@ -22,13 +22,13 @@ import AnalyticsIcons from '../../../assets/ai/analytics.svg';
 import AutoAwesomeMosaicIcons from '../../../assets/ai/auto_awesome_mosaic.svg';
 import BidLandscapeIcons from '../../../assets/ai/bid_landscape.svg';
 import CloudDoneIcons from '../../../assets/ai/cloud_done.svg';
-import Icon from '../../../assets/ai/icon.svg';
+import RobotIcon from '../../../assets/ai/robotIcon.svg';
 import LightBulbIcons from '../../../assets/ai/lightbulb.svg';
 import ListAltCheckIcons from '../../../assets/ai/list_alt_check.svg';
 import TuneIcons from '../../../assets/ai/tune.svg';
 
-// Helper component to render SVG URL imports as img tags
-function SvgIcon({ src, size = 20, className = '' }) {
+
+function SvgIcon({ src, size = 20, className = '', style = {} }) {
     return (
         <img
             src={src}
@@ -43,10 +43,14 @@ function SvgIcon({ src, size = 20, className = '' }) {
                 maxHeight: size,
                 display: 'block',
                 objectFit: 'contain',
+                ...style,
             }}
         />
     );
 }
+
+const ACTIVE_ICON_FILTER =
+    'invert(51%) sepia(29%) saturate(672%) hue-rotate(221deg) brightness(88%) contrast(87%)';
 
 export const workflowStages = [
     { id: 'model-genesis', label: 'Model Genesis', icon: AutoAwesomeMosaicIcons, path: '/ai/playground/model-genesis' },
@@ -534,7 +538,7 @@ export function AIPlaygroundLayout({
                                     <span className="text-sm font-medium text-gray-700">{Math.round(progressPercentage)}%</span>
                                 </div>
                                 <button className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center text-[#8e78b7] hover:bg-purple-100 transition-colors">
-                                    <SvgIcon src={Icon} size={20} />
+                                    <SvgIcon src={RobotIcon} size={20} />
                                 </button>
                                 <button className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center text-[#8e78b7] hover:bg-purple-100 transition-colors">
                                     <SvgIcon src={BidLandscapeIcons} size={20} />
@@ -627,7 +631,12 @@ export function AIPlaygroundLayout({
                                                         <Check size={12} className="text-white stroke-[4]" />
                                                     </div>
                                                 ) : (
-                                                    <SvgIcon src={stage.icon} size={20} />
+                                                    // ✅ Apply #8e78b7 color filter when stage is active
+                                                    <SvgIcon
+                                                        src={stage.icon}
+                                                        size={20}
+                                                        style={isActive ? { filter: ACTIVE_ICON_FILTER } : undefined}
+                                                    />
                                                 )}
                                             </div>
 

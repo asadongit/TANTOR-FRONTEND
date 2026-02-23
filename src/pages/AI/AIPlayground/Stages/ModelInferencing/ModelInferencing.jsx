@@ -8,6 +8,8 @@ import BestModelCard from './BestModelCard';
 import MetricsChart from './MetricsChart';
 import PerformanceTab from './PerformanceTab';
 import { FairnessTab, ChartsTab } from './Fairnesschartstab';
+import BatchIcon from '../../../../../assets/ai/workspace_premium.svg';
+import { tw, aithemestyle } from '../../../../../components/themeContext';
 
 const ModelInferencing = () => {
   const hostnameAI = window._env_?.VITE_AI_API;
@@ -28,7 +30,7 @@ const ModelInferencing = () => {
       return;
     }
     if (!readonly) {
-      handleReloadAndFetchRuns();
+      fetchJobStatus();
     }
   }, []);
 
@@ -290,7 +292,8 @@ const ModelInferencing = () => {
 
   const chartColors = ['#9ca3af', '#a78bfa', '#6ee7b7', '#fb923c', '#f472b6', '#60a5fa'];
 
-  const handleReloadAndFetchRuns = async () => {
+  // Called by Reload button — only hits /jobs/{jobId}
+  const fetchJobStatus = async () => {
     const sessionId = datasetState?.sessionId;
     const jobId = workflowState?.completedJobs?.config?.job_id;
 
@@ -306,13 +309,6 @@ const ModelInferencing = () => {
     setIsReloading(true);
 
     try {
-      const runsResponse = await fetch(`${hostnameAI}/model/runs_logged/${sessionId}`, {
-        method: 'GET',
-        headers: { accept: 'application/json' },
-      });
-      if (!runsResponse.ok) throw new Error(`Runs logged error! status: ${runsResponse.status}`);
-      await runsResponse.json();
-
       const jobsResponse = await fetch(`${hostnameAI}/jobs/${jobId}`, {
         method: 'GET',
         headers: { accept: 'application/json' },
@@ -332,7 +328,7 @@ const ModelInferencing = () => {
 
       return true;
     } catch (error) {
-      console.error('Error during model inferencing:', error);
+      console.error('Error during reload:', error);
       toast.error(error.message || 'Failed. Please try again.', {
         duration: 4000,
         position: 'top-right',
@@ -344,30 +340,57 @@ const ModelInferencing = () => {
     }
   };
 
+  // Called by Next button — only hits /model/runs_logged/{sessionId}
+  const fetchRunsLogged = () => {
+    const sessionId = datasetState?.sessionId;
+
+    if (!sessionId) {
+      toast.error('Session ID not found', { duration: 4000, position: 'top-right' });
+      return;
+    }
+
+    fetch(`${hostnameAI}/model/runs_logged/${sessionId}`, {
+      method: 'GET',
+      headers: { accept: 'application/json' },
+    })
+      .then(res => {
+        if (!res.ok) throw new Error(`Runs logged error! status: ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        console.log('Runs logged response:', data);
+      })
+      .catch(error => {
+        console.error('Error fetching runs logged:', error);
+      });
+  };
+
   const handleNextClick = async () => {
     if (readonly) return true;
-    return await handleReloadAndFetchRuns();
+    fetchRunsLogged(); // fire-and-forget so navigation isn't blocked
+    return true;
   };
 
   return (
     <AIPlaygroundLayout
       title="Model Performance Dashboard"
       description="Evaluate and compare model performance."
-      onNext={handleNextClick}
+      onNextClick={handleNextClick}
       isLoading={isLoading}
     >
       <div className="min-h-screen">
         <div className="px-4 py-2">
+          {/* Page Header */}
           <div className="flex items-start justify-between mb-4">
             <div>
-              <h1 className="text-base sm:text-lg font-semibold text-gray-900">Model Performance Dashboard</h1>
+              <h1 className={tw.sectionHeading}>Model Performance Dashboard</h1>
               <p className="text-xs text-gray-500 mt-0.5">Evaluate and compare model performance.</p>
             </div>
 
             {!readonly && nonSuccessTasks.length > 0 && (
               <div className="flex justify-end mb-2">
                 <button
-                  onClick={handleReloadAndFetchRuns}
+                  onClick={fetchJobStatus}
                   disabled={isReloading || isLoading}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[#8e78b7] text-sm font-medium text-[#8e78b7] hover:bg-[#f3f0fa] disabled:opacity-50 transition-colors"
                 >
@@ -378,8 +401,10 @@ const ModelInferencing = () => {
             )}
           </div>
 
-          <BestModelCard bestModel={bestModel} />
+          {/* Best Model Card — passes BatchIcon down */}
+          <BestModelCard bestModel={bestModel} batchIcon={BatchIcon} />
 
+          {/* Pending models banner */}
           {!readonly && nonSuccessTasks.length > 0 && (() => {
             const PREVIEW_COUNT = 12;
             const visibleTasks = showAllPending ? nonSuccessTasks : nonSuccessTasks.slice(0, PREVIEW_COUNT);
@@ -388,7 +413,7 @@ const ModelInferencing = () => {
             return (
               <div className="mb-4 rounded-xl border border-[#c4b5e8] bg-[#f3f0fb] px-4 py-3">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-semibold text-[#6d4fa8]">
+                  <span className={`${tw.sectionHeading} text-[#6d4fa8]`}>
                     {nonSuccessTasks.length} model{nonSuccessTasks.length > 1 ? 's' : ''} still training — results will appear after reload
                   </span>
                   {nonSuccessTasks.length > PREVIEW_COUNT && (

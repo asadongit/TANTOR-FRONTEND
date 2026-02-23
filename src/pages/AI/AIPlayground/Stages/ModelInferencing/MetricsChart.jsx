@@ -246,7 +246,7 @@ const MetricsChart = ({ metricsData, apiResults, truncateName, legendTruncateLen
 
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-[#8e78b7]" />
+            <TrendingUp className="w-5 h-5" style={{ color: '#8e78b7' }} />
             <h2 className="text-lg font-semibold text-gray-900">Model Metrics Comparison</h2>
           </div>
           {totalPages > 1 && (
@@ -282,7 +282,10 @@ const MetricsChart = ({ metricsData, apiResults, truncateName, legendTruncateLen
             value={searchQueryStr}
             onChange={(e) => { setSearchQueryStr(e.target.value); setCurrentPage(0); }}
             placeholder="Search models by name..."
-            className="w-full pl-9 pr-9 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent placeholder-gray-400"
+            className="w-full pl-9 pr-9 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 placeholder-gray-400"
+            style={{ outline: 'none' }}
+            onFocus={e => e.currentTarget.style.boxShadow = '0 0 0 2px #c4b5f4'}
+            onBlur={e => e.currentTarget.style.boxShadow = 'none'}
           />
           {searchQueryStr && (
             <button onClick={() => { setSearchQueryStr(''); setCurrentPage(0); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -302,10 +305,24 @@ const MetricsChart = ({ metricsData, apiResults, truncateName, legendTruncateLen
                 <button
                   key={metric}
                   onClick={() => handleMetricSortClick(metric)}
-                  className={`group flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${sortKey
-                    ? 'bg-[#8e78b7] text-white border-[#8e78b7] shadow-sm'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-[#8e78b7] hover:text-[#8e78b7]'
-                    }`}
+                  className="group flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all"
+                  style={
+                    sortKey
+                      ? { background: '#8e78b7', color: 'white', borderColor: '#8e78b7', boxShadow: '0 1px 3px rgba(0,0,0,0.12)' }
+                      : { background: 'white', color: '#6b7280', borderColor: '#e5e7eb' }
+                  }
+                  onMouseEnter={e => {
+                    if (!sortKey) {
+                      e.currentTarget.style.borderColor = '#8e78b7';
+                      e.currentTarget.style.color = '#8e78b7';
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (!sortKey) {
+                      e.currentTarget.style.borderColor = '#e5e7eb';
+                      e.currentTarget.style.color = '#6b7280';
+                    }
+                  }}
                   title={`Sort by ${metric}`}
                 >
                   {priority && <span className="opacity-75 text-[10px] font-bold">#{priority}</span>}
@@ -340,7 +357,11 @@ const MetricsChart = ({ metricsData, apiResults, truncateName, legendTruncateLen
                 <Search className="w-8 h-8 mx-auto mb-2 text-gray-300" />
                 <p className="text-sm font-medium">No models match your search</p>
                 <p className="text-xs mt-1">Try a different keyword</p>
-                <button onClick={() => { setSearchQueryStr(''); setCurrentPage(0); }} className="mt-3 text-xs text-[#8e78b7] hover:underline">
+                <button
+                  onClick={() => { setSearchQueryStr(''); setCurrentPage(0); }}
+                  className="mt-3 text-xs underline"
+                  style={{ color: '#8e78b7' }}
+                >
                   Clear search
                 </button>
               </div>
