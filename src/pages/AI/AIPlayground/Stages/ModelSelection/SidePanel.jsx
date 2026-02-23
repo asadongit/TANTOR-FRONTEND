@@ -1,20 +1,18 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, GripVertical, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
+import { tw } from '../../../../../components/themeContext';
 
-function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, readonly, hasEnabledMetrics }) {
+function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, readonly, hasEnabledMetrics, showValidation }) {
     const [metricsExpanded, setMetricsExpanded] = useState(true);
     const [draggedItem, setDraggedItem] = useState(null);
 
     const toggleMetric = (index) => {
         if (readonly) return;
-        
         const newMetrics = metrics.map((metric, i) =>
             i === index ? { ...metric, enabled: !metric.enabled } : metric
         );
-        
         const enabledMetrics = newMetrics.filter(m => m.enabled);
         const disabledMetrics = newMetrics.filter(m => !m.enabled);
-        
         setMetrics([...enabledMetrics, ...disabledMetrics]);
     };
 
@@ -28,12 +26,10 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
         if (readonly) return;
         e.preventDefault();
         if (draggedItem === null || draggedItem === index) return;
-
         const newMetrics = [...metrics];
         const draggedMetric = newMetrics[draggedItem];
         newMetrics.splice(draggedItem, 1);
         newMetrics.splice(index, 0, draggedMetric);
-
         setMetrics(newMetrics);
         setDraggedItem(index);
     };
@@ -43,14 +39,14 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
         setDraggedItem(null);
     };
 
+    const metricsHasError = showValidation && !hasEnabledMetrics;
+
     return (
         <div className="space-y-6">
-            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+            <div className="bg-[#FAFAFA] rounded-xl p-4 border border-gray-200">
                 <div className="flex items-start justify-between mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900">Normalise Data</h3>
-                    <label className={`relative inline-flex items-center ${
-                        readonly ? 'cursor-not-allowed' : 'cursor-pointer'
-                    }`}>
+                    <h3 className={tw.sectionHeading}>Normalise Data</h3>
+                    <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                         <input
                             type="checkbox"
                             checked={normalizeData}
@@ -62,47 +58,38 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
                     </label>
                 </div>
                 <p className="text-sm text-gray-600">Scale Features to standard range before training</p>
-                <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                <div className="mt-4 p-3 bg-white border border-purple-200 rounded-lg">
                     <p className="text-xs text-gray-700">
-                        <span className="font-medium">Note:</span> If a feature scaler has already been applied during data pre-processing, you do not need to normalise the data again.
+                        <span className="font-medium text-[#8e78b7]">Note:</span> If a feature scaler has already been applied during data pre-processing, you do not need to normalise the data again.
                     </p>
                 </div>
             </div>
 
-            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+            <div className={`bg-[#FAFAFA] rounded-xl p-4 border ${metricsHasError ? 'border-red-400 ring-1 ring-red-400' : 'border-gray-200'}`}>
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900">Metrics <span className="text-red-500">*</span></h3>
+                        <h3 className={`${tw.sectionHeading} ${metricsHasError ? 'text-red-700' : ''}`}>
+                            Metrics
+                        </h3>
                         <p className="text-sm text-gray-600">Measure how your model performs.</p>
+                        {metricsHasError && (
+                            <p className="text-xs text-red-600 mt-1">Please select at least one metric</p>
+                        )}
                     </div>
                     <button
                         onClick={() => !readonly && setMetricsExpanded(!metricsExpanded)}
                         disabled={readonly}
                         className="text-gray-400 hover:text-gray-600 ml-4"
                     >
-                        {metricsExpanded ? (
-                            <ChevronUp className='w-5 h-5' />
-                        ) : (
-                            <ChevronDown className='w-5 h-5' />
-                        )}
+                        {metricsExpanded ? <ChevronUp className='w-5 h-5' /> : <ChevronDown className='w-5 h-5' />}
                     </button>
                 </div>
-
-                {/* {!hasEnabledMetrics && !readonly && (
-                    <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
-                        <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                        <p className="text-xs text-amber-800">
-                            <span className="font-medium">Required:</span> Please select at least one metric to continue.
-                        </p>
-                    </div>
-                )} */}
 
                 {metricsExpanded && (
                     <>
                         <p className="text-sm text-gray-700 mb-4">
                             Enable the toggle to set metric priorities. Drag metrics to reorder (P1, P2, P3...).
                         </p>
-
                         <div className="space-y-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
                             {metrics.map((metric, index) => (
                                 <div
@@ -111,18 +98,13 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
                                     onDragStart={(e) => handleDragStart(e, index)}
                                     onDragOver={(e) => handleDragOver(e, index)}
                                     onDragEnd={handleDragEnd}
-                                    className={`flex items-center gap-3 p-3 rounded-lg border border-gray-200 ${
-                                        readonly ? 'cursor-not-allowed' : 'cursor-move'
-                                    } bg-white transition-colors ${
-                                        draggedItem === index ? 'opacity-50' : ''
-                                    }`}
+                                    className={`flex items-center gap-3 p-3 rounded-lg ${readonly ? 'cursor-not-allowed' : 'cursor-move'
+                                        } bg-white transition-colors ${draggedItem === index ? 'opacity-50' : ''}`}
                                 >
                                     <span className="text-md font-medium text-[#8e78b7] w-8">P{index + 1}</span>
                                     <GripVertical className="w-5 h-5 text-gray-400" />
-                                    <span className="flex-1 text-sm font-medium text-gray-900">{metric.name}</span>
-                                    <label className={`relative inline-flex items-center ${
-                                        readonly ? 'cursor-not-allowed' : 'cursor-pointer'
-                                    }`}>
+                                    <span className={`flex-1 ${tw.sectionHeading}`}>{metric.name}</span>
+                                    <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                                         <input
                                             type="checkbox"
                                             checked={metric.enabled}

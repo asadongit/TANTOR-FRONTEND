@@ -127,16 +127,14 @@ function Observability({ modelData }) {
     const periods = ['7 Days', '15 Days', '30 Days'];
 
     const StatsCard = ({ label, value, icon: IconCmp }) => (
-        <div className="bg-white rounded-xl px-6 py-5 border border-purple-200 flex flex-col justify-between min-h-[120px]">
-            <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                    <IconCmp className="w-5 h-5 text-[#8e78b7] shrink-0" />
-                    <span className="text-gray-900 text-xl font-medium truncate">{label}</span>
-                </div>
+        <div className="bg-white rounded-xl px-4 py-3 border border-purple-200 flex flex-col justify-between min-h-[90px]">
+            <div className="flex items-center gap-2 min-w-0">
+                <IconCmp className="w-4 h-4 text-[#8e78b7] shrink-0" />
+                <span className="text-gray-800 text-sm font-bold truncate">{label}</span>
             </div>
-            <div className="flex items-end justify-between mt-6">
-                <div className="text-2xl font-bold text-gray-900 tabular-nums leading-none">
-                    {value == null ? <div className="h-10 w-16 bg-gray-200 rounded animate-pulse" /> : value}
+            <div className="mt-3">
+                <div className="text-lg font-normal text-gray-600 tabular-nums leading-none">
+                    {value == null ? <div className="h-6 w-14 bg-gray-200 rounded animate-pulse" /> : value}
                 </div>
             </div>
         </div>
@@ -164,17 +162,11 @@ function Observability({ modelData }) {
                             </button>
                         ))}
                     </div>
-                    <button
-                        type="button"
-                        onClick={() => { setSelectedPeriod('7 Days'); setRefreshKey(k => k + 1); }}
-                        className="ml-3 px-2 py-1 text-sm rounded-md border-[1px] border-[#8e78b7] bg-white text-[#8e78b7] focus:outline-none"
-                    >
-                        Reset
-                    </button>
+
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatsCard
                     label="Accuracy"
                     value={avgPerf.accuracy ? `${(avgPerf.accuracy * 100).toFixed(1)}%` : 'N/A'}
@@ -197,7 +189,7 @@ function Observability({ modelData }) {
                 />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatsCard
                     label="Model Drift"
                     value={modelDrift != null ? `${(modelDrift * 100).toFixed(1)}%` : 'N/A'}

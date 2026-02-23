@@ -30,6 +30,12 @@ import StatusFilterDropdown from "./Components/StateSelector";
 import { unarchiveEntity } from "./Components/Hooks";
 import { updateRecentAccess } from './Components/Hooks';
 import toast from 'react-hot-toast';
+import { aithemestyle } from "../../../components/themeContext";
+import Modelicon from "../../../assets/ai/models.svg"
+import Latencyicon from "../../../assets/ai/latency.svg"
+import Deployedicon from "../../../assets/ai/deployed.svg"
+import Alerticon from "../../../assets/ai/alerts.svg"
+import Accuracyicon from "../../../assets/ai/accuracy.svg"
 
 
 
@@ -173,9 +179,7 @@ function Models() {
   const formatPct = (n) => {
     const num = Number(n);
     if (!Number.isFinite(num)) return "0%";
-    const rounded =
-      Math.abs(num) >= 10 ? Math.round(num) : Math.round(num * 10) / 10;
-    return `${rounded}%`;
+    return `${num.toFixed(2)}%`;
   };
 
   const formatLatency = (ms) => {
@@ -335,17 +339,17 @@ function Models() {
       sortable: true,
       width: '250px',
       render: (row) => (
-        <span
-          className="text-purple-600 hover:underline cursor-pointer whitespace-normal break-words break-all"
-          onClick={() => openModelLibrary(row)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === "Enter" && openModelLibrary(row)}
-          title={row?.run_name ?? ""}
-          style={{ overflowWrap: "anywhere" }}
-        >
-          {row.run_name}
-        </span>
+          <span
+            className="hover:underline cursor-pointer whitespace-normal break-words break-all"
+            onClick={() => openModelLibrary(row)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === "Enter" && openModelLibrary(row)}
+            title={row?.run_name ?? ""}
+            style={{ overflowWrap: "anywhere", color: aithemestyle.iconColor }}
+          >
+            {row.run_name}
+          </span>
       ),
     }
     ,
@@ -807,7 +811,7 @@ function Models() {
     const [showInfo, setShowInfo] = useState(false);
 
     return (
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm h-[350px]">
+      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm h-[300px]">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Icon
@@ -829,20 +833,12 @@ function Models() {
             )}
           </div>
         </div>
-        <div className="space-y-3 mt-10">
+        <div className="mt-4 overflow-y-auto max-h-[270px] pr-1">
           {alertsData.map((alert, index) => (
-            <div key={index} className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <div
-                  className={`w-2.5 h-2.5 rounded-full ${alert.type === "drift" ? "bg-orange-400" : "bg-blue-400"
-                    }`}
-                />
-                <span className="text-sm text-gray-700">{alert.name}</span>
-              </div>
-              <span
-                className={`text-xs flex items-center gap-1 ${alert.trend === "up" ? "text-green-500" : "text-orange-500"
-                  }`}
-              >
+            <div key={index} className="grid items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors" style={{ gridTemplateColumns: "auto 1fr 160px" }}>
+              <div className="flex-shrink-0 w-2 h-2 rounded-full" style={{ backgroundColor: alert.type === "drift" ? "#fb923c" : "#60a5fa" }} />
+              <span className="text-sm text-gray-800 truncate" title={alert.name}>{alert.name}</span>
+              <span className={`text-xs font-medium text-left truncate ${alert.trend === "up" ? "text-green-500" : "text-orange-500"}`} title={alert.issue}>
                 {alert.issue}
               </span>
             </div>
@@ -917,7 +913,6 @@ function Models() {
   const StatsCardWithTrend = ({ label, value, icon: IconCmp, trend, trendValue }) => {
     const isUp = trend === "up";
     const TrendIcon = isUp ? ArrowUp : ArrowDown;
-    const trendColor = isUp ? "text-emerald-500" : "text-red-500";
 
     return (
       <div className="bg-white rounded-xl px-4 py-4 border border-purple-200 flex flex-col justify-between min-h-[110px]">
@@ -934,7 +929,7 @@ function Models() {
           </div>
 
           {(trend && trendValue && value != null) ? (
-            <div className={`flex items-center gap-1 ${trendColor} text-sm font-semibold leading-none`}>
+            <div className={`flex items-center gap-1 text-sm font-semibold leading-none`} style={{ color: isUp ? aithemestyle.trendup : aithemestyle.trendDown }}>
               <TrendIcon className="w-4 h-4" />
               <span className="tabular-nums">{trendValue}</span>
             </div>
@@ -947,19 +942,27 @@ function Models() {
   };
 
   const metricIcon = (key) => {
+    const iconStyle = {
+      width: "19px",
+      height: "19px",
+      position: "relative",
+      top: "2.5px",
+      left: "2.5px",
+    };
+
     switch (key) {
       case "models":
-        return BookOpen;
+        return () => <img src={Modelicon} alt="Models Icon" style={iconStyle} />;
       case "deployed":
-        return Rocket;
+        return () => <img src={Deployedicon} alt="Deployed Icon" style={iconStyle} />;
       case "accuracy":
-        return Gauge;
+        return () => <img src={Accuracyicon} alt="Accuracy Icon" style={iconStyle} />;
       case "latency":
-        return Gauge;
+        return () => <img src={Latencyicon} alt="Latency Icon" style={iconStyle} />;
       case "alerts":
-        return Bell;
+        return () => <img src={Alerticon} alt="Alerts Icon" style={iconStyle} />;
       default:
-        return BookOpen;
+        return () => <img src={Modelicon} alt="Default Icon" style={iconStyle} />;
     }
   };
 
@@ -982,7 +985,17 @@ function Models() {
       <Breadcrumb link="/" skipLinkSegments={['hub']} />
 
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
-        <h1 className="text-2xl font-semibold">Models</h1>
+        <h1
+          style={{
+            fontWeight: 700,
+            fontStyle: 'bold',
+            fontSize: '24px',
+            lineHeight: '100%'
+          }}
+          className="text-gray-900"
+        >
+          Models
+        </h1>
 
         <div className="flex flex-wrap items-center gap-2">
           {/* ADD: Status filter dropdown */}
@@ -1041,7 +1054,7 @@ function Models() {
 
       {viewMode !== "list" && (
         <>
-          <div className="bg-gradient-to-r from-[#8e78b7] via-purple-300 to-purple-100 rounded-xl p-4">
+          <div className={`bg-gradient-to-r ${aithemestyle.statsCardGradient} rounded-xl p-4`}>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
               {statsCards.map((stat) => (
                 <StatsCardWithTrend
@@ -1056,12 +1069,12 @@ function Models() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="col-span-1">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="col-span-2">
               <ModelFlow />
             </div>
             <div>
-              <AlertsPanel />
+              <AlertsPanel className="flex flex-col items-start space-y-2" />
             </div>
           </div>
 

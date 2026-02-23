@@ -107,6 +107,10 @@ const defaultWorkflowState = {
         config: null,
         apiResponse: null
     },
+    completedJobs: {
+        config: null,
+        apiResponse: null
+    },
     modelInferencing: {
         config: null,
         apiResponse: null

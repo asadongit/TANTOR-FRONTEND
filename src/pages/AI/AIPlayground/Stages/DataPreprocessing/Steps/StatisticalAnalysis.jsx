@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ChevronDown, ChevronUp, CircleCheckBig, CircleX, TriangleAlert, Image as ImageIcon, AlertCircle, Info } from 'lucide-react';
+import { ChevronDown, ChevronUp, CircleCheckBig, CircleX, TriangleAlert, Image as ImageIcon } from 'lucide-react';
 import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 import InfoButton from '../../../components/InfoButton';
@@ -25,7 +25,9 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
 
     const [vifDropperEnabled, setVifDropperEnabled] = useState(false);
     const [selectedFeatures, setSelectedFeatures] = useState([]);
-    const [validationError, setValidationError] = useState('');
+
+    // Only show errors after Next is clicked
+    const [showFieldErrors, setShowFieldErrors] = useState(false);
 
     const sectionDescriptions = {
         correlation: "Correlation graphs visually represent the strength and direction of relationships between numerical variables. They help identify strong positive or negative correlations, which can indicate redundant or highly related features.",
@@ -35,14 +37,12 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
     useEffect(() => {
         if ((mode === 'view' || mode === 'edit') && workflowState?.dataPreprocessing?.step5?.config) {
             const config = workflowState.dataPreprocessing.step5.config;
-
             setVifDropperEnabled(config.vif_column_dropper || false);
             setSelectedFeatures(config.vif_columns_to_drop || []);
             setToggles({
                 correlation: true,
                 vif: config.vif_column_dropper
             });
-
         }
     }, [mode, workflowState]);
 
@@ -54,20 +54,21 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
         return acc;
     }, { low: 0, moderate: 0, high: 0 });
 
-    // Validation effect
+    // Derived error flag — only active after Next is clicked
+    const featuresError = showFieldErrors && vifDropperEnabled && selectedFeatures.length === 0;
+
+    // Always report valid to parent — Next is never disabled
     useEffect(() => {
-        if (vifDropperEnabled && selectedFeatures.length === 0) {
-            setValidationError('Please select at least one feature to drop when VIF Column Dropper is enabled.');
-            if (onValidationChange) {
-                onValidationChange(false);
-            }
-        } else {
-            setValidationError('');
-            if (onValidationChange) {
-                onValidationChange(true);
-            }
+        if (onValidationChange) onValidationChange(true);
+    }, []);
+
+    // Auto-clear errors when fixed
+    useEffect(() => {
+        if (!showFieldErrors) return;
+        if (!(vifDropperEnabled && selectedFeatures.length === 0)) {
+            setShowFieldErrors(false);
         }
-    }, [vifDropperEnabled, selectedFeatures, onValidationChange]);
+    }, [selectedFeatures, vifDropperEnabled, showFieldErrors]);
 
     const toggleSwitch = (key) => {
         if (readonly) return;
@@ -102,11 +103,12 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
 
     const handleStatisticalAnalysis = useCallback(async () => {
         if (readonly) return true;
+
+        // Validate — show inline error instead of blocking Next
         if (vifDropperEnabled && selectedFeatures.length === 0) {
-            toast.error('Please select at least one feature to drop when VIF Column Dropper is enabled.', {
-                duration: 4000,
-                position: 'top-right',
-            });
+            setShowFieldErrors(true);
+            // Auto-expand VIF section so user can see the error
+            setExpandedSections(prev => ({ ...prev, vif: true }));
             return false;
         }
 
@@ -165,7 +167,8 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
 
     return (
         <div className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            {/* What's Included */}
+            <div className="bg-gray-50 p-4 rounded-lg">
                 <h5 className="text-sm font-medium text-[#8e78b7] mb-3">What's Included?</h5>
                 <div className="grid grid-cols-2 gap-x-8">
                     {[
@@ -184,13 +187,12 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                 </div>
             </div>
 
-            {/* Correlation Graphs Section */}
-            <div className="bg-gray-50 rounded-lg border border-gray-200">
-                <div className="p-4 flex items-center justify-between border-b border-gray-100">
+            {/* ── Correlation Graphs Section ── */}
+            <div className="bg-gray-50 rounded-lg">
+                <div className="p-4 flex items-center justify-between">
                     <div className="flex-1 flex items-center gap-2">
                         <div>
                             <h4 className="text-sm font-medium text-gray-900">Correlation Graphs</h4>
-                            {/* <p className="text-xs text-gray-500 mt-1">Feature relationship visualization</p> */}
                         </div>
                         <InfoButton sectionDescriptions={sectionDescriptions} section="correlation" />
                     </div>
@@ -206,10 +208,7 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                             <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
                         </label>
                         {toggles.correlation && (
-                            <button
-                                onClick={() => toggleSection('correlation')}
-                                className="text-gray-400 hover:text-gray-600"
-                            >
+                            <button onClick={() => toggleSection('correlation')} className="text-gray-400 hover:text-gray-600">
                                 {expandedSections.correlation ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                             </button>
                         )}
@@ -217,7 +216,7 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                 </div>
                 {toggles.correlation && expandedSections.correlation && (
                     <div className="p-6">
-                        <div className="bg-white p-4 rounded border border-gray-200 flex flex-col items-center justify-center min-h-[300px]">
+                        <div className="bg-white p-4 rounded flex flex-col items-center justify-center min-h-[300px]">
                             {correlationPlot ? (
                                 <div className="w-full text-center">
                                     <img
@@ -237,13 +236,14 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                 )}
             </div>
 
-            {/* VIF Analysis Section */}
-            <div className="bg-gray-50 rounded-lg border border-gray-200">
-                <div className="p-4 flex items-center justify-between border-b border-gray-100">
+            {/* ── VIF Analysis Section ── */}
+            {/* Whole card turns red if featuresError is true */}
+            <div className={`rounded-lg transition-all ${featuresError ? 'bg-red-50 border border-red-400' : 'bg-gray-50'}`}>
+                <div className="p-4 flex items-center justify-between">
                     <div className="flex-1 flex items-center gap-2">
                         <div>
                             <div className='flex flex-row'>
-                                <h4 className="text-sm font-medium text-gray-700 mr-2">VIF Analysis</h4>
+                                <h4 className={`text-sm font-medium mr-2 ${featuresError ? 'text-red-700' : 'text-gray-700'}`}>VIF Analysis</h4>
                                 <InfoButton sectionDescriptions={sectionDescriptions} section="vif" isLastSection={true} />
                             </div>
                             <p className="text-xs text-gray-400 mt-0.5">{`${vifReport.length} features analyzed | ${selectedFeatures.length} selected to drop`}</p>
@@ -261,19 +261,17 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                             <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
                         </label>
                         {toggles.vif && (
-                            <button
-                                onClick={() => toggleSection('vif')}
-                                className="text-gray-400 hover:text-gray-600"
-                            >
+                            <button onClick={() => toggleSection('vif')} className="text-gray-400 hover:text-gray-600">
                                 {expandedSections.vif ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                             </button>
                         )}
                     </div>
                 </div>
+
                 {toggles.vif && expandedSections.vif && (
-                    <div className="p-6">
+                    <div className="px-6 pb-6">
+                        {/* Risk summary cards */}
                         <div className="grid grid-cols-3 gap-4 mb-6">
-                            {/* Low Risk Card */}
                             <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <div className="w-10 h-10 rounded-md bg-green-100 flex items-center justify-center">
@@ -284,7 +282,6 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                                 <div className="text-3xl font-bold text-green-600">{riskCounts.low}</div>
                             </div>
 
-                            {/* Moderate Risk Card */}
                             <div className="bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <div className="w-10 h-10 rounded-md bg-orange-100 flex items-center justify-center">
@@ -295,7 +292,6 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                                 <div className="text-3xl font-bold text-orange-600">{riskCounts.moderate}</div>
                             </div>
 
-                            {/* High Risk Card */}
                             <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <div className="w-10 h-10 rounded-md bg-red-100 flex items-center justify-center">
@@ -307,7 +303,8 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between mb-2 pb-4">
+                        {/* VIF Column Dropper toggle + Select All */}
+                        <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-4">
                                 <span className="text-sm font-medium text-gray-700">VIF Column Dropper</span>
                                 <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -338,16 +335,12 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                             )}
                         </div>
 
-                        {/* Validation Error Message */}
-                        {vifDropperEnabled && validationError && (
-                            <div className="mb-4">
-                                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                    <AlertCircle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
-                                    <p className="text-xs text-amber-800">{validationError}</p>
-                                </div>
-                            </div>
+                        {/* Inline error — only shown after Next is clicked */}
+                        {featuresError && (
+                            <p className="text-xs text-red-500 mb-3 pl-0.5">Please select at least one feature to drop</p>
                         )}
 
+                        {/* VIF Table */}
                         <div className="border border-gray-300 rounded-lg overflow-hidden max-h-96 overflow-y-auto">
                             <table className="w-full">
                                 <thead className="bg-gray-50 sticky top-0 z-10">
@@ -359,37 +352,48 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-100">
-                                    {vifReport.length > 0 ? [...vifReport].sort((a, b) => (b.VIF ?? 0) - (a.VIF ?? 0)).map((row, i) => (
-                                        <tr key={i} className="hover:bg-gray-50">
-                                            <td className="px-4 py-3 text-sm text-gray-700 font-medium">{row.Feature}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-700">{row.VIF != null && typeof row.VIF === 'number' ? row.VIF.toFixed(4) : row.VIF != null ? row.VIF : '-'}</td>
-                                            <td className="px-4 py-3">
-                                                <span className={`inline-block px-4 py-1 rounded-md text-xs font-medium ${row.Multicollinearity_Risk?.toLowerCase().includes('high')
-                                                    ? 'bg-red-100 text-red-700'
-                                                    : row.Multicollinearity_Risk?.toLowerCase().includes('moderate')
-                                                        ? 'bg-orange-100 text-orange-700'
-                                                        : 'bg-green-100 text-green-700'
-                                                    }`}>
-                                                    {row.Multicollinearity_Risk}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {vifDropperEnabled ? (
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedFeatures.includes(row.Feature)}
-                                                        onChange={() => toggleFeatureSelection(row.Feature)}
-                                                        disabled={readonly}
-                                                        className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded focus:ring-[#8e78b7]"
-                                                    />
-                                                ) : (
-                                                    <span className="text-sm text-gray-400 italic">Enable switch to drop</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    )) : (
+                                    {vifReport.length > 0 ? (
+                                        [...vifReport]
+                                            .sort((a, b) => (b.VIF ?? 0) - (a.VIF ?? 0))
+                                            .map((row, i) => (
+                                                <tr key={i} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-3 text-sm text-gray-700 font-medium">{row.Feature}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-700">
+                                                        {row.VIF != null && typeof row.VIF === 'number'
+                                                            ? row.VIF.toFixed(4)
+                                                            : row.VIF != null ? row.VIF : '-'}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <span className={`inline-block px-4 py-1 rounded-md text-xs font-medium ${
+                                                            row.Multicollinearity_Risk?.toLowerCase().includes('high')
+                                                                ? 'bg-red-100 text-red-700'
+                                                                : row.Multicollinearity_Risk?.toLowerCase().includes('moderate')
+                                                                    ? 'bg-orange-100 text-orange-700'
+                                                                    : 'bg-green-100 text-green-700'
+                                                        }`}>
+                                                            {row.Multicollinearity_Risk}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        {vifDropperEnabled ? (
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedFeatures.includes(row.Feature)}
+                                                                onChange={() => toggleFeatureSelection(row.Feature)}
+                                                                disabled={readonly}
+                                                                className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded focus:ring-[#8e78b7]"
+                                                            />
+                                                        ) : (
+                                                            <span className="text-sm text-gray-400 italic">Enable switch to drop</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                    ) : (
                                         <tr>
-                                            <td colSpan="4" className="px-4 py-10 text-center text-gray-400 text-sm">No VIF data found in workflow state.</td>
+                                            <td colSpan="4" className="px-4 py-10 text-center text-gray-400 text-sm">
+                                                No VIF data found in workflow state.
+                                            </td>
                                         </tr>
                                     )}
                                 </tbody>

@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   CheckCircle,
   Loader,
+  Expand,
 } from "lucide-react";
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
@@ -27,6 +28,7 @@ import {
   ResponsiveContainer,
   Label,
 } from "recharts";
+import { ExternalLink } from "lucide-react";
 
 const rotateAnimation = `
   @keyframes rotate {
@@ -65,6 +67,12 @@ function Transformation() {
     type: null,
     data: null,
     title: null,
+  });
+  const [dagErrorModal, setDagErrorModal] = useState({
+    isOpen: false,
+    isLoading: false,
+    data: null,
+    dagId: null,
   });
   const { project, decodedToken, token } = useAuth();
 
@@ -151,6 +159,29 @@ function Transformation() {
         show: true,
         message: "Failed to fetch dashboard data",
         type: "error",
+      });
+    }
+  };
+
+  const fetchDagFailure = async (dagId) => {
+    setDagErrorModal({ isOpen: true, isLoading: true, data: null, dagId });
+    try {
+      const response = await axios.get(
+        `${hostname}/dag-failure?dag_id=${dagId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setDagErrorModal({ isOpen: true, isLoading: false, data: response.data, dagId });
+    } catch (error) {
+      console.error("Error fetching DAG failure info:", error);
+      setDagErrorModal({
+        isOpen: true,
+        isLoading: false,
+        data: { status: "ERROR", error_message: "Failed to retrieve DAG failure details." },
+        dagId,
       });
     }
   };
@@ -527,7 +558,7 @@ function Transformation() {
     //   render: (row) => formatDate(row.updated_at),
     // },
     // { key: "created_by", label: "Owner", sortable: true },
-    { key: "status", label: "Status", sortable: true },
+
     {
       key: "source_count",
       label: "Source Records",
@@ -581,6 +612,32 @@ function Transformation() {
       ),
     },
     { key: "duration", label: "Duration", sortable: true },
+     {
+      key: "status",
+      label: "Status",
+      sortable: true,
+      render: (row) => {
+        let className = "px-2 py-1 rounded-full font-medium";
+        if (row.status === "Failed") {
+          className += " bg-red-100 text-red-600";
+          return (
+            <button
+              onClick={() => fetchDagFailure(row.transformation_name)}
+              className={`flex items-center gap-1 ${className} hover:bg-red-200`}
+              title="View failure details"
+            >
+              <span>Failed</span>
+              <ExternalLink className="ml-1 w-3 h-3" />
+            </button>
+          );
+        } else if (row.status === "Success") {
+          className += " bg-green-100 text-green-600";
+        } else {
+          className += " bg-gray-100 text-gray-600";
+        }
+        return <span className={className}>{row.status}</span>;
+      },
+    },
     { label: "Action", sortable: false },
   ];
 
@@ -789,6 +846,57 @@ function Transformation() {
     );
   };
 
+  const DagErrorModal = ({ isOpen, onClose, isLoading, data }) => {
+    if (!isOpen) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl w-[900px] max-h-[80vh] flex flex-col p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Icon icon="material-symbols:error-outline" className="w-5 h-5 text-red-500" />
+              <h2 className="text-xl font-semibold text-gray-800">DAG Failure Details</h2>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="overflow-y-auto flex-1">
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader className="h-10 w-10 text-blue-500 animate-spin mb-4" />
+                <p className="text-gray-600">Fetching failure details...</p>
+              </div>
+            ) : data ? (
+              <div className="space-y-3">
+                {data.status && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-gray-500 w-28">Status:</span>
+                    <span className={`text-sm font-medium px-2 py-0.5 rounded ${
+                      data.status === "FAILED" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-700"
+                    }`}>{data.status}</span>
+                  </div>
+                )}
+
+                {(data.error || data.error_message) && (
+                  <div className="mt-3">
+                    <span className="text-sm font-semibold text-gray-500">Error Log:</span>
+                    <pre className="mt-2 bg-gray-50 border border-gray-200 rounded-lg p-4 text-xs text-gray-800 whitespace-pre-wrap break-all max-h-[350px] overflow-y-auto">
+                      {data.error || data.error_message}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-8">No failure data available.</p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const CountDetailsModal = ({ isOpen, onClose, type, data, title }) => {
     if (!isOpen) return null;
 
@@ -982,6 +1090,13 @@ function Transformation() {
         type={countModal.type}
         data={countModal.data}
         title={countModal.title}
+      />
+
+      <DagErrorModal
+        isOpen={dagErrorModal.isOpen}
+        onClose={() => setDagErrorModal({ isOpen: false, isLoading: false, data: null, dagId: null })}
+        isLoading={dagErrorModal.isLoading}
+        data={dagErrorModal.data}
       />
     </div>
   );

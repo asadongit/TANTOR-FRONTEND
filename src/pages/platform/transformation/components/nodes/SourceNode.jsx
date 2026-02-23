@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Handle, Position } from "reactflow";
 import { X, Database } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
@@ -165,7 +165,7 @@ export const SourceNode = ({ id, data }) => {
       setTables([]);
 
       const response = await fetch(
-        `${hostnamev1}/connection-master-metadata/find-by-conn-name-type?conn_name=${connectionName}&schema_name=${schemaName}`,
+        `${hostnamev1}/tables/${encodeURIComponent(connectionName)}/${encodeURIComponent(schemaName)}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -179,7 +179,7 @@ export const SourceNode = ({ id, data }) => {
 
       const tableData = await response.json();
       setTables(tableData);
-      setDataFetchStatus(prev => ({ ...prev, tables: "ssuccess" }));
+      setDataFetchStatus(prev => ({ ...prev, tables: "success" }));
     } catch (error) {
       console.error("Error fetching tables:", error);
       setDataFetchStatus(prev => ({ ...prev, tables: "error" }));
@@ -187,6 +187,26 @@ export const SourceNode = ({ id, data }) => {
       setLoading(prev => ({ ...prev, tables: false }));
     }
   }, [hostnamev1, token, sourceType]);
+
+  const fetchColumns = useCallback(async (connectionName, schemaName, tableName) => {
+    if (!connectionName || !schemaName || !tableName) return;
+    try {
+      const response = await fetch(
+        `${hostnamev1}/columns/${encodeURIComponent(connectionName)}/${encodeURIComponent(schemaName)}/${encodeURIComponent(tableName)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      return data.column_json || [];
+    } catch (error) {
+      console.error("Error fetching columns:", error);
+      return [];
+    }
+  }, [hostnamev1, token]);
 
   const fetchProcedures = useCallback(async (connectionName) => {
     if (sourceType !== "database") return;
@@ -691,9 +711,11 @@ export const SourceNode = ({ id, data }) => {
     table.table_name?.toLowerCase().includes(tableSearch.toLowerCase())
   );
 
-  const filteredColumns = columns.filter(col =>
-    col.column_name?.toLowerCase().includes(columnSearch.toLowerCase())
-  );
+  const filteredColumns = useMemo(() =>
+    columns.filter(col =>
+      col.column_name?.toLowerCase().includes(columnSearch.toLowerCase())
+    ),
+  [columns, columnSearch]);
 
   const filteredPreProcedures = procedures.filter(procedure =>
     procedure.procedure_name?.toLowerCase().includes(preProcedureSearch.toLowerCase())
@@ -948,11 +970,11 @@ export const SourceNode = ({ id, data }) => {
         setSelectedTable(data.table);
         hasUpdated = true;
 
-        if (data.connection && data.schema && tables.length > 0) {
-          const tableColumns = getColumnsForTable(data.table);
-          if (tableColumns.length > 0) {
-            setColumns(tableColumns);
-          }
+        if (data.connection && data.schema && !hasFetchedColumns.current) {
+          hasFetchedColumns.current = true;
+          fetchColumns(data.connection, data.schema, data.table).then(cols => {
+            if (cols.length > 0) setColumns(cols);
+          });
         }
       }
 
@@ -1041,20 +1063,15 @@ export const SourceNode = ({ id, data }) => {
   ]);
 
 const hasInitializedSelectedColumns = useRef(false);
+const hasFetchedColumns = useRef(false);
 
 useEffect(() => {
   if (
     data.table &&
     data.columns &&
     selectedTable === data.table &&
-    tables.length > 0 &&
     !hasInitializedSelectedColumns.current
   ) {
-    const tableColumns = getColumnsForTable(data.table);
-    if (tableColumns.length > 0 && columns.length === 0) {
-      setColumns(tableColumns);
-    }
-
     if (data.columns.length > 0) {
       setSelectedColumns(data.columns);
 
@@ -1067,10 +1084,9 @@ useEffect(() => {
       }
     }
 
-
     hasInitializedSelectedColumns.current = true;
   }
-}, [tables, data.table, data.columns, selectedTable, selectedObjectType, columns.length]);
+}, [data.table, data.columns, selectedTable, selectedObjectType]);
 
 
   useEffect(() => {
@@ -1506,6 +1522,7 @@ useEffect(() => {
             filteredPostProcedures={filteredPostProcedures}
             fetchSchemas={fetchSchemas}
             fetchTablesAndColumns={fetchTablesAndColumns}
+            fetchColumns={fetchColumns}
             fetchProcedures={fetchProcedures}
             handleObjectTypeChange={handleObjectTypeChange}
             addPreProcedureDropdown={addPreProcedureDropdown}

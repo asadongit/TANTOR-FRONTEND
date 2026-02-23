@@ -1,11 +1,146 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ChevronDown, ChevronUp, Info, X, Plus } from 'lucide-react';
 import { validateHyperparameterValue } from './validationUtils';
+import { tw } from '../../../../../components/themeContext';
 
-function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate }) {
+// Extracted dropdown as its own component so we can use hooks (useEffect, useRef)
+function GridSearchDropdown({ algo, paramName, options, readonly, onUpdate, isEmpty }) {
+    const ref = useRef(null);
+    const dropdownKey = `${algo.id}-${paramName}`;
+    const isOpen = algo._openDropdown === dropdownKey;
+    const selectedValues = (algo.gridSearchValues[paramName] || []).filter(v => v && v.trim() !== '');
+    const allSelected = selectedValues.length === options.length;
+    const someSelected = selectedValues.length > 0;
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleClickOutside = (e) => {
+            if (ref.current && !ref.current.contains(e.target)) {
+                onUpdate(algo.id, { _openDropdown: null });
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isOpen]);
+
+    const toggleDropdown = () => {
+        if (readonly) return;
+        onUpdate(algo.id, { _openDropdown: isOpen ? null : dropdownKey });
+    };
+
+    const toggleOption = (opt) => {
+        if (readonly) return;
+        const newSelected = selectedValues.includes(opt)
+            ? selectedValues.filter(v => v !== opt)
+            : [...selectedValues, opt];
+        onUpdate(algo.id, {
+            gridSearchValues: { ...algo.gridSearchValues, [paramName]: newSelected },
+            gridSearchErrors: { ...algo.gridSearchErrors, [paramName]: [] }
+        });
+    };
+
+    const toggleAll = () => {
+        if (readonly) return;
+        onUpdate(algo.id, {
+            gridSearchValues: { ...algo.gridSearchValues, [paramName]: allSelected ? [] : [...options] },
+            gridSearchErrors: { ...algo.gridSearchErrors, [paramName]: [] }
+        });
+    };
+
+    const triggerLabel = selectedValues.length === 0
+        ? 'Select'
+        : allSelected
+            ? 'All selected'
+            : selectedValues.length === 1
+                ? selectedValues[0]
+                : `${selectedValues.length} selected`;
+
+    return (
+        <div className="relative" ref={ref}>
+            <button
+                type="button"
+                onClick={toggleDropdown}
+                disabled={readonly}
+                className={`w-full h-10 px-3 rounded-md border text-sm text-left flex items-center justify-between transition-all focus:outline-none font-satoshi font-normal leading-none tracking-normal ${
+                    isOpen
+                        ? 'border-[#8e78b7] bg-[#F5F0FF] text-[#332849]'
+                        : isEmpty
+                            ? 'border-red-400 bg-white text-[#818181]'
+                            : 'border-slate-200 bg-white text-[#818181]'
+                } ${readonly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+            >
+                <span className={someSelected
+                    ? 'font-satoshi text-sm font-medium text-[#332849] leading-none tracking-normal'
+                    : 'font-satoshi text-sm font-normal text-[#818181] leading-none tracking-normal'
+                }>
+                    {triggerLabel}
+                </span>
+                <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${isOpen ? 'text-[#8e78b7] rotate-180' : 'text-[#818181]'}`} />
+            </button>
+
+            {isOpen && (
+                <div className="absolute top-full mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg z-20 overflow-hidden">
+                    {/* Select All */}
+                    <div
+                        onClick={toggleAll}
+                        className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-slate-50 transition-colors border-b border-slate-100"
+                    >
+                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                            allSelected ? 'bg-[#8e78b7] border-[#8e78b7]'
+                            : someSelected ? 'bg-[#8e78b7] border-[#8e78b7]'
+                            : 'border-gray-300 bg-white'
+                        }`}>
+                            {allSelected && (
+                                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 8">
+                                    <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                            )}
+                            {someSelected && !allSelected && (
+                                <div className="w-2 h-0.5 bg-white rounded" />
+                            )}
+                        </div>
+                        <span className="font-satoshi text-sm font-medium text-[#8e78b7] leading-none tracking-normal">Select All</span>
+                        <span className="ml-auto text-xs text-gray-400">{selectedValues.length}/{options.length}</span>
+                    </div>
+
+                    {/* Options */}
+                    <div className="max-h-44 overflow-y-auto">
+                        {options.map(opt => {
+                            const isChecked = selectedValues.includes(opt);
+                            return (
+                                <div
+                                    key={opt}
+                                    onClick={() => toggleOption(opt)}
+                                    className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-slate-50 transition-colors"
+                                >
+                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                                        isChecked ? 'bg-[#8e78b7] border-[#8e78b7]' : 'border-gray-300 bg-white'
+                                    }`}>
+                                        {isChecked && (
+                                            <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 8">
+                                                <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                                            </svg>
+                                        )}
+                                    </div>
+                                    <span className={`font-satoshi text-sm leading-none tracking-normal ${isChecked ? 'font-medium text-[#332849]' : 'font-normal text-[#818181]'}`}>
+                                        {opt}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate, showValidation, onResetValidation }) {
     const handleConfigModeChange = (mode) => {
         if (readonly) return;
-        onUpdate(algo.id, { configMode: mode });
+        onUpdate(algo.id, { configMode: mode, errors: {}, hyperparameterValues: {}, gridSearchValues: {}, gridSearchErrors: {} });
+        if (onResetValidation) onResetValidation();
     };
 
     const handleHyperparameterChange = (paramName, paramValue, newValue) => {
@@ -38,7 +173,7 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate }) {
 
     const addGridSearchValue = (paramName) => {
         const currentValues = algo.gridSearchValues[paramName] || [];
-        
+
         onUpdate(algo.id, {
             gridSearchValues: {
                 ...algo.gridSearchValues,
@@ -107,14 +242,38 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate }) {
         });
     };
 
+    // Check if a field is empty and validation has been triggered
+    const isFieldEmpty = (paramName, paramValue) => {
+        if (!showValidation || !algo.enabled) return false;
+        if (algo.configMode === 'Hyper Parameter') {
+            if (typeof paramValue === 'string') {
+                return !algo.hyperparameterValues[paramName] || algo.hyperparameterValues[paramName] === '';
+            } else if (typeof paramValue === 'object' && paramValue.low && paramValue.high) {
+                return !algo.hyperparameterValues[paramName] || algo.hyperparameterValues[paramName].trim() === '';
+            }
+        }
+        if (algo.configMode === 'Grid Search') {
+            if (typeof paramValue === 'string') {
+                const vals = algo.gridSearchValues[paramName] || [];
+                return vals.filter(v => v && v.trim() !== '').length === 0;
+            } else if (typeof paramValue === 'object' && paramValue.low && paramValue.high) {
+                const vals = algo.gridSearchValues[paramName] || [];
+                return vals.filter(v => v && v.trim() !== '').length === 0;
+            }
+        }
+        return false;
+    };
+
     const renderHyperparameterField = (paramName, paramValue) => {
         const hasError = algo.errors && algo.errors[paramName];
+        const isEmpty = isFieldEmpty(paramName, paramValue);
+        const showError = hasError || isEmpty;
 
         if (typeof paramValue === 'string') {
             const options = paramValue.split(',').map(opt => opt.trim());
             return (
                 <div key={paramName}>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
+                    <label className={`block ${tw.sectionHeading} mb-2 capitalize`}>
                         {paramName.replace(/_/g, ' ')}
                     </label>
                     <select
@@ -122,7 +281,7 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate }) {
                         value={algo.hyperparameterValues[paramName] || ''}
                         onChange={(e) => handleHyperparameterChange(paramName, paramValue, e.target.value)}
                         className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent ${
-                            hasError ? 'border-red-500' : 'border-gray-300'
+                            showError ? 'border-red-500' : 'border-gray-300'
                         }`}
                     >
                         <option value="">Select</option>
@@ -130,6 +289,9 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate }) {
                             <option key={opt} value={opt}>{opt}</option>
                         ))}
                     </select>
+                    {isEmpty && !hasError && (
+                        <p className="text-xs text-red-600 mt-1">This field is required</p>
+                    )}
                     {hasError && <p className="text-xs text-red-600 mt-1">{hasError}</p>}
                 </div>
             );
@@ -142,7 +304,7 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate }) {
 
             return (
                 <div key={paramName}>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
+                    <label className={`block ${tw.sectionHeading} mb-2 capitalize`}>
                         {paramName.replace(/_/g, ' ')}
                     </label>
                     <input
@@ -153,12 +315,15 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate }) {
                         onBlur={(e) => handleHyperparameterBlur(paramName, paramValue, e.target.value)}
                         placeholder={`${paramValue.low} - ${paramValue.high}${specialText ? ` or ${specialText}` : ''}`}
                         className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent ${
-                            hasError ? 'border-red-500' : 'border-gray-300'
+                            showError ? 'border-red-500' : 'border-gray-300'
                         }`}
                     />
+                    {isEmpty && !hasError && (
+                        <p className="text-xs text-red-600 mt-1">This field is required</p>
+                    )}
                     {hasError ? (
                         <p className="text-xs text-red-600 mt-1">{hasError}</p>
-                    ) : (
+                    ) : !isEmpty && (
                         <p className="text-xs text-gray-500 mt-1">
                             Range: {paramValue.low} to {paramValue.high}
                             {specialText && ` (or ${specialText})`}
@@ -173,65 +338,34 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate }) {
     const renderGridSearchField = (paramName, paramValue) => {
         const values = algo.gridSearchValues[paramName] || [''];
         const errors = algo.gridSearchErrors[paramName] || [null];
+        const isEmpty = isFieldEmpty(paramName, paramValue);
 
         if (typeof paramValue === 'string') {
             const options = paramValue.split(',').map(opt => opt.trim());
-            const selectedValues = values.filter(v => v !== '');
-            const allOptionsSelected = selectedValues.length >= options.length;
-            const allPreviousFieldsFilled = values.every(v => v && v.trim() !== '');
-            
+            const selectedValues = (algo.gridSearchValues[paramName] || []).filter(v => v && v.trim() !== '');
+
             return (
-                <div key={paramName} className="p-4 bg-gray-50 rounded-lg border border-gray-300 shadow-sm">
-                    <label className="block text-sm font-semibold text-gray-800 mb-3 capitalize">
-                        {paramName.replace(/_/g, ' ')}
-                    </label>
-                    
-                    <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
-                        {values.map((value, index) => {
-                            const availableOptions = options.filter(opt => 
-                                opt === value || !selectedValues.includes(opt)
-                            );
-                            
-                            return (
-                                <div key={index} className="flex items-center gap-2">
-                                    <select
-                                        disabled={readonly}
-                                        value={value}
-                                        onChange={(e) => updateGridSearchValue(paramName, index, e.target.value)}
-                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent text-sm bg-white shadow-sm"
-                                    >
-                                        <option value="">Select</option>
-                                        {availableOptions.map(opt => (
-                                            <option key={opt} value={opt}>{opt}</option>
-                                        ))}
-                                    </select>
-                                    {values.length > 1 && (
-                                        <button
-                                            onClick={() => removeGridSearchValue(paramName, index)}
-                                            disabled={readonly}
-                                            className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                </div>
-                            );
-                        })}
+                <div key={paramName} className={`p-4 bg-gray-50 rounded-lg ${isEmpty ? 'border border-red-400' : ''}`}>
+                    <div className="flex items-center justify-between mb-2">
+                        <label className={`block ${tw.sectionHeading} capitalize`}>
+                            {paramName.replace(/_/g, ' ')}
+                        </label>
+                        <span className="text-xs text-gray-400">{selectedValues.length}/{options.length}</span>
                     </div>
 
-                    {!readonly && (
-                        <button
-                            onClick={() => addGridSearchValue(paramName)}
-                            disabled={readonly || allOptionsSelected || !allPreviousFieldsFilled}
-                            className={`mt-3 w-full px-3 py-2 border-2 border-dashed rounded-lg text-sm flex items-center justify-center gap-2 font-medium transition-colors ${
-                                allOptionsSelected || !allPreviousFieldsFilled
-                                    ? 'border-gray-200 text-gray-400 cursor-not-allowed' 
-                                    : 'border-gray-300 text-gray-600 hover:border-[#8e78b7] hover:text-[#8e78b7] hover:bg-gray-100'
-                            }`}
-                        >
-                            <Plus className="w-4 h-4" />
-                            {allOptionsSelected ? 'All Options Selected' : 'Add Value'}
-                        </button>
+                    {/* Use the extracted GridSearchDropdown component */}
+                    <GridSearchDropdown
+                        algo={algo}
+                        paramName={paramName}
+                        paramValue={paramValue}
+                        options={options}
+                        readonly={readonly}
+                        onUpdate={onUpdate}
+                        isEmpty={isEmpty}
+                    />
+
+                    {isEmpty && (
+                        <p className="text-xs text-red-600 mt-2">Please select at least one value</p>
                     )}
                 </div>
             );
@@ -246,12 +380,12 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate }) {
             const hasAnyErrors = errors.some(error => error !== null && error !== '');
 
             return (
-                <div key={paramName} className="p-4 bg-gray-50 rounded-lg border border-gray-300 shadow-sm">
-                    <label className="block text-sm font-semibold text-gray-800 mb-2 capitalize">
+                <div key={paramName} className={`p-4 bg-gray-50 rounded-lg ${isEmpty ? 'border border-red-400' : ''}`}>
+                    <label className={`block ${tw.sectionHeading} mb-2 capitalize`}>
                         {paramName.replace(/_/g, ' ')}
                     </label>
 
-                    <div className="space-y-2 max-h-48 overflow-y-auto p-0.5 custom-scrollbar">
+                    <div className="space-y-2 p-0.5">
                         {values.map((value, index) => (
                             <div key={index} className="space-y-1">
                                 <div className="flex items-center gap-2">
@@ -283,13 +417,17 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate }) {
                         ))}
                     </div>
 
+                    {isEmpty && (
+                        <p className="text-xs text-red-600 mt-1">Please enter at least one value</p>
+                    )}
+
                     {!readonly && (
                         <button
                             onClick={() => addGridSearchValue(paramName)}
                             disabled={readonly || !allPreviousFieldsFilled || hasAnyErrors}
                             className={`mt-3 w-full px-3 py-2 border-2 border-dashed rounded-lg text-sm flex items-center justify-center gap-2 font-medium transition-colors ${
                                 !allPreviousFieldsFilled || hasAnyErrors
-                                    ? 'border-gray-200 text-gray-400 cursor-not-allowed' 
+                                    ? 'border-gray-200 text-gray-400 cursor-not-allowed'
                                     : 'border-gray-300 text-gray-600 hover:border-[#8e78b7] hover:text-[#8e78b7] hover:bg-gray-100'
                             }`}
                         >
@@ -308,11 +446,47 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate }) {
         return null;
     };
 
+    // Determine if this card has any validation errors (for red tab highlight)
+    const hasValidationErrors = showValidation && algo.enabled && (() => {
+        if (algo.configMode === 'Base') return false;
+        if (algo.configMode === 'Hyper Parameter') {
+            if (algo.errors && Object.values(algo.errors).some(e => e)) return true;
+            if (algo.hyperparameters) {
+                return Object.entries(algo.hyperparameters).some(([paramName, paramValue]) => {
+                    if (typeof paramValue === 'string') {
+                        return !algo.hyperparameterValues[paramName] || algo.hyperparameterValues[paramName] === '';
+                    } else if (typeof paramValue === 'object' && paramValue.low && paramValue.high) {
+                        return !algo.hyperparameterValues[paramName] || algo.hyperparameterValues[paramName].trim() === '';
+                    }
+                    return false;
+                });
+            }
+        }
+        if (algo.configMode === 'Grid Search') {
+            if (algo.gridSearchErrors && Object.values(algo.gridSearchErrors).some(errs => errs && errs.some(e => e))) return true;
+            if (algo.hyperparameters) {
+                return Object.entries(algo.hyperparameters).some(([paramName, paramValue]) => {
+                    if (typeof paramValue === 'string') {
+                        const vals = algo.gridSearchValues[paramName] || [];
+                        return vals.filter(v => v && v.trim() !== '').length === 0;
+                    } else if (typeof paramValue === 'object' && paramValue.low && paramValue.high) {
+                        const vals = algo.gridSearchValues[paramName] || [];
+                        return vals.filter(v => v && v.trim() !== '').length === 0;
+                    }
+                    return false;
+                });
+            }
+        }
+        return false;
+    })();
+
     return (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg">
+        <div className={`rounded-lg ${hasValidationErrors ? 'border-2 border-red-400 bg-red-50' : 'bg-gray-50'}`}>
             <div className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-2 flex-1">
-                    <span className="font-medium text-gray-900">{algo.name}</span>
+                    <span className={`${tw.sectionHeading} font-medium ${hasValidationErrors ? 'text-red-700' : ''}`}>
+                        {algo.name}
+                    </span>
                     {algo.info && (
                         <div className="relative group">
                             <Info className="w-4 h-4 text-gray-400 hover:text-[#8e78b7] cursor-help transition-colors" />
@@ -351,29 +525,37 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate }) {
             </div>
 
             {algo.expanded && (
-                <div className="bg-white p-4 border-t border-gray-200">
+                <div className="bg-white p-4 border-t border-gray-200 rounded-b-lg">
+                    {/* Configuration Mode — underline tab style */}
                     <div className={algo.configMode !== 'Base' ? 'mb-4' : ''}>
-                        <label className="block text-sm font-medium text-gray-900 mb-4">Configuration Mode</label>
-                        <div className="flex gap-4">
+                        <label className={`block ${tw.sectionHeading} mb-3`}>Configuration Mode</label>
+                        <div className="flex border-b border-gray-200">
                             {['Base', 'Hyper Parameter', 'Grid Search'].map((mode) => (
                                 <button
                                     key={mode}
                                     onClick={() => handleConfigModeChange(mode)}
                                     disabled={readonly}
-                                    className={`px-6 py-1 text-sm font-medium rounded-lg border transition-colors ${
+                                    className={`px-5 py-2 text-sm font-medium transition-colors relative focus:outline-none ${
                                         algo.configMode === mode
-                                            ? 'bg-[#8e78b7] text-white border-[#8e78b7]'
-                                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                                            ? 'text-[#8e78b7]'
+                                            : 'text-gray-500 hover:text-gray-700'
                                     } ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                    style={{ marginBottom: '-1px' }}
                                 >
                                     {mode}
+                                    {algo.configMode === mode && (
+                                        <span
+                                            className="absolute bottom-0 left-0 right-0 h-[2px] rounded-t"
+                                            style={{ background: '#8e78b7' }}
+                                        />
+                                    )}
                                 </button>
                             ))}
                         </div>
                     </div>
 
                     {algo.configMode === 'Hyper Parameter' && algo.hyperparameters && (
-                        <div className="grid grid-cols-2 gap-4 max-h-96 overflow-y-auto px-1 custom-scrollbar">
+                        <div className="grid grid-cols-2 gap-4 px-1 mt-4">
                             {Object.entries(algo.hyperparameters).map(([paramName, paramValue]) =>
                                 renderHyperparameterField(paramName, paramValue)
                             )}
@@ -381,7 +563,7 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate }) {
                     )}
 
                     {algo.configMode === 'Grid Search' && algo.hyperparameters && (
-                        <div className="grid grid-cols-2 gap-4 max-h-96 overflow-y-auto custom-scrollbar">
+                        <div className="grid grid-cols-2 gap-4 mt-4">
                             {Object.entries(algo.hyperparameters).map(([paramName, paramValue]) =>
                                 renderGridSearchField(paramName, paramValue)
                             )}

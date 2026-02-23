@@ -18,14 +18,47 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
+import AnalyticsIcons from '../../../assets/ai/analytics.svg';
+import AutoAwesomeMosaicIcons from '../../../assets/ai/auto_awesome_mosaic.svg';
+import BidLandscapeIcons from '../../../assets/ai/bid_landscape.svg';
+import CloudDoneIcons from '../../../assets/ai/cloud_done.svg';
+import RobotIcon from '../../../assets/ai/robotIcon.svg';
+import LightBulbIcons from '../../../assets/ai/lightbulb.svg';
+import ListAltCheckIcons from '../../../assets/ai/list_alt_check.svg';
+import TuneIcons from '../../../assets/ai/tune.svg';
+
+
+function SvgIcon({ src, size = 20, className = '', style = {} }) {
+    return (
+        <img
+            src={src}
+            alt=""
+            className={className}
+            style={{
+                width: size,
+                height: size,
+                minWidth: size,
+                minHeight: size,
+                maxWidth: size,
+                maxHeight: size,
+                display: 'block',
+                objectFit: 'contain',
+                ...style,
+            }}
+        />
+    );
+}
+
+const ACTIVE_ICON_FILTER =
+    'invert(51%) sepia(29%) saturate(672%) hue-rotate(221deg) brightness(88%) contrast(87%)';
 
 export const workflowStages = [
-    { id: 'model-genesis', label: 'Model Genesis', icon: Boxes, path: '/ai/playground/model-genesis' },
-    { id: 'data-preprocessing', label: 'Data Pre-processing', icon: SlidersHorizontal, path: '/ai/playground/data-preprocessing' },
-    { id: 'model-selection', label: 'Model Selection', icon: ListChecks, path: '/ai/playground/model-selection' },
-    { id: 'model-inferencing', label: 'Model Inferencing', icon: BrainCircuit, path: '/ai/playground/model-inferencing' },
-    { id: 'xai', label: 'XAI', icon: Lightbulb, path: '/ai/playground/xai' },
-    { id: 'model-deployment', label: 'Model Deployment', icon: Rocket, path: '/ai/playground/model-deployment' },
+    { id: 'model-genesis', label: 'Model Genesis', icon: AutoAwesomeMosaicIcons, path: '/ai/playground/model-genesis' },
+    { id: 'data-preprocessing', label: 'Data Pre-processing', icon: TuneIcons, path: '/ai/playground/data-preprocessing' },
+    { id: 'model-selection', label: 'Model Selection', icon: ListAltCheckIcons, path: '/ai/playground/model-selection' },
+    { id: 'model-inferencing', label: 'Model Inferencing', icon: AnalyticsIcons, path: '/ai/playground/model-inferencing' },
+    { id: 'xai', label: 'XAI', icon: LightBulbIcons, path: '/ai/playground/xai' },
+    { id: 'model-deployment', label: 'Model Deployment', icon: CloudDoneIcons, path: '/ai/playground/model-deployment' },
 ];
 
 export function AIPlaygroundLayout({
@@ -390,7 +423,8 @@ export function AIPlaygroundLayout({
     const shouldShowFinish = isDeploymentStage && (!isEnsemble || activeModelIndex >= models.length - 1);
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col gap-2">
+        <div className="h-full bg-gray-50 flex flex-col gap-2 overflow-hidden">
+
             {/* Cancel Warning Modal */}
             {showCancelModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -465,171 +499,187 @@ export function AIPlaygroundLayout({
                 </div>
             )}
 
-            <div className="bg-white rounded-md px-6 py-3">
-                <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-3">
-                        <button onClick={() => navigate('/ai/playground')} className="text-gray-600 hover:text-gray-900">
-                            <ChevronLeft size={24} />
-                        </button>
-                        <h1 className="text-xl font-semibold text-gray-900">Build Machine Learning</h1>
-                    </div>
-                    {readonly ? (
-                        <div className="flex items-center gap-3">
-                            <span className="text-sm text-gray-600 bg-gray-50 px-3 py-1 rounded-md">
-                                Note: Read-only view. Click edit configuration to modify.
-                            </span>
+            {/* ✅ STICKY TOP SECTION — title bar + ensemble tabs + steps bar */}
+            <div className="flex-shrink-0 flex flex-col gap-2">
 
-                            <button
-                                onClick={handleEditConfiguration}
-                                className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium hover:bg-[#7d67a6]"
-                            >
-                                Edit Configuration
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-3">
-                            <div className="bg-gray-50 px-4 py-2 rounded-lg flex items-center gap-3">
-                                <span className="text-sm text-gray-600">
-                                    {isEnsemble && `Model ${activeModelIndex + 1} -`} Progress
-                                </span>
-                                <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-[#8e78b7] transition-all duration-300"
-                                        style={{ width: `${progressPercentage}%` }}
-                                    />
-                                </div>
-                                <span className="text-sm font-medium text-gray-700">{Math.round(progressPercentage)}%</span>
-                            </div>
-                            <button className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center text-[#8e78b7] hover:bg-purple-100 transition-colors">
-                                <Bot size={20} />
-                            </button>
-                            <button className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center text-[#8e78b7] hover:bg-purple-100 transition-colors">
-                                <Image size={20} />
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {isEnsemble && models.length > 0 && (
+                {/* Title / Progress Bar */}
                 <div className="bg-white rounded-md px-6 py-3">
-                    <div className="w-full flex items-center justify-between gap-2">
+                    <div className="flex items-center justify-between w-full">
                         <div className="flex items-center gap-3">
-                            {models.map((model, index) => (
-                                <div
-                                    key={model.id}
-                                    className="relative group"
-                                    onMouseEnter={() => setHoveredModelIndex(index)}
-                                    onMouseLeave={() => setHoveredModelIndex(null)}
-                                >
-                                    <button
-                                        className={`flex items-center gap-3 px-6 py-2 rounded-lg text-sm font-medium transition-all ${activeModelIndex === index
-                                            ? 'bg-[#8e78b7] text-white'
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                            }`}
-                                    >
-                                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${activeModelIndex === index
-                                            ? 'bg-white text-[#8e78b7]'
-                                            : 'bg-white text-gray-700'
-                                            }`}>
-                                            {index + 1}
-                                        </span>
-                                        <span>{model.label}</span>
-
-                                        {!readonly && models.length > 1 && hoveredModelIndex === index && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDeleteModel(index);
-                                                }}
-                                                className={`ml-1 p-0.5 rounded transition-colors ${activeModelIndex === index
-                                                    ? 'hover:bg-[#7d67a6]'
-                                                    : 'hover:bg-gray-300'
-                                                    }`}
-                                            >
-                                                <X size={14} />
-                                            </button>
-                                        )}
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-
-                        {!readonly && (
-                            <button
-                                onClick={handleAddModel}
-                                className="flex items-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg text-sm font-medium border-[#8e78b7] text-[#8e78b7] bg-purple-50 transition-all"
-                            >
-                                <Plus size={16} />
-                                Add Model
+                            <button onClick={() => navigate('/ai/playground')} className="text-gray-600 hover:text-gray-900">
+                                <ChevronLeft size={24} />
                             </button>
+                            <h1 className="text-xl font-bold text-gray-700">Build Machine Learning</h1>
+                        </div>
+                        {readonly ? (
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm text-gray-600 bg-gray-50 px-3 py-1 rounded-md">
+                                    Note: Read-only view. Click edit configuration to modify.
+                                </span>
+                                <button
+                                    onClick={handleEditConfiguration}
+                                    className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium hover:bg-[#7d67a6]"
+                                >
+                                    Edit Configuration
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-3">
+                                <div className="bg-gray-50 px-4 py-2 rounded-lg flex items-center gap-3">
+                                    <span className="text-sm text-gray-600">
+                                        {isEnsemble && `Model ${activeModelIndex + 1} -`} Progress
+                                    </span>
+                                    <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-[#8e78b7] transition-all duration-300"
+                                            style={{ width: `${progressPercentage}%` }}
+                                        />
+                                    </div>
+                                    <span className="text-sm font-medium text-gray-700">{Math.round(progressPercentage)}%</span>
+                                </div>
+                                <button className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center text-[#8e78b7] hover:bg-purple-100 transition-colors">
+                                    <SvgIcon src={RobotIcon} size={20} />
+                                </button>
+                                <button className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center text-[#8e78b7] hover:bg-purple-100 transition-colors">
+                                    <SvgIcon src={BidLandscapeIcons} size={20} />
+                                </button>
+                            </div>
                         )}
                     </div>
                 </div>
-            )}
 
-            <div className="bg-white rounded-md px-6 pt-3 pb-4 relative overflow-hidden">
-                <div className="w-full">
-                    <div className="flex items-center justify-between">
-                        {visibleStages.map((stage, index) => {
-                            const IconComponent = stage.icon;
-                            const isActive = stage.path === location.pathname;
-                            const actualStageIndex = workflowStages.findIndex(s => s.id === stage.id);
-                            const isPast = readonly ? !isActive : actualStageIndex < currentStageIndex;
-
-                            return (
-                                <React.Fragment key={stage.id}>
-                                    <div className="flex items-center gap-3">
-                                        <div
-                                            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${isActive
-                                                ? 'bg-purple-50 text-[#8e78b7] border border-purple-400'
-                                                : isPast
-                                                    ? 'bg-[#e6f6f4] text-[#2ba995]'
-                                                    : 'bg-gray-50 text-gray-400 border border-gray-100'
+                {/* Ensemble Model Tabs */}
+                {isEnsemble && models.length > 0 && (
+                    <div className="bg-white rounded-md px-6 py-3">
+                        <div className="w-full flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-3">
+                                {models.map((model, index) => (
+                                    <div
+                                        key={model.id}
+                                        className="relative group"
+                                        onMouseEnter={() => setHoveredModelIndex(index)}
+                                        onMouseLeave={() => setHoveredModelIndex(null)}
+                                    >
+                                        <button
+                                            className={`flex items-center gap-3 px-6 py-2 rounded-lg text-sm font-medium transition-all ${activeModelIndex === index
+                                                ? 'bg-[#8e78b7] text-white'
+                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                                 }`}
                                         >
-                                            {isPast ? (
-                                                <div className="bg-[#2ba995] rounded-full p-1">
-                                                    <Check size={12} className="text-white stroke-[4]" />
-                                                </div>
-                                            ) : (
-                                                <IconComponent size={20} />
+                                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${activeModelIndex === index
+                                                ? 'bg-white text-[#8e78b7]'
+                                                : 'bg-white text-gray-700'
+                                                }`}>
+                                                {index + 1}
+                                            </span>
+                                            <span>{model.label}</span>
+
+                                            {!readonly && models.length > 1 && hoveredModelIndex === index && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteModel(index);
+                                                    }}
+                                                    className={`ml-1 p-0.5 rounded transition-colors ${activeModelIndex === index
+                                                        ? 'hover:bg-[#7d67a6]'
+                                                        : 'hover:bg-gray-300'
+                                                        }`}
+                                                >
+                                                    <X size={14} />
+                                                </button>
                                             )}
-                                        </div>
-
-                                        <span className={`text-sm font-medium whitespace-nowrap ${isActive ? 'text-[#8e78b7]' : isPast ? 'text-[#2ba995]' : 'text-gray-400'
-                                            }`}>
-                                            {stage.label}
-                                        </span>
+                                        </button>
                                     </div>
+                                ))}
+                            </div>
 
-                                    {index < visibleStages.length - 1 && (
-                                        <div className="flex-1 flex items-center justify-center px-2">
-                                            <div className="w-full border-t border-dashed border-gray-300 relative flex items-center justify-end">
-                                                <div className="absolute right-0 w-1.5 h-1.5 border-t border-r border-dashed border-gray-300 rotate-45 -mr-0.5" />
-                                            </div>
-                                        </div>
-                                    )}
-                                </React.Fragment>
-                            );
-                        })}
+                            {!readonly && (
+                                <button
+                                    onClick={handleAddModel}
+                                    className="flex items-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg text-sm font-medium border-[#8e78b7] text-[#8e78b7] bg-purple-50 transition-all"
+                                >
+                                    <Plus size={16} />
+                                    Add Model
+                                </button>
+                            )}
+                        </div>
                     </div>
+                )}
+
+                {/* Workflow Steps Bar */}
+                <div className="bg-white rounded-md px-6 pt-3 pb-4 relative overflow-hidden">
+                    <div className="w-full">
+                        <div className="flex items-center justify-between">
+                            {visibleStages.map((stage, index) => {
+                                const isActive = stage.path === location.pathname;
+                                const actualStageIndex = workflowStages.findIndex(s => s.id === stage.id);
+                                const isPast = readonly ? !isActive : actualStageIndex < currentStageIndex;
+
+                                return (
+                                    <React.Fragment key={stage.id}>
+                                        <div className="flex items-center gap-3">
+                                            <div
+                                                className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${isActive
+                                                    ? 'bg-purple-50 text-[#8e78b7] border border-purple-400'
+                                                    : isPast
+                                                        ? 'bg-[#e6f6f4] text-[#2ba995]'
+                                                        : 'bg-gray-50 text-gray-400 border border-gray-100'
+                                                    }`}
+                                            >
+                                                {isPast ? (
+                                                    <div className="bg-[#2ba995] rounded-full p-1">
+                                                        <Check size={12} className="text-white stroke-[4]" />
+                                                    </div>
+                                                ) : (
+                                                    // ✅ Apply #8e78b7 color filter when stage is active
+                                                    <SvgIcon
+                                                        src={stage.icon}
+                                                        size={20}
+                                                        style={isActive ? { filter: ACTIVE_ICON_FILTER } : undefined}
+                                                    />
+                                                )}
+                                            </div>
+
+                                            <span className={`text-sm font-medium whitespace-nowrap ${isActive ? 'text-[#8e78b7]' : isPast ? 'text-[#2ba995]' : 'text-gray-400'
+                                                }`}>
+                                                {stage.label}
+                                            </span>
+                                        </div>
+
+                                        {index < visibleStages.length - 1 && (
+                                            <div className="flex-1 flex items-center justify-center px-2">
+                                                <div className="w-full border-t border-dashed border-[#818181] relative flex items-center justify-end">
+                                                    <div className="absolute right-0 w-1.5 h-1.5 border-t border-r border-dashed border-[#818181] rotate-45 -mr-0.5" />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </React.Fragment>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    <div
+                        className="absolute bottom-0 left-0 right-0 h-[5px]"
+                        style={{
+                            background: 'linear-gradient(90deg, #8e78b7 0%, #b09ef4ff 50%, #f3f4f6 100%)'
+                        }}
+                    />
                 </div>
 
-                <div
-                    className="absolute bottom-0 left-0 right-0 h-[5px]"
-                    style={{
-                        background: 'linear-gradient(90deg, #8e78b7 0%, #b09ef4ff 50%, #f3f4f6 100%)'
-                    }}
-                />
             </div>
+            {/* ✅ END STICKY TOP SECTION */}
 
-            <div className='flex flex-col'>
-                <div className='bg-white flex-1 p-6'>
+            {/* SCROLLABLE CONTENT + FIXED FOOTER */}
+            <div className='flex flex-col flex-1 overflow-hidden min-h-0'>
+
+                {/* Only this area scrolls */}
+                <div className='bg-white flex-1 p-6 overflow-y-auto min-h-0'>
                     {children}
                 </div>
 
-                <div className="bg-white border-t border-gray-200 px-6 py-4">
+                {/* ✅ Footer stays pinned at bottom */}
+                <div className="bg-white border-t border-gray-200 px-6 py-3 flex-shrink-0">
                     <div className="w-full flex justify-between items-center">
                         {!(isOnStep7 && isStep7Preview) && !isDeploymentStage ? (
                             shouldShowCancel ? (
@@ -670,10 +720,8 @@ export function AIPlaygroundLayout({
                                         className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#7d67a6] disabled:hover:bg-[#8e78b7]"
                                     >
                                         {getNextButtonLabel()}
-                                        {isNavigating ? (
+                                        {isNavigating && (
                                             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                        ) : (
-                                            <ArrowRight size={16} />
                                         )}
                                     </button>
                                 )}
@@ -696,7 +744,10 @@ export function AIPlaygroundLayout({
                         )}
                     </div>
                 </div>
+
             </div>
+            {/* ✅ END SCROLLABLE CONTENT */}
+
         </div>
     );
 }

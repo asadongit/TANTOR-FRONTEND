@@ -3,6 +3,7 @@ import { RefreshCw, Pin, Eye, Trash2, Plus, MessageSquare, X, MoreVertical, Send
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../../../../../context/AuthContext';
 import DataTable from '../../../../../../../components/DataTable';
+import { aithemestyle } from '../../../../../../../components/themeContext';
 
 const Comments = (modelData) => {
     const { token, decodedToken } = useAuth();
@@ -314,17 +315,14 @@ const Comments = (modelData) => {
                 key: 'repliesCount',
                 label: '',
                 sortable: false,
-                width: '130px',
+                width: '100px',
                 render: (row) => (
-                    <button
-                        type="button"
-                        onClick={() => openReplies(row.__raw)}
-                        className="inline-flex items-center gap-2 px-2.5 py-1 border border-[#8e78b7]  rounded-lg text-xs hover:bg-gray-50"
-                        title="View replies"
+                    <span
+                        className="text-xs font-medium"
+                        style={{ color: aithemestyle.iconColor }}
                     >
-                        <MessageSquare className="w-4 h-4 text-gray-500" />
                         {String(row.repliesCount).padStart(2, '0')} Replies
-                    </button>
+                    </span>
                 ),
             },
         ],
@@ -349,68 +347,8 @@ const Comments = (modelData) => {
     }
 
     return (
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-            {/* ...same UI as Data CommentsTab... */}
+        <div className="bg-white rounded-xl">
             <div className="flex flex-col gap-3 mb-4">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-base font-semibold text-gray-900">Comments</h2>
-                        <p className="text-xs text-gray-500">Model discussions and replies</p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        {/* <button
-                            onClick={openAdd}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm bg-[#8e78b7] text-white hover:opacity-90 disabled:opacity-50"
-                            title="Add Comment"
-                            disabled={!modelId || isLoading}
-                        >
-                            <Plus className="w-4 h-4" />
-                            Comment
-                        </button> */}
-
-                        <div className="relative">
-                            <button
-                                type="button"
-                                onClick={() => setIsMenuOpen((v) => !v)}
-                                className="inline-flex items-center justify-center w-9 h-9 border border-gray-300 rounded-lg hover:bg-gray-50"
-                                title="More"
-                            >
-                                <MoreVertical className="w-4 h-4 text-gray-700" />
-                            </button>
-
-                            {isMenuOpen && (
-                                <div className="absolute right-0 mt-2 w-44 rounded-lg border border-gray-200 bg-white shadow-lg z-10" onMouseLeave={() => setIsMenuOpen(false)}>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setIsMenuOpen(false);
-                                            doRefresh();
-                                        }}
-                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50"
-                                        disabled={isLoading}
-                                    >
-                                        <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                                        Refresh
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setIsMenuOpen(false);
-                                            setFilters(defaultFilters);
-                                        }}
-                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50"
-                                    >
-                                        <RefreshCw className="w-4 h-4" />
-                                        Reset filters
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
                 <div className="flex flex-wrap items-end gap-3">
                     <div className="min-w-[140px]">
                         <label className="block text-xs text-gray-600 mb-1">From Date</label>
@@ -434,8 +372,7 @@ const Comments = (modelData) => {
                         />
                     </div>
 
-
-                    <div className="flex-1 min-w-[220px]">
+                    <div className="w-1/2 max-w-[270px]">
                         <label className="block text-xs text-gray-600 mb-1">&nbsp;</label>
                         <div className="relative">
                             <input
@@ -478,6 +415,7 @@ const Comments = (modelData) => {
                 isError={!!error}
                 refetch={doRefresh}
                 resetSortTrigger={refreshTick}
+                onRowClick={(row) => openReplies(row.__raw)}
             />
 
             {isAddOpen && (
@@ -583,7 +521,6 @@ const Comments = (modelData) => {
                                     <span>Model Comments</span>
                                     <span className="text-gray-400">• {Array.isArray(activeComment?.replies) ? String(activeComment.replies.length).padStart(2, '0') : '00'} Total Replies</span>
                                 </div>
-                                <div className="text-xs text-[#8e78b7] font-semibold">3 new comments</div>
                             </div>
                             <button className="p-2 hover:bg-gray-50 rounded-lg" onClick={closeReplies} title="Close">
                                 <X className="w-4 h-4 text-gray-600" />

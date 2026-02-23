@@ -312,7 +312,7 @@ export default function ModelFlow() {
   );
 
   return (
-    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm h-[350px]">
+    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm h-[300px]">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Icon icon="material-symbols:account-tree-outline" className="w-5 h-5 text-purple-600" />
