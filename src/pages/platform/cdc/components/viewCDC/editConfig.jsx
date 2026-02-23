@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Code, Copy, Save, Check, X, Edit2, Play, Pause, AlertCircle } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../../../../../context/AuthContext';
 import toast from 'react-hot-toast';
 import axios from 'axios';
+
+const PASSWORD_MASK = '••••••••';
+
 const ConfigEditorModal = ({
   isOpen,
   onClose,
@@ -11,11 +14,9 @@ const ConfigEditorModal = ({
   configData,
   statusData,
   topicName,
-//   onSave,
-//   onToggleStatus
 }) => {
   const [config, setConfig] = useState(null);
-  const [originalConfig, setOriginalConfig] = useState(null); // Store original config for comparison
+  const [originalConfig, setOriginalConfig] = useState(null);
   const [status, setStatus] = useState(null);
   const [editing, setEditing] = useState(false);
   const [showJson, setShowJson] = useState(false);
@@ -24,14 +25,40 @@ const ConfigEditorModal = ({
   const [rawJsonText, setRawJsonText] = useState('');
   const [jsonError, setJsonError] = useState(null);
   const { cdcId } = useParams();
-  const {token, hostnameV2, project}= useAuth()
+  const { token, hostnameV2, project } = useAuth();
+
+  // Track which password fields have been modified by the user
+  const [modifiedPasswordFields, setModifiedPasswordFields] = useState(new Set());
+
+  const isPasswordField = (key) => {
+    return key.toLowerCase().includes('password');
+  };
+
+  // Get all password field keys from config
+  const getPasswordFields = (configObj) => {
+    if (!configObj) return [];
+    return Object.keys(configObj).filter(isPasswordField);
+  };
+
+  // Create a display version of config where unmodified passwords are masked
+  const getDisplayConfig = (configObj) => {
+    if (!configObj) return null;
+    const displayConfig = { ...configObj };
+    Object.keys(displayConfig).forEach((key) => {
+      if (isPasswordField(key) && !modifiedPasswordFields.has(key)) {
+        displayConfig[key] = PASSWORD_MASK;
+      }
+    });
+    return displayConfig;
+  };
 
   // Initialize config when modal opens or configData changes while not editing
   useEffect(() => {
     if (configData && !editing) {
       setConfig(configData?.config);
-      setOriginalConfig(configData?.config); // Store original for reset functionality
+      setOriginalConfig(configData?.config);
       setStatus(statusData);
+      setModifiedPasswordFields(new Set());
     }
   }, [configData, statusData, editing]);
 
@@ -41,6 +68,7 @@ const ConfigEditorModal = ({
       setConfig(configData?.config);
       setOriginalConfig(configData?.config);
       setStatus(statusData);
+      setModifiedPasswordFields(new Set());
     }
   }, [configData, statusData, config]);
 
@@ -59,14 +87,17 @@ const ConfigEditorModal = ({
     if (!isOpen) {
       setEditing(false);
       setShowJson(false);
+      setModifiedPasswordFields(new Set());
     }
   }, [isOpen]);
 
+  // Update rawJsonText when switching to JSON view — show masked version
   useEffect(() => {
     if (config && showJson) {
-      setRawJsonText(JSON.stringify(config, null, 2));
+      const displayConfig = getDisplayConfig(config);
+      setRawJsonText(JSON.stringify(displayConfig, null, 2));
     }
-  }, [showJson, config]);
+  }, [showJson]);
 
   const handleConfigChange = (e) => {
     const jsonText = e.target.value;
@@ -74,26 +105,64 @@ const ConfigEditorModal = ({
 
     try {
       const parsed = JSON.parse(jsonText);
-      setConfig(parsed);
       setJsonError(null);
+
+      const passwordFields = getPasswordFields(parsed);
+      const newModified = new Set(modifiedPasswordFields);
+
+      passwordFields.forEach((key) => {
+        const currentValue = parsed[key];
+        if (currentValue !== PASSWORD_MASK) {
+          newModified.add(key);
+        } else {
+          newModified.delete(key);
+        }
+      });
+
+      setModifiedPasswordFields(newModified);
+
+      const realConfig = { ...parsed };
+      passwordFields.forEach((key) => {
+        if (!newModified.has(key)) {
+          if (config && config[key] !== undefined) {
+            realConfig[key] = config[key];
+          } else if (originalConfig && originalConfig[key] !== undefined) {
+            realConfig[key] = originalConfig[key];
+          }
+        }
+      });
+
+      setConfig(realConfig);
     } catch (error) {
       setJsonError(`Invalid JSON: ${error.message}`);
     }
   };
 
   const updateConfigField = (key, value) => {
-    const newConfig = {...config};
+    const newConfig = { ...config };
     newConfig[key] = value;
     setConfig(newConfig);
+
+    if (isPasswordField(key)) {
+      const newModified = new Set(modifiedPasswordFields);
+      if (value !== originalConfig?.[key]) {
+        newModified.add(key);
+      } else {
+        newModified.delete(key);
+      }
+      setModifiedPasswordFields(newModified);
+    }
   };
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(JSON.stringify(config, null, 2))
+    const displayConfig = getDisplayConfig(config);
+    navigator.clipboard
+      .writeText(JSON.stringify(displayConfig, null, 2))
       .then(() => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       })
-      .catch(err => {
+      .catch((err) => {
         console.error('Failed to copy: ', err);
       });
   };
@@ -106,7 +175,7 @@ const ConfigEditorModal = ({
         {
           type: configType,
           config: config,
-          connector_name
+          connector_name,
         },
         {
           headers: {
@@ -138,8 +207,13 @@ const ConfigEditorModal = ({
       await updateConnectorConfig();
       setEditing(false);
       setSaving(false);
-      // Update the original config after successful save
-      setOriginalConfig({...config});
+      setOriginalConfig({ ...config });
+      setModifiedPasswordFields(new Set());
+
+      if (showJson) {
+        const displayConfig = getDisplayConfig(config);
+        setRawJsonText(JSON.stringify(displayConfig, null, 2));
+      }
     } catch (err) {
       setSaving(false);
       console.error("Error saving config:", err);
@@ -147,11 +221,23 @@ const ConfigEditorModal = ({
   };
 
   const handleCancelEdit = () => {
-    // Reset to original config and exit edit mode
-    setConfig({...originalConfig});
-    setRawJsonText(JSON.stringify(originalConfig, null, 2));
+    setConfig({ ...originalConfig });
+    setModifiedPasswordFields(new Set());
     setJsonError(null);
     setEditing(false);
+
+    if (showJson) {
+      const displayConfig = getDisplayConfig(originalConfig);
+      setRawJsonText(JSON.stringify(displayConfig, null, 2));
+    }
+  };
+
+  const handleToggleView = () => {
+    if (!showJson) {
+      const displayConfig = getDisplayConfig(config);
+      setRawJsonText(JSON.stringify(displayConfig, null, 2));
+    }
+    setShowJson(!showJson);
   };
 
   const NON_EDITABLE_FIELDS = {
@@ -168,14 +254,14 @@ const ConfigEditorModal = ({
       'bootstrap.servers',
       'topics',
       'schema.evolution'
-    ])
+    ]),
   };
 
   const renderConfigFields = () => {
     if (!config) return null;
     const nonEditableSet = configType === 'source'
-      ? NON_EDITABLE_FIELDS.source
-      : NON_EDITABLE_FIELDS.target;
+        ? NON_EDITABLE_FIELDS.source
+        : NON_EDITABLE_FIELDS.target;
 
     return (
       <div className="space-y-4">
@@ -185,9 +271,9 @@ const ConfigEditorModal = ({
             <div key={key} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center border-b border-gray-100 pb-3">
               <label className="text-sm font-medium text-gray-700">
                 {key}
-              </label>
+                </label>
               <input
-                type={key.includes('password') ? 'password' : 'text'}
+                type={isPasswordField(key) ? 'password' : 'text'}
                 value={value}
                 onChange={(e) => updateConfigField(key, e.target.value)}
                 disabled={!editing || locked}
@@ -267,7 +353,7 @@ const ConfigEditorModal = ({
                 </div>
                 <div className="flex space-x-2">
                   <button
-                    onClick={() => setShowJson(!showJson)}
+                    onClick={handleToggleView}
                     className={`p-2 rounded-md text-sm flex items-center ${
                       showJson ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-200'
                     }`}
@@ -307,13 +393,7 @@ const ConfigEditorModal = ({
               </div>
 
               <div className="mt-4">
-                {showJson ? (
-                  renderJsonEditor()
-                ) : (
-                  <div>
-                    {renderConfigFields()}
-                  </div>
-                )}
+                {showJson ? renderJsonEditor() : <div>{renderConfigFields()}</div>}
               </div>
             </div>
           </div>
@@ -332,8 +412,8 @@ const ConfigEditorModal = ({
               disabled={!editing || saving || (showJson && jsonError)}
               className={`px-6 py-2 rounded-md shadow-sm text-sm font-medium text-white flex items-center ${
                 editing && !saving && !(showJson && jsonError)
-                ? 'bg-[#8e78b7] hover:bg-gray-400'
-                : 'bg-[#8e78b7] cursor-not-allowed opacity-60'
+                  ? 'bg-[#8e78b7] hover:bg-gray-400'
+                  : 'bg-[#8e78b7] cursor-not-allowed opacity-60'
               }`}
             >
               {saving ? (
