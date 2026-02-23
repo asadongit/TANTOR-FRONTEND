@@ -402,6 +402,7 @@ export default function CDCJobView() {
       console.error("Error refreshing data ", err);
     }finally{
       setIsRefreshing(false);
+      toast.success("Refreshed sucessfully!");
     }
   };
 
