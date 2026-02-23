@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, AlertTriangle, Download } from 'lucide-react';
+import { AlertTriangle, Download } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -79,9 +79,7 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
 
   const handleSaveClick = () => {
     const selectedCount = Object.values(selectedModels).filter(Boolean).length;
-    if (selectedCount === 0) {
-      return;
-    }
+    if (selectedCount === 0) return;
     setShowConfirmation(true);
   };
 
@@ -248,12 +246,27 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900">Save Models</h2>
-            <button
-              onClick={handleClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <X size={24} />
-            </button>
+            <div className="flex items-center gap-3">
+              {/* Governance Report button beside close icon */}
+              <button
+                onClick={handleDownloadGovernanceReports}
+                disabled={readonly || selectedCount === 0 || downloadingReports}
+                className="flex items-center gap-2 px-4 py-1.5 border border-gray-400 text-gray-400 hover:text-gray-600 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Download size={15} />
+                {downloadingReports ? 'Downloading...' : 'Governance Report'}
+              </button>
+
+              {/* Close icon as SVG */}
+              <button
+                onClick={handleClose}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M18 6L6 18M6 6L18 18" stroke="#818181" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
           </div>
 
           {alreadyStartedCount !== null && alreadyStartedCount > 0 && (
@@ -267,17 +280,9 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-6">
-            <p className="text-sm text-gray-600 mb-2">
+            <p className="text-sm text-gray-600 mb-4">
               Select the models you want to save and provide descriptions for each selected model.
             </p>
-            
-            {selectedCount === 0 && (
-              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <p className="text-sm text-amber-800">
-                  Please select at least one model to save.
-                </p>
-              </div>
-            )}
 
             {modelsList.length === 0 ? (
               <div className="py-8 text-center">
@@ -301,7 +306,8 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
                         checked={selectedModels[model.run_name] || false}
                         onChange={() => handleCheckboxChange(model.run_name)}
                         disabled={readonly}
-                        className="mt-1 w-4 h-4 text-[#8e78b7] border-gray-300 rounded focus:ring-[#8e78b7] cursor-pointer"
+                        className="mt-1 w-4 h-4 border-gray-300 rounded cursor-pointer"
+                        style={{ accentColor: '#8e78b7' }}
                       />
                       <div className="flex-1">
                         <label
@@ -332,42 +338,23 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
                 ))}
               </div>
             )}
-
-            {selectedCount > 0 && (
-              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-900">
-                  <strong>{selectedCount}</strong> model{selectedCount > 1 ? 's' : ''} selected
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between gap-3 p-6 border-t border-gray-200">
+          <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 shadow-[0_-2px_8px_0_rgba(0,0,0,0.06)]">
             <button
-              onClick={handleDownloadGovernanceReports}
-              disabled={readonly || selectedCount === 0 || downloadingReports}
-              className="px-6 py-2 bg-white border border-[#8e78b7] text-[#8e78b7] rounded-lg text-sm font-medium hover:bg-purple-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              onClick={handleClose}
+              className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
             >
-              <Download size={16} />
-              {downloadingReports ? 'Downloading...' : `Download Governance Report${selectedCount > 1 ? 's' : ''}`}
+              Cancel
             </button>
-            
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleClose}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveClick}
-                disabled={readonly || selectedCount === 0}
-                className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium hover:bg-[#7d67a6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Save Model{selectedCount > 1 ? 's' : ''}
-              </button>
-            </div>
+            <button
+              onClick={handleSaveClick}
+              disabled={readonly || selectedCount === 0}
+              className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium hover:bg-[#7d67a6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Save Model{selectedCount > 1 ? 's' : ''}
+            </button>
           </div>
         </div>
       </div>
@@ -378,10 +365,10 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
           <div ref={reportRef} className="p-6 space-y-6 bg-white" style={{ width: '800px' }}>
             {/* AI Use Case Section */}
             <div>
-              <h4 className="text-sm font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-blue-500">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-[#8e78b7]">
                 AI use case
               </h4>
-              <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-3">
+              <div className="bg-purple-50 border border-[#8e78b7] rounded p-3 mb-3">
                 <p className="text-sm text-gray-700">
                   This Model is not yet associated with any AI use case
                 </p>
@@ -390,7 +377,7 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
 
             {/* Model Section */}
             <div>
-              <h4 className="text-sm font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-blue-500">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-[#8e78b7]">
                 Model
               </h4>
               <div className="space-y-3">
@@ -483,7 +470,7 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
 
             {/* Evaluation Section */}
             <div>
-              <h4 className="text-sm font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-blue-500">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-[#8e78b7]">
                 Evaluation
               </h4>
               
