@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
 import { Loader, Plus, X } from "lucide-react";
 
 export const SourceDatabaseType = ({
@@ -60,6 +60,7 @@ export const SourceDatabaseType = ({
   filteredPostProcedures,
   fetchSchemas,
   fetchTablesAndColumns,
+  fetchColumns,
   handleObjectTypeChange,
   addPreProcedureDropdown,
   addPostProcedureDropdown,
@@ -77,6 +78,31 @@ export const SourceDatabaseType = ({
   ACTION_TYPES,
   setColumns
 }) => {
+  // Build a Set for O(1) column checked lookups instead of O(n) .some() per row
+  const checkedSet = useMemo(() => {
+    const s = new Set();
+    selectedColumns.forEach(c => s.add(`${c.name}||${c.datatype}`));
+    return s;
+  }, [selectedColumns]);
+
+  // Incremental rendering: start with 50 visible columns, expand on scroll
+  const COLUMN_PAGE_SIZE = 50;
+  const [visibleCount, setVisibleCount] = useState(COLUMN_PAGE_SIZE);
+  const columnListRef = useRef(null);
+
+  // Reset visible count when search or table changes
+  useEffect(() => {
+    setVisibleCount(COLUMN_PAGE_SIZE);
+    if (columnListRef.current) columnListRef.current.scrollTop = 0;
+  }, [columnSearch, selectedTable]);
+
+  const handleColumnListScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 60) {
+      setVisibleCount(prev => Math.min(prev + COLUMN_PAGE_SIZE, filteredColumns.length));
+    }
+  };
+
   return (
     <>
       <div>
@@ -311,16 +337,20 @@ export const SourceDatabaseType = ({
                         <div
                           key={idx}
                           className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${selectedTable === table.table_name ? "bg-gray-100" : ""}`}
-                          onClick={() => {
+                          onClick={async () => {
                             setSelectedTable(table.table_name);
                             setSelectedColumns([]);
-                            const tableColumns = tables.find(t => t.table_name === table.table_name)?.column_json || [];
-                            setColumns(tableColumns);
                             setTableDropdownOpen(false);
                             setTableSelections({
                               selectedTable: table.table_name,
                               selectedColumns: []
                             });
+                            const cols = await fetchColumns(
+                              selectedConnection.name,
+                              selectedSchema,
+                              table.table_name
+                            );
+                            setColumns(cols);
                           }}
                         >
                           {table.table_name}
@@ -646,7 +676,7 @@ export const SourceDatabaseType = ({
             <div>
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-black mb-0.5 block">
-                  Columns
+                  Columns ({selectedColumns.length}/{columns.length})
                 </label>
                 <input
                   type="search"
@@ -657,7 +687,11 @@ export const SourceDatabaseType = ({
                 />
               </div>
 
-              <div className="max-h-40 mt-2 overflow-y-auto border text-black border-gray-300 rounded-sm p-2">
+              <div
+                ref={columnListRef}
+                className="max-h-40 mt-2 overflow-y-auto border text-black border-gray-300 rounded-sm p-2"
+                onScroll={handleColumnListScroll}
+              >
                 <div className="mb-2">
                   <label className="flex items-center text-[11px]">
                     <input
@@ -682,12 +716,10 @@ export const SourceDatabaseType = ({
                   </label>
                 </div>
 
-                {filteredColumns.map((column, idx) => {
-                  const isChecked = selectedColumns.some(
-                    c => c.name === column.column_name && c.datatype === column.DATA_TYPE
-                  );
+                {filteredColumns.slice(0, visibleCount).map((column, idx) => {
+                  const isChecked = checkedSet.has(`${column.column_name}||${column.DATA_TYPE}`);
                   return (
-                    <div key={idx} className="mb-1.5">
+                    <div key={column.column_name} className="mb-1.5">
                       <label className="flex items-center text-[11px]">
                         <input
                           type="checkbox"
@@ -718,6 +750,11 @@ export const SourceDatabaseType = ({
                     </div>
                   );
                 })}
+                {visibleCount < filteredColumns.length && (
+                  <div className="text-center py-1 text-[10px] text-gray-400">
+                    Scroll for more ({filteredColumns.length - visibleCount} remaining)
+                  </div>
+                )}
                 {filteredColumns.length === 0 && (
                   <div className="text-center py-2 text-[11px] text-gray-500">
                     No columns match your search
