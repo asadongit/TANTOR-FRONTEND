@@ -41,6 +41,14 @@ import {
 import { Flag } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useAIPlayground } from '../context/AIPlaygroundContext';
+import DashboardIcon from '../assets/dashboard.svg';
+import AIHubIcon from '../assets/ai/hub.svg';
+import AIPlaygroundIcon from '../assets/ai/aiplayground.svg';
+import AgentMeshIcon from '../assets/ai/agentmesh.svg';
+import CollaboratorIcon from '../assets/ai/collabarator.svg';
+import MarketplaceIcon from '../assets/ai/margetplace.svg';
+import NeoModeIcon from '../assets/ai/neomode.svg';
+import ObservabilityIcon from '../assets/ai/observability.svg';
 
 const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const [expandedItem, setExpandedItem] = useState(null);
@@ -123,7 +131,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   };
 
   const platformRoutes = [
-    { name: 'Dashboard', icon: ChartBarIcon, path: '/dashboard' },
+    { name: 'Dashboard', icon: DashboardIcon, path: '/dashboard' },
     { name: 'Project', icon: CubeIcon, path: '/project' },
     { name: 'Connections', icon: LinkIcon, path: '/connections' },
     {
@@ -152,7 +160,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const DATAGOVERNANCE_PREFIX = '/datagovernance';
 
   const allDataGovernanceRoutes = [
-    { name: 'Dashboard', icon: ChartBarIcon, path: '/dashboard' },
+    { name: 'Dashboard', icon: DashboardIcon, path: '/dashboard' },
     {
       name: 'User',
       requiresUserManager: true,
@@ -230,10 +238,10 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const AI_PREFIX = '/ai';
 
   const aiRoutes = [
-    { name: 'Dashboard', icon: LayoutDashboard, path: `/dashboard` },
+    { name: 'Dashboard', icon: DashboardIcon, path: `/dashboard` },
     {
       name: 'Hub',
-      icon: Network,
+      icon: AIHubIcon,
       path: `${AI_PREFIX}/hub/data`,
       subItems: [
         { name: 'Data', path: `${AI_PREFIX}/hub/data` },
@@ -241,15 +249,15 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
         { name: 'Models', path: `${AI_PREFIX}/hub/models` },
       ]
     },
-    { name: 'AI Playground', icon: Sparkles, path: `${AI_PREFIX}/playground` },
+    { name: 'AI Playground', icon: AIPlaygroundIcon, path: `${AI_PREFIX}/playground` },
     { name: 'F1 Mode', icon: Flag, path: `${AI_PREFIX}/f1mode` },
     { name: 'Orchestration', icon: Workflow, path: `${AI_PREFIX}/orchestration` },
-    { name: 'Agent Mesh', icon: GitBranch, path: `${AI_PREFIX}/agent-mesh` },
-    { name: 'Marketplace', icon: Store, path: `${AI_PREFIX}/marketplace` },
-    { name: 'Observability', icon: Activity, path: `${AI_PREFIX}/observability` },
+    { name: 'Agent Mesh', icon: AgentMeshIcon, path: `${AI_PREFIX}/agent-mesh` },
+    { name: 'Marketplace', icon: MarketplaceIcon, path: `${AI_PREFIX}/marketplace` },
+    { name: 'Observability', icon: ObservabilityIcon, path: `${AI_PREFIX}/observability` },
     { type: 'divider' },
-    { name: 'Collaboration', icon: Users, path: `${AI_PREFIX}/collaboration` },
-    { name: 'Neo Mode', icon: Moon, path: `${AI_PREFIX}/neo-mode` },
+    { name: 'Collaboration', icon: CollaboratorIcon, path: `${AI_PREFIX}/collaboration` },
+    { name: 'Neo Mode', icon: NeoModeIcon, path: `${AI_PREFIX}/neo-mode` },
   ];
 
   const currentRoutes =
@@ -258,9 +266,11 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
         dataGovernanceRoutes;
 
   const renderIcon = (IconComponent) => {
-    if (typeof IconComponent === 'function') {
-      return <IconComponent className="h-5 w-5 flex-shrink-0" />;
+    if (typeof IconComponent === 'string') {
+      // It's an SVG URL, render as <img>
+      return <img src={IconComponent} alt="" className="h-5 w-5 flex-shrink-0" />;
     }
+    // Otherwise, assume it's a React component
     return <IconComponent className="h-5 w-5 flex-shrink-0" />;
   };
 

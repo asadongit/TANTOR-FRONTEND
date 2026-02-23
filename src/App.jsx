@@ -59,19 +59,22 @@ function App() {
                 element={
                   <DatabotProvider>
                   <AIPlaygroundProvider>
-                  <div className="min-h-screen bg-gray-50">
+                  <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
                     <Header
                      activeSection={activeSection}
                     />
                     <Chatbot />
-                    <div className="flex">
+                    <div className="flex flex-1 min-h-0">
                       <Sidebar
                         activeSection={activeSection}
                         isCollapsed={isSidebarCollapsed}
                         toggleSidebar={toggleSidebar}
                       />
+                      {/* ✅ CHANGED: overflow-hidden → overflow-y-auto so regular pages
+                          can scroll normally, while AIPlaygroundLayout (h-full + overflow-hidden)
+                          handles its own internal scrolling */}
                       <main
-                        className={`flex-1 p-4 transition-all duration-300 overflow-hidden ${
+                        className={`flex-1 transition-all duration-300 overflow-y-auto h-full min-h-0 ${
                           isSidebarCollapsed ? "ml-16" : "ml-64"
                         }`}
                       >
@@ -123,8 +126,6 @@ function App() {
                 }
               />
 
-
-
               {/* Transformation canvas */}
               <Route
                 path="/transformation/studio"
@@ -150,7 +151,7 @@ function App() {
                 }
               />
 
-                {/* using this purge */}
+              {/* using this purge */}
               <Route
                 path="/PurgeCanvas"
                 element={
@@ -179,13 +180,13 @@ function App() {
                 }
               />
 
-                {/* this is used in cdc canvas */}
+              {/* this is used in cdc canvas */}
               <Route
                 path="/canvas/:canvasTypeParam"
                 element={<CanvasLayout />}
               />
 
-                {/* federation canvas */}
+              {/* federation canvas */}
               <Route
                 path="/viewcanvas"
                 element={
@@ -225,8 +226,7 @@ function App() {
                 }
               />
 
-
-                {/* rules canvas */}
+              {/* rules canvas */}
               <Route
                 path="/config/rule/create-rule"
                 element={

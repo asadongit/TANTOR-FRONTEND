@@ -41,13 +41,13 @@ function Observability() {
                         ))}
                     </div>
 
-                    <button
+                    {/* <button
                         type="button"
                         onClick={() => { setSelectedPeriod('7 Days'); setRefreshKey(k => k + 1); }}
                         className="ml-3 px-2 py-1 text-sm rounded-md border-[1px] border-[#8e78b7] bg-white text-[#8e78b7] focus:outline-none"
                     >
                         Reset
-                    </button>
+                    </button> */}
                 </div>
             </div>
 

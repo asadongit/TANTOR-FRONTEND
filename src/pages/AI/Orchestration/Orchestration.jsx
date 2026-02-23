@@ -8,6 +8,7 @@ import { useAuth } from '../../../context/AuthContext';
 import InterventionsTab from '../Orchestration/Tabs/InterventionsTab';
 import toast from 'react-hot-toast';
 import ScheduleDetailsModal from './modals/ScheduleDetailsModal';
+import { tw, backgrounds, aithemestyle } from '../../../components/themeContext';
 
 const Orchestration = () => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -319,7 +320,7 @@ const Orchestration = () => {
         <div className="bg-white rounded-lg px-4 py-3 border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center gap-2 mb-2">
                 <Icon className="w-5 h-5 text-[#8e78b7]" />
-                <span className="text-gray-700 font-semibold text-md">{label}</span>
+                <span className={tw.sectionHeading}>{label}</span>
             </div>
             <div className="pl-8">
                 <span className="text-xl sm:text-2xl font-bold text-gray-800">{value}</span>
@@ -333,17 +334,6 @@ const Orchestration = () => {
             case 'active':
                 return 'bg-green-100 text-green-700';
             case 'Blocked':
-                return 'bg-red-100 text-red-700';
-            default:
-                return 'bg-gray-100 text-gray-700';
-        }
-    };
-
-    const getDriftStatusColor = (status) => {
-        switch (status) {
-            case 'Safe':
-                return 'bg-green-100 text-green-700';
-            case 'High':
                 return 'bg-red-100 text-red-700';
             default:
                 return 'bg-gray-100 text-gray-700';
@@ -395,7 +385,6 @@ const Orchestration = () => {
             mode: 'read'
         })
         navigate('/ai/orchestration/new')
-
     }
 
     const handleEdit = async (row) => {
@@ -542,7 +531,7 @@ const Orchestration = () => {
     ];
 
     return (
-        <div className="p-3 sm:p-4 lg:p-6 bg-gray-50 min-h-screen">
+        <div className={`p-3 sm:p-4 lg:p-6 ${backgrounds.page} h-screen flex flex-col overflow-hidden`}>
             {editLoading && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 flex flex-col items-center gap-4">
@@ -563,161 +552,190 @@ const Orchestration = () => {
 
             <Breadcrumb />
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">Orchestration</h1>
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                <h1
+                    style={{
+                        fontWeight: 700,
+                        fontStyle: 'bold',
+                        fontSize: '24px',
+                        lineHeight: '100%'
+                    }}
+                    className="text-gray-900"
+                >
+                    Orchestration
+                </h1>
                 <div className="flex items-center gap-2 sm:gap-3">
                     <button
                         onClick={handleRefresh}
                         disabled={refreshLoading}
-                        className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed ${tw.secondaryButton}`}
+                    >
                         <RefreshCw className={`w-4 h-4 ${refreshLoading ? 'animate-spin' : ''}`} />
-                        <span className="text-sm font-medium">Refresh</span>
+                        <span>Refresh</span>
                     </button>
                     <button
                         onClick={handleNavigate}
-                        className="flex items-center gap-2 px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7d6aa3] transition-colors">
-                        <Plus className="w-4 h-4" />
-                        <span className="text-sm font-medium">New Schedule</span>
+                        className="flex items-center gap-2 px-3 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7d6aa3] transition-colors text-sm font-medium font-satoshi whitespace-nowrap">
+                        <Plus className="w-4 h-4 flex-shrink-0" />
+                        <span>New Schedule</span>
                     </button>
                 </div>
             </div>
 
-            <div className="space-y-6">
-                {loading ? (
-                    <div className="bg-white rounded-xl p-4 border border-gray-200">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                            {[1, 2, 3, 4, 5].map((_, index) => (
-                                <div key={index} className="bg-gray-100 rounded-lg px-4 py-3 border border-gray-200 animate-pulse">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <div className="w-5 h-5 bg-gray-300 rounded"></div>
-                                        <div className="h-4 bg-gray-300 rounded w-24"></div>
+            {/* Combined Stats + Tabs Card */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col flex-1 min-h-0">
+
+                {/* Stats Cards */}
+                <div className="flex-shrink-0 p-4">
+                    {loading ? (
+                        <div className={`bg-gradient-to-r ${aithemestyle.statsCardGradient} rounded-xl p-4`}>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                                {[1, 2, 3, 4, 5].map((_, index) => (
+                                    <div key={index} className="bg-gray-100 rounded-lg px-4 py-3 border border-gray-200 animate-pulse">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className="w-5 h-5 bg-gray-300 rounded"></div>
+                                            <div className="h-4 bg-gray-300 rounded w-24"></div>
+                                        </div>
+                                        <div className="pl-8">
+                                            <div className="h-8 bg-gray-300 rounded w-16"></div>
+                                        </div>
                                     </div>
-                                    <div className="pl-8">
-                                        <div className="h-8 bg-gray-300 rounded w-16"></div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ) : (
-                    <div className="bg-gradient-to-r from-[#8e78b7] via-purple-300 to-purple-100 rounded-xl p-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                            {statsData.map((stat, index) => (
-                                <StatCard key={index} {...stat} />
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-                    <div className="border-b border-gray-200">
-                        <div className="flex gap-5 pt-2 pb-0 pl-5">
-                            {tabs.map((tab) => (
-                                <button
-                                    key={tab}
-                                    onClick={() => setActiveTab(tab)}
-                                    className={`px-4 py-2 text-md font-medium rounded-lg transition-colors relative ${activeTab === tab
-                                        ? 'text-[#8e78b7] bg-purple-50'
-                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                                        }`}
-                                >
-                                    {tab}
-                                    {activeTab === tab && (
-                                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#8e78b7] rounded-t"></div>
-                                    )}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="px-4 py-1">
-                        {activeTab === 'Recent Activity' && (
-                            <div className="space-y-1">
-                                {activityLoading ? (
-                                    <div className="text-center py-8 text-gray-500">Loading...</div>
-                                ) : recentActivityData.length === 0 ? (
-                                    <div className="text-center py-8 text-gray-500">No recent activity</div>
-                                ) : (
-                                    recentActivityData.map((activity, index) => {
-                                        const ActivityIcon = getActivityIcon(activity.status);
-                                        const iconColor = getActivityIconColor(activity.status);
-
-                                        return (
-                                            <div
-                                                key={index}
-                                                className="flex items-start gap-3 py-2 px-3 hover:bg-gray-50 rounded-lg transition-colors group"
-                                            >
-                                                <div className={`mt-1 ${iconColor}`}>
-                                                    <ActivityIcon className="w-4 h-4 flex-shrink-0" />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-md text-gray-700 leading-relaxed">
-                                                        {activity.message}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        );
-                                    })
-                                )}
+                                ))}
                             </div>
-                        )}
+                        </div>
+                    ) : (
+                        <div className={`bg-gradient-to-r ${aithemestyle.statsCardGradient} rounded-xl p-4`}>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                                {statsData.map((stat, index) => (
+                                    <StatCard key={index} {...stat} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
 
-                        {activeTab === 'Scheduler' && (
-                            <>
-                                <div className="flex justify-end pt-2">
-                                    <div className="relative w-full sm:w-80">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                        <input
-                                            type="text"
-                                            placeholder="Search..."
-                                            value={schedulerSearchTerm}
-                                            onChange={(e) => setSchedulerSearchTerm(e.target.value)}
-                                            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
-                                        />
-                                    </div>
-                                </div>
-
-                                {schedulerLoading ? (
-                                    <div className="text-center py-8 text-gray-500">Loading...</div>
-                                ) : filteredSchedulerData.length === 0 ? (
-                                    <div className="text-center py-8 text-gray-500">
-                                        {schedulerSearchTerm ? 'No schedules found matching your search' : 'No data present'}
-                                    </div>
-                                ) : (
-                                    <DataTable
-                                        columns={[
-                                            { key: 'sno', label: 'Sno', sortable: true, width: '80px' },
-                                            { key: 'schedule_name', label: 'Schedule Name', sortable: true },
-                                            { key: 'created_by', label: 'Created By', sortable: true },
-                                            { key: 'frequency', label: 'Frequency', sortable: true },
-                                            {
-                                                key: 'last_drift_check',
-                                                label: 'Last Run Check',
-                                                sortable: true,
-                                                render: renderLastDriftCheck
-                                            },
-                                            { key: 'next_run', label: 'Next Run', sortable: true },
-                                            {
-                                                key: 'status',
-                                                label: 'Status',
-                                                sortable: true,
-                                                render: renderStatus
-                                            },
-                                            { label: 'Action', sortable: false, width: '100px' },
-                                        ]}
-                                        data={filteredSchedulerData}
-                                        actions={actions}
-                                        isLoading={false}
-                                        isError={false}
+                {/* Tab Headers */}
+                <div className="border-b border-gray-200 flex-shrink-0">
+                    <div className="flex gap-5 pt-1 pb-0 pl-5">
+                        {tabs.map((tab) => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className="font-satoshi text-base font-medium leading-none tracking-normal px-4 py-2 rounded-t-lg transition-colors relative hover:bg-gray-50"
+                                style={{
+                                    color: activeTab === tab
+                                        ? aithemestyle.tab.activeTextColor
+                                        : aithemestyle.tab.inactiveTextColor,
+                                    backgroundColor: activeTab === tab
+                                        ? aithemestyle.tab.activeBackground
+                                        : undefined,
+                                }}
+                            >
+                                {tab}
+                                {activeTab === tab && (
+                                    <div
+                                        className="absolute bottom-0 left-0 right-0 rounded-t"
+                                        style={{
+                                            height: aithemestyle.tab.activeBorderWidth,
+                                            backgroundColor: aithemestyle.tab.activeBorderColor,
+                                        }}
                                     />
                                 )}
-                            </>
-                        )}
-
-                        {activeTab === 'Interventions' && (
-                            <InterventionsTab />
-                        )}
+                            </button>
+                        ))}
                     </div>
+                </div>
+
+                {/* Tab Content — scrollable */}
+                <div className="flex-1 overflow-y-auto px-4 py-2">
+                    {activeTab === 'Recent Activity' && (
+                        <div className="space-y-1">
+                            {activityLoading ? (
+                                <div className="text-center py-8 text-gray-500">Loading...</div>
+                            ) : recentActivityData.length === 0 ? (
+                                <div className="text-center py-8 text-gray-500">No recent activity</div>
+                            ) : (
+                                recentActivityData.map((activity, index) => {
+                                    const ActivityIcon = getActivityIcon(activity.status);
+                                    const iconColor = getActivityIconColor(activity.status);
+
+                                    return (
+                                        <div
+                                            key={index}
+                                            className="flex items-start gap-3 py-2 px-3 rounded-lg transition-colors group"
+                                            style={{ backgroundColor: '#FAFAFA' }}
+                                        >
+                                            <div className={`mt-1 ${iconColor}`}>
+                                                <ActivityIcon className="w-4 h-4 flex-shrink-0" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className={`${tw.label} leading-relaxed`}>
+                                                    {activity.message}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === 'Scheduler' && (
+                        <>
+                            <div className="flex justify-end pt-2">
+                                <div className="relative w-full sm:w-80">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search..."
+                                        value={schedulerSearchTerm}
+                                        onChange={(e) => setSchedulerSearchTerm(e.target.value)}
+                                        className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
+                                    />
+                                </div>
+                            </div>
+
+                            {schedulerLoading ? (
+                                <div className="text-center py-8 text-gray-500">Loading...</div>
+                            ) : filteredSchedulerData.length === 0 ? (
+                                <div className="text-center py-8 text-gray-500">
+                                    {schedulerSearchTerm ? 'No schedules found matching your search' : 'No data present'}
+                                </div>
+                            ) : (
+                                <DataTable
+                                    columns={[
+                                        { key: 'sno', label: 'Sno', sortable: true, width: '80px' },
+                                        { key: 'schedule_name', label: 'Schedule Name', sortable: true },
+                                        { key: 'created_by', label: 'Created By', sortable: true },
+                                        { key: 'frequency', label: 'Frequency', sortable: true },
+                                        {
+                                            key: 'last_drift_check',
+                                            label: 'Last Run Check',
+                                            sortable: true,
+                                            render: renderLastDriftCheck
+                                        },
+                                        { key: 'next_run', label: 'Next Run', sortable: true },
+                                        {
+                                            key: 'status',
+                                            label: 'Status',
+                                            sortable: true,
+                                            render: renderStatus
+                                        },
+                                        { label: 'Action', sortable: false, width: '100px' },
+                                    ]}
+                                    data={filteredSchedulerData}
+                                    actions={actions}
+                                    isLoading={false}
+                                    isError={false}
+                                />
+                            )}
+                        </>
+                    )}
+
+                    {activeTab === 'Interventions' && (
+                        <InterventionsTab />
+                    )}
                 </div>
             </div>
 

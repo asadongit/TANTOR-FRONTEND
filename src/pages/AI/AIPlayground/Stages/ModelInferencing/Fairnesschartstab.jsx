@@ -42,7 +42,10 @@ const SearchableSelect = ({ options, value, onChange, placeholder = 'Search...',
       <button
         type="button"
         onClick={handleToggle}
-        className="w-full flex items-center justify-between gap-2 border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-left hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+        className="w-full flex items-center justify-between gap-2 border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-left hover:border-gray-400 focus:outline-none transition-colors"
+        style={{ outline: 'none' }}
+        onFocus={e => e.currentTarget.style.boxShadow = '0 0 0 2px #c4b5f4'}
+        onBlur={e => e.currentTarget.style.boxShadow = 'none'}
         title={selectedLabel}
       >
         <span className="truncate text-gray-900">{selectedLabel || placeholder}</span>
@@ -81,9 +84,28 @@ const SearchableSelect = ({ options, value, onChange, placeholder = 'Search...',
                     type="button"
                     onClick={() => handleSelect(opt.value)}
                     title={opt.label}
-                    className={`w-full text-left px-3 py-2 text-sm truncate hover:bg-blue-50 hover:text-blue-700 transition-colors ${
-                      opt.value === value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-800'
+                    className={`w-full text-left px-3 py-2 text-sm truncate transition-colors ${
+                      opt.value === value
+                        ? 'font-medium'
+                        : 'text-gray-800'
                     }`}
+                    style={
+                      opt.value === value
+                        ? { background: '#ede9f6', color: '#6b52a8' }
+                        : {}
+                    }
+                    onMouseEnter={e => {
+                      if (opt.value !== value) {
+                        e.currentTarget.style.background = '#ede9f6';
+                        e.currentTarget.style.color = '#6b52a8';
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (opt.value !== value) {
+                        e.currentTarget.style.background = '';
+                        e.currentTarget.style.color = '';
+                      }
+                    }}
                   >
                     {opt.label}
                   </button>
@@ -131,17 +153,17 @@ const FairnessTab = ({
 
       {selectedModelFairnessData && (
         <>
-          <div className="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
-            <p className="text-xs text-gray-600 mb-1">Selected Model:</p>
-            <p className="text-sm font-medium text-gray-900">{selectedModelFairnessData.modelName}</p>
-          </div>
 
-          <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          {/* Fairness assessment banner */}
+          <div
+            className="mb-6 p-4 rounded-lg border"
+            style={{ background: '#ede9f6', borderColor: '#c4b5f4' }}
+          >
             <div className="flex items-center gap-2">
-              <Info className="w-5 h-5 text-blue-600" />
+              <Info className="w-5 h-5 flex-shrink-0" style={{ color: '#8e78b7' }} />
               <div>
-                <p className="text-sm font-medium text-blue-900">Fairness Assessment</p>
-                <p className="text-xs text-blue-700 mt-1">{selectedModelFairnessData.fairnessAssessment}</p>
+                <p className="text-sm font-medium" style={{ color: '#8e78b7' }}>Fairness Assessment</p>
+                <p className="text-xs mt-1" style={{ color: '#8e78b7' }}>{selectedModelFairnessData.fairnessAssessment}</p>
               </div>
             </div>
           </div>
@@ -264,12 +286,16 @@ const ChartsTab = ({
 
             {selectedModelChartData && (
               <>
-                <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                {/* Fairness assessment banner */}
+                <div
+                  className="mb-6 p-4 rounded-lg border"
+                  style={{ background: '#ede9f6', borderColor: '#c4b5f4' }}
+                >
                   <div className="flex items-center gap-2">
-                    <Info className="w-5 h-5 text-blue-600" />
+                    <Info className="w-5 h-5 flex-shrink-0" style={{ color: '#8e78b7' }} />
                     <div>
-                      <p className="text-sm font-medium text-blue-900">Fairness Assessment</p>
-                      <p className="text-xs text-blue-700 mt-1">{selectedModelChartData.fairnessAssessment}</p>
+                      <p className="text-sm font-medium" style={{ color: '#4a3880' }}>Fairness Assessment</p>
+                      <p className="text-xs mt-1" style={{ color: '#6b52a8' }}>{selectedModelChartData.fairnessAssessment}</p>
                     </div>
                   </div>
                 </div>

@@ -13,7 +13,8 @@ import {
   BarChart2,
   RotateCcw,
   Search,
-  AlertTriangle
+  AlertTriangle,
+  Download
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CreateProjectModal } from './modals/Dashboard/CreateProjectModal';
@@ -24,6 +25,12 @@ import { ChooseBuildMethodModal } from './modals/Dashboard/ChooseBuildMethodModa
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 import { useAuth } from '../../../context/AuthContext';
 import { toast } from 'react-hot-toast';
+import { tw, backgrounds } from '../../../components/themeContext';
+import SearchIcon from '../../../assets/ai/search.svg';
+import RefreshIcon from '../../../assets/ai/replay.svg'
+import SchemaIcon from '../../../assets/ai/schema.svg'
+import RobotIcon from '../../../assets/ai/robotIcon.svg';
+import BidLandscapeIcons from '../../../assets/ai/bid_landscape.svg';
 
 // Constants
 const OWNER_OPTIONS = [
@@ -40,22 +47,25 @@ const CAPABILITIES = [
   {
     title: 'Build Machine Learning',
     desc: 'Design, train, and deploy machine learning models using your injected dataset.',
-    icon: <Network className="w-5 h-5 text-cyan-500" />,
-    bgColor: 'bg-cyan-50',
+    icon: <img src={SchemaIcon} alt="schema" className="w-5 h-5" style={{ filter: 'invert(55%) sepia(80%) saturate(500%) hue-rotate(155deg) brightness(95%) contrast(95%)' }} />,
+    iconColor: '#16ABC2',
+    bgColor: '#C5EAF0',
     path: '/ai/playground/model-genesis'
   },
   {
     title: 'GenAI',
     desc: 'Build generative AI workflows powered by your data and models.',
-    icon: <Bot className="w-5 h-5 text-orange-400" />,
-    bgColor: 'bg-orange-50',
+    icon: <img src={RobotIcon} alt="robot" className="w-5 h-5" style={{ filter: 'invert(60%) sepia(90%) saturate(700%) hue-rotate(360deg) brightness(105%) contrast(105%)' }} />,
+    iconColor: '#FF9500',
+    bgColor: '#FFF1CF',
     path: '/ai/playground/gen-ai'
   },
   {
     title: 'Business Analysis',
     desc: 'Explore trends, patterns, and insights to support business decisions.',
-    icon: <BarChart3 className="w-5 h-5 text-purple-500" />,
-    bgColor: 'bg-purple-50',
+    icon: <img src={BidLandscapeIcons} alt="bid landscape" className="w-5 h-5" style={{ filter: 'invert(45%) sepia(60%) saturate(600%) hue-rotate(255deg) brightness(100%) contrast(95%)' }} />,
+    iconColor: '#AF52DE',
+    bgColor: '#EBD4F7',
     path: '/ai/playground/business-analysis'
   }
 ];
@@ -404,12 +414,69 @@ const AIPlayground = () => {
     setShowProfileReport(true);
   };
 
-  const handleBackToDashboard = () => {
+  const handleCloseProfileReport = () => {
     setShowProfileReport(false);
   };
 
+  // Close modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && showProfileReport) {
+        setShowProfileReport(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showProfileReport]);
+
   return (
-    <div className="min-h-screen bg-[#fafbfc] p-6 font-sans text-slate-900">
+    // OUTER: #FAFAFA gray background
+    <div className="h-full overflow-y-auto font-satoshi" style={{ backgroundColor: '#FAFAFA' }}>
+
+      {/* Data Profiling Modal */}
+      {showProfileReport && datasetState?.profileReportHtml && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) handleCloseProfileReport(); }}
+        >
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-gray-50 rounded-t-xl flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[#8e78b7] rounded-lg flex items-center justify-center shadow-sm">
+                  <BarChart2 className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className={tw.pageHeading}>Data Profiling Report</h2>
+                  <p className={tw.caption + " flex items-center gap-2"}>
+                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full inline-block"></span>
+                    {datasetState?.tableName || 'Dataset Analysis'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleCloseProfileReport}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 transition-colors text-slate-500 hover:text-slate-700"
+                aria-label="Close"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-hidden">
+              <iframe
+                srcDoc={datasetState.profileReportHtml}
+                className="w-full h-full border-0"
+                title="Data Profiling Report"
+                sandbox="allow-same-origin allow-scripts"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {showCancelModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -419,26 +486,26 @@ const AIPlayground = () => {
                 <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
                   <AlertTriangle className="text-red-600" size={24} />
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className={tw.pageHeading}>
                   Cancel AI Playground Workflow?
                 </h2>
               </div>
 
-              <p className="text-gray-600 mb-6">
+              <p className={tw.body + " mb-6"}>
                 Are you sure you want to cancel? All unsaved progress and configurations will be lost. This action cannot be undone.
               </p>
 
               <div className="flex gap-3 justify-end">
                 <button
                   onClick={handleCancelModalClose}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 border border-slate-200 rounded-md text-sm font-medium text-[#332849] leading-normal hover:bg-slate-50 transition-colors"
                 >
                   Continue Working
                 </button>
                 <button
                   onClick={handleConfirmCancel}
                   disabled={isCancelLoading}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                  className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
                 >
                   {isCancelLoading && (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -451,101 +518,64 @@ const AIPlayground = () => {
         </div>
       )}
 
-      {showProfileReport && datasetState?.profileReportHtml ? (
-        <div className="min-h-screen bg-white -m-6">
-          <div className="sticky top-0 z-10 bg-gray-50 border-b border-purple-100 px-6 py-2 shadow-sm rounded-t-md">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={handleBackToDashboard}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-white rounded-md transition-all"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 19l-7-7 7-7"
-                    />
-                  </svg>
-                  Back
-                </button>
+      {/* MIDDLE: full white card wrapping all page content */}
+      <div className="p-6 h-full">
+        <div className="bg-white rounded-xl p-6 h-full">
 
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#8e78b7] rounded-lg flex items-center justify-center shadow-sm">
-                    <BarChart2 className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-slate-900">
-                      Data Profiling Report
-                    </h2>
-                    <p className="text-sm text-slate-600 flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
-                      {datasetState?.tableName || 'Dataset Analysis'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div className="flex items-center justify-between mb-6">
+            <h1 className={tw.pageHeading}>AI playground</h1>
           </div>
 
-          <div className="w-full">
-            <iframe
-              srcDoc={datasetState.profileReportHtml}
-              className="w-full min-h-screen border-0"
-              title="Data Profiling Report"
-              sandbox="allow-same-origin allow-scripts"
-            />
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className="">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold">AI playground</h1>
-            </div>
-
-            {!uploadedFile && (
-              <>
-                <div className="mb-8">
-                  <h2 className="text-base font-semibold mb-2">Inject Your Data to Get Started</h2>
-                  <p className="text-sm text-slate-500 max-w-3xl">
-                    Select a project and fetch data from tables —to begin machine learning, GenAI, analytics, and observability workflows.
+          {!uploadedFile && (
+            <>
+              {/* INNER CONTENT: #FAFAFA gray background section */}
+              <div className="rounded-lg p-5 mb-6" style={{ backgroundColor: '#FAFAFA' }}>
+                <div className="mb-6">
+                  <h2 className={tw.sectionHeading + " mb-3"}>Inject Your Data to Get Started</h2>
+                  <p className={tw.body}>
+                    Select a project and fetch data from tables — to begin machine learning, GenAI, analytics, and observability workflows.
                   </p>
                 </div>
 
                 {mode === 'schedule' ? (
-                  <div className='flex items-start justify-between'>
-                    <div className="mb-8 relative w-80">
+                  <div className='flex items-start justify-between mb-6'>
+                    <div className="relative w-80">
                       <input
                         type="text"
                         value={selectedProject || 'No project selected'}
                         readOnly
                         disabled
-                        className="w-full h-10 px-3 rounded-md border border-slate-200 bg-white text-sm text-slate-600 cursor-not-allowed"
+                        className="w-full h-10 px-3 rounded-md border border-slate-200 bg-white text-sm font-normal text-[#818181] cursor-not-allowed"
                       />
                     </div>
                     <button
                       onClick={() => toggleModal('resetProject', true)}
                       className="px-4 py-2 text-sm font-medium text-[#8e78b7] border border-slate-200 rounded-md hover:bg-slate-50 transition-colors flex items-center gap-2"
                     >
-                      <RotateCcw className="w-4 h-4" />
+                      <img src={RefreshIcon} alt="reset" className="w-4 h-4" />
                       Reset project
                     </button>
                   </div>
                 ) : (
-                  <div className=" mb-8 relative w-80" ref={dropdownRef}>
+                  <div className="mb-6 relative w-80" ref={dropdownRef}>
+                    <label className={tw.label + " block mb-1.5"}>Project Name</label>
+
+                    {/* Trigger Button */}
                     <button
                       onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                      className="w-full h-10 px-3 rounded-md border border-slate-200 bg-white text-sm text-left focus:outline-none focus:ring-2 focus:ring-violet-500/20 transition-all flex items-center justify-between"
                       disabled={loading}
+                      className={`
+                        w-full h-10 px-3 rounded-md border text-sm text-left
+                        flex items-center justify-between
+                        transition-all focus:outline-none
+                        font-satoshi font-normal leading-none tracking-normal
+                        ${isDropdownOpen
+                          ? 'border-[#8e78b7] bg-[#F5F0FF] text-[#332849]'
+                          : 'border-slate-200 bg-white text-[#818181]'}
+                        disabled:cursor-not-allowed
+                      `}
                     >
-                      <span className={selectedProject ? 'text-slate-900' : 'text-slate-400'}>
+                      <span className={selectedProject ? tw.label : 'font-satoshi text-sm font-normal text-[#818181] leading-none tracking-normal'}>
                         {loading
                           ? 'Loading projects...'
                           : error
@@ -554,61 +584,84 @@ const AIPlayground = () => {
                               ? projects.find(opt => opt.label === selectedProject)?.label
                               : 'Select'}
                       </span>
-                      <ChevronDown className="w-4 h-4 text-slate-400" />
+                      <ChevronDown className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'text-[#8e78b7]' : 'text-[#818181]'}`} />
                     </button>
 
+                    {/* Dropdown Panel */}
                     {isDropdownOpen && !loading && !error && (
-                      <div className="absolute top-full mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg z-10">
-                        <div className="p-2 border-b border-slate-200">
+                      <div className="absolute top-full mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg z-10 overflow-hidden">
+
+                        {/* Search Input */}
+                        <div className="p-2">
                           <div className="relative">
-                            <Search className='w-4 h-4 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2' />
+                            <img
+                              src={SearchIcon}
+                              alt="search"
+                              className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 opacity-50"
+                            />
                             <input
                               ref={searchInputRef}
                               type="text"
                               placeholder="Search"
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
-                              className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+                              className="
+                                w-full pl-9 pr-3 py-1.5 rounded-md
+                                border border-slate-200
+                                font-satoshi text-sm font-normal text-[#332849] leading-none tracking-normal
+                                placeholder:text-[#818181]
+                                focus:outline-none focus:border-[#8e78b7]
+                                transition-colors
+                              "
                             />
                           </div>
                         </div>
+
+                        {/* List Items */}
                         <div className="max-h-48 overflow-y-auto">
                           {filteredOptions.length > 0 ? (
                             filteredOptions.map((opt) => (
                               <button
                                 key={opt.value}
                                 onClick={() => handleSelectExperiment(opt.label)}
-                                className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                                className={`w-full px-4 py-2.5 text-left ${tw.label} hover:bg-slate-50 transition-colors`}
                               >
                                 {opt.label}
                               </button>
                             ))
                           ) : (
-                            <div className="px-3 py-2 text-sm text-slate-400">
+                            <div className={`px-4 py-2.5 ${tw.caption}`}>
                               No projects found
                             </div>
                           )}
                         </div>
+
+                        {/* Create Button */}
                         <button
                           onClick={() => {
                             setIsDropdownOpen(false);
                             toggleModal('createProject', true);
                           }}
-                          className="w-full px-3 py-2 text-left text-sm text-[#8e78b7] hover:bg-violet-50 transition-colors border-t border-slate-200 flex items-center gap-2"
+                          className="
+                            w-full px-4 py-3 text-left
+                            font-satoshi text-sm font-medium text-[#8e78b7] bg-[#F9F9F9] leading-none tracking-normal
+                            hover:bg-violet-50 transition-colors
+                            border-t border-slate-200
+                            flex items-center gap-1.5
+                            shadow-[0_-2px_10px_0px_rgba(0,0,0,0.07)]
+                          "
                         >
-                          <span className="text-lg leading-none">+</span>
+                          <span className="text-base leading-none">+</span>
                           <span>Create</span>
                         </button>
                       </div>
                     )}
 
+                    {/* Error State */}
                     {error && (
-                      <div className="mt-2 text-xs text-red-500 flex items-center gap-1">
+                      <div className="mt-2 flex items-center gap-1 font-satoshi text-xs font-normal text-red-500 leading-none tracking-normal">
                         <span>Failed to load projects.</span>
-                        <button
-                          onClick={fetchProjects}
-                          className="text-[#8e78b7] hover:underline"
-                        >
+                        <button onClick={fetchProjects} className="text-[#8e78b7] hover:underline">
                           Retry
                         </button>
                       </div>
@@ -616,177 +669,173 @@ const AIPlayground = () => {
                   </div>
                 )}
 
-                <div className="mb-8">
-                  <div
-                    className={`border border-slate-200 rounded-lg p-5 transition-opacity ${isDisabled ? 'opacity-50 bg-slate-50' : 'bg-white'
-                      }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className="w-12 h-12 bg-cyan-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Database className="w-6 h-6 text-cyan-600" />
+                {/* Fetch Data Card — gray inner background */}
+                <div
+                  className={`border border-slate-200 rounded-lg p-5 transition-opacity ${isDisabled ? 'opacity-50' : ''}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="flex-1">
+                        <div className={tw.cardTitle + " mb-3"}>
+                          Fetch Data from Table
                         </div>
-                        <div className="flex-1">
-                          <div className="text-sm font-semibold text-slate-700 mb-1">
-                            Fetch Data from Table
-                          </div>
-                          <div className="text-xs text-slate-400">
-                            Load data directly from available database tables
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        disabled={isDisabled}
-                        onClick={handleFetchData}
-                        className="px-6 py-2.5 bg-[#8e78b7] text-white rounded-md text-sm font-medium disabled:cursor-not-allowed disabled:bg-slate-300 transition-colors flex items-center gap-2 shadow-sm"
-                      >
-                        <Database size={16} />
-                        Fetch Data
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Data Ingestion Section */}
-            {uploadedFile && (
-              <div className="bg-white rounded-lg p-6 mb-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-900 mb-1">Data Ingestion</h2>
-                    <p className="text-sm text-slate-500">
-                      Your dataset has been successfully injected and will be used across all selected workflows.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => toggleModal('resetProject', true)}
-                    className="px-4 py-2 text-sm font-medium text-[#8e78b7] border border-slate-200 rounded-md hover:bg-slate-50 transition-colors flex items-center gap-2"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    Reset project
-                  </button>
-                </div>
-
-                <div className="mb-4">
-                  <div className="text-md text-slate-500">
-                    Project Name:{' '}
-                    <span className="text-slate-900 font-medium">
-                      {selectedProject}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  {/* File Card */}
-                  <div className="flex-1 bg-white border border-slate-200 rounded-lg p-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-slate-100 rounded flex items-center justify-center flex-shrink-0">
-                        <File className="text-slate-400" />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium text-slate-900 mb-0.5">
-                          {uploadedFile.type === 'database'
-                            ? uploadedFile.displayName || uploadedFile.name
-                            : uploadedFile.name}
-                        </div>
-                        <div className="text-xs text-slate-400">
-                          {uploadedFile.type === 'database'
-                            ? 'Table • Fetched just now'
-                            : `CSV • ${(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB`}
+                        <div className={tw.caption}>
+                          Load data directly from available database tables
                         </div>
                       </div>
                     </div>
-                  </div>
-
-                  <MoveRight className="text-slate-400" />
-
-                  {/* Data Profiling Card */}
-                  <div className="flex-1 bg-white border border-slate-200 rounded-lg p-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-purple-50 rounded flex items-center justify-center flex-shrink-0">
-                        <BarChart2 className="text-[#8e78b7]" />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium text-slate-900">Data Profiling</div>
-                      </div>
-
-                      <button
-                        onClick={handleViewProfiling}
-                        className="text-sm text-[#8e78b7] hover:text-purple-700 font-medium flex-shrink-0"
-                      >
-                        View
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Capability Cards */}
-            {uploadedFile && (
-              <div className="mt-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {CAPABILITIES.map((cap, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() => handleCapabilityClick(cap.path, cap.title)}
-                      className="bg-white border border-slate-200 p-5 rounded-lg shadow-sm transition-all hover:shadow-md hover:border-violet-300 cursor-pointer hover:scale-105"
+                    <button
+                      disabled={isDisabled}
+                      onClick={handleFetchData}
+                      className="px-6 py-2.5 border border-[#8e78b7] bg-white text-[#8e78b7] rounded-md text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50 disabled:border-slate-300 disabled:text-slate-300 transition-colors flex items-center gap-2 shadow-sm"
                     >
-                      <div
-                        className={`w-10 h-10 ${cap.bgColor} rounded-md flex items-center justify-center mb-4`}
-                      >
-                        {cap.icon}
-                      </div>
-                      <h3 className="text-[15px] font-bold text-slate-800 mb-2">{cap.title}</h3>
-                      <p className="text-xs leading-relaxed text-slate-400">{cap.desc}</p>
-                    </div>
-                  ))}
+                      <Download size={16} />
+                      Fetch Data
+                    </button>
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
+            </>
+          )}
 
+          {/* Data Ingestion Section — gray inner background */}
+          {uploadedFile && (
+            <div className="rounded-lg p-6 mb-6" style={{ backgroundColor: '#FAFAFA' }}>
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h2 className={tw.sectionHeading + " mb-1"}>Data Ingestion</h2>
+                  <p className={tw.body}>
+                    Your dataset has been successfully injected and will be used across all selected workflows.
+                  </p>
+                </div>
+                <button
+                  onClick={() => toggleModal('resetProject', true)}
+                  className="px-4 py-2 text-sm font-medium text-[#8e78b7] border border-[#8e78b7] rounded-md hover:bg-slate-50 transition-colors flex items-center gap-2"
+                >
+                  <img src={RefreshIcon} alt="reset" className="w-4 h-4" />
+                  Reset project
+                </button>
+              </div>
 
-          {/* Modals */}
-          <CreateProjectModal
-            isOpen={modals.createProject}
-            onClose={() => toggleModal('createProject', false)}
-            onSubmit={handleCreateProject}
-            ownerOptions={OWNER_OPTIONS}
-            memberOptions={MEMBER_OPTIONS}
-            projectList={projects}
-          />
+              <div className="mb-4">
+                <div className={tw.body}>
+                  Project Name:{' '}
+                  <span className={tw.cardTitle}>
+                    {selectedProject}
+                  </span>
+                </div>
+              </div>
 
-          <DatasetDescriptionModal
-            isOpen={modals.datasetDescription}
-            onClose={() => toggleModal('datasetDescription', false)}
-            onSave={handleSaveDescription}
-            onSkip={handleSkipDescription}
-          />
+              <div className="flex items-center gap-3">
+                {/* File Card */}
+                <div className="flex-1 bg-white rounded-lg p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-slate-100 rounded flex items-center justify-center flex-shrink-0">
+                      <File className="text-slate-400" />
+                    </div>
 
-          <SelectDataViewModal
-            isOpen={modals.selectTable}
-            onClose={() => toggleModal('selectTable', false)}
-            onProceed={handleDataTableSelected}
-          />
+                    <div className="min-w-0 flex-1">
+                      <div className={tw.cardTitle + " mb-0.5"}>
+                        {uploadedFile.type === 'database'
+                          ? uploadedFile.displayName || uploadedFile.name
+                          : uploadedFile.name}
+                      </div>
+                      <div className={tw.caption}>
+                        {uploadedFile.type === 'database'
+                          ? 'Table • Fetched just now'
+                          : `CSV • ${(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB`}
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-          <ResetProjectModal
-            isOpen={modals.resetProject}
-            onConfirm={handleConfirmReset}
-            onCancel={() => toggleModal('resetProject', false)}
-          />
+                <MoveRight className="text-[#818181]" />
 
-          <ChooseBuildMethodModal
-            isOpen={modals.chooseBuildMethod}
-            onClose={() => toggleModal('chooseBuildMethod', false)}
-            onProceed={handleBuildMethodSelected}
-          />
+                {/* Data Profiling Card */}
+                <div className="flex-1 bg-white rounded-lg p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-purple-50 rounded flex items-center justify-center flex-shrink-0">
+                      <BarChart2 className="text-[#8e78b7]" />
+                    </div>
 
-        </>
-      )}
+                    <div className="min-w-0 flex-1">
+                      <div className={tw.cardTitle}>Data Profiling</div>
+                    </div>
+
+                    <button
+                      onClick={handleViewProfiling}
+                      className="text-sm font-medium text-[#8e78b7] hover:text-purple-700 flex-shrink-0"
+                    >
+                      View
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Capability Cards — gray inner background */}
+          {uploadedFile && (
+            <div className="rounded-lg p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {CAPABILITIES.map((cap, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => handleCapabilityClick(cap.path, cap.title)}
+                    className="bg-white border border-slate-200 p-5 rounded-lg shadow-sm transition-all hover:shadow-md hover:border-violet-300 cursor-pointer hover:scale-105"
+                  >
+                    <div
+                      className="w-10 h-10 rounded-md flex items-center justify-center mb-4"
+                      style={{ backgroundColor: cap.bgColor }}
+                    >
+                      {cap.icon}
+                    </div>
+                    <h3 className={tw.cardTitle + " mb-2"}>{cap.title}</h3>
+                    <p className={tw.caption}>{cap.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+
+      {/* Modals */}
+      <CreateProjectModal
+        isOpen={modals.createProject}
+        onClose={() => toggleModal('createProject', false)}
+        onSubmit={handleCreateProject}
+        ownerOptions={OWNER_OPTIONS}
+        memberOptions={MEMBER_OPTIONS}
+        projectList={projects}
+      />
+
+      <DatasetDescriptionModal
+        isOpen={modals.datasetDescription}
+        onClose={() => toggleModal('datasetDescription', false)}
+        onSave={handleSaveDescription}
+        onSkip={handleSkipDescription}
+      />
+
+      <SelectDataViewModal
+        isOpen={modals.selectTable}
+        onClose={() => toggleModal('selectTable', false)}
+        onProceed={handleDataTableSelected}
+      />
+
+      <ResetProjectModal
+        isOpen={modals.resetProject}
+        onConfirm={handleConfirmReset}
+        onCancel={() => toggleModal('resetProject', false)}
+      />
+
+      <ChooseBuildMethodModal
+        isOpen={modals.chooseBuildMethod}
+        onClose={() => toggleModal('chooseBuildMethod', false)}
+        onProceed={handleBuildMethodSelected}
+      />
+
     </div>
   );
 };

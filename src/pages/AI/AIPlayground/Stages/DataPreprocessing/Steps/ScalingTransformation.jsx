@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, AlertCircle, Info } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import toast from 'react-hot-toast';
@@ -18,24 +18,8 @@ const ToggleSwitch = ({ checked, onChange, readonly }) => (
     </label>
 );
 
-const RadioOption = ({ name, value, checked, onChange, label, readonly }) => (
-    <label className={`flex items-center gap-2 ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-        <input
-            type="radio"
-            name={name}
-            value={value}
-            checked={checked}
-            onChange={onChange}
-            disabled={readonly}
-            className={`w-4 h-4 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7] ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-        />
-        <span className="text-sm text-gray-700">{label}</span>
-    </label>
-);
-
 const FeatureSection = ({
     title,
-    description,
     isToggled,
     isExpanded,
     onToggle,
@@ -43,7 +27,7 @@ const FeatureSection = ({
     hasExpandableContent = true,
     children,
     readonly,
-    validationError,
+    hasError = false,
     sectionKey,
     isLastSection = false,
 }) => {
@@ -54,21 +38,18 @@ const FeatureSection = ({
     };
 
     return (
-        <div className="bg-gray-50 rounded-lg border border-gray-200">
+        <div className={`rounded-lg transition-all ${hasError ? 'bg-red-50 border border-red-400' : 'bg-gray-50'}`}>
             <div className="p-4 flex items-center justify-between">
                 <div className="flex-1">
                     <div className='flex flex-row'>
-                        <h4 className="text-sm font-medium text-gray-700 mr-2">{title}</h4>
+                        <h4 className={`text-sm font-medium mr-2 ${hasError ? 'text-red-700' : 'text-gray-700'}`}>{title}</h4>
                         <InfoButton sectionDescriptions={sectionDescriptions} section={sectionKey} isLastSection={isLastSection} />
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
                     <ToggleSwitch checked={isToggled} onChange={onToggle} readonly={readonly} />
                     {isToggled && hasExpandableContent && (
-                        <button
-                            onClick={onExpand}
-                            className="text-gray-400 hover:text-gray-600"
-                        >
+                        <button onClick={onExpand} className="text-gray-400 hover:text-gray-600">
                             {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                         </button>
                     )}
@@ -76,17 +57,8 @@ const FeatureSection = ({
             </div>
 
             {isToggled && isExpanded && children && (
-                <div className="px-4 pb-4 border-t border-gray-100">
+                <div className="px-4 pb-4">
                     <div className="mt-4">{children}</div>
-                </div>
-            )}
-
-            {isToggled && validationError && (
-                <div className="px-4 pb-2">
-                    <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                        <AlertCircle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
-                        <p className="text-xs text-amber-800">{validationError}</p>
-                    </div>
                 </div>
             )}
         </div>
@@ -114,148 +86,85 @@ function ScalingTransformation({ onApiCall, onValidationChange }) {
     const [transformationMethod, setTransformationMethod] = useState('yeo-johnson');
     const [scalerMethod, setScalerMethod] = useState('standard');
     const [selectedColumns, setSelectedColumns] = useState([]);
-    const [validationError, setValidationError] = useState('');
     const [columnSearchQuery, setColumnSearchQuery] = useState('');
-    const [methodSearchQuery, setMethodSearchQuery] = useState('');
-    const [isMethodDropdownOpen, setIsMethodDropdownOpen] = useState(false);
-    const [hoveredMethod, setHoveredMethod] = useState(null);
+
+    // Only show errors after Next is clicked
+    const [showFieldErrors, setShowFieldErrors] = useState(false);
 
     const transformationOptions = [
-        {
-            value: 'box-cox',
-            label: 'Box-Cox',
-            description: 'Box-Cox is a power transformation technique that stabilizes variance and makes data more normally distributed. It is applied only to positive-valued data and helps improve model performance.'
-        },
-        {
-            value: 'yeo-johnson',
-            label: 'Yeo-Johnson',
-            description: 'Yeo–Johnson is a power transformation similar to Box-Cox but supports zero and negative values. It reduces skewness and improves data symmetry.'
-        },
-        {
-            value: 'log',
-            label: 'Log',
-            description: 'Log Transformation reduces the impact of large values by applying a logarithmic scale. It is commonly used to handle right-skewed data and compress extreme values.'
-        },
-        {
-            value: 'sqrt',
-            label: 'Square Root',
-            description: 'Square Root Transformation reduces skewness by taking the square root of values. It is useful for moderately skewed data and count-based features.'
-        },
-        {
-            value: 'quantile_uniform',
-            label: 'Quantile Uniform',
-            description: 'Quantile Uniform Transformation maps data values to a uniform distribution using quantiles. It reduces the effect of outliers and standardizes feature distribution.'
-        },
-        {
-            value: 'quantile_normal',
-            label: 'Quantile Normal',
-            description: 'Quantile Normal Transformation maps data values to a normal (Gaussian) distribution. It helps models that assume normally distributed input features.'
-        },
-        {
-            value: 'power',
-            label: 'Power',
-            description: 'Power Transformation applies a mathematical exponent to reshape data distribution. It reduces skewness and stabilizes variance for improved model learning.'
-        },
+        { value: 'box-cox', label: 'Box-Cox', description: 'Box-Cox is a power transformation technique that stabilizes variance and makes data more normally distributed. It is applied only to positive-valued data and helps improve model performance.' },
+        { value: 'yeo-johnson', label: 'Yeo-Johnson', description: 'Yeo–Johnson is a power transformation similar to Box-Cox but supports zero and negative values. It reduces skewness and improves data symmetry.' },
+        { value: 'log', label: 'Log', description: 'Log Transformation reduces the impact of large values by applying a logarithmic scale. It is commonly used to handle right-skewed data and compress extreme values.' },
+        { value: 'sqrt', label: 'Square Root', description: 'Square Root Transformation reduces skewness by taking the square root of values. It is useful for moderately skewed data and count-based features.' },
+        { value: 'quantile_uniform', label: 'Quantile Uniform', description: 'Quantile Uniform Transformation maps data values to a uniform distribution using quantiles. It reduces the effect of outliers and standardizes feature distribution.' },
+        { value: 'quantile_normal', label: 'Quantile Normal', description: 'Quantile Normal Transformation maps data values to a normal (Gaussian) distribution. It helps models that assume normally distributed input features.' },
+        { value: 'power', label: 'Power', description: 'Power Transformation applies a mathematical exponent to reshape data distribution. It reduces skewness and stabilizes variance for improved model learning.' },
     ];
 
     const scalerOptions = [
-        {
-            value: 'standard',
-            label: 'Standard',
-            description: 'Standard Scaler transforms features to have zero mean and unit variance. It is commonly used when data follows a normal distribution.'
-        },
-        {
-            value: 'minmax',
-            label: 'MinMax',
-            description: 'Min-Max Scaler rescales values to a fixed range, usually between 0 and 1. It is sensitive to outliers but easy to interpret.'
-        },
-        {
-            value: 'robust',
-            label: 'Robust',
-            description: 'Robust Scaler uses the median and interquartile range (IQR) instead of mean and standard deviation. It is effective when data contains outliers or extreme values.'
-        },
-        {
-            value: 'maxabs',
-            label: 'MaxAbs',
-            description: 'MaxAbs Scaler scales values by dividing them by the maximum absolute value. It preserves sparsity and works well for data already centered around zero.'
-        },
-        {
-            value: 'quantile',
-            label: 'Quantile',
-            description: 'Quantile Scaler transforms features to follow a uniform or normal distribution based on quantiles. It reduces the effect of outliers and makes feature distributions consistent.'
-        },
-        {
-            value: 'power',
-            label: 'Power',
-            description: 'Power Scaler applies a power transformation to stabilize variance and reduce skewness. It helps make features more suitable for machine learning models.'
-        },
-        {
-            value: 'normalizer',
-            label: 'Normalizer',
-            description: 'Normalization rescales each data record so its overall magnitude equals one. It is mainly used for distance-based algorithms such as KNN and clustering.'
-        },
+        { value: 'standard', label: 'Standard', description: 'Standard Scaler transforms features to have zero mean and unit variance. It is commonly used when data follows a normal distribution.' },
+        { value: 'minmax', label: 'MinMax', description: 'Min-Max Scaler rescales values to a fixed range, usually between 0 and 1. It is sensitive to outliers but easy to interpret.' },
+        { value: 'robust', label: 'Robust', description: 'Robust Scaler uses the median and interquartile range (IQR) instead of mean and standard deviation. It is effective when data contains outliers or extreme values.' },
+        { value: 'maxabs', label: 'MaxAbs', description: 'MaxAbs Scaler scales values by dividing them by the maximum absolute value. It preserves sparsity and works well for data already centered around zero.' },
+        { value: 'quantile', label: 'Quantile', description: 'Quantile Scaler transforms features to follow a uniform or normal distribution based on quantiles. It reduces the effect of outliers and makes feature distributions consistent.' },
+        { value: 'power', label: 'Power', description: 'Power Scaler applies a power transformation to stabilize variance and reduce skewness. It helps make features more suitable for machine learning models.' },
+        { value: 'normalizer', label: 'Normalizer', description: 'Normalization rescales each data record so its overall magnitude equals one. It is mainly used for distance-based algorithms such as KNN and clustering.' },
     ];
 
     const skewedColumns = React.useMemo(() => {
         const skewnessReport = workflowState?.dataPreprocessing?.step3?.apiResponse?.skewness_report;
-
         if (!skewnessReport) return [];
-
         return Object.entries(skewnessReport)
-            .map(([name, skewness]) => ({
-                name,
-                skewness: Math.abs(skewness)
-            }))
+            .map(([name, skewness]) => ({ name, skewness: Math.abs(skewness) }))
             .sort((a, b) => b.skewness - a.skewness);
     }, [workflowState]);
 
     const filteredColumns = React.useMemo(() => {
         if (!columnSearchQuery.trim()) return skewedColumns;
-
         return skewedColumns.filter(column =>
             column.name.toLowerCase().includes(columnSearchQuery.toLowerCase())
         );
     }, [skewedColumns, columnSearchQuery]);
 
-    const filteredTransformationOptions = React.useMemo(() => {
-        if (!methodSearchQuery.trim()) return transformationOptions;
-
-        return transformationOptions.filter(option =>
-            option.label.toLowerCase().includes(methodSearchQuery.toLowerCase())
-        );
-    }, [methodSearchQuery]);
-
     useEffect(() => {
         if ((mode === 'view' || mode === 'edit') && workflowState?.dataPreprocessing?.step4?.config) {
             const config = workflowState.dataPreprocessing.step4.config;
-
             setToggles({
                 advancedTransformation: config.advanced_transformation || false,
                 nearZeroVariance: config.near_zero_variance_filter || false,
                 featureScaler: config.feature_scaler || false,
             });
-
             setTransformationMethod(config.transformation_method || 'yeo-johnson');
             setScalerMethod(config.feature_scaler_method || 'standard');
             setSelectedColumns(config.columns_to_transform || []);
         }
     }, [mode, workflowState]);
 
+    // Derived error flag — only active after Next is clicked
+    const columnsError = showFieldErrors && toggles.advancedTransformation && selectedColumns.length === 0;
+
+    // Always report valid to parent — Next is never disabled
     useEffect(() => {
-        const isValid = !toggles.advancedTransformation || selectedColumns.length > 0;
-        const error = toggles.advancedTransformation && selectedColumns.length === 0
-            ? 'Please select at least one column for transformation'
-            : '';
+        if (onValidationChange) onValidationChange(true);
+    }, []);
 
-        setValidationError(error);
-
-        if (onValidationChange) {
-            onValidationChange(isValid);
+    // Auto-clear errors when fixed
+    useEffect(() => {
+        if (!showFieldErrors) return;
+        if (!(toggles.advancedTransformation && selectedColumns.length === 0)) {
+            setShowFieldErrors(false);
         }
-    }, [toggles.advancedTransformation, selectedColumns, onValidationChange]);
+    }, [selectedColumns, toggles, showFieldErrors]);
 
     const handleApiCall = async () => {
         if (readonly) return true;
+
+        if (toggles.advancedTransformation && selectedColumns.length === 0) {
+            setShowFieldErrors(true);
+            setExpandedSections(prev => ({ ...prev, advancedTransformation: true }));
+            return false;
+        }
+
         try {
             const requestBody = {
                 session_id: datasetState?.sessionId,
@@ -269,10 +178,7 @@ function ScalingTransformation({ onApiCall, onValidationChange }) {
 
             const response = await fetch(`${hostnameAI}/data/preprocess/advanced_transformation`, {
                 method: 'POST',
-                headers: {
-                    'accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestBody),
             });
 
@@ -296,30 +202,21 @@ function ScalingTransformation({ onApiCall, onValidationChange }) {
                 apiResponse: data
             });
 
-            toast.success('Scaling & Transformation completed successfully!', {
-                duration: 3000,
-                position: 'top-right',
-            });
+            toast.success('Scaling & Transformation completed successfully!', { duration: 3000, position: 'top-right' });
             return true;
         } catch (error) {
-            toast.error(error.message || 'Scaling & Transformation failed. Please try again.', {
-                duration: 4000,
-                position: 'top-right',
-            });
+            toast.error(error.message || 'Scaling & Transformation failed. Please try again.', { duration: 4000, position: 'top-right' });
             return false;
         }
     };
 
     useEffect(() => {
-        if (onApiCall) {
-            onApiCall(handleApiCall);
-        }
+        if (onApiCall) onApiCall(handleApiCall);
     }, [toggles, transformationMethod, scalerMethod, selectedColumns, onApiCall]);
 
     const toggleSwitch = (key) => {
         if (readonly) return;
         const newToggleState = !toggles[key];
-
         setToggles(prev => ({ ...prev, [key]: newToggleState }));
 
         if (newToggleState) {
@@ -333,10 +230,7 @@ function ScalingTransformation({ onApiCall, onValidationChange }) {
             }
         } else {
             setExpandedSections(prev => ({ ...prev, [key]: false }));
-
-            if (key === 'advancedTransformation') {
-                setValidationError('');
-            }
+            if (key === 'advancedTransformation') setShowFieldErrors(false);
         }
     };
 
@@ -352,54 +246,59 @@ function ScalingTransformation({ onApiCall, onValidationChange }) {
     const toggleColumnSelection = (columnName) => {
         if (readonly) return;
         setSelectedColumns(prev =>
-            prev.includes(columnName)
-                ? prev.filter(col => col !== columnName)
-                : [...prev, columnName]
+            prev.includes(columnName) ? prev.filter(col => col !== columnName) : [...prev, columnName]
         );
     };
+
+    // Helper: radio card class
+    const radioCardClass = (isSelected) =>
+        `px-4 py-3 rounded-lg transition-colors group relative border ${
+            isSelected
+                ? 'bg-purple-100 border-[#8e78b7]'
+                : 'bg-white border-gray-200'
+        } ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`;
 
     return (
         <div className="max-w-full">
             <div className="space-y-4">
-                {/* Advanced Transformation Section */}
+                {/* ── Advanced Transformation ── */}
                 <FeatureSection
                     title="Advanced Transformation"
-                    description="Apply mathematical transformations to reduce skewness"
                     isToggled={toggles.advancedTransformation}
                     isExpanded={expandedSections.advancedTransformation}
                     onToggle={() => toggleSwitch('advancedTransformation')}
                     onExpand={() => toggleSection('advancedTransformation')}
                     hasExpandableContent={true}
                     readonly={readonly}
-                    validationError={validationError}
+                    hasError={columnsError}
                     sectionKey="advancedTransformation"
                 >
                     <div className="space-y-4">
                         <div>
-                            <div className="flex items-center justify-between mb-3">
-                                <h5 className="text-sm font-medium text-gray-700">Select Columns</h5>
+                            <h5 className="text-sm font-medium text-gray-700 mb-3">Select Columns</h5>
+
+                            {/* Search input */}
+                            <div className="mb-3">
+                                <input
+                                    type="text"
+                                    placeholder="Search columns..."
+                                    value={columnSearchQuery}
+                                    onChange={(e) => setColumnSearchQuery(e.target.value)}
+                                    disabled={readonly}
+                                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
+                                />
                             </div>
 
-                            {/* Search Input */}
-                            {skewedColumns.length > 10 && (
-                                <div className="mb-3">
-                                    <input
-                                        type="text"
-                                        placeholder="Search columns..."
-                                        value={columnSearchQuery}
-                                        onChange={(e) => setColumnSearchQuery(e.target.value)}
-                                        disabled={readonly}
-                                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
-                                    />
-                                </div>
-                            )}
-
-                            {/* Scrollable Column List */}
-                            <div className={`space-y-2 ${skewedColumns.length > 10 ? 'max-h-80 overflow-y-auto pr-2' : ''}`}>
+                            {/* Column list — no borders, purple bg when selected */}
+                            <div className={`space-y-1 ${skewedColumns.length > 10 ? 'max-h-80 overflow-y-auto pr-2' : ''}`}>
                                 {filteredColumns.map((column) => (
                                     <label
                                         key={column.name}
-                                        className={`flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-[#8e78b7] transition-colors ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                        className={`flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${
+                                            selectedColumns.includes(column.name)
+                                                ? 'bg-purple-100'
+                                                : 'bg-white hover:bg-gray-100'
+                                        } ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                                     >
                                         <div className="flex items-center gap-3">
                                             <input
@@ -407,9 +306,11 @@ function ScalingTransformation({ onApiCall, onValidationChange }) {
                                                 checked={selectedColumns.includes(column.name)}
                                                 onChange={() => toggleColumnSelection(column.name)}
                                                 disabled={readonly}
-                                                className={`w-4 h-4 text-[#8e78b7] border-gray-300 rounded focus:ring-[#8e78b7] ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                                className={`w-4 h-4 accent-[#8e78b7] rounded focus:ring-[#8e78b7] ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                                             />
-                                            <span className="text-sm text-gray-700">{column.name}</span>
+                                            <span className={`text-sm font-medium ${selectedColumns.includes(column.name) ? 'text-[#8e78b7]' : 'text-gray-700'}`}>
+                                                {column.name}
+                                            </span>
                                         </div>
                                         <div className="flex items-center gap-2 pointer-events-none">
                                             <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -423,24 +324,35 @@ function ScalingTransformation({ onApiCall, onValidationChange }) {
                                     <p className="text-sm text-gray-500 text-center py-4">No columns found</p>
                                 )}
                             </div>
+
+                            {/* Inline error — only shown after Next is clicked */}
+                            {columnsError && (
+                                <p className="text-xs text-red-500 mt-2 pl-0.5">Please select at least one column for transformation</p>
+                            )}
                         </div>
+
                         <div className="pt-2">
                             <h5 className="text-sm font-medium text-gray-700 mb-3">Transformation Method</h5>
                             <div className="grid grid-cols-3 gap-3">
                                 {transformationOptions.map(option => (
                                     <label
                                         key={option.value}
-                                        className={`bg-white px-4 py-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors group relative ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                        className={radioCardClass(transformationMethod === option.value)}
                                     >
-                                        <RadioOption
-                                            name="transformationMethod"
-                                            value={option.value}
-                                            checked={transformationMethod === option.value}
-                                            onChange={(e) => !readonly && setTransformationMethod(e.target.value)}
-                                            label={option.label}
-                                            readonly={readonly}
-                                        />
-
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="radio"
+                                                name="transformationMethod"
+                                                value={option.value}
+                                                checked={transformationMethod === option.value}
+                                                onChange={(e) => !readonly && setTransformationMethod(e.target.value)}
+                                                disabled={readonly}
+                                                className="w-4 h-4 accent-[#8e78b7]"
+                                            />
+                                            <span className={`text-sm font-medium ${transformationMethod === option.value ? 'text-[#8e78b7]' : 'text-gray-700'}`}>
+                                                {option.label}
+                                            </span>
+                                        </div>
                                         {/* Tooltip */}
                                         <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 pointer-events-none">
                                             <p className="leading-relaxed">{option.description}</p>
@@ -449,16 +361,14 @@ function ScalingTransformation({ onApiCall, onValidationChange }) {
                                     </label>
                                 ))}
                             </div>
-                            <p className="text-xs text-gray-500 mt-3">
-                                Selected: {selectedColumns.length} columns
-                            </p>
+                            <p className="text-xs text-gray-500 mt-3">Selected: {selectedColumns.length} columns</p>
                         </div>
                     </div>
                 </FeatureSection>
 
+                {/* ── Near Zero Variance ── */}
                 <FeatureSection
                     title="Near Zero Variance"
-                    description="Remove features with near-zero variance"
                     isToggled={toggles.nearZeroVariance}
                     isExpanded={false}
                     onToggle={() => toggleSwitch('nearZeroVariance')}
@@ -468,9 +378,9 @@ function ScalingTransformation({ onApiCall, onValidationChange }) {
                     sectionKey="nearZeroVariance"
                 />
 
+                {/* ── Feature Scaler ── */}
                 <FeatureSection
                     title="Feature Scaler"
-                    description="Scale features to a standard range"
                     isToggled={toggles.featureScaler}
                     isExpanded={expandedSections.featureScaler}
                     onToggle={() => toggleSwitch('featureScaler')}
@@ -486,17 +396,22 @@ function ScalingTransformation({ onApiCall, onValidationChange }) {
                             {scalerOptions.map(option => (
                                 <label
                                     key={option.value}
-                                    className={`bg-white px-4 py-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors group relative ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                    className={radioCardClass(scalerMethod === option.value)}
                                 >
-                                    <RadioOption
-                                        name="scalerMethod"
-                                        value={option.value}
-                                        checked={scalerMethod === option.value}
-                                        onChange={(e) => !readonly && setScalerMethod(e.target.value)}
-                                        label={option.label}
-                                        readonly={readonly}
-                                    />
-
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="radio"
+                                            name="scalerMethod"
+                                            value={option.value}
+                                            checked={scalerMethod === option.value}
+                                            onChange={(e) => !readonly && setScalerMethod(e.target.value)}
+                                            disabled={readonly}
+                                            className="w-4 h-4 accent-[#8e78b7]"
+                                        />
+                                        <span className={`text-sm font-medium ${scalerMethod === option.value ? 'text-[#8e78b7]' : 'text-gray-700'}`}>
+                                            {option.label}
+                                        </span>
+                                    </div>
                                     {/* Tooltip */}
                                     <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 pointer-events-none">
                                         <p className="leading-relaxed">{option.description}</p>
@@ -507,7 +422,6 @@ function ScalingTransformation({ onApiCall, onValidationChange }) {
                         </div>
                     </div>
                 </FeatureSection>
-
             </div>
         </div>
     );
