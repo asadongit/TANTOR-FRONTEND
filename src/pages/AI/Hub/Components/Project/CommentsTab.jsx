@@ -450,22 +450,7 @@ const CommentsTab = ({ projectData }) => {
                         />
                     </div>
 
-                    {/* <div className="min-w-[160px]">
-                        <label className="block text-xs text-gray-600 mb-1">Sort by</label>
-                        <select
-                            value={filters.sortBy}
-                            onChange={(e) => setFilters((s) => ({ ...s, sortBy: e.target.value }))}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
-                        >
-                            <option value="date">Date</option>
-                            <option value="user">User</option>
-                            <option value="subject">Subject</option>
-                            <option value="component">Component</option>
-                            <option value="replies">Replies</option>
-                        </select>
-                    </div> */}
-
-                    <div className="flex-1 min-w-[220px]">
+                    <div className="w-1/2 max-w-[270px]">
                         <label className="block text-xs text-gray-600 mb-1">&nbsp;</label>
                         <div className="relative">
                             <input
