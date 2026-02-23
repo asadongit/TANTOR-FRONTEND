@@ -164,7 +164,7 @@ export const TargetNode = ({ id, data }) => {
         setTables([]);
 
         const response = await fetch(
-          `${hostnamev1}/connection-master-metadata/find-by-conn-name-type?conn_name=${connectionName}&schema_name=${schemaName}`,
+          `${hostnamev1}/tables/${encodeURIComponent(connectionName)}/${encodeURIComponent(schemaName)}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -188,6 +188,26 @@ export const TargetNode = ({ id, data }) => {
     },
     [hostnamev1, token]
   );
+
+  const fetchColumns = useCallback(async (connectionName, schemaName, tableName) => {
+    if (!connectionName || !schemaName || !tableName) return [];
+    try {
+      const response = await fetch(
+        `${hostnamev1}/columns/${encodeURIComponent(connectionName)}/${encodeURIComponent(schemaName)}/${encodeURIComponent(tableName)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      return data.column_json || [];
+    } catch (error) {
+      console.error("Error fetching columns:", error);
+      return [];
+    }
+  }, [hostnamev1, token]);
 
   const filteredPreProcedures = procedures.filter(procedure =>
     procedure.procedure_name?.toLowerCase().includes(preProcedureSearch.toLowerCase())
@@ -989,6 +1009,12 @@ export const TargetNode = ({ id, data }) => {
     if (data.table && !selectedTable) {
       setSelectedTable(data.table);
       hasUpdated = true;
+
+      if (data.connection && data.schema) {
+        fetchColumns(data.connection, data.schema, data.table).then(cols => {
+          if (cols.length > 0) setColumns(cols.map(col => col.column_name));
+        });
+      }
     }
 
     if (data.alias && !alias) {
@@ -1270,10 +1296,9 @@ export const TargetNode = ({ id, data }) => {
       loadType: loadType,
       loadStrategy: loadStrategy,
       columns:
-        tables.find(t => t.table_name === selectedTable)?.column_json?.map(col => ({
-          name: col.column_name,
-          datatype: col.DATA_TYPE
-        })) || [],
+        columns.map(col =>
+          typeof col === "string" ? { name: col, datatype: "" } : { name: col.column_name || col.name, datatype: col.DATA_TYPE || col.datatype || "" }
+        ),
       alias: alias,
       columnMapping,
       targetMapping,
@@ -1557,10 +1582,15 @@ export const TargetNode = ({ id, data }) => {
                             <div
                               key={idx}
                               className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${selectedTable === table.table_name ? "bg-gray-100" : ""}`}
-                              onClick={() => {
+                              onClick={async () => {
                                 setSelectedTable(table.table_name);
-                                setColumns(table.column_json.map(col => col.column_name));
                                 setTableDropdownOpen(false);
+                                const cols = await fetchColumns(
+                                  selectedConnection.name,
+                                  selectedSchema,
+                                  table.table_name
+                                );
+                                setColumns(cols.map(col => col.column_name));
                               }}
                             >
                               {table.table_name}
