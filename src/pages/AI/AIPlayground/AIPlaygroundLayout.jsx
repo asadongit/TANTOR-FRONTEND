@@ -550,7 +550,7 @@ export function AIPlaygroundLayout({
 
                 {/* Ensemble Model Tabs */}
                 {isEnsemble && models.length > 0 && (
-                    <div className="bg-white rounded-md px-6 py-3">
+                    <div className="bg-white rounded-md px-6 py-1">
                         <div className="w-full flex items-center justify-between gap-2">
                             <div className="flex items-center gap-3">
                                 {models.map((model, index) => (
@@ -607,7 +607,7 @@ export function AIPlaygroundLayout({
                 )}
 
                 {/* Workflow Steps Bar */}
-                <div className="bg-white rounded-md px-6 pt-3 pb-4 relative overflow-hidden">
+                <div className="bg-white rounded-md px-6 pt-2 pb-3 relative overflow-hidden">
                     <div className="w-full">
                         <div className="flex items-center justify-between">
                             {visibleStages.map((stage, index) => {
@@ -631,7 +631,6 @@ export function AIPlaygroundLayout({
                                                         <Check size={12} className="text-white stroke-[4]" />
                                                     </div>
                                                 ) : (
-                                                    // ✅ Apply #8e78b7 color filter when stage is active
                                                     <SvgIcon
                                                         src={stage.icon}
                                                         size={20}
@@ -674,12 +673,12 @@ export function AIPlaygroundLayout({
             <div className='flex flex-col flex-1 overflow-hidden min-h-0'>
 
                 {/* Only this area scrolls */}
-                <div className='bg-white flex-1 p-6 overflow-y-auto min-h-0'>
+                <div className='bg-white flex-1 p-4 overflow-y-auto min-h-0'>
                     {children}
                 </div>
 
                 {/* ✅ Footer stays pinned at bottom */}
-                <div className="bg-white border-t border-gray-200 px-6 py-3 flex-shrink-0">
+                <div className="bg-white border-t border-gray-200 px-6 py-2 flex-shrink-0">
                     <div className="w-full flex justify-between items-center">
                         {!(isOnStep7 && isStep7Preview) && !isDeploymentStage ? (
                             shouldShowCancel ? (

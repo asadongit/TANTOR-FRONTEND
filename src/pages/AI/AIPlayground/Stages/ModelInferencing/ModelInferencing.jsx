@@ -1,9 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { AIPlaygroundLayout } from '../../AIPlaygroundLayout';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
-import { RefreshCw } from 'lucide-react';
 import BestModelCard from './BestModelCard';
 import MetricsChart from './MetricsChart';
 import PerformanceTab from './PerformanceTab';
@@ -20,9 +19,52 @@ const ModelInferencing = () => {
   const [selectedChartsModel, setSelectedChartsModel] = useState('');
   const [selectedChartDemographic, setSelectedChartDemographic] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isReloading, setIsReloading] = useState(false);
   const [showAllPending, setShowAllPending] = useState(false);
   const navigate = useNavigate();
+  const pollingIntervalRef = useRef(null);
+
+  const stopPolling = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  };
+
+  const fetchJobStatus = async () => {
+    const sessionId = datasetState?.sessionId;
+    const jobId = workflowState?.completedJobs?.config?.job_id;
+
+    if (!sessionId || !jobId) return false;
+
+    setIsLoading(true);
+    try {
+      const jobsResponse = await fetch(`${hostnameAI}/jobs/${jobId}`, {
+        method: 'GET',
+        headers: { accept: 'application/json' },
+      });
+      if (!jobsResponse.ok) throw new Error(`Jobs error! status: ${jobsResponse.status}`);
+      const data = await jobsResponse.json();
+
+      updateWorkflowStage('completedJobs', { apiResponse: data });
+
+      // Stop polling once all tasks are done (no pending/running tasks)
+      const hasPending = (data.tasks || []).some(t => t.status !== 'SUCCESS' && t.status !== 'FAILURE');
+      if (!hasPending) {
+        stopPolling();
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error during job status fetch:', error);
+      toast.error(error.message || 'Failed to fetch job status. Will retry.', {
+        duration: 4000,
+        position: 'top-right',
+      });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (datasetState.sessionId == '') {
@@ -31,7 +73,9 @@ const ModelInferencing = () => {
     }
     if (!readonly) {
       fetchJobStatus();
+      pollingIntervalRef.current = setInterval(fetchJobStatus, 5000);
     }
+    return () => stopPolling();
   }, []);
 
   const truncateName = (name, maxLength = 30) => {
@@ -106,35 +150,6 @@ const ModelInferencing = () => {
       return { metricName: 'N/A', name: 'N/A', value: '0%' };
     }
 
-    if (
-      readonly
-        ? (isDataPreprocessingAuto && isModelSelectionAuto) || (!isDataPreprocessingAuto && isModelSelectionAuto)
-        : true
-    ) {
-      const autoMetricOrder = ['train_accuracy', 'train_precision', 'train_recall', 'train_f1', 'train_log_loss'];
-      const best = apiResults.reduce((prev, current) => {
-        for (const metricKey of autoMetricOrder) {
-          const prevValue = prev.metrics?.[metricKey] || 0;
-          const currValue = current.metrics?.[metricKey] || 0;
-          if (metricKey === 'train_log_loss') {
-            if (currValue < prevValue) return current;
-            if (currValue > prevValue) return prev;
-          } else {
-            if (currValue > prevValue) return current;
-            if (currValue < prevValue) return prev;
-          }
-        }
-        return prev;
-      });
-      const bestValue = best.metrics?.['train_accuracy'] || 0;
-      return {
-        metricName: 'Accuracy',
-        name: best.run_name,
-        value: `${(bestValue * 100).toFixed(2)}%`,
-      };
-    }
-
-    const performanceMetrics = workflowState?.modelSelection?.config?.performance_metrics || [];
     const metricNameMap = {
       accuracy: 'train_accuracy',
       precision: 'train_precision',
@@ -142,7 +157,14 @@ const ModelInferencing = () => {
       f1: 'train_f1',
       log_loss: 'train_log_loss',
     };
-    const orderedMetricKeys = performanceMetrics.map(m => metricNameMap[m]).filter(Boolean);
+
+    const metricDisplayNameMap = {
+      train_accuracy: 'Accuracy',
+      train_precision: 'Precision',
+      train_recall: 'Recall',
+      train_f1: 'F1 Score',
+      train_log_loss: 'Log Loss',
+    };
 
     const fallbackBest = () => {
       const best = apiResults.reduce((prev, curr) => {
@@ -155,38 +177,38 @@ const ModelInferencing = () => {
       };
     };
 
-    if (orderedMetricKeys.length === 0) return fallbackBest();
+    // Always check performance_metrics config first, regardless of mode
+    const performanceMetrics = workflowState?.modelSelection?.config?.performance_metrics || [];
+    const orderedMetricKeys = performanceMetrics.map(m => metricNameMap[m]).filter(Boolean);
 
-    const best = apiResults.reduce((prev, current) => {
-      for (const metricKey of orderedMetricKeys) {
-        const prevValue = prev.metrics?.[metricKey] || 0;
-        const currValue = current.metrics?.[metricKey] || 0;
-        if (metricKey === 'train_log_loss') {
-          if (currValue < prevValue) return current;
-          if (currValue > prevValue) return prev;
-        } else {
-          if (currValue > prevValue) return current;
-          if (currValue < prevValue) return prev;
+    if (orderedMetricKeys.length > 0) {
+      const best = apiResults.reduce((prev, current) => {
+        for (const metricKey of orderedMetricKeys) {
+          const prevValue = prev.metrics?.[metricKey] ?? 0;
+          const currValue = current.metrics?.[metricKey] ?? 0;
+          if (metricKey === 'train_log_loss') {
+            if (currValue < prevValue) return current;
+            if (currValue > prevValue) return prev;
+          } else {
+            if (currValue > prevValue) return current;
+            if (currValue < prevValue) return prev;
+          }
         }
-      }
-      return prev;
-    });
+        return prev;
+      });
+      const firstMetricKey = orderedMetricKeys[0];
+      const bestValue = best.metrics?.[firstMetricKey] ?? 0;
+      return {
+        metricName: metricDisplayNameMap[firstMetricKey] || 'Accuracy',
+        name: best.run_name,
+        value: firstMetricKey === 'train_log_loss'
+          ? bestValue.toFixed(4)
+          : `${(bestValue * 100).toFixed(2)}%`,
+      };
+    }
 
-    const firstMetricKey = orderedMetricKeys[0];
-    const bestValue = best.metrics?.[firstMetricKey] || 0;
-    const metricDisplayNameMap = {
-      train_accuracy: 'Accuracy',
-      train_precision: 'Precision',
-      train_recall: 'Recall',
-      train_f1: 'F1 Score',
-      train_log_loss: 'Log Loss',
-    };
-
-    return {
-      metricName: metricDisplayNameMap[firstMetricKey] || 'Accuracy',
-      name: best.run_name,
-      value: firstMetricKey === 'train_log_loss' ? bestValue.toFixed(4) : `${(bestValue * 100).toFixed(2)}%`,
-    };
+    // No performance_metrics config — fall back to accuracy
+    return fallbackBest();
   }, [apiResults, workflowState, isDataPreprocessingAuto, isModelSelectionAuto, readonly]);
 
   const algorithmData = useMemo(() => {
@@ -292,82 +314,7 @@ const ModelInferencing = () => {
 
   const chartColors = ['#9ca3af', '#a78bfa', '#6ee7b7', '#fb923c', '#f472b6', '#60a5fa'];
 
-  // Called by Reload button — only hits /jobs/{jobId}
-  const fetchJobStatus = async () => {
-    const sessionId = datasetState?.sessionId;
-    const jobId = workflowState?.completedJobs?.config?.job_id;
-
-    if (!sessionId) {
-      toast.error('Session ID not found', { duration: 4000, position: 'top-right' });
-      return false;
-    }
-    if (!jobId) {
-      toast.error('Job ID not found', { duration: 4000, position: 'top-right' });
-      return false;
-    }
-    setIsLoading(true);
-    setIsReloading(true);
-
-    try {
-      const jobsResponse = await fetch(`${hostnameAI}/jobs/${jobId}`, {
-        method: 'GET',
-        headers: { accept: 'application/json' },
-      });
-      if (!jobsResponse.ok) throw new Error(`Jobs error! status: ${jobsResponse.status}`);
-      const data = await jobsResponse.json();
-
-      updateWorkflowStage('completedJobs', { apiResponse: data });
-
-      const successCount = (data.tasks || []).filter(t => t.status === 'SUCCESS').length;
-      const totalCount = (data.tasks || []).length;
-
-      toast.success(`Model Inferencing completed! ${successCount}/${totalCount} models ready`, {
-        duration: 3000,
-        position: 'top-right',
-      });
-
-      return true;
-    } catch (error) {
-      console.error('Error during reload:', error);
-      toast.error(error.message || 'Failed. Please try again.', {
-        duration: 4000,
-        position: 'top-right',
-      });
-      return false;
-    } finally {
-      setIsLoading(false);
-      setIsReloading(false);
-    }
-  };
-
-  // Called by Next button — only hits /model/runs_logged/{sessionId}
-  const fetchRunsLogged = () => {
-    const sessionId = datasetState?.sessionId;
-
-    if (!sessionId) {
-      toast.error('Session ID not found', { duration: 4000, position: 'top-right' });
-      return;
-    }
-
-    fetch(`${hostnameAI}/model/runs_logged/${sessionId}`, {
-      method: 'GET',
-      headers: { accept: 'application/json' },
-    })
-      .then(res => {
-        if (!res.ok) throw new Error(`Runs logged error! status: ${res.status}`);
-        return res.json();
-      })
-      .then(data => {
-        console.log('Runs logged response:', data);
-      })
-      .catch(error => {
-        console.error('Error fetching runs logged:', error);
-      });
-  };
-
   const handleNextClick = async () => {
-    if (readonly) return true;
-    fetchRunsLogged(); // fire-and-forget so navigation isn't blocked
     return true;
   };
 
@@ -386,22 +333,9 @@ const ModelInferencing = () => {
               <h1 className={tw.sectionHeading}>Model Performance Dashboard</h1>
               <p className="text-xs text-gray-500 mt-0.5">Evaluate and compare model performance.</p>
             </div>
-
-            {!readonly && nonSuccessTasks.length > 0 && (
-              <div className="flex justify-end mb-2">
-                <button
-                  onClick={fetchJobStatus}
-                  disabled={isReloading || isLoading}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[#8e78b7] text-sm font-medium text-[#8e78b7] hover:bg-[#f3f0fa] disabled:opacity-50 transition-colors"
-                >
-                  <RefreshCw size={14} className={isReloading ? 'animate-spin' : ''} />
-                  {isReloading ? 'Refreshing…' : 'Reload'}
-                </button>
-              </div>
-            )}
           </div>
 
-          {/* Best Model Card — passes BatchIcon down */}
+          {/* Best Model Card */}
           <BestModelCard bestModel={bestModel} batchIcon={BatchIcon} />
 
           {/* Pending models banner */}
@@ -414,7 +348,7 @@ const ModelInferencing = () => {
               <div className="mb-4 rounded-xl border border-[#c4b5e8] bg-[#f3f0fb] px-4 py-3">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className={`${tw.sectionHeading} text-[#6d4fa8]`}>
-                    {nonSuccessTasks.length} model{nonSuccessTasks.length > 1 ? 's' : ''} still training — results will appear after reload
+                    {nonSuccessTasks.length} model{nonSuccessTasks.length > 1 ? 's' : ''} still training — results update automatically
                   </span>
                   {nonSuccessTasks.length > PREVIEW_COUNT && (
                     <button
