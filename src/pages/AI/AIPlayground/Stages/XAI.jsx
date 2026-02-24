@@ -9,6 +9,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import DataTable from '../../../../components/DataTable';
 import { useAIPlayground } from '../../../../context/AIPlaygroundContext';
 import toast from 'react-hot-toast';
+import RefreshIcon from '../../../../assets/ai/replay.svg';
 
 function XAI() {
   const hostnameAI = window._env_?.VITE_AI_API;
@@ -45,6 +46,9 @@ function XAI() {
   const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
+  const [pendingTasks, setPendingTasks] = useState([]);
+  const [jobLoading, setJobLoading] = useState(false);
+  const [showAllPending, setShowAllPending] = useState(false);
 
   const filteredModels = modelsList.filter(model =>
     model.run_name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -74,19 +78,17 @@ function XAI() {
   }, [isDropdownOpen]);
 
   useEffect(() => {
-    if (sessionId && !readonly) {
-      startPolling();
-    }
-
-    return () => stopPolling();
-  }, [sessionId, readonly]);
-
-  useEffect(() => {
     if (readonly && modelState?.selectedModel) {
       setSelectedModel(modelState.selectedModel);
       fetchXAIReport(modelState.selectedModel);
     }
   }, [readonly, modelState?.selectedModel]);
+
+  useEffect(() => {
+    if (!readonly) {
+      fetchJobStatus();
+    }
+  }, []);
 
   const fetchXAIReport = async (runName) => {
     if (!runName) return;
@@ -121,7 +123,6 @@ function XAI() {
     }
   };
 
-  const pollingIntervalRef = useRef(null);
 
   const fetchLoggedModels = async () => {
     try {
@@ -129,56 +130,95 @@ function XAI() {
         `${hostnameAI}/model/logged_models/${sessionId}`,
         {
           method: 'GET',
-          headers: { 'accept': 'application/json' }
+          headers: { accept: 'application/json' }
         }
       );
 
-      if (response.ok) {
-        const data = await response.json();
-        setModelsList(data.logged_models || []);
-      } else {
-        toast.error('Failed to fetch models. Please try again.', { duration: 4000, position: 'top-right' });
+      if (!response.ok) {
+        throw new Error(`Logged models error! status: ${response.status}`);
       }
+
+      const data = await response.json();
+      setModelsList(data.logged_models || []);
+
+      return true;
     } catch (error) {
-      console.error('Error fetching models:', error);
-      toast.error(error.message || 'Failed to fetch models. Please try again.', { duration: 4000, position: 'top-right' });
+      toast.error(error.message || 'Failed to fetch models.', {
+        duration: 4000,
+        position: 'top-right',
+      });
+      return false;
     }
   };
 
   const fetchRunsLogged = async () => {
-    if (!sessionId) {
-      toast.error('Session ID not found', { duration: 4000, position: 'top-right' });
-      return;
-    }
-
     try {
       const res = await fetch(`${hostnameAI}/model/runs_logged/${sessionId}`, {
         method: 'GET',
         headers: { accept: 'application/json' },
       });
 
-      if (!res.ok) throw new Error(`Runs logged error! status: ${res.status}`);
+      if (!res.ok) {
+        throw new Error(`Runs logged error! status: ${res.status}`);
+      }
 
-      const data = await res.json();
-
-      await fetchLoggedModels();
+      return true;
     } catch (error) {
-      console.error('Error fetching runs logged:', error);
+      toast.error(error.message || 'Failed to fetch runs logged.', {
+        duration: 4000,
+        position: 'top-right',
+      });
+      return false;
     }
   };
 
-  const startPolling = () => {
-    fetchRunsLogged();
+  const fetchJobStatus = async () => {
+    const jobId = workflowState?.completedJobs?.config?.job_id;
+    if (!jobId) return false;
 
-    pollingIntervalRef.current = setInterval(() => {
-      fetchRunsLogged();
-    }, 5000);
+    try {
+      const response = await fetch(`${hostnameAI}/jobs/${jobId}`, {
+        method: 'GET',
+        headers: { accept: 'application/json' }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Job status failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      const nonSuccess = (data.tasks || []).filter(
+        t => t.status !== 'SUCCESS' && t.status !== 'FAILURE'
+      );
+
+      setPendingTasks(nonSuccess);
+
+      return true;
+    } catch (error) {
+      toast.error(error.message || 'Failed to fetch job status.', {
+        duration: 4000,
+        position: 'top-right',
+      });
+      return false;
+    }
   };
 
-  const stopPolling = () => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
+  const handleReload = async () => {
+    setJobLoading(true);
+
+    try {
+      const jobSuccess = await fetchJobStatus();
+      if (!jobSuccess) return;
+
+      const runsSuccess = await fetchRunsLogged();
+      if (!runsSuccess) return;
+
+      const modelsSuccess = await fetchLoggedModels();
+      if (!modelsSuccess) return;
+
+    } finally {
+      setJobLoading(false);
     }
   };
 
@@ -422,7 +462,81 @@ function XAI() {
   return (
     <AIPlaygroundLayout onSaveModel={handleSaveModelFromLayout} isNextDisabled={readonly}>
 
-      {/* ── Outer wrapper: #FAFAFA background ── */}
+      {pendingTasks.length > 0 && (() => {
+        const PREVIEW_COUNT = 12;
+        const visibleTasks = showAllPending
+          ? pendingTasks
+          : pendingTasks.slice(0, PREVIEW_COUNT);
+
+        const hiddenCount = pendingTasks.length - PREVIEW_COUNT;
+
+        return (
+          <div className="mb-4 rounded-xl border border-[#c4b5e8] bg-[#f3f0fb] px-4 py-3">
+
+            {/* Header Row */}
+            <div className="flex items-center flex-wrap justify-between  w-full">
+              <span className="text-sm font-semibold text-[#6d4fa8]">
+                {pendingTasks.length} model
+                {pendingTasks.length > 1 ? 's' : ''} still training
+              </span>
+
+              <button
+                onClick={handleReload}
+                disabled={jobLoading}
+                className="px-5 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium 
+             transition-colors disabled:opacity-50 disabled:cursor-not-allowed 
+             hover:bg-[#7d67a6] whitespace-nowrap flex items-center gap-2"
+              >
+                {jobLoading && (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                )}
+                {jobLoading ? 'Reloading...' : 'Reload'}
+              </button>
+
+              {pendingTasks.length > PREVIEW_COUNT && (
+                <button
+                  onClick={() => setShowAllPending(prev => !prev)}
+                  className="text-xs font-medium text-[#8e78b7] underline underline-offset-2 
+                       hover:text-[#6d4fa8] transition-colors"
+                >
+                  {showAllPending ? 'Show less' : `Show all ${pendingTasks.length}`}
+                </button>
+              )}
+            </div>
+
+            {/* Pills */}
+            <div className="flex flex-wrap gap-2 mt-3">
+              {visibleTasks.map(task => (
+                <span
+                  key={task.task_id}
+                  title={task.algorithm}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full 
+                       text-xs font-medium bg-white text-[#6d4fa8] 
+                       border border-[#b39ddb]"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#8e78b7]" />
+                  {pendingTasks.length <= 3
+                    ? task.algorithm
+                    : task.algorithm.length > 28
+                      ? '...' + task.algorithm.slice(-28)
+                      : task.algorithm}
+                </span>
+              ))}
+
+              {!showAllPending && hiddenCount > 0 && (
+                <button
+                  onClick={() => setShowAllPending(true)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full 
+                       text-xs font-medium bg-[#ddd6f3] text-[#6d4fa8] 
+                       border border-[#b39ddb] hover:bg-[#c4b5e8] transition-colors"
+                >
+                  +{hiddenCount} more
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })()}
       <div className="w-full rounded-lg p-6" style={{ backgroundColor: '#FAFAFA' }}>
         <div className="flex items-center justify-between gap-6">
 
