@@ -222,6 +222,7 @@ function XAI() {
     }
   };
 
+
   const handleModelSelect = (model) => {
     const newModel = model.run_name;
     setSelectedModel(newModel);
