@@ -133,6 +133,7 @@ export const AIPlaygroundProvider = ({ children }) => {
     const [workflowState, setWorkflowState] = useState(defaultWorkflowState);
     const [mode, setMode] = useState('write');
     const [isAIPlaygroundActive, setIsAIPlaygroundActive] = useState(false);
+    const [F1Mode, setF1Mode] = useState({});
 
     const updateWorkflowStage = (stage, data) => {
         setWorkflowState(prev => ({
@@ -167,13 +168,6 @@ export const AIPlaygroundProvider = ({ children }) => {
         setIsAIPlaygroundActive(false);
     };
 
-    // console.log("DATASET STATE IS @@@ ", datasetState)
-    // console.log("PROJECT IS @@@", projectState)
-    // console.log("MODE IS @@@", mode)
-    // console.log("WORKFLOW STATE IS @@@@ ", workflowState)
-    // console.log("SCHEDULER STATE IS @@@@ ", schedulerState)
-    // console.log("IN AI PLAYGROUND @@@ ", isAIPlaygroundActive)
-
     const value = {
         projectState,
         datasetState,
@@ -191,7 +185,9 @@ export const AIPlaygroundProvider = ({ children }) => {
         setIsAIPlaygroundActive,
         updateWorkflowStage,
         updatePreprocessingStep,
-        resetAllStates
+        resetAllStates,
+        F1Mode,
+        setF1Mode
     };
 
     return (
