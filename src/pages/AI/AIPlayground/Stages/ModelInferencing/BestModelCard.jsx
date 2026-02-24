@@ -55,6 +55,7 @@ const BestModelCard = ({ bestModel }) => {
           <p className={`${tw.sectionHeading} text-2xl text-gray-900`}>{bestModel?.value || '0%'}</p>
         </div>
       </div>
+
     </div>
   );
 };

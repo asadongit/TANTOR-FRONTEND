@@ -105,9 +105,9 @@ const UnifiedMetricsTable = ({ allData, searchQuery, rowsPerPage = 10 }) => {
 
   const processedData = useMemo(() => {
     let filtered = allData.filter(algo => {
-      const name = (algo.fullName ?? algo.displayName ?? '').toLowerCase();
+      const name      = (algo.fullName ?? algo.displayName ?? '').toLowerCase();
       const shortName = getShortName(algo.fullName ?? algo.displayName).toLowerCase();
-      const q = searchQuery.toLowerCase();
+      const q         = searchQuery.toLowerCase();
       return name.includes(q) || shortName.includes(q);
     });
 
@@ -134,8 +134,8 @@ const UnifiedMetricsTable = ({ allData, searchQuery, rowsPerPage = 10 }) => {
 
   const totalPages = Math.ceil(processedData.length / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
-  const endIndex = startIndex + rowsPerPage;
-  const pageData = processedData.slice(startIndex, endIndex);
+  const endIndex   = startIndex + rowsPerPage;
+  const pageData   = processedData.slice(startIndex, endIndex);
 
   const handleSort = (key, prefix) => {
     setSortConfig(prev => {
