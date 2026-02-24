@@ -646,7 +646,10 @@ function Transformation() {
       label: "Run",
       icon: <Icon icon="material-symbols:play-arrow" className="w-5 h-5" />,
       onClick: (row) => handleTriggerETL(row.transformation_name),
-      show: (row) => row.status !== "creating" && row.status !== "Running",
+      show: (row) => {
+        const s = String(row.status || "").toLowerCase();
+        return s !== "creating" && s !== "running" && s !== "created";
+      },
     },
     {
       label: "Edit",

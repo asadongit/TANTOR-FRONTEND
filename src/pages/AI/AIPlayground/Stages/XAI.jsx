@@ -75,11 +75,12 @@ function XAI() {
 
   useEffect(() => {
     if (sessionId && !readonly) {
-      fetchLoggedModels();
+      startPolling();
     }
+
+    return () => stopPolling();
   }, [sessionId, readonly]);
 
-  // Pre-select model and fetch XAI report in view mode
   useEffect(() => {
     if (readonly && modelState?.selectedModel) {
       setSelectedModel(modelState.selectedModel);
@@ -120,8 +121,9 @@ function XAI() {
     }
   };
 
+  const pollingIntervalRef = useRef(null);
+
   const fetchLoggedModels = async () => {
-    setLoadingModels(true);
     try {
       const response = await fetch(
         `${hostnameAI}/model/logged_models/${sessionId}`,
@@ -140,10 +142,46 @@ function XAI() {
     } catch (error) {
       console.error('Error fetching models:', error);
       toast.error(error.message || 'Failed to fetch models. Please try again.', { duration: 4000, position: 'top-right' });
-    } finally {
-      setLoadingModels(false);
     }
   };
+
+  const fetchRunsLogged = async () => {
+    if (!sessionId) {
+      toast.error('Session ID not found', { duration: 4000, position: 'top-right' });
+      return;
+    }
+
+    try {
+      const res = await fetch(`${hostnameAI}/model/runs_logged/${sessionId}`, {
+        method: 'GET',
+        headers: { accept: 'application/json' },
+      });
+
+      if (!res.ok) throw new Error(`Runs logged error! status: ${res.status}`);
+
+      const data = await res.json();
+
+      await fetchLoggedModels();
+    } catch (error) {
+      console.error('Error fetching runs logged:', error);
+    }
+  };
+
+  const startPolling = () => {
+    fetchRunsLogged();
+
+    pollingIntervalRef.current = setInterval(() => {
+      fetchRunsLogged();
+    }, 5000);
+  };
+
+  const stopPolling = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  };
+
 
   const handleModelSelect = (model) => {
     const newModel = model.run_name;
