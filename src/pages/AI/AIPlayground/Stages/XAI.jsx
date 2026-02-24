@@ -666,10 +666,10 @@ function XAI() {
             <div className="bg-white rounded-lg p-6 border border-gray-200">
               <h3 className="text-base font-semibold text-gray-900 mb-4">PDP Plots</h3>
               <div className={`grid gap-4 ${Object.keys(reportData.pdp_plots).length === 1
-                ? 'grid-cols-1'
-                : Object.keys(reportData.pdp_plots).length === 2
-                  ? 'grid-cols-2'
-                  : 'grid-cols-2 xl:grid-cols-3'
+                  ? 'grid-cols-1'
+                  : Object.keys(reportData.pdp_plots).length === 2
+                    ? 'grid-cols-2'
+                    : 'grid-cols-2 xl:grid-cols-3'
                 }`}>
                 {Object.entries(reportData.pdp_plots).map(([featureName, imageData]) => (
                   <PDPChart key={featureName} imageData={imageData} title={featureName} />
