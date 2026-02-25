@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Pencil,
   Trash2,
@@ -10,7 +10,8 @@ import {
   Search,
   BadgeCheck,
   Play,
-  AlertCircle
+  AlertCircle,
+  CheckCircle
 } from "lucide-react";
 import successBackground from "../../assets/green.png";
 import { useNavigate } from "react-router-dom";
@@ -21,19 +22,19 @@ import { useProjectCardData } from "../../hooks/platform/cardCounts";
 import CardGrid from "../../components/CardGrid";
 import { useAuth } from "../../context/AuthContext";
 import toast from "react-hot-toast";
-
+import Breadcrumb from "../../components/Breadcrumb";
 
 const Project = () => {
   const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useProjectCardData();
   const { data: projectData = [], isLoading: isProjectLoading, error: projectError, refetch: refetchProjects } = useProjectData();
-  const {token, decodedToken,hostnameV1} = useAuth();
+  const { token, decodedToken, hostnameV1 } = useAuth();
   const initialFormState = {
     project: "",
     description: "",
     // category: "",
     // subCategory: "",
     assigned_users: { assigned_users: "" },
-    created_by:decodedToken?.preferred_username
+    created_by: decodedToken?.preferred_username
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -47,6 +48,33 @@ const Project = () => {
   });
   const [editMode, setEditMode] = useState(false);
   const [editProjectId, setEditProjectId] = useState(null);
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState("both");
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(0); // 0 = off
+  const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
+  const autoRefreshMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (autoRefreshInterval === 0) return;
+
+    const interval = setInterval(() => {
+      refetchProjects();
+      refetchCardData();
+    }, autoRefreshInterval);
+
+    return () => clearInterval(interval);
+  }, [autoRefreshInterval, refetchProjects, refetchCardData]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (autoRefreshMenuRef.current && !autoRefreshMenuRef.current.contains(event.target)) {
+        setIsAutoRefreshMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const navigate = useNavigate();
 
@@ -257,6 +285,19 @@ const Project = () => {
     },
   ];
 
+  const filteredProjectData = useMemo(() => {
+    let filtered = projectData;
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(proj =>
+        Object.values(proj).some(value =>
+          String(value).toLowerCase().includes(search)
+        )
+      );
+    }
+    return filtered;
+  }, [projectData, searchTerm]);
+
   const columns = [
     { key: "project", label: "Project Name" },
     { key: "created_by", label: "Created By" },
@@ -302,48 +343,114 @@ const Project = () => {
 
   return (
     <div className="p-6">
+      <Breadcrumb title="Platform" link={"/"} />
       <div className="flex gap-2 mb-6 items-center justify-between">
         <h1 className="text-2xl font-semibold">Project</h1>
-        <div className="flex items-center">
+        <div className="flex items-center gap-2">
+
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search projects"
+              className="pl-10 pr-4 py-2 w-[300px] border border-gray-300 rounded-lg focus:outline-none"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+          </div>
+
+          <div className="relative flex items-center" ref={autoRefreshMenuRef}>
+            <div className="flex rounded-lg border border-gray-400 hover:bg-gray-50 h-10">
+              <button
+                className="w-10 flex items-center justify-center border-r border-gray-300"
+                onClick={handleRefresh}
+                title="Refresh data"
+                disabled={isProjectLoading || isCardLoading || refreshing}
+              >
+                <RefreshCcw
+                  className={`h-5 w-5 text-gray-600 ${(isProjectLoading || isCardLoading || refreshing) ? "icon-rotate" : ""}`}
+                />
+              </button>
+              <button
+                className="px-2 flex items-center justify-center"
+                onClick={() => setIsAutoRefreshMenuOpen(!isAutoRefreshMenuOpen)}
+                title="Auto Refresh Settings"
+              >
+                <ChevronDown className="h-4 w-4 text-gray-600" />
+              </button>
+            </div>
+
+            {isAutoRefreshMenuOpen && (
+              <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
+                <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                  Auto Refresh
+                </div>
+                {[
+                  { label: "Off", value: 0 },
+                  { label: "5 seconds", value: 5000 },
+                  { label: "10 seconds", value: 10000 },
+                  { label: "1 minute", value: 60000 },
+                  { label: "2 minutes", value: 120000 },
+                  { label: "5 minutes", value: 300000 },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center justify-between ${autoRefreshInterval === option.value ? "text-[#8d77ba] font-medium bg-purple-50" : "text-gray-700"
+                      }`}
+                    onClick={() => {
+                      setAutoRefreshInterval(option.value);
+                      setIsAutoRefreshMenuOpen(false);
+                    }}
+                  >
+                    {option.label}
+                    {autoRefreshInterval === option.value && (
+                      <CheckCircle className="h-4 w-4" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           <button
-            type="button"
-            onClick={()=>navigate(`/details?${encodeURIComponent(encrypt("componentType=project&heading=project"))}`)}
-            className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
+            className={`w-10 h-10 flex items-center justify-center rounded-lg border ${viewMode === "list"
+              ? "bg-gray-100 border-gray-500"
+              : "border-gray-400"
+              } hover:bg-gray-50`}
+            onClick={() => setViewMode(viewMode === "list" ? "both" : "list")}
+            title={viewMode === "list" ? "Show All Views" : "Show List Only"}
           >
-            <List className="h-5 w-5" />
+            <Icon
+              icon="material-symbols-light:format-list-bulleted"
+              width="24"
+              height="24"
+              className="text-[#8d77ba]"
+            />
           </button>
-          <button
-            type="button"
-            className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
-            onClick={handleRefresh}
-          >
-            <RefreshCcw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
-          </button>
+
           <button
             onClick={() => openModal("modal1")}
             type="button"
-            className="text-white bg-[#8e78b7] hover:bg-[#7a66a3] focus:ring-2 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#8e78b7] dark:hover:bg-[#7a66a3] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
+            className="text-white bg-[#8e78b7] hover:bg-[#7a66a3] h-10 focus:ring-2 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2 flex items-center justify-center dark:bg-[#8e78b7] dark:hover:bg-[#7a66a3] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
           >
-            + Create Project
+            <Icon icon="material-symbols:add" width="20" height="20" className="mr-1 inline-block" />
+            Create Project
           </button>
         </div>
       </div>
 
+      {viewMode !== "list" && (
+        <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading} />
+      )}
 
-
-
-      <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading}/>
-
-
-        <DataTable
-          columns={columns}
-          data={projectData}
-          actions={actions}
-          isLoading={isProjectLoading}
-          isError={projectError}
-          refetch={refetchProjects}
-/>
+      <DataTable
+        columns={columns}
+        data={filteredProjectData}
+        actions={actions}
+        isLoading={isProjectLoading}
+        isError={projectError}
+        refetch={refetchProjects}
+      />
 
       {/* Add/Edit Project Modal */}
       {isModalOpen.modal1 && (
@@ -433,7 +540,7 @@ const Project = () => {
                   <div>
                     <label className="block text-sm text-black mb-1.5">
                       Description
-                       {/* <span className="text-red-500">*</span> */}
+                      {/* <span className="text-red-500">*</span> */}
                     </label>
                     <input
                       name="description"
@@ -478,7 +585,7 @@ const Project = () => {
                     </div>
                   </div> */}
 
-                                    <div>
+                  <div>
                     <div className="relative">
                       <label className="block text-sm text-black mb-1.5">
                         Manager <span className="text-red-500">*</span>
@@ -549,7 +656,7 @@ const Project = () => {
 
             <div className="p-8">
               <div className="flex items-center space-x-4 mb-4">
-                   <BadgeCheck className="w-8 h-8 text-green-500" />{" "}
+                <BadgeCheck className="w-8 h-8 text-green-500" />{" "}
                 <h2 className="text-2xl font-bold">Congratulations!</h2>
               </div>
               <p className="text-lg text-gray-800 mb-2">

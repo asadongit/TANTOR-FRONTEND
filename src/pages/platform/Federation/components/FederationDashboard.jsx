@@ -1,5 +1,5 @@
 /*eslint-disable*/
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Icon } from "@iconify-icon/react";
 import { Link } from 'react-router-dom';
 import { AgGridReact } from 'ag-grid-react';
@@ -17,13 +17,18 @@ import {
   Plus,
   LinkIcon,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Search,
+  ChevronDown,
+  CheckCircle
 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { Modal } from "@mui/material";
 import { MenuItem, Select, InputLabel, FormControl } from "@mui/material";
 import { useAuth } from "../../../../context/AuthContext";
 import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/function.js';
+import toast from "react-hot-toast";
+import Breadcrumb from "../../../../components/Breadcrumb";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -51,16 +56,41 @@ const FederationDashBoard = () => {
   const [viewList, setViewList] = useState([]);
   const { token, project, decodedToken, hostnameV1, hostnameV2 } = useAuth();
   const [count, setCount] = useState({});
-  const [showCards, setShowCards] = useState(true);
   const [isCardsLoading, setIsCardsLoading] = useState(false);
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [refreshingRow, setRefreshingRow] = useState(null);
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState("both");
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(0); // 0 = off
+  const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
+  const autoRefreshMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (autoRefreshInterval === 0) return;
+
+    const interval = setInterval(() => {
+      fetchConnectionDetails();
+    }, autoRefreshInterval);
+
+    return () => clearInterval(interval);
+  }, [autoRefreshInterval, token, project, decodedToken]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (autoRefreshMenuRef.current && !autoRefreshMenuRef.current.contains(event.target)) {
+        setIsAutoRefreshMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const fetchConnectionDetails = async () => {
     setIsLoading(true);
     setIsCardsLoading(true);
     setIsTableLoading(true);
-    
+
     try {
       const secureQueryResponse = await secureQuery({ user_query: "" }, token);
       const policyIds = secureQueryResponse.matched_policy_ids || [];
@@ -131,14 +161,14 @@ const FederationDashBoard = () => {
       });
       const data = await response.json();
 
-      const updatedConnectionData = connectionData.map(conn => 
-        conn.connection_name === connectionName ? 
-        data.find(item => item.connection_name === connectionName) || conn : 
-        conn
+      const updatedConnectionData = connectionData.map(conn =>
+        conn.connection_name === connectionName ?
+          data.find(item => item.connection_name === connectionName) || conn :
+          conn
       );
 
       setConnectionData(updatedConnectionData);
-      
+
       const connections = [...new Set(data.map(item => item.connection_name))];
       const schemaList = {};
       const tableList = {};
@@ -290,6 +320,19 @@ const FederationDashBoard = () => {
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
+  const filteredData = useMemo(() => {
+    let filtered = rowData;
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(row =>
+        Object.values(row).some(value =>
+          String(value).toLowerCase().includes(search)
+        )
+      );
+    }
+    return filtered;
+  }, [rowData, searchTerm]);
+
   const handleItemsPerPageChange = (e) => {
     setItemsPerPage(Number(e.target.value));
     setPage(1);
@@ -300,11 +343,11 @@ const FederationDashBoard = () => {
   };
 
   const handleNextPage = () => {
-    const maxPage = Math.ceil(rowData.length / itemsPerPage);
+    const maxPage = Math.ceil(filteredData.length / itemsPerPage);
     if (page < maxPage) setPage(page + 1);
   };
 
-  const totalItems = rowData.length;
+  const totalItems = filteredData.length;
   const startItem = totalItems === 0 ? 0 : (page - 1) * itemsPerPage + 1;
   const endItem = Math.min(page * itemsPerPage, totalItems);
   const totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -337,63 +380,126 @@ const FederationDashBoard = () => {
 
   const paginatedData = useMemo(() => {
     const startIndex = (page - 1) * itemsPerPage;
-    return rowData.slice(startIndex, startIndex + itemsPerPage);
-  }, [rowData, page, itemsPerPage]);
+    return filteredData.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredData, page, itemsPerPage]);
 
   return (
     <>
       <div className="w-full h-full px-6 pt-3">
-        <div>
-          <Link to="/">Platform</Link> &gt; <Link to="/federation" className="text-purple-600 hover:text-purple-700">Federation</Link>
-        </div>
-        <div className="flex w-full justify-between">
+        <Breadcrumb title="Platform" link={"/"} />
+        <div className="flex gap-2 mb-6 items-center justify-between mt-4">
           <h1 className="text-2xl font-semibold">Federation</h1>
-          <div className="flex">
+          <div className="flex items-center gap-2">
+
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search"
+                className="pl-10 pr-4 py-2 w-[300px] border border-gray-300 rounded-lg focus:outline-none"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+            </div>
+
+            <div className="relative flex items-center" ref={autoRefreshMenuRef}>
+              <div className="flex rounded-lg border border-gray-400 hover:bg-gray-50 h-10">
+                <button
+                  className="w-10 flex items-center justify-center border-r border-gray-300"
+                  onClick={() => {
+                    setIsCardsLoading(true);
+                    setIsTableLoading(true);
+                    fetchConnectionDetails().finally(() => {
+                      setIsCardsLoading(false);
+                      setIsTableLoading(false);
+                      toast.success("Federation data refreshed successfully");
+                    });
+                  }}
+                  title="Refresh data"
+                  disabled={isCardsLoading || isTableLoading}
+                >
+                  <RefreshCcw
+                    className={`h-5 w-5 text-gray-600 ${(isCardsLoading || isTableLoading) ? "icon-rotate" : ""}`}
+                  />
+                </button>
+                <button
+                  className="px-2 flex items-center justify-center"
+                  onClick={() => setIsAutoRefreshMenuOpen(!isAutoRefreshMenuOpen)}
+                  title="Auto Refresh Settings"
+                >
+                  <ChevronDown className="h-4 w-4 text-gray-600" />
+                </button>
+              </div>
+
+              {isAutoRefreshMenuOpen && (
+                <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
+                  <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                    Auto Refresh
+                  </div>
+                  {[
+                    { label: "Off", value: 0 },
+                    { label: "5 seconds", value: 5000 },
+                    { label: "10 seconds", value: 10000 },
+                    { label: "1 minute", value: 60000 },
+                    { label: "2 minutes", value: 120000 },
+                    { label: "5 minutes", value: 300000 },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center justify-between ${autoRefreshInterval === option.value ? "text-[#8d77ba] font-medium bg-purple-50" : "text-gray-700"
+                        }`}
+                      onClick={() => {
+                        setAutoRefreshInterval(option.value);
+                        setIsAutoRefreshMenuOpen(false);
+                      }}
+                    >
+                      {option.label}
+                      {autoRefreshInterval === option.value && (
+                        <CheckCircle className="h-4 w-4" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button
+              className={`w-10 h-10 flex items-center justify-center rounded-lg border ${viewMode === "list"
+                ? "bg-gray-100 border-gray-500"
+                : "border-gray-400"
+                } hover:bg-gray-50`}
+              onClick={() => setViewMode(viewMode === "list" ? "both" : "list")}
+              title={viewMode === "list" ? "Show All Views" : "Show List Only"}
+            >
+              <Icon
+                icon="material-symbols-light:format-list-bulleted"
+                width="24"
+                height="24"
+                className="text-[#8d77ba]"
+              />
+            </button>
+
             <button
               type="button"
               onClick={() => navigate('/editor')}
-              className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-4 py-2.5 me-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+              className="h-10 text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-4 flex items-center justify-center dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
             >
-              <div className="flex justify-between">
-                <Code className="h-5 w-5 mr-2" />
-                Editor
-              </div>
+              <Code className="h-5 w-5 mr-2" />
+              Editor
             </button>
-            <button
-              type="button"
-              onClick={() => setShowCards(!showCards)}
-              className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
-            >
-              <List className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setIsCardsLoading(true);
-                setIsTableLoading(true);
-                fetchConnectionDetails().finally(() => {
-                  setIsCardsLoading(false);
-                  setIsTableLoading(false);
-                });
-              }}
-              className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
-            >
-              <RefreshCcw className={`h-5 w-5 ${isCardsLoading || isTableLoading ? 'animate-spin' : ''}`} />
-            </button>
+
             <button
               type="button"
               onClick={toggleModal}
-              className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-4 py-2.5 me-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+              className="h-10 text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-4 flex items-center justify-center dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
             >
-              <div className="flex justify-between">
-                <Plus className="h-5 w-5 mr-1" />
-                Create View
-              </div>
+              <Plus className="h-5 w-5 mr-1" />
+              Create View
             </button>
           </div>
         </div>
 
-        {showCards && (
+        {viewMode !== "list" && (
           <div className="grid grid-cols-1 md:grid-cols-2 justify-center lg:grid-cols-4 gap-12 mt-6">
             {isCardsLoading ? (
               Array(4).fill().map((_, index) => (
@@ -496,7 +602,7 @@ const FederationDashBoard = () => {
                       ))
                     ) : (
                       <>
-                        <td className="p-4 text-center">{startItem + index}</td>                        
+                        <td className="p-4 text-center">{startItem + index}</td>
                         <td className="p-4 text-center">{user.Connections}</td>
                         <td className="p-4 text-center">{user.Schema}</td>
                         <td className="p-4 text-center">{user.Tables}</td>
@@ -521,7 +627,7 @@ const FederationDashBoard = () => {
                                 />
                                 <div className="absolute top-0 right-14 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
                                   <div className="flex items-center p-1 gap-1">
-                                    <button 
+                                    <button
                                       className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
                                       onClick={() => {
                                         refreshConnection(user.Connections);
