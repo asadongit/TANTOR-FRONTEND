@@ -27,6 +27,7 @@ const ViewConnection = ({
   const [viewSchema, setViewSchema] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredData, setFilteredData] = useState([]);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [isLoadingSchema, setIsLoadingSchema] = useState(false);
   const [isLoadingConnection, setIsLoadingConnection] = useState(true);
   const { token, hostnameV1 } = useAuth();
@@ -40,17 +41,44 @@ const ViewConnection = ({
     { key: "cdc_enabled", label: "CDC", sortable: true },
   ];
 
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
   useEffect(() => {
     if (viewConnectionData) {
       setIsLoadingConnection(false);
-      const filtered = viewConnectionData.filter((row) =>
+      let filtered = viewConnectionData.filter((row) =>
         row.table_name.toLowerCase().includes(searchTerm.toLowerCase())
       );
+
+      if (sortConfig.key) {
+        filtered.sort((a, b) => {
+          if (sortConfig.key === "table_name") {
+            const valA = a.table_name || "";
+            const valB = b.table_name || "";
+            return sortConfig.direction === 'asc'
+              ? valA.localeCompare(valB)
+              : valB.localeCompare(valA);
+          } else {
+            const valA = a[sortConfig.key] ? 1 : 0;
+            const valB = b[sortConfig.key] ? 1 : 0;
+            // asc: checked (1) first, then unchecked (0)
+            // desc: unchecked (0) first, then checked (1)
+            return sortConfig.direction === 'asc' ? valB - valA : valA - valB;
+          }
+        });
+      }
+
       setFilteredData(filtered);
     } else {
       setIsLoadingConnection(true);
     }
-  }, [searchTerm, viewConnectionData]);
+  }, [searchTerm, viewConnectionData, sortConfig]);
 
   const handleServiceCheckboxChange = (tableName, columnName) => {
     const updatedSelection = viewConnectionData.map((row) => {
@@ -261,13 +289,18 @@ const ViewConnection = ({
                             )}
                           </div>
                         ) : null}
-                        <span>{col.label}</span>
-                        {col.sortable && (
-                          <ArrowUpDown
-                            size={14}
-                            className="ml-1 text-gray-300"
-                          />
-                        )}
+                        <div
+                          className={`flex items-center ${col.sortable ? 'cursor-pointer hover:text-gray-200' : ''}`}
+                          onClick={() => col.sortable && handleSort(col.key)}
+                        >
+                          <span>{col.label}</span>
+                          {col.sortable && (
+                            <ArrowUpDown
+                              size={14}
+                              className={`ml-1 ${sortConfig.key === col.key ? 'text-white' : 'text-gray-400'}`}
+                            />
+                          )}
+                        </div>
                       </div>
                     </th>
                   ))}
@@ -377,7 +410,7 @@ const ViewConnection = ({
             <div className="flex justify-between items-center mb-6 sticky top-0 bg-white z-10 pb-2 border-b">
               <div>
                 <h2 className="text-xl font-bold text-[#8e78b7]">
-                  Schema Details
+                  Column Details
                 </h2>
 
                 <div>
@@ -435,9 +468,8 @@ const ViewConnection = ({
                     viewSchema.column_json.map((column, index) => (
                       <tr
                         key={index}
-                        className={`border-b ${
-                          index % 2 === 0 ? "bg-gray-50" : "bg-white"
-                        }`}
+                        className={`border-b ${index % 2 === 0 ? "bg-gray-50" : "bg-white"
+                          }`}
                       >
                         <td className="p-3 font-medium">
                           {column.column_name}

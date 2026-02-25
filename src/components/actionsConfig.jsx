@@ -3,7 +3,9 @@ import React from "react";
 import { Pencil, Trash2, Play, Pause, Eye, EyeIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import { deleteCDCConnectors } from "../hooks/platform/cdc";
-export const getActionConfigurations = ({ token, project, hostnameV2, hostnameV1, navigate, setDeleteModal  }) => {
+import { deleteMetadata } from "../hooks/platform/metadata";
+
+export const getActionConfigurations = ({ token, project, hostnameV2, hostnameV1, navigate, refetch }) => {
   // Modal state management function to be used in component
   const showDeleteConfirmation = (cdcId, onConfirm) => {
     // Create modal element
@@ -70,7 +72,7 @@ export const getActionConfigurations = ({ token, project, hostnameV2, hostnameV1
         onClick: async (row) => {
           try {
             const response = await axios.get(`${hostnameV2}/cdc/trigger/${row.cdc_id}`, {
-              headers: {Authorization: `Bearer ${token}`},
+              headers: { Authorization: `Bearer ${token}` },
             });
             toast.success("CDC triggered successfully!");
           } catch (error) {
@@ -91,7 +93,7 @@ export const getActionConfigurations = ({ token, project, hostnameV2, hostnameV1
               : null;
 
             console.log("Fetched Migration Node JSON:", nodeJson);
-            
+
             if (nodeJson) {
               navigate("/migrationCanvas", {
                 state: { nodeJson, isEditMode: true, migration_id: row.migration_id },
@@ -129,7 +131,7 @@ export const getActionConfigurations = ({ token, project, hostnameV2, hostnameV1
       {
         label: "Edit",
         icon: React.createElement(Pencil, { size: 16 }),
-        onClick: (row) => navigate("/PurgeCanvas", {state: {ui_json: row?.ui_json, purge_id: row?.purge_id}}),
+        onClick: (row) => navigate("/PurgeCanvas", { state: { ui_json: row?.ui_json, purge_id: row?.purge_id } }),
       },
       {
         label: "Delete",
@@ -152,6 +154,28 @@ export const getActionConfigurations = ({ token, project, hostnameV2, hostnameV1
         },
       },
     ],
+    metadata: [
+      {
+        label: "Delete",
+        icon: React.createElement(Trash2, { size: 16 }),
+        show: (row) => row?.status?.toLowerCase() === "failed",
+        onClick: (row) => {
+          showDeleteConfirmation(row.metadata_id, async () => {
+            const loadingToast = toast.loading("Deleting metadata record...");
+            try {
+              await deleteMetadata(row.metadata_id, token, hostnameV1);
+              toast.dismiss(loadingToast);
+              toast.success("Metadata record deleted successfully");
+              if (refetch) await refetch();
+            } catch (error) {
+              toast.dismiss(loadingToast);
+              console.error("Failed to delete metadata record:", error);
+              toast.error("Failed to delete metadata record");
+            }
+          });
+        },
+      },
+    ],
     rules: [
       // {
       //   label: "View",
@@ -162,7 +186,7 @@ export const getActionConfigurations = ({ token, project, hostnameV2, hostnameV1
       {
         label: "Edit",
         icon: <Pencil size={16} />,
-        onClick: (row) => navigate("/config/rule/edit-rule", {state: {mode: "EDIT", ruleData: {...row}}}),
+        onClick: (row) => navigate("/config/rule/edit-rule", { state: { mode: "EDIT", ruleData: { ...row } } }),
         show: (row) => row?.status?.toLowerCase() !== "disabled"
       },
     ],
