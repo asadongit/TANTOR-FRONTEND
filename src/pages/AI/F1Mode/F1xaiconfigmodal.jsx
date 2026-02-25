@@ -12,7 +12,7 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
   });
 
   const targetClasses = launchData?.target_classes ?? [];
-  const rowCount = launchData?.raw_data_shape?.[0] ?? 0;
+  const rowCount = launchData?.test_data_shape?.[0] ?? 0;
   const featuresList = launchData?.processed_feature_columns ?? [];
 
   useEffect(() => {
@@ -257,9 +257,7 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
             onClick={() => onGenerate(configData)}
             disabled={isSubmitDisabled}
             style={{
-              background: isSubmitDisabled
-                ? 'rgba(141,23,24,0.35)'
-                : 'linear-gradient(270deg, #D30101 0%, #6D0101 117.78%)',
+              background: isSubmitDisabled ? 'rgba(142,119,187,0.35)' : '#8E77BB',
             }}
             className={`px-6 py-2 rounded-lg border-none text-white text-sm font-semibold font-[Satoshi,sans-serif] flex items-center gap-2 transition-all duration-150 ${isSubmitDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
           >

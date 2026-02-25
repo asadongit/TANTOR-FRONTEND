@@ -11,7 +11,7 @@ const TRACK_D =
     'C 800 265, 760 320, 660 320 ' +
     'L 200 320 Z';
 
-const T_OFFSETS = [0.06, 0.17, 0.29, 0.41, 0.50, 0.59, 0.71, 0.83, 0.94];
+const T_OFFSETS = [0.00, 0.12, 0.22, 0.32, 0.42, 0.52, 0.62, 0.71, 0.78];
 const LABELS = ['Start', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'Finish'];
 const TOTAL_STOPS = 9;
 
@@ -146,10 +146,9 @@ export function RaceTrack({ activeNodeIndex = 0, isFinished = false }) {
                         <line
                             x1={node.x} y1={node.y - 12}
                             x2={node.x} y2={node.y + 12}
-                            stroke="rgba(255,255,255,0.5)" strokeWidth="2.5"
-                            transform={`rotate(30, ${node.x}, ${node.y})`}
+                            stroke="rgba(255,255,255,0.85)" strokeWidth="3.5"
                         />
-                        <text x={node.x} y={node.y + 28} textAnchor="middle" fill="rgba(255,255,255,0.65)" fontSize="12" fontWeight="500">Start</text>
+                        <text x={node.x} y={node.y + 32} textAnchor="middle" fill="rgba(255,255,255,0.65)" fontSize="12" fontWeight="500">Start</text>
                     </g>
                 );
 

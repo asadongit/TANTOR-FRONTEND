@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { Bot, AlertTriangle } from "lucide-react";
+import { Bot } from "lucide-react";
 import {
   ChartBarIcon,
   CubeIcon,
@@ -56,12 +56,18 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const [currentActiveSection, setCurrentActiveSection] = useState(activeSection);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState(null);
+  const [showF1CancelModal, setShowF1CancelModal] = useState(false);
+  const [pendingF1Navigation, setPendingF1Navigation] = useState(null);
+  const [isF1CancelLoading, setIsF1CancelLoading] = useState(false);
   const hostnameAI = window._env_?.VITE_AI_API;
   const [isCancelLoading, setIsCancelLoading] = useState(false);
 
   const { decodedToken } = useAuth();
-  const { isAIPlaygroundActive, resetAllStates, datasetState, workflowState } = useAIPlayground();
+  const { isAIPlaygroundActive, resetAllStates, datasetState, workflowState, F1Mode: F1ModeCtx, setF1Mode } = useAIPlayground();
   const navigate = useNavigate();
+
+  const isF1ModeActive = !!F1ModeCtx?.session_id;
+  const f1SessionId = F1ModeCtx?.session_id ?? null;
 
   useEffect(() => {
     const savedSection = localStorage.getItem('activeSection');
@@ -96,7 +102,15 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
 
     const isAIRoute = (path.startsWith('/ai') || path === '/dashboard');
     const currentPath = window.location.pathname;
-    const isCurrentlyInAIPlayground = currentPath.startsWith('/ai/playground')
+    const isCurrentlyInAIPlayground = currentPath.startsWith('/ai/playground');
+    const isCurrentlyInF1Mode = currentPath.startsWith('/ai/f1mode');
+
+    if (isF1ModeActive && isCurrentlyInF1Mode && path !== '/ai/f1mode') {
+      e.preventDefault();
+      setPendingF1Navigation(path);
+      setShowF1CancelModal(true);
+      return;
+    }
 
     if (isAIPlaygroundActive && isAIRoute && isCurrentlyInAIPlayground) {
       e.preventDefault();
@@ -130,6 +144,30 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     if (pendingNavigation) {
       navigate(pendingNavigation);
       setPendingNavigation(null);
+    }
+  };
+
+  const handleF1CancelModalClose = () => {
+    setShowF1CancelModal(false);
+    setPendingF1Navigation(null);
+  };
+
+  const handleF1ConfirmCancel = async () => {
+    setIsF1CancelLoading(true);
+    try {
+      await fetch(`${hostnameAI}/api/v1/data/f1/session/${f1SessionId}`, {
+        method: 'DELETE',
+        headers: { 'accept': 'application/json' },
+      });
+    } catch (error) {
+      console.error('F1 Mode session cleanup error:', error);
+    }
+    setF1Mode(null);
+    setIsF1CancelLoading(false);
+    setShowF1CancelModal(false);
+    if (pendingF1Navigation) {
+      navigate(pendingF1Navigation);
+      setPendingF1Navigation(null);
     }
   };
 
@@ -270,10 +308,8 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
 
   const renderIcon = (IconComponent) => {
     if (typeof IconComponent === 'string') {
-      // It's an SVG URL, render as <img>
       return <img src={IconComponent} alt="" className="h-5 w-5 flex-shrink-0" />;
     }
-    // Otherwise, assume it's a React component
     return <IconComponent className="h-5 w-5 flex-shrink-0" />;
   };
 
@@ -436,9 +472,6 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                  <AlertTriangle className="text-red-600" size={24} />
-                </div>
                 <h2 className="text-xl font-semibold text-gray-900">Cancel AI Playground Workflow?</h2>
               </div>
 
@@ -462,6 +495,42 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   )}
                   {isCancelLoading ? 'Cancelling...' : 'Yes, Discard Changes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* F1 Mode Cancel Modal */}
+      {showF1CancelModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <h2 className="text-xl font-semibold text-gray-900">Exit F1 Mode Session?</h2>
+              </div>
+
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to leave? Your active F1 Mode session will be terminated.
+              </p>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={handleF1CancelModalClose}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Stay in F1 Mode
+                </button>
+                <button
+                  onClick={handleF1ConfirmCancel}
+                  disabled={isF1CancelLoading}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                >
+                  {isF1CancelLoading && (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  )}
+                  {isF1CancelLoading ? 'Ending Session...' : 'Yes, End Session'}
                 </button>
               </div>
             </div>
