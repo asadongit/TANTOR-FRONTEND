@@ -89,7 +89,10 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     setExpandedSubItem(prev => prev === subRouteName ? null : subRouteName);
   };
 
-  const handleNavClick = (e, path) => {
+  const handleNavClick = (e, path, routeName) => {
+    if ((routeName === 'F1 Mode' || routeName === 'AI Playground') && !isCollapsed) {
+      toggleSidebar();
+    }
 
     const isAIRoute = (path.startsWith('/ai') || path === '/dashboard');
     const currentPath = window.location.pathname;
@@ -286,11 +289,10 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
       <div key={route.path}>
         <NavLink
           to={route.path}
-          onClick={(e) => handleNavClick(e, route.path)}
+          title={isCollapsed ? route.name : undefined}
+          onClick={(e) => handleNavClick(e, route.path, route.name)}
           className={({ isActive }) =>
-            `flex items-center gap-3 px-3 py-2 rounded-lg mb-1 ${isActive
-              ? 'bg-purple-100 text-purple-700'
-              : 'text-gray-700 hover:bg-gray-100'
+            `flex items-center gap-3 px-3 py-2 rounded-lg mb-1 ${isActive ? 'bg-purple-100 text-purple-700' : 'text-gray-700 hover:bg-gray-100'
             }`
           }
         >
@@ -328,7 +330,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
                     {subItem.path ? (
                       <NavLink
                         to={subItem.path}
-                        onClick={(e) => handleNavClick(e, subItem.path)}
+                        onClick={(e) => handleNavClick(e, subItem.path, subItem.name)}
                         className={({ isActive }) =>
                           `flex items-center justify-between px-3 py-2 rounded-lg transition-colors duration-200 ${isActive
                             ? 'bg-purple-100 text-purple-700'
@@ -376,7 +378,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
                             <NavLink
                               key={nestedItem.path}
                               to={nestedItem.path}
-                              onClick={(e) => handleNavClick(e, nestedItem.path)}
+                              onClick={(e) => handleNavClick(e, nestedItem.path, nestedItem.name)}
                               className={({ isActive }) =>
                                 `block px-6 py-2 rounded-lg transition-colors duration-200 ${isActive
                                   ? 'bg-purple-100 text-purple-700'

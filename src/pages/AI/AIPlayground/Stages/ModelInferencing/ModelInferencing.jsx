@@ -315,6 +315,58 @@ const ModelInferencing = () => {
   const chartColors = ['#9ca3af', '#a78bfa', '#6ee7b7', '#fb923c', '#f472b6', '#60a5fa'];
 
   const handleNextClick = async () => {
+    stopPolling();
+    const sessionId = datasetState?.sessionId;
+    const jobId = workflowState?.completedJobs?.config?.job_id;
+
+    if (jobId) {
+      try {
+        const jobsResponse = await fetch(`${hostnameAI}/jobs/${jobId}`, {
+          method: 'GET',
+          headers: { accept: 'application/json' },
+        });
+        if (!jobsResponse.ok) throw new Error(`Jobs error! status: ${jobsResponse.status}`);
+        const data = await jobsResponse.json();
+        updateWorkflowStage('completedJobs', { apiResponse: data });
+      } catch (error) {
+        toast.error(error.message || 'Failed to fetch job status.', {
+          duration: 4000,
+          position: 'top-right',
+        });
+        return false;
+      }
+    }
+
+    if (sessionId) {
+      try {
+        const runsResponse = await fetch(`${hostnameAI}/model/runs_logged/${sessionId}`, {
+          method: 'GET',
+          headers: { accept: 'application/json' },
+        });
+        if (!runsResponse.ok) throw new Error(`Runs logged error! status: ${runsResponse.status}`);
+      } catch (error) {
+        toast.error(error.message || 'Failed to fetch runs logged.', {
+          duration: 4000,
+          position: 'top-right',
+        });
+        return false;
+      }
+
+      try {
+        const modelsResponse = await fetch(`${hostnameAI}/model/logged_models/${sessionId}`, {
+          method: 'GET',
+          headers: { accept: 'application/json' },
+        });
+        if (!modelsResponse.ok) throw new Error(`Logged models error! status: ${modelsResponse.status}`);
+      } catch (error) {
+        toast.error(error.message || 'Failed to fetch logged models.', {
+          duration: 4000,
+          position: 'top-right',
+        });
+        return false;
+      }
+    }
+
     return true;
   };
 
@@ -403,8 +455,8 @@ const ModelInferencing = () => {
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors capitalize ${activeTab === tab
-                      ? 'border-[#8e78b7] text-[#8e78b7]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-[#8e78b7] text-[#8e78b7]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     }`}
                 >
                   {tab}
