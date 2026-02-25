@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { ChevronDown, Search } from 'lucide-react';
-import F1XAIConfigModal from './F1XAIConfigModal';
 import DataTable from '../../../components/DataTable';
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
+import F1XAIConfigModal from './F1xaiconfigmodal';
 
 function ReportSection({ title, children }) {
     return (
