@@ -70,9 +70,6 @@ function App() {
                         isCollapsed={isSidebarCollapsed}
                         toggleSidebar={toggleSidebar}
                       />
-                      {/* ✅ CHANGED: overflow-hidden → overflow-y-auto so regular pages
-                          can scroll normally, while AIPlaygroundLayout (h-full + overflow-hidden)
-                          handles its own internal scrolling */}
                       <main
                         className={`flex-1 transition-all duration-300 overflow-y-auto h-full min-h-0 ${
                           isSidebarCollapsed ? "ml-16" : "ml-64"
