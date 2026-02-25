@@ -36,7 +36,7 @@ export const DefineNode = ({ id, data }) => {
     const currentUser = decodedToken?.preferred_username;
     if (
       now - transformationNamesCache.timestamp <
-        transformationNamesCache.expiryTime &&
+      transformationNamesCache.expiryTime &&
       transformationNamesCache.lastProject === project &&
       transformationNamesCache.lastUser === currentUser
     ) {
@@ -269,20 +269,17 @@ export const DefineNode = ({ id, data }) => {
           <div className="relative">
             <input
               type="text"
-              className={`w-full p-1 text-[10px] bg-white rounded-sm border ${
-                attemptedSave && nameError
+              className={`w-full p-1 text-[10px] bg-white rounded-sm border ${attemptedSave && nameError
                   ? "border-red-500"
                   : "border-gray-300"
-              } text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 ${
-                attemptedSave && nameError
+                } text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed ${attemptedSave && nameError
                   ? "focus:ring-red-500"
                   : "focus:ring-gray-400"
-              } focus:border-gray-400
-              }`}
+                } focus:border-gray-400`}
               placeholder="Enter transformation name"
               value={localName}
               onChange={handleNameChange}
-              // disabled={isEditMode}   not needed becox to enable editing in edit mode
+              disabled={isEditMode}
             />
             {isChecking && (
               <div className="absolute right-2 top-1">
@@ -299,15 +296,13 @@ export const DefineNode = ({ id, data }) => {
             Description
           </label>
           <textarea
-            className={`w-full p-1 text-[10px] bg-white rounded-sm border ${
-              attemptedSave && descriptionError
+            className={`w-full p-1 text-[10px] bg-white rounded-sm border ${attemptedSave && descriptionError
                 ? "border-red-500"
                 : "border-gray-300"
-            } text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 ${
-              attemptedSave && descriptionError
+              } text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 ${attemptedSave && descriptionError
                 ? "focus:ring-red-500"
                 : "focus:ring-gray-400"
-            } focus:border-gray-400`}
+              } focus:border-gray-400`}
             placeholder="Enter description"
             rows="2"
             value={localDescription}
