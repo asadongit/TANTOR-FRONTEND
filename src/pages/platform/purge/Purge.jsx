@@ -370,6 +370,10 @@ const PurgeList = () => {
           <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
             <h2 className="text-lg font-semibold mb-4">Delete Purge</h2>
             <p className="mb-6">Are you sure you want to delete this purge?</p>
+            <div className="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded-lg text-sm">
+              Note: This will only remove the listing from the platform, not
+              from the connections.
+            </div>
             <div className="flex justify-end gap-4">
               <button
                 className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"

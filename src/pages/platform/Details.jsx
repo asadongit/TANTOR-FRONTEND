@@ -79,6 +79,8 @@ const Details = () => {
   const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
   const autoRefreshMenuRef = useRef(null);
 
+  const [deleteModal, setDeleteModal] = useState({ open: false, id: null, type: null, onConfirm: null });
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (autoRefreshMenuRef.current && !autoRefreshMenuRef.current.contains(event.target)) {
@@ -142,7 +144,7 @@ const Details = () => {
 
 
   const actions = useMemo(() => {
-    return getActionConfigurations({ token, project, hostnameV2, navigate })[selectedType];
+    return getActionConfigurations({ token, project, hostnameV2, hostnameV1, navigate, setDeleteModal  })[selectedType];
   }, [selectedType]);
 
   useEffect(() => {
@@ -251,6 +253,36 @@ const Details = () => {
         refetch={refetch}
         resetSortTrigger={resetSortTrigger}
       />
+
+      {deleteModal.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl w-[400px] p-8 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-[#8e78b7] mb-4">
+              Confirm Deletion
+            </h2>
+            <p className="mb-6 text-gray-700">
+              Are you sure you want to delete this {deleteModal.type}?
+            </p>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setDeleteModal({ open: false, id: null, type: null, onConfirm: null })}
+                className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  deleteModal.onConfirm();
+                  setDeleteModal({ open: false, id: null, type: null, onConfirm: null });
+                }}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
