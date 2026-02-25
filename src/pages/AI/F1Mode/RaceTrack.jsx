@@ -1,0 +1,205 @@
+import { useEffect, useRef, useState } from 'react';
+import FinishIcon from '../../../assets/ai/sports_score.svg';
+import FlagIconSvg from '../../../assets/ai/icon-race.svg';
+
+const TRACK_D =
+    'M 200 320 ' +
+    'C 100 320, 60 265, 60 200 ' +
+    'C 60 130, 115 80, 205 72 ' +
+    'L 655 72 ' +
+    'C 745 80, 800 130, 800 200 ' +
+    'C 800 265, 760 320, 660 320 ' +
+    'L 200 320 Z';
+
+const T_OFFSETS = [0.06, 0.17, 0.29, 0.41, 0.50, 0.59, 0.71, 0.83, 0.94];
+const LABELS = ['Start', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'Finish'];
+const TOTAL_STOPS = 9;
+
+const R = 26;
+const CLR_FUTURE = '#D54B49';
+const CLR_PASSED = '#380604';
+const BDR_COLOR = '#E78583';
+
+
+function FlagIcon({ cx, cy }) {
+    const iconSize = 28;
+    const pinW = 44;
+    const pinH = 52;
+    const fx = cx - pinW / 2;
+    const fy = cy - 80;
+    const gradId = `flagGrad_${cx}`;
+
+    return (
+        <g>
+            <defs>
+                <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#BA0000" />
+                    <stop offset="60%" stopColor="#B30101" />
+                    <stop offset="100%" stopColor="#8D0000" />
+                </linearGradient>
+            </defs>
+
+            {/* Stem line */}
+            <line
+                x1={cx} y1={fy + pinH}
+                x2={cx} y2={cy - R}
+                stroke="rgba(230,230,230,0.75)" strokeWidth="1.8"
+            />
+
+            <path
+                d={`
+                    M ${fx + 8} ${fy}
+                    H ${fx + pinW - 8}
+                    Q ${fx + pinW} ${fy} ${fx + pinW} ${fy + 8}
+                    V ${fy + pinH - 14}
+                    Q ${fx + pinW} ${fy + pinH - 6} ${fx + pinW / 2 + 6} ${fy + pinH - 6}
+                    L ${fx + pinW / 2} ${fy + pinH}
+                    L ${fx + pinW / 2 - 6} ${fy + pinH - 6}
+                    Q ${fx} ${fy + pinH - 6} ${fx} ${fy + pinH - 14}
+                    V ${fy + 8}
+                    Q ${fx} ${fy} ${fx + 8} ${fy}
+                    Z
+                `}
+                fill={`url(#${gradId})`}
+                filter="drop-shadow(0px 2px 4px rgba(0,0,0,0.4))"
+            />
+
+            <path
+                d={`
+                    M ${fx + 8} ${fy}
+                    H ${fx + pinW - 8}
+                    Q ${fx + pinW} ${fy} ${fx + pinW} ${fy + 8}
+                    V ${fy + 16}
+                    Q ${fx} ${fy + 16} ${fx} ${fy + 8}
+                    Q ${fx} ${fy} ${fx + 8} ${fy}
+                    Z
+                `}
+                fill="rgba(255,231,231,0.15)"
+            />
+
+            <image
+                href={FlagIconSvg}
+                x={cx - iconSize / 2}
+                y={fy + (pinH - 14) / 2 - iconSize / 2}
+                width={iconSize}
+                height={iconSize}
+            />
+        </g>
+    );
+}
+
+export function RaceTrack({ activeNodeIndex = 0, isFinished = false }) {
+    const measRef = useRef(null);
+    const [checkpoints, setCheckpoints] = useState([]);
+    const [totalLen, setTotalLen] = useState(0);
+
+    useEffect(() => {
+        const path = measRef.current;
+        if (!path) return;
+        const len = path.getTotalLength();
+        setTotalLen(len);
+        setCheckpoints(
+            T_OFFSETS.map((t, i) => {
+                const pt = path.getPointAtLength(t * len);
+                return { x: pt.x, y: pt.y, label: LABELS[i] };
+            })
+        );
+    }, []);
+
+    return (
+        <svg viewBox="0 0 860 360" width="100%" className="block overflow-visible">
+
+            <path ref={measRef} d={TRACK_D} style={{ display: 'none' }} />
+
+            <path
+                d={TRACK_D}
+                fill="none"
+                stroke="#8D1718"
+                strokeWidth="24"
+                strokeLinejoin="round"
+            />
+
+            {checkpoints.map((node, i) => {
+                const isStart = i === 0;
+                const isFinish = i === TOTAL_STOPS - 1;
+                const isActive = i === activeNodeIndex;
+                const isPassed = i < activeNodeIndex;
+
+                if (isFinish) {
+                    const iconSize = 28;
+                    return (
+                        <g key={i}>
+                            <image
+                                href={FinishIcon}
+                                x={node.x - iconSize / 2}
+                                y={node.y - iconSize / 2}
+                                width={iconSize}
+                                height={iconSize}
+                            />
+                            <text x={node.x} y={node.y + iconSize / 2 + 16} textAnchor="middle" fill="rgba(255,255,255,0.65)" fontSize="12" fontWeight="500">Finish</text>
+                        </g>
+                    );
+                }
+
+                if (isStart) return (
+                    <g key={i}>
+                        <line
+                            x1={node.x} y1={node.y - 12}
+                            x2={node.x} y2={node.y + 12}
+                            stroke="rgba(255,255,255,0.5)" strokeWidth="2.5"
+                            transform={`rotate(30, ${node.x}, ${node.y})`}
+                        />
+                        <text x={node.x} y={node.y + 28} textAnchor="middle" fill="rgba(255,255,255,0.65)" fontSize="12" fontWeight="500">Start</text>
+                    </g>
+                );
+
+                if (isActive) return (
+                    <g key={i}>
+                        <FlagIcon cx={node.x} cy={node.y} />
+                        <circle
+                            cx={node.x} cy={node.y} r={R}
+                            fill={CLR_PASSED} stroke={BDR_COLOR} strokeWidth="2.5"
+                        />
+                        <text x={node.x} y={node.y + 5} textAnchor="middle" dominantBaseline="middle" fill="#ffffff" fontSize="12" fontWeight="600">{node.label}</text>
+                    </g>
+                );
+
+                if (isPassed) return (
+                    <g key={i}>
+                        <circle
+                            cx={node.x} cy={node.y} r={R}
+                            fill={CLR_PASSED} stroke={BDR_COLOR} strokeWidth="2.5"
+                        />
+                        <text
+                            x={node.x} y={node.y + 5}
+                            textAnchor="middle" dominantBaseline="middle"
+                            fill="#ffffff"
+                            fontSize="15" fontWeight="600"
+                        >
+                            {node.label}
+                        </text>
+                    </g>
+                );
+
+                return (
+                    <g key={i}>
+                        <circle
+                            cx={node.x} cy={node.y} r={R}
+                            fill={CLR_FUTURE} stroke={BDR_COLOR} strokeWidth="2.5"
+                        />
+                        <text
+                            x={node.x} y={node.y + 5}
+                            textAnchor="middle" dominantBaseline="middle"
+                            fill="#ffffff"
+                            fontSize="15" fontWeight="600"
+                        >
+                            {node.label}
+                        </text>
+                    </g>
+                );
+            })}
+        </svg>
+    );
+}
+
+export default RaceTrack;
