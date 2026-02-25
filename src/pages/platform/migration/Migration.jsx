@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { useState} from "react";
-import { Pencil, Trash2, Play } from "lucide-react";
+import { Pencil, Trash2, Play, ExternalLink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { encrypt } from "../../../utils/Crypto";
 import { useSourceTypeCounts } from "../../../hooks/platform/cardCounts";
@@ -12,6 +12,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { useAuth } from "../../../context/AuthContext";
 import Breadcrumb from "../../../components/Breadcrumb";
+import { DagErrorModal } from "../../../components/DagErrorModal";
 
 const MigrationEmpty = () => {
   return (
@@ -57,7 +58,38 @@ const MigrationList = () => {
   const navigate = useNavigate();
   const [activeMenu, setActiveMenu] = useState(null);
 
+  const [dagErrorModal, setDagErrorModal] = useState({
+    isOpen: false,
+    isLoading: false,
+    data: null,
+    dagId: null,
+  });
+  
   const { token, hostnameV1, hostnameV2 } = useAuth();
+
+  const fetchDagFailure = async (dagId) => {
+    console.log("dag id ", dagId)
+    setDagErrorModal({ isOpen: true, isLoading: true, data: null, dagId });
+    try {
+      const response = await axios.get(
+        `${hostnameV1}/dag-failure?dag_id=${dagId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setDagErrorModal({ isOpen: true, isLoading: false, data: response.data, dagId });
+    } catch (error) {
+      console.error("Error fetching DAG failure info:", error);
+      setDagErrorModal({
+        isOpen: true,
+        isLoading: false,
+        data: { status: "ERROR", error_message: "Failed to retrieve DAG failure details." },
+        dagId,
+      });
+    }
+  };
 
   const cards = [
     {
@@ -105,7 +137,32 @@ const MigrationList = () => {
     { key: "target_conn_name", label: "Target Connection", sortable: true },
     { key: "source_table", label: "Source Table", sortable: true },
     { key: "target_table", label: "Target Table", sortable: true },
-    { key: "status", label: "Status", sortable: true },
+    { key: "status", label: "Status", sortable: true ,
+      render: (row) => {
+        let className = "px-2 py-1 rounded-full font-medium";
+        if (row.status.toLowerCase() === "failed") {
+          className += " bg-red-100 text-red-600";
+          return (
+            <button
+              onClick={() => fetchDagFailure(row.workflow_name)}
+              className={`flex items-center gap-1 ${className} hover:bg-red-200`}
+              title="View failure details"
+            >
+              <span>Failed</span>
+              <ExternalLink className="ml-1 w-3 h-3" />
+            </button>
+          );
+        } else if (row.status.toLowerCase() === "completed") {
+          className += " bg-green-100 text-green-600";
+        } else if(row.status.toLowerCase() === "pending"){
+          className += "bg-yellow-100 text-yellow-600";
+        }
+          else {
+          className += " bg-gray-100 text-gray-600";
+        }
+        return <span className={className}>{row.status}</span>;
+      },
+    },
     { label: "Action", sortable: false },
   ];
 
@@ -241,6 +298,13 @@ const MigrationList = () => {
         isLoading={isArchivalLoading}
         isError={archivalError}
         refetch={refetchArchival}
+      />
+
+      <DagErrorModal
+        isOpen={dagErrorModal.isOpen}
+        onClose={() => setDagErrorModal({ isOpen: false, isLoading: false, data: null, dagId: null })}
+        isLoading={dagErrorModal.isLoading}
+        data={dagErrorModal.data}
       />
 
       {/* Delete Migration Modal */}

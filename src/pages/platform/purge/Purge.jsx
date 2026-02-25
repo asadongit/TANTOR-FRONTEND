@@ -6,6 +6,7 @@ import {
   Trash2,
   Play,
   X,
+  ExternalLink,
 } from "lucide-react";
 import { encrypt } from "../../../utils/Crypto";
 import { useSourceTypeCounts } from "../../../hooks/platform/cardCounts";
@@ -16,6 +17,7 @@ import { useAuth } from "../../../context/AuthContext";
 import axios from "axios";
 import toast from "react-hot-toast";
 import Breadcrumb from "../../../components/Breadcrumb";
+import { DagErrorModal } from "../../../components/DagErrorModal";
 
 const PurgeList = () => {
   const { data: cardData, isLoading: isCardLoading, error: cardError,refetch : refetchCardData } = useSourceTypeCounts('purge');
@@ -23,10 +25,41 @@ const PurgeList = () => {
 
 
   const navigate = useNavigate();
-const {token, hostnameV1}= useAuth()
+  const {token, hostnameV1}= useAuth();
+
+  const [dagErrorModal, setDagErrorModal] = useState({
+    isOpen: false,
+    isLoading: false,
+    data: null,
+    dagId: null,
+  });
 
   const handleCreatePurge = () => {
     navigate("/PurgeCanvas");
+  };
+
+  const fetchDagFailure = async (dagId) => {
+    console.log("dag id ", dagId)
+    setDagErrorModal({ isOpen: true, isLoading: true, data: null, dagId });
+    try {
+      const response = await axios.get(
+        `${hostnameV1}/dag-failure?dag_id=${dagId}&dag_type=purge`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setDagErrorModal({ isOpen: true, isLoading: false, data: response.data, dagId });
+    } catch (error) {
+      console.error("Error fetching DAG failure info:", error);
+      setDagErrorModal({
+        isOpen: true,
+        isLoading: false,
+        data: { status: "ERROR", error_message: "Failed to retrieve DAG failure details." },
+        dagId,
+      });
+    }
   };
 
    const cards = [
@@ -114,8 +147,31 @@ const {token, hostnameV1}= useAuth()
     { key: "target_conn_name", label: "Target Connection", sortable: true },
     { key: "source_table", label: "Source Table", sortable: true },
     { key: "target_table", label: "Target Table", sortable: true },
-    { key: "status", label: "Status", sortable: true },
-    { label: "Action", sortable: false },
+    { key: "status", label: "Status", sortable: true, render: (row) => {
+        let className = "px-2 py-1 rounded-full font-medium";
+        if (row.status.toLowerCase() === "failed") {
+          className += " bg-red-100 text-red-600";
+          return (
+            <button
+              onClick={() => fetchDagFailure(row.purge_name)}
+              className={`flex items-center gap-1 ${className} hover:bg-red-200`}
+              title="View failure details"
+            >
+              <span>Failed</span>
+              <ExternalLink className="ml-1 w-3 h-3" />
+            </button>
+          );
+        } else if (row.status.toLowerCase() === "completed") {
+          className += " bg-green-100 text-green-600";
+        } else if(row.status.toLowerCase() === "pending"){
+          className += "bg-yellow-100 text-yellow-600";
+        }
+          else {
+          className += " bg-gray-100 text-gray-600";
+        }
+        return <span className={className}>{row.status}</span>;
+      }, },
+    { label: "Action", sortable: false},
 
     ]
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -161,6 +217,13 @@ const handleDeletePurge = async () => {
         isLoading={isPurgeLoading}
         isError={purgeError}
         refetch={refetchPurges}/>
+
+      <DagErrorModal
+        isOpen={dagErrorModal.isOpen}
+        onClose={() => setDagErrorModal({ isOpen: false, isLoading: false, data: null, dagId: null })}
+        isLoading={dagErrorModal.isLoading}
+        data={dagErrorModal.data}
+      />
         {showDeleteModal && (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
     <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
