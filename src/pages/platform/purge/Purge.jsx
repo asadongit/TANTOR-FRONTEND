@@ -134,6 +134,7 @@ const PurgeList = () => {
     {
       label: "Edit",
       icon: <Pencil size={16} />,
+      show: (row) => (["ready to run", "failed"].includes(row?.status?.toLowerCase())),
       onClick: (row) => {
         // Navigate to edit/canvas page and pass ui_json for node pre-population
         navigate("/PurgeCanvas", { state: { ui_json: row?.ui_json, purge_id: row?.purge_id } });
@@ -150,6 +151,7 @@ const PurgeList = () => {
     {
       label: "Run",
       icon: <Play size={16} fill="currentColor" />,
+      show: (row) => (["ready to run", "failed"].includes(row?.status?.toLowerCase())),
       onClick: async (row) => {
         try {
           const response = await axios.get(`${hostnameV1}/purges/manualtrigger/${row.purge_name}`, {
@@ -172,12 +174,12 @@ const PurgeList = () => {
   // TBR
   const columns = [
     { key: "purge_name", label: "Name", sortable: true },
-    { key: "project", label: "Project Name", sortable: true },
-    { key: "created_by", label: "Created By", sortable: true },
+    { key: "description", label: "Description", sortable: true },
     { key: "source_conn_name", label: "Source Connection", sortable: true },
     { key: "target_conn_name", label: "Target Connection", sortable: true },
     { key: "source_table", label: "Source Table", sortable: true },
     { key: "target_table", label: "Target Table", sortable: true },
+    { key: "created_at", label: "Created At", sortable: true },
     {
       key: "status", label: "Status", sortable: true, render: (row) => {
         let className = "px-2 py-1 rounded-full font-medium";
@@ -271,6 +273,7 @@ const PurgeList = () => {
                 onClick={() => {
                   refetchPurges();
                   refetchCardData();
+                  setSearchTerm("");
                   toast.success("Purge data refreshed successfully");
                 }}
                 title="Refresh data"
