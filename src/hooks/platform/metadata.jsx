@@ -24,11 +24,30 @@ const fetchMetadataData = async (token, project, hostnameV1) => {
   }
 };
 
+export const deleteMetadata = async (metadataId, token, hostnameV1) => {
+  if (!token) throw new Error("Token is missing");
+
+  try {
+    const headers = {
+      Authorization: `Bearer ${token}`,
+    };
+
+    const response = await axios.delete(
+      `${hostnameV1}/metadata-archivals/${metadataId}`,
+      { headers }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting metadata:", error);
+    throw error;
+  }
+};
+
 export const useMetadataData = () => {
   const { token, project, hostnameV1 } = useAuth();
 
   return useQuery({
-    queryKey: ["migrationData", project],
+    queryKey: ["metadataArchivalData", project],
     queryFn: () => fetchMetadataData(token, project, hostnameV1),
     enabled: !!token,
     staleTime: 30 * 1000,

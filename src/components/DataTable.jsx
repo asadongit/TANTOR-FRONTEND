@@ -24,7 +24,7 @@ const DataTable = ({
   title,
   isLoading = false,
   isError = false,
-  refetch = () => {},
+  refetch = () => { },
   resetSortTrigger,
   onRowClick,
   selectedRowId,
@@ -274,9 +274,8 @@ const DataTable = ({
                     {column.label}
                     {column.key && column.sortable !== false && (
                       <ArrowUpDown
-                        className={`ml-2 cursor-pointer ${
-                          sortConfig.key === column.key ? "text-blue-300" : ""
-                        }`}
+                        className={`ml-2 cursor-pointer ${sortConfig.key === column.key ? "text-blue-300" : ""
+                          }`}
                         size={16}
                         aria-hidden="true"
                       />
@@ -314,17 +313,33 @@ const DataTable = ({
               paginatedData.map((row, rowIndex) => (
                 <tr
                   key={rowIndex}
-                  className={`border-b transition-colors align-middle ${
-                    onRowClick ? 'cursor-pointer' : ''
-                  } ${
-                    selectedRowId && row.sno === selectedRowId
+                  className={`border-b transition-colors align-middle ${onRowClick ? 'cursor-pointer' : ''
+                    } ${selectedRowId && row.sno === selectedRowId
                       ? 'bg-[#f3f0f8] border-l-4 border-l-[#8e78b7]'
                       : 'hover:bg-gray-50'
-                  } ${row.rowClassName || ''}`}
+                    } ${row.rowClassName || ''}`}
                   onClick={(e) => handleRowClickInternal(row, e)}
                 >
                   {columns.map((column, cellIndex) => {
                     if (column.label === "Action") {
+                      const availableActions = actions.filter(
+                        (action) =>
+                          action.show === undefined ||
+                          (typeof action.show === "function"
+                            ? action.show(row)
+                            : action.show)
+                      );
+
+                      if (actions.length > 0 && availableActions.length === 0) {
+                        return (
+                          <td
+                            key={cellIndex}
+                            className="text-center align-middle"
+                            style={cellBaseStyle}
+                          ></td>
+                        );
+                      }
+
                       return (
                         <td
                           key={cellIndex}
@@ -347,43 +362,34 @@ const DataTable = ({
                           {activeMenu === rowIndex && (
                             <div
                               ref={menuRef}
-                              className={`absolute right-4 bg-white shadow-lg rounded-lg py-1 px-3 z-10 border ${
-                                rowIndex >= paginatedData.length - 2 ? 'bottom-full mb-2' : 'mt-2'
-                              }`}
+                              className={`absolute right-4 bg-white shadow-lg rounded-lg py-1 px-3 z-10 border ${rowIndex >= paginatedData.length - 2 ? 'bottom-full mb-2' : 'mt-2'
+                                }`}
                               role="menu"
                               aria-orientation="horizontal"
                             >
                               <div className="flex items-center space-x-3">
-                                {actions
-                                  .filter(
-                                    (action) =>
-                                      action.show === undefined ||
-                                      (typeof action.show === "function"
-                                        ? action.show(row)
-                                        : action.show)
-                                  )
-                                  .map((action, actionIndex) => (
-                                    <div key={actionIndex} className="relative">
-                                      <button
-                                        className="p-1 text-gray-500 hover:text-gray-800 transition-colors"
-                                        onClick={() => handleAction(action, row)}
-                                        onMouseEnter={() => setHoveredAction(`${rowIndex}-${actionIndex}`)}
-                                        onMouseLeave={() => setHoveredAction(null)}
-                                        aria-label={action.label}
-                                        role="menuitem"
-                                      >
-                                        {action.icon && (
-                                          <span>{action.icon}</span>
-                                        )}
-                                      </button>
-                                      {hoveredAction === `${rowIndex}-${actionIndex}` && (action.tooltip || action.label) && (
-                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap z-20">
-                                          {action.tooltip || action.label}
-                                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-                                        </div>
+                                {availableActions.map((action, actionIndex) => (
+                                  <div key={actionIndex} className="relative">
+                                    <button
+                                      className="p-1 text-gray-500 hover:text-gray-800 transition-colors"
+                                      onClick={() => handleAction(action, row)}
+                                      onMouseEnter={() => setHoveredAction(`${rowIndex}-${actionIndex}`)}
+                                      onMouseLeave={() => setHoveredAction(null)}
+                                      aria-label={action.label}
+                                      role="menuitem"
+                                    >
+                                      {action.icon && (
+                                        <span>{action.icon}</span>
                                       )}
-                                    </div>
-                                  ))}
+                                    </button>
+                                    {hoveredAction === `${rowIndex}-${actionIndex}` && (action.tooltip || action.label) && (
+                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap z-20">
+                                        {action.tooltip || action.label}
+                                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
                                 {actions.length === 0 && (
                                   <>
                                     <button
@@ -430,25 +436,25 @@ const DataTable = ({
                     }
 
                     if (column.render) {
-  return (
-    <td
-      key={cellIndex}
-      className={`align-middle ${column.wrap ? 'whitespace-normal break-words' : 'whitespace-nowrap text-ellipsis overflow-hidden'}`}
-      style={{ ...cellBaseStyle, maxWidth: "100%" }}
-      title={column.renderTitle ? column.renderTitle(row, rowIndex) : undefined}
-    >
-      {column.render(row, rowIndex)}
-    </td>
-  );
-}
+                      return (
+                        <td
+                          key={cellIndex}
+                          className={`align-middle ${column.wrap ? 'whitespace-normal break-words' : 'whitespace-nowrap text-ellipsis overflow-hidden'}`}
+                          style={{ ...cellBaseStyle, maxWidth: "100%" }}
+                          title={column.renderTitle ? column.renderTitle(row, rowIndex) : undefined}
+                        >
+                          {column.render(row, rowIndex)}
+                        </td>
+                      );
+                    }
 
                     return (
                       <td
-                      key={cellIndex}
-                      className={`text-gray-600 align-middle ${column.wrap ? 'whitespace-normal break-words' : 'whitespace-nowrap overflow-hidden text-ellipsis'}`}
-                      style={{ ...cellBaseStyle, maxWidth: "100%" }}
-                      title={column.key ? row[column.key] : undefined}
-                    >
+                        key={cellIndex}
+                        className={`text-gray-600 align-middle ${column.wrap ? 'whitespace-normal break-words' : 'whitespace-nowrap overflow-hidden text-ellipsis'}`}
+                        style={{ ...cellBaseStyle, maxWidth: "100%" }}
+                        title={column.key ? row[column.key] : undefined}
+                      >
                         {column.key ? (
                           column.key === "status" ? (
                             <span
@@ -459,8 +465,8 @@ const DataTable = ({
                               {row[column.key]}
                             </span>
                           ) : (row[column.key] === 0
-                                ? 0
-                                : row[column.key] || "-"
+                            ? 0
+                            : row[column.key] || "-"
                           )
                         ) : null}
                       </td>
