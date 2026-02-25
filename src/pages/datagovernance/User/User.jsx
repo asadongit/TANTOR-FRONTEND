@@ -15,7 +15,7 @@ import PolicyManagerIcon from "../../../assets/governance/policy.svg"
 import DataownerIcon from "../../../assets/governance/account_box.svg"
 import ConnectionCreationIcon from "../../../assets/governance/hub.svg"
 import SearchIcon from "../../../assets/governance/search.svg"
-
+import ToggleUserStatus from './Components/User/ToggleUserStatus';
 const rotateAnimation = `
   @keyframes rotate {
     from {
@@ -101,8 +101,11 @@ const User = () => {
   const [hasMore, setHasMore] = useState(false);
   const initialFetchDone = useRef(false);
   const [itemsPerPage, setItemsPerPage] = useState(12);
-  const [togglingStatus, setTogglingStatus] = useState(null);
   const rowsPerPage = itemsPerPage;
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [isToggleModalOpen, setIsToggleModalOpen] = useState(false);
+  const [userToToggle, setUserToToggle] = useState(null);
+  const [bulkAction, setBulkAction] = useState(null);
   
 
   const { token } = useAuth();
@@ -264,6 +267,7 @@ const User = () => {
     const newSearchTerm = e.target.value;
     setSearchTerm(newSearchTerm);
     setCurrentPage(1);
+    setSelectedUsers([]);
 
     // Debounce search to avoid too many API calls
     clearTimeout(window.searchTimeout);
@@ -389,66 +393,10 @@ const currentUsers = users;
   };
 
   const handleDeleteConfirm = () => {
+    setSelectedUsers([]);
     fetchUserData(currentPage, searchTerm);
   };
 
-  const toggleUser = async (userId) => {
-    const userToUpdate = users.find(u => u.id === userId);
-    if (!userToUpdate) return;
-
-    const newStatus = !userToUpdate.enabled;
-    setTogglingStatus(userId);
-
-    try {
-      const endpoint = userToUpdate.enabled ? 'userdisable' : 'userenable';
-      const response = await fetch(
-        `${window._env_?.VITE_FAST_API}/auth/${endpoint}/${userId}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Error: ${response.status} ${response.statusText}`);
-      }
-
-      // Update user status in local state
-      setUsers(prevUsers =>
-        prevUsers.map(u =>
-          u.id === userId ? { ...u, enabled: newStatus } : u
-        )
-      );
-
-      // Show success toast
-      setToast({
-        show: true,
-        message: `User ${userToUpdate.enabled ? 'disabled' : 'enabled'} successfully`,
-        type: 'success'
-      });
-
-      setTimeout(() => {
-        setToast({ show: false, message: '', type: '' });
-      }, 3000);
-    } catch (error) {
-      console.error(`Error updating user status:`, error);
-      setToast({
-        show: true,
-        message: `Failed to update user status`,
-        type: 'error'
-      });
-
-      setTimeout(() => {
-        setToast({ show: false, message: '', type: '' });
-      }, 3000);
-    } finally {
-      setTogglingStatus(null);
-    }
-  };
 
   const handleRefresh = async () => {
     setSearchTerm('');
@@ -474,6 +422,24 @@ const currentUsers = users;
       setToast({ show: false, message: '', type: '' });
     }, 3000);
   };
+
+  const handleToggleClick = (user) => {
+    if (selectedUsers.length >= 2) {
+      setBulkAction(user.enabled ? 'disable' : 'enable');
+      setUserToToggle(null);
+    } else {
+      setUserToToggle(user);
+    }
+    setIsToggleModalOpen(true);
+    setActiveMenu(null);
+  };
+
+  const isAllSelected = users.length > 0 && selectedUsers.length === users.length;
+  const isIndeterminate = selectedUsers.length > 0 && selectedUsers.length < users.length;
+  const toggleSelectAll = () => setSelectedUsers(isAllSelected ? [] : users.map(u => u.id));
+  const toggleSelectUser = (id) => setSelectedUsers(prev =>
+    prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+  );
 
   const handleItemsPerPageChange = (e) => {
   const newItemsPerPage = Number(e.target.value);
@@ -545,7 +511,7 @@ const currentUsers = users;
               onChange={handleSearchChange}
             />
             {searchTerm && (
-              <button onClick={() => { setSearchTerm(''); fetchUserData(1, ''); }} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+              <button onClick={() => { setSearchTerm(''); setSelectedUsers([]); fetchUserData(1, ''); }} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
                 <Icon icon="mdi:close" width="16" height="16" />
               </button>
             )}
@@ -574,6 +540,16 @@ const currentUsers = users;
         <table className="w-full min-w-[900px]">
           <thead className="sticky top-0 z-10">
             <tr className="bg-[#29304a] text-white text-sm">
+            <th style={{ padding: '16px 12px 16px 19.75px', width: '40px' }}>
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  ref={el => { if (el) el.indeterminate = isIndeterminate; }}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 cursor-pointer"
+                  style={{ accentColor: '#8e78b7' }}
+                />
+              </th>
             <th className="text-left" style={{ padding: '16px 19.75px' }}>User</th>
               <th className="text-left" style={{ padding: '16px 19.75px' }}>Roles</th>
               <th className="text-left" style={{ padding: '16px 19.75px' }}>Persona</th>
@@ -586,7 +562,7 @@ const currentUsers = users;
           <tbody className="text-sm">
             {isPaginationLoading ? (
               <tr>
-                <td colSpan="7" className="p-8 text-center">
+                <td colSpan="8" className="p-8 text-center">
                   <div className="flex items-center justify-center gap-2">
                     <div className="w-6 h-6 border-2 border-[#8e78b7] border-t-transparent rounded-full animate-spin"></div>
                     <span className="text-gray-500">Loading users...</span>
@@ -595,13 +571,22 @@ const currentUsers = users;
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan="7" className="p-8 text-center text-gray-500">
+                <td colSpan="8" className="p-8 text-center text-gray-500">
                   No users found
                 </td>
               </tr>
             ) : (
               users.map((user, index) => (
                 <tr key={user.id} className="border-b hover:bg-gray-50">
+                  <td style={{ padding: '16px 12px 16px 19.75px' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedUsers.includes(user.id)}
+                      onChange={() => toggleSelectUser(user.id)}
+                      className="w-4 h-4 cursor-pointer"
+                      style={{ accentColor: '#8e78b7' }}
+                    />
+                  </td>
                   <td style={{ padding: '16px 19.75px' }}>
                     <div className="flex items-center gap-2">
                       <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#8d77ba] bg-opacity-25 text-[#8d77ba]">
@@ -687,41 +672,34 @@ const currentUsers = users;
                               minWidth: 75
                             }}
                           >
-                            <div className="flex items-center justify-center p-1 gap-1">
+                            <div className="flex items-center justify-center p-1 gap-1">{selectedUsers.length < 2 && (
                               <button
                                 className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 transition-colors"
                                 onClick={() => handleEditClick(user)}
                               >
                                 <Pencil className="h-4 w-4" />
                               </button>
+                            )}
 
-                              <button
-                                className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 transition-colors"
-                                onClick={async () => {
-                                  setActiveMenu(null);
-                                  await toggleUser(user.id);
-                                }}
-                                disabled={togglingStatus === user.id}
-                                title={user.enabled ? 'Disable' : 'Enable'}
-                              >
-                                <Toggle
-                                  enabled={togglingStatus === user.id ? !user.enabled : user.enabled}
-                                  onToggle={async () => {
-                                    setActiveMenu(null);
-                                    await toggleUser(user.id);
-                                  }}
-                                  disabled={togglingStatus === user.id}
-                                  size="sm"
-                                />
-                              </button>
+                            <button
+                              className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 transition-colors"
+                              onClick={() => handleToggleClick(user)}
+                              title={user.enabled ? 'Disable' : 'Enable'}
+                            >
+                              <Toggle
+                                enabled={user.enabled}
+                                onToggle={() => handleToggleClick(user)}
+                                size="sm"
+                              />
+                            </button>
 
-                              <button
-                                className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 transition-colors"
-                                onClick={() => handleDeleteClick(user)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                            <button
+                              className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 transition-colors"
+                              onClick={() => handleDeleteClick(user)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                           </div>
                         </>,
                         document.body
@@ -790,6 +768,30 @@ const currentUsers = users;
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirmDelete={handleDeleteConfirm}
         userData={userToDelete}
+        selectedUsers={selectedUsers}
+        onBulkDeleteSuccess={() => {
+          setSelectedUsers([]);
+          fetchUserData(currentPage, searchTerm); 
+        }}
+      />
+
+      <ToggleUserStatus
+        isOpen={isToggleModalOpen}
+        onClose={() => setIsToggleModalOpen(false)}
+        userData={userToToggle}
+        selectedUsers={selectedUsers}
+        bulkAction={bulkAction}
+        onConfirmToggle={(userId, enabled) => {
+          setUsers(prev => prev.map(u => u.id === userId ? { ...u, enabled } : u));
+          setIsToggleModalOpen(false);
+        }}
+        onBulkToggleSuccess={(enabled) => {
+          setUsers(prev => prev.map(u =>
+            selectedUsers.includes(u.id) ? { ...u, enabled } : u
+          ));
+          setSelectedUsers([]);
+          setIsToggleModalOpen(false);
+        }}
       />
 
       {isDetailsModalOpen && selectedUser && (

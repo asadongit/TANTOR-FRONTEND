@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { X, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
 import { useAuth } from '../../../../../context/AuthContext';
 
-const DeleteUser = ({ isOpen, onClose, userData, onConfirmDelete }) => {
+const DeleteUser = ({ isOpen, onClose, userData, onConfirmDelete, selectedUsers = [], onBulkDeleteSuccess }) => {
+  const isBulk = selectedUsers.length >= 2;
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
+  const [deletedCount, setDeletedCount] = useState(0);  
+  const [wasBluk, setWasBulk] = useState(false); 
   const { token } = useAuth();
 
   useEffect(() => {
@@ -14,7 +17,7 @@ const DeleteUser = ({ isOpen, onClose, userData, onConfirmDelete }) => {
     }
   }, [isOpen, userData]);
 
-  if (!isOpen || !userData) return null;
+  if (!isOpen || (!userData && !isBulk)) return null;
 
   const handleClose = () => {
     setIsDeleted(false);
@@ -23,28 +26,41 @@ const DeleteUser = ({ isOpen, onClose, userData, onConfirmDelete }) => {
   };
 
   const handleConfirm = async () => {
-    setIsLoading(true);
-
+  setIsLoading(true);
+    const bulkSnapshot = isBulk;           // ← snapshot
+    const countSnapshot = selectedUsers.length; // ← snapshot
     try {
-      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/users/${userData.id}`, {
+      const user_ids = isBulk ? selectedUsers : [userData.id];
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/users`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_ids })
       });
-
       if (response.ok) {
+        setWasBulk(bulkSnapshot);       // ← save snapshot to state
+        setDeletedCount(countSnapshot); // ← save snapshot to state
         setIsDeleted(true);
-        if (onConfirmDelete) onConfirmDelete(userData.id);
-      } else {
-        console.error('Failed to delete user');
+        if (isBulk) {
+          if (onBulkDeleteSuccess) onBulkDeleteSuccess(); // clears selectedUsers
+        } else {
+          if (onConfirmDelete) onConfirmDelete(userData.id);
+        }
       }
     } catch (error) {
-      console.error('Error deleting user:', error);
+      console.error('Error deleting user(s):', error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDeleteClick = (user) => {
+    if (selectedUsers.length >= 2) {
+      setUserToDelete(null);  // ← don't set a single user
+    } else {
+      setUserToDelete(user);
+    }
+    setIsDeleteModalOpen(true);
+    setActiveMenu(null);
   };
 
   return (
@@ -58,7 +74,7 @@ const DeleteUser = ({ isOpen, onClose, userData, onConfirmDelete }) => {
               <AlertTriangle className="h-5 w-5 text-red-500" />
             )}
             <h2 className="text-xl font-bold text-red-500">
-              {isDeleted ? 'User Deleted' : 'Delete Confirmation'}
+              {isDeleted ? (wasBluk ? 'Users Deleted' : 'User Deleted') : 'Delete Confirmation'}
             </h2>
           </div>
           {!isLoading && (
@@ -72,7 +88,9 @@ const DeleteUser = ({ isOpen, onClose, userData, onConfirmDelete }) => {
           {isLoading && (
             <div className="p-4 bg-gray-50 rounded-lg text-center mb-6 flex flex-col items-center">
               <Loader className="h-16 w-16 text-blue-500 mx-auto mb-4 animate-spin" />
-              <p className="text-lg font-medium text-gray-800">Deleting user...</p>
+              <p className="text-lg font-medium text-gray-800">
+                {isBulk ? `Deleting ${selectedUsers.length} users...` : 'Deleting user...'}
+              </p>
             </div>
           )}
 
@@ -80,7 +98,9 @@ const DeleteUser = ({ isOpen, onClose, userData, onConfirmDelete }) => {
             <div className="p-4 bg-green-50 rounded-lg text-center mb-6">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
               <p className="text-lg font-medium text-gray-800">
-                User "{userData.username}" deleted successfully
+                {wasBluk
+                  ? `${deletedCount} users deleted successfully`
+                  : `User "${userData?.username}" deleted successfully`}
               </p>
               <button
                 onClick={handleClose}
@@ -96,7 +116,7 @@ const DeleteUser = ({ isOpen, onClose, userData, onConfirmDelete }) => {
               <div className="p-4 bg-red-50 rounded-lg text-center mb-6">
                 <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-2" />
                 <p className="text-lg font-medium text-gray-800">
-                  You are about to delete the user "{userData.username}"
+                  {isBulk ? `You are about to delete ${selectedUsers.length} users` : `You are about to delete the user "${userData.username}"`}
                 </p>
                 <p className="text-gray-500 mt-2">This action cannot be undone.</p>
               </div>

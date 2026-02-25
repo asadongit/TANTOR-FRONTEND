@@ -825,7 +825,7 @@ const Dashboard = () => {
         {connectorLoading ? <ConnectorBarChartSkeleton /> : <ConnectorBarChart />}
       </div>
 
-      <div className="mt-6 sm:mt-10">
+      {/* <div className="mt-6 sm:mt-10">
         <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">
           Your activities
         </h2>
@@ -837,7 +837,7 @@ const Dashboard = () => {
             </div>
           ))}
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };
