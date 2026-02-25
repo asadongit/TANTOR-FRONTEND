@@ -186,13 +186,6 @@ function F1SelectDataModal({ isOpen, onClose, onSuccess }) {
                         style={{ borderBottom: '1px solid rgba(160,30,30,0.25)', zIndex: 1 }}
                     >
                         <div className="flex items-center gap-2.5">
-                            <div style={{ width: 32, height: 32, borderRadius: '0.5rem', background: 'rgba(141,23,24,0.4)', border: '1px solid rgba(200,40,40,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ff6b6b" strokeWidth="2">
-                                    <ellipse cx="12" cy="5" rx="9" ry="3" />
-                                    <path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5" />
-                                    <path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3" />
-                                </svg>
-                            </div>
                             <h2 style={{ color: '#fff', fontSize: '1rem', fontWeight: 700, letterSpacing: '0.02em' }}>Select Data Table</h2>
                         </div>
                         <button
@@ -206,7 +199,7 @@ function F1SelectDataModal({ isOpen, onClose, onSuccess }) {
 
                     {/* Body */}
                     <div className="relative px-6 pt-5 pb-5" style={{ zIndex: 1 }}>
-                        <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.8rem', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                        <p style={{ color: '#fff', fontSize: '0.8rem', marginBottom: '1.25rem', lineHeight: 1.5 }}>
                             Choose a pre-configured database table to fetch data and start the race.
                         </p>
 
@@ -216,7 +209,7 @@ function F1SelectDataModal({ isOpen, onClose, onSuccess }) {
                             </div>
                         )}
 
-                        <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem', display: 'block', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        <label style={{ color: '#fff', fontSize: '0.75rem', display: 'block', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             Available Tables
                         </label>
 
@@ -229,9 +222,10 @@ function F1SelectDataModal({ isOpen, onClose, onSuccess }) {
                             style={{
                                 padding: '0.6rem 0.85rem',
                                 borderRadius: '0.65rem',
-                                background: isDropdownOpen || selectedTable ? 'rgba(141,23,24,0.25)' : 'rgba(80,10,10,0.45)',
+                                background: 'linear-gradient(90deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.2) 104.43%)',
+                                backdropFilter: 'blur(4px)',
                                 border: isDropdownOpen || selectedTable ? '1.5px solid rgba(200,50,50,0.6)' : '1.5px solid rgba(120,20,20,0.4)',
-                                color: selectedTable ? '#fff' : 'rgba(255,255,255,0.4)',
+                                color: '#fff',
                                 fontSize: '0.875rem',
                             }}
                         >
@@ -282,7 +276,9 @@ function F1SelectDataModal({ isOpen, onClose, onSuccess }) {
                             style={{
                                 padding: '0.5rem 1.25rem',
                                 borderRadius: '0.6rem',
-                                background: isIngesting ? 'rgba(141,23,24,0.6)' : 'linear-gradient(90deg, #9b1c1c, #dc2626)',
+                                background: isIngesting
+                                    ? 'rgba(141,23,24,0.6)'
+                                    : 'linear-gradient(270deg, #D30101 0%, #6D0101 117.78%)',
                                 border: 'none',
                                 color: '#fff',
                                 fontSize: '0.875rem',
@@ -359,9 +355,9 @@ function F1SelectDataModal({ isOpen, onClose, onSuccess }) {
                                     onClick={() => handleSelectTable(t.value)}
                                     className="w-full px-3 py-2.5 text-left transition-all"
                                     style={{
-                                        color: selectedTable === t.value ? '#fff' : 'rgba(255,255,255,0.75)',
+                                        color: '#fff',
                                         fontSize: '0.85rem',
-                                        borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                        border: 'none',
                                         background: selectedTable === t.value ? 'rgba(141,23,24,0.45)' : 'transparent',
                                     }}
                                     onMouseEnter={(e) => { if (selectedTable !== t.value) e.currentTarget.style.background = 'rgba(141,23,24,0.25)'; }}
