@@ -2,20 +2,13 @@ import React from "react";
 import { useLocation, Link } from "react-router-dom";
 import ChevronForward from '../assets/chevron-forward.svg';
 
-const Breadcrumb = ({ title, link, skipLinkSegments = [] }) => {
+const Breadcrumb = ({ title, link, title2, link2, title3, skipLinkSegments = [] }) => {
   const location = useLocation();
   const pathSegments = location.pathname.split("/").filter((segment) => segment);
 
   const formatText = (str) => {
-    if (str === "datagovernance") {
-      return "Data Governance";
-    }
-
-    if (str === "ai") {
-      return "AI";
-    }
-
-
+    if (str === "datagovernance") return "Data Governance";
+    if (str === "ai") return "AI";
     const withSpaces = str.replace(/-/g, ' ');
     return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1);
   };
@@ -26,32 +19,48 @@ const Breadcrumb = ({ title, link, skipLinkSegments = [] }) => {
         {title && (
           <li style={styles.breadcrumbItem}>
             {link ? (
-              <Link to={link} style={styles.link}>
-                {title}
-              </Link>
+              <Link to={link} style={styles.link}>{title}</Link>
             ) : (
               <span style={styles.link}>{title}</span>
             )}
-            {pathSegments.length > 0 && (
-              <img src={ChevronForward} alt="Chevron Forward" style={styles.separatorIcon} />
+            {(title2 || pathSegments.length > 0) && (
+              <img src={ChevronForward} alt=">" style={styles.separatorIcon} />
             )}
           </li>
         )}
-        {pathSegments.map((segment, index) => {
+
+        {title2 && (
+          <li style={styles.breadcrumbItem}>
+            {link2 ? (
+              <Link to={link2} style={styles.link}>{title2}</Link>
+            ) : (
+              <span style={title3 ? styles.link : styles.active}>{title2}</span>
+            )}
+            {title3 && (
+              <img src={ChevronForward} alt=">" style={styles.separatorIcon} />
+            )}
+          </li>
+        )}
+
+        {title3 && (
+          <li style={styles.breadcrumbItem}>
+            <span style={styles.active}>{title3}</span>
+          </li>
+        )}
+
+        {!title2 && pathSegments.map((segment, index) => {
           const to = segment.toLowerCase() === "ai"
             ? "/"
             : "/" + pathSegments.slice(0, index + 1).join("/");
           return (
             <li key={index} style={styles.breadcrumbItem}>
               {index > 0 && (
-                <img src={ChevronForward} alt="Chevron Forward" style={styles.separatorIcon} />
+                <img src={ChevronForward} alt=">" style={styles.separatorIcon} />
               )}
               {index === pathSegments.length - 1 || skipLinkSegments.includes(segment.toLowerCase()) ? (
                 <span style={styles.active}>{formatText(segment)}</span>
               ) : (
-                <Link to={to} style={styles.link}>
-                  {formatText(segment)}
-                </Link>
+                <Link to={to} style={styles.link}>{formatText(segment)}</Link>
               )}
             </li>
           );
@@ -59,7 +68,7 @@ const Breadcrumb = ({ title, link, skipLinkSegments = [] }) => {
       </ol>
     </nav>
   );
-}
+};
 
 
 const styles = {

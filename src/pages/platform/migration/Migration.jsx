@@ -46,7 +46,7 @@ const MigrationList = () => {
     data: cardData,
     isLoading: isCardLoading,
     error: cardError,
-    refetchCardData,
+    refetch: refetchCardData,
   } = useSourceTypeCounts("migration");
   const {
     data: archivalData = [],
@@ -158,12 +158,12 @@ const MigrationList = () => {
 
   const columns = [
     { key: "workflow_name", label: "Name", sortable: true },
-    { key: "project", label: "Project Name", sortable: true },
-    { key: "created_by", label: "Created By", sortable: true },
+    { key: "description", label: "Description", sortable: true },
     { key: "source_conn_name", label: "Source Connection", sortable: true },
     { key: "target_conn_name", label: "Target Connection", sortable: true },
     { key: "source_table", label: "Source Table", sortable: true },
     { key: "target_table", label: "Target Table", sortable: true },
+    { key: "created_at", label: "Created At", sortable: true },
     {
       key: "status", label: "Status", sortable: true,
       render: (row) => {
@@ -272,6 +272,7 @@ const MigrationList = () => {
     {
       label: "Edit",
       icon: <Pencil size={16} />,
+      show: (row) => (["ready to run", "failed"].includes(row?.status?.toLowerCase())),
       onClick: handleEditClick,
     },
     {
@@ -282,6 +283,7 @@ const MigrationList = () => {
     {
       label: "Run",
       icon: <Play size={16} fill="currentColor" />,
+      show: (row) => (["ready to run", "failed"].includes(row?.status?.toLowerCase())),
       onClick: async (row) => {
         try {
           const response = await axios.get(
@@ -325,6 +327,7 @@ const MigrationList = () => {
                 onClick={() => {
                   refetchArchival();
                   refetchCardData();
+                  setSearchTerm("");
                   toast.success("Migration data refreshed successfully");
                 }}
                 title="Refresh data"
