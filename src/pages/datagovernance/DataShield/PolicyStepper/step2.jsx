@@ -3,7 +3,7 @@ import { User, Users, UserPlus, UserRoundCog, Loader, Search } from "lucide-reac
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
 
-const Step2 = ({ onDataChange, initialData }) => {
+const Step2 = ({ onDataChange, initialData, policyId }) => {
     const roleDetails = [
         { role: 'Role', icon: User, key: 'roles' },
         { role: 'Group', icon: Users, key: 'groups' },
@@ -56,7 +56,7 @@ const Step2 = ({ onDataChange, initialData }) => {
                             subGroup: selectedSubgroup || '',
                             persona: selectedPersona || []
                         },
-                        policy_id: null
+                        policy_id: policyId || null
                     })
                 });
 
