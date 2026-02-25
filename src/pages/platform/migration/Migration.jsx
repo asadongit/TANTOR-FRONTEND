@@ -99,7 +99,7 @@ const MigrationList = () => {
     setDagErrorModal({ isOpen: true, isLoading: true, data: null, dagId });
     try {
       const response = await axios.get(
-        `${hostnameV1}/dag-failure?dag_id=${dagId}`,
+        `${hostnameV1}/dag-failure?dag_id=${dagId}&dag_type=migration`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
