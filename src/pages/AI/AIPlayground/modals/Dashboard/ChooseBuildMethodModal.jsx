@@ -6,7 +6,6 @@ import ModelTrainingIcon from '../../../../../assets/ai/model_training.svg';
 import AccountTreeIcon from '../../../../../assets/ai/account_tree.svg';
 
 export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
-    const [selectedMethod, setSelectedMethod] = useState(null);
     const [ensembleCount, setEnsembleCount] = useState(2);
     const { setMode } = useAIPlayground();
 
@@ -16,15 +15,6 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
         onProceed(method, ensembleCount);
         onClose();
         setMode('write');
-    };
-
-    const handleArrowClick = (e, method) => {
-        e.stopPropagation();
-        if (selectedMethod === method) {
-            handleProceed(method);
-        } else {
-            setSelectedMethod(method);
-        }
     };
 
     const decrementCount = () => {
@@ -58,12 +48,8 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
 
                     {/* Monolithic Option */}
                     <div
-                        onClick={() => setSelectedMethod('monolithic')}
-                        className={`rounded-lg p-4 mb-4 cursor-pointer transition-all ${
-                            selectedMethod === 'monolithic'
-                                ? 'bg-violet-50/50'
-                                : 'bg-slate-50 hover:bg-slate-100'
-                        }`}
+                        onClick={() => handleProceed('monolithic')}
+                        className="rounded-lg p-4 mb-4 cursor-pointer transition-all bg-slate-50 hover:bg-violet-50/50 hover:shadow-sm"
                     >
                         <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-3">
@@ -72,18 +58,9 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
                                 </div>
                                 <span className={`${tw.sectionHeading} text-[#8e78b7]`}>Monolithic</span>
                             </div>
-                            <button
-                                onClick={(e) => handleArrowClick(e, 'monolithic')}
-                                disabled={selectedMethod !== 'monolithic'}
-                                className={`p-1 rounded-full transition-all flex-shrink-0 ${
-                                    selectedMethod === 'monolithic'
-                                        ? 'bg-[#8e78b7] hover:bg-[#7d6ba3] cursor-pointer'
-                                        : 'opacity-40 cursor-not-allowed'
-                                }`}
-                                title={selectedMethod === 'monolithic' ? 'Proceed with Monolithic' : 'Select this card first'}
-                            >
-                                <ArrowRight className={`w-5 h-5 ${selectedMethod === 'monolithic' ? 'text-white' : 'text-[#8e78b7]'}`} />
-                            </button>
+                            <div className="p-1 flex-shrink-0">
+                                <ArrowRight className="w-5 h-5 text-[#8e78b7]" />
+                            </div>
                         </div>
                         <p className={tw.label + ' ml-[52px]'}>
                             Train a single model using one unified configuration. Best for straightforward and faster workflows.
@@ -99,12 +76,8 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
 
                     {/* Ensemble Option */}
                     <div
-                        onClick={() => setSelectedMethod('ensemble')}
-                        className={`rounded-lg p-4 cursor-pointer transition-all ${
-                            selectedMethod === 'ensemble'
-                                ? 'bg-violet-50/50'
-                                : 'bg-slate-50 hover:bg-slate-100'
-                        }`}
+                        onClick={() => handleProceed('ensemble')}
+                        className="rounded-lg p-4 cursor-pointer transition-all bg-slate-50 hover:bg-violet-50/50 hover:shadow-sm"
                     >
                         <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-3">
@@ -113,18 +86,9 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
                                 </div>
                                 <span className={`${tw.sectionHeading} text-[#8e78b7]`}>Ensemble</span>
                             </div>
-                            <button
-                                onClick={(e) => handleArrowClick(e, 'ensemble')}
-                                disabled={selectedMethod !== 'ensemble'}
-                                className={`p-1 rounded-full transition-all flex-shrink-0 ${
-                                    selectedMethod === 'ensemble'
-                                        ? 'bg-[#8e78b7] hover:bg-[#7d6ba3] cursor-pointer'
-                                        : 'opacity-40 cursor-not-allowed'
-                                }`}
-                                title={selectedMethod === 'ensemble' ? 'Proceed with Ensemble' : 'Select this card first'}
-                            >
-                                <ArrowRight className={`w-5 h-5 ${selectedMethod === 'ensemble' ? 'text-white' : 'text-[#8e78b7]'}`} />
-                            </button>
+                            <div className="p-1 flex-shrink-0">
+                                <ArrowRight className="w-5 h-5 text-[#8e78b7]" />
+                            </div>
                         </div>
                         <p className={tw.label + ' mb-4 ml-[52px]'}>
                             Configure multiple models individually and combine their outputs. Ideal for improving accuracy and robustness.
@@ -135,7 +99,7 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
                                 <button
                                     onClick={(e) => { e.stopPropagation(); decrementCount(); }}
                                     disabled={ensembleCount <= 2}
-                                    className="w-8 h-8 rounded border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    className="w-8 h-8 rounded border border-slate-200 flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
                                     <span className="text-[#332849] text-lg leading-none">−</span>
                                 </button>
@@ -145,7 +109,7 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
                                 <button
                                     onClick={(e) => { e.stopPropagation(); incrementCount(); }}
                                     disabled={ensembleCount >= 10}
-                                    className="w-8 h-8 rounded border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    className="w-8 h-8 rounded border border-slate-200 flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
                                     <span className="text-[#332849] text-lg leading-none">+</span>
                                 </button>
@@ -153,12 +117,6 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
                         </div>
                     </div>
 
-                    {/* Hint */}
-                    <p className={`${tw.caption} text-center mt-4 transition-all ${selectedMethod ? 'text-[#8e78b7]' : 'text-slate-400'}`}>
-                        {selectedMethod
-                            ? `Click → to proceed with ${selectedMethod.charAt(0).toUpperCase() + selectedMethod.slice(1)}`
-                            : 'Click a card to select, then use → to proceed'}
-                    </p>
                 </div>
             </div>
         </div>

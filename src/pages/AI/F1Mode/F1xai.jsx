@@ -159,44 +159,64 @@ function F1XAI() {
                             Model Selection
                         </label>
                         <div className="relative w-[260px]">
+                            {/* Trigger button */}
                             <button
                                 onClick={() => setIsDropdownOpen(o => !o)}
-                                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-white text-sm outline-none transition-all duration-150"
+                                className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm outline-none transition-all duration-150"
                                 style={{
-                                    border: isDropdownOpen ? '1px solid #8D1718' : '1px solid #D1D5DB',
-                                    color: selectedModel ? '#111827' : '#9CA3AF',
+                                    background: isDropdownOpen ? '#8E77BB' : '#f3f0fa',
+                                    border: isDropdownOpen ? '1px solid #8E77BB' : '1px solid #c4b5e8',
+                                    color: isDropdownOpen ? '#fff' : (selectedModel ? '#3b2d5e' : '#9585c0'),
                                     cursor: 'pointer',
-                                    boxShadow: isDropdownOpen ? '0 0 0 3px rgba(141,23,24,0.1)' : 'none',
+                                    boxShadow: isDropdownOpen ? '0 0 0 3px rgba(142,119,187,0.18)' : 'none',
                                 }}
                             >
                                 <span className="overflow-hidden text-ellipsis whitespace-nowrap flex-1 text-left mr-2">
                                     {selectedModel || 'Select model'}
                                 </span>
-                                <ChevronDown size={16} className="flex-shrink-0 text-gray-400 transition-transform duration-200"
-                                    style={{ transform: isDropdownOpen ? 'rotate(180deg)' : 'none' }} />
+                                <ChevronDown
+                                    size={16}
+                                    className="flex-shrink-0 transition-transform duration-200"
+                                    style={{
+                                        color: isDropdownOpen ? '#fff' : '#9585c0',
+                                        transform: isDropdownOpen ? 'rotate(180deg)' : 'none',
+                                    }}
+                                />
                             </button>
 
+                            {/* Dropdown panel */}
                             {isDropdownOpen && (
-                                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white rounded-lg overflow-hidden"
+                                <div
+                                    className="absolute top-full left-0 right-0 z-50 mt-1 rounded-lg overflow-hidden"
                                     style={{
-                                        border: '1px solid rgba(141,23,24,0.25)',
-                                        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                                    }}>
-                                    <div className="px-3 py-2" style={{ borderBottom: '1px solid #F3F4F6' }}>
-                                        <div className="flex items-center gap-2 px-2.5 py-[5px] rounded-md" style={{ background: '#FEF2F2' }}>
-                                            <Search size={13} className="flex-shrink-0" style={{ color: '#8D1718' }} />
+                                        background: '#fff',
+                                        border: '1px solid rgba(142,119,187,0.4)',
+                                        boxShadow: '0 8px 24px rgba(142,119,187,0.2)',
+                                    }}
+                                >
+                                    {/* Search bar */}
+                                    <div className="px-3 py-2" style={{ borderBottom: '1px solid #f0ebfa' }}>
+                                        <div
+                                            className="flex items-center gap-2 px-2.5 py-[5px] rounded-md"
+                                            style={{ background: '#f3f0fa' }}
+                                        >
+                                            <Search size={13} className="flex-shrink-0" style={{ color: '#8E77BB' }} />
                                             <input
-                                                type="text" value={searchQuery}
+                                                type="text"
+                                                value={searchQuery}
                                                 onChange={e => setSearchQuery(e.target.value)}
                                                 placeholder="Search..."
                                                 autoFocus
-                                                className="bg-transparent border-none outline-none text-[13px] text-gray-700 w-full"
+                                                className="bg-transparent border-none outline-none text-[13px] w-full"
+                                                style={{ color: '#3b2d5e' }}
                                             />
                                         </div>
                                     </div>
+
+                                    {/* Options list */}
                                     <div style={{ maxHeight: 200, overflowY: 'auto' }}>
                                         {filteredModels.length === 0 ? (
-                                            <p className="px-4 py-3 text-[13px] text-gray-400 text-center">
+                                            <p className="px-4 py-3 text-[13px] text-center" style={{ color: '#9CA3AF' }}>
                                                 No models found
                                             </p>
                                         ) : filteredModels.map(name => (
@@ -205,12 +225,18 @@ function F1XAI() {
                                                 onClick={() => handleModelSelect(name)}
                                                 className="block w-full text-left px-4 py-2.5 text-[13px] border-none cursor-pointer transition-all duration-100"
                                                 style={{
-                                                    background: selectedModel === name ? 'rgba(141,23,24,0.08)' : 'transparent',
-                                                    color: selectedModel === name ? '#8D1718' : '#374151',
+                                                    background: selectedModel === name ? 'rgba(142,119,187,0.12)' : 'transparent',
+                                                    color: selectedModel === name ? '#8E77BB' : '#374151',
                                                     fontWeight: selectedModel === name ? 600 : 400,
                                                 }}
-                                                onMouseEnter={e => { if (selectedModel !== name) e.currentTarget.style.background = '#FEF2F2'; }}
-                                                onMouseLeave={e => { if (selectedModel !== name) e.currentTarget.style.background = 'transparent'; }}
+                                                onMouseEnter={e => {
+                                                    if (selectedModel !== name)
+                                                        e.currentTarget.style.background = '#f3f0fa';
+                                                }}
+                                                onMouseLeave={e => {
+                                                    if (selectedModel !== name)
+                                                        e.currentTarget.style.background = 'transparent';
+                                                }}
                                             >
                                                 {name}
                                             </button>
@@ -221,15 +247,14 @@ function F1XAI() {
                         </div>
                     </div>
 
+                    {/* Configure button */}
                     <button
                         onClick={handleConfigureClick}
                         disabled={!selectedModel}
                         className="px-5 py-2 rounded-lg border-none text-white text-sm font-semibold whitespace-nowrap tracking-wide transition-all duration-150"
                         style={{
                             fontFamily: 'Satoshi, sans-serif',
-                            background: !selectedModel
-                                ? 'rgba(141,23,24,0.35)'
-                                : 'linear-gradient(270deg, #D30101 0%, #6D0101 117.78%)',
+                            background: !selectedModel ? 'rgba(142,119,187,0.35)' : '#8E77BB',
                             cursor: !selectedModel ? 'not-allowed' : 'pointer',
                         }}
                     >
@@ -250,8 +275,8 @@ function F1XAI() {
                     <div className="bg-white rounded-xl px-6 py-12 text-center" style={{ border: '1px solid #E5E7EB' }}>
                         <div className="mx-auto mb-3" style={{
                             width: 36, height: 36,
-                            border: '3px solid rgba(141,23,24,0.15)',
-                            borderTopColor: '#8D1718', borderRadius: '50%',
+                            border: '3px solid rgba(142,119,187,0.2)',
+                            borderTopColor: '#8E77BB', borderRadius: '50%',
                             animation: 'f1spin 0.8s linear infinite',
                         }} />
                         <p className="text-gray-500 text-sm">
@@ -264,12 +289,12 @@ function F1XAI() {
                     <div className="px-6 py-16 text-center">
                         <div className="mx-auto mb-4 flex items-center justify-center" style={{
                             width: 48, height: 48,
-                            background: 'rgba(141,23,24,0.08)',
+                            background: 'rgba(142,119,187,0.1)',
                         }}>
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                                 <path
                                     d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                                    stroke="#8D1718" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                                    stroke="#8E77BB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
                                 />
                             </svg>
                         </div>

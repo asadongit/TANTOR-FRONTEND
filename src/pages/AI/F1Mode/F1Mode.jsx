@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import flagIcon from '../../../assets/flag.png';
 import { Icon } from '@iconify/react';
-import { X } from 'lucide-react';
+import { X, AlertTriangle } from 'lucide-react';
 import F1SelectDataModal from './modals/F1SelectDataModal';
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 import ArrowDownIcon from '../../../assets/ai/keyboard_arrow_down.svg';
@@ -15,6 +15,7 @@ import FlagIconSvg from '../../../assets/ai/icon-race.svg';
 import TableRowsIcon from '../../../assets/ai/table_rows.svg';
 import TuneIcon from '../../../assets/ai/tune.svg';
 import CrownIcon from '../../../assets/ai/crown.svg';
+import { useNavigate } from 'react-router-dom';
 
 const API_URL = `${window._env_?.VITE_AI_API}/data/f1/launch`;
 
@@ -213,8 +214,26 @@ function AlgorithmRow({ name, status, score }) {
   );
 }
 
-function StandingsPage({ onBack }) {
+function StandingsPage({ onBack, sessionId }) {
   const [activeTab, setActiveTab] = useState('model_inferencing');
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const navigate = useNavigate();
+
+  const handleContinueToPlayground = async () => {
+    if (!sessionId) { navigate('/ai/playground'); return; }
+    setIsDeleting(true);
+    try {
+      await fetch(`${window._env_?.VITE_AI_API}/data/f1/session/${sessionId}`, {
+        method: 'DELETE',
+        headers: { accept: 'application/json' },
+      });
+    } catch (_) {
+    } finally {
+      setIsDeleting(false);
+      navigate('/ai/playground');
+    }
+  };
 
   const tabs = [
     { key: 'model_inferencing', label: 'Model Inferencing' },
@@ -222,86 +241,149 @@ function StandingsPage({ onBack }) {
   ];
 
   return (
-    <div className="w-full p-4">
-      {/* Header banner */}
-      <div
-        className="relative w-full rounded-2xl overflow-hidden"
-        style={{ background: 'linear-gradient(205.53deg, #8D1718 0.09%, #010200 156.48%)' }}
-      >
-        <img
-          src={flagIcon}
-          alt=""
-          aria-hidden="true"
-          className="absolute pointer-events-none select-none"
-          style={{
-            width: '38%',
-            height: '300%',
-            opacity: 0.13,
-            mixBlendMode: 'screen',
-            objectFit: 'cover',
-            top: '-60px',
-            right: '-10px',
-            transform: 'rotate(180deg)',
-            zIndex: 1,
-          }}
-        />
+    <div className="flex flex-col" style={{ minHeight: '100vh' }}>
 
-        {/* Back button row */}
-        <div className="relative flex items-center gap-3 px-6 pt-5 pb-3" style={{ zIndex: 10 }}>
-          <button
-            onClick={onBack}
-            className="flex items-center gap-1 hover:opacity-70 transition-opacity text-white text-lg font-bold tracking-wide"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-          >
-            <img
-              src={ArrowBackIcon}
-              alt=""
-              className="brightness-0 invert"
-              style={{ width: '12px', height: '16px', marginRight: '2px' }}
-            />
-            Standings
-          </button>
+      <div className="flex-1 p-4">
+        {/* Header banner */}
+        <div
+          className="relative w-full rounded-2xl overflow-hidden"
+          style={{ background: 'linear-gradient(205.53deg, #8D1718 0.09%, #010200 156.48%)' }}
+        >
+          <img
+            src={flagIcon}
+            alt=""
+            aria-hidden="true"
+            className="absolute pointer-events-none select-none"
+            style={{
+              width: '38%',
+              height: '300%',
+              opacity: 0.13,
+              mixBlendMode: 'screen',
+              objectFit: 'cover',
+              top: '-60px',
+              right: '-10px',
+              transform: 'rotate(180deg)',
+              zIndex: 1,
+            }}
+          />
+
+          {/* Back button row */}
+          <div className="relative flex items-center gap-3 px-6 pt-5 pb-3" style={{ zIndex: 10 }}>
+            <button
+              onClick={onBack}
+              className="flex items-center gap-1 hover:opacity-70 transition-opacity text-white text-lg font-bold tracking-wide"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            >
+              <img
+                src={ArrowBackIcon}
+                alt=""
+                className="brightness-0 invert"
+                style={{ width: '12px', height: '16px', marginRight: '2px' }}
+              />
+              Standings
+            </button>
+          </div>
+
+          {/* Tabs */}
+          <div className="relative flex gap-0 px-6 pb-0" style={{ zIndex: 10 }}>
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className="text-sm tracking-wide transition-all duration-150"
+                  style={{
+                    background: isActive ? '#7A2727' : 'transparent',
+                    border: 'none',
+                    borderBottom: isActive ? '2.5px solid #ffffff' : '2.5px solid transparent',
+                    borderRadius: '0.5rem 0.5rem 0 0',
+                    padding: '0.5rem 1.35rem',
+                    color: isActive ? '#fff' : 'rgba(255,255,255,0.55)',
+                    fontWeight: isActive ? 600 : 400,
+                    cursor: 'pointer',
+                    letterSpacing: '0.01em',
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Tabs */}
-        <div className="relative flex gap-0 px-6 pb-0" style={{ zIndex: 10 }}>
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className="text-sm tracking-wide transition-all duration-150"
-                style={{
-                  background: isActive ? '#7A2727' : 'transparent',
-                  border: 'none',
-                  borderBottom: isActive ? '2.5px solid #ffffff' : '2.5px solid transparent',
-                  borderRadius: '0.5rem 0.5rem 0 0',
-                  padding: '0.5rem 1.35rem',
-                  color: isActive ? '#fff' : 'rgba(255,255,255,0.55)',
-                  fontWeight: isActive ? 600 : 400,
-                  cursor: 'pointer',
-                  letterSpacing: '0.01em',
-                }}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
+        {/* Tab content area */}
+        <div
+          className="w-full"
+          style={{
+            background: 'linear-gradient(0deg, #FFFFFF, #FFFFFF), linear-gradient(144.28deg, rgba(141, 23, 24, 0.4) 20.92%, rgba(255, 255, 255, 0.4) 75.9%)',
+            minHeight: 400,
+          }}
+        >
+          {activeTab === 'model_inferencing' && <F1ModelInferencing />}
+          {activeTab === 'xai' && <F1XAI />}
         </div>
       </div>
 
-      {/* Tab content area */}
+      {/* Sticky footer */}
       <div
-        className="w-full rounded-b-2xl"
         style={{
-          background: 'linear-gradient(0deg, #FFFFFF, #FFFFFF), linear-gradient(144.28deg, rgba(141, 23, 24, 0.4) 20.92%, rgba(255, 255, 255, 0.4) 75.9%)',
-          minHeight: 400,
+          position: 'sticky',
+          bottom: 0,
+          background: '#FFFFFF',
+          boxShadow: '0px -4px 9px 0px #0000001A',
+          padding: '12px 24px',
+          display: 'flex',
+          justifyContent: 'flex-end',
         }}
       >
-        {activeTab === 'model_inferencing' && <F1ModelInferencing />}
-        {activeTab === 'xai' && <F1XAI />}
+        <button
+          onClick={() => setShowConfirm(true)}
+          style={{
+            background: '#8E77BB',
+            color: '#FFFFFF',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '10px 24px',
+            fontSize: '14px',
+            fontWeight: 400,
+            cursor: 'pointer',
+            fontFamily: 'Satoshi, sans-serif',
+          }}
+        >
+          Continue to AI Playground
+        </button>
       </div>
+
+      {/* Confirm modal */}
+      {showConfirm && (
+        <div className="fixed inset-0 z-[200] bg-black/45 flex items-center justify-center">
+          <div className="bg-white rounded-xl p-6 w-[90%] max-w-[360px] shadow-2xl flex flex-col gap-3">
+            <h2 className="text-base font-bold text-gray-900 m-0">
+              Continue to AI Playground?
+            </h2>
+            <p className="text-sm text-gray-500 m-0">
+              You'll leave F1 Mode and navigate to the AI Playground. Are you sure?
+            </p>
+            <div className="flex justify-end gap-2 mt-2">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="px-5 py-2 text-sm text-gray-500 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors font-[Satoshi,sans-serif]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleContinueToPlayground}
+                disabled={isDeleting}
+                className="px-5 py-2 text-sm font-semibold text-white rounded-lg cursor-pointer hover:opacity-90 transition-opacity font-[Satoshi,sans-serif]"
+                style={{ background: '#8E77BB', opacity: isDeleting ? 0.7 : 1, cursor: isDeleting ? 'not-allowed' : 'pointer' }}
+              >
+                {isDeleting ? 'Leaving…' : 'Continue'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -341,8 +423,55 @@ function F1Mode() {
   const [completedAlgs, setCompletedAlgs] = useState(0);
   const [totalAlgs, setTotalAlgs] = useState(0);
 
+  const [showBackModal, setShowBackModal] = useState(false);
+  const [isBackCancelLoading, setIsBackCancelLoading] = useState(false);
+  const pendingBackPath = useRef(null);
+  const navigate = useNavigate();
+
   const wsRef = useRef(null);
   const isFinishedRef = useRef(false);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const currentPath = window.location.pathname;
+
+      if (currentPath === '/ai/f1mode' && sessionId) {
+        // Push state back so user stays on the page
+        window.history.pushState(null, '', currentPath);
+        setShowBackModal(true);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    if (sessionId) {
+      window.history.pushState(null, '', window.location.pathname);
+    }
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [sessionId]);
+
+  const handleBackConfirm = async () => {
+    setIsBackCancelLoading(true);
+    try {
+      await fetch(`${hostnameAI}/api/v1/data/f1/session/${sessionId}`, {
+        method: 'DELETE',
+        headers: { accept: 'application/json' },
+      });
+    } catch (err) {
+      console.error('F1 session DELETE error:', err);
+    }
+    setF1Mode(null);
+    setIsBackCancelLoading(false);
+    setShowBackModal(false);
+    navigate(-2);
+  };
+
+  const handleBackCancel = () => {
+    setShowBackModal(false);
+  };
 
   useEffect(() => {
     if (F1ModeCtx?.selected_table && !ingestedTable) {
@@ -455,7 +584,7 @@ function F1Mode() {
   const algoEntries = Object.entries(algorithmStatus);
 
   if (showStandings) {
-    return <StandingsPage onBack={() => setShowStandings(false)} />;
+    return <StandingsPage onBack={() => setShowStandings(false)} sessionId={sessionId} />;
   }
 
   return (
@@ -726,6 +855,41 @@ function F1Mode() {
       </div>
 
       <F1SelectDataModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={setIngestedTable} />
+
+      {showBackModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <h2 className="text-xl font-semibold text-gray-900">Exit F1 Mode Session?</h2>
+              </div>
+
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to leave? Your active F1 Mode session will be terminated.
+              </p>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={handleBackCancel}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Stay in F1 Mode
+                </button>
+                <button
+                  onClick={handleBackConfirm}
+                  disabled={isBackCancelLoading}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                >
+                  {isBackCancelLoading && (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  )}
+                  {isBackCancelLoading ? 'Ending Session...' : 'Yes, End Session'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
