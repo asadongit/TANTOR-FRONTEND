@@ -155,7 +155,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const handleF1ConfirmCancel = async () => {
     setIsF1CancelLoading(true);
     try {
-      await fetch(`${hostnameAI}/api/v1/data/f1/session/${f1SessionId}`, {
+      await fetch(`${hostnameAI}/data/f1/session/${f1SessionId}`, {
         method: 'DELETE',
         headers: { 'accept': 'application/json' },
       });
@@ -515,7 +515,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="p-6">
               <div className="flex items-center gap-3 mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">Exit F1 Mode Session?</h2>
+                <h2 className="text-xl font-semibold text-gray-900">Exit F1 Mode</h2>
               </div>
 
               <p className="text-gray-600 mb-6">
