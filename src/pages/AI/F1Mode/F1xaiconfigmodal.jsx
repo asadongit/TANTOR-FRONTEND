@@ -219,7 +219,7 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
                   checked={allSelected}
                   onChange={toggleSelectAll}
                   disabled={isGenerating}
-                  className="w-[15px] h-[15px] accent-[#8D1718]"
+                  className="w-[15px] h-[15px] accent-[#8E77BB]"
                 />
                 <span className="text-[13px] font-medium text-gray-700">Select All</span>
               </label>
@@ -235,7 +235,7 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
                     checked={configData.pdpFeatures.includes(feature)}
                     onChange={() => toggleFeature(feature)}
                     disabled={isGenerating}
-                    className="w-[15px] h-[15px] accent-[#8D1718] shrink-0"
+                    className="w-[15px] h-[15px] accent-[#8E77BB] shrink-0"
                   />
                   <span className="text-[13px] text-gray-700 break-words">{feature}</span>
                 </label>
