@@ -1,12 +1,15 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Pencil,
   Trash2,
-  RotateCw,
+  RefreshCw,
   Eye,
   ChevronDown,
   Search,
+  CheckCircle,
+  RefreshCcw,
 } from "lucide-react";
+import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
 import { encrypt } from "../../../utils/Crypto";
 import { useConnectionCardData } from "../../../hooks/platform/cardCounts";
@@ -18,40 +21,63 @@ import { useAuth } from "../../../context/AuthContext";
 import columnConfigurations from "../../../components/columnsConfig";
 import ViewConnection from "./components/viewConnection";
 import ConnectionWizard from "./components/ConnectionWizard";
-import Modal from "../cdc/components/Modal";
 import axios from "axios";
-import { useModal } from "../cdc/context/ModalProvider";
+import Breadcrumb from "../../../components/Breadcrumb";
 
 const Connections = () => {
-  const { token, project, setSelectedProject, hostnameV1,hostnameV2 } = useAuth();
-  const { openModal, closeModal } = useModal();
+  const { token, project, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState("both");
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(0);
+  const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
+  const autoRefreshMenuRef = useRef(null);
+  const [viewConnectionData, setViewConnectionData] = useState(null);
+  const [connectionDetails, setConnectionDetails] = useState(null);
+  const [connectionViews, setConnectionViews] = useState([]);
+  const [activeModal, setActiveModal] = useState(null);
+  const [deleteModal, setDeleteModal] = useState({ open: false, type: null, message: null, onConfirm: null });
+  const navigate = useNavigate();
+
   const {
     data: cardData,
     isLoading: isCardLoading,
     error: cardError,
     refetch: refetchCardData,
   } = useConnectionCardData();
+
   const {
     data: connections = [],
     isLoading: isConnectionsLoading,
     error: connectionsError,
     refetch: refetchConnections,
   } = useConnectionData();
-  const [viewConnectionData, setViewConnectionData] = useState(null);
-  const [connectionDetails, setConnectionDetails] = useState(null);
-  const [connectionViews, setConnectionViews] = useState([]);
-  const [activeModal, setActiveModal] = useState(null);
-  const navigate = useNavigate();
 
   const openLocalModal = (modalName, data = null) => {
     setActiveModal({ name: modalName, data });
   };
 
   const closeLocalModal = () => {
-    closeModal()
     setActiveModal(null);
   };
+
+  useEffect(() => {
+    if (autoRefreshInterval === 0) return;
+    const interval = setInterval(() => {
+      refetchConnections();
+      refetchCardData();
+    }, autoRefreshInterval);
+    return () => clearInterval(interval);
+  }, [autoRefreshInterval, refetchConnections, refetchCardData]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (autoRefreshMenuRef.current && !autoRefreshMenuRef.current.contains(event.target)) {
+        setIsAutoRefreshMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const cards = useMemo(() => {
     return [
@@ -123,10 +149,10 @@ const Connections = () => {
     openLocalModal('view')
     fetch(
       `${hostnameV1}/connection-master-metadata/find-by-conn-name-type?conn_name=${connection.connection_name}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
     })
       .then((response) => response.json())
       .then((data) => {
@@ -138,82 +164,87 @@ const Connections = () => {
       });
   }, []);
 
+  const deleteConnection = async (id) => {
+    try {
+      const response = await axios.delete(`${hostnameV1}/connection-saves/${id}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 200) {
+        refetchConnections();
+        toast.success("Connection deleted successfully");
+      } else {
+        toast.error("Failed to delete connection");
+      }
+    } catch (error) {
+      console.error("Error deleting connection:", error);
+      toast.error("Error deleting connection");
+    }
+  };
+
   const actions = [
-  {
-    label: "View",
-    icon: <Eye size={16} />,
-    onClick: (row) => fetchViewConnections(row),
-  },
-  {
-    label: "Edit",
-    icon: <Pencil size={16} />,
-    onClick: (row) => openLocalModal('editCreate', row),
-  },
-  {
-    label: "Delete",
-    icon: <Trash2 size={16} />,
-    onClick: async (row) => {
-      try {
-        const response = await fetch(`${hostnameV2}/connection-views/${row.connection_name}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
+    {
+      label: "View",
+      icon: <Eye size={16} />,
+      onClick: (row) => fetchViewConnections(row),
+    },
+    {
+      label: "Edit",
+      icon: <Pencil size={16} />,
+      onClick: (row) => openLocalModal('editCreate', row),
+    },
+    {
+      label: "Delete",
+      icon: <Trash2 size={16} />,
+      onClick: async (row) => {
+        try {
+          const response = await fetch(`${hostnameV2}/connection-views/${row.connection_name}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
 
-        if (response.ok) {
-          const views = await response.json();
-          setConnectionViews(views);
+          const views = response.ok ? await response.json() : [];
 
-          if (views.length > 0) {
-            openModal({
-              title: "Confirm Deletion",
-              message: (
+          setDeleteModal({
+            open: true,
+            type: "connection",
+            message:
+              views.length > 0 ? (
                 <div>
-                  <p>All views associated with this connection will be deleted</p>
-                  <ul className="list-disc pl-5 mt-2">
-                    {views.map((view, index) => (
-                      <li key={index}>{view}</li>
+                  <p>All views associated with this connection will be deleted:</p>
+                  <ul className="list-disc pl-5 mt-2 text-sm text-gray-600">
+                    {views.map((view, i) => (
+                      <li key={i}>{view}</li>
                     ))}
                   </ul>
-                  <p className="mt-4">Are you sure you want to delete this connection?</p>
+                  <p className="mt-4">Are you sure you want to continue?</p>
                 </div>
+              ) : (
+                `Are you sure you want to delete connection ${row.connection_name}?`
               ),
-              type: "question",
-              onConfirm: () => deleteConnection(row.connection_id),
-              loadingText: "Deleting....."
-            });
-          } else {
-            // Show simple confirmation if no views exist
-            openModal({
-              title: "Confirm Deletion",
-              message: `Are you sure you want to delete connection ${row.connection_name}?`,
-              type: "question",
-              onConfirm: () => deleteConnection(row.connection_id),
-              loadingText: "Deleting....."
-            });
-          }
-        } else {
-          throw new Error('Failed to fetch views');
+            onConfirm: () => deleteConnection(row.connection_id),
+          });
+        } catch {
+          setDeleteModal({
+            open: true,
+            type: "connection",
+            message: `Are you sure you want to delete connection ${row.connection_name}?`,
+            onConfirm: () => deleteConnection(row.connection_id),
+          });
         }
-      } catch (error) {
-        console.error("Error fetching views:", error);
-        openModal({
-          title: "Confirm Deletion",
-          message: `Are you sure you want to delete connection ${row.connection_name}?`,
-          type: "question",
-          onConfirm: () => deleteConnection(row.connection_id),
-          loadingText: "Deleting....."
-        });
-      }
+      },
     },
-  },
-  {
-    label: "Run",
-    icon: <RotateCw size={16} />,
-    onClick: (row) => handleRefresh(row.connection_id),
-  },
-];
+    {
+      label: "Run",
+      icon: <RefreshCw size={16} />,
+      onClick: (row) => handleRefresh(row.connection_id),
+    },
+  ];
 
   const handleCardClick = (card) => {
     const url = `/componentType=connections&dataScope=${card.title
@@ -234,19 +265,17 @@ const Connections = () => {
           "Content-type": "application/json",
         },
       });
-      if (!projectsResponse.ok) {
-        throw new Error('Failed to fetch projects');
-      }
+      if (!projectsResponse.ok) throw new Error('Failed to fetch projects');
       const projectsList = await projectsResponse.json();
       setProjects(projectsList);
     } catch (error) {
-      console.error("Error fetching options:", error)
+      console.error("Error fetching options:", error);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    fetchProjects()
-  }, [fetchProjects])
+    fetchProjects();
+  }, [fetchProjects]);
 
   const filteredConnections = useMemo(() => {
     let filtered = connections;
@@ -267,40 +296,14 @@ const Connections = () => {
     return filtered;
   }, [connections, project, searchTerm]);
 
-  const deleteConnection = async (id) => {
-    try {
-      const response = await axios.delete(`${hostnameV1}/connection-saves/${id}`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.status === 200) {
-        refetchConnections();
-      } else {
-        toast.error("Failed to delete connection");
-      }
-    } catch (error) {
-      console.error("Error deleting connection:", error);
-      toast.error("Error deleting connection");
-    }
-    finally {
-      openModal({
-        title: "Success",
-        message: `Your connection has been deleted successfully!`,
-        type: "success",
-        onConfirm: () => closeLocalModal,
-        loadingText: 'Deleting'
-      })
-    }
-  };
-
   return (
     <div className="p-6">
+      <Breadcrumb title="Platform" link={"/"} />
+
       <div className="flex gap-2 mb-6 items-center justify-between">
         <h1 className="text-2xl font-semibold">Connections</h1>
-        <div className="flex items-center gap-4">
+
+        <div className="flex items-center gap-2">
           <div className="relative">
             <input
               type="text"
@@ -312,39 +315,111 @@ const Connections = () => {
             <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
           </div>
 
-          <select
-            value={project}
-            onChange={(e) => {
-              const projectName = e.target.value;
-              setSelectedProject(projectName);
-            }}
-            className="w-44 text-slate-500 font-medium rounded-lg text-sm px-1 py-2.5 me-2 mb-2 text-center inline-flex items-center dark:bg-white shadow-md"
-          >
-            <option value="default">Default{" "}</option>
-            {projects?.map((project, idx) => (
-              <option key={idx} value={project?.project}
+          <div className="relative">
+            <select
+              value={project}
+              onChange={(e) => setSelectedProject(e.target.value)}
+              className="w-44 appearance-none text-slate-500 font-medium rounded-lg text-sm px-4 py-2 h-10 inline-flex items-center bg-white shadow-sm border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] cursor-pointer"
+            >
+              <option value="default">Default</option>
+              {projects?.map((p, idx) => (
+                <option key={idx} value={p?.project}>
+                  {p?.project}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-3 h-4 w-4 text-gray-500 pointer-events-none" />
+          </div>
+
+          <div className="relative flex items-center" ref={autoRefreshMenuRef}>
+            <div className="flex rounded-lg border border-gray-400 hover:bg-gray-50 h-10">
+              <button
+                className="w-10 flex items-center justify-center border-r border-gray-300"
+                onClick={() => {
+                  refetchConnections();
+                  refetchCardData();
+                  toast.success("Connections data refreshed successfully");
+                }}
+                title="Refresh data"
+                disabled={isConnectionsLoading || isCardLoading}
               >
-                {project?.project}
-              </option>
-            ))}
-          </select>
-          {/* <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4 mr-2 mb-2">
-            <ChevronDown className="h-4 w-4 text-gray-500" />
-          </div> */}
+                <RefreshCcw
+                  className={`h-5 w-5 text-gray-600 ${(isConnectionsLoading || isCardLoading) ? "animate-spin" : ""}`}
+                />
+              </button>
+              <button
+                className="px-2 flex items-center justify-center"
+                onClick={() => setIsAutoRefreshMenuOpen(!isAutoRefreshMenuOpen)}
+                title="Auto Refresh Settings"
+              >
+                <ChevronDown className="h-4 w-4 text-gray-600" />
+              </button>
+            </div>
+
+            {isAutoRefreshMenuOpen && (
+              <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
+                <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                  Auto Refresh
+                </div>
+                {[
+                  { label: "Off", value: 0 },
+                  { label: "5 seconds", value: 5000 },
+                  { label: "10 seconds", value: 10000 },
+                  { label: "1 minute", value: 60000 },
+                  { label: "2 minutes", value: 120000 },
+                  { label: "5 minutes", value: 300000 },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center justify-between ${autoRefreshInterval === option.value ? "text-[#8d77ba] font-medium bg-purple-50" : "text-gray-700"
+                    }`}
+                    onClick={() => {
+                      setAutoRefreshInterval(option.value);
+                      setIsAutoRefreshMenuOpen(false);
+                    }}
+                  >
+                    {option.label}
+                    {autoRefreshInterval === option.value && (
+                      <CheckCircle className="h-4 w-4" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button
+            className={`w-10 h-10 flex items-center justify-center rounded-lg border ${viewMode === "list"
+              ? "bg-gray-100 border-gray-500"
+              : "border-gray-400"
+            } hover:bg-gray-50`}
+            onClick={() => setViewMode(viewMode === "list" ? "both" : "list")}
+            title={viewMode === "list" ? "Show All Views" : "Show List Only"}
+          >
+            <Icon
+              icon="material-symbols-light:format-list-bulleted"
+              width="24"
+              height="24"
+              className="text-[#8d77ba]"
+            />
+          </button>
 
           <button
             onClick={() => {
               openLocalModal("editCreate", null)
             }}
             type="button"
-            className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+            className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] h-10 focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2 flex items-center justify-center dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
-            + Add Connector
+            <Icon icon="material-symbols:add" width="20" height="20" className="mr-1 inline-block" />
+            Create
           </button>
         </div>
       </div>
 
-      <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading} />
+      {viewMode !== "list" && (
+        <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading} />
+      )}
 
       <DataTable
         columns={columns}
@@ -369,6 +444,34 @@ const Connections = () => {
           connectionDetails={connectionDetails}
           closeModal={closeLocalModal}
         />
+      )}
+
+      {deleteModal.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl w-[400px] p-8 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-[#8e78b7] mb-4">Confirm Deletion</h2>
+            <div className="mb-6 text-gray-700">
+              {deleteModal.message}
+            </div>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setDeleteModal({ open: false, type: null, message: null, onConfirm: null })}
+                className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  deleteModal.onConfirm();
+                  setDeleteModal({ open: false, type: null, message: null, onConfirm: null });
+                }}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import { FileText, Database, FolderKanban, Box, Scale, ArrowUp, ArrowDown, Info, Activity, Search, List, RefreshCw, BookOpenText, Archive, Trash2, Rocket, Palette, BookOpen, Gauge, LayoutGrid, Loader2 } from 'lucide-react';
+import { FileText, Database, FolderKanban, Box, Scale, ArrowUp, ArrowDown, Info, Activity, Search, List, RefreshCw, BookOpenText, Archive, Trash2, Rocket, Palette, BookOpen, Gauge, LayoutGrid, Loader2, X, Zap } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { useState, useMemo, useEffect } from 'react';
 import Breadcrumb from '../../../components/Breadcrumb';
@@ -17,6 +17,23 @@ import { aithemestyle } from '../../../components/themeContext';
 import DatasetsIcon from '../../../assets/ai/datadataseticon.svg';
 import SizeIcon from '../../../assets/ai/datasizeicon.svg';
 import AdditionIcons from '../../../assets/ai/dataadditionicon.svg';
+import BoltIcon from '../../../assets/ai/bolt.svg';
+
+
+const F1ModeModal = ({ isOpen }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
+        <div className="flex flex-col items-center">
+          <Loader2 className="w-16 h-16 animate-spin mb-4" style={{ color: aithemestyle.iconColor }} />
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Opening F1 Mode</h3>
+          <p className="text-gray-600 text-center">Fetching dataset information...</p>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 
 const Data = () => {
@@ -45,7 +62,10 @@ const Data = () => {
   const [recentAccessed, setRecentAccessed] = useState([]);
   const [recentAccessedLoading, setRecentAccessedLoading] = useState(false);
   const [recentAccessedError, setRecentAccessedError] = useState(null);
-  const { setProjectState, setDatasetState, setMode } = useAIPlayground();
+
+  const [f1ModalOpen, setF1ModalOpen] = useState(false);
+
+  const { setProjectState, setDatasetState, setMode, setF1Mode } = useAIPlayground();
 
   const navigate = useNavigate();
   const { token, decodedToken } = useAuth();
@@ -341,18 +361,57 @@ const Data = () => {
     });
   };
 
-  const handleF1Mode = async (row) => {
-    console.log('F1 Mode:', row);
-    await updateRecentAccess({
-      row,
-      entityType: 'data',
-      hostnameAI,
-      token,
-      userId: decodedToken?.sub,
-      setRecentList: setRecentAccessed,
-      setRecentLoading: setRecentAccessedLoading,
-      limit: 5,
-    });
+  const handleF1ModeClick = async (row) => {
+    setF1ModalOpen(true);
+    try {
+      const sqRes = await fetch(`${window._env_?.VITE_FAST_API}/secure-query`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_query: '' }),
+      });
+      if (!sqRes.ok) throw new Error('Failed to fetch policy IDs');
+      const sqData = await sqRes.json();
+
+      const tableName = row?.file_name || row?.dataset_name || row?.table_name || row?.name;
+
+      const res = await fetch(`${hostnameAI}/data/f1/ingestion`, {
+        method: 'POST',
+        headers: { accept: 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table_name: tableName,
+          user_name: decodedToken?.preferred_username,
+          policy_id: sqData.matched_policy_ids,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to ingest data for F1 Mode');
+      const ingestionData = await res.json();
+
+      setF1Mode({
+        session_id: ingestionData.session_id,
+        column_names: ingestionData.column_names || [],
+        selected_table: tableName,
+      });
+
+      await updateRecentAccess({
+        row,
+        entityType: 'data',
+        hostnameAI,
+        token,
+        userId: decodedToken?.sub,
+        setRecentList: setRecentAccessed,
+        setRecentLoading: setRecentAccessedLoading,
+        limit: 5,
+      });
+
+      navigate('/ai/f1mode');
+    } catch (err) {
+      toast.error('Failed to launch F1 Mode', {
+        duration: 4000,
+        position: 'top-right',
+      });
+    } finally {
+      setF1ModalOpen(false);
+    }
   };
 
   const handleAICanvas = async (row) => {
@@ -483,12 +542,12 @@ const Data = () => {
       onClick: handleLibrary,
       tooltip: 'Library',
     },
-    // {
-    //   label: 'F1 Mode',
-    //   icon: <Gauge className="w-4 h-4" />,
-    //   onClick: handleF1Mode,
-    //   tooltip: 'F1 Mode',
-    // },
+    {
+      label: 'F1 Mode',
+      icon: <Zap className="w-4 h-4" style={{ color: 'rgba(129, 129, 129, 1)' }} />,
+      onClick: handleF1ModeClick,
+      tooltip: 'F1 Mode',
+    },
     {
       label: 'AI Playground',
       icon: <Palette className="w-4 h-4" />,
@@ -778,7 +837,7 @@ const Data = () => {
                 ) : recentAccessedError ? (
                   <div className="text-center py-8 text-red-500">{recentAccessedError}</div>
                 ) : lastAccessedData.length > 0 ? (
-                  <div  style={{ maxHeight: '220px' }}>
+                  <div style={{ maxHeight: '220px' }}>
                     {lastAccessedData.map((item, index) => (
                       <div key={index}>
                         <div className="flex items-center py-2.5 px-2 hover:bg-gray-50 min-w-0 gap-2">
@@ -795,10 +854,10 @@ const Data = () => {
                           <span className="text-xs text-gray-400 shrink-0 w-[110px] text-right tabular-nums">
                             {item.accessed_at
                               ? item.accessed_at.toLocaleString('en-GB', {
-                                  day: '2-digit',
-                                  month: 'short',
-                                  year: 'numeric',
-                                })
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                              })
                               : '—'}
                           </span>
                           <button
@@ -865,6 +924,8 @@ const Data = () => {
         loading={unarchiveLoading}
         confirmText="Unarchive"
       />
+
+      <F1ModeModal isOpen={f1ModalOpen} />
 
       {aiCanvasLoading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

@@ -834,15 +834,21 @@ function Models() {
           </div>
         </div>
         <div className="mt-4 overflow-y-auto max-h-[270px] pr-1">
-          {alertsData.map((alert, index) => (
-            <div key={index} className="grid items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors" style={{ gridTemplateColumns: "auto 1fr 160px" }}>
-              <div className="flex-shrink-0 w-2 h-2 rounded-full" style={{ backgroundColor: alert.type === "drift" ? "#fb923c" : "#60a5fa" }} />
-              <span className="text-sm text-gray-800 truncate" title={alert.name}>{alert.name}</span>
-              <span className={`text-xs font-medium text-left truncate ${alert.trend === "up" ? "text-green-500" : "text-orange-500"}`} title={alert.issue}>
-                {alert.issue}
-              </span>
+          {alertsData.length === 0 ? (
+            <div className="flex items-center justify-center min-h-[200px] text-gray-500 text-sm">
+              No Alerts Available
             </div>
-          ))}
+          ) : (
+            alertsData.map((alert, index) => (
+              <div key={index} className="grid items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors" style={{ gridTemplateColumns: "auto 1fr 160px" }}>
+                <div className="flex-shrink-0 w-2 h-2 rounded-full" style={{ backgroundColor: alert.type === "drift" ? "#fb923c" : "#60a5fa" }} />
+                <span className="text-sm text-gray-800 truncate" title={alert.name}>{alert.name}</span>
+                <span className={`text-xs font-medium text-left truncate ${alert.trend === "up" ? "text-green-500" : "text-orange-500"}`} title={alert.issue}>
+                  {alert.issue}
+                </span>
+              </div>
+            ))
+          )}
         </div>
       </div>
     );

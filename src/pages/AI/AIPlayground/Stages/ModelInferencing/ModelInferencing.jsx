@@ -403,8 +403,8 @@ const ModelInferencing = () => {
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors capitalize ${activeTab === tab
-                      ? 'border-[#8e78b7] text-[#8e78b7]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-[#8e78b7] text-[#8e78b7]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     }`}
                 >
                   {tab}

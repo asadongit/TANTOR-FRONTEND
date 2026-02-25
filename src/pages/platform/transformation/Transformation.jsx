@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import toast from "react-hot-toast";
 import {
   RefreshCcw,
   Search,
@@ -9,6 +10,7 @@ import {
   CheckCircle,
   Loader,
   Expand,
+  ChevronDown,
 } from "lucide-react";
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
@@ -50,13 +52,9 @@ function Transformation() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
-  const [toast, setToast] = useState({ show: false, message: "", type: "" });
   const [viewMode, setViewMode] = useState("both");
   const [transformationData, setTransformationData] = useState([]);
-  const [deleteModal, setDeleteModal] = useState({
-    isOpen: false,
-    transformation: null,
-  });
+  const [deleteModal, setDeleteModal] = useState({ open: false, type: null, onConfirm: null });
   const [dashboardData, setDashboardData] = useState({
     cards: { total: 0, success: 0, failed: 0, average_duration: 0 },
     last5transformations: [],
@@ -74,6 +72,11 @@ function Transformation() {
     data: null,
     dagId: null,
   });
+
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(0); // 0 = off
+  const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
+  const autoRefreshMenuRef = useRef(null);
+
   const { project, decodedToken, token } = useAuth();
 
   const hostname = window._env_?.VITE_FAST_API;
@@ -114,8 +117,29 @@ function Transformation() {
     fetchDashboardData();
   }, [project, decodedToken]);
 
-  const fetchTransformationData = async () => {
-    setIsLoading(true);
+  useEffect(() => {
+    if (autoRefreshInterval === 0) return;
+
+    const interval = setInterval(() => {
+      fetchTransformationData(false);
+      fetchDashboardData();
+    }, autoRefreshInterval);
+
+    return () => clearInterval(interval);
+  }, [autoRefreshInterval, project, decodedToken]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (autoRefreshMenuRef.current && !autoRefreshMenuRef.current.contains(event.target)) {
+        setIsAutoRefreshMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const fetchTransformationData = async (showLoader = true) => {
+    if (showLoader) setIsLoading(true);
     try {
       const response = await axios.get(
         `${hostname}/etl/transformation/tableview?project=${project}&created_by=${decodedToken.preferred_username}`,
@@ -130,15 +154,13 @@ function Transformation() {
         (a, b) => new Date(b.created_at) - new Date(a.created_at)
       );
       setTransformationData(sortedData);
-      setIsLoading(false);
     } catch (error) {
       console.error("Error fetching transformation data:", error);
-      setToast({
-        show: true,
-        message: "Failed to fetch transformation data",
-        type: "error",
-      });
-      setIsLoading(false);
+      if (showLoader) {
+        toast.error("Failed to fetch transformation data");
+      }
+    } finally {
+      if (showLoader) setIsLoading(false);
     }
   };
 
@@ -155,11 +177,7 @@ function Transformation() {
       setDashboardData(response.data);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
-      setToast({
-        show: true,
-        message: "Failed to fetch dashboard data",
-        type: "error",
-      });
+      toast.error("Failed to fetch dashboard data");
     }
   };
 
@@ -211,22 +229,11 @@ function Transformation() {
     try {
       await fetchTransformationData();
       await fetchDashboardData();
-      setToast({
-        show: true,
-        message: "Transformation data refreshed successfully",
-        type: "success",
-      });
+      toast.success("Transformation data refreshed successfully");
     } catch (error) {
-      setToast({
-        show: true,
-        message: "Failed to refresh transformation data",
-        type: "error",
-      });
+      toast.error("Failed to refresh transformation data");
     } finally {
       setIsLoading(false);
-      setTimeout(() => {
-        setToast({ show: false, message: "", type: "" });
-      }, 3000);
     }
   };
 
@@ -310,11 +317,10 @@ function Transformation() {
                 setCurrentPage((prev) => Math.min(prev + 1, totalPages - 1))
               }
               disabled={currentPage >= totalPages - 1}
-              className={`p-1 rounded-md ${
-                currentPage >= totalPages - 1
-                  ? "text-gray-300 cursor-not-allowed"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
+              className={`p-1 rounded-md ${currentPage >= totalPages - 1
+                ? "text-gray-300 cursor-not-allowed"
+                : "text-gray-700 hover:bg-gray-100"
+                }`}
               title="View older data"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -327,11 +333,10 @@ function Transformation() {
             <button
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 0))}
               disabled={currentPage <= 0}
-              className={`p-1 rounded-md ${
-                currentPage <= 0
-                  ? "text-gray-300 cursor-not-allowed"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
+              className={`p-1 rounded-md ${currentPage <= 0
+                ? "text-gray-300 cursor-not-allowed"
+                : "text-gray-700 hover:bg-gray-100"
+                }`}
               title="View newer data"
             >
               <ChevronRight className="w-5 h-5" />
@@ -390,7 +395,7 @@ function Transformation() {
               <Line
                 type="monotone"
                 dataKey="total"
-                stroke="#ff5555"
+                stroke="#8d77ba"
                 name="Total"
                 strokeWidth={2}
                 dot={{ r: 3 }}
@@ -408,7 +413,7 @@ function Transformation() {
               <Line
                 type="monotone"
                 dataKey="failed"
-                stroke="#5555aa"
+                stroke="#ff5555"
                 name="Failed"
                 strokeWidth={2}
                 dot={{ r: 3 }}
@@ -425,7 +430,7 @@ function Transformation() {
     const lastTransformations = dashboardData.last5transformations || [];
 
     return (
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-full">
         <div className="flex items-center gap-2 mb-4">
           <Icon
             icon="material-symbols:history"
@@ -468,30 +473,34 @@ function Transformation() {
         }
       );
       if (response.status === 200) {
-        setToast({
-          show: true,
-          message: "ETL Job in progress",
-          type: "success",
-        });
+        toast.success("ETL Job in progress");
+
+        // Immediately fetch fresh data when triggered
+        fetchTransformationData(false);
+        fetchDashboardData();
       }
     } catch (error) {
       console.error("Error triggering ETL job:", error);
-      setToast({
-        show: true,
-        message: "Failed to trigger ETL job",
-        type: "error",
-      });
+      toast.error("Failed to trigger ETL job");
     } finally {
       setIsLoading(false);
-      setTimeout(() => {
-        setToast({ show: false, message: "", type: "" });
-      }, 3000);
     }
   };
 
-  const handleDeleteTransformation = (transformation) => {
-    setDeleteModal({ isOpen: true, transformation });
-  };
+  const handleDeleteTransformation = (row) => {
+  setDeleteModal({
+    open: true,
+    type: "transformation",
+    onConfirm: async () => {
+      try {
+        const success = await confirmDeleteTransformation(row.transformation_id);
+        if (success) toast.success("Transformation deleted successfully");
+      } catch {
+        toast.error("Failed to delete transformation");
+      }
+    },
+  });
+};
 
   const confirmDeleteTransformation = async (transformationId) => {
     try {
@@ -512,14 +521,7 @@ function Transformation() {
       return false;
     } catch (error) {
       console.error("Error deleting transformation:", error);
-      setToast({
-        show: true,
-        message: "Failed to delete transformation",
-        type: "error",
-      });
-      setTimeout(() => {
-        setToast({ show: false, message: "", type: "" });
-      }, 3000);
+      toast.error("Failed to delete transformation");
       throw error;
     }
   };
@@ -575,11 +577,10 @@ function Transformation() {
               });
             }
           }}
-          className={`${
-            row.source_count && Object.keys(row.source_count).length > 0
-              ? "text-blue-600 hover:underline cursor-pointer"
-              : "text-gray-900 cursor-default"
-          }`}
+          className={`${row.source_count && Object.keys(row.source_count).length > 0
+            ? "text-blue-600 hover:underline cursor-pointer"
+            : "text-gray-900 cursor-default"
+            }`}
         >
           {calculateTotalCount(row.source_count)}
         </button>
@@ -601,18 +602,17 @@ function Transformation() {
               });
             }
           }}
-          className={`${
-            row.target_count && Object.keys(row.target_count).length > 0
-              ? "text-blue-600 hover:underline cursor-pointer"
-              : "text-gray-900 cursor-default"
-          }`}
+          className={`${row.target_count && Object.keys(row.target_count).length > 0
+            ? "text-blue-600 hover:underline cursor-pointer"
+            : "text-gray-900 cursor-default"
+            }`}
         >
           {calculateTotalCount(row.target_count)}
         </button>
       ),
     },
     { key: "duration", label: "Duration", sortable: true },
-     {
+    {
       key: "status",
       label: "Status",
       sortable: true,
@@ -630,7 +630,7 @@ function Transformation() {
               <ExternalLink className="ml-1 w-3 h-3" />
             </button>
           );
-        } else if (row.status === "Success") {
+        } else if (row.status === "Success" || row.status === "success") {
           className += " bg-green-100 text-green-600";
         } else {
           className += " bg-gray-100 text-gray-600";
@@ -712,143 +712,6 @@ function Transformation() {
     }
   };
 
-  const DeleteTransformation = ({
-    isOpen,
-    onClose,
-    transformationData,
-    onConfirmDelete,
-  }) => {
-    const [isLoading, setIsLoading] = useState(false);
-    const [isDeleted, setIsDeleted] = useState(false);
-
-    useEffect(() => {
-      if (isOpen) {
-        setIsDeleted(false);
-        setIsLoading(false);
-      }
-    }, [isOpen, transformationData]);
-
-    if (!isOpen || !transformationData) return null;
-
-    const handleClose = () => {
-      setIsDeleted(false);
-      setIsLoading(false);
-      onClose();
-    };
-
-    const handleConfirm = async () => {
-      setIsLoading(true);
-
-      try {
-        const success = await onConfirmDelete(
-          transformationData.transformation_id
-        );
-        if (success) {
-          setToast({
-            show: true,
-            message: "Transformation deleted successfully",
-            type: "success",
-          });
-          setTimeout(() => {
-            setToast({ show: false, message: "", type: "" });
-          }, 3000);
-          onClose();
-        }
-      } catch (error) {
-        console.error("Error deleting transformation:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-2xl w-[500px] p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              {isDeleted ? (
-                <CheckCircle className="h-5 w-5 text-green-500" />
-              ) : (
-                <AlertTriangle className="h-5 w-5 text-red-500" />
-              )}
-              <h2 className="text-xl font-bold text-red-500">
-                {isDeleted ? "Transformation Deleted" : "Delete Confirmation"}
-              </h2>
-            </div>
-            {!isLoading && (
-              <button
-                onClick={handleClose}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            )}
-          </div>
-
-          <div className="mb-8">
-            {isLoading && (
-              <div className="p-4 bg-gray-50 rounded-lg text-center mb-6 flex flex-col items-center">
-                <Loader className="h-16 w-16 text-blue-500 mx-auto mb-4 animate-spin" />
-                <p className="text-lg font-medium text-gray-800">
-                  Deleting transformation...
-                </p>
-              </div>
-            )}
-
-            {isDeleted && (
-              <div className="p-4 bg-green-50 rounded-lg text-center mb-6">
-                <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
-                <p className="text-lg font-medium text-gray-800">
-                  Transformation "{transformationData.transformation_name}"
-                  deleted successfully
-                </p>
-                <button
-                  onClick={handleClose}
-                  className="mt-6 px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            )}
-
-            {!isLoading && !isDeleted && (
-              <>
-                <div className="p-4 bg-red-50 rounded-lg text-center mb-6">
-                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-2" />
-                  <p className="text-lg font-medium text-gray-800">
-                    You are about to delete the transformation "
-                    {transformationData.transformation_name}"
-                  </p>
-                  <p className="text-gray-500 mt-2">
-                    This action cannot be undone.
-                  </p>
-                </div>
-                <p className="text-gray-600 text-center mb-6">
-                  Do you want to continue?
-                </p>
-
-                <div className="flex justify-center gap-4">
-                  <button
-                    onClick={handleConfirm}
-                    className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                  >
-                    Yes
-                  </button>
-                  <button
-                    onClick={handleClose}
-                    className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
-                  >
-                    No
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   const DagErrorModal = ({ isOpen, onClose, isLoading, data }) => {
     if (!isOpen) return null;
 
@@ -876,9 +739,8 @@ function Transformation() {
                 {data.status && (
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-gray-500 w-28">Status:</span>
-                    <span className={`text-sm font-medium px-2 py-0.5 rounded ${
-                      data.status === "FAILED" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-700"
-                    }`}>{data.status}</span>
+                    <span className={`text-sm font-medium px-2 py-0.5 rounded ${data.status === "FAILED" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-700"
+                      }`}>{data.status}</span>
                   </div>
                 )}
 
@@ -957,30 +819,6 @@ function Transformation() {
     <div className="p-6">
       <style>{rotateAnimation}</style>
 
-      {toast.show && (
-        <div
-          className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
-            toast.type === "success"
-              ? "bg-green-100 text-green-800 border-l-4 border-green-500"
-              : "bg-red-100 text-red-800 border-l-4 border-red-500"
-          }`}
-        >
-          <Icon
-            icon={
-              toast.type === "success" ? "mdi:check-circle" : "mdi:alert-circle"
-            }
-            className="h-5 w-5"
-          />
-          <p>{toast.message}</p>
-          <button
-            onClick={() => setToast({ show: false, message: "", type: "" })}
-            className="ml-2 text-gray-500 hover:text-gray-700"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
-
       <Breadcrumb title="Platform" link={"/"} />
 
       <div className="flex gap-4 mb-6 items-center justify-between">
@@ -998,23 +836,64 @@ function Transformation() {
             <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
           </div>
 
-          <button
-            className="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-400 hover:bg-gray-50"
-            onClick={handleRefresh}
-            title="Refresh data"
-            disabled={isLoading}
-          >
-            <RefreshCcw
-              className={`h-5 w-5 text-gray-600 ${isLoading ? "icon-rotate" : ""}`}
-            />
-          </button>
+          <div className="relative flex items-center" ref={autoRefreshMenuRef}>
+            <div className="flex rounded-lg border border-gray-400 hover:bg-gray-50 h-10">
+              <button
+                className="w-10 flex items-center justify-center border-r border-gray-300"
+                onClick={handleRefresh}
+                title="Refresh data"
+                disabled={isLoading}
+              >
+                <RefreshCcw
+                  className={`h-5 w-5 text-gray-600 ${isLoading ? "icon-rotate" : ""}`}
+                />
+              </button>
+              <button
+                className="px-2 flex items-center justify-center"
+                onClick={() => setIsAutoRefreshMenuOpen(!isAutoRefreshMenuOpen)}
+                title="Auto Refresh Settings"
+              >
+                <ChevronDown className="h-4 w-4 text-gray-600" />
+              </button>
+            </div>
+
+            {isAutoRefreshMenuOpen && (
+              <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
+                <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                  Auto Refresh
+                </div>
+                {[
+                  { label: "Off", value: 0 },
+                  { label: "5 seconds", value: 5000 },
+                  { label: "10 seconds", value: 10000 },
+                  { label: "1 minute", value: 60000 },
+                  { label: "2 minutes", value: 120000 },
+                  { label: "5 minutes", value: 300000 },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center justify-between ${autoRefreshInterval === option.value ? "text-[#8d77ba] font-medium bg-purple-50" : "text-gray-700"
+                      }`}
+                    onClick={() => {
+                      setAutoRefreshInterval(option.value);
+                      setIsAutoRefreshMenuOpen(false);
+                    }}
+                  >
+                    {option.label}
+                    {autoRefreshInterval === option.value && (
+                      <CheckCircle className="h-4 w-4" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           <button
-            className={`w-10 h-10 flex items-center justify-center rounded-lg border ${
-              viewMode === "list"
-                ? "bg-gray-100 border-gray-500"
-                : "border-gray-400"
-            } hover:bg-gray-50`}
+            className={`w-10 h-10 flex items-center justify-center rounded-lg border ${viewMode === "list"
+              ? "bg-gray-100 border-gray-500"
+              : "border-gray-400"
+              } hover:bg-gray-50`}
             onClick={() => setViewMode(viewMode === "list" ? "both" : "list")}
             title={viewMode === "list" ? "Show All Views" : "Show List Only"}
           >
@@ -1061,9 +940,13 @@ function Transformation() {
             showDetails={false}
           />
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-            <MovementChart />
-            <LastTransformations />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+            <div className="lg:col-span-2">
+              <MovementChart />
+            </div>
+            <div className="lg:col-span-1">
+              <LastTransformations />
+            </div>
           </div>
         </>
       )}
@@ -1078,12 +961,33 @@ function Transformation() {
         title="Transformations"
       />
 
-      <DeleteTransformation
-        isOpen={deleteModal.isOpen}
-        onClose={() => setDeleteModal({ isOpen: false, transformation: null })}
-        transformationData={deleteModal.transformation}
-        onConfirmDelete={confirmDeleteTransformation}
-      />
+      {deleteModal.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl w-[400px] p-8 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-[#8e78b7] mb-4">Confirm Deletion</h2>
+            <p className="mb-6 text-gray-700">
+              Are you sure you want to delete this {deleteModal.type}?
+            </p>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setDeleteModal({ open: false, type: null, onConfirm: null })}
+                className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  deleteModal.onConfirm();
+                  setDeleteModal({ open: false, type: null, onConfirm: null });
+                }}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <CountDetailsModal
         isOpen={countModal.isOpen}

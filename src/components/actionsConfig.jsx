@@ -3,7 +3,7 @@ import React from "react";
 import { Pencil, Trash2, Play, Pause, Eye, EyeIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import { deleteCDCConnectors } from "../hooks/platform/cdc";
-export const getActionConfigurations = ({ token, project, hostnameV2, navigate }) => {
+export const getActionConfigurations = ({ token, project, hostnameV2, hostnameV1, navigate, setDeleteModal  }) => {
   // Modal state management function to be used in component
   const showDeleteConfirmation = (cdcId, onConfirm) => {
     // Create modal element
@@ -84,12 +84,72 @@ export const getActionConfigurations = ({ token, project, hostnameV2, navigate }
       {
         label: "Edit",
         icon: React.createElement(Pencil, { size: 16 }),
-        onClick: (row) => console.log("Edit Migration", row),
+        onClick: (row) => {
+          try {
+            const nodeJson = row.ui_json
+              ? JSON.parse(JSON.stringify(row.ui_json))
+              : null;
+
+            console.log("Fetched Migration Node JSON:", nodeJson);
+            
+            if (nodeJson) {
+              navigate("/migrationCanvas", {
+                state: { nodeJson, isEditMode: true, migration_id: row.migration_id },
+              });
+            } else {
+              toast.error("No migration node data found.");
+            }
+          } catch (error) {
+            toast.error("Failed to fetch migration node data.");
+          }
+        }
       },
       {
         label: "Delete",
         icon: React.createElement(Trash2, { size: 16 }),
-        onClick: (row) => console.log("Delete Migration", row),
+        onClick: async (row) => {
+          setDeleteModal({
+            open: true,
+            type: "migration",
+            onConfirm: async () => {
+              try {
+                await axios.delete(`${hostnameV2}/delete-migration/${row.migration_id}`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                toast.success("Migration removed from platform.");
+              } catch (error) {
+                toast.error("Failed to remove migration.");
+              }
+            },
+          });
+        },
+      },
+    ],
+    purge: [
+      {
+        label: "Edit",
+        icon: React.createElement(Pencil, { size: 16 }),
+        onClick: (row) => navigate("/PurgeCanvas", {state: {ui_json: row?.ui_json, purge_id: row?.purge_id}}),
+      },
+      {
+        label: "Delete",
+        icon: React.createElement(Trash2, { size: 16 }),
+        onClick: async (row) => {
+          setDeleteModal({
+            open: true,
+            type: "purge",
+            onConfirm: async () => {
+              try {
+                await axios.delete(`${hostnameV1}/purges/${row.purge_id}`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                toast.success("Purge removed from platform.");
+              } catch (error) {
+                toast.error("Failed to remove Purge.");
+              }
+            },
+          });
+        },
       },
     ],
     rules: [
