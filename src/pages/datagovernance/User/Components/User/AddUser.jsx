@@ -546,7 +546,7 @@ const handlePolicyComplete = (policyDetails) => {
 
                 {allPolicies.length > 0 && (
   <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-    <p className="text-sm font-medium mb-3 text-gray-700">Assigned Policies:</p>
+    <p className="text-sm font-medium mb-3 text-gray-700">Assigned Policy:</p>
     {isFetchingPolicyNames ? (
       <div className="flex items-center justify-center py-6">
         <Loader className="h-5 w-5 animate-spin text-[#8e78b7]" />
@@ -560,7 +560,6 @@ const handlePolicyComplete = (policyDetails) => {
             className="bg-white p-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors flex items-center justify-between group"
           >
             <div className="flex items-start gap-2 flex-1">
-              <span className="text-sm text-gray-500 flex-shrink-0">{index + 1}.</span>
               <div className="flex flex-col min-w-0">
                 <p
                   className="text-sm font-semibold text-gray-900 truncate flex items-center"
@@ -568,15 +567,6 @@ const handlePolicyComplete = (policyDetails) => {
                 >
                   {policy.name}
 
-                  <span
-                    className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
-                      policy.status === "inactive"
-                        ? "bg-gray-200 text-gray-600"
-                        : "bg-green-100 text-green-600"
-                    }`}
-                  >
-                    {policy.status === "inactive" ? "Inactive" : "Active"}
-                  </span>
                 </p>
 
                 {(policy.policyName || policy.subPolicyName) && (

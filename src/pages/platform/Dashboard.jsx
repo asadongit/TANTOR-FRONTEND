@@ -178,14 +178,13 @@ const Dashboard = () => {
           </div>
         ))}
       </div>
-      <div className="mt-10">
+      {/* <div className="mt-10">
         <h1 className="text-xl font-bold text-black"
         >
           Your Activities
         </h1>
       </div>
       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Card 1 */}
         <div className="col-span-1 p-4 bg-white border rounded-lg shadow-md">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-lg font-semibold">Favourites</h2>
@@ -218,7 +217,7 @@ const Dashboard = () => {
             <p className="text-gray-600">Your favourites list is empty</p>
           )}
         </div>
-        {/* Card 2 */}
+
         <div className="col-span-1 p-4 bg-white border rounded-lg shadow-md">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-lg font-semibold">Updated</h2>
@@ -251,7 +250,7 @@ const Dashboard = () => {
             <p className="text-gray-600">Your update list is empty</p>
           )}
         </div>
-        {/* Card 3 */}
+
         <div className="col-span-1 p-4 bg-white border rounded-lg shadow-md">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-lg font-semibold">History</h2>
@@ -284,7 +283,7 @@ const Dashboard = () => {
             <p className="text-gray-600">No history available.</p>
           )}
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };

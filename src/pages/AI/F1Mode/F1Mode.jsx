@@ -1,424 +1,895 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import flagIcon from '../../../assets/flag.png';
 import { Icon } from '@iconify/react';
+import { X, AlertTriangle } from 'lucide-react';
+import F1SelectDataModal from './modals/F1SelectDataModal';
+import { useAIPlayground } from '../../../context/AIPlaygroundContext';
+import ArrowDownIcon from '../../../assets/ai/keyboard_arrow_down.svg';
+import SpeedIcon from '../../../assets/ai/speed.svg';
+import RaceTrack from './RaceTrack';
+import BackupIcon from '../../../assets/ai/backup.svg';
+import ArrowBackIcon from '../../../assets/ai/arrow_back.svg';
+import F1ModelInferencing from './F1ModelInferencing';
+import F1XAI from './F1xai';
+import FlagIconSvg from '../../../assets/ai/icon-race.svg';
+import TableRowsIcon from '../../../assets/ai/table_rows.svg';
+import TuneIcon from '../../../assets/ai/tune.svg';
+import CrownIcon from '../../../assets/ai/crown.svg';
+import { useNavigate } from 'react-router-dom';
 
-// Track node positions as percentages of the SVG viewBox
-const TRACK_NODES = [
-  { id: 'L1', x: 80,  y: 195 },
-  { id: 'L2', x: 195, y: 105 },
-  { id: 'L3', x: 330, y: 80  },
-  { id: 'L4', x: 470, y: 80  },
-  { id: 'L5', x: 600, y: 105 },
-  { id: 'L6', x: 680, y: 195 },
-  { id: 'L7', x: 600, y: 295 },
-];
+const API_URL = `${window._env_?.VITE_AI_API}/data/f1/launch`;
 
-function RaceTrack() {
-  const trackPath =
-    'M 80 195 C 80 130, 130 80, 195 105 L 330 80 L 470 80 L 600 105 C 660 130, 700 160, 680 195 C 660 240, 640 270, 600 295 L 470 310 L 330 310 C 200 310, 80 265, 80 195 Z';
+
+const getBarColor = (score) => {
+  if (score === null) return '#D9D9D9';
+  const pct = score * 100;
+  if (pct >= 80) return '#34BB64';
+  if (pct >= 60) return '#FF990A';
+  return '#DB3665';
+};
+
+const TASK_OPTIONS = ['binary', 'multiclass', 'regression', 'timeseries'];
+const METRIC_OPTIONS = ['accuracy', 'log_loss', 'precision', 'recall', 'f1'];
+
+const formatLabel = (value) => {
+  if (!value) return '';
+  return value
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
+function Dropdown({ label, options, value, onChange, disabled, multiple, searchable }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const h = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const isAllSelected = multiple && value.length === options.length;
+
+  const filteredOptions = searchable
+    ? options.filter(opt => formatLabel(opt).toLowerCase().includes(search.toLowerCase()))
+    : options;
+
+  const toggleOption = (opt) => {
+    if (!multiple) { onChange(opt); setOpen(false); return; }
+    if (value.includes(opt)) onChange(value.filter((v) => v !== opt));
+    else onChange([...value, opt]);
+  };
+
+  const handleSelectAll = () => {
+    if (isAllSelected) onChange([]);
+    else onChange(options);
+  };
+
+  const displayValue = multiple
+    ? (value.length ? `${value.length} selected` : 'Select')
+    : (value ? formatLabel(value) : 'Select');
 
   return (
-    <div className="relative w-full flex flex-col items-center">
-      <svg
-        viewBox="0 0 760 400"
-        className="w-full"
-        style={{ maxHeight: 320 }}
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          d={trackPath}
-          fill="none"
-          stroke="rgba(141,23,24,0.25)"
-          strokeWidth="36"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d={trackPath}
-          fill="none"
-          stroke="#8D1718"
-          strokeWidth="12"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <line x1="300" y1="295" x2="300" y2="330" stroke="white" strokeWidth="3" />
-        <text x="290" y="350" fill="#aaa" fontSize="14" textAnchor="middle">Start</text>
-        {[0,1,2,3,4,5].map(i => (
-          <rect
-            key={i}
-            x={452 + (i % 2 === 0 ? 0 : 6)}
-            y={i < 2 ? 295 : i < 4 ? 301 : 307}
-            width="6" height="6"
-            fill={i % 2 === 0 ? 'white' : '#333'}
-          />
-        ))}
-        <line x1="455" y1="295" x2="455" y2="318" stroke="white" strokeWidth="2" />
-        <text x="455" y="340" fill="#aaa" fontSize="14" textAnchor="middle">Finish</text>
-        {TRACK_NODES.map((node) => (
-          <g key={node.id}>
-            <circle
-              cx={node.x}
-              cy={node.y}
-              r={22}
-              fill="#8D1718"
-              stroke="rgba(255,255,255,0.15)"
-              strokeWidth="2"
-            />
-            <text
-              x={node.x}
-              y={node.y + 5}
-              textAnchor="middle"
-              fill="white"
-              fontSize="13"
-              fontWeight="600"
-            >
-              {node.id}
-            </text>
-          </g>
-        ))}
-      </svg>
+    <div className="flex flex-col gap-1" ref={ref}>
+      <label className="text-white text-sm">{label}</label>
+      <div className="relative">
+        <button
+          onClick={() => !disabled && setOpen((o) => !o)}
+          className="w-full flex items-center justify-between rounded-lg px-3 py-[0.45rem] text-sm font-light text-white"
+          style={{
+            background: 'linear-gradient(90deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.2) 104.43%)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            opacity: disabled ? 0.5 : 1,
+          }}
+        >
+          <span className="truncate">{displayValue}</span>
+          <svg
+            width="11" height="7" viewBox="0 0 11 7" fill="none"
+            style={{
+              marginLeft: 6, opacity: 0.8, flexShrink: 0,
+              transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform 0.2s ease',
+            }}
+          >
+            <path d="M1 1L5.5 6L10 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+
+        {open && (
+          <div
+            className="absolute z-50 w-full mt-1 rounded-lg overflow-hidden"
+            style={{
+              background: 'rgba(20,2,2,0.97)',
+              border: '1px solid rgba(160,30,30,0.5)',
+              backdropFilter: 'blur(8px)',
+            }}
+          >
+            {searchable && (
+              <div style={{ padding: '0.5rem', borderBottom: '1px solid rgba(160,30,30,0.3)' }}>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search..."
+                  autoFocus
+                  className="w-full rounded outline-none text-white text-xs"
+                  style={{
+                    background: 'rgba(255,255,255,0.08)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    padding: '0.3rem 0.6rem',
+                  }}
+                />
+              </div>
+            )}
+            <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+              {multiple && (
+                <button onClick={handleSelectAll} className="w-full text-left px-3 py-2 font-semibold text-white text-sm"
+                  style={{ background: 'rgba(141,23,24,0.35)' }}>
+                  {isAllSelected ? 'Unselect All' : 'Select All'}
+                </button>
+              )}
+              {filteredOptions.map((opt) => {
+                const selected = multiple ? value.includes(opt) : value === opt;
+                return (
+                  <button key={opt} onClick={() => toggleOption(opt)} className="w-full text-left px-3 py-2 flex items-center gap-2 text-sm transition-all duration-150"
+                    style={{
+                      background: selected ? 'rgba(141,23,24,0.35)' : 'transparent',
+                      color: selected ? '#fff' : 'rgba(255,255,255,0.7)',
+                    }}>
+                    {multiple && (
+                      <span style={{
+                        width: 16, height: 16, borderRadius: 3, flexShrink: 0,
+                        border: selected ? 'none' : '1.5px solid rgba(255,255,255,0.3)',
+                        background: selected ? 'linear-gradient(135deg, #D30101, #6D0101)' : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {selected && (
+                          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                            <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </span>
+                    )}
+                    {formatLabel(opt)}
+                  </button>
+                );
+              })}
+              {filteredOptions.length === 0 && (
+                <p className="text-xs px-4 py-3" style={{ color: 'rgba(255,255,255,0.3)' }}>No results</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 function StatCard({ label, icon, value }) {
   return (
-    <div
-      className="flex items-center justify-between px-4 py-5 rounded-xl"
-      style={{
-        background: 'rgba(90,12,12,0.6)',
-        border: '1px solid rgba(130,22,22,0.35)',
-      }}
-    >
-      <div className="flex items-center gap-2" style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.875rem' }}>
-        <span style={{ color: 'rgba(255,255,255,0.5)' }}>{icon}</span>
+    <div className="flex items-center justify-between px-4 py-5 rounded-xl"
+      style={{ background: '#FFFFFF1A', border: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="flex items-center gap-2 text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
+        {icon && (
+          <img src={icon} alt="" className="w-[18px] h-[18px] opacity-70 flex-shrink-0 brightness-0 invert" />
+        )}
         {label}
       </div>
-      <span style={{ color: '#fff', fontWeight: 700, fontSize: '1.25rem', letterSpacing: '0.01em' }}>{value}</span>
+      <span className="text-white font-bold text-xl tracking-wide">{value}</span>
     </div>
   );
 }
 
-function StandingItem({ name, subtitle, percent, color }) {
+function AlgorithmRow({ name, status, score }) {
+  const isCompleted = status === 'completed';
+  const scorePct = score !== null ? Math.min(Math.max(score * 100, 0), 100) : 0;
+  const barColor = getBarColor(score);
+
   return (
-    <div className="flex items-center gap-3 py-2.5">
-      <div
-        className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-        style={{ background: 'rgba(141,23,24,0.35)', border: '1px solid rgba(180,40,40,0.4)' }}
-      >
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="rgba(255,120,120,0.85)" strokeWidth="2">
-          <circle cx="12" cy="12" r="10" />
-          <polyline points="12 6 12 12 16 14" />
-        </svg>
+    <div className="flex items-center gap-3 py-2">
+      <img src={SpeedIcon} alt="" style={{ width: 19, height: 15, flexShrink: 0 }} />
+      <p className="truncate flex-1 text-white text-sm font-light" style={{ fontFamily: 'Satoshi, sans-serif', fontStyle: 'normal' }}>
+        {name}
+      </p>
+      <div className="rounded flex-shrink-0 overflow-hidden" style={{ width: 70, height: 5, background: '#D9D9D9' }}>
+        <div style={{
+          height: '100%',
+          width: `${scorePct}%`,
+          background: barColor,
+          borderRadius: 4,
+          transition: 'width 0.4s ease',
+        }} />
       </div>
-      <div className="flex-1 min-w-0">
-        <p style={{ color: '#fff', fontSize: '0.875rem', fontWeight: 500 }} className="truncate">{name}</p>
-        <p style={{ color: 'rgba(255,255,255,0.38)', fontSize: '0.72rem' }} className="truncate">{subtitle}</p>
-      </div>
-      <div className="flex items-center gap-2 flex-shrink-0" style={{ minWidth: '100px' }}>
-        <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
-          <div
-            className="h-full rounded-full"
-            style={{ width: `${percent}%`, background: color }}
+      <span className="text-xs text-right flex-shrink-0 w-[38px]"
+        style={{ color: isCompleted ? '#fff' : 'rgba(255,255,255,0.3)' }}>
+        {score !== null ? `${scorePct.toFixed(1)}%` : '—'}
+      </span>
+    </div>
+  );
+}
+
+function StandingsPage({ onBack, sessionId }) {
+  const [activeTab, setActiveTab] = useState('model_inferencing');
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const navigate = useNavigate();
+
+  const handleContinueToPlayground = async () => {
+    if (!sessionId) { navigate('/ai/playground'); return; }
+    setIsDeleting(true);
+    try {
+      await fetch(`${window._env_?.VITE_AI_API}/data/f1/session/${sessionId}`, {
+        method: 'DELETE',
+        headers: { accept: 'application/json' },
+      });
+    } catch (_) {
+    } finally {
+      setIsDeleting(false);
+      navigate('/ai/playground');
+    }
+  };
+
+  const tabs = [
+    { key: 'model_inferencing', label: 'Model Inferencing' },
+    { key: 'xai', label: 'XAI' },
+  ];
+
+  return (
+    <div className="flex flex-col" style={{ minHeight: '100vh' }}>
+
+      <div className="flex-1 p-4">
+        {/* Header banner */}
+        <div
+          className="relative w-full rounded-2xl overflow-hidden"
+          style={{ background: 'linear-gradient(205.53deg, #8D1718 0.09%, #010200 156.48%)' }}
+        >
+          <img
+            src={flagIcon}
+            alt=""
+            aria-hidden="true"
+            className="absolute pointer-events-none select-none"
+            style={{
+              width: '38%',
+              height: '300%',
+              opacity: 0.13,
+              mixBlendMode: 'screen',
+              objectFit: 'cover',
+              top: '-60px',
+              right: '-10px',
+              transform: 'rotate(180deg)',
+              zIndex: 1,
+            }}
           />
+
+          {/* Back button row */}
+          <div className="relative flex items-center gap-3 px-6 pt-5 pb-3" style={{ zIndex: 10 }}>
+            <button
+              onClick={onBack}
+              className="flex items-center gap-1 hover:opacity-70 transition-opacity text-white text-lg font-bold tracking-wide"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            >
+              <img
+                src={ArrowBackIcon}
+                alt=""
+                className="brightness-0 invert"
+                style={{ width: '12px', height: '16px', marginRight: '2px' }}
+              />
+              Standings
+            </button>
+          </div>
+
+          {/* Tabs */}
+          <div className="relative flex gap-0 px-6 pb-0" style={{ zIndex: 10 }}>
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className="text-sm tracking-wide transition-all duration-150"
+                  style={{
+                    background: isActive ? '#7A2727' : 'transparent',
+                    border: 'none',
+                    borderBottom: isActive ? '2.5px solid #ffffff' : '2.5px solid transparent',
+                    borderRadius: '0.5rem 0.5rem 0 0',
+                    padding: '0.5rem 1.35rem',
+                    color: isActive ? '#fff' : 'rgba(255,255,255,0.55)',
+                    fontWeight: isActive ? 600 : 400,
+                    cursor: 'pointer',
+                    letterSpacing: '0.01em',
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem', width: '2rem', textAlign: 'right' }}>{percent}%</span>
+
+        {/* Tab content area */}
+        <div
+          className="w-full"
+          style={{
+            background: 'linear-gradient(0deg, #FFFFFF, #FFFFFF), linear-gradient(144.28deg, rgba(141, 23, 24, 0.4) 20.92%, rgba(255, 255, 255, 0.4) 75.9%)',
+            minHeight: 400,
+          }}
+        >
+          {activeTab === 'model_inferencing' && <F1ModelInferencing />}
+          {activeTab === 'xai' && <F1XAI />}
+        </div>
       </div>
+
+      {/* Sticky footer */}
+      <div
+        style={{
+          position: 'sticky',
+          bottom: 0,
+          background: '#FFFFFF',
+          boxShadow: '0px -4px 9px 0px #0000001A',
+          padding: '12px 24px',
+          display: 'flex',
+          justifyContent: 'flex-end',
+        }}
+      >
+        <button
+          onClick={() => setShowConfirm(true)}
+          style={{
+            background: '#8E77BB',
+            color: '#FFFFFF',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '10px 24px',
+            fontSize: '14px',
+            fontWeight: 400,
+            cursor: 'pointer',
+            fontFamily: 'Satoshi, sans-serif',
+          }}
+        >
+          Continue to AI Playground
+        </button>
+      </div>
+
+      {/* Confirm modal */}
+      {showConfirm && (
+        <div className="fixed inset-0 z-[200] bg-black/45 flex items-center justify-center">
+          <div className="bg-white rounded-xl p-6 w-[90%] max-w-[360px] shadow-2xl flex flex-col gap-3">
+            <h2 className="text-base font-bold text-gray-900 m-0">
+              Continue to AI Playground?
+            </h2>
+            <p className="text-sm text-gray-500 m-0">
+              You'll leave F1 Mode and navigate to the AI Playground. Are you sure?
+            </p>
+            <div className="flex justify-end gap-2 mt-2">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="px-5 py-2 text-sm text-gray-500 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors font-[Satoshi,sans-serif]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleContinueToPlayground}
+                disabled={isDeleting}
+                className="px-5 py-2 text-sm font-semibold text-white rounded-lg cursor-pointer hover:opacity-90 transition-opacity font-[Satoshi,sans-serif]"
+                style={{ background: '#8E77BB', opacity: isDeleting ? 0.7 : 1, cursor: isDeleting ? 'not-allowed' : 'pointer' }}
+              >
+                {isDeleting ? 'Leaving…' : 'Continue'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function F1Mode() {
-  return (
-    <div className="w-full h-[102%] p-4">
-      <div
-        className="relative w-full h-full rounded-2xl overflow-hidden"
-        style={{
-          background: 'linear-gradient(145deg, #0a0000 0%, #1a0000 40%, #6b0e0e 100%)',
-        }}
-      >
-        {/* Checkered flag watermark top-right */}
-        <img
-          src={flagIcon}
-          alt=""
-          aria-hidden="true"
-          className="absolute pointer-events-none select-none"
-          style={{
-            width: '38%',
-            height: '45%',
-            opacity: 0.13,
-            mixBlendMode: 'screen',
-            objectFit: 'cover',
-            top: '-100px',
-            right: '-10px',
-            transform: 'rotate(180deg)',
-            zIndex: 1,
-          }}
-        />
+  const { F1Mode: F1ModeCtx, setF1Mode } = useAIPlayground();
+  const hostnameAI = window._env_?.VITE_AI_API;
+  const WebSocketURL = window._env_?.VITE_AI_WEBSOCKET;
 
-        {/* Inner scrollable container */}
-        <div
-          className="relative h-full flex flex-col"
-          style={{ zIndex: 10 }}
-        >
-          {/* Sticky Header — does not scroll */}
-          <div
-            className="flex items-center gap-2 px-6 pt-6 pb-4 flex-shrink-0"
-            style={{
-              background: 'linear-gradient(180deg, rgba(10,0,0,0.95) 70%, transparent 100%)',
-              position: 'sticky',
-              top: 0,
-              zIndex: 20,
-            }}
-          >
-            <Icon icon="mdi:flag-checkered" style={{ fontSize: '1.75rem', color: '#fff' }} />
-            <h1 style={{ color: '#fff', fontSize: '1.375rem', fontWeight: 700, letterSpacing: '0.02em' }}>F1 Mode</h1>
+  const sessionId = F1ModeCtx?.session_id ?? null;
+  const columnNames = F1ModeCtx?.column_names ?? [];
+  const wsUrl = sessionId
+    ? `${WebSocketURL}/data/f1/launch/progress/${sessionId}`
+    : null;
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [ingestedTable, setIngestedTable] = useState(null);
+  const [task, setTask] = useState('');
+  const [metric, setMetric] = useState([]);
+  const [target, setTarget] = useState('');
+  const [elapsed, setElapsed] = useState(0);
+  const [rowsSampled, setRowsSampled] = useState(null);
+  const [featuresCount, setFeaturesCount] = useState(null);
+  const [modelsTested, setModelsTested] = useState(null);
+  const [bestScoreStat, setBestScoreStat] = useState(null);
+
+  const [launchSuccess, setLaunchSuccess] = useState(false);
+  const [showStandings, setShowStandings] = useState(false);
+
+  const [isLaunching, setIsLaunching] = useState(false);
+  const [isRaceRunning, setIsRaceRunning] = useState(false);
+  const [isRaceFinished, setIsRaceFinished] = useState(false);
+  const [activeFlagNode, setActiveFlagNode] = useState(0);
+  const [overallProgress, setOverallProgress] = useState(0);
+  const [algorithmStatus, setAlgorithmStatus] = useState({});
+  const [bestScore, setBestScore] = useState(null);
+  const [completedAlgs, setCompletedAlgs] = useState(0);
+  const [totalAlgs, setTotalAlgs] = useState(0);
+
+  const [showBackModal, setShowBackModal] = useState(false);
+  const [isBackCancelLoading, setIsBackCancelLoading] = useState(false);
+  const pendingBackPath = useRef(null);
+  const navigate = useNavigate();
+
+  const wsRef = useRef(null);
+  const isFinishedRef = useRef(false);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const currentPath = window.location.pathname;
+
+      if (currentPath === '/ai/f1mode' && sessionId) {
+        // Push state back so user stays on the page
+        window.history.pushState(null, '', currentPath);
+        setShowBackModal(true);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    if (sessionId) {
+      window.history.pushState(null, '', window.location.pathname);
+    }
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [sessionId]);
+
+  const handleBackConfirm = async () => {
+    setIsBackCancelLoading(true);
+    try {
+      await fetch(`${hostnameAI}/api/v1/data/f1/session/${sessionId}`, {
+        method: 'DELETE',
+        headers: { accept: 'application/json' },
+      });
+    } catch (err) {
+      console.error('F1 session DELETE error:', err);
+    }
+    setF1Mode(null);
+    setIsBackCancelLoading(false);
+    setShowBackModal(false);
+    navigate(-2);
+  };
+
+  const handleBackCancel = () => {
+    setShowBackModal(false);
+  };
+
+  useEffect(() => {
+    if (F1ModeCtx?.selected_table && !ingestedTable) {
+      setIngestedTable(F1ModeCtx.selected_table);
+    }
+  }, [F1ModeCtx?.selected_table]);
+
+  useEffect(() => {
+    return () => { if (wsRef.current) wsRef.current.close(); };
+  }, []);
+
+  const formatTime = (secs) => {
+    if (!secs && secs !== 0) return '00:00.000';
+    const totalMs = Math.floor(secs * 1000);
+    const minutes = Math.floor(totalMs / 60000);
+    const seconds = Math.floor((totalMs % 60000) / 1000);
+    const milliseconds = totalMs % 1000;
+    return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0') + ':' + String(milliseconds).padStart(3, '0');
+  };
+
+  const isRunning = overallProgress > 0 && overallProgress < 100;
+  const isLaunchReady = !!ingestedTable && !!task && metric.length > 0 && !!target;
+
+  const handleWsMessage = (data) => {
+    setOverallProgress(data.progress || 0);
+    if (typeof data.time_elapsed_seconds === 'number') setElapsed(data.time_elapsed_seconds);
+    if (data.stage === 'connected') return;
+
+    const progressToNodeMap = { 38: 1, 42: 2, 58: 3, 67: 4, 76: 5, 85: 6, 90: 7, 100: 8 };
+    if (progressToNodeMap[data.progress] !== undefined) setActiveFlagNode(progressToNodeMap[data.progress]);
+
+    if (data.algorithm_status) {
+      setAlgorithmStatus(data.algorithm_status);
+      setCompletedAlgs(data.completed_algorithms || 0);
+      setTotalAlgs(data.total_algorithms || 0);
+      const scores = Object.values(data.algorithm_status).map(a => a.score).filter(s => s !== null);
+      if (scores.length) setBestScore(Math.max(...scores));
+    }
+
+    if (data.progress >= 100) {
+      isFinishedRef.current = true;
+      setIsRaceFinished(true);
+      setIsRaceRunning(false);
+      setActiveFlagNode(8);
+      if (wsRef.current) wsRef.current.close();
+    }
+  };
+
+  const handleLaunch = async () => {
+    if (!sessionId) { alert('No session found. Please fetch data first.'); return; }
+    if (!task || !metric || !target) { alert('Please select Task, Metric and Target before launching.'); return; }
+    if (isLaunching || isRaceRunning) return;
+
+    isFinishedRef.current = false;
+    setIsLaunching(true);
+    setIsRaceFinished(false);
+    setIsRaceRunning(false);
+    setActiveFlagNode(0);
+    setOverallProgress(0);
+    setAlgorithmStatus({});
+    setBestScore(null);
+    setCompletedAlgs(0);
+    setTotalAlgs(0);
+    setElapsed(0);
+    setRowsSampled(null);
+    setFeaturesCount(null);
+    setModelsTested(null);
+    setBestScoreStat(null);
+    setLaunchSuccess(false);
+
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
+
+    ws.onopen = async () => {
+      try {
+        setIsRaceRunning(true);
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { accept: 'application/json', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId, task, metric, target, test_size: 0.2, random_state: 42 }),
+        });
+        if (!res.ok) throw new Error(`Launch API error: ${res.status}`);
+        const launchData = await res.json();
+
+        setF1Mode((prev) => ({ ...prev, launch: launchData }));
+
+        if (launchData.raw_data_shape) {
+          setRowsSampled(launchData.raw_data_shape[0]);
+          setFeaturesCount(launchData.raw_data_shape[1]);
+        }
+        setModelsTested(launchData.total_models_trained);
+        setBestScoreStat(launchData.best_score);
+        setLaunchSuccess(true);
+        setIsLaunching(false);
+      } catch (err) {
+        setIsLaunching(false);
+        setIsRaceRunning(false);
+        ws.close();
+      }
+    };
+
+    ws.onmessage = (event) => {
+      try { handleWsMessage(JSON.parse(event.data)); } catch (_) { }
+    };
+
+    ws.onerror = () => { setIsLaunching(false); setIsRaceRunning(false); };
+    ws.onclose = () => { if (!isFinishedRef.current) setIsRaceRunning(false); };
+  };
+
+  const algoEntries = Object.entries(algorithmStatus);
+
+  if (showStandings) {
+    return <StandingsPage onBack={() => setShowStandings(false)} sessionId={sessionId} />;
+  }
+
+  return (
+    <div className="w-full p-4">
+      <style>{`
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+      `}</style>
+
+      <div className="relative w-full rounded-2xl"
+        style={{ background: 'linear-gradient(233.1deg, #8D1718 4.93%, #010200 61.21%)' }}>
+
+        <img src={flagIcon} alt="" aria-hidden="true" className="absolute pointer-events-none select-none"
+          style={{ width: '38%', height: '45%', opacity: 0.13, mixBlendMode: 'screen', objectFit: 'cover', top: '-100px', right: '-10px', transform: 'rotate(180deg)', zIndex: 1 }} />
+
+        <div className="relative flex flex-col" style={{ zIndex: 10 }}>
+          {/* Header */}
+          <div className="flex items-center gap-2 px-6 pt-6 pb-4 flex-shrink-0">
+            <img src={FlagIconSvg} alt="" className="w-7 h-7" />
+            <h1 className="text-white text-[1.375rem] font-bold tracking-wide">F1 Mode</h1>
           </div>
 
-          {/* Scrollable content */}
-          <div
-            className="flex-1 overflow-y-auto px-6 pb-6"
-            style={{
-              scrollbarWidth: 'thin',
-              scrollbarColor: 'rgba(141,23,24,0.6) transparent',
-            }}
-          >
-            {/* Custom scrollbar for WebKit */}
-            <style>{`
-              .f1-scroll::-webkit-scrollbar {
-                width: 4px;
-              }
-              .f1-scroll::-webkit-scrollbar-track {
-                background: transparent;
-              }
-              .f1-scroll::-webkit-scrollbar-thumb {
-                background: rgba(141,23,24,0.6);
-                border-radius: 2px;
-              }
-              .f1-scroll::-webkit-scrollbar-thumb:hover {
-                background: rgba(200,30,30,0.8);
-              }
-            `}</style>
-
+          <div className="px-6 pb-6">
             <div
-              className="f1-scroll grid grid-cols-1 lg:grid-cols-2 gap-5"
+              className="grid gap-5"
+              style={{ gridTemplateColumns: '40% 60%' }}
             >
-              {/* LEFT COLUMN */}
-              <div className="flex flex-col gap-5">
 
-                {/* Qualifying Analysis section */}
+              <div className="flex flex-col gap-5">
                 <div>
-                  <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.6rem' }}>
+                  <p className="text-white/85 text-[0.95rem] font-semibold mb-[0.6rem]">
                     Qualifying Analysis
                   </p>
-                  <div
-                    className="rounded-2xl p-5 flex flex-col gap-4"
-                    style={{
-                      background: 'rgba(60,5,5,0.7)',
-                      border: '1px solid rgba(160,30,30,0.3)',
-                    }}
-                  >
-                    {/* Data Ingestion drop zone */}
+
+                  <div className="flex flex-col gap-4">
+
+                    {/* Data Ingestion Box */}
                     <div
-                      className="rounded-xl flex flex-col items-center justify-center py-7"
+                      className="relative flex flex-col items-center justify-center py-7 rounded-xl"
                       style={{
-                        background: 'rgba(100,10,10,0.35)',
-                        border: '1px solid rgba(160,30,30,0.25)',
+                        background: 'linear-gradient(180deg, #671212 0%, rgba(129,0,0,0) 100%)',
+                        border: '1px solid #BD6665',
+                        minHeight: 130,
                       }}
                     >
-                      <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Data Ingestion</p>
-                      <p style={{ color: 'rgba(255,255,255,0.38)', fontSize: '0.75rem', marginBottom: '1rem' }}>Drop your dataset to start the race</p>
-                      <button
-                        className="flex items-center gap-2 transition-all hover:brightness-110 active:scale-95"
-                        style={{
-                          background: 'rgba(80,15,15,0.8)',
-                          border: '1px solid rgba(160,40,40,0.5)',
-                          borderRadius: '0.5rem',
-                          padding: '0.4rem 1.1rem',
-                          color: 'rgba(255,255,255,0.75)',
-                          fontSize: '0.875rem',
-                          fontWeight: 500,
-                        }}
-                      >
-                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="16 16 12 12 8 16" />
-                          <line x1="12" y1="12" x2="12" y2="21" />
-                          <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
-                        </svg>
-                        Upload
-                      </button>
+                      {ingestedTable ? (
+                        <>
+                          <button
+                            onClick={() => {
+                              setIngestedTable(null);
+                              setTask('');
+                              setMetric([]);
+                              setTarget('');
+                              setOverallProgress(0);
+                              setIsRaceFinished(false);
+                              setIsRaceRunning(false);
+                              setActiveFlagNode(0);
+                              setElapsed(0);
+                              setRowsSampled(null);
+                              setFeaturesCount(null);
+                              setModelsTested(null);
+                              setBestScoreStat(null);
+                              setAlgorithmStatus({});
+                              setCompletedAlgs(0);
+                              setTotalAlgs(0);
+                              setBestScore(null);
+                              setLaunchSuccess(false);
+                              if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
+                              isFinishedRef.current = false;
+                            }}
+                            className="absolute hover:scale-110 transition-all flex items-center justify-center text-white cursor-pointer"
+                            style={{ top: 10, right: 10, width: 24, height: 24 }}>
+                            <X width={18} height={18} />
+                          </button>
+
+                          <p className="text-white text-sm font-semibold text-center mb-[0.2rem]"
+                            style={{ maxWidth: '80%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {ingestedTable}
+                          </p>
+
+                          <p className="text-xs text-center" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                            Table ready · Ingested
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-white text-sm font-normal mb-[0.2rem]" style={{ fontFamily: 'Satoshi, sans-serif', fontStyle: 'normal' }}>
+                            Fetch Data from Table
+                          </p>
+                          <p className="text-xs font-normal mb-4" style={{ fontFamily: 'Satoshi, sans-serif', color: 'rgba(255,255,255,0.38)' }}>
+                            Fetch Data from Table to start the race
+                          </p>
+                          <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="flex items-center gap-2 hover:brightness-110 active:scale-95 transition-all rounded-lg text-white text-sm font-normal"
+                            style={{
+                              background: 'rgba(255,255,255,0.08)',
+                              border: '1px solid rgba(255,255,255,0.25)',
+                              padding: '0.4rem 1.2rem',
+                            }}>
+                            <img src={BackupIcon} alt="" className="w-4 h-4 opacity-85" />
+                            Upload
+                          </button>
+                        </>
+                      )}
                     </div>
 
                     {/* Dropdowns */}
                     <div className="grid grid-cols-3 gap-3">
-                      {['Task', 'Metric', 'Target'].map((lbl) => (
-                        <div key={lbl} className="flex flex-col gap-1">
-                          <label style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}>{lbl}</label>
-                          <button
-                            className="flex items-center justify-between transition-all hover:brightness-110"
-                            style={{
-                              background: 'rgba(80,10,10,0.6)',
-                              border: '1px solid rgba(140,30,30,0.4)',
-                              borderRadius: '0.5rem',
-                              padding: '0.45rem 0.75rem',
-                              color: 'rgba(255,255,255,0.45)',
-                              fontSize: '0.85rem',
-                            }}
-                          >
-                            Select
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
-                              <polyline points="6 9 12 15 18 9" />
-                            </svg>
-                          </button>
-                        </div>
-                      ))}
+                      <Dropdown label="Task" options={TASK_OPTIONS} value={task} onChange={setTask} disabled={isRaceRunning} />
+                      <Dropdown label="Metric" options={METRIC_OPTIONS} value={metric} onChange={setMetric} disabled={isRaceRunning} multiple />
+                      <Dropdown label="Target" options={columnNames} value={target} onChange={setTarget} disabled={isRaceRunning} searchable />
                     </div>
 
                     {/* Launch button */}
                     <button
-                      className="w-full transition-all hover:brightness-110 active:scale-95"
+                      onClick={handleLaunch}
+                      disabled={isLaunching || isRaceRunning || !isLaunchReady}
+                      className="w-full hover:brightness-110 active:scale-95 transition-all rounded-xl py-[0.7rem] text-white font-bold text-[0.95rem] tracking-[0.06em]"
                       style={{
-                        background: 'linear-gradient(90deg, #9b1c1c, #dc2626)',
-                        borderRadius: '0.75rem',
-                        padding: '0.7rem',
-                        color: '#fff',
-                        fontWeight: 700,
-                        fontSize: '0.95rem',
-                        letterSpacing: '0.06em',
+                        background: 'linear-gradient(270deg, #D30101 0%, #6D0101 117.78%)',
                         border: 'none',
-                      }}
-                    >
-                      Launch
+                        opacity: (isLaunching || (isRaceRunning && overallProgress < 100) || !isLaunchReady) ? 0.6 : 1,
+                        cursor: (isLaunching || (isRaceRunning && overallProgress < 100) || !isLaunchReady) ? 'not-allowed' : 'pointer',
+                      }}>
+                      {isLaunching ? 'Race in Progress…' : isRunning ? 'Race in Progress…' : overallProgress === 100 ? 'Launch Again' : 'Launch'}
                     </button>
+
                   </div>
                 </div>
 
-                {/* View Standings section */}
                 <div>
                   <div
                     className="rounded-2xl p-5"
                     style={{
-                      background: 'rgba(60,5,5,0.7)',
-                      border: '1px solid rgba(160,30,30,0.3)',
+                      background: 'linear-gradient(180deg, #671212 0%, rgba(129,0,0,0) 100%)',
+                      border: '1px solid #BD6665',
                     }}
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <p style={{ color: '#fff', fontSize: '0.95rem', fontWeight: 600 }}>View Standings</p>
-                      <button style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.78rem' }} className="hover:text-white transition-colors">View all</button>
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-white text-base font-bold" style={{ fontFamily: 'Satoshi, sans-serif', fontStyle: 'normal' }}>
+                        View Standings
+                      </p>
+                      <button
+                        onClick={() => launchSuccess && setShowStandings(true)}
+                        disabled={!launchSuccess}
+                        className={launchSuccess ? 'hover:opacity-80 transition-opacity' : ''}
+                        style={{
+                          color: launchSuccess ? '#fff' : 'rgba(255,255,255,0.3)',
+                          fontSize: '14px',
+                          fontWeight: 400,
+                          fontFamily: 'Satoshi, sans-serif',
+                          fontStyle: 'normal',
+                          background: 'none',
+                          border: 'none',
+                          cursor: launchSuccess ? 'pointer' : 'not-allowed',
+                          padding: 0,
+                          transition: 'color 0.15s, opacity 0.15s',
+                        }}
+                      >
+                        View All
+                      </button>
                     </div>
-                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '0.25rem' }}>
-                      <StandingItem name="Main loop"           subtitle="Product launch · My projects"          percent={33} color="linear-gradient(90deg,#4ade80,#22c55e)" />
-                      <StandingItem name="User feedback"       subtitle="Feature updates · Team collaboration"  percent={58} color="linear-gradient(90deg,#facc15,#f59e0b)" />
-                      <StandingItem name="Market analysis"     subtitle="Competitor review · Strategy planning" percent={72} color="linear-gradient(90deg,#f97316,#ef4444)" />
-                      <StandingItem name="Performance metrics" subtitle="Revenue goals · Success stories"       percent={45} color="linear-gradient(90deg,#ec4899,#a855f7)" />
+
+                    <div>
+                      {algoEntries.length === 0 ? (
+                        <div className="flex items-center gap-3 py-2.5">
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                            style={{ background: 'rgba(141,23,24,0.35)', border: '1px solid rgba(180,40,40,0.4)' }}>
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="rgba(255,120,120,0.85)" strokeWidth="2">
+                              <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+                            </svg>
+                          </div>
+                          <p className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>Waiting for launch…</p>
+                        </div>
+                      ) : (
+                        [...algoEntries]
+                          .sort(([, a], [, b]) => {
+                            if (a.status === 'completed' && b.status !== 'completed') return -1;
+                            if (b.status === 'completed' && a.status !== 'completed') return 1;
+                            if (a.score !== null && b.score !== null) return b.score - a.score;
+                            return 0;
+                          })
+                          .map(([name, info]) => (
+                            <AlgorithmRow key={name} name={name} status={info.status} progress={info.progress} score={info.score} />
+                          ))
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* RIGHT COLUMN */}
               <div className="flex flex-col gap-5">
 
-                {/* Live Run Status section */}
+                {/* Live Run Status */}
                 <div>
-                  <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.6rem' }}>
-                    Live Run Status
-                  </p>
+                  <p className="text-white/85 text-[0.95rem] font-semibold mb-[0.6rem]">Live Run Status</p>
+
                   <div
-                    className="rounded-2xl p-4"
+                    className="rounded-2xl p-3"
                     style={{
-                      background: 'rgba(60,5,5,0.7)',
-                      border: '1px solid rgba(160,30,30,0.3)',
+                      background: 'linear-gradient(180deg, #671212 0%, rgba(129,0,0,0) 100%)',
+                      border: '1px solid #BD6665',
                     }}
                   >
-                    {/* Timer top-right */}
-                    <div className="flex justify-end mb-2">
-                      <div
-                        className="flex items-center gap-2 font-mono"
+                    {/* Timer badge */}
+                    <div className="flex justify-end mb-1">
+                      <div className="flex items-center gap-2 font-mono rounded-lg px-3 py-[0.3rem] text-sm font-normal"
                         style={{
-                          background: 'rgba(20,3,3,0.75)',
-                          border: '1px solid rgba(130,20,20,0.45)',
-                          borderRadius: '0.6rem',
-                          padding: '0.3rem 0.75rem',
-                          color: 'rgba(255,255,255,0.8)',
-                          fontSize: '0.875rem',
-                        }}
-                      >
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                          fontFamily: 'Satoshi, sans-serif',
+                          fontStyle: 'normal',
+                          background: 'rgba(0, 0, 0, 0.25)',
+                          border: '1px solid rgba(80,10,10,0.6)',
+                          color: isRaceRunning ? '#fff' : 'rgba(255,255,255,0.55)',
+                        }}>
+                        {isRaceRunning && (
+                          <span className="inline-block rounded-full bg-red-500 flex-shrink-0"
+                            style={{ width: '7px', height: '7px', boxShadow: '0 0 5px #ef4444', animation: 'pulse 1s infinite' }} />
+                        )}
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2">
                           <circle cx="12" cy="12" r="10" />
                           <polyline points="12 6 12 12 16 14" />
                         </svg>
-                        00:00:00
+                        {formatTime(elapsed)}
                       </div>
                     </div>
-                    <RaceTrack />
+
+                    <RaceTrack activeNodeIndex={activeFlagNode} isFinished={isRaceFinished} />
                   </div>
                 </div>
 
-                {/* Stats grid */}
+                {/* Stats */}
                 <div
                   className="rounded-2xl p-3"
                   style={{
-                    background: 'rgba(40,3,3,0.75)',
-                    border: '1px solid rgba(140,25,25,0.35)',
+                    background: 'linear-gradient(180deg, #671212 0%, rgba(129,0,0,0) 100%)',
+                    border: '1px solid #BD6665',
                   }}
                 >
                   <div className="grid grid-cols-2 gap-2">
                     <StatCard
                       label="Rows Sampled"
-                      icon={
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                          <rect x="3" y="3" width="18" height="18" rx="2" />
-                          <line x1="3" y1="9" x2="21" y2="9" />
-                          <line x1="3" y1="15" x2="21" y2="15" />
-                          <line x1="9" y1="3" x2="9" y2="21" />
-                        </svg>
-                      }
-                      value="12,500"
+                      icon={TableRowsIcon}
+                      value={rowsSampled !== null ? rowsSampled.toLocaleString() : '—'}
                     />
                     <StatCard
                       label="Features"
-                      icon={
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                          <line x1="4" y1="6" x2="20" y2="6" />
-                          <line x1="4" y1="12" x2="20" y2="12" />
-                          <line x1="4" y1="18" x2="16" y2="18" />
-                          <polyline points="14 4 16 6 14 8" />
-                        </svg>
-                      }
-                      value="48"
+                      icon={TuneIcon}
+                      value={featuresCount !== null ? featuresCount : '—'}
                     />
                     <StatCard
                       label="Models Tested"
-                      icon={
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                          <circle cx="12" cy="12" r="3" />
-                          <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
-                        </svg>
-                      }
-                      value="18"
+                      icon={SpeedIcon}
+                      value={modelsTested !== null ? modelsTested : '—'}
                     />
                     <StatCard
                       label="Best Score"
-                      icon={
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
-                          <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
-                          <path d="M4 22h16" />
-                          <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
-                          <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
-                          <path d="M18 2H6v7a6 6 0 0 0 12 0V2z" />
-                        </svg>
-                      }
-                      value="0.91"
+                      icon={CrownIcon}
+                      value={bestScoreStat !== null ? bestScoreStat.toFixed(3) : '—'}
                     />
                   </div>
                 </div>
               </div>
+
             </div>
           </div>
         </div>
       </div>
+
+      <F1SelectDataModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={setIngestedTable} />
+
+      {showBackModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <h2 className="text-xl font-semibold text-gray-900">Exit F1 Mode Session?</h2>
+              </div>
+
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to leave? Your active F1 Mode session will be terminated.
+              </p>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={handleBackCancel}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Stay in F1 Mode
+                </button>
+                <button
+                  onClick={handleBackConfirm}
+                  disabled={isBackCancelLoading}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                >
+                  {isBackCancelLoading && (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  )}
+                  {isBackCancelLoading ? 'Ending Session...' : 'Yes, End Session'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

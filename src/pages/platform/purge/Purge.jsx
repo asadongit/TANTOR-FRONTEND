@@ -1,11 +1,16 @@
 import { Icon } from "@iconify-icon/react";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Pencil,
   Trash2,
   Play,
   X,
+  ExternalLink,
+  Search,
+  RefreshCcw,
+  ChevronDown,
+  CheckCircle,
 } from "lucide-react";
 import { encrypt } from "../../../utils/Crypto";
 import { useSourceTypeCounts } from "../../../hooks/platform/cardCounts";
@@ -16,20 +21,79 @@ import { useAuth } from "../../../context/AuthContext";
 import axios from "axios";
 import toast from "react-hot-toast";
 import Breadcrumb from "../../../components/Breadcrumb";
+import { DagErrorModal } from "../../../components/DagErrorModal";
 
 const PurgeList = () => {
-  const { data: cardData, isLoading: isCardLoading, error: cardError,refetch : refetchCardData } = useSourceTypeCounts('purge');
-  const { data: purgeData=[], isLoading: isPurgeLoading, error: purgeError, refetch : refetchPurges } = usePurgeData();
+  const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useSourceTypeCounts('purge');
+  const { data: purgeData = [], isLoading: isPurgeLoading, error: purgeError, refetch: refetchPurges } = usePurgeData();
 
 
   const navigate = useNavigate();
-const {token, hostnameV1}= useAuth()
+  const { token, hostnameV1, project } = useAuth();
+
+  const [dagErrorModal, setDagErrorModal] = useState({
+    isOpen: false,
+    isLoading: false,
+    data: null,
+    dagId: null,
+  });
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState("both");
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(0); // 0 = off
+  const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
+  const autoRefreshMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (autoRefreshInterval === 0) return;
+
+    const interval = setInterval(() => {
+      refetchPurges();
+      refetchCardData();
+    }, autoRefreshInterval);
+
+    return () => clearInterval(interval);
+  }, [autoRefreshInterval, refetchPurges, refetchCardData]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (autoRefreshMenuRef.current && !autoRefreshMenuRef.current.contains(event.target)) {
+        setIsAutoRefreshMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleCreatePurge = () => {
     navigate("/PurgeCanvas");
   };
 
-   const cards = [
+  const fetchDagFailure = async (dagId) => {
+    console.log("dag id ", dagId)
+    setDagErrorModal({ isOpen: true, isLoading: true, data: null, dagId });
+    try {
+      const response = await axios.get(
+        `${hostnameV1}/dag-failure?dag_id=${dagId}&dag_type=purge`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setDagErrorModal({ isOpen: true, isLoading: false, data: response.data, dagId });
+    } catch (error) {
+      console.error("Error fetching DAG failure info:", error);
+      setDagErrorModal({
+        isOpen: true,
+        isLoading: false,
+        data: { status: "ERROR", error_message: "Failed to retrieve DAG failure details." },
+        dagId,
+      });
+    }
+  };
+
+  const cards = [
     {
       icon: "material-symbols:database-upload-outline",
       bgcolor: "bg-[#d8d3e4] bg-opacity-25",
@@ -72,7 +136,7 @@ const {token, hostnameV1}= useAuth()
       icon: <Pencil size={16} />,
       onClick: (row) => {
         // Navigate to edit/canvas page and pass ui_json for node pre-population
-        navigate("/PurgeCanvas", {state: {ui_json: row?.ui_json, purge_id: row?.purge_id}});
+        navigate("/PurgeCanvas", { state: { ui_json: row?.ui_json, purge_id: row?.purge_id } });
       },
     },
     {
@@ -89,7 +153,7 @@ const {token, hostnameV1}= useAuth()
       onClick: async (row) => {
         try {
           const response = await axios.get(`${hostnameV1}/purges/manualtrigger/${row.purge_name}`, {
-            headers: {Authorization: `Bearer ${token}`},
+            headers: { Authorization: `Bearer ${token}` },
           });
           toast.success("Purge triggered successfully!");
         } catch (error) {
@@ -114,75 +178,219 @@ const {token, hostnameV1}= useAuth()
     { key: "target_conn_name", label: "Target Connection", sortable: true },
     { key: "source_table", label: "Source Table", sortable: true },
     { key: "target_table", label: "Target Table", sortable: true },
-    { key: "status", label: "Status", sortable: true },
+    {
+      key: "status", label: "Status", sortable: true, render: (row) => {
+        let className = "px-2 py-1 rounded-full font-medium";
+        if (row.status.toLowerCase() === "failed") {
+          className += " bg-red-100 text-red-600";
+          return (
+            <button
+              onClick={() => fetchDagFailure(row.purge_name)}
+              className={`flex items-center gap-1 ${className} hover:bg-red-200`}
+              title="View failure details"
+            >
+              <span>Failed</span>
+              <ExternalLink className="ml-1 w-3 h-3" />
+            </button>
+          );
+        } else if (row.status.toLowerCase() === "completed") {
+          className += " bg-green-100 text-green-600";
+        } else if (row.status.toLowerCase() === "pending") {
+          className += "bg-yellow-100 text-yellow-600";
+        }
+        else {
+          className += " bg-gray-100 text-gray-600";
+        }
+        return <span className={className}>{row.status}</span>;
+      },
+    },
     { label: "Action", sortable: false },
 
-    ]
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
-const [purgeToDelete, setPurgeToDelete] = useState(null);
+  ]
 
-const handleDeletePurge = async () => {
-  if (!purgeToDelete) return;
-  try {
-    await axios.delete(`${hostnameV1}/purges/${purgeToDelete.purge_id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    toast.success("Purge deleted successfully!");
-    setShowDeleteModal(false);
-    setPurgeToDelete(null);
-    refetchPurges();
-  } catch (error) {
-    toast.error("Failed to delete Purge.");
-    setShowDeleteModal(false);
-    setPurgeToDelete(null);
-  }
-};
+  const filteredPurgeData = useMemo(() => {
+    let filtered = purgeData;
+
+    if (project !== "none" && project !== "default" && project) {
+      filtered = filtered.filter((row) => row.project === project);
+    }
+
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(row =>
+        Object.values(row).some(value =>
+          String(value).toLowerCase().includes(search)
+        )
+      );
+    }
+    return filtered;
+  }, [purgeData, project, searchTerm]);
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [purgeToDelete, setPurgeToDelete] = useState(null);
+
+  const handleDeletePurge = async () => {
+    if (!purgeToDelete) return;
+    try {
+      await axios.delete(`${hostnameV1}/purges/${purgeToDelete.purge_id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      toast.success("Purge deleted successfully!");
+      setShowDeleteModal(false);
+      setPurgeToDelete(null);
+      refetchPurges();
+    } catch (error) {
+      toast.error("Failed to delete Purge.");
+      setShowDeleteModal(false);
+      setPurgeToDelete(null);
+    }
+  };
 
   return (
     <div className="p-6">
       <Breadcrumb title="Platform" link={"/"} />
       <div className="flex gap-2 mb-6 items-center justify-between">
         <h1 className="text-2xl font-semibold">Purge</h1>
-        <div>
+        <div className="flex items-center gap-2">
+
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search purges"
+              className="pl-10 pr-4 py-2 w-[300px] border border-gray-300 rounded-lg focus:outline-none"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+          </div>
+
+          <div className="relative flex items-center" ref={autoRefreshMenuRef}>
+            <div className="flex rounded-lg border border-gray-400 hover:bg-gray-50 h-10">
+              <button
+                className="w-10 flex items-center justify-center border-r border-gray-300"
+                onClick={() => {
+                  refetchPurges();
+                  refetchCardData();
+                  toast.success("Purge data refreshed successfully");
+                }}
+                title="Refresh data"
+                disabled={isPurgeLoading || isCardLoading}
+              >
+                <RefreshCcw
+                  className={`h-5 w-5 text-gray-600 ${(isPurgeLoading || isCardLoading) ? "icon-rotate" : ""}`}
+                />
+              </button>
+              <button
+                className="px-2 flex items-center justify-center"
+                onClick={() => setIsAutoRefreshMenuOpen(!isAutoRefreshMenuOpen)}
+                title="Auto Refresh Settings"
+              >
+                <ChevronDown className="h-4 w-4 text-gray-600" />
+              </button>
+            </div>
+
+            {isAutoRefreshMenuOpen && (
+              <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
+                <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                  Auto Refresh
+                </div>
+                {[
+                  { label: "Off", value: 0 },
+                  { label: "5 seconds", value: 5000 },
+                  { label: "10 seconds", value: 10000 },
+                  { label: "1 minute", value: 60000 },
+                  { label: "2 minutes", value: 120000 },
+                  { label: "5 minutes", value: 300000 },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center justify-between ${autoRefreshInterval === option.value ? "text-[#8d77ba] font-medium bg-purple-50" : "text-gray-700"
+                      }`}
+                    onClick={() => {
+                      setAutoRefreshInterval(option.value);
+                      setIsAutoRefreshMenuOpen(false);
+                    }}
+                  >
+                    {option.label}
+                    {autoRefreshInterval === option.value && (
+                      <CheckCircle className="h-4 w-4" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button
+            className={`w-10 h-10 flex items-center justify-center rounded-lg border ${viewMode === "list"
+              ? "bg-gray-100 border-gray-500"
+              : "border-gray-400"
+              } hover:bg-gray-50`}
+            onClick={() => setViewMode(viewMode === "list" ? "both" : "list")}
+            title={viewMode === "list" ? "Show All Views" : "Show List Only"}
+          >
+            <Icon
+              icon="material-symbols-light:format-list-bulleted"
+              width="24"
+              height="24"
+              className="text-[#8d77ba]"
+            />
+          </button>
+
           <button
             onClick={handleCreatePurge}
             type="button"
-            className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+            className="h-10 text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 flex items-center justify-center dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
-            Create Purge
+            <Icon icon="material-symbols:add" width="20" height="20" className="mr-1 inline-block" />
+            Create
           </button>
         </div>
       </div>
-        <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading}/>
-            <DataTable
+
+      {viewMode !== "list" && (
+        <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading} />
+      )}
+      <DataTable
         actions={actions}
         columns={columns}
-        data={purgeData}
+        data={filteredPurgeData}
         isLoading={isPurgeLoading}
         isError={purgeError}
-        refetch={refetchPurges}/>
-        {showDeleteModal && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-    <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-      <h2 className="text-lg font-semibold mb-4">Delete Purge</h2>
-      <p className="mb-6">Are you sure you want to delete this purge?</p>
-      <div className="flex justify-end gap-4">
-        <button
-          className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
-          onClick={() => setShowDeleteModal(false)}
-        >
-          Cancel
-        </button>
-        <button
-          className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
-          onClick={handleDeletePurge}
-        >
-          Delete
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+        refetch={refetchPurges} />
+
+      <DagErrorModal
+        isOpen={dagErrorModal.isOpen}
+        onClose={() => setDagErrorModal({ isOpen: false, isLoading: false, data: null, dagId: null })}
+        isLoading={dagErrorModal.isLoading}
+        data={dagErrorModal.data}
+      />
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <h2 className="text-lg font-semibold mb-4">Delete Purge</h2>
+            <p className="mb-6">Are you sure you want to delete this purge?</p>
+            <div className="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded-lg text-sm">
+              Note: This will only remove the listing from the platform, not
+              from the connections.
+            </div>
+            <div className="flex justify-end gap-4">
+              <button
+                className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
+                onClick={() => setShowDeleteModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+                onClick={handleDeletePurge}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -197,13 +405,13 @@ const PurgeEmpty = () => {
 
   return (
     <div className="p-6">
-        <Breadcrumb title="Platform" link={"/"} />
+      <Breadcrumb title="Platform" link={"/"} />
 
       <div className="flex gap-2 mb-6 items-center justify-between">
         <h1 className="text-2xl font-semibold">Purge</h1>
       </div>
       <div className="bg-gray-50 p-8 rounded-lg shadow-sm w-full text-center outline outline-slate-100">
-        <Icon icon="ic:baseline-move-down" width="48" height="48" className="text-gray-300"/>
+        <Icon icon="ic:baseline-move-down" width="48" height="48" className="text-gray-300" />
         <h2 className="text-black-500 text-3xl mb-4 font-semibold w-full block">
           Sorry, no purging found
         </h2>

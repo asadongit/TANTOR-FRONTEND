@@ -19,7 +19,8 @@ import JsonFlattenOperationFields, { getJsonFlattenParams } from "./operations/j
 const transformationOperations = [
 	{
 		id: "arithmetic",
-		name: "Arithmetic"},
+		name: "Arithmetic"
+	},
 	{
 		id: "string",
 		name: "String"
@@ -75,275 +76,275 @@ const transformationOperations = [
 ];
 
 const TransformationItem = memo(({
-  transformation,
-  index,
-  allDataframes,
-  dataframeColumns,
-  openDropdowns,
-  dropdownRefs,
-  handleRemoveTransformation,
-  handleDataframeChange,
-  handleOperationChange,
-  toggleDropdown,
-  handleSelectAllColumns,
-  handleColumnSelection,
-  updateTransformation,
-  transformationOperations,
-  updateStringParam,
-  updateConstantCopyParam,
-  updateFilterParam,
-  updateTypecastParam,
-  updateTargetColumns,
-  updateSortParam,
-  updateRankingParam,
-  updateDateParam,
-  updateTargetColumn,
-  onAddNewTargetColumn,
-  handleOperatorChange,
-  setTransformationValidity,
-  appendColumnsFromRightToLeft,
-  updateJoinsSourceColumns,
-  updateJoinsParam,
+	transformation,
+	index,
+	allDataframes,
+	dataframeColumns,
+	openDropdowns,
+	dropdownRefs,
+	handleRemoveTransformation,
+	handleDataframeChange,
+	handleOperationChange,
+	toggleDropdown,
+	handleSelectAllColumns,
+	handleColumnSelection,
+	updateTransformation,
+	transformationOperations,
+	updateStringParam,
+	updateConstantCopyParam,
+	updateFilterParam,
+	updateTypecastParam,
+	updateTargetColumns,
+	updateSortParam,
+	updateRankingParam,
+	updateDateParam,
+	updateTargetColumn,
+	onAddNewTargetColumn,
+	handleOperatorChange,
+	setTransformationValidity,
+	appendColumnsFromRightToLeft,
+	updateJoinsSourceColumns,
+	updateJoinsParam,
 }) => {
-  const renderSourceAndOperationRow = () => (
-    <div className="flex gap-2 mb-3">
-      <div className="flex-1">
-        <label className="block text-xs text-gray-700 mb-1">
-          {transformation.transformation_operation === "join"
-            ? "Source (Left Table)"
-            : "Source"}
-        </label>
-        <select
-          className="w-full p-2 text-black text-xs border border-gray-300 rounded bg-white"
-          value={transformation.source_dataframe}
-          onChange={e => handleDataframeChange(transformation.id, "source_dataframe", e.target.value)}
-        >
-          <option value="">Select source</option>
-          {allDataframes.map(df => (
-            <option key={df.id} value={df.id}>{df.label}</option>
-          ))}
-        </select>
-      </div>
-      <div className="flex-1">
-        <label className="block text-xs text-gray-700 mb-1">Operation</label>
-        <select
-          className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-          value={transformation.transformation_operation}
-          onChange={(e) => handleOperationChange(
-            transformation.id,
-            e.target.value
-          )}
-        >
-		<option value="">None</option>
-          {transformationOperations.map((op) => (
-            <option key={op.id} value={op.id}>
-              {op.name}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-  );
+	const renderSourceAndOperationRow = () => (
+		<div className="flex gap-2 mb-3">
+			<div className="flex-1">
+				<label className="block text-xs text-gray-700 mb-1">
+					{transformation.transformation_operation === "join"
+						? "Source (Left Table)"
+						: "Source"}
+				</label>
+				<select
+					className="w-full p-2 text-black text-xs border border-gray-300 rounded bg-white"
+					value={transformation.source_dataframe}
+					onChange={e => handleDataframeChange(transformation.id, "source_dataframe", e.target.value)}
+				>
+					<option value="">Select source</option>
+					{allDataframes.map(df => (
+						<option key={df.id} value={df.id}>{df.label}</option>
+					))}
+				</select>
+			</div>
+			<div className="flex-1">
+				<label className="block text-xs text-gray-700 mb-1">Operation</label>
+				<select
+					className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+					value={transformation.transformation_operation}
+					onChange={(e) => handleOperationChange(
+						transformation.id,
+						e.target.value
+					)}
+				>
+					<option value="">None</option>
+					{transformationOperations.map((op) => (
+						<option key={op.id} value={op.id}>
+							{op.name}
+						</option>
+					))}
+				</select>
+			</div>
+		</div>
+	);
 
-  // For arithmetic validation
-  const arithmeticRef = useRef();
+	// For arithmetic validation
+	const arithmeticRef = useRef();
 
-  // For string validation
-  const isStringInvalid = transformation.transformation_operation === "string"
-    && !validateStringTransformation(transformation);
+	// For string validation
+	const isStringInvalid = transformation.transformation_operation === "string"
+		&& !validateStringTransformation(transformation);
 
-  const renderTransformationFields = () => {
-    const { transformation_operation, source_dataframe, target_dataframe } = transformation;
-    const sourceCols = dataframeColumns[source_dataframe]?.columns || [];
-    const targetCols = sourceCols;
+	const renderTransformationFields = () => {
+		const { transformation_operation, source_dataframe, target_dataframe } = transformation;
+		const sourceCols = dataframeColumns[source_dataframe]?.columns || [];
+		const targetCols = sourceCols;
 
-    const commonProps = {
-      transformation: {
-        ...transformation,
-        updateStringParam,
-        updateConstantCopyParam,
-        updateFilterParam,
-        updateTypecastParam,
-        updateTargetColumns,
-        updateSortParam,
-        updateRankingParam
-      },
-      sourceCols,
-      targetCols,
-      openDropdowns,
-      toggleDropdown,
-      handleSelectAllColumns,
-      handleColumnSelection,
-      dropdownRefs,
-      updateTransformation,
-	  updateStringParam,
-    };
+		const commonProps = {
+			transformation: {
+				...transformation,
+				updateStringParam,
+				updateConstantCopyParam,
+				updateFilterParam,
+				updateTypecastParam,
+				updateTargetColumns,
+				updateSortParam,
+				updateRankingParam
+			},
+			sourceCols,
+			targetCols,
+			openDropdowns,
+			toggleDropdown,
+			handleSelectAllColumns,
+			handleColumnSelection,
+			dropdownRefs,
+			updateTransformation,
+			updateStringParam,
+		};
 
-    switch (transformation_operation) {
-      case 'arithmetic':
-        return <ArithmeticOperationFields
-          {...commonProps}
-          onAddNewTargetColumn={(colName) =>
-            onAddNewTargetColumn(colName, transformation.source_dataframe, "arithmetic")
-          }
-          target_dataframe={target_dataframe}
-          ref={arithmeticRef}
-          setIsValid={isValid => setTransformationValidity(transformation.id, isValid)}
-        />;
-      case 'string':
-        return (
-          <>
-            <StringOperationFields
-              {...commonProps}
-              onAddNewTargetColumn={(colName) =>
-                onAddNewTargetColumn(colName, transformation.source_dataframe, "string")
-              }
-            />
+		switch (transformation_operation) {
+			case 'arithmetic':
+				return <ArithmeticOperationFields
+					{...commonProps}
+					onAddNewTargetColumn={(colName) =>
+						onAddNewTargetColumn(colName, transformation.source_dataframe, "arithmetic")
+					}
+					target_dataframe={target_dataframe}
+					ref={arithmeticRef}
+					setIsValid={isValid => setTransformationValidity(transformation.id, isValid)}
+				/>;
+			case 'string':
+				return (
+					<>
+						<StringOperationFields
+							{...commonProps}
+							onAddNewTargetColumn={(colName) =>
+								onAddNewTargetColumn(colName, transformation.source_dataframe, "string")
+							}
+						/>
 
-          </>
-        );
-      case 'colcopy':
-        return <ColCopyOperationFields {...commonProps} />;
-      case 'constantcopy':
-        return <ConstantCopyOperationFields
-          {...commonProps}
-          onAddNewTargetColumn={(colName) =>
-            onAddNewTargetColumn(colName, transformation.source_dataframe, "constantcopy", transformation.params.datatype || "string")
-          }
-        />;
-      case 'rename':
-        return <RenameOperationFields
-          {...commonProps}
-          updateTargetColumn={updateTargetColumn}
-          onAddNewTargetColumn={onAddNewTargetColumn}
-        />;
-      case 'join':
-        return <JoinsOperationFields
-          {...commonProps}
-          allDataframes={allDataframes}
-          dataframeColumns={dataframeColumns}
-          updateJoinsParam={updateJoinsParam}
-          appendColumnsFromRightToLeft={appendColumnsFromRightToLeft}
-          updateJoinsSourceColumns={updateJoinsSourceColumns}
-        />;
-      case 'filter':
-        let operatorOptions = FILTER_OPERATORS;
-        let selectedColType;
-        if (sourceCols && transformation.source_column && transformation.source_column.length > 0) {
-          const colObj = sourceCols.find(
-            c => (typeof c === "object" ? c.name : c) === transformation.source_column[0]
-          );
-          if (colObj && colObj.datatype) {
-            const t = colObj.datatype.toLowerCase();
-            if (t.includes("char") || t.includes("varchar2") || t.includes("string")) {
-              operatorOptions = FILTER_OPERATORS.filter(op => (op.id === "==" || op.id === "!="));
-              selectedColType = "string";
-            } else if (t.includes("int") || t.includes("float") || t.includes("double") || t.includes("number")) {
-              operatorOptions = FILTER_OPERATORS
-              selectedColType = "numeric";
-            } else if (t.includes("date") || t.includes("time")) {
-              selectedColType = "date";
-            }
-          }
-        }
-        return <FilterOperationFields
-          {...commonProps}
-          operatorOptions={operatorOptions}
-          transformation_operator={transformation.transformation_operator}
-          handleOperatorChange={handleOperatorChange}
-        />;
-      case 'date':
-        return <DateOperationFields
-          {...commonProps}
-          updateDateParam={updateDateParam}
-          onAddNewTargetColumn={onAddNewTargetColumn}
-        />;
-      case 'restrictcolumns':
-        return <RestrictColumnsOperationFields
-          {...commonProps}
-          handleOperatorChange={handleOperatorChange}
-          onAddNewTargetColumn={onAddNewTargetColumn}
-        />;
-      case 'typecast':
-  return <TypecastOperationFields
-    {...commonProps}
-    onAddNewTargetColumn={(colName) =>
-      onAddNewTargetColumn(colName, transformation.source_dataframe, "typecast", transformation.params.target_datatype || "string")
-    }
-  />;
-      case 'sorting':
-        return <SortOperationFields
-          {...commonProps}
-        />;
-      case 'ranking':
-        return <RankingOperationFields
-          {...commonProps}
-          onAddNewTargetColumn={onAddNewTargetColumn}
-        />;
-	  case 'expression':
-		return <ExpressionOperationFields
-          {...commonProps}
-          onAddNewTargetColumn={onAddNewTargetColumn}
-          setTransformationValidity={setTransformationValidity}
-        />;
-	  case 'json_flatten':
-		return (
-			<JsonFlattenOperationFields
-				{...commonProps}
-				columnFormat={dataframeColumns[transformation.source_dataframe]?.column_format || {}}
-				setTransformationValidity={setTransformationValidity}
-			/>
-		);
-      default:
-        return null;
-    }
-  };
+					</>
+				);
+			case 'colcopy':
+				return <ColCopyOperationFields {...commonProps} />;
+			case 'constantcopy':
+				return <ConstantCopyOperationFields
+					{...commonProps}
+					onAddNewTargetColumn={(colName) =>
+						onAddNewTargetColumn(colName, transformation.source_dataframe, "constantcopy", transformation.params.datatype || "string")
+					}
+				/>;
+			case 'rename':
+				return <RenameOperationFields
+					{...commonProps}
+					updateTargetColumn={updateTargetColumn}
+					onAddNewTargetColumn={onAddNewTargetColumn}
+				/>;
+			case 'join':
+				return <JoinsOperationFields
+					{...commonProps}
+					allDataframes={allDataframes}
+					dataframeColumns={dataframeColumns}
+					updateJoinsParam={updateJoinsParam}
+					appendColumnsFromRightToLeft={appendColumnsFromRightToLeft}
+					updateJoinsSourceColumns={updateJoinsSourceColumns}
+				/>;
+			case 'filter':
+				let operatorOptions = FILTER_OPERATORS;
+				let selectedColType;
+				if (sourceCols && transformation.source_column && transformation.source_column.length > 0) {
+					const colObj = sourceCols.find(
+						c => (typeof c === "object" ? c.name : c) === transformation.source_column[0]
+					);
+					if (colObj && colObj.datatype) {
+						const t = colObj.datatype.toLowerCase();
+						if (t.includes("char") || t.includes("varchar2") || t.includes("string")) {
+							operatorOptions = FILTER_OPERATORS.filter(op => (op.id === "==" || op.id === "!="));
+							selectedColType = "string";
+						} else if (t.includes("int") || t.includes("float") || t.includes("double") || t.includes("number")) {
+							operatorOptions = FILTER_OPERATORS
+							selectedColType = "numeric";
+						} else if (t.includes("date") || t.includes("time")) {
+							selectedColType = "date";
+						}
+					}
+				}
+				return <FilterOperationFields
+					{...commonProps}
+					operatorOptions={operatorOptions}
+					transformation_operator={transformation.transformation_operator}
+					handleOperatorChange={handleOperatorChange}
+				/>;
+			case 'date':
+				return <DateOperationFields
+					{...commonProps}
+					updateDateParam={updateDateParam}
+					onAddNewTargetColumn={onAddNewTargetColumn}
+				/>;
+			case 'restrictcolumns':
+				return <RestrictColumnsOperationFields
+					{...commonProps}
+					handleOperatorChange={handleOperatorChange}
+					onAddNewTargetColumn={onAddNewTargetColumn}
+				/>;
+			case 'typecast':
+				return <TypecastOperationFields
+					{...commonProps}
+					onAddNewTargetColumn={(colName) =>
+						onAddNewTargetColumn(colName, transformation.source_dataframe, "typecast", transformation.params.target_datatype || "string")
+					}
+				/>;
+			case 'sorting':
+				return <SortOperationFields
+					{...commonProps}
+				/>;
+			case 'ranking':
+				return <RankingOperationFields
+					{...commonProps}
+					onAddNewTargetColumn={onAddNewTargetColumn}
+				/>;
+			case 'expression':
+				return <ExpressionOperationFields
+					{...commonProps}
+					onAddNewTargetColumn={onAddNewTargetColumn}
+					setTransformationValidity={setTransformationValidity}
+				/>;
+			case 'json_flatten':
+				return (
+					<JsonFlattenOperationFields
+						{...commonProps}
+						columnFormat={dataframeColumns[transformation.source_dataframe]?.column_format || {}}
+						setTransformationValidity={setTransformationValidity}
+					/>
+				);
+			default:
+				return null;
+		}
+	};
 
-  return (
-    <div className="p-4 bg-gray-50 rounded-lg border border-gray-400 shadow-md">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-gray-800 text-sm font-medium">
-          {index + 1}. Transformation
-        </h3>
-        <button
-          onClick={() => handleRemoveTransformation(transformation.id)}
-          className="p-1 text-gray-400 hover:text-red-500 rounded-full"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
+	return (
+		<div className="p-4 bg-gray-50 rounded-lg border border-gray-400 shadow-md">
+			<div className="flex justify-between items-center mb-4">
+				<h3 className="text-gray-800 text-sm font-medium">
+					{index + 1}. Transformation
+				</h3>
+				<button
+					onClick={() => handleRemoveTransformation(transformation.id)}
+					className="p-1 text-gray-400 hover:text-red-500 rounded-full"
+				>
+					<X className="w-4 h-4" />
+				</button>
+			</div>
 
-      {renderSourceAndOperationRow()}
+			{renderSourceAndOperationRow()}
 
-      <div className="mb-4">
-        {/* <label className="block text-sm text-gray-700 mb-2">
+			<div className="mb-4">
+				{/* <label className="block text-sm text-gray-700 mb-2">
           Column Selection
         </label> */}
-        {(!transformation.source_dataframe || (dataframeColumns[transformation.source_dataframe] || []).length === 0) ? (
-          <p className="text-amber-500 text-xs mb-2">
-            No columns available. Make sure a source node with columns is connected.
-          </p>
-        ) : (
-          renderTransformationFields()
-        )}
-      </div>
-    </div>
-  );
+				{(!transformation.source_dataframe || (dataframeColumns[transformation.source_dataframe] || []).length === 0) ? (
+					<p className="text-amber-500 text-xs mb-2">
+						No columns available. Make sure a source node with columns is connected.
+					</p>
+				) : (
+					renderTransformationFields()
+				)}
+			</div>
+		</div>
+	);
 }, (prevProps, nextProps) => {
 
 	const relevantPropsToCompare = [
-    'transformation',
-    'openDropdowns',
-    'dataframeColumns'
-  ];
+		'transformation',
+		'openDropdowns',
+		'dataframeColumns'
+	];
 
-  for (let prop of relevantPropsToCompare) {
-    if (JSON.stringify(prevProps[prop]) !== JSON.stringify(nextProps[prop])) {
-      return false;
-    }
-  }
+	for (let prop of relevantPropsToCompare) {
+		if (JSON.stringify(prevProps[prop]) !== JSON.stringify(nextProps[prop])) {
+			return false;
+		}
+	}
 
-  return true;
+	return true;
 });
 
 
@@ -393,116 +394,122 @@ export const TransformationDrawer = ({
 	}, [transformations.length]);
 
 	const replayTransformationsForColumns = useCallback((transformationsList, initialDfCols) => {
-  let dfCols = JSON.parse(JSON.stringify(initialDfCols));
-  const getColName = (col) => typeof col === "object" ? col.name : col;
+		let dfCols = JSON.parse(JSON.stringify(initialDfCols));
+		const getColName = (col) => typeof col === "object" ? col.name : col;
 
-  const renameMaps = {};
-  const previousStates = {};
+		const renameMaps = {};
+		const previousStates = {};
 
-  transformationsList.forEach((t, idx) => {
-    const dfId = t.source_dataframe;
-    if (!dfId) return;
+		const sortedTransformations = [...transformationsList].sort((a, b) =>
+			(a.transformation_order || 0) - (b.transformation_order || 0)
+		);
 
-    previousStates[idx] = JSON.parse(JSON.stringify(dfCols));
+		sortedTransformations.forEach((t, idx) => {
+			const dfId = t.source_dataframe;
+			if (!dfId) return;
 
-    let cols = Array.isArray(dfCols[dfId]?.columns) ? [...dfCols[dfId].columns] : [];
+			previousStates[idx] = JSON.parse(JSON.stringify(dfCols));
 
-    switch (t.transformation_operation) {
-      case "constantcopy":
-      case "arithmetic":
-      case "string":
-      case "typecast":
-      case "date":
-      case "ranking":
-      case "expression":
-        if (t.target_column && t.target_column.length > 0) {
-          t.target_column.forEach(targetCol => {
-            const colName = getColName(targetCol);
-            let datatype = t.params?.datatype || t.params?.target_datatype || "string";
-            if (t.transformation_operation === "arithmetic") {
-              datatype = "NUMBER";
-            }
-            if (t.transformation_operation === "date") {
-              datatype = "DATE";
-            }
-            if (colName && !cols.some(c => getColName(c) === colName)) {
-              cols.push({ name: colName, datatype });
-            }
-          });
-        }
-        break;
+			if (!dfCols[dfId]) dfCols[dfId] = { columns: [], column_format: {} };
+			let cols = Array.isArray(dfCols[dfId].columns) ? [...dfCols[dfId].columns] : [];
 
-      case "rename":
-        if (t.source_column && t.target_column && t.source_column.length === t.target_column.length) {
-          const renameMap = {};
-          t.source_column.forEach((src, idx) => {
-            const tgt = t.target_column[idx];
-            if (tgt && tgt !== src) {
-              renameMap[src] = tgt;
-              cols = cols.map(col => {
-                const colName = getColName(col);
-                if (colName === src) {
-                  return typeof col === "object"
-                    ? { ...col, name: tgt }
-                    : { name: tgt, datatype: "string" };
-                }
-                return col;
-              });
-            }
-          });
+			switch (t.transformation_operation) {
+				case "constantcopy":
+				case "arithmetic":
+				case "string":
+				case "typecast":
+				case "date":
+				case "ranking":
+				case "expression":
+					if (t.target_column && t.target_column.length > 0) {
+						t.target_column.forEach(targetCol => {
+							const colName = getColName(targetCol);
+							let datatype = t.params?.datatype || t.params?.target_datatype || "string";
+							if (t.transformation_operation === "arithmetic") {
+								datatype = "NUMBER";
+							}
+							if (t.transformation_operation === "date") {
+								datatype = "DATE";
+							}
+							if (colName && !cols.some(c => getColName(c) === colName)) {
+								cols.push({ name: colName, datatype });
+							}
+						});
+					}
+					break;
 
-          if (!renameMaps[dfId]) renameMaps[dfId] = {};
-          Object.assign(renameMaps[dfId], renameMap);
+				case "rename":
+					if (t.source_column && t.target_column && t.source_column.length === t.target_column.length) {
+						const renameMap = {};
+						t.source_column.forEach((src, idx) => {
+							const tgt = t.target_column[idx];
+							if (tgt && tgt !== src) {
+								renameMap[src] = tgt;
+								cols = cols.map(col => {
+									const colName = getColName(col);
+									if (colName === src) {
+										return typeof col === "object"
+											? { ...col, name: tgt }
+											: { name: tgt, datatype: "string" };
+									}
+									return col;
+								});
+							}
+						});
 
-          for (let j = idx + 1; j < transformationsList.length; j++) {
-            const nextT = transformationsList[j];
-            if (nextT.source_dataframe !== dfId) continue;
+						if (!renameMaps[dfId]) renameMaps[dfId] = {};
+						Object.assign(renameMaps[dfId], renameMap);
 
-            const map = renameMaps[dfId];
-            const updateColArr = (arr) => arr.map(col => map[col] || col);
+						for (let j = idx + 1; j < sortedTransformations.length; j++) {
+							const nextT = sortedTransformations[j];
+							if (nextT.source_dataframe !== dfId) continue;
 
-            if (Array.isArray(nextT.source_column)) {
-              nextT.source_column = updateColArr(nextT.source_column);
-            }
-            if (Array.isArray(nextT.target_column)) {
-              nextT.target_column = updateColArr(nextT.target_column);
-            }
-          }
-        }
-        break;
+							const map = renameMaps[dfId];
+							const updateColArr = (arr) => arr.map(col => map[col] || col);
 
-      case "restrictcolumns":
-        if (t.source_column && t.source_column.length > 0) {
-          cols = cols.filter(c => t.source_column.includes(getColName(c)));
-        }
-        break;
+							if (Array.isArray(nextT.source_column)) {
+								nextT.source_column = updateColArr(nextT.source_column);
+							}
+							if (Array.isArray(nextT.target_column)) {
+								nextT.target_column = updateColArr(nextT.target_column);
+							}
+						}
+					}
+					break;
 
-      case "join":
-        if (t.params?.right_dataframe && dfCols[t.params.right_dataframe]) {
-          const rightCols = dfCols[t.params.right_dataframe].columns;
-          const droppedLeft = new Set(t.params.drop_left_dataframe_collist || []);
-          const droppedRight = new Set(t.params.drop_right_dataframe_collist || []);
+				case "restrictcolumns":
+					if (t.source_column && t.source_column.length > 0) {
+						cols = cols.filter(c => t.source_column.includes(getColName(c)));
+					}
+					break;
 
-          cols = cols.filter(c => !droppedLeft.has(getColName(c)));
+				case "join":
+					if (t.params?.right_dataframe) {
+						if (!dfCols[t.params.right_dataframe]) dfCols[t.params.right_dataframe] = { columns: [], column_format: {} };
+						const rightCols = dfCols[t.params.right_dataframe].columns;
+						const droppedLeft = new Set(t.params.drop_left_dataframe_collist || []);
+						const droppedRight = new Set(t.params.drop_right_dataframe_collist || []);
 
-          rightCols.forEach(rightCol => {
-            const rightColName = getColName(rightCol);
-            if (!droppedRight.has(rightColName) && !cols.some(c => getColName(c) === rightColName)) {
-              cols.push(rightCol);
-            }
-          });
-        }
-        break;
-    }
+						cols = cols.filter(c => !droppedLeft.has(getColName(c)));
 
-    dfCols[dfId].columns = cols;
-  });
+						rightCols.forEach(rightCol => {
+							const rightColName = getColName(rightCol);
+							if (!droppedRight.has(rightColName) && !cols.some(c => getColName(c) === rightColName)) {
+								cols.push(rightCol);
+							}
+						});
+					}
+					break;
+			}
 
-  window.transformationReplayHistory = previousStates;
-  window.replayedDataframeColumns = JSON.parse(JSON.stringify(dfCols));
+			dfCols[dfId].columns = cols;
+		});
 
-  return dfCols;
-}, []);
+		window.transformationReplayHistory = previousStates;
+		window.replayedDataframeColumns = JSON.parse(JSON.stringify(dfCols));
+
+		return dfCols;
+	}, []);
 
 	const syncDataframeColumnsFromNodes = useCallback(() => {
 		if (!window.allNodes || !window.allEdges) {
@@ -696,19 +703,19 @@ export const TransformationDrawer = ({
 	}, []);
 
 	const updateStringParam = useCallback((id, paramName, value) => {
-  setTransformations(ts => ts.map(t =>
-    t.id === id ? {
-      ...t,
-      ...(t.transformation_operation === "string" && paramName === "transformation_operator"
-        ? { transformation_operator: value }
-        : {}),
-      params: {
-        ...t.params,
-        [paramName]: value,
-      },
-    } : t
-  ));
-}, []);
+		setTransformations(ts => ts.map(t =>
+			t.id === id ? {
+				...t,
+				...(t.transformation_operation === "string" && paramName === "transformation_operator"
+					? { transformation_operator: value }
+					: {}),
+				params: {
+					...t.params,
+					[paramName]: value,
+				},
+			} : t
+		));
+	}, []);
 
 	const updateTargetColumns = useCallback((id, columns) => {
 		setTransformations(ts => ts.map(t =>
@@ -716,139 +723,139 @@ export const TransformationDrawer = ({
 		));
 	}, []);
 
-		const handleOperationChange = useCallback((id, operation) => {
-	    setTransformations(ts => ts.map(t => {
-		if (t.id !== id) return t;
+	const handleOperationChange = useCallback((id, operation) => {
+		setTransformations(ts => ts.map(t => {
+			if (t.id !== id) return t;
 
-		const operationDef = transformationOperations.find(op => op.id === operation);
-		const defaultOperator = operation === "string" ? "lpad" : "";
-		let params = { custom_value: t.params.custom_value };
-		let target_column = t.target_column;
-		let transformation_operator = t.transformation_operator;
+			const operationDef = transformationOperations.find(op => op.id === operation);
+			const defaultOperator = operation === "string" ? "lpad" : "";
+			let params = { custom_value: t.params.custom_value };
+			let target_column = t.target_column;
+			let transformation_operator = t.transformation_operator;
 
-		switch (operation) {
-		case "string":
-			if (defaultOperator === "lpad" || defaultOperator === "rpad") {
-			params = {
-				...params,
-				max_length: "",
-				padding_character: "*",
-			};
-			} else if (defaultOperator === "substr") {
-			params = {
-				...params,
-				start_position: "",
-				no_of_character: "",
-			};
+			switch (operation) {
+				case "string":
+					if (defaultOperator === "lpad" || defaultOperator === "rpad") {
+						params = {
+							...params,
+							max_length: "",
+							padding_character: "*",
+						};
+					} else if (defaultOperator === "substr") {
+						params = {
+							...params,
+							start_position: "",
+							no_of_character: "",
+						};
+					}
+					transformation_operator = defaultOperator;
+					break;
+				case "arithmetic":
+					transformation_operator = "";
+					params = { custom_value: "" };
+					break;
+				case "colcopy":
+				case "rename":
+					params = {};
+					if (operation === "rename") {
+						target_column = t.source_column.slice();
+					}
+					transformation_operator = "";
+					break;
+				case "constantcopy":
+					params = {
+						value: "",
+						value_type: "c",
+						datatype: "string",
+					};
+					transformation_operator = "";
+					break;
+				case "join":
+					params = {
+						right_dataframe: "",
+						join_type: "left",
+						join_condition: "",
+						drop_left_dataframe_collist: [],
+						drop_right_dataframe_collist: [],
+					};
+					transformation_operator = "";
+					break;
+				case "filter":
+					params = {
+						value: "",
+						filter_type: "",
+						expression: "",
+					};
+					if (t.source_column && t.source_column.length > 0 && dataframeColumns[t.source_dataframe]) {
+						const colObj = dataframeColumns[t.source_dataframe].find(
+							c => (typeof c === "object" ? c.name : c) === t.source_column[0]
+						);
+						if (colObj && colObj.datatype) {
+							const ttype = colObj.datatype.toLowerCase();
+							transformation_operator = ttype.includes("char") || ttype.includes("string") ? "==" : ">=";
+						} else {
+							transformation_operator = "==";
+						}
+					} else {
+						transformation_operator = "==";
+					}
+					break;
+				case "date":
+					params = {
+						source_timezone: "",
+						source_timeformat: "",
+						target_timezone: "",
+						target_timeformat: "",
+					};
+					transformation_operator = "";
+					break;
+				case "restrictcolumns":
+					params = {};
+					transformation_operator = "";
+					break;
+				case "typecast":
+					params = {
+						target_datatype: "",
+						source_datatype: "",
+						precision: "",
+						scale: ""
+					};
+					transformation_operator = "";
+					break;
+				case "sorting":
+					params = {
+						order_by: {},
+					};
+					transformation_operator = "";
+					break;
+				case "ranking":
+					params = {
+						group_by: [],
+						order_by: {},
+					};
+					transformation_operator = "";
+					break;
+				case "expression":
+					params = {
+						exp: "",
+						datatype: "string"
+					};
+					transformation_operator = "";
+					break;
+				case "json_flatten":
+					params = getJsonFlattenParams({ params: { jsonColumns: {} } });
+					transformation_operator = "";
+					break;
 			}
-			transformation_operator = defaultOperator;
-			break;
-		case "arithmetic":
-			transformation_operator = "";
-			params = { custom_value: "" };
-			break;
-		case "colcopy":
-		case "rename":
-			params = {};
-			if (operation === "rename") {
-			target_column = t.source_column.slice();
-			}
-			transformation_operator = "";
-			break;
-		case "constantcopy":
-			params = {
-			value: "",
-			value_type: "c",
-			datatype: "string",
-			};
-			transformation_operator = "";
-			break;
-		case "join":
-			params = {
-			right_dataframe: "",
-			join_type: "left",
-			join_condition: "",
-			drop_left_dataframe_collist: [],
-			drop_right_dataframe_collist: [],
-			};
-			transformation_operator = "";
-			break;
-		case "filter":
-			params = {
-			value: "",
-			filter_type: "",
-			expression: "",
-			};
-			if (t.source_column && t.source_column.length > 0 && dataframeColumns[t.source_dataframe]) {
-			const colObj = dataframeColumns[t.source_dataframe].find(
-				c => (typeof c === "object" ? c.name : c) === t.source_column[0]
-			);
-			if (colObj && colObj.datatype) {
-				const ttype = colObj.datatype.toLowerCase();
-				transformation_operator = ttype.includes("char") || ttype.includes("string") ? "==" : ">=";
-			} else {
-				transformation_operator = "==";
-			}
-			} else {
-			transformation_operator = "==";
-			}
-			break;
-		case "date":
-			params = {
-			source_timezone: "",
-			source_timeformat: "",
-			target_timezone: "",
-			target_timeformat: "",
-			};
-			transformation_operator = "";
-			break;
-		case "restrictcolumns":
-			params = {};
-			transformation_operator = "";
-			break;
-		case "typecast":
-			params = {
-			target_datatype: "",
-			source_datatype: "",
-			precision: "",
-			scale: ""
-			};
-			transformation_operator = "";
-			break;
-		case "sorting":
-			params = {
-			order_by: {},
-			};
-			transformation_operator = "";
-			break;
-		case "ranking":
-			params = {
-			group_by: [],
-			order_by: {},
-			};
-			transformation_operator = "";
-			break;
-		case "expression":
-			params = {
-			exp: "",
-			datatype: "string"
-			};
-			transformation_operator = "";
-			break;
-		case "json_flatten":
-			params = getJsonFlattenParams({ params: { jsonColumns: {} } });
-			transformation_operator = "";
-			break;
-		}
 
-		return {
-		...t,
-		transformation_operation: operation,
-		transformation_operator,
-		params,
-		target_column,
-		};
-	}));
+			return {
+				...t,
+				transformation_operation: operation,
+				transformation_operator,
+				params,
+				target_column,
+			};
+		}));
 	}, [transformationOperations, dataframeColumns]);
 
 
@@ -929,7 +936,7 @@ export const TransformationDrawer = ({
 			if (t.transformation_operation === 'rename' && sourceColumns) {
 				finalTargetColumns = targetColumns.map((targetCol, idx) =>
 					targetCol && targetCol.trim() !== "" ? targetCol.trim() :
-					(sourceColumns[idx] || "")
+						(sourceColumns[idx] || "")
 				);
 			}
 
@@ -974,11 +981,11 @@ export const TransformationDrawer = ({
 
 
 	const setTransformationValidity = useCallback((id, isValid) => {
-    setTransformationsValidity(prev => ({
-      ...prev,
-      [id]: isValid
-    }));
-  }, []);
+		setTransformationsValidity(prev => ({
+			...prev,
+			[id]: isValid
+		}));
+	}, []);
 
 	// Add string validation to the validity state
 	useEffect(() => {
@@ -1043,7 +1050,7 @@ export const TransformationDrawer = ({
 				source_dataframe: t.source_dataframe,
 				target_dataframe: t.source_dataframe,
 				source_column: t.transformation_operation === 'constantcopy' ? [""] :
-							t.transformation_operation === 'join' ? ["", ""] : t.source_column,
+					t.transformation_operation === 'join' ? ["", ""] : t.source_column,
 				target_column: targetColumns,
 				transformation_operation: t.transformation_operation,
 				transformation_operator: transformationOperatorToSend,
@@ -1239,282 +1246,296 @@ export const TransformationDrawer = ({
 	}, [setDataframeColumns, syncDataframeColumnsFromNodes]);
 
 	const handleAddNewTargetColumn = useCallback((columnName, dataframeId, operationType = "arithmetic", givendatatype = "NUMBER", oldColumnName = null, restrictedColumns = null, restrictType = null) => {
-  const actualDfId = dataframeId;
+		const actualDfId = dataframeId;
 
-  let datatype = "NUMBER";
-  if (operationType === "typecast") {
-    datatype = givendatatype;
-  } else if (operationType === "string") {
-    datatype = "STRING";
-  } else if (operationType === "date") {
-    datatype = "DATE";
-  } else if (operationType === "constantcopy") {
-    datatype = givendatatype;
-  } else if (operationType === "rename") {
-    datatype = givendatatype;
-  } else if (operationType === "arithmetic") {
-    datatype = "NUMBER";
-  } else if (operationType === "ranking") {
-    datatype = "NUMBER";
-  } else if (operationType === "expression") {
-    datatype = givendatatype;
-  }
+		let datatype = "NUMBER";
+		if (operationType === "typecast") {
+			datatype = givendatatype;
+		} else if (operationType === "string") {
+			datatype = "STRING";
+		} else if (operationType === "date") {
+			datatype = "DATE";
+		} else if (operationType === "constantcopy") {
+			datatype = givendatatype;
+		} else if (operationType === "rename") {
+			datatype = givendatatype;
+		} else if (operationType === "arithmetic") {
+			datatype = "NUMBER";
+		} else if (operationType === "ranking") {
+			datatype = "NUMBER";
+		} else if (operationType === "expression") {
+			datatype = givendatatype;
+		}
 
-  // Handle restrict columns operation
-  if (operationType === "restrictcolumns" && restrictedColumns !== null &&
-     (restrictType === "select" || restrictType === "drop" || restrictType === "restore")) {
-    setDataframeColumns(prev => {
-      const prevCols = prev[actualDfId] || { columns: [], column_format: {} };
-      let newCols;
+		// Handle restrict columns operation
+		if (operationType === "restrictcolumns" && restrictedColumns !== null &&
+			(restrictType === "select" || restrictType === "drop" || restrictType === "restore")) {
+			setDataframeColumns(prev => {
+				const prevCols = prev[actualDfId] || { columns: [], column_format: {} };
+				let newCols;
 
-      if (restrictType === "restore") {
-        // Restore original columns from context
-        const { state } = window.transformationContext || {};
-        const originalColumns = state?.originalSourceColumns?.[actualDfId];
-        newCols = originalColumns ? [...originalColumns] : prevCols.columns;
-      } else if (restrictType === "select") {
-        // Keep only selected columns
-        newCols = prevCols.columns.filter(col => {
-          const colName = typeof col === "object" ? col.name : col;
-          return restrictedColumns.includes(colName);
-        });
-      } else if (restrictType === "drop") {
-        // Remove selected columns (keep all others)
-        newCols = prevCols.columns.filter(col => {
-          const colName = typeof col === "object" ? col.name : col;
-          return !restrictedColumns.includes(colName);
-        });
-      } else {
-        newCols = prevCols.columns;
-      }
+				if (restrictType === "restore") {
+					// Restore original columns from context
+					const { state } = window.transformationContext || {};
+					const originalColumns = state?.originalSourceColumns?.[actualDfId];
+					newCols = originalColumns ? [...originalColumns] : prevCols.columns;
+				} else if (restrictType === "select") {
+					// Keep only selected columns
+					newCols = prevCols.columns.filter(col => {
+						const colName = typeof col === "object" ? col.name : col;
+						return restrictedColumns.includes(colName);
+					});
+				} else if (restrictType === "drop") {
+					// Remove selected columns (keep all others)
+					newCols = prevCols.columns.filter(col => {
+						const colName = typeof col === "object" ? col.name : col;
+						return !restrictedColumns.includes(colName);
+					});
+				} else {
+					newCols = prevCols.columns;
+				}
 
-      return {
-        ...prev,
-        [actualDfId]: {
-          columns: newCols,
-          column_format: prevCols.column_format
-        }
-      };
-    });
+				return {
+					...prev,
+					[actualDfId]: {
+						columns: newCols,
+						column_format: prevCols.column_format
+					}
+				};
+			});
 
-    // Update the actual node data
-    if (window.allNodes && Array.isArray(window.allNodes)) {
-      const reactNode = window.allNodes.find(n =>
-        (n.data?.alias === actualDfId) || (n.id === actualDfId)
-      );
-      if (reactNode && typeof reactNode.data.onDataChange === "function") {
-        let updatedCols;
+			// Update the actual node data
+			if (window.allNodes && Array.isArray(window.allNodes)) {
+				const reactNode = window.allNodes.find(n =>
+					(n.data?.alias === actualDfId) || (n.id === actualDfId)
+				);
+				if (reactNode && typeof reactNode.data.onDataChange === "function") {
+					let updatedCols;
 
-        if (restrictType === "restore") {
-          // Get original columns from transformation context
-          const { state } = window.transformationContext || {};
-          const originalColumns = state?.originalSourceColumns?.[actualDfId];
-          updatedCols = originalColumns ? [...originalColumns] : (Array.isArray(reactNode.data.columns) ? [...reactNode.data.columns] : []);
-        } else {
-          const currentCols = Array.isArray(reactNode.data.columns) ? [...reactNode.data.columns] : [];
+					if (restrictType === "restore") {
+						// Get original columns from transformation context
+						const { state } = window.transformationContext || {};
+						const originalColumns = state?.originalSourceColumns?.[actualDfId];
+						updatedCols = originalColumns ? [...originalColumns] : (Array.isArray(reactNode.data.columns) ? [...reactNode.data.columns] : []);
+					} else {
+						const currentCols = Array.isArray(reactNode.data.columns) ? [...reactNode.data.columns] : [];
 
-          if (restrictType === "select") {
-            // Keep only selected columns
-            updatedCols = currentCols.filter(col => {
-              const colName = typeof col === "object" ? col.name : col;
-              return restrictedColumns.includes(colName);
-            });
-          } else if (restrictType === "drop") {
-            // Remove selected columns (keep all others)
-            updatedCols = currentCols.filter(col => {
-              const colName = typeof col === "object" ? col.name : col;
-              return !restrictedColumns.includes(colName);
-            });
-          } else {
-            updatedCols = currentCols;
-          }
-        }
+						if (restrictType === "select") {
+							// Keep only selected columns
+							updatedCols = currentCols.filter(col => {
+								const colName = typeof col === "object" ? col.name : col;
+								return restrictedColumns.includes(colName);
+							});
+						} else if (restrictType === "drop") {
+							// Remove selected columns (keep all others)
+							updatedCols = currentCols.filter(col => {
+								const colName = typeof col === "object" ? col.name : col;
+								return !restrictedColumns.includes(colName);
+							});
+						} else {
+							updatedCols = currentCols;
+						}
+					}
 
-        reactNode.data.onDataChange({ columns: updatedCols });
-      }
-    }
+					reactNode.data.onDataChange({ columns: updatedCols });
+				}
+			}
 
-    setTimeout(() => {
-      window.dispatchEvent(new Event("tantor-columns-updated"));
-    }, 10);
-    return;
-  }
+			setTimeout(() => {
+				window.dispatchEvent(new Event("tantor-columns-updated"));
+			}, 10);
+			return;
+		}
 
-  if (operationType === "rename" && oldColumnName) {
-    // Update local state - replace old column with new one
-    setDataframeColumns(prev => {
-      const prevCols = prev[actualDfId] || { columns: [], column_format: {} };
-      const newCols = prevCols.columns.map(col => {
-        const colName = typeof col === "object" ? col.name : col;
-        if (colName === oldColumnName) {
-          return typeof col === "object"
-            ? { ...col, name: columnName, datatype }
-            : { name: columnName, datatype };
-        }
-        return col;
-      });
-      return {
-        ...prev,
-        [actualDfId]: {
-          columns: newCols,
-          column_format: prevCols.column_format
-        }
-      };
-    });
+		if (operationType === "rename" && oldColumnName) {
+			// Update local state - replace old column with new one
+			setDataframeColumns(prev => {
+				const prevCols = prev[actualDfId] || { columns: [], column_format: {} };
+				const newCols = prevCols.columns.map(col => {
+					const colName = typeof col === "object" ? col.name : col;
+					if (colName === oldColumnName) {
+						return typeof col === "object"
+							? { ...col, name: columnName, datatype }
+							: { name: columnName, datatype };
+					}
+					return col;
+				});
+				return {
+					...prev,
+					[actualDfId]: {
+						columns: newCols,
+						column_format: prevCols.column_format
+					}
+				};
+			});
 
-    // Update the actual node data
-    if (window.allNodes && Array.isArray(window.allNodes)) {
-      const reactNode = window.allNodes.find(n =>
-        (n.data?.alias === actualDfId) || (n.id === actualDfId)
-      );
-      if (reactNode && typeof reactNode.data.onDataChange === "function") {
-        const newCols = Array.isArray(reactNode.data.columns)
-          ? [...reactNode.data.columns]
-          : [];
+			// Update the actual node data
+			if (window.allNodes && Array.isArray(window.allNodes)) {
+				const reactNode = window.allNodes.find(n =>
+					(n.data?.alias === actualDfId) || (n.id === actualDfId)
+				);
+				if (reactNode && typeof reactNode.data.onDataChange === "function") {
+					const newCols = Array.isArray(reactNode.data.columns)
+						? [...reactNode.data.columns]
+						: [];
 
-        // Replace the old column with the new one
-        const updatedCols = newCols.map(col => {
-          const colName = typeof col === "object" ? col.name : col;
-          if (colName === oldColumnName) {
-            return typeof col === "object"
-              ? { ...col, name: columnName, datatype }
-              : { name: columnName, datatype };
-          }
-          return col;
-        });
+					// Replace the old column with the new one
+					const updatedCols = newCols.map(col => {
+						const colName = typeof col === "object" ? col.name : col;
+						if (colName === oldColumnName) {
+							return typeof col === "object"
+								? { ...col, name: columnName, datatype }
+								: { name: columnName, datatype };
+						}
+						return col;
+					});
 
-        reactNode.data.onDataChange({ columns: updatedCols });
-      }
-    }
-  } else {
-    appendColumnToDataframe(dataframeId, columnName, datatype);
+					reactNode.data.onDataChange({ columns: updatedCols });
+				}
+			}
 
-    if (window.allNodes && Array.isArray(window.allNodes)) {
-      const reactNode = window.allNodes.find(n =>
-        (n.data?.alias === dataframeId) || (n.id === dataframeId)
-      );
-      if (reactNode && typeof reactNode.data.onDataChange === "function") {
-        const newCols = Array.isArray(reactNode.data.columns)
-          ? [...reactNode.data.columns]
-          : [];
+			if (isEditMode && window.replayedDataframeColumns && window.replayedDataframeColumns[actualDfId]) {
+				const replayedCols = window.replayedDataframeColumns[actualDfId].columns;
+				const updatedReplayedCols = replayedCols.map(col => {
+					const colName = typeof col === "object" ? col.name : col;
+					if (colName === oldColumnName) {
+						return typeof col === "object"
+							? { ...col, name: columnName, datatype }
+							: { name: columnName, datatype };
+					}
+					return col;
+				});
+				window.replayedDataframeColumns[actualDfId].columns = updatedReplayedCols;
+			}
+		} else {
+			appendColumnToDataframe(dataframeId, columnName, datatype);
 
-        // Add new column if not present - use correct datatype
-        const exists = newCols.some(col =>
-          (typeof col === "object" ? col.name : col) === columnName
-        );
-        if (!exists) {
-          newCols.push({ name: columnName, datatype: datatype });
-          reactNode.data.onDataChange({ columns: newCols });
-        }
-      }
-    }
-    if (isEditMode && window.replayedDataframeColumns) {
-      if (!window.replayedDataframeColumns[dataframeId]) {
-        window.replayedDataframeColumns[dataframeId] = { columns: [], column_format: {} };
-      }
+			if (window.allNodes && Array.isArray(window.allNodes)) {
+				const reactNode = window.allNodes.find(n =>
+					(n.data?.alias === dataframeId) || (n.id === dataframeId)
+				);
+				if (reactNode && typeof reactNode.data.onDataChange === "function") {
+					const newCols = Array.isArray(reactNode.data.columns)
+						? [...reactNode.data.columns]
+						: [];
 
-      const existsInReplayed = window.replayedDataframeColumns[dataframeId].columns.some(col =>
-        (typeof col === "object" ? col.name : col) === columnName
-      );
+					// Add new column if not present - use correct datatype
+					const exists = newCols.some(col =>
+						(typeof col === "object" ? col.name : col) === columnName
+					);
+					if (!exists) {
+						newCols.push({ name: columnName, datatype: datatype });
+						reactNode.data.onDataChange({ columns: newCols });
+					}
+				}
+			}
+			if (isEditMode && window.replayedDataframeColumns) {
+				if (!window.replayedDataframeColumns[dataframeId]) {
+					window.replayedDataframeColumns[dataframeId] = { columns: [], column_format: {} };
+				}
 
-      if (!existsInReplayed) {
-        window.replayedDataframeColumns[dataframeId].columns.push({ name: columnName, datatype: datatype });
-      }
-    }
-  }
+				const existsInReplayed = window.replayedDataframeColumns[dataframeId].columns.some(col =>
+					(typeof col === "object" ? col.name : col) === columnName
+				);
 
-  // FIXED: After adding/updating columns, notify all connected target nodes to refresh their SCD configurations
-  if (window.allNodes && window.allEdges) {
-    // Find all target nodes that might be connected to this dataframe
-    const targetNodes = window.allNodes.filter(n => n.type === 'target');
+				if (!existsInReplayed) {
+					window.replayedDataframeColumns[dataframeId].columns.push({ name: columnName, datatype: datatype });
+				}
+			}
+		}
 
-    targetNodes.forEach(targetNode => {
-      // Check if this target is connected to the source that was updated
-      const isConnected = window.allEdges.some(edge => {
-        const sourceNode = window.allNodes.find(n => n.id === edge.source);
-        return edge.target === targetNode.id &&
-               sourceNode &&
-               (sourceNode.data?.alias === dataframeId || sourceNode.id === dataframeId);
-      });
+		// FIXED: After adding/updating columns, notify all connected target nodes to refresh their SCD configurations
+		if (window.allNodes && window.allEdges) {
+			// Find all target nodes that might be connected to this dataframe
+			const targetNodes = window.allNodes.filter(n => n.type === 'target');
 
-      if (isConnected && targetNode.data?.scdConfig) {
-        // Trigger target node to refresh its SCD config validation
-        if (targetNode.data.onDataChange) {
-          targetNode.data.onDataChange({
-            scdConfig: targetNode.data.scdConfig,
-            _refreshScdConfig: true,
-            _timestamp: Date.now()
-          });
-        }
-      }
-    });
-  }
+			targetNodes.forEach(targetNode => {
+				// Check if this target is connected to the source that was updated
+				const isConnected = window.allEdges.some(edge => {
+					const sourceNode = window.allNodes.find(n => n.id === edge.source);
+					return edge.target === targetNode.id &&
+						sourceNode &&
+						(sourceNode.data?.alias === dataframeId || sourceNode.id === dataframeId);
+				});
 
-  // Dispatch a detailed event with all information about the new column
-  setTimeout(() => {
-    window.dispatchEvent(new CustomEvent("tantor-columns-updated", {
-      detail: {
-        sourceId: dataframeId,
-        columnName: columnName,
-        columnType: datatype,
-        operationType: operationType,
-        timestamp: Date.now(),
-        isNewColumn: true,
-        // FIXED: Add flag to indicate SCD configs should be refreshed
-        refreshScdConfigs: true
-      }
-    }));
-  }, 10);
-}, [appendColumnToDataframe, setDataframeColumns, isEditMode]);
+				if (isConnected && targetNode.data?.scdConfig) {
+					// Trigger target node to refresh its SCD config validation
+					if (targetNode.data.onDataChange) {
+						targetNode.data.onDataChange({
+							scdConfig: targetNode.data.scdConfig,
+							_refreshScdConfig: true,
+							_timestamp: Date.now()
+						});
+					}
+				}
+			});
+		}
 
-useEffect(() => {
-  const handler = (event) => {
-    if (isOpen) {
-      // Extract details if available
-      const details = event.detail || {};
+		// Dispatch a detailed event with all information about the new column
+		setTimeout(() => {
+			window.dispatchEvent(new CustomEvent("tantor-columns-updated", {
+				detail: {
+					sourceId: dataframeId,
+					columnName: columnName,
+					columnType: datatype,
+					operationType: operationType,
+					timestamp: Date.now(),
+					isNewColumn: true,
+					// FIXED: Add flag to indicate SCD configs should be refreshed
+					refreshScdConfigs: true
+				}
+			}));
+		}, 10);
+	}, [appendColumnToDataframe, setDataframeColumns, isEditMode]);
 
-      // Check if specific dataframes were updated
-      if (details.sourceId) {
-        // Force synchronize the source node columns to ensure visibility in target mapping
-        if (isEditMode && window.replayedDataframeColumns && window.replayedDataframeColumns[details.sourceId]) {
-          const sourceNode = window.allNodes?.find(n =>
-            (n.data?.alias === details.sourceId) || (n.id === details.sourceId)
-          );
+	useEffect(() => {
+		const handler = (event) => {
+			if (isOpen) {
+				// Extract details if available
+				const details = event.detail || {};
 
-          if (sourceNode && typeof sourceNode.data.onDataChange === "function") {
-            sourceNode.data.onDataChange({
-              columns: [...window.replayedDataframeColumns[details.sourceId]]
-            });
-          }
+				// Check if specific dataframes were updated
+				if (details.sourceId) {
+					// Force synchronize the source node columns to ensure visibility in target mapping
+					if (isEditMode && window.replayedDataframeColumns && window.replayedDataframeColumns[details.sourceId]) {
+						const sourceNode = window.allNodes?.find(n =>
+							(n.data?.alias === details.sourceId) || (n.id === details.sourceId)
+						);
 
-          // Also notify all nodes to refresh their column lists
-          window.dispatchEvent(new CustomEvent("tantor-refresh-all-columns", {
-            detail: { timestamp: Date.now() }
-          }));
-        }
+						if (sourceNode && typeof sourceNode.data.onDataChange === "function") {
+							sourceNode.data.onDataChange({
+								columns: [...window.replayedDataframeColumns[details.sourceId]]
+							});
+						}
 
-        // Update specific dataframe
-        syncDataframeColumnsFromNodes();
+						// Also notify all nodes to refresh their column lists
+						window.dispatchEvent(new CustomEvent("tantor-refresh-all-columns", {
+							detail: { timestamp: Date.now() }
+						}));
+					}
 
-        // Make sure transformations are refreshed with new columns
-        setTransformations(prev => {
-          return prev.map(t => {
-            if (t.source_dataframe === details.sourceId) {
-              return { ...t };  // Create a new reference to force re-render
-            }
-            return t;
-          });
-        });
-      } else {
-        // General update
-        syncDataframeColumnsFromNodes();
-      }
-    }
-  };
+					// Update specific dataframe
+					syncDataframeColumnsFromNodes();
 
-  window.addEventListener("tantor-columns-updated", handler);
-  return () => window.removeEventListener("tantor-columns-updated", handler);
-}, [isOpen, syncDataframeColumnsFromNodes, isEditMode]);
+					// Make sure transformations are refreshed with new columns
+					setTransformations(prev => {
+						return prev.map(t => {
+							if (t.source_dataframe === details.sourceId) {
+								return { ...t };  // Create a new reference to force re-render
+							}
+							return t;
+						});
+					});
+				} else {
+					// General update
+					syncDataframeColumnsFromNodes();
+				}
+			}
+		};
+
+		window.addEventListener("tantor-columns-updated", handler);
+		return () => window.removeEventListener("tantor-columns-updated", handler);
+	}, [isOpen, syncDataframeColumnsFromNodes, isEditMode]);
 
 
 	// Prefill transformations for edit flow
@@ -1639,7 +1660,7 @@ useEffect(() => {
 			// Wait for columns to load before replaying
 			setTimeout(() => {
 				setIsDataLoaded(true);
-			}, 300);
+			}, 50);
 		} else {
 			setIsEditMode(false);
 			setInitialTransformations([]);
@@ -1664,8 +1685,25 @@ useEffect(() => {
 			!hasReplayedRef.current
 		) {
 			try {
+				const cleanDfCols = {};
+				Object.keys(dataframeColumns).forEach(dfId => {
+					let cols = dataframeColumns[dfId].columns;
+					if (window.transformationContext?.state?.originalSourceColumns) {
+						const node = window.allNodes?.find(n => n.data?.alias === dfId || n.id === dfId);
+						const nodeId = node ? node.id : null;
+						if (nodeId && window.transformationContext.state.originalSourceColumns[nodeId]) {
+							cols = [...window.transformationContext.state.originalSourceColumns[nodeId]];
+						} else if (window.transformationContext.state.originalSourceColumns[dfId]) {
+							cols = [...window.transformationContext.state.originalSourceColumns[dfId]];
+						}
+					}
+					cleanDfCols[dfId] = {
+						columns: cols,
+						column_format: dataframeColumns[dfId].column_format || {}
+					};
+				});
 
-				const updatedDfCols = replayTransformationsForColumns(initialTransformations, dataframeColumns);
+				const updatedDfCols = replayTransformationsForColumns(initialTransformations, cleanDfCols);
 
 
 				setDataframeColumns(updatedDfCols);
@@ -1694,6 +1732,7 @@ useEffect(() => {
 				}));
 			} catch (error) {
 				console.error('Error during transformation replay:', error);
+				hasReplayedRef.current = true; // Set to true even on error to prevent infinite loading
 			}
 		}
 	}, [isEditMode, initialTransformations, isDataLoaded, columnsLoaded, replayTransformationsForColumns, dataframeColumns]);
@@ -1705,53 +1744,63 @@ useEffect(() => {
 		}
 	}, [isOpen, isEditMode]);
 
-  const handleRefreshColumns = useCallback(() => {
-    if (!isEditMode || !transformations.length) return;
+	const handleRefreshColumns = useCallback(() => {
+		if (!isEditMode || !transformations.length) return;
 
-    try {
-      const initialDfCols = {};
-      if (window.allNodes && window.allEdges) {
-        const incomingEdges = window.allEdges.filter(edge => edge.target === activeNodeId);
-        const sources = incomingEdges
-          .map(edge => window.allNodes.find(node => node.id === edge.source && node.type === "source"))
-          .filter(Boolean);
+		try {
+			const initialDfCols = {};
+			if (window.allNodes && window.allEdges) {
+				const incomingEdges = window.allEdges.filter(edge => edge.target === activeNodeId);
+				const sources = incomingEdges
+					.map(edge => window.allNodes.find(node => node.id === edge.source && node.type === "source"))
+					.filter(Boolean);
 
-        sources.forEach(node => {
-          const alias = node.data?.alias || `unnamed_source_${node.id}`;
-          initialDfCols[alias] = {
-            columns: Array.isArray(node.data?.columns) ? [...node.data.columns] : [],
-            column_format: node.data?.column_format || {}
-          };
-        });
-      }
+				sources.forEach(node => {
+					const alias = node.data?.alias || `unnamed_source_${node.id}`;
+					let cols = Array.isArray(node.data?.columns) ? [...node.data.columns] : [];
 
-      const updatedDfCols = replayTransformationsForColumns(transformations, initialDfCols);
+					if (window.transformationContext?.state?.originalSourceColumns) {
+						if (window.transformationContext.state.originalSourceColumns[node.id]) {
+							cols = [...window.transformationContext.state.originalSourceColumns[node.id]];
+						} else if (window.transformationContext.state.originalSourceColumns[alias]) {
+							cols = [...window.transformationContext.state.originalSourceColumns[alias]];
+						}
+					}
 
-      setDataframeColumns(updatedDfCols);
+					initialDfCols[alias] = {
+						columns: cols,
+						column_format: node.data?.column_format || {}
+					};
+				});
+			}
 
-      if (window.allNodes) {
-        Object.entries(updatedDfCols).forEach(([dfId, dfData]) => {
-          const node = window.allNodes.find(n =>
-            n.data?.alias === dfId || n.id === dfId
-          );
-          if (node && typeof node.data.onDataChange === "function") {
-            node.data.onDataChange({ columns: [...dfData.columns] });
-          }
-        });
-      }
+			const updatedDfCols = replayTransformationsForColumns(transformations, initialDfCols);
 
-      window.replayedDataframeColumns = JSON.parse(JSON.stringify(updatedDfCols));
+			setDataframeColumns(updatedDfCols);
 
-      window.dispatchEvent(new CustomEvent("tantor-columns-updated", {
-        detail: {
-          type: "manual-refresh",
-          timestamp: Date.now()
-        }
-      }));
-    } catch (error) {
-      console.error('Error refreshing transformation columns:', error);
-    }
-  }, [isEditMode, transformations, activeNodeId, replayTransformationsForColumns]);
+			if (window.allNodes) {
+				Object.entries(updatedDfCols).forEach(([dfId, dfData]) => {
+					const node = window.allNodes.find(n =>
+						n.data?.alias === dfId || n.id === dfId
+					);
+					if (node && typeof node.data.onDataChange === "function") {
+						node.data.onDataChange({ columns: [...dfData.columns] });
+					}
+				});
+			}
+
+			window.replayedDataframeColumns = JSON.parse(JSON.stringify(updatedDfCols));
+
+			window.dispatchEvent(new CustomEvent("tantor-columns-updated", {
+				detail: {
+					type: "manual-refresh",
+					timestamp: Date.now()
+				}
+			}));
+		} catch (error) {
+			console.error('Error refreshing transformation columns:', error);
+		}
+	}, [isEditMode, transformations, activeNodeId, replayTransformationsForColumns]);
 
 	if (!isOpen) return null;
 
@@ -1808,7 +1857,7 @@ useEffect(() => {
 				</div>
 
 				<div className="flex-1 overflow-y-auto p-4">
-					{(!isDataLoaded || !columnsLoaded) && isEditMode ? (
+					{(!isDataLoaded || !columnsLoaded || (!hasReplayedRef.current && initialTransformations.length > 0)) && isEditMode ? (
 						<div className="flex items-center justify-center h-64">
 							<div className="text-center">
 								<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8E77BB] mx-auto mb-4"></div>
@@ -1841,17 +1890,17 @@ useEffect(() => {
 										updateConstantCopyParam={updateConstantCopyParam}
 										updateFilterParam={updateFilterParam}
 										updateTypecastParam={updateTypecastParam}
-									 updateTargetColumns={updateTargetColumns}
-									 updateSortParam={updateSortParam}
-									 updateRankingParam={updateRankingParam}
-									 updateDateParam={updateDateParam}
-									 updateTargetColumn={updateTargetColumn}
-									 onAddNewTargetColumn={handleAddNewTargetColumn}
-									 appendColumnsFromRightToLeft={appendColumnsFromRightToLeft}
-									 handleOperatorChange={handleOperatorChange}
-									 setTransformationValidity={setTransformationValidity}
-									 updateJoinsSourceColumns={updateJoinsSourceColumns}
-									 updateJoinsParam={updateJoinsParam}
+										updateTargetColumns={updateTargetColumns}
+										updateSortParam={updateSortParam}
+										updateRankingParam={updateRankingParam}
+										updateDateParam={updateDateParam}
+										updateTargetColumn={updateTargetColumn}
+										onAddNewTargetColumn={handleAddNewTargetColumn}
+										appendColumnsFromRightToLeft={appendColumnsFromRightToLeft}
+										handleOperatorChange={handleOperatorChange}
+										setTransformationValidity={setTransformationValidity}
+										updateJoinsSourceColumns={updateJoinsSourceColumns}
+										updateJoinsParam={updateJoinsParam}
 									/>
 								</div>
 							))}

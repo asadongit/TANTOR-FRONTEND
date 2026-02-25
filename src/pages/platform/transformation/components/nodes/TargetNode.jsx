@@ -388,10 +388,18 @@ export const TargetNode = ({ id, data }) => {
 
   useEffect(() => {
     const validCols = getAllTargetColumns();
+    if (validCols.length === 0 && (!selectedTable || tables.length === 0)) return;
+
     setTargetMapping(prev => {
       const updated = {};
       validCols.forEach(col => {
-        updated[col] = prev && Object.prototype.hasOwnProperty.call(prev, col) ? prev[col] : "";
+        let valueToUse = "";
+        if (prev && Object.prototype.hasOwnProperty.call(prev, col) && prev[col]) {
+          valueToUse = prev[col];
+        } else if (data.targetMapping && data.targetMapping[col]) {
+          valueToUse = data.targetMapping[col];
+        }
+        updated[col] = valueToUse;
       });
       return updated;
     });
@@ -494,8 +502,8 @@ export const TargetNode = ({ id, data }) => {
         const isConnected = window.allEdges?.some(edge => {
           const sourceNode = window.allNodes?.find(n => n.id === edge.source);
           return edge.target === id &&
-                 sourceNode &&
-                 (sourceNode.data?.alias === details.sourceId || sourceNode.id === details.sourceId);
+            sourceNode &&
+            (sourceNode.data?.alias === details.sourceId || sourceNode.id === details.sourceId);
         });
 
         if (isConnected) {
@@ -865,9 +873,9 @@ export const TargetNode = ({ id, data }) => {
       procedure.procedure_parameter.forEach(param => {
         // Check multiple sources for parameter values
         const paramValue = storedMapping[param.name] ||
-                          procedure.parameterMapping?.[param.name] ||
-                          procedure.originalParameterMapping?.[param.name] ||
-                          "";
+          procedure.parameterMapping?.[param.name] ||
+          procedure.originalParameterMapping?.[param.name] ||
+          "";
         initialMapping[param.name] = paramValue;
       });
     }
@@ -1514,22 +1522,20 @@ export const TargetNode = ({ id, data }) => {
             <div className="flex gap-2">
               <button
                 type="button"
-                className={`flex-1 p-1.5 text-[11px] rounded-sm border text-center focus:outline-none focus:ring-1 focus:ring-gray-400 ${
-                  selectedObjectType === "tables"
+                className={`flex-1 p-1.5 text-[11px] rounded-sm border text-center focus:outline-none focus:ring-1 focus:ring-gray-400 ${selectedObjectType === "tables"
                     ? "bg-[#8E77BB] text-white border-[#8E77BB]"
                     : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
-                }`}
+                  }`}
                 onClick={() => handleObjectTypeChange("tables")}
               >
                 Tables
               </button>
               <button
                 type="button"
-                className={`flex-1 p-1.5 text-[11px] rounded-sm border text-center focus:outline-none focus:ring-1 focus:ring-gray-400 ${
-                  selectedObjectType === "procedures"
+                className={`flex-1 p-1.5 text-[11px] rounded-sm border text-center focus:outline-none focus:ring-1 focus:ring-gray-400 ${selectedObjectType === "procedures"
                     ? "bg-[#8E77BB] text-white border-[#8E77BB]"
                     : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
-                }`}
+                  }`}
                 onClick={() => handleObjectTypeChange("procedures")}
               >
                 Procedures
@@ -2103,11 +2109,10 @@ export const TargetNode = ({ id, data }) => {
                 </button>
                 <button
                   onClick={applyProcedureMapping}
-                  className={`px-3 py-1.5 text-sm rounded focus:outline-none focus:ring-2 ${
-                    areAllParametersMapped()
+                  className={`px-3 py-1.5 text-sm rounded focus:outline-none focus:ring-2 ${areAllParametersMapped()
                       ? "bg-[#8E77BB] text-white hover:bg-[#7A6BA3] focus:ring-[#8E77BB]"
                       : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  }`}
+                    }`}
                   disabled={!areAllParametersMapped()}
                 >
                   Confirm

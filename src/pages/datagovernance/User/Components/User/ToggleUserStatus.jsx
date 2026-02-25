@@ -2,13 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { X, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
 import { useAuth } from '../../../../../context/AuthContext';
 
-const ToggleUserStatus = ({ isOpen, onClose, userData, onConfirmToggle }) => {
+const ToggleUserStatus = ({ isOpen, onClose, userData, onConfirmToggle, selectedUsers = [], onBulkToggleSuccess, bulkAction }) => {
+  const isBulk = selectedUsers.length >= 2;
+  const isDisabling = isBulk ? (bulkAction === 'disable') : userData?.enabled;
   const [isLoading, setIsLoading] = useState(false);
   const [isToggled, setIsToggled] = useState(false);
   const { token } = useAuth();
-
-  // Determine if we're enabling or disabling based on current user status
-  const isDisabling = userData?.enabled;
   const action = isDisabling ? 'disable' : 'enable';
   const actionPastTense = isDisabling ? 'disabled' : 'enabled';
 
@@ -19,38 +18,36 @@ const ToggleUserStatus = ({ isOpen, onClose, userData, onConfirmToggle }) => {
     }
   }, [isOpen, userData]);
 
-  if (!isOpen || !userData) return null;
+  if (!isOpen || (!userData && !isBulk)) return null;
 
   const handleClose = () => {
     setIsToggled(false);
     setIsLoading(false);
     onClose();
   };
-
+  
   const handleConfirm = async () => {
     setIsLoading(true);
-
     try {
       const endpoint = isDisabling ? 'userdisable' : 'userenable';
-      const response = await fetch(
-        `${window._env_?.VITE_FAST_API}/auth/${endpoint}/${userData.id}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-        }
-      );
+      const user_ids = isBulk ? selectedUsers : [userData.id];
+
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/${endpoint}`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_ids })
+      });
 
       if (response.ok) {
         setIsToggled(true);
-        if (onConfirmToggle) onConfirmToggle(userData.id, !isDisabling);
-      } else {
-        console.error(`Failed to ${action} user`);
+        if (isBulk) {
+          if (onBulkToggleSuccess) onBulkToggleSuccess(!isDisabling);
+        } else {
+          if (onConfirmToggle) onConfirmToggle(userData.id, !isDisabling);
+        }
       }
     } catch (error) {
-      console.error(`Error ${action}ing user:`, error);
+      console.error(`Error toggling user(s):`, error);
     } finally {
       setIsLoading(false);
     }
@@ -64,9 +61,9 @@ const ToggleUserStatus = ({ isOpen, onClose, userData, onConfirmToggle }) => {
             {isToggled ? (
               <CheckCircle className="h-5 w-5 text-green-500" />
             ) : (
-              <AlertTriangle className={`h-5 w-5 ${isDisabling ? 'text-orange-500' : 'text-blue-500'}`} />
+              <AlertTriangle className="h-5 w-5 text-red-500" />
             )}
-            <h2 className={`text-xl font-bold ${isToggled ? 'text-green-500' : isDisabling ? 'text-orange-500' : 'text-blue-500'}`}>
+            <h2 className={`text-xl font-bold ${isToggled ? 'text-green-500' : 'text-red-500'}`}>
               {isToggled ? `User ${actionPastTense.charAt(0).toUpperCase() + actionPastTense.slice(1)}` : `${action.charAt(0).toUpperCase() + action.slice(1)} User`}
             </h2>
           </div>
@@ -89,7 +86,9 @@ const ToggleUserStatus = ({ isOpen, onClose, userData, onConfirmToggle }) => {
             <div className="p-4 bg-green-50 rounded-lg text-center mb-6">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
               <p className="text-lg font-medium text-gray-800">
-                User "{userData.username}" {actionPastTense} successfully
+                {isBulk
+                  ? `${selectedUsers.length} users ${actionPastTense} successfully`
+                  : `User "${userData?.username}" ${actionPastTense} successfully`}
               </p>
               <button
                 onClick={handleClose}
@@ -102,15 +101,17 @@ const ToggleUserStatus = ({ isOpen, onClose, userData, onConfirmToggle }) => {
 
           {!isLoading && !isToggled && (
             <>
-              <div className={`p-4 rounded-lg text-center mb-6 ${isDisabling ? 'bg-orange-50' : 'bg-blue-50'}`}>
-                <AlertTriangle className={`h-12 w-12 mx-auto mb-2 ${isDisabling ? 'text-orange-500' : 'text-blue-500'}`} />
+              <div className="p-4 bg-red-50 rounded-lg text-center mb-6">
+                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-2" />
                 <p className="text-lg font-medium text-gray-800">
-                  You are about to {action} the user "{userData.username}"
+                  {isBulk
+                    ? `You are about to ${action} ${selectedUsers.length} users`
+                    : `You are about to ${action} the user "${userData?.username}"`}
                 </p>
                 <p className="text-gray-500 mt-2">
                   {isDisabling 
-                    ? 'This user will no longer be able to access the system.' 
-                    : 'This user will be able to access the system again.'}
+                    ? 'User(s) will no longer be able to access the system.' 
+                    : 'User(s) will be able to access the system again.'}
                 </p>
               </div>
               <p className="text-gray-600 text-center mb-6">Do you want to continue?</p>
@@ -118,11 +119,7 @@ const ToggleUserStatus = ({ isOpen, onClose, userData, onConfirmToggle }) => {
               <div className="flex justify-center gap-4">
                 <button
                   onClick={handleConfirm}
-                  className={`px-6 py-2 text-white rounded-lg transition-colors ${
-                    isDisabling 
-                      ? 'bg-orange-500 hover:bg-orange-600' 
-                      : 'bg-blue-500 hover:bg-blue-600'
-                  }`}
+                  className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
                 >
                   Yes
                 </button>

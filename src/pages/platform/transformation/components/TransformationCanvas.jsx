@@ -51,7 +51,7 @@ const initialNodes = [
     data: {
       name: "",
       description: "",
-      onDataChange: () => {},
+      onDataChange: () => { },
     },
     deletable: false,
   },
@@ -63,7 +63,7 @@ const initialNodes = [
       connection: "",
       schema: "",
       tables: [],
-      onDataChange: () => {},
+      onDataChange: () => { },
     },
   },
   {
@@ -73,7 +73,7 @@ const initialNodes = [
     data: {
       type: "",
       function: "",
-      onDataChange: () => {},
+      onDataChange: () => { },
     },
   },
   {
@@ -83,7 +83,7 @@ const initialNodes = [
     data: {
       connection: "",
       schema: "",
-      onDataChange: () => {},
+      onDataChange: () => { },
     },
   },
 ];
@@ -252,10 +252,10 @@ function TransformationCanvasContent() {
           });
         }
 
-        // Clear session storage after restoring
-        sessionStorage.removeItem("editMode");
-        sessionStorage.removeItem("editFlowData");
-        sessionStorage.removeItem("editTransformationId");
+        // Clear session storage after restoring is now handled in handleSave and handleCancel
+        // sessionStorage.removeItem("editMode");
+        // sessionStorage.removeItem("editFlowData");
+        // sessionStorage.removeItem("editTransformationId");
 
         // Mark restoration complete after a short delay
         setTimeout(() => {
@@ -270,11 +270,6 @@ function TransformationCanvasContent() {
             }))
           );
         }, 500);
-
-        toast.success("Transformation loaded for editing", {
-          duration: 2000,
-          position: "top-center",
-        });
       } catch (error) {
         console.error("Error restoring edit flow data:", error);
         toast.error("Failed to load transformation for editing", {
@@ -522,8 +517,7 @@ function TransformationCanvasContent() {
         ) === "true";
       if (!confirmed) {
         toast.error(
-          `Please confirm target mapping for '${
-            targetNode.data.alias || "target node"
+          `Please confirm target mapping for '${targetNode.data.alias || "target node"
           }' before saving.`,
           {
             duration: 3000,
@@ -545,8 +539,7 @@ function TransformationCanvasContent() {
       if (disconnectedNodes.length > 0) {
         const nodeTypes = disconnectedNodes.map((node) => node.type).join(", ");
         toast.error(
-          `Please connect all nodes: ${nodeTypes} ${
-            disconnectedNodes.length > 1 ? "nodes are" : "node is"
+          `Please connect all nodes: ${nodeTypes} ${disconnectedNodes.length > 1 ? "nodes are" : "node is"
           } disconnected`,
           {
             duration: 3000,
@@ -755,8 +748,7 @@ function TransformationCanvasContent() {
           ) === "true";
         if (!confirmed) {
           toast.error(
-            `Please confirm target mapping for '${
-              targetNode.data.alias || "target node"
+            `Please confirm target mapping for '${targetNode.data.alias || "target node"
             }' before saving.`,
             {
               duration: 3000,
@@ -847,7 +839,7 @@ function TransformationCanvasContent() {
         const errorData = await response.json();
         throw new Error(
           errorData.detail ||
-            `Failed to ${isUpdate ? "update" : "save"} transformation`
+          `Failed to ${isUpdate ? "update" : "save"} transformation`
         );
       }
 
@@ -873,6 +865,10 @@ function TransformationCanvasContent() {
         }
       );
 
+      sessionStorage.removeItem("editMode");
+      sessionStorage.removeItem("editFlowData");
+      sessionStorage.removeItem("editTransformationId");
+
       setTimeout(() => {
         navigate("/transformation");
       }, 1500);
@@ -882,8 +878,7 @@ function TransformationCanvasContent() {
         error
       );
       toast.error(
-        `Failed to ${isEditMode ? "update" : "save"} transformation: ${
-          error.message
+        `Failed to ${isEditMode ? "update" : "save"} transformation: ${error.message
         }`,
         {
           duration: 5000,
@@ -941,6 +936,10 @@ function TransformationCanvasContent() {
     if (window.targetMappingsDebug) window.targetMappingsDebug = {};
     if (window.preservedTargetMappingsDebug)
       window.preservedTargetMappingsDebug = {};
+
+    sessionStorage.removeItem("editMode");
+    sessionStorage.removeItem("editFlowData");
+    sessionStorage.removeItem("editTransformationId");
   }, [dispatch, setNodes, setEdges]);
 
   const handleCancel = useCallback(() => {
@@ -1141,6 +1140,8 @@ function TransformationCanvasContent() {
   }, [nodes.length, updateTransformationNodesData]);
 
   useEffect(() => {
+    if (isEditMode || sessionStorage.getItem("editMode") === "true") return;
+
     const defineNode = nodes.find((node) => node.type === "define");
     if (!defineNode) return;
 

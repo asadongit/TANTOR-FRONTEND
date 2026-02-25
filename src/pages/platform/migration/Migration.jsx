@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
-import { useState} from "react";
-import { Pencil, Trash2, Play } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Pencil, Trash2, Play, ExternalLink, Search, RefreshCcw, ChevronDown, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { encrypt } from "../../../utils/Crypto";
 import { useSourceTypeCounts } from "../../../hooks/platform/cardCounts";
@@ -12,6 +12,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { useAuth } from "../../../context/AuthContext";
 import Breadcrumb from "../../../components/Breadcrumb";
+import { DagErrorModal } from "../../../components/DagErrorModal";
 
 const MigrationEmpty = () => {
   return (
@@ -57,7 +58,65 @@ const MigrationList = () => {
   const navigate = useNavigate();
   const [activeMenu, setActiveMenu] = useState(null);
 
-  const { token, hostnameV1, hostnameV2 } = useAuth();
+  const [dagErrorModal, setDagErrorModal] = useState({
+    isOpen: false,
+    isLoading: false,
+    data: null,
+    dagId: null,
+  });
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState("both");
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(0); // 0 = off
+  const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
+  const autoRefreshMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (autoRefreshInterval === 0) return;
+
+    const interval = setInterval(() => {
+      refetchArchival();
+      refetchCardData();
+    }, autoRefreshInterval);
+
+    return () => clearInterval(interval);
+  }, [autoRefreshInterval, refetchArchival, refetchCardData]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (autoRefreshMenuRef.current && !autoRefreshMenuRef.current.contains(event.target)) {
+        setIsAutoRefreshMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const { token, hostnameV1, hostnameV2, project } = useAuth();
+
+  const fetchDagFailure = async (dagId) => {
+    console.log("dag id ", dagId)
+    setDagErrorModal({ isOpen: true, isLoading: true, data: null, dagId });
+    try {
+      const response = await axios.get(
+        `${hostnameV1}/dag-failure?dag_id=${dagId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setDagErrorModal({ isOpen: true, isLoading: false, data: response.data, dagId });
+    } catch (error) {
+      console.error("Error fetching DAG failure info:", error);
+      setDagErrorModal({
+        isOpen: true,
+        isLoading: false,
+        data: { status: "ERROR", error_message: "Failed to retrieve DAG failure details." },
+        dagId,
+      });
+    }
+  };
 
   const cards = [
     {
@@ -105,7 +164,33 @@ const MigrationList = () => {
     { key: "target_conn_name", label: "Target Connection", sortable: true },
     { key: "source_table", label: "Source Table", sortable: true },
     { key: "target_table", label: "Target Table", sortable: true },
-    { key: "status", label: "Status", sortable: true },
+    {
+      key: "status", label: "Status", sortable: true,
+      render: (row) => {
+        let className = "px-2 py-1 rounded-full font-medium";
+        if (row.status.toLowerCase() === "failed") {
+          className += " bg-red-100 text-red-600";
+          return (
+            <button
+              onClick={() => fetchDagFailure(row.workflow_name)}
+              className={`flex items-center gap-1 ${className} hover:bg-red-200`}
+              title="View failure details"
+            >
+              <span>Failed</span>
+              <ExternalLink className="ml-1 w-3 h-3" />
+            </button>
+          );
+        } else if (row.status.toLowerCase() === "completed") {
+          className += " bg-green-100 text-green-600";
+        } else if (row.status.toLowerCase() === "pending") {
+          className += "bg-yellow-100 text-yellow-600";
+        }
+        else {
+          className += " bg-gray-100 text-gray-600";
+        }
+        return <span className={className}>{row.status}</span>;
+      },
+    },
     { label: "Action", sortable: false },
   ];
 
@@ -117,6 +202,25 @@ const MigrationList = () => {
     const encryptedUrl = encodeURIComponent(encrypt(url));
     navigate(`/details?${encryptedUrl}`);
   };
+
+  const filteredArchivalData = useMemo(() => {
+    let filtered = archivalData;
+
+    if (project !== "none" && project !== "default" && project) {
+      filtered = filtered.filter((row) => row.project === project);
+    }
+
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(row =>
+        Object.values(row).some(value =>
+          String(value).toLowerCase().includes(search)
+        )
+      );
+    }
+    return filtered;
+  }, [archivalData, project, searchTerm]);
+
   const [deleteModal, setDeleteModal] = useState({
     open: false,
     migrationId: null,
@@ -201,7 +305,92 @@ const MigrationList = () => {
       <Breadcrumb title="Platform" link={"/"} />
       <div className="flex gap-2 mb-6 items-center justify-between">
         <h1 className="text-2xl font-semibold">Migration</h1>
-        <div>
+        <div className="flex items-center gap-2">
+
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search migrations"
+              className="pl-10 pr-4 py-2 w-[300px] border border-gray-300 rounded-lg focus:outline-none"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+          </div>
+
+          <div className="relative flex items-center" ref={autoRefreshMenuRef}>
+            <div className="flex rounded-lg border border-gray-400 hover:bg-gray-50 h-10">
+              <button
+                className="w-10 flex items-center justify-center border-r border-gray-300"
+                onClick={() => {
+                  refetchArchival();
+                  refetchCardData();
+                  toast.success("Migration data refreshed successfully");
+                }}
+                title="Refresh data"
+                disabled={isArchivalLoading || isCardLoading}
+              >
+                <RefreshCcw
+                  className={`h-5 w-5 text-gray-600 ${(isArchivalLoading || isCardLoading) ? "icon-rotate" : ""}`}
+                />
+              </button>
+              <button
+                className="px-2 flex items-center justify-center"
+                onClick={() => setIsAutoRefreshMenuOpen(!isAutoRefreshMenuOpen)}
+                title="Auto Refresh Settings"
+              >
+                <ChevronDown className="h-4 w-4 text-gray-600" />
+              </button>
+            </div>
+
+            {isAutoRefreshMenuOpen && (
+              <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
+                <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                  Auto Refresh
+                </div>
+                {[
+                  { label: "Off", value: 0 },
+                  { label: "5 seconds", value: 5000 },
+                  { label: "10 seconds", value: 10000 },
+                  { label: "1 minute", value: 60000 },
+                  { label: "2 minutes", value: 120000 },
+                  { label: "5 minutes", value: 300000 },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center justify-between ${autoRefreshInterval === option.value ? "text-[#8d77ba] font-medium bg-purple-50" : "text-gray-700"
+                      }`}
+                    onClick={() => {
+                      setAutoRefreshInterval(option.value);
+                      setIsAutoRefreshMenuOpen(false);
+                    }}
+                  >
+                    {option.label}
+                    {autoRefreshInterval === option.value && (
+                      <CheckCircle className="h-4 w-4" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button
+            className={`w-10 h-10 flex items-center justify-center rounded-lg border ${viewMode === "list"
+              ? "bg-gray-100 border-gray-500"
+              : "border-gray-400"
+              } hover:bg-gray-50`}
+            onClick={() => setViewMode(viewMode === "list" ? "both" : "list")}
+            title={viewMode === "list" ? "Show All Views" : "Show List Only"}
+          >
+            <Icon
+              icon="material-symbols-light:format-list-bulleted"
+              width="24"
+              height="24"
+              className="text-[#8d77ba]"
+            />
+          </button>
+
           <button
             onClick={() =>
               navigate(
@@ -211,7 +400,7 @@ const MigrationList = () => {
               )
             }
             type="button"
-            className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+            className="h-10 text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 flex items-center justify-center dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
             View Metadata
           </button>
@@ -219,28 +408,38 @@ const MigrationList = () => {
           <button
             onClick={() => navigate("/migrationCanvas")}
             type="button"
-            className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+            className="h-10 text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 flex items-center justify-center dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
-            Create Migration
+            <Icon icon="material-symbols:add" width="20" height="20" className="mr-1 inline-block" />
+            Create
           </button>
         </div>
       </div>
 
-      <CardGrid
-        cards={cards}
-        onCardClick={handleCardClick}
-        isLoading={isCardLoading}
-      />
+      {viewMode !== "list" && (
+        <CardGrid
+          cards={cards}
+          onCardClick={handleCardClick}
+          isLoading={isCardLoading}
+        />
+      )}
 
       {/* Migration Listing Table */}
 
       <DataTable
         columns={columns}
-        data={archivalData}
+        data={filteredArchivalData}
         actions={actions}
         isLoading={isArchivalLoading}
         isError={archivalError}
         refetch={refetchArchival}
+      />
+
+      <DagErrorModal
+        isOpen={dagErrorModal.isOpen}
+        onClose={() => setDagErrorModal({ isOpen: false, isLoading: false, data: null, dagId: null })}
+        isLoading={dagErrorModal.isLoading}
+        data={dagErrorModal.data}
       />
 
       {/* Delete Migration Modal */}

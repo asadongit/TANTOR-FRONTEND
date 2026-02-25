@@ -279,17 +279,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
                 if (step2Data.isFormValid) {
                     if (step2Data.checkUserSelections) {
                         const result = await step2Data.checkUserSelections();
-                        // Remove this section - Step2 handles the toast now
-                        // if (result?.exists) {
-                        //     setToast({
-                        //         show: true,
-                        //         message: result.message || 'Selection already exists',
-                        //         type: 'error'
-                        //     });
-                        //     return;
-                        // }
-                        
-                        // Just check if it exists to prevent advancing
+
                         if (result?.exists) {
                             return;
                         }
@@ -448,7 +438,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
             case 0:
                 return <Step1 onDataChange={setStep1Data} initialData={step1Data} isEditMode={isEditMode} />;
             case 1:
-                return <Step2 onDataChange={setStep2Data} initialData={step2Data} />;
+                return <Step2 onDataChange={setStep2Data} initialData={step2Data} policyId={isEditMode ? editPolicyId : null}/>;
             case 2:
                 return <Step3
                     name='Data'
