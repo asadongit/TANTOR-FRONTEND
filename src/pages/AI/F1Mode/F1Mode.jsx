@@ -309,12 +309,13 @@ function StandingsPage({ onBack }) {
 function F1Mode() {
   const { F1Mode: F1ModeCtx, setF1Mode } = useAIPlayground();
   const hostnameAI = window._env_?.VITE_AI_API;
+  const WebSocketURL = window._env_?.VITE_AI_WEBSOCKET;
   console.log("f1 mode is @@@ ", F1ModeCtx)
 
   const sessionId = F1ModeCtx?.session_id ?? null;
   const columnNames = F1ModeCtx?.column_names ?? [];
   const wsUrl = sessionId
-    ? `ws://192.168.3.86:30080/api/v1/data/f1/launch/progress/${sessionId}`
+    ? `${WebSocketURL}/data/f1/launch/progress/${sessionId}`
     : null;
 
   const [isModalOpen, setIsModalOpen] = useState(false);

@@ -86,7 +86,12 @@ function XAI() {
 
   useEffect(() => {
     if (!readonly) {
-      fetchJobStatus();
+      const initializeData = async () => {
+        await fetchJobStatus();
+        await fetchRunsLogged();
+        await fetchLoggedModels();
+      };
+      initializeData();
     }
   }, []);
 
