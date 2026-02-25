@@ -310,7 +310,6 @@ function F1Mode() {
   const { F1Mode: F1ModeCtx, setF1Mode } = useAIPlayground();
   const hostnameAI = window._env_?.VITE_AI_API;
   const WebSocketURL = window._env_?.VITE_AI_WEBSOCKET;
-  console.log("f1 mode is @@@ ", F1ModeCtx)
 
   const sessionId = F1ModeCtx?.session_id ?? null;
   const columnNames = F1ModeCtx?.column_names ?? [];
