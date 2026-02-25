@@ -221,11 +221,11 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
         { name: 'Schema', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/schema` },
         { name: 'Table', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/table` },
         { name: 'Column', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/column` },
-        { name: 'View', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/view` },
+        //{ name: 'View', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/view` },
       ]
     },
     {
-      name: 'Data Assurance', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-assurance`,
+      name: 'Data Assurance', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-assurance`, expandOnly: true,
       subItems: [
         {
           name: 'Data Quality',
@@ -246,17 +246,18 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     },
     {
       name: 'Data Shield', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-shield`,
+      expandOnly: true,
       subItems: [
-        { name: 'Protection', path: `${DATAGOVERNANCE_PREFIX}/data-shield/protection` },
+        //{ name: 'Protection', path: `${DATAGOVERNANCE_PREFIX}/data-shield/protection` },
         { name: 'Policy', path: `${DATAGOVERNANCE_PREFIX}/data-shield/policy`, requiresPolicyManager: true },
-        { name: 'Collaboration', path: `${DATAGOVERNANCE_PREFIX}/data-shield/collaboration` }
+        //{ name: 'Collaboration', path: `${DATAGOVERNANCE_PREFIX}/data-shield/collaboration` }
       ]
     },
-    { type: 'divider' },
-    { name: 'Databot', icon: Bot, path: `${DATAGOVERNANCE_PREFIX}/databot` },
+    //{ type: 'divider' },
+    //{ name: 'Databot', icon: Bot, path: `${DATAGOVERNANCE_PREFIX}/databot` },
     { name: 'Reports', icon: DocumentTextIcon, path: `${DATAGOVERNANCE_PREFIX}/reports`, requiresDataAuditor: true },
-    { name: 'Import', icon: ArrowsPointingInIcon, path: `${DATAGOVERNANCE_PREFIX}/import` },
-    { name: 'Custom Addition', icon: ArrowsPointingOutIcon, path: `${DATAGOVERNANCE_PREFIX}/custom-addition` },
+    //{ name: 'Import', icon: ArrowsPointingInIcon, path: `${DATAGOVERNANCE_PREFIX}/import` },
+   //{ name: 'Custom Addition', icon: ArrowsPointingOutIcon, path: `${DATAGOVERNANCE_PREFIX}/custom-addition` },
   ];
 
   const dataGovernanceRoutes = allDataGovernanceRoutes
@@ -325,8 +326,14 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
       <div key={route.path}>
         <NavLink
           to={route.path}
-          title={isCollapsed ? route.name : undefined}
-          onClick={(e) => handleNavClick(e, route.path, route.name)}
+          onClick={(e) => {
+            if (route.expandOnly) {
+              e.preventDefault();
+              toggleExpand(e, route.name);
+              return;
+            }
+            handleNavClick(e, route.path);
+          }}
           className={({ isActive }) =>
             `flex items-center gap-3 px-3 py-2 rounded-lg mb-1 ${isActive ? 'bg-purple-100 text-purple-700' : 'text-gray-700 hover:bg-gray-100'
             }`
