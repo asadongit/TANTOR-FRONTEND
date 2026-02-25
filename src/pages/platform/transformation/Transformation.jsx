@@ -54,10 +54,7 @@ function Transformation() {
   const [activeMenu, setActiveMenu] = useState(null);
   const [viewMode, setViewMode] = useState("both");
   const [transformationData, setTransformationData] = useState([]);
-  const [deleteModal, setDeleteModal] = useState({
-    isOpen: false,
-    transformation: null,
-  });
+  const [deleteModal, setDeleteModal] = useState({ open: false, type: null, onConfirm: null });
   const [dashboardData, setDashboardData] = useState({
     cards: { total: 0, success: 0, failed: 0, average_duration: 0 },
     last5transformations: [],
@@ -490,9 +487,20 @@ function Transformation() {
     }
   };
 
-  const handleDeleteTransformation = (transformation) => {
-    setDeleteModal({ isOpen: true, transformation });
-  };
+  const handleDeleteTransformation = (row) => {
+  setDeleteModal({
+    open: true,
+    type: "transformation",
+    onConfirm: async () => {
+      try {
+        const success = await confirmDeleteTransformation(row.transformation_id);
+        if (success) toast.success("Transformation deleted successfully");
+      } catch {
+        toast.error("Failed to delete transformation");
+      }
+    },
+  });
+};
 
   const confirmDeleteTransformation = async (transformationId) => {
     try {
@@ -702,116 +710,6 @@ function Transformation() {
         setToast({ show: false, message: "", type: "" });
       }, 3000);
     }
-  };
-
-  const DeleteTransformation = ({
-    isOpen,
-    onClose,
-    transformationData,
-    onConfirmDelete,
-  }) => {
-    const [isLoading, setIsLoading] = useState(false);
-    const [isDeleted, setIsDeleted] = useState(false);
-
-    useEffect(() => {
-      if (isOpen) {
-        setIsDeleted(false);
-        setIsLoading(false);
-      }
-    }, [isOpen, transformationData]);
-
-    if (!isOpen || !transformationData) return null;
-
-    const handleClose = () => {
-      setIsDeleted(false);
-      setIsLoading(false);
-      onClose();
-    };
-
-    const handleConfirm = async () => {
-      setIsLoading(true);
-
-      try {
-        const success = await onConfirmDelete(
-          transformationData.transformation_id
-        );
-        if (success) {
-          toast.success("Transformation deleted successfully");
-          onClose();
-        }
-      } catch (error) {
-        console.error("Error deleting transformation:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-2xl w-[500px] p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-500" />
-              <h2 className="text-xl font-bold text-red-500">
-                Delete Confirmation
-              </h2>
-            </div>
-            {!isLoading && (
-              <button
-                onClick={handleClose}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            )}
-          </div>
-
-          <div className="mb-8">
-            {isLoading && (
-              <div className="p-4 bg-gray-50 rounded-lg text-center mb-6 flex flex-col items-center">
-                <Loader className="h-16 w-16 text-blue-500 mx-auto mb-4 animate-spin" />
-                <p className="text-lg font-medium text-gray-800">
-                  Deleting transformation...
-                </p>
-              </div>
-            )}
-
-            {!isLoading && (
-              <>
-                <div className="p-4 bg-red-50 rounded-lg text-center mb-6">
-                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-2" />
-                  <p className="text-lg font-medium text-gray-800">
-                    You are about to delete the transformation "
-                    {transformationData.transformation_name}"
-                  </p>
-                  <p className="text-gray-500 mt-2">
-                    This action cannot be undone.
-                  </p>
-                </div>
-                <p className="text-gray-600 text-center mb-6">
-                  Do you want to continue?
-                </p>
-
-                <div className="flex justify-center gap-4">
-                  <button
-                    onClick={handleConfirm}
-                    className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                  >
-                    Yes
-                  </button>
-                  <button
-                    onClick={handleClose}
-                    className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
-                  >
-                    No
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-    );
   };
 
   const DagErrorModal = ({ isOpen, onClose, isLoading, data }) => {
@@ -1063,12 +961,33 @@ function Transformation() {
         title="Transformations"
       />
 
-      <DeleteTransformation
-        isOpen={deleteModal.isOpen}
-        onClose={() => setDeleteModal({ isOpen: false, transformation: null })}
-        transformationData={deleteModal.transformation}
-        onConfirmDelete={confirmDeleteTransformation}
-      />
+      {deleteModal.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl w-[400px] p-8 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-[#8e78b7] mb-4">Confirm Deletion</h2>
+            <p className="mb-6 text-gray-700">
+              Are you sure you want to delete this {deleteModal.type}?
+            </p>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setDeleteModal({ open: false, type: null, onConfirm: null })}
+                className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  deleteModal.onConfirm();
+                  setDeleteModal({ open: false, type: null, onConfirm: null });
+                }}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <CountDetailsModal
         isOpen={countModal.isOpen}
