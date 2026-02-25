@@ -1,8 +1,10 @@
-import  { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   RefreshCcw,
   Search,
+  ChevronDown,
+  CheckCircle,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { decrypt } from "../../utils/Crypto";
@@ -18,6 +20,8 @@ import DataTable from "../../components/DataTable";
 import { getActionConfigurations } from "../../components/actionsConfig";
 import columnConfigurations from "../../components/columnsConfig";
 import { useAuth } from "../../context/AuthContext";
+import Breadcrumb from "../../components/Breadcrumb";
+import { useRef } from "react";
 
 const useDynamicData = (componentType) => {
 
@@ -71,6 +75,20 @@ const Details = () => {
   const [activeMenu, setActiveMenu] = useState(null);
   const [resetSortTrigger, setResetSortTrigger] = useState(0);
 
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(0); // 0 = off
+  const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
+  const autoRefreshMenuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (autoRefreshMenuRef.current && !autoRefreshMenuRef.current.contains(event.target)) {
+        setIsAutoRefreshMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const getColumnConfiguration = useCallback((type) => {
     const resolvedType = columnAliases[type] || type;
     return [
@@ -85,8 +103,13 @@ const Details = () => {
   );
 
 
-const processedData = useMemo(() => {
+  const processedData = useMemo(() => {
     let result = [...data];
+
+    if (project !== "none" && project !== "default" && project) {
+      result = result.filter((row) => row.project === project);
+    }
+
     if (dataScope) {
       result = result?.filter((row) => {
         const filterMap = {
@@ -115,7 +138,7 @@ const processedData = useMemo(() => {
     }
 
     return result;
-  }, [data, dataScope, componentType, searchTerm]);
+  }, [data, dataScope, componentType, searchTerm, project]);
 
 
   const actions = useMemo(() => {
@@ -125,89 +148,97 @@ const processedData = useMemo(() => {
   useEffect(() => {
     refetch();
 
+    if (autoRefreshInterval === 0) return;
+
     const intervalId = setInterval(() => {
       refetch();
-    }, 5000);
+    }, autoRefreshInterval);
 
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [refetch]);
+    return () => clearInterval(intervalId);
+  }, [refetch, autoRefreshInterval]);
 
 
   return (
     <div className="flex flex-col h-full p-4">
-      <nav className="flex mb-4" aria-label="Breadcrumb">
-        <ol className="inline-flex items-center space-x-2">
-          {[
-            { label: "Platform", path: "/" },
-            {
-              label: componentType === "metadata" ? "Migration" : componentType?.charAt(0).toUpperCase() + componentType.slice(1),
-              path: componentType === "metadata" ? '/migration' : `/${componentType}`,
-            },
-            { label: "Details", path: null },
-          ].map((item, index) => (
-            <li key={item.label} className="inline-flex items-center">
-              {index > 0 && (
-                <svg
-                  className="w-3 h-3 text-gray-400 mx-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 6 10"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="m1 9 4-4-4-4"
-                  />
-                </svg>
-              )}
-              {item.path ? (
-                <span
-                  onClick={() => navigate(item.path)}
-                  className="text-sm font-medium text-gray-500 cursor-pointer hover:text-gray-700"
-                >
-                  {item.label}
-                </span>
-              ) : (
-                <span className="text-sm font-medium text-[#8e78b7]">
-                  {item.label}
-                </span>
-              )}
-            </li>
-          ))}
-        </ol>
-      </nav>
+      <Breadcrumb
+        title="Platform"
+        link="/"
+        title2={componentType === "metadata" ? "Migration" : componentType?.charAt(0).toUpperCase() + componentType?.slice(1)}
+        link2={componentType === "metadata" ? '/migration' : `/${componentType}`}
+        title3="Details"
+      />
 
-      <div className="flex flex-col md:flex-row gap-4 mb-4 items-center justify-between">
-        <h4 className="text-2xl font-medium">{heading?.toUpperCase()}</h4>
-        <div className="flex items-center space-x-4">
+      <div className="flex flex-col md:flex-row gap-4 mt-6 mb-4 items-center justify-between">
+        <h4 className="text-xl font-semibold">{heading?.toUpperCase()}</h4>
+
+        <div className="flex items-center gap-2">
+
           <div className="relative">
             <input
               type="text"
-              placeholder="Search..."
+              placeholder="Search details"
+              className="pl-10 pr-4 py-2 w-[300px] border border-gray-300 rounded-lg focus:outline-none"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
             />
-            <Search
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              size={20}
-            />
+            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
           </div>
-          <button
-            type="button"
-            className="text-[#818181] shadow-lg border hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5"
-            onClick={() => {
-              setSearchTerm("");
-              setResetSortTrigger((prev) => prev + 1);
-              refetch();
-              toast.success("Refreshed sucessfully!");
-            }}
-          >
-            <RefreshCcw className="h-5 w-5" />
-          </button>
+
+          <div className="relative flex items-center" ref={autoRefreshMenuRef}>
+            <div className="flex rounded-lg border border-gray-400 hover:bg-gray-50 h-10">
+              <button
+                className="w-10 flex items-center justify-center border-r border-gray-300"
+                onClick={() => {
+                  refetch();
+                  toast.success("Details data refreshed successfully");
+                }}
+                title="Refresh data"
+                disabled={isLoading}
+              >
+                <RefreshCcw
+                  className={`h-5 w-5 text-gray-600 ${isLoading ? "icon-rotate" : ""}`}
+                />
+              </button>
+              <button
+                className="px-2 flex items-center justify-center"
+                onClick={() => setIsAutoRefreshMenuOpen(!isAutoRefreshMenuOpen)}
+                title="Auto Refresh Settings"
+              >
+                <ChevronDown className="h-4 w-4 text-gray-600" />
+              </button>
+            </div>
+
+            {isAutoRefreshMenuOpen && (
+              <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
+                <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                  Auto Refresh
+                </div>
+                {[
+                  { label: "Off", value: 0 },
+                  { label: "5 seconds", value: 5000 },
+                  { label: "10 seconds", value: 10000 },
+                  { label: "1 minute", value: 60000 },
+                  { label: "2 minutes", value: 120000 },
+                  { label: "5 minutes", value: 300000 },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center justify-between ${autoRefreshInterval === option.value ? "text-[#8d77ba] font-medium bg-purple-50" : "text-gray-700"
+                      }`}
+                    onClick={() => {
+                      setAutoRefreshInterval(option.value);
+                      setIsAutoRefreshMenuOpen(false);
+                    }}
+                  >
+                    {option.label}
+                    {autoRefreshInterval === option.value && (
+                      <CheckCircle className="h-4 w-4" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
