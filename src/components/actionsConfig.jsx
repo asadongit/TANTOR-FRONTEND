@@ -110,20 +110,20 @@ export const getActionConfigurations = ({ token, project, hostnameV2, hostnameV1
       {
         label: "Delete",
         icon: React.createElement(Trash2, { size: 16 }),
-        onClick: async (row) => {
-          setDeleteModal({
-            open: true,
-            type: "migration",
-            onConfirm: async () => {
-              try {
-                await axios.delete(`${hostnameV2}/delete-migration/${row.migration_id}`, {
-                  headers: { Authorization: `Bearer ${token}` },
-                });
-                toast.success("Migration removed from platform.");
-              } catch (error) {
-                toast.error("Failed to remove migration.");
-              }
-            },
+        onClick: (row) => {
+          showDeleteConfirmation(row.migration_id, async () => {
+            const loadingToast = toast.loading("Deleting migration...");
+            try {
+              await axios.delete(`${hostnameV2}/delete-migration/${row.migration_id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              toast.dismiss(loadingToast);
+              toast.success("Migration removed from platform.");
+              if (refetch) await refetch();
+            } catch (error) {
+              toast.dismiss(loadingToast);
+              toast.error("Failed to remove migration.");
+            }
           });
         },
       },
@@ -138,20 +138,20 @@ export const getActionConfigurations = ({ token, project, hostnameV2, hostnameV1
       {
         label: "Delete",
         icon: React.createElement(Trash2, { size: 16 }),
-        onClick: async (row) => {
-          setDeleteModal({
-            open: true,
-            type: "purge",
-            onConfirm: async () => {
-              try {
-                await axios.delete(`${hostnameV1}/purges/${row.purge_id}`, {
-                  headers: { Authorization: `Bearer ${token}` },
-                });
-                toast.success("Purge removed from platform.");
-              } catch (error) {
-                toast.error("Failed to remove Purge.");
-              }
-            },
+        onClick: (row) => {
+          showDeleteConfirmation(row.purge_id, async () => {
+            const loadingToast = toast.loading("Deleting purge...");
+            try {
+              await axios.delete(`${hostnameV1}/purges/${row.purge_id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              toast.dismiss(loadingToast);
+              toast.success("Purge removed from platform.");
+              if (refetch) await refetch();
+            } catch (error) {
+              toast.dismiss(loadingToast);
+              toast.error("Failed to remove Purge.");
+            }
           });
         },
       },

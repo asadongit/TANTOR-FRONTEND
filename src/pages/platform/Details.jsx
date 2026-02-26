@@ -144,7 +144,7 @@ const Details = () => {
 
 
   const actions = useMemo(() => {
-    return getActionConfigurations({ token, project, hostnameV2, hostnameV1, hostnameV1, navigate, setDeleteModal, refetch })[selectedType];
+    return getActionConfigurations({ token, project, hostnameV2, hostnameV1, navigate, setDeleteModal, refetch })[selectedType];
   }, [selectedType, token, project, hostnameV2, hostnameV1, navigate, refetch]);
 
   useEffect(() => {
