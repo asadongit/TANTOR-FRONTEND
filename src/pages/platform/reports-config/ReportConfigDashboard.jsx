@@ -45,9 +45,15 @@ const ReportConfigDashboard = () => {
 
   const navigate = useNavigate();
 
+  const [resetSortTrigger, setResetSortTrigger] = useState(0);
+  const handleClearSort = () => {
+    setResetSortTrigger(prev => prev + 1);
+  };
+
   const handleRefresh = () => {
     refetchReports();
-    refetchCardData();
+    setSearchTerm("");
+    handleClearSort();
   };
   // const handleCreate = () => {
   //   navigate("/config/report/ruleLinks");
@@ -445,6 +451,7 @@ const ReportConfigDashboard = () => {
         isLoading={isReportsLoading}
         isError={!!reportError}
         refetch={refetchReports}
+        resetSortTrigger={resetSortTrigger}
       />
 
       <SupersetReport

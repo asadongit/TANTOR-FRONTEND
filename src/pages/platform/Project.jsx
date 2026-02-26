@@ -55,6 +55,11 @@ const Project = () => {
   const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
   const autoRefreshMenuRef = useRef(null);
 
+  const [resetSortTrigger, setResetSortTrigger] = useState(0);
+  const handleClearSort = () => {
+    setResetSortTrigger(prev => prev + 1);
+  };
+
   useEffect(() => {
     if (autoRefreshInterval === 0) return;
 
@@ -217,6 +222,9 @@ const Project = () => {
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
+      setSearchTerm("");
+      handleClearSort();
+      
       await Promise.all([refetchProjects(), refetchCardData()]);
       toast.success("Projects fetched successfully");
     } finally {
@@ -456,6 +464,7 @@ const Project = () => {
         isLoading={isProjectLoading}
         isError={projectError}
         refetch={refetchProjects}
+        resetSortTrigger={resetSortTrigger}
       />
 
       {/* Add/Edit Project Modal */}

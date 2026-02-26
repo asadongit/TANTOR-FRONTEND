@@ -71,6 +71,11 @@ const MigrationList = () => {
   const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
   const autoRefreshMenuRef = useRef(null);
 
+  const [resetSortTrigger, setResetSortTrigger] = useState(0);
+  const handleClearSort = () => {
+    setResetSortTrigger(prev => prev + 1);
+  };
+
   useEffect(() => {
     if (autoRefreshInterval === 0) return;
 
@@ -328,6 +333,7 @@ const MigrationList = () => {
                   refetchArchival();
                   refetchCardData();
                   setSearchTerm("");
+                  handleClearSort();
                   toast.success("Migration data refreshed successfully");
                 }}
                 title="Refresh data"
@@ -436,6 +442,7 @@ const MigrationList = () => {
         isLoading={isArchivalLoading}
         isError={archivalError}
         refetch={refetchArchival}
+        resetSortTrigger={resetSortTrigger}
       />
 
       <DagErrorModal
