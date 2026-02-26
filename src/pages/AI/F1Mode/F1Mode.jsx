@@ -16,6 +16,7 @@ import TableRowsIcon from '../../../assets/ai/table_rows.svg';
 import TuneIcon from '../../../assets/ai/tune.svg';
 import CrownIcon from '../../../assets/ai/crown.svg';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 const API_URL = `${window._env_?.VITE_AI_API}/data/f1/launch`;
 
@@ -456,7 +457,7 @@ function F1Mode() {
   const handleBackConfirm = async () => {
     setIsBackCancelLoading(true);
     try {
-      await fetch(`${hostnameAI}/api/v1/data/f1/session/${sessionId}`, {
+      await fetch(`${hostnameAI}/data/f1/session/${sessionId}`, {
         method: 'DELETE',
         headers: { accept: 'application/json' },
       });
@@ -553,7 +554,15 @@ function F1Mode() {
           headers: { accept: 'application/json', 'Content-Type': 'application/json' },
           body: JSON.stringify({ session_id: sessionId, task, metric, target, test_size: 0.2, random_state: 42 }),
         });
-        if (!res.ok) throw new Error(`Launch API error: ${res.status}`);
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          const detail = errData?.detail || '';
+          toast.error(detail, {
+            duration: 4000,
+            position: 'top-right',
+          });
+          throw new Error(`Launch API error: ${res.status}`);
+        }
         const launchData = await res.json();
 
         setF1Mode((prev) => ({ ...prev, launch: launchData }));
@@ -569,6 +578,7 @@ function F1Mode() {
       } catch (err) {
         setIsLaunching(false);
         setIsRaceRunning(false);
+        setOverallProgress(0);
         ws.close();
       }
     };
@@ -651,6 +661,7 @@ function F1Mode() {
                               setTotalAlgs(0);
                               setBestScore(null);
                               setLaunchSuccess(false);
+                              setF1Mode(null);
                               if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
                               isFinishedRef.current = false;
                             }}
@@ -861,7 +872,7 @@ function F1Mode() {
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="p-6">
               <div className="flex items-center gap-3 mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">Exit F1 Mode Session?</h2>
+                <h2 className="text-xl font-semibold text-gray-900">Exit F1 Mode</h2>
               </div>
 
               <p className="text-gray-600 mb-6">

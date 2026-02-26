@@ -1,5 +1,5 @@
 /*eslint-disable*/
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position, useUpdateNodeInternals } from "reactflow";
 import { SquareKanban, X, ChevronDown, ChevronUp, Pencil, Search, FileCode } from "lucide-react";
@@ -37,9 +37,8 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled = fa
   return (
     <div className="relative w-full h-full">
       <div
-        className={`w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${
-          disabled || isLoading ? "opacity-50 cursor-not-allowed" : ""
-        }`}
+        className={`w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${disabled || isLoading ? "opacity-50 cursor-not-allowed" : ""
+          }`}
         onClick={handleSelectClick}
       >
         <span>{value || placeholder}</span>
@@ -93,7 +92,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled = fa
 
 export function SourceViewNode({ id, onSave }) {
   const encodedToken = window._env_?.VITE_FEDERATION_ACCESS_TOKEN;
-  const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, finalPayload, handleFinalPayload } = useStateContext("");
+  const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, finalPayload, handleFinalPayload, incrementNodeCount, decrementNodeCount } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedView, setSelectedView] = useState("");
   const [selectedColumns, setSelectedColumns] = useState([]);
@@ -105,8 +104,9 @@ export function SourceViewNode({ id, onSave }) {
   const [previousView, setPreviousView] = useState("");
   const [isLoadingViews, setIsLoadingViews] = useState(false);
   const [isLoadingColumns, setIsLoadingColumns] = useState(false);
-  
-  const {token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 }= useAuth();
+  const hasIncrementedRef = useRef(false);
+
+  const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
   const { showToast } = useToast();
 
   const modalState = useLocation().state || {
@@ -152,6 +152,14 @@ export function SourceViewNode({ id, onSave }) {
   }, []);
 
 
+  useEffect(() => {
+    if (!hasIncrementedRef.current) {
+      incrementNodeCount('sourceView');
+      hasIncrementedRef.current = true;
+    }
+  }, []);
+
+
   const handleViewChange = (e) => {
     setSelectedColumns([])
     setColumnSettings(prevSettings => {
@@ -166,7 +174,7 @@ export function SourceViewNode({ id, onSave }) {
 
   const fetchColumnsForView = async (viewName) => {
     if (columnsForViews[viewName]) return;
-    
+
     setIsLoadingColumns(true);
     const temp = {
       "view_names": [viewName]
@@ -301,6 +309,15 @@ export function SourceViewNode({ id, onSave }) {
 
 
   const handleSave = () => {
+    if (!selectedView) {
+      showToast('Please select a view', 'error');
+      return;
+    }
+
+    if (!selectedColumns || selectedColumns.length === 0) {
+      showToast('Please select at least one column', 'error');
+      return;
+    }
 
     if (!finalPayload.operation && previousView != selectedView) {
       handleFinalPayload((prevData) => ({
@@ -317,32 +334,29 @@ export function SourceViewNode({ id, onSave }) {
       setColumnSettings(updatedSettings);
     }
 
-    if (selectedView) {
-      const view = selectedView;
-      const newPayload = {
-        id,
-        type: "Source",
-        view,
-        selectedColumns,
-        Columns: columnData
-      };
+    const view = selectedView;
+    const newPayload = {
+      id,
+      type: "Source",
+      view,
+      selectedColumns,
+      Columns: columnData
+    };
 
-      const currentPayloads = viewPayload || [];
-      const updatedPayloads = [...currentPayloads];
-      const existingIndex = updatedPayloads.findIndex((payload) => payload.id === id);
+    const currentPayloads = viewPayload || [];
+    const updatedPayloads = [...currentPayloads];
+    const existingIndex = updatedPayloads.findIndex((payload) => payload.id === id);
 
-      if (existingIndex !== -1) {
-        updatedPayloads[existingIndex] = newPayload;
-      } else {
-        updatedPayloads.push(newPayload);
-      }
-
-      handleViewPayload(updatedPayloads);
-      onSave?.(newPayload);
+    if (existingIndex !== -1) {
+      updatedPayloads[existingIndex] = newPayload;
+    } else {
+      updatedPayloads.push(newPayload);
     }
-    showToast('Data Saved Successfully', 'success');
-    setPreviousView(selectedView)
 
+    handleViewPayload(updatedPayloads);
+    onSave?.(newPayload);
+    showToast('Data Saved Successfully', 'success');
+    setPreviousView(selectedView);
   };
 
   const cleanFinalPayload = (finalPayload, viewName) => {
@@ -399,8 +413,9 @@ export function SourceViewNode({ id, onSave }) {
       return updatedSettings;
     });
 
-    window.deleteNode?.(id)
+    decrementNodeCount('sourceView');
 
+    window.deleteNode?.(id)
   };
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -528,10 +543,10 @@ export function SourceViewNode({ id, onSave }) {
                                 {column}
                               </label>
                             </div>
-                            <Pencil 
-                              name="edit" 
-                              onClick={() => handleChange(column)} 
-                              className="mr-3 h-4 w-4 text-[#8E77BB] cursor-pointer hover:text-[#7a64a0]" 
+                            <Pencil
+                              name="edit"
+                              onClick={() => handleChange(column)}
+                              className="mr-3 h-4 w-4 text-[#8E77BB] cursor-pointer hover:text-[#7a64a0]"
                             />
                           </div>
                         ))}
