@@ -539,7 +539,7 @@ export const TransformationDrawer = ({
 
 
 		const sources = incomingEdges
-			.map(edge => window.allNodes.find(node => node.id === edge.source && node.type === "source"))
+			.map(edge => window.allNodes.find(node => node.id === edge.source && (node.type === "source" || node.type === "transformation")))
 			.filter(Boolean)
 			.map((node) => {
 				const alias = node.data?.alias || `unnamed_source_${node.id}`;
@@ -577,7 +577,7 @@ export const TransformationDrawer = ({
 					};
 
 					const sourceNode = window.allNodes.find(node =>
-						(node.type === "source" && (node.data?.alias === dfId || node.id === dfId))
+						((node.type === "source" || node.type === "transformation") && (node.data?.alias === dfId || node.id === dfId))
 					);
 					if (sourceNode && typeof sourceNode.data.onDataChange === "function") {
 						sourceNode.data.onDataChange({ columns: [...window.replayedDataframeColumns[dfId].columns] });
@@ -1765,7 +1765,7 @@ export const TransformationDrawer = ({
 		if (window.allNodes && window.allEdges) {
 			const incomingEdges = window.allEdges.filter(edge => edge.target === activeNodeId);
 			const sources = incomingEdges
-				.map(edge => window.allNodes.find(node => node.id === edge.source && node.type === "source"))
+				.map(edge => window.allNodes.find(node => node.id === edge.source && (node.type === "source" || node.type === "transformation")))
 				.filter(Boolean);
 
 			sources.forEach(node => {
@@ -1811,7 +1811,7 @@ export const TransformationDrawer = ({
 			if (window.allNodes && window.allEdges) {
 				const incomingEdges = window.allEdges.filter(edge => edge.target === activeNodeId);
 				const sources = incomingEdges
-					.map(edge => window.allNodes.find(node => node.id === edge.source && node.type === "source"))
+					.map(edge => window.allNodes.find(node => node.id === edge.source && (node.type === "source" || node.type === "transformation")))
 					.filter(Boolean);
 
 				sources.forEach(node => {
