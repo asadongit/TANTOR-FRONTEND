@@ -93,7 +93,7 @@ function Transformation() {
       icon: "material-symbols:check-circle-outline",
       bgcolor: "bg-[#55aa55] bg-opacity-20",
       iconcolor: "text-[#55aa55]",
-      title: "Successful",
+      title: "Success",
       count: dashboardData.cards.success,
     },
     {

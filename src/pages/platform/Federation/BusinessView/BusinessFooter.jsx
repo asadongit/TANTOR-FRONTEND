@@ -13,7 +13,7 @@ import { X } from "lucide-react"; // Added for close button
 
 export function BusinessFooter() {
   const navigate = useNavigate();
-  const { finalPayload, handleFinalPayload, connectionPayload, viewPayload, columnSettings, consolidationPayload} = useStateContext("");
+  const { finalPayload, handleFinalPayload, connectionPayload, viewPayload, columnSettings, consolidationPayload, nodeCount } = useStateContext("");
   const [preview, setPreview] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -329,37 +329,98 @@ export function BusinessFooter() {
     }
   };
 
+  // const validateNodes = () => {
+
+  //   const joins = finalPayload?.joins || [];
+  //   const operation = finalPayload?.operation;
+
+  //   const numberOfConnectionNodes = Array.isArray(connectionPayload) ? connectionPayload.length : 0;
+  //   const numberOfViewNodes = Array.isArray(viewPayload) ? viewPayload.length : 0;
+  //   let consolidationNodeExists = false;
+
+  //   try {
+  //     if ((numberOfConnectionNodes + numberOfViewNodes) === 0) {
+  //       throw new Error("Configure atleast two nodes (Connection/Source View)!");
+  //     }
+
+  //     if ((numberOfConnectionNodes + numberOfViewNodes) === 1) {
+  //       throw new Error("Configure another node (Connection/Source View)!");
+  //     }
+
+  //     if (joins && joins?.length && joins.length > 0) {
+  //       consolidationNodeExists = true;
+  //     }
+
+  //     if (["Union", "Union All", "Intersect", "Intersect All"].includes(operation) && finalPayload?.union && finalPayload.union?.length && finalPayload.union.length > 0) {
+  //        consolidationNodeExists = true;
+  //     }
+
+  //     if (!consolidationNodeExists) {
+  //       throw new Error("Please configure atleast one consolidation node!");
+  //     }
+  //   } catch (err) {
+
+  //     setToast({
+  //       show: true,
+  //       message: err?.message,
+  //       type: "error",
+  //     });
+  //     setTimeout(() => {
+  //       setToast({ show: false, message: "", type: "" });
+  //     }, 3000);
+
+  //     return false;
+  //   }
+
+  //   return true;
+  // }
+
   const validateNodes = () => {
-    
+
+    const totalNodeCounts = nodeCount.connection + nodeCount.sourceView
     const joins = finalPayload?.joins || [];
     const operation = finalPayload?.operation;
 
     const numberOfConnectionNodes = Array.isArray(connectionPayload) ? connectionPayload.length : 0;
     const numberOfViewNodes = Array.isArray(viewPayload) ? viewPayload.length : 0;
-    let consolidationNodeExists = false;
+    const numberOfConsolidationNodes = Array.isArray(consolidationPayload) ? consolidationPayload.length : 0;
 
     try {
-      if ((numberOfConnectionNodes + numberOfViewNodes) === 0) {
-        throw new Error("Configure atleast two nodes (Connection/Source View)!");
+      const expectedViewNodes = nodeCount?.sourceView || 0;
+      const expectedConnectionNodes = nodeCount?.connection || 0;
+      const expectedConsolidationNodes = nodeCount?.consolidation || 0;
+
+      if (numberOfViewNodes !== expectedViewNodes) {
+        throw new Error(`Please configure all selected Source View nodes! Expected: ${expectedViewNodes}, Configured: ${numberOfViewNodes}`);
       }
 
-      if ((numberOfConnectionNodes + numberOfViewNodes) === 1) {
-        throw new Error("Configure another node (Connection/Source View)!");
+      if (numberOfConnectionNodes !== expectedConnectionNodes) {
+        throw new Error(`Please configure all selected Connection nodes! Expected: ${expectedConnectionNodes}, Configured: ${numberOfConnectionNodes}`);
       }
 
-      if (joins && joins?.length && joins.length > 0) {
-        consolidationNodeExists = true;
+      if (expectedConsolidationNodes != (totalNodeCounts - 1)) {
+        throw new Error(
+          `To combine ${totalNodeCounts} sources, you need exactly ${totalNodeCounts - 1} consolidation node(s). Currently configured: ${expectedConsolidationNodes}`
+        );
       }
 
-      if (["Union", "Union All", "Intersect", "Intersect All"].includes(operation) && finalPayload?.union && finalPayload.union?.length && finalPayload.union.length > 0) {
-         consolidationNodeExists = true;
+      if (numberOfConsolidationNodes !== expectedConsolidationNodes * 2) {
+        throw new Error(
+          `Please connect all consolidation nodes properly!`
+        );
       }
 
-      if (!consolidationNodeExists) {
-        throw new Error("Please configure atleast one consolidation node!");
+      if (joins.length > 0 && expectedConsolidationNodes !== joins.length) {
+        throw new Error(`Please configure all Consolidation nodes! Expected: ${expectedConsolidationNodes}, Configured: ${joins.length}`);
       }
+
+      if (expectedConsolidationNodes > 0) {
+        if (!finalPayload?.joins && !finalPayload?.union) {
+          throw new Error(`Please configure Consolidation nodes! No joins or unions found in the configuration.`);
+        }
+      }
+
     } catch (err) {
-
       setToast({
         show: true,
         message: err?.message,
@@ -376,7 +437,7 @@ export function BusinessFooter() {
   }
 
   const handleClick = async () => {
-    if(!validateNodes())
+    if (!validateNodes())
       return;
 
     if (finalPayload && Object.keys(finalPayload).length > 0) {
@@ -660,11 +721,10 @@ export function BusinessFooter() {
       )}
       {toast.show && (
         <div
-          className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
-            toast.type === "success"
-              ? "bg-green-100 text-green-800 border-l-4 border-green-500"
-              : "bg-red-100 text-red-800 border-l-4 border-red-500"
-          }`}
+          className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${toast.type === "success"
+            ? "bg-green-100 text-green-800 border-l-4 border-green-500"
+            : "bg-red-100 text-red-800 border-l-4 border-red-500"
+            }`}
         >
           <Icon
             icon={toast.type === "success" ? "mdi:check-circle" : "mdi:alert-circle"}

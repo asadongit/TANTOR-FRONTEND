@@ -1,5 +1,5 @@
 /*eslint-disable*/
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position, useUpdateNodeInternals } from "reactflow";
 import { Cable, X, ChevronDown, ChevronUp, Pencil, FileCode, Search, Loader2 } from "lucide-react";
@@ -11,6 +11,7 @@ import { useLocation } from "react-router-dom";
 import { useAuth } from "../../../../context/AuthContext";
 import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/function.js';
 import { useToast } from "../context/ToastContext";
+
 
 const SearchableSelect = ({ options, value, onChange, placeholder, disabled = false, isLoading = false }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -37,9 +38,8 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled = fa
   return (
     <div className="relative w-full text-black">
       <div
-        className={`w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${
-          disabled || isLoading ? "opacity-50 cursor-not-allowed" : ""
-        }`}
+        className={`w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${disabled || isLoading ? "opacity-50 cursor-not-allowed" : ""
+          }`}
         onClick={handleSelectClick}
       >
         <span>{value || placeholder}</span>
@@ -90,7 +90,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled = fa
 export function ConnectionNode({ id, onSave }) {
   const { showToast } = useToast();
   const { token, hostnameV1 } = useAuth();
-  const { handleConnectionPayload, connectionPayload, setColumnSettings, columnSettings, complexCheck, finalPayload, handleFinalPayload } = useStateContext("");
+  const { handleConnectionPayload, connectionPayload, setColumnSettings, columnSettings, complexCheck, finalPayload, handleFinalPayload, incrementNodeCount, decrementNodeCount } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [connections, setConnections] = useState([]);
   const [selectedConnection, setSelectedConnection] = useState("");
@@ -107,7 +107,7 @@ export function ConnectionNode({ id, onSave }) {
   const [colId, setColId] = useState("");
   const [selectedColumnsOrder, setSelectedColumnsOrder] = useState([]);
   const [policyIds, setPolicyIds] = useState([]);
-  
+  const hasIncrementedRef = useRef(false);
   // Loading states
   const [isLoadingConnections, setIsLoadingConnections] = useState(false);
   const [isLoadingSchemas, setIsLoadingSchemas] = useState(false);
@@ -126,6 +126,12 @@ export function ConnectionNode({ id, onSave }) {
     }));
   }, []);
 
+  useEffect(() => {
+    if (!hasIncrementedRef.current) {
+      incrementNodeCount('connection');
+      hasIncrementedRef.current = true;
+    }
+  }, []);
   const fetchConnections = async () => {
     setIsLoadingConnections(true);
     try {
@@ -356,9 +362,9 @@ export function ConnectionNode({ id, onSave }) {
 
       const formattedColumns = columnData && columnData.columns
         ? columnData.columns.map((item) => ({
-            column: item.column_name,
-            datatype: item.metadata?.DATA_TYPE || "unknown",
-          }))
+          column: item.column_name,
+          datatype: item.metadata?.DATA_TYPE || "unknown",
+        }))
         : [];
 
       setAllowedColumns(formattedColumns);
@@ -462,8 +468,23 @@ export function ConnectionNode({ id, onSave }) {
   }, [columnSettings, colId]);
 
   const handleSave = () => {
-    if (!selectedConnection || !selectedSchema || !selectedTable) {
-      showToast('Please select a connection, schema, and table', 'error');
+    if (!selectedConnection) {
+      showToast('Please select a connection', 'error');
+      return;
+    }
+
+    if (!selectedSchema) {
+      showToast('Please select a schema', 'error');
+      return;
+    }
+
+    if (!selectedTable) {
+      showToast('Please select a table', 'error');
+      return;
+    }
+
+    if (!selectedColumns || selectedColumns.length === 0) {
+      showToast('Please select at least one column', 'error');
       return;
     }
 
@@ -567,6 +588,8 @@ export function ConnectionNode({ id, onSave }) {
       delete updatedSettings["Union"];
       return updatedSettings;
     });
+
+    decrementNodeCount('connection');
 
     window.deleteNode?.(id);
   };
