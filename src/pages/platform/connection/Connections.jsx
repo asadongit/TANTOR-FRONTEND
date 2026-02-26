@@ -38,6 +38,11 @@ const Connections = () => {
   const [deleteModal, setDeleteModal] = useState({ open: false, type: null, message: null, onConfirm: null });
   const navigate = useNavigate();
 
+  const [resetSortTrigger, setResetSortTrigger] = useState(0);
+  const handleClearSort = () => {
+    setResetSortTrigger(prev => prev + 1);
+  };
+  
   const {
     data: cardData,
     isLoading: isCardLoading,
@@ -338,6 +343,9 @@ const Connections = () => {
                 onClick={() => {
                   refetchConnections();
                   refetchCardData();
+                  
+                  setSearchTerm("");
+                  handleClearSort();
                   toast.success("Connections data refreshed successfully");
                 }}
                 title="Refresh data"
@@ -428,6 +436,7 @@ const Connections = () => {
         isLoading={isConnectionsLoading}
         isError={connectionsError}
         refetch={refetchConnections}
+        resetSortTrigger={resetSortTrigger}
       />
 
       {activeModal?.name === 'editCreate' && (
