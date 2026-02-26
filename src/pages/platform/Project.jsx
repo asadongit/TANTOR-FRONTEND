@@ -148,8 +148,8 @@ const Project = () => {
     } else if (!/^[a-zA-Z]/.test(projectName)) {
       formErrors.project = "Project name must start with a letter";
       isValid = false;
-    } else if (projectName.length > 20) {
-      formErrors.project = "Project name cannot exceed 20 characters";
+    } else if (projectName.length > 100) {
+      formErrors.project = "Project name cannot exceed 100 characters";
       isValid = false;
     }
 
@@ -513,7 +513,7 @@ const Project = () => {
                       value={formData.project}
                       onChange={handleInputChange}
                       placeholder="Name"
-                      maxLength={20}
+                      maxLength={100}
                       className={`w-full p-2.5 border ${errors.project ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
                     />
                     {errors.project && (

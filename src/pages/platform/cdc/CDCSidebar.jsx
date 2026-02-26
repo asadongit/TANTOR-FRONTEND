@@ -10,18 +10,37 @@ import {
 } from "lucide-react";
 import { useWorkflow } from "./context/WorkflowContext";
 
+import { useReactFlow } from "reactflow";    
+
 export function CDCSidebar({ initialCanvasType }) {
-  const { addPipeline, addNode, setNodes, setPipelines, editMode } = useWorkflow();
+  const { addPipeline, addNode, setNodes, setPipelines, editMode, nodeTypeExists, resetWorkflow } = useWorkflow();
   const [collapsed, setCollapsed] = useState(false);
   const [isHovering, setIsHovering] = useState(null);
   const hasRun = useRef(false);
   const [canvasType, setCanvasType] = useState(initialCanvasType || "cdc");
 
+   const { fitView } = useReactFlow();
+   
   const handleModeToggle = () => {
     const newType = canvasType === "cdc" ? "metadata" : "cdc";
     setCanvasType(newType);
     hasRun.current = false;
   };
+
+  useEffect(() => {
+    if (!hasRun.current && canvasType) {
+      hasRun.current = true;
+      resetWorkflow();
+
+      setTimeout(() => {
+        addPipeline(canvasType);
+
+        setTimeout(() => {
+          fitView({ padding: 0.2, duration: 800 });
+        }, 150);
+      }, 50);
+    }
+  }, [canvasType, addPipeline, fitView, resetWorkflow]);
 
   const cdcNodes = [
     {
@@ -29,28 +48,32 @@ export function CDCSidebar({ initialCanvasType }) {
       label: "Define",
       iconType: "iconify",
       icon: "material-symbols:contract-outline",
-      color: "purple",
+      color: "#8e78b7",
+      description: "Define CDC parameters",
     },
     {
       type: "source",
       label: "Source",
       iconType: "iconify",
       icon: "material-symbols:analytics-outline",
-      color: "purple",
+      color: "#8e78b7",
+      description: "Configure source database",
     },
     {
       type: "target",
       label: "Target",
       iconType: "iconify",
       icon: "material-symbols:ads-click",
-      color: "purple",
+      color: "#8e78b7",
+      description: "Configure target database",
     },
     {
       type: "schedule",
       label: "Schedule",
       iconType: "iconify",
       icon: "material-symbols:alarm-outline",
-      color: "purple",
+      color: "#8e78b7",
+      description: "Schedule CDC execution",
     }
   ];
 
@@ -60,21 +83,24 @@ export function CDCSidebar({ initialCanvasType }) {
       label: "Define",
       iconType: "iconify",
       icon: "material-symbols:contract-outline",
-      color: "purple",
+      color: "#8e78b7",
+      description: "Define metadata parameters",
     },
     {
       type: "metadataSource",
       label: "Source",
       iconType: "iconify",
       icon: "material-symbols:analytics-outline",
-      color: "purple",
+      color: "#8e78b7",
+      description: "Configure source metadata",
     },
     {
       type: "metadataTarget",
       label: "Target",
       iconType: "iconify",
       icon: "material-symbols:ads-click",
-      color: "purple",
+      color: "#8e78b7",
+      description: "Configure target metadata",
     }
   ];
 
@@ -129,12 +155,14 @@ export function CDCSidebar({ initialCanvasType }) {
         {!collapsed && (
           <div className="flex items-center space-x-3">
             <Workflow className="w-5 h-5 text-purple-600" />
-            <span className="text-gray-800 text-md font-bold">
-              {canvasType === "metadata" ? "METADATA" : "CDC"}
-            </span>
-            {editMode && (
-              <span className="text-sm font-medium text-gray-500">(Edit Mode)</span>
-            )}
+            <div className="flex flex-col">
+              <span className="text-gray-800 text-md font-bold">
+                {canvasType === "metadata" ? "METADATA" : "CDC"}
+              </span>
+              {editMode && (
+                <span className="text-sm font-medium text-gray-500">(Edit Mode)</span>
+              )}
+            </div>
           </div>
         )}
         <div className="flex items-center space-x-2">
@@ -165,7 +193,7 @@ export function CDCSidebar({ initialCanvasType }) {
           collapsed ? "flex flex-col items-center space-y-3" : "space-y-4"
         }`}
       >
-        <div
+        {/* <div
           className={`flex items-center p-3 rounded-lg border border-gray-300 transition cursor-move relative ${
             editMode ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'
           }`}
@@ -216,14 +244,14 @@ export function CDCSidebar({ initialCanvasType }) {
               </div>
             </div>
           )}
-        </div>
+        </div> */}
 
         <div className="w-full mb-2">
           {!collapsed ? (
             <div className="flex items-center space-x-2">
-              <Layers className="w-4 h-4 text-gray-500 " />
+              <Layers className="w-4 h-4 text-gray-500" />
               <span className="text-xs font-medium text-gray-500 uppercase">
-                Custom Nodes
+                {canvasType === "metadata" ? "Metadata Nodes" : "CDC Nodes"}
               </span>
               <div className="flex-grow h-px bg-gray-200"></div>
             </div>
@@ -231,7 +259,7 @@ export function CDCSidebar({ initialCanvasType }) {
             <div className="relative flex justify-center w-full mt-2 mb-4">
               <div className="w-12 h-px bg-gray-300 mt-3"></div>
               <div
-                className="absolute w-6 h-6 rounded-full hover:bg-[#a2ebae] bg-gray-100 flex items-center justify-center
+                className="absolute w-6 h-6 rounded-full hover:bg-purple-100 bg-gray-100 flex items-center justify-center
                    border border-gray-300 mb-2 transition-transform duration-200 ease-in-out hover:scale-125"
                 onMouseEnter={() => setIsHovering("nodes-label")}
                 onMouseLeave={() => setIsHovering(null)}
@@ -240,10 +268,10 @@ export function CDCSidebar({ initialCanvasType }) {
                 {isHovering === "nodes-label" && (
                   <div
                     className="absolute left-full ml-2 top-0 -translate-y-1/2
-                          bg-[#8e78b7] text-white text-xs px-2 py-1 rounded-md
+                          bg-purple-600 text-white text-xs px-2 py-1 rounded-md
                           whitespace-nowrap z-50 shadow-lg"
                   >
-                    Custom Nodes
+                    {canvasType === "metadata" ? "Metadata Nodes" : "CDC Nodes"}
                   </div>
                 )}
               </div>
@@ -252,55 +280,63 @@ export function CDCSidebar({ initialCanvasType }) {
         </div>
 
         <div className={`${collapsed ? "space-y-3" : "space-y-2 mt-2"}`}>
-          {nodes.map((node) => (
-            <div
-              key={node.type}
-              className={`flex items-center p-3 rounded-lg border border-gray-300 transition cursor-move relative ${
-                editMode ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'
-              }`}
-              draggable={!editMode}
-              onMouseEnter={() => setIsHovering(node.type)}
-              onMouseLeave={() => setIsHovering(null)}
-              onDragStart={!editMode ? handleNodeDrag(node.type) : undefined}
-              onDoubleClick={!editMode ? () => {
-                addNode && addNode(node.type, canvasType);
-              } : undefined}
-            >
-              <div className="flex items-center justify-center w-10 h-10 bg-gray-100 rounded-lg">
-                {node.iconType === "iconify" ? (
-                  <iconify-icon
-                    icon={node.icon}
-                    width="24"
-                    height="24"
-                    style={{ color: "#8e78b7" }}
-                  ></iconify-icon>
-                ) : (
-                  <node.icon className="w-5 h-5 text-purple-600" />
-                )}
+          {nodes.map((node) => {
+            const disabled = editMode || nodeTypeExists(node.type);
+            
+            return (
+              <div
+                key={node.type}
+                className={`flex items-center p-3 rounded-lg border border-gray-300 transition relative
+                  ${disabled 
+                    ? "opacity-50 cursor-not-allowed" 
+                    : "cursor-move hover:bg-purple-50 hover:border-purple-300"
+                  }
+                `}
+                draggable={!disabled}
+                onMouseEnter={() => setIsHovering(node.type)}
+                onMouseLeave={() => setIsHovering(null)}
+                onDragStart={!disabled ? handleNodeDrag(node.type) : undefined}
+                onDoubleClick={!disabled ? () => {
+                  addNode && addNode(node.type, canvasType);
+                } : undefined}
+                title={node.description}
+              >
+                <div className="flex items-center justify-center w-10 h-10 bg-purple-100 rounded-lg">
+                  {node.iconType === "iconify" ? (
+                    <iconify-icon
+                      icon={node.icon}
+                      width="24"
+                      height="24"
+                      style={{ color: node.color }}
+                    ></iconify-icon>
+                  ) : (
+                    <node.icon className="w-5 h-5" style={{ color: node.color }} />
+                  )}
 
-                {collapsed && isHovering === node.type && (
-                  <div
-                    className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2
-                      bg-[#8e78b7] text-white text-xs px-2 py-1 rounded-md
-                      whitespace-nowrap z-30 shadow-lg "
-                  >
-                    {editMode ? `${node.label} (Edit Mode)` : `${node.label} +`}
+                  {collapsed && isHovering === node.type && !disabled && (
+                    <div
+                      className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2
+                        bg-purple-600 text-white text-xs px-2 py-1 rounded-md
+                        whitespace-nowrap z-30 shadow-lg"
+                    >
+                      {node.label} +
+                    </div>
+                  )}
+                </div>
+
+                {!collapsed && (
+                  <div className="flex items-center justify-between flex-grow">
+                    <span className="text-gray-800 text-sm font-medium ml-3">
+                      {node.label}
+                    </span>
+                    <div className="w-5 h-5 rounded-full bg-purple-200 flex items-center justify-center ml-2">
+                      <Plus className="w-3 h-3 text-purple-600" />
+                    </div>
                   </div>
                 )}
               </div>
-
-              {!collapsed && (
-                <div className="flex items-center justify-between flex-grow">
-                  <span className="text-gray-800 text-sm font-medium ml-3">
-                    {node.label}
-                  </span>
-                  <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center ml-2">
-                    <Plus className="w-3 h-3 text-gray-600" />
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </aside>
