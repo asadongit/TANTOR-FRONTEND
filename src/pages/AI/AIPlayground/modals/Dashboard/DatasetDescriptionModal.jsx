@@ -95,7 +95,7 @@ export const DatasetDescriptionModal = ({ isOpen, onClose, onSave, onSkip }) => 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-[#00000099] flex items-center justify-center z-50">
       <div
         className="bg-white rounded-xl w-full max-w-lg p-6 relative"
         style={{ boxShadow: '0 -4px 9px 0 rgba(0, 0, 0, 0.10)' }}

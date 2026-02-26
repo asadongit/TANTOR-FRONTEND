@@ -161,16 +161,16 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
     t.label.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const isHighlighted = isDropdownOpen || !!selectedTable;
+  const isHighlighted = isDropdownOpen;
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-[#00000099] flex items-center justify-center z-50">
+
       <div className="bg-white rounded-lg shadow-xl w-full max-w-[390px]">
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-4">
+        <div className="flex items-center justify-between px-6 py-5">
           <h2 className={tw.sectionHeading}>Select Data Table</h2>
           <button
             onClick={handleClose}
@@ -181,11 +181,8 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
           </button>
         </div>
 
-        {/* Divider */}
-        <div className="h-px bg-gray-100" />
-
         {/* Body */}
-        <div className="px-6 pt-5 pb-5">
+        <div className="px-6 mb-10">
           <p className={`${tw.label} mb-5`}>
             Choose a pre-configured database table to fetch data without uploading a file.
           </p>
@@ -208,7 +205,6 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
               style={{
                 border: isHighlighted ? '1.5px solid #c4b8e0' : '1.5px solid #e5e7eb',
                 backgroundColor: isHighlighted ? '#f0ecfa' : '#ffffff',
-                
               }}
             >
               <span className={selectedTable ? 'text-[#332849]' : 'text-[#818181]'}>
@@ -263,23 +259,22 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="h-px bg-gray-100" />
-
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4">
+        <div
+          className="flex items-center justify-end gap-3 px-6 py-2.5 rounded-b-lg"
+          style={{ background: '#FFFFFF', boxShadow: '0px -4px 9px 0px #0000001A' }}
+        >
           <button
             onClick={handleClose}
             disabled={isIngesting}
-            className={`${tw.secondaryButton} px-4 py-2 rounded-md border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
-           
+            className={`${tw.secondaryButton} px-4 py-2.5 rounded-md border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             Cancel
           </button>
           <button
             onClick={handleProceed}
             disabled={!selectedTable || isIngesting}
-            className="px-4 py-2 rounded-md text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-satoshi text-sm font-medium leading-none tracking-normal"
+            className="px-4 py-2.5 rounded-md text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-satoshi text-sm font-medium leading-none tracking-normal"
             style={{ backgroundColor: '#8E77BB' }}
           >
             {isIngesting ? 'Processing...' : 'Proceed'}
