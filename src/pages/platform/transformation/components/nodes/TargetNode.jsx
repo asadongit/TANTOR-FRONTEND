@@ -308,12 +308,50 @@ export const TargetNode = ({ id, data }) => {
   }, []);
 
   const getAllSourceColumns = () => {
-    // Start with basic source columns
+    // Use post-transformation replayed columns if available (ETL-correct approach)
+    // This reflects the actual pipeline output: renamed columns use new names,
+    // restricted/dropped columns are excluded, new columns from transformations are included
+    if (window.replayedDataframeColumns && Object.keys(window.replayedDataframeColumns).length > 0) {
+      const replayedCols = new Set();
+
+      // Find transformation nodes connected to this target
+      if (window.allNodes && window.allEdges) {
+        const incomingEdges = window.allEdges.filter(e => e.target === id);
+        const transformationNodeIds = incomingEdges.map(e => e.source)
+          .filter(srcId => {
+            const node = window.allNodes.find(n => n.id === srcId);
+            return node && node.type === 'transformation';
+          });
+
+        // For each connected transformation, find its source dataframes
+        transformationNodeIds.forEach(transId => {
+          const transIncoming = window.allEdges.filter(e => e.target === transId);
+          transIncoming.forEach(e => {
+            const srcNode = window.allNodes.find(n => n.id === e.source && n.type === "source");
+            if (srcNode) {
+              const alias = srcNode.data?.alias || `unnamed_source_${srcNode.id}`;
+              // Get the post-transformation columns for this dataframe
+              const replayedDf = window.replayedDataframeColumns[alias] || window.replayedDataframeColumns[srcNode.id];
+              if (replayedDf && Array.isArray(replayedDf.columns)) {
+                replayedDf.columns.forEach(col => {
+                  const colName = typeof col === "object" ? col.name : col;
+                  if (colName) replayedCols.add(colName);
+                });
+              }
+            }
+          });
+        });
+      }
+
+      if (replayedCols.size > 0) {
+        return Array.from(replayedCols);
+      }
+    }
+
+    // Fallback: naive aggregation when replayed data isn't available yet
     let allCols = getAllSelectedSourceColumns();
 
-    // Get columns from connected transformations
     if (window.allNodes && window.allEdges) {
-      // Find all transformation nodes connected to this target
       const incomingEdges = window.allEdges.filter(e => e.target === id);
       const transformationNodeIds = incomingEdges.map(e => e.source)
         .filter(srcId => {
@@ -321,7 +359,6 @@ export const TargetNode = ({ id, data }) => {
           return node && node.type === 'transformation';
         });
 
-      // For each connected transformation, get their output columns (from transformations)
       transformationNodeIds.forEach(transId => {
         const transNode = window.allNodes.find(n => n.id === transId);
         if (transNode && transNode.data && Array.isArray(transNode.data.transformations)) {
@@ -333,7 +370,6 @@ export const TargetNode = ({ id, data }) => {
         }
       });
 
-      // Also get columns directly from connected sources via transformations
       const sourceIds = new Set();
       transformationNodeIds.forEach(transId => {
         const transIncoming = window.allEdges.filter(e => e.target === transId);
@@ -345,7 +381,6 @@ export const TargetNode = ({ id, data }) => {
         });
       });
 
-      // Collect all columns from source nodes
       sourceIds.forEach(sourceId => {
         const sourceNode = window.allNodes.find(n => n.id === sourceId);
         if (sourceNode && sourceNode.data && Array.isArray(sourceNode.data.columns)) {
@@ -357,7 +392,6 @@ export const TargetNode = ({ id, data }) => {
       });
     }
 
-    // Add any columns from explicit transformations in this target node's data
     if (data && Array.isArray(data.transformations)) {
       data.transformations.forEach(tr => {
         if (Array.isArray(tr.target_column)) {
@@ -369,7 +403,6 @@ export const TargetNode = ({ id, data }) => {
       });
     }
 
-    // Remove duplicates and filter out empty values
     return Array.from(new Set(allCols.filter(Boolean)));
   };
 
@@ -1523,8 +1556,8 @@ export const TargetNode = ({ id, data }) => {
               <button
                 type="button"
                 className={`flex-1 p-1.5 text-[11px] rounded-sm border text-center focus:outline-none focus:ring-1 focus:ring-gray-400 ${selectedObjectType === "tables"
-                    ? "bg-[#8E77BB] text-white border-[#8E77BB]"
-                    : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
+                  ? "bg-[#8E77BB] text-white border-[#8E77BB]"
+                  : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
                   }`}
                 onClick={() => handleObjectTypeChange("tables")}
               >
@@ -1533,8 +1566,8 @@ export const TargetNode = ({ id, data }) => {
               <button
                 type="button"
                 className={`flex-1 p-1.5 text-[11px] rounded-sm border text-center focus:outline-none focus:ring-1 focus:ring-gray-400 ${selectedObjectType === "procedures"
-                    ? "bg-[#8E77BB] text-white border-[#8E77BB]"
-                    : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
+                  ? "bg-[#8E77BB] text-white border-[#8E77BB]"
+                  : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
                   }`}
                 onClick={() => handleObjectTypeChange("procedures")}
               >
@@ -2110,8 +2143,8 @@ export const TargetNode = ({ id, data }) => {
                 <button
                   onClick={applyProcedureMapping}
                   className={`px-3 py-1.5 text-sm rounded focus:outline-none focus:ring-2 ${areAllParametersMapped()
-                      ? "bg-[#8E77BB] text-white hover:bg-[#7A6BA3] focus:ring-[#8E77BB]"
-                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    ? "bg-[#8E77BB] text-white hover:bg-[#7A6BA3] focus:ring-[#8E77BB]"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
                     }`}
                   disabled={!areAllParametersMapped()}
                 >

@@ -52,7 +52,7 @@ const TargetMappingDrawer = ({
         // Save to localStorage
         try {
             window.localStorage.setItem(`scd_config_${nodeId}`, JSON.stringify(toPersist));
-        } catch {}
+        } catch { }
 
         // Update parent SCD config
         setScdConfig(toPersist);
@@ -116,11 +116,10 @@ const TargetMappingDrawer = ({
         });
     }, [persistScdConfig]);
 
-    // Function to collect all available source columns from window.allNodes
+    // Function to collect all available source columns — uses post-transformation state
     const refreshSourceColumns = useCallback(() => {
         if (!window.allNodes || !window.allEdges) return;
 
-        // Find all source nodes connected to this target node through transformations
         const sourceColumns = new Set();
 
         // Find all transformation nodes connected to this target
@@ -131,7 +130,33 @@ const TargetMappingDrawer = ({
                 return node && node.type === 'transformation';
             });
 
-        // For each transformation node, get all connected source nodes
+        // ETL-correct approach: use post-transformation replayed columns
+        // These already reflect restrict, rename, drop, join, and new-column effects
+        if (window.replayedDataframeColumns && Object.keys(window.replayedDataframeColumns).length > 0) {
+            transformationNodeIds.forEach(transId => {
+                const transIncoming = window.allEdges.filter(e => e.target === transId);
+                transIncoming.forEach(e => {
+                    const sourceNode = window.allNodes.find(n => n.id === e.source && n.type === 'source');
+                    if (sourceNode) {
+                        const alias = sourceNode.data?.alias || `unnamed_source_${sourceNode.id}`;
+                        const replayedDf = window.replayedDataframeColumns[alias] || window.replayedDataframeColumns[sourceNode.id];
+                        if (replayedDf && Array.isArray(replayedDf.columns)) {
+                            replayedDf.columns.forEach(col => {
+                                const colName = typeof col === 'object' ? col.name : col;
+                                if (colName) sourceColumns.add(colName);
+                            });
+                        }
+                    }
+                });
+            });
+
+            if (sourceColumns.size > 0) {
+                setAvailableSourceColumns(Array.from(sourceColumns));
+                return;
+            }
+        }
+
+        // Fallback: gather from source nodes and transformation outputs directly
         transformationNodeIds.forEach(transId => {
             const transIncoming = window.allEdges.filter(e => e.target === transId);
             transIncoming.forEach(e => {
@@ -157,7 +182,6 @@ const TargetMappingDrawer = ({
             }
         });
 
-        // Convert to array and update state
         const columnsArray = Array.from(sourceColumns);
         if (columnsArray.length > 0) {
             setAvailableSourceColumns(columnsArray);
@@ -241,7 +265,7 @@ const TargetMappingDrawer = ({
         setInitialMappingReceived(true);
 
         window.localStorage.setItem(`targetMapping_${nodeId}`, JSON.stringify(completedMapping));
-    // --- END PATCH ---
+        // --- END PATCH ---
     }, [targetMapping, nodeId, getAllTargetColumns, sourceColumnOptions, availableSourceColumns]);
 
     const filteredTargetColumns = useMemo(
@@ -280,7 +304,7 @@ const TargetMappingDrawer = ({
         // Save to localStorage
         try {
             window.localStorage.setItem(`scd_config_${nodeId}`, JSON.stringify(finalScdConfig));
-        } catch {}
+        } catch { }
 
         // Update parent SCD config
         setScdConfig(finalScdConfig);
