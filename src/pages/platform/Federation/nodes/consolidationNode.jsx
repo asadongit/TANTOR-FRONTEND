@@ -1,5 +1,5 @@
 /*eslint-disable*/
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { SquareKanban, X, Network, ChevronDown, ChevronUp, Pencil, MoveHorizontal } from "lucide-react";
@@ -10,7 +10,7 @@ import { Circle } from 'lucide-react';
 import { Columns } from "../BusinessView/Columns";
  
 export function ConsolidationNode({ id }) {
-  const { handleConnectionPayload, handleViewPayload, consolidationPayload, connectionPayload, viewPayload, handleFinalPayload, finalPayload, columnSettings, setColumnSettings } = useStateContext("");
+  const { handleConnectionPayload, handleViewPayload, consolidationPayload, connectionPayload, viewPayload, handleFinalPayload, finalPayload, columnSettings, setColumnSettings, incrementNodeCount, decrementNodeCount, consolidationTypeChange, setConsolidationTypeChange  } = useStateContext("");
   const [type, setType] = useState("Join");
   const [unionType, setUnionType] = useState("");
   const { showToast } = useToast();
@@ -31,6 +31,27 @@ export function ConsolidationNode({ id }) {
   const [selectedUnionColumns, setSelectedUnionColumns] = useState([])
  
   const [colId, setColId] = useState("Union")
+  const hasIncrementedRef = useRef(false);
+  const previousTypeRef = useRef(type);
+
+  useEffect(() => {
+    if (consolidationTypeChange && consolidationTypeChange.nodeId !== id) {
+      setSelectedLeft("");
+      setSelectedRight("");
+      setJoinType("");
+      setOperator("");
+      setSelectedUnionColumns([]);
+      setUnionType("");
+      setType(consolidationTypeChange.newType);
+      
+      // Clear any saved joins for this node
+      handleFinalPayload((prevData) => ({
+        ...prevData,
+        joins: prevData?.joins?.filter((join) => join.id !== id) || [],
+      }));
+      
+    }
+  }, [consolidationTypeChange, id]);
  
   useEffect(() => {
  
@@ -130,6 +151,13 @@ export function ConsolidationNode({ id }) {
       setJoins([newJoin]);
     }
   }, [view1, view2, joinType, selectedLeft, selectedRight, operator, connectionPayload]);
+
+  useEffect(() => {
+    if (!hasIncrementedRef.current) {
+      incrementNodeCount('consolidation');
+      hasIncrementedRef.current = true;
+    }
+  }, []);
  
  
   const [isUnionModalOpen, setIsUnionModalOpen] = useState(false);
@@ -341,16 +369,29 @@ export function ConsolidationNode({ id }) {
     }
   }
  
-  const handleType = (type) => {
+  const handleType = (newType) => {
+    if (newType !== type) {
+      if (setConsolidationTypeChange) {
+        setConsolidationTypeChange({
+          nodeId: id,
+          oldType: type,
+          newType: newType,
+          timestamp: Date.now()
+        });
+      }
+    }
+
     handleFinalPayload(prevPayload => ({
       columnsDataType: prevPayload?.columnsDataType || {}
     }));
  
-    setType(type)
-    setSelectedLeft("")
-    setSelectedRight("")
-    setJoinType("")
-    setOperator("")
+    setType(newType);
+    setSelectedLeft("");
+    setSelectedRight("");
+    setJoinType("");
+    setOperator("");
+    setSelectedUnionColumns([]);
+    setUnionType("");
   }
  
   const handleClear = () => {
@@ -527,12 +568,10 @@ export function ConsolidationNode({ id }) {
           ...prevData,
           joins: prevData?.joins?.filter((join) => join.id !== id),
       }));
-  }
-    // else if(finalPayload.operation){
-    // }
+    }
 
+    decrementNodeCount('consolidation');
     window.deleteNode?.(id)
-
   };
  
   return (
