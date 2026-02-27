@@ -4,6 +4,10 @@ import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 import { tw } from '../../../../../components/themeContext';
 import ModelTrainingIcon from '../../../../../assets/ai/model_training.svg';
 import AccountTreeIcon from '../../../../../assets/ai/account_tree.svg';
+import ArrowRightIcon from '../../../../../assets/ai/arrow_right.svg';
+
+const headingCls = "font-['Satoshi'] font-medium text-[18px] leading-none tracking-normal";
+const bodyCls    = "font-['Satoshi'] font-normal text-[16px] leading-none tracking-normal";
 
 export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
     const [ensembleCount, setEnsembleCount] = useState(2);
@@ -27,11 +31,11 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="bg-white rounded-lg shadow-xl max-w-xl w-full">
 
                 {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b border-slate-200">
-                    <h2 className={tw.sectionHeading}>Choose Build Method</h2>
+                <div className="flex items-center justify-between p-6">
+                    <h2 className={`${headingCls} text-[#332849]`}>Choose Build Method</h2>
                     <button
                         onClick={onClose}
                         className="text-[#818181] hover:text-slate-600 transition-colors"
@@ -41,79 +45,80 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
                 </div>
 
                 {/* Content */}
-                <div className="p-6">
-                    <p className={tw.label + ' mb-6'}>
+                <div className="px-6 pb-6">
+                    <p className={`${bodyCls} mb-6 text-[#555]`}>
                         Select the mode that defines how your model will be configured and executed.
                     </p>
 
                     {/* Monolithic Option */}
                     <div
                         onClick={() => handleProceed('monolithic')}
-                        className="rounded-lg p-4 mb-4 cursor-pointer transition-all bg-slate-50 hover:bg-violet-50/50 hover:shadow-sm"
+                        className="rounded-lg p-4 mb-4 cursor-pointer transition-all bg-[#FAFAFA] hover:bg-[#FAF8FF] hover:shadow-sm"
                     >
-                        <div className="flex items-start justify-between mb-2">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                                <div className="w-5 h-5 flex items-center flex-shrink-0 mr-3">
                                     <img src={ModelTrainingIcon} alt="Monolithic" className="w-5 h-5" />
                                 </div>
-                                <span className={`${tw.sectionHeading} text-[#8e78b7]`}>Monolithic</span>
+                                <span className={`${headingCls} text-[#8e78b7]`}>Monolithic</span>
                             </div>
-                            <div className="p-1 flex-shrink-0">
-                                <ArrowRight className="w-5 h-5 text-[#8e78b7]" />
-                            </div>
+                            <img src={ArrowRightIcon} alt="arrow right" className="w-4 h-4 flex-shrink-0" style={{ filter: 'brightness(0) saturate(100%) invert(45%) sepia(60%) saturate(400%) hue-rotate(220deg) brightness(95%) contrast(90%)' }}/>
                         </div>
-                        <p className={tw.label + ' ml-[52px]'}>
-                            Train a single model using one unified configuration. Best for straightforward and faster workflows.
+                        <p className={`${bodyCls} mt-4 text-[#555]`} style={{ lineHeight: '1.5' }}>
+                            Train a single model using one unified configuration.<br />
+                            Best for straightforward and faster workflows.
                         </p>
                     </div>
 
                     {/* OR Divider */}
                     <div className="flex items-center gap-3 my-4">
-                        <div className="flex-1 h-px bg-slate-200" />
-                        <span className={tw.caption}>Or</span>
-                        <div className="flex-1 h-px bg-slate-200" />
+                        <div className="flex-1 h-px bg-[#F1F0F3]" />
+                        <span className={`${bodyCls} text-[#818181]`}>Or</span>
+                        <div className="flex-1 h-px bg-[#F1F0F3]" />
                     </div>
 
                     {/* Ensemble Option */}
                     <div
                         onClick={() => handleProceed('ensemble')}
-                        className="rounded-lg p-4 cursor-pointer transition-all bg-slate-50 hover:bg-violet-50/50 hover:shadow-sm"
+                        className="rounded-lg p-4 cursor-pointer transition-all bg-[#FAFAFA] hover:bg-[#FAF8FF] hover:shadow-sm"
                     >
-                        <div className="flex items-start justify-between mb-2">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                                <div className="w-5 h-5 flex items-center flex-shrink-0 mr-2">
                                     <img src={AccountTreeIcon} alt="Ensemble" className="w-5 h-5" />
                                 </div>
-                                <span className={`${tw.sectionHeading} text-[#8e78b7]`}>Ensemble</span>
+                                <span className={`${headingCls} text-[#8e78b7]`}>Ensemble</span>
                             </div>
-                            <div className="p-1 flex-shrink-0">
-                                <ArrowRight className="w-5 h-5 text-[#8e78b7]" />
-                            </div>
+                           <img src={ArrowRightIcon} alt="arrow right" className="w-4 h-4 flex-shrink-0" style={{ filter: 'brightness(0) saturate(100%) invert(45%) sepia(60%) saturate(400%) hue-rotate(220deg) brightness(95%) contrast(90%)' }}/>
                         </div>
-                        <p className={tw.label + ' mb-4 ml-[52px]'}>
-                            Configure multiple models individually and combine their outputs. Ideal for improving accuracy and robustness.
+                        
+                        <p className={`${bodyCls} mt-4 text-[#555]`} style={{ lineHeight: '1.5' }}>
+                            Configure multiple models individually and combine their outputs.<br />
+                            Ideal for improving accuracy and robustness.
+                        </p>
+                        
+                        <p className={`${bodyCls} mt-3 border-t border-[#F1F0F3] pt-3 text-[#555]`} style={{ lineHeight: '1.5' }}>
+                            Choose how many models you want to build as part of this ensemble.
                         </p>
 
-                        <div className="ml-[52px]">
-                            <div className="flex items-center gap-3">
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); decrementCount(); }}
-                                    disabled={ensembleCount <= 2}
-                                    className="w-8 h-8 rounded border border-slate-200 flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                >
-                                    <span className="text-[#332849] text-lg leading-none">−</span>
-                                </button>
-                                <div className="w-10 h-8 flex items-center justify-center">
-                                    <span className={`${tw.sectionHeading} text-[#8e78b7]`}>{ensembleCount}</span>
-                                </div>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); incrementCount(); }}
-                                    disabled={ensembleCount >= 10}
-                                    className="w-8 h-8 rounded border border-slate-200 flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                >
-                                    <span className="text-[#332849] text-lg leading-none">+</span>
-                                </button>
+                        <div className="flex items-center gap-3 mt-3 bg-white p-3">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); decrementCount(); }}
+                                disabled={ensembleCount <= 2}
+                                className="w-10 h-10 rounded-lg bg-[#FAFAFA] flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <span className={`${headingCls} text-[#332849]`}>−</span>
+                            </button>
+                            <div className="w-10 h-10 flex items-center justify-center">
+                                <span className={`${headingCls} text-[#8e78b7]`}>{ensembleCount}</span>
                             </div>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); incrementCount(); }}
+                                disabled={ensembleCount >= 10}
+                                className="w-10 h-10 rounded-lg bg-[#FAFAFA] flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <span className={`${headingCls} text-[#332849]`}>+</span>
+                            </button>
                         </div>
                     </div>
 
