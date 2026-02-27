@@ -706,7 +706,7 @@ function Models() {
                 }
               },
               modelSelection: {
-                config: modelData.prefill?.training?.request?.training_request || null,
+                config: modelData.prefill?.training?.request || null,
                 apiResponse: modelData.prefill?.training?.response || null
               },
               modelInferencing: {
