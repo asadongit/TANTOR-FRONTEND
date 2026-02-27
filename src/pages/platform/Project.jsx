@@ -314,13 +314,14 @@ const Project = () => {
 
   const columns = [
     { key: "project", label: "Project Name" },
-    { key: "created_by", label: "Created By" },
-    { key: "owner", label: "Owner" },
+    { key: "description", label: "Description", sortable: false},
+    { key: "owner", label: "Owner"},
     { key: "connections", label: "Connections" },
     { key: "metadata", label: "Metadata" },
     { key: "migration", label: "Migrations" },
     { key: "purge", label: "Purges" },
     { key: "cdc", label: "CDC" },
+    { key: "created_at", label: "Created At" },
     { label: "Action", sortable: false },
   ];
 

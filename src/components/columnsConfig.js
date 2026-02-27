@@ -3,7 +3,7 @@ const columnConfigurations = {
   
     cdc: [
       { key: "cdc_name", label: "Name", sortable: true },
-      { key: "description", label: "Description", sortable: true },
+      { key: "description", label: "Description", sortable: false },
       { key: "source_conn_name", label: "Source Connection", sortable: true },
       { key: "target_conn_name", label: "Target Connection", sortable: true },
       { key: "source_table", label: "Source Table", sortable: true },
@@ -14,14 +14,14 @@ const columnConfigurations = {
     ],
   
     connections: [
-      { key: "connection_name", label: "Name", sortable: true },
+      { key: "connection_name", label: "Name", sortable: true},
       { key: "project", label: "Project Name", sortable: true },
-      { key: "created_by", label: "Created By", sortable: true },
       { key: "pool_type", label: "Connection Type", sortable: true },
       { key: "database_name", label: "Database Name", sortable: true },
       { key: "username", label: "Username", sortable: true },
       { key: "host_address", label: "Hostname", sortable: true },
       { key: "table_count", label: "No. of Tables", sortable: true },
+      { key: "created_at", label: "Created at", sortable: true },
       { key: "status", label: "Status", sortable: true },
       { label: "Action", sortable: false },
     ],
@@ -40,20 +40,20 @@ const columnConfigurations = {
 
     metadata: [
       { key: "metadata_name", label: "Name", sortable: true },
-      { key: "description", label: "Description", sortable: true },
+      { key: "description", label: "Description", sortable: false },
       { key: "project", label: "Project Name", sortable: true },
-      { key: "created_by", label: "Created By", sortable: true },
       { key: "source_conn_name", label: "Source Connection", sortable: true },
       { key: "target_conn_name", label: "Target Connection", sortable: true },
       { key: "source_table", label: "Source Table", sortable: true },
       { key: "target_table", label: "Target Table", sortable: true },
+      { key: "created_at", label: "Created At", sortable: true},
       { key: "status", label: "Status", sortable: true },
       { label: "Action", sortable: false },
     ],
   
     migration: [
-      { key: "workflow_name", label: "Name", sortable: true },
-      { key: "description", label: "Description", sortable: true },
+      { key: "workflow_name", label: "Name", sortable: true},
+      { key: "description", label: "Description", sortable: false },
       { key: "source_conn_name", label: "Source Connection", sortable: true },
       { key: "target_conn_name", label: "Target Connection", sortable: true },
       { key: "source_table", label: "Source Table", sortable: true },
@@ -65,7 +65,7 @@ const columnConfigurations = {
   
     purge: [
       { key: "purge_name", label: "Name", sortable: true },
-      { key: "description", label: "Description", sortable: true },
+      { key: "description", label: "Description", sortable: false },
       { key: "source_conn_name", label: "Source Connection", sortable: true },
       { key: "target_conn_name", label: "Target Connection", sortable: true },
       { key: "source_table", label: "Source Table", sortable: true },

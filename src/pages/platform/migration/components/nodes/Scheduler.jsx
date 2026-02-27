@@ -14,6 +14,8 @@ export default function Scheduler({ id }) {
   const [showFrequency, setShowFrequency] = useState(false);
   const [frequency, setFrequency] = useState(migrationData[id]?.frequency || "");
 
+  const minDateTime = new Date().toISOString().slice(0, 16);
+
   useEffect(() => {
     const schedulerData = selectedOption === "auto" ? {
       mode: "auto",
@@ -81,6 +83,7 @@ export default function Scheduler({ id }) {
               type="datetime-local"
               className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
               value={startDateTime}
+              min={minDateTime}
               onChange={(e) => setStartDateTime(e.target.value)}
             />
           </div>
@@ -90,6 +93,7 @@ export default function Scheduler({ id }) {
               type="datetime-local"
               className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
               value={endDateTime}
+              min={startDateTime || minDateTime}
               onChange={(e) => setEndDateTime(e.target.value)}
             />
           </div>
@@ -112,6 +116,7 @@ export default function Scheduler({ id }) {
               type="datetime-local"
               className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
               value={startDateTime}
+              min={minDateTime}
               onChange={(e) => setStartDateTime(e.target.value)}
             />
           </div>

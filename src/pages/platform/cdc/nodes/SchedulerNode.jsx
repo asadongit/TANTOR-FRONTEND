@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback } from "react";
 import PropTypes from "prop-types";
 import { Position } from "reactflow";
 import { Minus, X } from "lucide-react";
@@ -8,23 +8,16 @@ import { toast } from "react-hot-toast";
 import { useNavigate } from 'react-router-dom';
 import { useModal } from "../context/ModalProvider";
 import { encrypt } from "../../../../utils/Crypto";
+
 import { useAuth } from "../../../../context/AuthContext";
-
-const getCurrentDateTime = () => {
-  const now = new Date();
-  const offset = now.getTimezoneOffset();
-  const local = new Date(now.getTime() - offset * 60000);
-  return local.toISOString().slice(0, 16);
-};
-
-export function SchedulerNode({ id, data, selected }) {
+export function SchedulerNode({ id, data, selected}) {
   const pipelineId = data?.pipelineId;
   const isPipelineNode = pipelineId !== undefined;
   const ID = isPipelineNode ? pipelineId : id;
-  
-  const {token,decodedToken ,project, hostnameV2}= useAuth()
+const {token,decodedToken ,project, hostnameV2}= useAuth()
   const navigate = useNavigate();
   const {openModal, closeModal}= useModal()
+
   const { updatePipelineData,deletePipeline, pipelines,setNodes,setEdge,deleteMappings} = useWorkflow();
 
   const [selectedOption, setSelectedOption] = useState("manual");
@@ -33,27 +26,14 @@ export function SchedulerNode({ id, data, selected }) {
   // const { minimizePipeline, deletePipeline } = useWorkflow();
   // const pipelineId = id.split("_").pop();
   
-  const minDateTime = useMemo(() => getCurrentDateTime(), []);
+  const minDateTime = new Date().toISOString().slice(0, 16);
 
   const handleOptionChange = useCallback((event) => {
     setSelectedOption(event.target.value);
   }, []);
 
-  const handleStartDateChange = useCallback(
-    (e) => {
-      const newStartDate = e.target.value;
-      setStartDate(newStartDate);
 
-      if (endDate && newStartDate > endDate) {
-        setEndDate("");
-      }
-    },
-    [endDate]
-  );
 
-  const handleEndDateChange = useCallback((e) => {
-    setEndDate(e.target.value);
-  }, []);
 
   const handleSave = async () => {
     let pipelineData = {};
@@ -70,7 +50,6 @@ export function SchedulerNode({ id, data, selected }) {
         };
       }
     }
-
     if (!pipelineData?.define?.name) {
       toast.error("Please provide a name for the CDC!", { duration: 4000 });
       return;
@@ -91,8 +70,11 @@ export function SchedulerNode({ id, data, selected }) {
       return;
     }
 
+
     const tableOperations = {};
+
     const tableOpTypes = pipelineData.source?.table_op_types || {};
+
     const targetTables = pipelineData.target?.bulk_list || [];
 
     targetTables.forEach(mapping => {
@@ -161,15 +143,16 @@ export function SchedulerNode({ id, data, selected }) {
   const handleClose =()=>{
     closeModal()
     deletePipeline(ID);
-    setTimeout(() => {
-      navigate(`/details?${encodeURIComponent(encrypt("componentType=cdc&heading=cdc"))}`);
+     setTimeout(() => {
+          navigate(`/details?${encodeURIComponent(encrypt("componentType=cdc&heading=cdc"))}`);
     }, 800)
-  }
+      }
 
   const handleCancel =()=>{
     deletePipeline(ID);
     navigate('/cdc');
   }
+
 
   return (
     <div className="bg-white rounded-lg text-black p-4 shadow-md border-2 border-[#8E77BB] min-w-[320px] max-w-[320px] relative group">
@@ -219,8 +202,8 @@ export function SchedulerNode({ id, data, selected }) {
               type="datetime-local"
               className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
               value={startDate}
-              onChange={handleStartDateChange}
               min={minDateTime}
+              onChange={(e) => setStartDate(e.target.value)}
             />
           </div>
 
@@ -230,8 +213,8 @@ export function SchedulerNode({ id, data, selected }) {
               type="datetime-local"
               className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
               value={endDate}
-              onChange={handleEndDateChange}
               min={startDate || minDateTime}
+              onChange={(e) => setEndDate(e.target.value)}
             />
           </div>
         </>
