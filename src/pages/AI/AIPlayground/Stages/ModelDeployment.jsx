@@ -24,8 +24,6 @@ function ModelDeployment() {
   return (
     <AIPlaygroundLayout>
       <div className="flex flex-col h-full">
-        <h2 className="text-2xl font-semibold text-gray-900 mb-4">Model Deployment</h2>
-
         {mlflowUrl ? (
           <div className="flex-1 border border-gray-300 rounded-lg overflow-hidden">
             <iframe

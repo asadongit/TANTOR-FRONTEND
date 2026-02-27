@@ -55,6 +55,11 @@ const Project = () => {
   const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
   const autoRefreshMenuRef = useRef(null);
 
+  const [resetSortTrigger, setResetSortTrigger] = useState(0);
+  const handleClearSort = () => {
+    setResetSortTrigger(prev => prev + 1);
+  };
+
   useEffect(() => {
     if (autoRefreshInterval === 0) return;
 
@@ -143,8 +148,8 @@ const Project = () => {
     } else if (!/^[a-zA-Z]/.test(projectName)) {
       formErrors.project = "Project name must start with a letter";
       isValid = false;
-    } else if (projectName.length > 20) {
-      formErrors.project = "Project name cannot exceed 20 characters";
+    } else if (projectName.length > 100) {
+      formErrors.project = "Project name cannot exceed 100 characters";
       isValid = false;
     }
 
@@ -217,6 +222,9 @@ const Project = () => {
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
+      setSearchTerm("");
+      handleClearSort();
+
       await Promise.all([refetchProjects(), refetchCardData()]);
       toast.success("Projects fetched successfully");
     } finally {
@@ -306,13 +314,14 @@ const Project = () => {
 
   const columns = [
     { key: "project", label: "Project Name" },
-    { key: "created_by", label: "Created By" },
+    { key: "description", label: "Description", sortable: false },
     { key: "owner", label: "Owner" },
     { key: "connections", label: "Connections" },
     { key: "metadata", label: "Metadata" },
     { key: "migration", label: "Migrations" },
     { key: "purge", label: "Purges" },
     { key: "cdc", label: "CDC" },
+    { key: "created_at", label: "Created At" },
     { label: "Action", sortable: false },
   ];
 
@@ -456,6 +465,7 @@ const Project = () => {
         isLoading={isProjectLoading}
         isError={projectError}
         refetch={refetchProjects}
+        resetSortTrigger={resetSortTrigger}
       />
 
       {/* Add/Edit Project Modal */}
@@ -504,7 +514,7 @@ const Project = () => {
                       value={formData.project}
                       onChange={handleInputChange}
                       placeholder="Name"
-                      maxLength={20}
+                      maxLength={100}
                       className={`w-full p-2.5 border ${errors.project ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
                     />
                     {errors.project && (

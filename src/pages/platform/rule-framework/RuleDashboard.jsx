@@ -33,6 +33,11 @@ const RuleDashboard = () => {
 
   const [viewMode, setViewMode] = useState("list");
 
+  const [resetSortTrigger, setResetSortTrigger] = useState(0);
+  const handleClearSort = () => {
+    setResetSortTrigger(prev => prev + 1);
+  };
+  
   const {
     data: ruleList = [],
     isLoading: isRuleLoading,
@@ -73,6 +78,8 @@ const RuleDashboard = () => {
   const handleRefresh = () => {
     refetchCardData();
     refetchRules();
+    setSearchTerm("");
+    handleClearSort();
   };
 
   const handleCreate = () => {
@@ -500,6 +507,7 @@ const RuleDashboard = () => {
         isLoading={isRuleLoading}
         isError={!!ruleError}
         refetch={refetchRules}
+        resetSortTrigger={resetSortTrigger}
       />
 
       {showRuleSummary && (

@@ -44,6 +44,11 @@ const PurgeList = () => {
   const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
   const autoRefreshMenuRef = useRef(null);
 
+  const [resetSortTrigger, setResetSortTrigger] = useState(0);
+  const handleClearSort = () => {
+    setResetSortTrigger(prev => prev + 1);
+  };
+
   useEffect(() => {
     if (autoRefreshInterval === 0) return;
 
@@ -174,7 +179,7 @@ const PurgeList = () => {
   // TBR
   const columns = [
     { key: "purge_name", label: "Name", sortable: true },
-    { key: "description", label: "Description", sortable: true },
+    { key: "description", label: "Description", sortable: false },
     { key: "source_conn_name", label: "Source Connection", sortable: true },
     { key: "target_conn_name", label: "Target Connection", sortable: true },
     { key: "source_table", label: "Source Table", sortable: true },
@@ -274,6 +279,7 @@ const PurgeList = () => {
                   refetchPurges();
                   refetchCardData();
                   setSearchTerm("");
+                  handleClearSort();
                   toast.success("Purge data refreshed successfully");
                 }}
                 title="Refresh data"
@@ -360,7 +366,9 @@ const PurgeList = () => {
         data={filteredPurgeData}
         isLoading={isPurgeLoading}
         isError={purgeError}
-        refetch={refetchPurges} />
+        refetch={refetchPurges}
+        resetSortTrigger={resetSortTrigger}
+      />
 
       <DagErrorModal
         isOpen={dagErrorModal.isOpen}

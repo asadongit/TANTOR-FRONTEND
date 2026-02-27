@@ -745,7 +745,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4">
+    <div className="max-w-full">
       {error && (
         <div className="mb-4 p-3 sm:p-4 bg-red-100 border border-red-400 text-red-700 rounded text-sm sm:text-base">
           Error loading dashboard data: {error}

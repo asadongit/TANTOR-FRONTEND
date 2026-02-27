@@ -388,6 +388,7 @@ export const TransformationDrawer = ({
 
 
 	const hasReplayedRef = useRef(false);
+	const [perTransformationColumns, setPerTransformationColumns] = useState({});
 
 	useEffect(() => {
 		transformationRefs.current = transformationRefs.current.slice(0, transformations.length);
@@ -399,6 +400,7 @@ export const TransformationDrawer = ({
 
 		const renameMaps = {};
 		const previousStates = {};
+		const perStepColumns = {};
 
 		const sortedTransformations = [...transformationsList].sort((a, b) =>
 			(a.transformation_order || 0) - (b.transformation_order || 0)
@@ -409,6 +411,8 @@ export const TransformationDrawer = ({
 			if (!dfId) return;
 
 			previousStates[idx] = JSON.parse(JSON.stringify(dfCols));
+			// Save the columns available TO this transformation (before its effects)
+			perStepColumns[idx] = JSON.parse(JSON.stringify(dfCols));
 
 			if (!dfCols[dfId]) dfCols[dfId] = { columns: [], column_format: {} };
 			let cols = Array.isArray(dfCols[dfId].columns) ? [...dfCols[dfId].columns] : [];
@@ -479,7 +483,11 @@ export const TransformationDrawer = ({
 
 				case "restrictcolumns":
 					if (t.source_column && t.source_column.length > 0) {
-						cols = cols.filter(c => t.source_column.includes(getColName(c)));
+						if (t.transformation_operator === "drop") {
+							cols = cols.filter(c => !t.source_column.includes(getColName(c)));
+						} else {
+							cols = cols.filter(c => t.source_column.includes(getColName(c)));
+						}
 					}
 					break;
 
@@ -505,10 +513,13 @@ export const TransformationDrawer = ({
 			dfCols[dfId].columns = cols;
 		});
 
+		// Also save per-step columns for the "next" transformation (after all effects)
+		perStepColumns[sortedTransformations.length] = JSON.parse(JSON.stringify(dfCols));
+
 		window.transformationReplayHistory = previousStates;
 		window.replayedDataframeColumns = JSON.parse(JSON.stringify(dfCols));
 
-		return dfCols;
+		return { finalColumns: dfCols, perStepColumns };
 	}, []);
 
 	const syncDataframeColumnsFromNodes = useCallback(() => {
@@ -528,7 +539,7 @@ export const TransformationDrawer = ({
 
 
 		const sources = incomingEdges
-			.map(edge => window.allNodes.find(node => node.id === edge.source && node.type === "source"))
+			.map(edge => window.allNodes.find(node => node.id === edge.source && (node.type === "source" || node.type === "transformation")))
 			.filter(Boolean)
 			.map((node) => {
 				const alias = node.data?.alias || `unnamed_source_${node.id}`;
@@ -566,7 +577,7 @@ export const TransformationDrawer = ({
 					};
 
 					const sourceNode = window.allNodes.find(node =>
-						(node.type === "source" && (node.data?.alias === dfId || node.id === dfId))
+						((node.type === "source" || node.type === "transformation") && (node.data?.alias === dfId || node.id === dfId))
 					);
 					if (sourceNode && typeof sourceNode.data.onDataChange === "function") {
 						sourceNode.data.onDataChange({ columns: [...window.replayedDataframeColumns[dfId].columns] });
@@ -1703,10 +1714,11 @@ export const TransformationDrawer = ({
 					};
 				});
 
-				const updatedDfCols = replayTransformationsForColumns(initialTransformations, cleanDfCols);
-
+				const replayResult = replayTransformationsForColumns(initialTransformations, cleanDfCols);
+				const updatedDfCols = replayResult.finalColumns;
 
 				setDataframeColumns(updatedDfCols);
+				setPerTransformationColumns(replayResult.perStepColumns);
 				setTransformations(initialTransformations);
 
 				// Force update nodes with new columns
@@ -1744,6 +1756,53 @@ export const TransformationDrawer = ({
 		}
 	}, [isOpen, isEditMode]);
 
+	// Recompute per-step columns whenever transformations change (for both create and edit mode)
+	useEffect(() => {
+		if (!isOpen || !columnsLoaded || transformations.length === 0) return;
+
+		// Build initial columns from source nodes
+		const initialDfCols = {};
+		if (window.allNodes && window.allEdges) {
+			const incomingEdges = window.allEdges.filter(edge => edge.target === activeNodeId);
+			const sources = incomingEdges
+				.map(edge => window.allNodes.find(node => node.id === edge.source && (node.type === "source" || node.type === "transformation")))
+				.filter(Boolean);
+
+			sources.forEach(node => {
+				const alias = node.data?.alias || `unnamed_source_${node.id}`;
+				let cols = Array.isArray(node.data?.columns) ? [...node.data.columns] : [];
+
+				// Use original columns if available (to avoid using already-modified columns)
+				if (window.transformationContext?.state?.originalSourceColumns) {
+					if (window.transformationContext.state.originalSourceColumns[node.id]) {
+						cols = [...window.transformationContext.state.originalSourceColumns[node.id]];
+					} else if (window.transformationContext.state.originalSourceColumns[alias]) {
+						cols = [...window.transformationContext.state.originalSourceColumns[alias]];
+					}
+				}
+
+				initialDfCols[alias] = {
+					columns: cols,
+					column_format: node.data?.column_format || {}
+				};
+			});
+		}
+
+		if (Object.keys(initialDfCols).length === 0) return;
+
+		try {
+			const replayResult = replayTransformationsForColumns(transformations, initialDfCols);
+			setPerTransformationColumns(replayResult.perStepColumns);
+
+			// Also update the final dataframeColumns and global state
+			setDataframeColumns(replayResult.finalColumns);
+			window.replayedDataframeColumns = JSON.parse(JSON.stringify(replayResult.finalColumns));
+		} catch (error) {
+			console.error('Error recomputing per-step columns:', error);
+		}
+	}, [transformations, isOpen, columnsLoaded, activeNodeId, replayTransformationsForColumns]);
+
+
 	const handleRefreshColumns = useCallback(() => {
 		if (!isEditMode || !transformations.length) return;
 
@@ -1752,7 +1811,7 @@ export const TransformationDrawer = ({
 			if (window.allNodes && window.allEdges) {
 				const incomingEdges = window.allEdges.filter(edge => edge.target === activeNodeId);
 				const sources = incomingEdges
-					.map(edge => window.allNodes.find(node => node.id === edge.source && node.type === "source"))
+					.map(edge => window.allNodes.find(node => node.id === edge.source && (node.type === "source" || node.type === "transformation")))
 					.filter(Boolean);
 
 				sources.forEach(node => {
@@ -1774,9 +1833,11 @@ export const TransformationDrawer = ({
 				});
 			}
 
-			const updatedDfCols = replayTransformationsForColumns(transformations, initialDfCols);
+			const replayResult = replayTransformationsForColumns(transformations, initialDfCols);
+			const updatedDfCols = replayResult.finalColumns;
 
 			setDataframeColumns(updatedDfCols);
+			setPerTransformationColumns(replayResult.perStepColumns);
 
 			if (window.allNodes) {
 				Object.entries(updatedDfCols).forEach(([dfId, dfData]) => {
@@ -1875,7 +1936,7 @@ export const TransformationDrawer = ({
 										transformation={transformation}
 										index={index}
 										allDataframes={allDataframes}
-										dataframeColumns={dataframeColumns}
+										dataframeColumns={perTransformationColumns[index] || dataframeColumns}
 										openDropdowns={openDropdowns}
 										dropdownRefs={dropdownRefs}
 										handleRemoveTransformation={handleRemoveTransformation}

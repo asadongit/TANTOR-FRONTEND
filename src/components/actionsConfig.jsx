@@ -7,14 +7,14 @@ import { deleteMetadata } from "../hooks/platform/metadata";
 
 export const getActionConfigurations = ({ token, project, hostnameV2, hostnameV1, navigate, refetch }) => {
   // Modal state management function to be used in component
-  const showDeleteConfirmation = (cdcId, onConfirm) => {
+  const showDeleteConfirmation = (id, onConfirm, name = "item") => {
     // Create modal element
     const confirmModal = document.createElement("div");
     confirmModal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
     confirmModal.innerHTML = `
       <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
         <h3 class="text-lg font-semibold mb-4">Confirm Deletion</h3>
-        <p class="mb-6">Are you sure you want to delete this CDC connector?</p>
+        <p class="mb-6">Are you sure you want to delete this ${name}?</p>
         <div class="flex justify-end gap-3">
           <button id="cancel-btn" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
           <button id="confirm-btn" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Delete</button>
@@ -62,7 +62,7 @@ export const getActionConfigurations = ({ token, project, hostnameV2, hostnameV1
               console.error("Failed to delete CDC connector:", error);
               toast.error("Failed to delete CDC connector");
             }
-          });
+          }, "CDC Connector");
         },
       },
       {
@@ -124,7 +124,7 @@ export const getActionConfigurations = ({ token, project, hostnameV2, hostnameV1
               toast.dismiss(loadingToast);
               toast.error("Failed to remove migration.");
             }
-          });
+          }, "Migration");
         },
       },
     ],
@@ -152,7 +152,7 @@ export const getActionConfigurations = ({ token, project, hostnameV2, hostnameV1
               toast.dismiss(loadingToast);
               toast.error("Failed to remove Purge.");
             }
-          });
+          }, "Purge");
         },
       },
     ],
@@ -174,7 +174,7 @@ export const getActionConfigurations = ({ token, project, hostnameV2, hostnameV1
               console.error("Failed to delete metadata record:", error);
               toast.error("Failed to delete metadata record");
             }
-          });
+          }, "Metadata");
         },
       },
     ],
