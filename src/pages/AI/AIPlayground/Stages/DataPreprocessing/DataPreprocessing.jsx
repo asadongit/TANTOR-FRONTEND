@@ -212,12 +212,12 @@ function DataPreprocessing() {
 
             {!(currentStep === 7 && isStep7Preview) && (
               <div className="w-full lg:w-72 flex-shrink-0">
-                <div className="bg-white rounded-lg p-4 lg:p-6 border border-gray-200">
+                <div className="bg-white px-3 pt-2 border-r border-[#CCCCCC]">
                   <h3 className="bg-[#FAFAFA] text-sm font-medium text-gray-700 mb-2 px-3 py-2 rounded-md">
                     Pre-processing Steps <span className="text-gray-400 ml-2">{currentStep} of {preprocessingSteps.length}</span>
                   </h3>
 
-                  <div className="relative flex lg:block overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 gap-4 lg:gap-0">
+                  <div className="relative flex lg:block overflow-x-auto lg:overflow-x-visible lg:pb-0 gap-4 lg:gap-0">
                     {preprocessingSteps.map((step, index) => {
                       const isCompleted = readonly ? step.id !== currentStep : step.id < currentStep;
 
@@ -231,7 +231,7 @@ function DataPreprocessing() {
                             className={`flex items-center gap-3 py-3 lg:py-4 text-left transition-colors relative ${currentStep === step.id ? 'text-[#8e78b7]' : 'text-gray-500'
                               }`}
                           >
-                            <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-medium border-2 transition-all ${isCompleted
+                            <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-medium border transition-all ${isCompleted
                               ? 'bg-[#e6f6f4] text-[#2ba995] border-[#2ba995]'
                               : currentStep === step.id
                                 ? 'bg-purple-100 border-[#8e78b7] text-[#8e78b7]'

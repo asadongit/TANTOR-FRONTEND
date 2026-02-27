@@ -32,7 +32,7 @@ const RadioButton = ({ label, checked, onChange, name, readonly }) => (
 
 const Section = ({ title, children, className = '' }) => (
   <div className={`bg-white ${className}`}>
-    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+    <h3 className="text-lg font-medium text-[#332849] mb-4">
       {title} {title !== "Fairness Attribute" && title !== "Drop Columns"}
     </h3>
     {children}
@@ -55,7 +55,7 @@ const NotebookModeModal = ({ isOpen, onCancel, onContinue, readonly }) => {
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4">
-          <h3 className="text-base font-semibold text-gray-900 m-0 p-0">
+          <h3 className="text-base font-medium text-gray-900 m-0 p-0">
             Switch to Notebook Mode?
           </h3>
           <button
@@ -496,7 +496,7 @@ const ModeSelection = ({ config, setConfig, readonly }) => {
                         onChange={readonly ? undefined : (e) => handleNotebookToggle(e.target.checked)}
                         className="sr-only peer"
                       />
-                      <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
+                      <div className="w-11 h-6 bg-[#ADADAD] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
                     </label>
                   </div>
 
@@ -559,38 +559,23 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
 
       const response = await fetch(apiUrl, {
         method: 'GET',
-        headers: {
-          'accept': 'application/json'
-        }
+        headers: { 'accept': 'application/json' }
       });
 
       if (response.ok) {
         const data = await response.json();
-
         if (data.status === 'success') {
-          toast.success('Validation successful!', {
-            duration: 3000,
-            position: 'top-right',
-          });
+          toast.success('Validation successful!', { duration: 3000, position: 'top-right' });
           onValidate();
         } else {
-          toast.error('Target column is not compatible with the selected modeling type.', {
-            duration: 4000,
-            position: 'top-right',
-          });
+          toast.error('Target column is not compatible with the selected modeling type.', { duration: 4000, position: 'top-right' });
         }
       } else {
-        toast.error('Target column is not compatible with the selected modeling type.', {
-          duration: 4000,
-          position: 'top-right',
-        });
+        toast.error('Target column is not compatible with the selected modeling type.', { duration: 4000, position: 'top-right' });
       }
     } catch (error) {
       console.error('Validation error:', error);
-      toast.error('Target column is not compatible with the selected modeling type.', {
-        duration: 4000,
-        position: 'top-right',
-      });
+      toast.error('Target column is not compatible with the selected modeling type.', { duration: 4000, position: 'top-right' });
     } finally {
       setIsValidating(false);
     }
@@ -606,127 +591,132 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
   const isValidateDisabled = !config.classification || !config.targetFeature || isValidating;
 
   return (
-    <div ref={sectionRef} className="p-6 rounded-lg bg-[#FAFAFA]">
-      <h3 className={`text-lg font-semibold mb-4 ${hasError ? 'text-red-600' : 'text-gray-900'}`}>
-        Prediction Type
-      </h3>
+    <div ref={sectionRef} className="bg-[#FAFAFA] rounded-lg border border-gray-200">
+      {/* Header */}
+      <div className="px-6 pt-5 pb-0">
+        <h3 className="text-base font-semibold text-gray-900 mb-4">Prediction Type</h3>
 
-      <div className="flex gap-1 border-b border-gray-300 -mx-6 px-6">
-        {tabs.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setConfig({ ...config, predictionType: tab })}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors relative rounded-md ${config.predictionType === tab ? 'text-[#8e78b7] bg-purple-50' : 'text-gray-600 hover:text-gray-900'
-              }`}
-          >
-            {tab}
-            {config.predictionType === tab && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#8e78b7]" />
-            )}
-          </button>
-        ))}
+        {/* Tabs */}
+        <div className="flex gap-0 border-b border-gray-200">
+          {tabs.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => !readonly && setConfig({ ...config, predictionType: tab })}
+              className={`px-4 py-2 text-sm font-medium transition-colors relative ${config.predictionType === tab
+                ? 'text-[#8e78b7]'
+                : 'text-gray-500 hover:text-gray-700'
+                }`}
+            >
+              {tab}
+              {config.predictionType === tab && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#8e78b7]" />
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
+      {/* Supervised Content */}
       {config.predictionType === 'Supervised' && (
-        <div className="bg-[#FAFAFA] rounded-lg p-6 -mx-6 -mb-6 mt-0 pt-6">
-          <h4 className="text-sm font-semibold text-gray-900 mb-5">Supervised Learning Configuration</h4>
+        <div className="px-6 py-5 bg-[#FAFAFA] overflow-visible">
+          <p className="text-sm font-medium text-gray-800 mb-4">Supervised Learning Configuration</p>
 
-          <div className="grid grid-cols-1 md:grid-cols-[60%_40%] gap-3">
-            <div className="bg-white rounded-lg p-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Classification</label>
-                  <div className="space-y-2.5">
-                    <RadioButton
-                      label="Binary"
-                      checked={config.classification === 'Binary'}
-                      onChange={() => handleConfigChange({ ...config, classification: 'Binary' })}
-                      name="learning-type"
-                      readonly={readonly}
-                    />
-                    <RadioButton
-                      label="Multiclass"
-                      checked={config.classification === 'Multiclass'}
-                      onChange={() => handleConfigChange({ ...config, classification: 'Multiclass' })}
-                      name="learning-type"
-                      readonly={readonly}
-                    />
-                  </div>
+          <div className="flex items-stretch gap-4">
+            <div className="flex items-stretch gap-4 flex-1">
+              <div className="bg-white rounded-lg p-4 min-w-[400px] h-full">
+                <label className="block text-sm font-medium text-gray-700 mb-3">Classification</label>
+                <div className="space-y-2.5">
+                  <RadioButton
+                    label="Binary"
+                    checked={config.classification === 'Binary'}
+                    onChange={() => handleConfigChange({ ...config, classification: 'Binary' })}
+                    name="learning-type"
+                    readonly={readonly}
+                  />
+                  <RadioButton
+                    label="Multiclass"
+                    checked={config.classification === 'Multiclass'}
+                    onChange={() => handleConfigChange({ ...config, classification: 'Multiclass' })}
+                    name="learning-type"
+                    readonly={readonly}
+                  />
+                  <RadioButton
+                    label="Regression"
+                    checked={config.classification === 'Regression'}
+                    onChange={() => handleConfigChange({ ...config, classification: 'Regression' })}
+                    name="learning-type"
+                    readonly={readonly}
+                  />
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Regression</label>
-                  <div className="space-y-2.5">
-                    <RadioButton
-                      label="Regression"
-                      checked={config.classification === 'Regression'}
-                      onChange={() => handleConfigChange({ ...config, classification: 'Regression' })}
-                      name="learning-type"
-                      readonly={readonly}
-                    />
+              {/* Target Feature box */}
+              <div className="bg-white rounded-lg p-4 h-full" style={{ width: '340px' }}>
+                <label className="block text-sm font-medium text-gray-700 mb-3">Target Feature</label>
+                {getAvailableTargetColumns().length > 0 ? (
+                  <>
+                    <div className={`rounded-md ${hasError && !config.targetFeature ? 'border border-[#EF4D5F] bg-[#FFF7F8]' : ''}`}>
+                      <SearchableSelect
+                        value={config.targetFeature}
+                        onChange={(newTargetFeature) => {
+                          const updatedConfig = {
+                            ...config,
+                            targetFeature: newTargetFeature,
+                            fairness_columns: config.fairness_columns.filter(
+                              attr => attr !== newTargetFeature
+                            )
+                          };
+                          handleConfigChange(updatedConfig);
+                        }}
+                        options={getAvailableTargetColumns()}
+                        placeholder="Select..."
+                        disabled={readonly}
+                        readonly={readonly}
+                      />
+                    </div>
+                    {hasError && !config.targetFeature && (
+                      <p className="mt-1 text-sm text-[#EF4D5F]">Please select the target Feature to validate</p>
+                    )}
+                  </>
+                ) : (
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-500 bg-[#FAFAFA]">
+                    No columns available
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
-            <div className="bg-white rounded-lg p-5">
-              <label className="block text-sm font-medium text-gray-700 mb-3">Target Feature</label>
-              {getAvailableTargetColumns().length > 0 ? (
-                <SearchableSelect
-                  value={config.targetFeature}
-                  onChange={(newTargetFeature) => {
-                    const updatedConfig = {
-                      ...config,
-                      targetFeature: newTargetFeature,
-                      fairness_columns: config.fairness_columns.filter(
-                        attr => attr !== newTargetFeature
-                      )
-                    };
-                    handleConfigChange(updatedConfig);
-                  }}
-                  options={getAvailableTargetColumns()}
-                  placeholder="Select..."
-                  disabled={readonly}
-                  readonly={readonly}
-                />
-              ) : (
-                <div className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-500 bg-[#FAFAFA]">
-                  No columns available
-                </div>
+            {/* Validate button — right aligned, vertically centered */}
+            <div className="flex flex-col items-end justify-end self-stretch pb-0 pt-6">
+              <button
+                onClick={handleValidate}
+                disabled={readonly || isValidateDisabled || isValidated}
+                className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${isValidated
+                  ? 'bg-green-100 text-green-700 cursor-default border border-green-400'
+                  : readonly || isValidateDisabled
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-[#8e78b7] text-white hover:bg-[#7d67a6]'
+                  }`}
+              >
+                {isValidating ? (
+                  <>
+                    Validating...
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  </>
+                ) : isValidated ? (
+                  <>
+                    Validated <CheckCircle className="w-5 h-5" />
+                  </>
+                ) : (
+                  'Validate'
+                )}
+              </button>
+              {hasError && config.targetFeature && (
+                <p className="text-sm text-[#EF4D5F] mb-2">{errorMessage}</p>
               )}
             </div>
           </div>
-
-          <div className="mt-6 flex justify-end">
-            <button
-              onClick={handleValidate}
-              disabled={readonly || isValidateDisabled || isValidated}
-              className={`px-8 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${isValidated
-                ? 'bg-green-100 text-green-700 cursor-default border border-green-400'
-                : readonly || isValidateDisabled
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-[#8e78b7] text-white hover:bg-[#7d67a6]'
-                }`}
-            >
-              {isValidating ? (
-                <>
-                  Validating...
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                </>
-              ) : isValidated ? (
-                <>
-                  Validated <CheckCircle className="w-5 h-5" />
-                </>
-              ) : (
-                'Validate'
-              )}
-            </button>
-          </div>
         </div>
-      )}
-
-      {hasError && (
-        <p className="mt-3 text-sm text-red-600">{errorMessage}</p>
       )}
     </div>
   );
@@ -759,7 +749,8 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
             <span className="text-sm text-gray-600">Total: 100%</span>
           </div>
 
-          <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden flex">
+          {/* Split bar — 12px height */}
+          <div className="relative rounded-full overflow-hidden flex" style={{ height: '12px', backgroundColor: '#E5E5E5' }}>
             <div style={{ width: `${config.trainSplit}%` }} className="bg-[#8e78b7] h-full" />
             <div style={{ width: `${config.testSplit}%` }} className="bg-orange-400 h-full" />
           </div>
@@ -783,9 +774,10 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
                     ? undefined
                     : (e) => handleSliderChange('train', parseInt(e.target.value))
                 }
-                className={`flex-1 h-2 bg-gray-200 rounded-lg appearance-none ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                className={`slider-train flex-1 rounded-lg appearance-none ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                 style={{
-                  background: `linear-gradient(to right, #8e78b7 0%, #8e78b7 ${config.trainSplit}%, #e5e7eb ${config.trainSplit}%, #e5e7eb 100%)`
+                  height: '10px',
+                  background: `linear-gradient(to right, #8e78b7 0%, #8e78b7 ${config.trainSplit}%, #E5E5E5 ${config.trainSplit}%, #E5E5E5 100%)`
                 }}
               />
               <span className="text-sm text-gray-600 w-10 text-right">{config.trainSplit}%</span>
@@ -809,9 +801,10 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
                     ? undefined
                     : (e) => handleSliderChange('test', parseInt(e.target.value))
                 }
-                className={`flex-1 h-2 bg-gray-200 rounded-lg appearance-none ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                className={`slider-test flex-1 rounded-lg appearance-none ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                 style={{
-                  background: `linear-gradient(to right, #fc842eff 0%, #fc842eff ${config.testSplit}%, #e5e7eb ${config.testSplit}%, #e5e7eb 100%)`
+                  height: '10px',
+                  background: `linear-gradient(to right, #fc842eff 0%, #fc842eff ${config.testSplit}%, #E5E5E5 ${config.testSplit}%, #E5E5E5 100%)`
                 }}
               />
               <span className="text-sm text-gray-600 w-10 text-right">{config.testSplit}%</span>
@@ -849,7 +842,7 @@ const FairnessAttribute = ({ config, setConfig, readonly, columnNames = [] }) =>
 
   return (
     <Section title="Fairness Attribute" className="!bg-[#FAFAFA] p-6 rounded-lg">
-      <div className="w-1/2">
+      <div style={{ width: '479px' }}>
         <SearchableMultiSelect
           selectedOptions={config.fairness_columns}
           onChange={handleFairnessChange}
@@ -979,15 +972,12 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [], hasError, 
     <div ref={sectionRef} className="rounded-lg bg-[#FAFAFA]">
       <div className="p-4 flex items-center justify-between">
         <div>
-          <h3 className={`text-lg font-semibold ${hasError ? 'text-red-600' : 'text-gray-900'}`}>
+          <h3 className={`text-lg font-medium text-gray-900}`}>
             Drop Columns
           </h3>
           <p className="text-sm text-gray-600 mt-2">
             Drop Column is the process of removing a feature that is irrelevant, redundant, or low in informational value. This helps reduce noise and improves model efficiency.
           </p>
-          {displayError && (
-            <p className="mt-1 text-sm text-red-600">{displayMessage}</p>
-          )}
         </div>
         <div className="flex items-center gap-3">
           <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -998,7 +988,7 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [], hasError, 
               disabled={readonly}
               className="sr-only peer"
             />
-            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
+            <div className="w-11 h-6 bg-[#ADADAD] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
           </label>
           {config.drop_columns_active && (
             <button
@@ -1021,9 +1011,9 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [], hasError, 
                   type="button"
                   disabled={readonly}
                   onClick={() => !readonly && setIsOpen(!isOpen)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-left focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent bg-white flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`w-full px-3 py-2 border rounded-lg text-sm text-left focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent bg-white flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed ${hasError && selectedDropColumns.length === 0 ? 'border-[#EF4D5F] bg-[#FFF7F8] text-[#EF4D5F]' : 'border-gray-300 bg-[#FAFAFA]'}`}
                 >
-                  <span className="text-gray-500">
+                  <span className={`${hasError && selectedDropColumns.length === 0 ? 'text-[#EF4D5F]' : 'text-gray-500'}`}>
                     {selectedDropColumns.length > 0
                       ? `${selectedDropColumns.length} column(s) selected`
                       : 'Search and select columns...'}
@@ -1032,6 +1022,9 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [], hasError, 
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
+                {displayError && (
+                  <p className="mt-1 text-sm text-[#EF4D5F]">{displayMessage}</p>
+                )}
 
                 {isOpen && !readonly && (
                   <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg overflow-hidden">
@@ -1430,27 +1423,45 @@ function ModelGenesis() {
         />
       </div>
 
-      <style jsx>{`
-      input[type="range"]::-webkit-slider-thumb {
-        appearance: none;
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
-        background: white;
-        border: 2px solid currentColor;
-        cursor: pointer;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      }
-      input[type="range"]::-moz-range-thumb {
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
-        background: white;
-        border: 2px solid currentColor;
-        cursor: pointer;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      }
-    `}</style>
+      <style>{`
+  input[type="range"].slider-train::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background-color: white;
+    border: 2px solid #8e78b7; 
+    cursor: pointer;
+  }
+  input[type="range"].slider-train::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background-color: #8e78b7;
+    cursor: pointer;
+    border: none;
+  }
+
+  input[type="range"].slider-test::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background-color: white;
+    border: 2px solid #f97316; 
+    cursor: pointer;
+  }
+  input[type="range"].slider-test::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background-color: #f97316;
+    cursor: pointer;
+    border: none;
+  }
+`}</style>
     </AIPlaygroundLayout>
   );
 }
