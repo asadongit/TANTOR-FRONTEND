@@ -302,6 +302,12 @@ export default function Builder({ handleSwitch, checked }) {
         }
     };
 
+    useEffect(() => {
+        if (selectedView && data.length > 0) {
+            executeQuery("", 1);
+        }
+    }, [pageSize]);
+
     return (
         <>
             <div className="h-[100%] w-[100%]">
@@ -428,7 +434,10 @@ export default function Builder({ handleSwitch, checked }) {
                                             </button>
                                             <select
                                                 value={pageSize}
-                                                onChange={(e) => setPageSize(Number(e.target.value))}
+                                                onChange={(e) => {
+                                                    setPageSize(Number(e.target.value));
+                                                    setPageNo(1);
+                                                }}
                                                 className="px-4 py-1.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#8e78b7]"
                                             >
                                                 <option value={100}>100</option>

@@ -163,6 +163,12 @@ export default function Editor() {
     }
   };
 
+  useEffect(() => {
+    if (query.trim() !== "" && data.length > 0) {
+      executeQuery(query, 1);
+    }
+  }, [pageSize]);
+
   const handleClearQuery = () => {
     setViewsDetails(null);
     setQuery("");
@@ -1094,7 +1100,10 @@ export default function Editor() {
                           </button>
                           <select
                             value={pageSize}
-                            onChange={(e) => setPageSize(Number(e.target.value))}
+                              onChange={(e) => {
+                                setPageSize(Number(e.target.value));
+                                setPageNo(1);
+                              }}
                             className="px-4 py-1.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#8e78b7]"
                           >
                             <option value={100}>100</option>
