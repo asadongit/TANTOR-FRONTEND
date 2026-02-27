@@ -33,6 +33,10 @@ export const WorkflowProvider = ({ children }) => {
   const reactFlowWrapper = useRef(null);
   const { fitView } = useReactFlow();
 
+  const nodeTypeExists = useCallback((nodeType) => {
+    return nodes.some(node => node.type === nodeType);
+  }, [nodes]);
+
   // Initialize workflow from nodeJson (for edit mode)
   const initializeFromNodeJson = useCallback((nodeJson) => {
     if (!nodeJson || !nodeJson.nodes || !nodeJson.edges) return;
@@ -326,6 +330,10 @@ export const WorkflowProvider = ({ children }) => {
   };
 
   const addNode = (type, category) => {
+    if (nodeTypeExists(type)) {
+      return false;
+    }
+
     const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
     const position = reactFlowInstance.project({
       x: event.clientX - reactFlowBounds.left,
@@ -341,6 +349,7 @@ export const WorkflowProvider = ({ children }) => {
       },
     };
     setNodes((nodes) => [...nodes, newNode]);
+    return true;
   };
 
   const updateCustomNode = (nodeId, nodeType, updatedData) => {
@@ -539,6 +548,18 @@ export const WorkflowProvider = ({ children }) => {
     }
     return Array.from(source_tables);
   };
+
+  const resetWorkflow = useCallback(() => {
+    setNodes([]);
+    setEdges([]);
+    setPipelines({});
+    setPipelineMappings({});
+    setInProgressMappings({});
+    setBulkMappings({});
+    setInitializedPipelines(new Set());
+    pipelineCounterRef.current.count = 0;
+  }, [setNodes, setEdges]);
+
   return (
     <WorkflowContext.Provider
       value={{
@@ -578,6 +599,8 @@ export const WorkflowProvider = ({ children }) => {
         initializeFromNodeJson,
         isPipelineInitialized,
         markPipelineInitialized,
+        nodeTypeExists,
+        resetWorkflow,
       }}
     >
       {children}

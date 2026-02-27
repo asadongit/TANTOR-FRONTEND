@@ -78,8 +78,13 @@ function Transformation() {
   const autoRefreshMenuRef = useRef(null);
 
   const { project, decodedToken, token } = useAuth();
-
+  
   const hostname = window._env_?.VITE_FAST_API;
+
+  const [resetSortTrigger, setResetSortTrigger] = useState(0);
+  const handleClearSort = () => {
+    setResetSortTrigger(prev => prev + 1);
+  };
 
   const metricsData = [
     {
@@ -224,6 +229,7 @@ function Transformation() {
 
   const handleRefresh = async () => {
     setSearchTerm("");
+    handleClearSort();
     setIsLoading(true);
 
     try {
@@ -546,7 +552,7 @@ function Transformation() {
       //   <div className="break-words max-w-[250px]">{row.transformation_name}</div>
       // ),
     },
-    { key: "description", width: "250px", label: "Description", sortable: true },
+    { key: "description", width: "250px", label: "Description", sortable: false },
     {
       key: "created_at",
       label: "Created",
@@ -959,6 +965,7 @@ function Transformation() {
         isError={false}
         refetch={fetchTransformationData}
         title="Transformations"
+        resetSortTrigger={resetSortTrigger}
       />
 
       {deleteModal.open && (

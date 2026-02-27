@@ -38,6 +38,11 @@ const Connections = () => {
   const [deleteModal, setDeleteModal] = useState({ open: false, type: null, message: null, onConfirm: null });
   const navigate = useNavigate();
 
+  const [resetSortTrigger, setResetSortTrigger] = useState(0);
+  const handleClearSort = () => {
+    setResetSortTrigger(prev => prev + 1);
+  };
+  
   const {
     data: cardData,
     isLoading: isCardLoading,
@@ -88,13 +93,13 @@ const Connections = () => {
         title: "Active",
         count: cardData?.active || 0,
       },
-      {
-        icon: "material-symbols-light:two-pager-store-outline",
-        bgcolor: "bg-[#FFC93F] bg-opacity-25",
-        iconcolor: "text-orange-700",
-        title: "Inactive",
-        count: cardData?.inactive || 0,
-      },
+      // {
+      //   icon: "material-symbols-light:two-pager-store-outline",
+      //   bgcolor: "bg-[#FFC93F] bg-opacity-25",
+      //   iconcolor: "text-orange-700",
+      //   title: "Inactive",
+      //   count: cardData?.inactive || 0,
+      // },
       {
         icon: "material-symbols:cloud-sync-outline",
         bgcolor: "bg-[#96CF7B] bg-opacity-25",
@@ -149,10 +154,10 @@ const Connections = () => {
     openLocalModal('view')
     fetch(
       `${hostnameV1}/connection-master-metadata/find-by-conn-name-type?conn_name=${connection.connection_name}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     })
       .then((response) => response.json())
       .then((data) => {
@@ -240,7 +245,7 @@ const Connections = () => {
       },
     },
     {
-      label: "Run",
+      label: "Refresh",
       icon: <RefreshCw size={16} />,
       onClick: (row) => handleRefresh(row.connection_id),
     },
@@ -338,6 +343,9 @@ const Connections = () => {
                 onClick={() => {
                   refetchConnections();
                   refetchCardData();
+                  
+                  setSearchTerm("");
+                  handleClearSort();
                   toast.success("Connections data refreshed successfully");
                 }}
                 title="Refresh data"
@@ -372,7 +380,7 @@ const Connections = () => {
                   <button
                     key={option.value}
                     className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center justify-between ${autoRefreshInterval === option.value ? "text-[#8d77ba] font-medium bg-purple-50" : "text-gray-700"
-                    }`}
+                      }`}
                     onClick={() => {
                       setAutoRefreshInterval(option.value);
                       setIsAutoRefreshMenuOpen(false);
@@ -392,7 +400,7 @@ const Connections = () => {
             className={`w-10 h-10 flex items-center justify-center rounded-lg border ${viewMode === "list"
               ? "bg-gray-100 border-gray-500"
               : "border-gray-400"
-            } hover:bg-gray-50`}
+              } hover:bg-gray-50`}
             onClick={() => setViewMode(viewMode === "list" ? "both" : "list")}
             title={viewMode === "list" ? "Show All Views" : "Show List Only"}
           >
@@ -428,6 +436,7 @@ const Connections = () => {
         isLoading={isConnectionsLoading}
         isError={connectionsError}
         refetch={refetchConnections}
+        resetSortTrigger={resetSortTrigger}
       />
 
       {activeModal?.name === 'editCreate' && (

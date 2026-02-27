@@ -387,20 +387,20 @@ const ViewConnection = ({
         </div>
 
         <div className="flex justify-end gap-4 mt-6">
-          <button
+          {/* <button
             className="px-6 py-2 border rounded-lg text-gray-700 transition-all border-gray-300 hover:bg-[#8e78b7] hover:text-white"
             onClick={() => closeModal("modal4")}
           >
             Cancel
-          </button>
+          </button> */}
 
-          <button
+          {/* <button
             className="px-6 py-2 text-white rounded-lg bg-[#8e78b7] hover:bg-gray-400 transition-all"
             onClick={handleUpdateConnection}
             disabled={isLoadingConnection}
           >
             Save Changes
-          </button>
+          </button> */}
         </div>
       </div>
 

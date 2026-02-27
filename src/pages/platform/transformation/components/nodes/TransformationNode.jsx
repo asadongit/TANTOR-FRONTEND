@@ -55,10 +55,13 @@ export const TransformationNode = ({ id, data }) => {
 
   }, [data, state, id, isConnected]);
 
+  const isEditRestorationPending = isEditMode && !data?.isRestorationComplete;
+
   const isButtonEnabled = isConnected.hasSource &&
-                          isConnected.hasTarget &&
-                          isDataReady &&
-                          sourceColumns.length > 0;
+    isConnected.hasTarget &&
+    isDataReady &&
+    sourceColumns.length > 0 &&
+    !isEditRestorationPending;
 
   const handleTransformClick = useCallback(() => {
     if (!isButtonEnabled) return;
@@ -141,7 +144,7 @@ export const TransformationNode = ({ id, data }) => {
               <p className="text-[10px] text-gray-500">
                 Connect a target node to complete the setup.
               </p>
-            ) : !isDataReady && isEditMode ? (
+            ) : isEditRestorationPending ? (
               <p className="text-[10px] text-blue-600">
                 Loading transformation data...
               </p>
@@ -157,24 +160,22 @@ export const TransformationNode = ({ id, data }) => {
           </div>
 
           <button
-            className={`w-full py-2 px-3 rounded-md flex items-center justify-center transition-all duration-200 ${
-              isButtonEnabled
-                ? 'bg-[#8E77BB] text-white hover:bg-[#7d68a5] shadow-md'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            }`}
+            className={`w-full py-2 px-3 rounded-md flex items-center justify-center transition-all duration-200 ${isButtonEnabled
+              ? 'bg-[#8E77BB] text-white hover:bg-[#7d68a5] shadow-md'
+              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              }`}
             disabled={!isButtonEnabled}
             onClick={handleTransformClick}
             onMouseEnter={() => setButtonHovered(true)}
             onMouseLeave={() => setButtonHovered(false)}
           >
             <span className="mr-2">
-              {!isDataReady && isEditMode ? 'Loading...' : 'Transform'}
+              {isEditRestorationPending ? 'Loading...' : 'Transform'}
             </span>
             {isDataReady && (
               <ArrowRight
-                className={`w-3.5 h-3.5 transition-transform duration-300 ${
-                  buttonHovered && isButtonEnabled ? 'translate-x-1' : ''
-                }`}
+                className={`w-3.5 h-3.5 transition-transform duration-300 ${buttonHovered && isButtonEnabled ? 'translate-x-1' : ''
+                  }`}
               />
             )}
           </button>

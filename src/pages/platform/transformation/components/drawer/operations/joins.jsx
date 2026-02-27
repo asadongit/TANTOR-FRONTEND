@@ -338,8 +338,8 @@ export const JoinsOperationFields = ({
       backgroundColor: state.isSelected
         ? "#8E77BB"
         : state.isFocused
-        ? "#f3f4f6"
-        : "white",
+          ? "#f3f4f6"
+          : "white",
       color: state.isSelected ? "white" : "#111827",
       fontSize: "0.875rem",
       cursor: "pointer",
@@ -440,7 +440,7 @@ export const JoinsOperationFields = ({
       joinConditions.length > 0 &&
       (joinConditions[0].leftDataframe !== transformation.source_dataframe ||
         joinConditions[0].rightDataframe !==
-          transformation.params.right_dataframe)
+        transformation.params.right_dataframe)
     ) {
       if (!transformation.params.join_condition) {
         setJoinConditions((prev) =>
@@ -451,9 +451,9 @@ export const JoinsOperationFields = ({
 
             ...(index === 0 && !transformation.params.join_condition
               ? {
-                  leftColumn: "",
-                  rightColumn: "",
-                }
+                leftColumn: "",
+                rightColumn: "",
+              }
               : {}),
           }))
         );
@@ -670,7 +670,7 @@ export const JoinsOperationFields = ({
   const getSourceDataframes = () => {
     if (!window.allNodes) return allDataframes;
     const sourceNodeIds = window.allNodes
-      .filter((n) => n.type === "source")
+      .filter((n) => n.type === "source" || n.type === "transformation")
       .map((n) => n.id);
     return allDataframes.filter((df) => sourceNodeIds.includes(df.nodeId));
   };

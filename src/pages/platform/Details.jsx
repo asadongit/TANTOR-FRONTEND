@@ -73,14 +73,18 @@ const Details = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [activeMenu, setActiveMenu] = useState(null);
-  const [resetSortTrigger, setResetSortTrigger] = useState(0);
-
+  
   const [autoRefreshInterval, setAutoRefreshInterval] = useState(0); // 0 = off
   const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
   const autoRefreshMenuRef = useRef(null);
-
+  
   const [deleteModal, setDeleteModal] = useState({ open: false, id: null, type: null, onConfirm: null });
-
+  
+  const [resetSortTrigger, setResetSortTrigger] = useState(0);
+  const handleClearSort = () => {
+    setResetSortTrigger(prev => prev + 1);
+  };  
+  
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (autoRefreshMenuRef.current && !autoRefreshMenuRef.current.contains(event.target)) {
@@ -167,7 +171,7 @@ const Details = () => {
         link="/"
         title2={componentType === "metadata" ? "Migration" : componentType?.charAt(0).toUpperCase() + componentType?.slice(1)}
         link2={componentType === "metadata" ? '/migration' : `/${componentType}`}
-        title3="Details"
+        title3={componentType === "metadata" ? 'Metadata Details' : 'Details'}
       />
 
       <div className="flex flex-col md:flex-row gap-4 mt-6 mb-4 items-center justify-between">
@@ -192,6 +196,8 @@ const Details = () => {
                 className="w-10 flex items-center justify-center border-r border-gray-300"
                 onClick={() => {
                   refetch();
+                  setSearchTerm("");
+                  handleClearSort();
                   toast.success("Details data refreshed successfully");
                 }}
                 title="Refresh data"

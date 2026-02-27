@@ -25,6 +25,9 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
   const [endDate, setEndDate] = useState("");
   // const { minimizePipeline, deletePipeline } = useWorkflow();
   // const pipelineId = id.split("_").pop();
+  
+  const minDateTime = new Date().toISOString().slice(0, 16);
+
   const handleOptionChange = useCallback((event) => {
     setSelectedOption(event.target.value);
   }, []);
@@ -199,6 +202,7 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
               type="datetime-local"
               className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
               value={startDate}
+              min={minDateTime}
               onChange={(e) => setStartDate(e.target.value)}
             />
           </div>
@@ -209,8 +213,8 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
               type="datetime-local"
               className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
               value={endDate}
+              min={startDate || minDateTime}
               onChange={(e) => setEndDate(e.target.value)}
-              min={startDate}
             />
           </div>
         </>

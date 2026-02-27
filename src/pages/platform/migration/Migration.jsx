@@ -71,6 +71,11 @@ const MigrationList = () => {
   const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
   const autoRefreshMenuRef = useRef(null);
 
+  const [resetSortTrigger, setResetSortTrigger] = useState(0);
+  const handleClearSort = () => {
+    setResetSortTrigger(prev => prev + 1);
+  };
+
   useEffect(() => {
     if (autoRefreshInterval === 0) return;
 
@@ -158,7 +163,7 @@ const MigrationList = () => {
 
   const columns = [
     { key: "workflow_name", label: "Name", sortable: true },
-    { key: "description", label: "Description", sortable: true },
+    { key: "description", label: "Description", sortable: false },
     { key: "source_conn_name", label: "Source Connection", sortable: true },
     { key: "target_conn_name", label: "Target Connection", sortable: true },
     { key: "source_table", label: "Source Table", sortable: true },
@@ -328,6 +333,7 @@ const MigrationList = () => {
                   refetchArchival();
                   refetchCardData();
                   setSearchTerm("");
+                  handleClearSort();
                   toast.success("Migration data refreshed successfully");
                 }}
                 title="Refresh data"
@@ -436,6 +442,7 @@ const MigrationList = () => {
         isLoading={isArchivalLoading}
         isError={archivalError}
         refetch={refetchArchival}
+        resetSortTrigger={resetSortTrigger}
       />
 
       <DagErrorModal

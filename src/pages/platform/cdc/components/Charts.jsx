@@ -12,6 +12,8 @@ import {
   Cell,
 } from "recharts";
 
+const COLOR_PALETTE = ["#E6E1FF", "#C5BAFF", "#9D85F2", "#A698EB", "#735ABF", "#5D45DB"];
+
 const Charts = ({ data }) => {
   const [statusData, setStatusData] = useState([]);
   const [lineChartData, setLineChartData] = useState([]);
@@ -94,7 +96,7 @@ const Charts = ({ data }) => {
         name: getDisplayStatus(status),
         value: (count / total) * 100,
         percentage: (count / total) * 100,
-        color: getColorForStatus(status, index),
+        color: COLOR_PALETTE[index % COLOR_PALETTE.length],
         count
       };
     });
@@ -119,27 +121,6 @@ const Charts = ({ data }) => {
     }
     
     return status;
-  };
-
-  const getColorForStatus = (status, index) => {
-    const statusColorMap = {
-      "Pending": "bg-[#E6E1FF]",
-      "Running": "bg-[#9D85F2]",
-      "Stopped": "bg-[#735ABF]",
-      "Completed": "bg-[#D3CCF5]",
-      "Created": "bg-[#A698EB]",
-      "Ready": "bg-[#C5BAFF]",
-    };
-    
-    const COLOR_CLASSES = ["bg-[#E6E1FF]", "bg-[#C5BAFF]", "bg-[#9D85F2]", "bg-[#A698EB]", "bg-[#735ABF]"];
-    
-    for (const [key, value] of Object.entries(statusColorMap)) {
-      if (status.startsWith(key)) {
-        return value;
-      }
-    }
-    
-    return COLOR_CLASSES[index % COLOR_CLASSES.length];
   };
 
   const processTimelineData = () => {
@@ -189,13 +170,9 @@ const Charts = ({ data }) => {
     setLineChartData(result);
   };
 
-
-
-  const COLOR_PALETTE = ["#E6E1FF", "#C5BAFF", "#9D85F2", "#A698EB", "#735ABF", "#5D45DB"];
-
   const RADIAN = Math.PI / 180;
   
-  const PieChartLabel = ({
+  const renderCustomizedLabel = ({
     cx,
     cy,
     midAngle,
@@ -203,9 +180,9 @@ const Charts = ({ data }) => {
     outerRadius,
     percent,
     index,
-    name
+    name,
+    payload
   }) => {
-    
     const startRadius = outerRadius * 1.05;
     const startX = cx + startRadius * Math.cos(-midAngle * RADIAN);
     const startY = cy + startRadius * Math.sin(-midAngle * RADIAN);
@@ -221,13 +198,7 @@ const Charts = ({ data }) => {
     const textX = isRightSide ? horizEndX + 5 : horizEndX - 5;
     const textAnchor = isRightSide ? "start" : "end";
 
-    const lineColor = COLOR_PALETTE[index % COLOR_PALETTE.length];
-
- 
-    const angle = Math.abs(midAngle % 360);
-    
-
-    const isSmallValue = percent < 0.05;
+    const lineColor = payload.color || COLOR_PALETTE[index % COLOR_PALETTE.length];
 
     return (
       <g>
@@ -276,13 +247,18 @@ const Charts = ({ data }) => {
     }
   };
 
+  const axisTickStyle = {
+    fontSize: 12,
+    fontWeight: 500,
+    fill: '#4B5563',
+  };
+
   return (
     <div className="flex flex-wrap w-full gap-4">
-      <div className="flex-1 min-w-64 bg-white rounded-lg shadow-sm  p-4 md:p-6">
+      <div className="flex-1 min-w-64 bg-white rounded-lg shadow-sm p-4 md:p-6">
         <div className="flex justify-between mb-5">
           <div>
             <h2 className="text-lg font-medium text-gray-800">Creation</h2>
-            {/* <p className="text-sm text-gray-500">{getTimeFilterLabel()}</p> */}
           </div>
         </div>
 
@@ -294,34 +270,55 @@ const Charts = ({ data }) => {
             >
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="#ddd"
+                stroke="#E5E7EB"
                 vertical={false}
               />
-              <XAxis dataKey="name" stroke="#E2E7E7" />
+              <XAxis 
+                dataKey="name" 
+                axisLine={{ stroke: '#D1D5DB' }}
+                tickLine={{ stroke: '#D1D5DB' }}
+                tick={axisTickStyle}
+              />
               <YAxis
-                stroke="#E2E7E7"
+                axisLine={{ stroke: '#D1D5DB' }}
+                tickLine={{ stroke: '#D1D5DB' }}
+                tick={axisTickStyle}
                 tickFormatter={(tick) => `${tick}`}
                 domain={[0, 'auto']}
                 tickCount={5}
               />
-              <Tooltip />
+              <Tooltip 
+                contentStyle={{
+                  backgroundColor: '#fff',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                }}
+                labelStyle={{
+                  color: '#374151',
+                  fontWeight: 600,
+                }}
+                itemStyle={{
+                  color: '#16ABC2',
+                }}
+              />
               <Line
                 type="linear"
                 dataKey="JOBS"
                 stroke="#16ABC2"
-                strokeWidth={1}
-                dot={false}
+                strokeWidth={2}
+                dot={{ fill: '#16ABC2', strokeWidth: 0, r: 4 }}
+                activeDot={{ fill: '#16ABC2', strokeWidth: 0, r: 6 }}
               />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      <div className="flex-1 min-w-64 bg-white rounded-lg shadow-sm  p-4 md:p-6">
+      <div className="flex-1 min-w-64 bg-white rounded-lg shadow-sm p-4 md:p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-medium text-gray-800">Status</h2>
-            {/* <p className="text-sm text-gray-500">{getTimeFilterLabel()}</p> */}
           </div>
           <div className="relative">
             <select 
@@ -355,7 +352,7 @@ const Charts = ({ data }) => {
           <div className="order-2 md:order-1 w-full md:w-1/3 flex flex-col space-y-4 pt-4 md:pt-8">
             {statusData.map((item, index) => (
               <div key={item.name} className="flex items-center">
-                <div className={`h-6 w-6 rounded ${item.color} mr-3`}></div>
+                <div className="h-6 w-6 rounded mr-3" style={{ backgroundColor: item.color }}></div>
                 <span className="text-sm text-gray-700">
                   {item.name}{" "}
                   <span className="text-xs text-gray-500">
@@ -375,10 +372,9 @@ const Charts = ({ data }) => {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={PieChartLabel}
+                    label={renderCustomizedLabel}
                     innerRadius={60}
                     outerRadius={100}
-                    fill="#8884d8"
                     dataKey="value"
                     nameKey="name"
                     strokeWidth={0}
@@ -387,12 +383,18 @@ const Charts = ({ data }) => {
                     {statusData.map((entry, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={COLOR_PALETTE[index % COLOR_PALETTE.length]}
+                        fill={entry.color}
                       />
                     ))}
                   </Pie>
                   <Tooltip 
                     formatter={(value, name) => [`${value.toFixed(1)}%`, name]}
+                    contentStyle={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #E5E7EB',
+                      borderRadius: '8px',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    }}
                   />
                 </PieChart>
               </ResponsiveContainer>

@@ -266,6 +266,7 @@ function TransformationCanvasContent() {
               data: {
                 ...node.data,
                 _isRestoring: false,
+                ...(node.type === "transformation" ? { isRestorationComplete: true } : {}),
               },
             }))
           );
