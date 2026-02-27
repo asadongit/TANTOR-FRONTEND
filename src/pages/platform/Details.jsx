@@ -171,7 +171,7 @@ const Details = () => {
         link="/"
         title2={componentType === "metadata" ? "Migration" : componentType?.charAt(0).toUpperCase() + componentType?.slice(1)}
         link2={componentType === "metadata" ? '/migration' : `/${componentType}`}
-        title3="Details"
+        title3={componentType === "metadata" ? 'Metadata Details' : 'Details'}
       />
 
       <div className="flex flex-col md:flex-row gap-4 mt-6 mb-4 items-center justify-between">

@@ -552,7 +552,7 @@ function Transformation() {
       //   <div className="break-words max-w-[250px]">{row.transformation_name}</div>
       // ),
     },
-    { key: "description", width: "250px", label: "Description", sortable: true },
+    { key: "description", width: "250px", label: "Description", sortable: false },
     {
       key: "created_at",
       label: "Created",

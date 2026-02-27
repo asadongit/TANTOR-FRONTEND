@@ -163,7 +163,7 @@ const MigrationList = () => {
 
   const columns = [
     { key: "workflow_name", label: "Name", sortable: true },
-    { key: "description", label: "Description", sortable: true },
+    { key: "description", label: "Description", sortable: false },
     { key: "source_conn_name", label: "Source Connection", sortable: true },
     { key: "target_conn_name", label: "Target Connection", sortable: true },
     { key: "source_table", label: "Source Table", sortable: true },
