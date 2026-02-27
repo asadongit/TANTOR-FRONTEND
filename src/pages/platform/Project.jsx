@@ -224,7 +224,7 @@ const Project = () => {
     try {
       setSearchTerm("");
       handleClearSort();
-      
+
       await Promise.all([refetchProjects(), refetchCardData()]);
       toast.success("Projects fetched successfully");
     } finally {
@@ -314,8 +314,8 @@ const Project = () => {
 
   const columns = [
     { key: "project", label: "Project Name" },
-    { key: "description", label: "Description", sortable: false},
-    { key: "owner", label: "Owner"},
+    { key: "description", label: "Description", sortable: false },
+    { key: "owner", label: "Owner" },
     { key: "connections", label: "Connections" },
     { key: "metadata", label: "Metadata" },
     { key: "migration", label: "Migrations" },

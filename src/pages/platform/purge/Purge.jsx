@@ -366,9 +366,9 @@ const PurgeList = () => {
         data={filteredPurgeData}
         isLoading={isPurgeLoading}
         isError={purgeError}
-        refetch={refetchPurges} 
+        refetch={refetchPurges}
         resetSortTrigger={resetSortTrigger}
-        />
+      />
 
       <DagErrorModal
         isOpen={dagErrorModal.isOpen}
