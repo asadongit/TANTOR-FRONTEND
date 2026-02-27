@@ -28,11 +28,11 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
     }
   }, [isOpen]);
 
-  useEffect(() => {
-    if (isOpen) {
-      cancelJob();
-    }
-  }, [isOpen]);
+  // useEffect(() => {
+  //   if (isOpen) {
+  //     cancelJob();
+  //   }
+  // }, [isOpen]);
 
   const cancelJob = async () => {
     const jobId = workflowState?.completedJobs?.config?.job_id;
@@ -81,6 +81,7 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
     const selectedCount = Object.values(selectedModels).filter(Boolean).length;
     if (selectedCount === 0) return;
     setShowConfirmation(true);
+    cancelJob();
   };
 
   const handleConfirmSave = () => {
