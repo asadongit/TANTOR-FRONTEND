@@ -383,7 +383,7 @@ export function AIPlaygroundLayout({
         if (isDeploymentStage && isEnsemble && activeModelIndex < models.length - 1) {
             return `Continue to ${models[activeModelIndex + 1].label}`;
         }
-        if (isPreprocessingPage && currentPreprocessingStep < totalPreprocessingSteps) return 'Next Step';
+        if (isPreprocessingPage && currentPreprocessingStep < totalPreprocessingSteps) return 'Process Data';
         return `Continue to ${nextStage?.label || 'Next Stage'}`;
     };
 
@@ -423,7 +423,7 @@ export function AIPlaygroundLayout({
     const shouldShowFinish = isDeploymentStage && (!isEnsemble || activeModelIndex >= models.length - 1);
 
     return (
-        <div className="h-full bg-gray-50 flex flex-col gap-2 overflow-hidden">
+        <div className="h-full bg-gray-50 flex flex-col gap-2 overflow-hidden p-4">
 
             {/* Cancel Warning Modal */}
             {showCancelModal && (
@@ -471,7 +471,7 @@ export function AIPlaygroundLayout({
                         <div className="p-6">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-                                    <Check className="text-green-600" size={24} />
+                                    <Check className="text-[#36AD8F]" size={24} />
                                 </div>
                                 <h2 className="text-xl font-semibold text-gray-900">Complete Workflow</h2>
                             </div>
@@ -503,7 +503,7 @@ export function AIPlaygroundLayout({
             <div className="flex-shrink-0 flex flex-col gap-2">
 
                 {/* Title / Progress Bar */}
-                <div className="bg-white rounded-md px-6 py-3">
+                <div className="bg-white rounded-md px-6 py-2">
                     <div className="flex items-center justify-between w-full">
                         <div className="flex items-center gap-3">
                             <button onClick={() => navigate('/ai/playground')} className="text-gray-600 hover:text-gray-900">
@@ -537,11 +537,11 @@ export function AIPlaygroundLayout({
                                     </div>
                                     <span className="text-sm font-medium text-gray-700">{Math.round(progressPercentage)}%</span>
                                 </div>
-                                <button className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center text-[#8e78b7] hover:bg-purple-100 transition-colors">
-                                    <SvgIcon src={RobotIcon} size={20} />
+                                <button className="w-10 h-10 bg-[#F2EBFF] rounded-lg flex items-center justify-center text-[#8e78b7] hover:bg-purple-100 transition-colors">
+                                    <SvgIcon src={RobotIcon} size={22} />
                                 </button>
-                                <button className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center text-[#8e78b7] hover:bg-purple-100 transition-colors">
-                                    <SvgIcon src={BidLandscapeIcons} size={20} />
+                                <button className="w-10 h-10 bg-[#F2EBFF] rounded-lg flex items-center justify-center text-[#8e78b7] hover:bg-purple-100 transition-colors">
+                                    <SvgIcon src={BidLandscapeIcons} size={16} />
                                 </button>
                             </div>
                         )}
@@ -619,11 +619,11 @@ export function AIPlaygroundLayout({
                                     <React.Fragment key={stage.id}>
                                         <div className="flex items-center gap-3">
                                             <div
-                                                className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${isActive
-                                                    ? 'bg-purple-50 text-[#8e78b7] border border-purple-400'
+                                                className={`w-9 h-9 rounded-md flex items-center justify-center transition-all ${isActive
+                                                    ? 'bg-[#F2EBFF] text-[#8e78b7] border border-[#8E77BB]'
                                                     : isPast
-                                                        ? 'bg-[#e6f6f4] text-[#2ba995]'
-                                                        : 'bg-gray-50 text-gray-400 border border-gray-100'
+                                                        ? 'bg-[#D4FFEF] text-[#36AD8F]'
+                                                        : 'bg-[#F9F9F9] text-[#818181]'
                                                     }`}
                                             >
                                                 {isPast ? (
@@ -633,13 +633,13 @@ export function AIPlaygroundLayout({
                                                 ) : (
                                                     <SvgIcon
                                                         src={stage.icon}
-                                                        size={20}
+                                                        size={16}
                                                         style={isActive ? { filter: ACTIVE_ICON_FILTER } : undefined}
                                                     />
                                                 )}
                                             </div>
 
-                                            <span className={`text-sm font-medium whitespace-nowrap ${isActive ? 'text-[#8e78b7]' : isPast ? 'text-[#2ba995]' : 'text-gray-400'
+                                            <span className={`text-sm font-medium whitespace-nowrap ${isActive ? 'text-[#8e78b7]' : isPast ? 'text-[#36AD8F]' : 'text-[#818181]'
                                                 }`}>
                                                 {stage.label}
                                             </span>

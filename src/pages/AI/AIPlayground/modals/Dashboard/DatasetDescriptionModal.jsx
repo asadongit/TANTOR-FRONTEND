@@ -97,7 +97,7 @@ export const DatasetDescriptionModal = ({ isOpen, onClose, onSave, onSkip }) => 
   return (
     <div className="fixed inset-0 bg-[#00000099] flex items-center justify-center z-50">
       <div
-        className="bg-white rounded-xl w-full max-w-lg p-6 relative"
+        className="bg-white rounded-xl w-full max-w-xl p-6 relative"
         style={{ boxShadow: '0 -4px 9px 0 rgba(0, 0, 0, 0.10)' }}
       >
         {/* Header */}
@@ -138,11 +138,11 @@ export const DatasetDescriptionModal = ({ isOpen, onClose, onSave, onSkip }) => 
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="border-t border-slate-100 -mx-6 mb-4" />
-
         {/* Actions */}
-        <div className="flex justify-end gap-3">
+        <div
+          className="-mx-6 -mb-6 px-6 py-4 flex justify-end gap-3 rounded-b-xl"
+          style={{ background: '#FFFFFF', boxShadow: '0px -4px 9px 0px #0000001A' }}
+        >
           <button
             onClick={handleSkip}
             className={`px-4 py-2 bg-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${tw.label}`}

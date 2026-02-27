@@ -93,7 +93,7 @@ function Parameters({ modelData }) {
               }
             },
             modelSelection: {
-              config: fetchedModel.prefill?.training?.request?.training_request || null,
+              config: fetchedModel.prefill?.training?.request || null,
               apiResponse: fetchedModel.prefill?.training?.response || null
             },
             modelInferencing: { config: null, apiResponse: null },
