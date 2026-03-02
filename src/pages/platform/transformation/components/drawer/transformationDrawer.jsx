@@ -543,9 +543,20 @@ export const TransformationDrawer = ({
 			.filter(Boolean)
 			.map((node) => {
 				const alias = node.data?.alias || `unnamed_source_${node.id}`;
+				let cols = node.data?.columns || [];
+
+				// Try to get columns from context if node columns are empty
+				if (cols.length === 0 && window.transformationContext?.state?.originalSourceColumns) {
+					if (window.transformationContext.state.originalSourceColumns[node.id]) {
+						cols = [...window.transformationContext.state.originalSourceColumns[node.id]];
+					} else if (window.transformationContext.state.originalSourceColumns[alias]) {
+						cols = [...window.transformationContext.state.originalSourceColumns[alias]];
+					}
+				}
+
 				return {
 					id: alias,
-					columns: node.data?.columns || [],
+					columns: cols,
 					column_format: node.data?.column_format || {},
 					label: alias,
 					nodeId: node.id
