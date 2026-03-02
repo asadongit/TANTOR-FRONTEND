@@ -224,6 +224,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
         { name: 'Table', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/table` },
         { name: 'Column', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/column` },
         //{ name: 'View', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/view` },
+        //{ name: 'View', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/view` },
       ]
     },
     {

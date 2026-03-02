@@ -7,9 +7,10 @@ const ToggleUserStatus = ({ isOpen, onClose, userData, onConfirmToggle, selected
   const isDisabling = isBulk ? (bulkAction === 'disable') : userData?.enabled;
   const [isLoading, setIsLoading] = useState(false);
   const [isToggled, setIsToggled] = useState(false);
-  const { token } = useAuth();
+  const { token, decodedToken } = useAuth();
   const action = isDisabling ? 'disable' : 'enable';
   const actionPastTense = isDisabling ? 'disabled' : 'enabled';
+  const updated_by = decodedToken?.preferred_username;   
 
   useEffect(() => {
     if (isOpen) {
@@ -35,7 +36,7 @@ const ToggleUserStatus = ({ isOpen, onClose, userData, onConfirmToggle, selected
       const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/${endpoint}`, {
         method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_ids })
+        body: JSON.stringify({ user_ids, updated_by })
       });
 
       if (response.ok) {
@@ -110,8 +111,8 @@ const ToggleUserStatus = ({ isOpen, onClose, userData, onConfirmToggle, selected
                 </p>
                 <p className="text-gray-500 mt-2">
                   {isDisabling 
-                    ? 'User(s) will no longer be able to access the system.' 
-                    : 'User(s) will be able to access the system again.'}
+                    ? 'User(s) will no longer be able to access the application.' 
+                    : 'User(s) will be able to access the application again.'}
                 </p>
               </div>
               <p className="text-gray-600 text-center mb-6">Do you want to continue?</p>

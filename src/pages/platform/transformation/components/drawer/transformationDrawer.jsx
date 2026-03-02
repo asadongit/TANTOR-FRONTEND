@@ -388,7 +388,12 @@ export const TransformationDrawer = ({
 
 
 	const hasReplayedRef = useRef(false);
+	// FIXED: hasReplayed STATE variable to control loading spinner visibility
+	// (refs don't trigger re-renders, so the spinner couldn't react to replay completing)
+	const [hasReplayed, setHasReplayed] = useState(false);
 	const [perTransformationColumns, setPerTransformationColumns] = useState({});
+	const retryCountRef = useRef(0);
+	const MAX_RETRIES = 15; // Max retries for column sync (15 * 200ms = 3s max wait)
 
 	useEffect(() => {
 		transformationRefs.current = transformationRefs.current.slice(0, transformations.length);
@@ -523,11 +528,19 @@ export const TransformationDrawer = ({
 	}, []);
 
 	const syncDataframeColumnsFromNodes = useCallback(() => {
+		const isEditFlow = isEditMode || sessionStorage.getItem('editMode') === 'true' || (activeNode && (activeNode.data?.transformations?.length > 0 || activeNode.data?.transformationConfig?.operations?.length > 0));
+
 		if (!window.allNodes || !window.allEdges) {
+			if (isEditFlow && retryCountRef.current < MAX_RETRIES) {
+				retryCountRef.current += 1;
+				setTimeout(() => {
+					if (isOpen) syncDataframeColumnsFromNodes();
+				}, 200);
+				return;
+			}
 			setColumnsLoaded(true);
 			return;
 		}
-
 
 		const targetNodeId = activeNodeId;
 		if (!targetNodeId) {
@@ -537,15 +550,25 @@ export const TransformationDrawer = ({
 
 		const incomingEdges = window.allEdges.filter(edge => edge.target === targetNodeId);
 
-
 		const sources = incomingEdges
 			.map(edge => window.allNodes.find(node => node.id === edge.source && (node.type === "source" || node.type === "transformation")))
 			.filter(Boolean)
 			.map((node) => {
 				const alias = node.data?.alias || `unnamed_source_${node.id}`;
+				let cols = node.data?.columns || [];
+
+				// Try to get columns from context if node columns are empty
+				if (cols.length === 0 && window.transformationContext?.state?.originalSourceColumns) {
+					if (window.transformationContext.state.originalSourceColumns[node.id]) {
+						cols = [...window.transformationContext.state.originalSourceColumns[node.id]];
+					} else if (window.transformationContext.state.originalSourceColumns[alias]) {
+						cols = [...window.transformationContext.state.originalSourceColumns[alias]];
+					}
+				}
+
 				return {
 					id: alias,
-					columns: node.data?.columns || [],
+					columns: cols,
 					column_format: node.data?.column_format || {},
 					label: alias,
 					nodeId: node.id
@@ -588,6 +611,22 @@ export const TransformationDrawer = ({
 
 		setDataframeColumns(dfCols);
 
+		// FIXED: In edit mode, don't mark columns as loaded if source nodes have no columns yet
+		// This happens when user opens the drawer immediately after clicking Edit,
+		// before source nodes have finished restoring their data from the API
+		const hasIncomingEdges = incomingEdges.length > 0;
+		const totalColumns = allDfs.reduce((sum, df) => sum + (df.columns?.length || 0), 0);
+
+		if (isEditFlow && hasIncomingEdges && totalColumns === 0 && retryCountRef.current < MAX_RETRIES) {
+			// Source nodes haven't loaded their columns yet - retry after delay
+			retryCountRef.current += 1;
+			setTimeout(() => {
+				if (isOpen) syncDataframeColumnsFromNodes();
+			}, 200);
+			// Don't set columnsLoaded to true - keep showing loading spinner
+			return;
+		}
+
 		setColumnsLoaded(true);
 
 		window.nodeToDataframeMap = {};
@@ -606,7 +645,7 @@ export const TransformationDrawer = ({
 				target_column: Array.isArray(t.target_column) ? t.target_column : [],
 			}))
 		);
-	}, [activeNodeId, isEditMode, hasReplayedRef]);
+	}, [activeNodeId, isEditMode, hasReplayedRef, isOpen, activeNode]);
 
 	useEffect(() => {
 		if (isOpen) {
@@ -1015,6 +1054,25 @@ export const TransformationDrawer = ({
 		// eslint-disable-next-line
 	}, [transformations]);
 
+	// Centralized cleanup function for all drawer state & window globals
+	const cleanupDrawerState = useCallback(() => {
+		// Reset React state
+		setIsDataLoaded(false);
+		setColumnsLoaded(false);
+		hasReplayedRef.current = false;
+		setHasReplayed(false);
+		setIsEditMode(false);
+		setInitialTransformations([]);
+		setPerTransformationColumns({});
+		setTransformationsValidity({});
+		setOpenDropdowns({});
+
+		// Clean up window globals to prevent stale data
+		delete window.replayedDataframeColumns;
+		delete window.transformationReplayHistory;
+		delete window.nodeToDataframeMap;
+	}, []);
+
 	const handleSave = useCallback(() => {
 		// Validate all transformations before saving
 		let allValid = true;
@@ -1141,8 +1199,9 @@ export const TransformationDrawer = ({
 			onApplyTransformations(activeNodeId, result);
 		}
 
+		cleanupDrawerState();
 		onClose();
-	}, [transformations, activeNode, onClose, onApplyTransformations, transformationsValidity]);
+	}, [transformations, activeNode, onClose, onApplyTransformations, transformationsValidity, cleanupDrawerState]);
 
 	const scrollToTransformation = useCallback((index) => {
 		if (transformationRefs.current[index]) {
@@ -1550,11 +1609,13 @@ export const TransformationDrawer = ({
 
 
 	// Prefill transformations for edit flow
+	// FIXED: Set isDataLoaded synchronously instead of using setTimeout to avoid race condition
+	// where isDataLoaded and columnsLoaded never align in the same render cycle (breaks without Strict Mode)
+
 	useEffect(() => {
 		if (!isOpen) {
-			setIsDataLoaded(false);
-			setColumnsLoaded(false);
-			hasReplayedRef.current = false;
+			cleanupDrawerState();
+			retryCountRef.current = 0;
 			return;
 		}
 
@@ -1668,20 +1729,15 @@ export const TransformationDrawer = ({
 
 			setInitialTransformations(patchedOps);
 
-			// Wait for columns to load before replaying
-			setTimeout(() => {
-				setIsDataLoaded(true);
-			}, 50);
+			// FIXED: Set isDataLoaded synchronously - no setTimeout needed
+			// React batches these state updates so both columnsLoaded (set by syncDataframeColumnsFromNodes)
+			// and isDataLoaded will be visible in the same render cycle
+			setIsDataLoaded(true);
 		} else {
 			setIsEditMode(false);
 			setInitialTransformations([]);
-			setIsDataLoaded(true); // For new flows, data is ready immediately
-			if (!columnsLoaded) {
-				// For new flows, wait a bit for columns to load
-				setTimeout(() => {
-					setIsDataLoaded(true);
-				}, 100);
-			}
+			// FIXED: Set isDataLoaded synchronously for new flows too
+			setIsDataLoaded(true);
 		}
 	}, [isOpen, activeNodeId]);
 
@@ -1735,6 +1791,29 @@ export const TransformationDrawer = ({
 
 				hasReplayedRef.current = true;
 
+				// FIXED: Validate replay result - if all transformations have empty source
+				// columns, the data wasn't actually ready. Reset and retry.
+				const allSourcesEmpty = initialTransformations.every(t => {
+					const dfId = t.source_dataframe;
+					if (!dfId) return true;
+					const cols = updatedDfCols[dfId]?.columns || [];
+					return cols.length === 0;
+				});
+
+				if (allSourcesEmpty && retryCountRef.current < MAX_RETRIES) {
+					// Data wasn't ready - reset and let the column sync retry trigger another replay
+					hasReplayedRef.current = false;
+					setColumnsLoaded(false);
+					retryCountRef.current += 1;
+					setTimeout(() => {
+						if (isOpen) syncDataframeColumnsFromNodes();
+					}, 200);
+					return;
+				}
+
+				setHasReplayed(true);
+				retryCountRef.current = 0;
+
 				// Dispatch column update event
 				window.dispatchEvent(new CustomEvent("tantor-columns-updated", {
 					detail: {
@@ -1745,14 +1824,20 @@ export const TransformationDrawer = ({
 			} catch (error) {
 				console.error('Error during transformation replay:', error);
 				hasReplayedRef.current = true; // Set to true even on error to prevent infinite loading
+				setHasReplayed(true);
 			}
 		}
-	}, [isEditMode, initialTransformations, isDataLoaded, columnsLoaded, replayTransformationsForColumns, dataframeColumns]);
+		// FIXED: Removed dataframeColumns from deps - it was causing cascading re-runs
+		// since the replay effect itself sets dataframeColumns. The effect reads
+		// dataframeColumns at invocation time so it always has current values.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [isEditMode, initialTransformations, isDataLoaded, columnsLoaded, replayTransformationsForColumns, isOpen, syncDataframeColumnsFromNodes]);
 
 	// Reset replay flag when drawer closes or edit mode changes
 	useEffect(() => {
 		if (!isOpen || !isEditMode) {
 			hasReplayedRef.current = false;
+			setHasReplayed(false);
 		}
 	}, [isOpen, isEditMode]);
 
@@ -1918,7 +2003,7 @@ export const TransformationDrawer = ({
 				</div>
 
 				<div className="flex-1 overflow-y-auto p-4">
-					{(!isDataLoaded || !columnsLoaded || (!hasReplayedRef.current && initialTransformations.length > 0)) && isEditMode ? (
+					{(!isDataLoaded || !columnsLoaded || (!hasReplayed && initialTransformations.length > 0)) && isEditMode ? (
 						<div className="flex items-center justify-center h-64">
 							<div className="text-center">
 								<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8E77BB] mx-auto mb-4"></div>
