@@ -528,11 +528,19 @@ export const TransformationDrawer = ({
 	}, []);
 
 	const syncDataframeColumnsFromNodes = useCallback(() => {
+		const isEditFlow = isEditMode || sessionStorage.getItem('editMode') === 'true' || (activeNode && (activeNode.data?.transformations?.length > 0 || activeNode.data?.transformationConfig?.operations?.length > 0));
+
 		if (!window.allNodes || !window.allEdges) {
+			if (isEditFlow && retryCountRef.current < MAX_RETRIES) {
+				retryCountRef.current += 1;
+				setTimeout(() => {
+					if (isOpen) syncDataframeColumnsFromNodes();
+				}, 200);
+				return;
+			}
 			setColumnsLoaded(true);
 			return;
 		}
-
 
 		const targetNodeId = activeNodeId;
 		if (!targetNodeId) {
@@ -541,7 +549,6 @@ export const TransformationDrawer = ({
 		}
 
 		const incomingEdges = window.allEdges.filter(edge => edge.target === targetNodeId);
-
 
 		const sources = incomingEdges
 			.map(edge => window.allNodes.find(node => node.id === edge.source && (node.type === "source" || node.type === "transformation")))
@@ -609,7 +616,6 @@ export const TransformationDrawer = ({
 		// before source nodes have finished restoring their data from the API
 		const hasIncomingEdges = incomingEdges.length > 0;
 		const totalColumns = allDfs.reduce((sum, df) => sum + (df.columns?.length || 0), 0);
-		const isEditFlow = isEditMode || sessionStorage.getItem('editMode') === 'true';
 
 		if (isEditFlow && hasIncomingEdges && totalColumns === 0 && retryCountRef.current < MAX_RETRIES) {
 			// Source nodes haven't loaded their columns yet - retry after delay
@@ -639,7 +645,7 @@ export const TransformationDrawer = ({
 				target_column: Array.isArray(t.target_column) ? t.target_column : [],
 			}))
 		);
-	}, [activeNodeId, isEditMode, hasReplayedRef, isOpen]);
+	}, [activeNodeId, isEditMode, hasReplayedRef, isOpen, activeNode]);
 
 	useEffect(() => {
 		if (isOpen) {
