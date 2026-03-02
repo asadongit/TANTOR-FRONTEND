@@ -388,6 +388,9 @@ export const TransformationDrawer = ({
 
 
 	const hasReplayedRef = useRef(false);
+	// FIXED: hasReplayed STATE variable to control loading spinner visibility
+	// (refs don't trigger re-renders, so the spinner couldn't react to replay completing)
+	const [hasReplayed, setHasReplayed] = useState(false);
 	const [perTransformationColumns, setPerTransformationColumns] = useState({});
 
 	useEffect(() => {
@@ -1561,11 +1564,14 @@ export const TransformationDrawer = ({
 
 
 	// Prefill transformations for edit flow
+	// FIXED: Set isDataLoaded synchronously instead of using setTimeout to avoid race condition
+	// where isDataLoaded and columnsLoaded never align in the same render cycle (breaks without Strict Mode)
 	useEffect(() => {
 		if (!isOpen) {
 			setIsDataLoaded(false);
 			setColumnsLoaded(false);
 			hasReplayedRef.current = false;
+			setHasReplayed(false);
 			return;
 		}
 
@@ -1679,20 +1685,15 @@ export const TransformationDrawer = ({
 
 			setInitialTransformations(patchedOps);
 
-			// Wait for columns to load before replaying
-			setTimeout(() => {
-				setIsDataLoaded(true);
-			}, 50);
+			// FIXED: Set isDataLoaded synchronously - no setTimeout needed
+			// React batches these state updates so both columnsLoaded (set by syncDataframeColumnsFromNodes)
+			// and isDataLoaded will be visible in the same render cycle
+			setIsDataLoaded(true);
 		} else {
 			setIsEditMode(false);
 			setInitialTransformations([]);
-			setIsDataLoaded(true); // For new flows, data is ready immediately
-			if (!columnsLoaded) {
-				// For new flows, wait a bit for columns to load
-				setTimeout(() => {
-					setIsDataLoaded(true);
-				}, 100);
-			}
+			// FIXED: Set isDataLoaded synchronously for new flows too
+			setIsDataLoaded(true);
 		}
 	}, [isOpen, activeNodeId]);
 
@@ -1745,6 +1746,7 @@ export const TransformationDrawer = ({
 				}
 
 				hasReplayedRef.current = true;
+				setHasReplayed(true);
 
 				// Dispatch column update event
 				window.dispatchEvent(new CustomEvent("tantor-columns-updated", {
@@ -1756,14 +1758,20 @@ export const TransformationDrawer = ({
 			} catch (error) {
 				console.error('Error during transformation replay:', error);
 				hasReplayedRef.current = true; // Set to true even on error to prevent infinite loading
+				setHasReplayed(true);
 			}
 		}
-	}, [isEditMode, initialTransformations, isDataLoaded, columnsLoaded, replayTransformationsForColumns, dataframeColumns]);
+		// FIXED: Removed dataframeColumns from deps - it was causing cascading re-runs
+		// since the replay effect itself sets dataframeColumns. The effect reads
+		// dataframeColumns at invocation time so it always has current values.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [isEditMode, initialTransformations, isDataLoaded, columnsLoaded, replayTransformationsForColumns]);
 
 	// Reset replay flag when drawer closes or edit mode changes
 	useEffect(() => {
 		if (!isOpen || !isEditMode) {
 			hasReplayedRef.current = false;
+			setHasReplayed(false);
 		}
 	}, [isOpen, isEditMode]);
 
@@ -1929,7 +1937,7 @@ export const TransformationDrawer = ({
 				</div>
 
 				<div className="flex-1 overflow-y-auto p-4">
-					{(!isDataLoaded || !columnsLoaded || (!hasReplayedRef.current && initialTransformations.length > 0)) && isEditMode ? (
+					{(!isDataLoaded || !columnsLoaded || (!hasReplayed && initialTransformations.length > 0)) && isEditMode ? (
 						<div className="flex items-center justify-center h-64">
 							<div className="text-center">
 								<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8E77BB] mx-auto mb-4"></div>
