@@ -335,7 +335,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
               toggleExpand(e, route.name);
               return;
             }
-            handleNavClick(e, route.path);
+            handleNavClick(e, route.path, route.name);
           }}
           className={({ isActive }) =>
             `flex items-center gap-3 px-3 py-2 rounded-lg mb-1 ${isActive ? 'bg-purple-100 text-purple-700' : 'text-gray-700 hover:bg-gray-100'
