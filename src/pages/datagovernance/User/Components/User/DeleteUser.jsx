@@ -8,7 +8,8 @@ const DeleteUser = ({ isOpen, onClose, userData, onConfirmDelete, selectedUsers 
   const [isDeleted, setIsDeleted] = useState(false);
   const [deletedCount, setDeletedCount] = useState(0);  
   const [wasBluk, setWasBulk] = useState(false); 
-  const { token } = useAuth();
+  const { token, decodedToken } = useAuth();
+  const updated_by = decodedToken?.preferred_username;
 
   useEffect(() => {
     if (isOpen) {
@@ -34,7 +35,7 @@ const DeleteUser = ({ isOpen, onClose, userData, onConfirmDelete, selectedUsers 
       const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/users`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_ids })
+        body: JSON.stringify({ user_ids, updated_by })
       });
       if (response.ok) {
         setWasBulk(bulkSnapshot);       // ← save snapshot to state

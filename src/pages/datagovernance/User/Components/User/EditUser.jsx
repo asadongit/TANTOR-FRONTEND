@@ -23,11 +23,11 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [apiResponse, setApiResponse] = useState({ status: null, message: '' });
-  const { token } = useAuth();
+  const { token, decodedToken } = useAuth();
   const [existingPolicies, setExistingPolicies] = useState([]);
   const [newPolicies, setNewPolicies] = useState([]);
   const [isFetchingPolicyNames, setIsFetchingPolicyNames] = useState(false);
-
+  const updated_by = decodedToken?.preferred_username;   
   const allPolicies = Array.from(
     new Map([...existingPolicies, ...newPolicies].map(policy => [String(policy.id), policy])).values()
   );
@@ -333,7 +333,8 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
         persona: formData.persona && formData.persona.length > 0 ? formData.persona : [],
         group: formData.groups,
         subgroup: formData.subgroups,
-        datapolicy: formData.datapolicy
+        datapolicy: formData.datapolicy,
+        updated_by: updated_by
       };
 
       
