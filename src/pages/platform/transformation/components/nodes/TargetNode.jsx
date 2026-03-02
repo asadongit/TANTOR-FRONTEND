@@ -1268,13 +1268,6 @@ export const TargetNode = ({ id, data }) => {
     // Expose the setter function to allow external updates
     data.setEnableCountLogging = setEnableCountLogging;
 
-    if (
-      typeof data.enableCountLogging === 'boolean' &&
-      enableCountLogging !== data.enableCountLogging &&
-      !data._isRestoring
-    ) {
-      setEnableCountLogging(data.enableCountLogging);
-    }
 
     const enrichedPreProcedures = selectedPreProcedures
       .filter(p => p.procedure)
