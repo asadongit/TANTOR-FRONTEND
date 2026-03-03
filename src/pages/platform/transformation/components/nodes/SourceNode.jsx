@@ -481,64 +481,9 @@ export const SourceNode = ({ id, data }) => {
   }, [fetchConnections]);
 
   useEffect(() => {
-  data.setEnableCountLogging = setEnableCountLogging;
+    data.setEnableCountLogging = setEnableCountLogging;
 
-  if (sourceType === "file") {
-    const fileColumnsFormatted = fileColumns
-      .filter(col => col.name.trim() !== "")
-      .map(col => ({
-        name: col.name,
-        datatype: col.datatype === 'custom' ? (col.customDatatype || 'custom') : col.datatype
-      }));
-
-    const columnFormat = {};
-    fileColumns
-      .filter(col => col.name.trim() !== "" && ['date', 'datetime', 'timestamp'].includes(col.datatype))
-      .forEach(col => {
-        columnFormat[col.name] = col.format || "";
-      });
-
-    data.onDataChange({
-      sourceType: "file",
-      fileType: fileType,
-      filePath: filePath,
-      fileName: fileName,
-      fileColumns: fileColumns,
-      columns: fileColumnsFormatted,
-      column_format: Object.keys(columnFormat).length > 0 ? [columnFormat] : undefined,
-      alias: alias,
-      enableCountLogging: enableCountLogging,
-    });
-
-    dispatch({
-      type: ACTION_TYPES.UPDATE_SELECTED_SOURCE_COLUMNS,
-      payload: {
-        sourceNodeId: id,
-        columns: fileColumnsFormatted.map(col => col.name)
-      }
-    });
-
-    dispatch({
-      type: ACTION_TYPES.SET_ORIGINAL_SOURCE_COLUMNS,
-      payload: {
-        sourceNodeId: id,
-        columns: fileColumnsFormatted.map(col => col.name)
-      }
-    });
-
-    dispatch({
-      type: ACTION_TYPES.SET_SOURCE_ORIGINAL_COLUMNS,
-      payload: {
-        sourceNodeId: id,
-        columns: fileColumnsFormatted
-      }
-    });
-
-  } else if (sourceType === "database") {
-
-
-    if (selectedObjectType === "source-query") {
-
+    if (sourceType === "file") {
       const fileColumnsFormatted = fileColumns
         .filter(col => col.name.trim() !== "")
         .map(col => ({
@@ -546,22 +491,24 @@ export const SourceNode = ({ id, data }) => {
           datatype: col.datatype === 'custom' ? (col.customDatatype || 'custom') : col.datatype
         }));
 
+      const columnFormat = {};
+      fileColumns
+        .filter(col => col.name.trim() !== "" && ['date', 'datetime', 'timestamp'].includes(col.datatype))
+        .forEach(col => {
+          columnFormat[col.name] = col.format || "";
+        });
+
       data.onDataChange({
-        sourceType: "database",
-        connection: selectedConnection.name,
-        connectionId: selectedConnection.id,
-        connectionType: selectedConnection.type,
-        schema: selectedSchema,
-        table: selectedTable,
-        columns: fileColumnsFormatted,
-        alias: alias,
-        objectType: selectedObjectType,
-        customQuery: customQuery,
+        sourceType: "file",
+        fileType: fileType,
+        filePath: filePath,
+        fileName: fileName,
         fileColumns: fileColumns,
+        columns: fileColumnsFormatted,
+        column_format: Object.keys(columnFormat).length > 0 ? [columnFormat] : undefined,
+        alias: alias,
         enableCountLogging: enableCountLogging,
       });
-
-
 
       dispatch({
         type: ACTION_TYPES.UPDATE_SELECTED_SOURCE_COLUMNS,
@@ -587,112 +534,165 @@ export const SourceNode = ({ id, data }) => {
         }
       });
 
-    } else {
+    } else if (sourceType === "database") {
 
-      const currentTable = selectedObjectType === "procedures" && tableSelections.selectedTable
-        ? tableSelections.selectedTable
-        : selectedTable;
 
-      const currentColumns = selectedObjectType === "procedures" && tableSelections.selectedColumns.length > 0
-        ? tableSelections.selectedColumns
-        : selectedColumns;
+      if (selectedObjectType === "source-query") {
 
-      const enrichedPreProcedures = selectedPreProcedures
-        .filter(p => p.procedure)
-        .map(p => {
-          const mappingKey = `pre_${p.id}_${p.procedure.procedure_name}`;
-          const parameterMapping =
-            storedParameterMappings[mappingKey] ||
-            p.procedure.parameterMapping ||
-            p.procedure.originalParameterMapping ||
-            {};
-          const originalParameterMapping =
-            p.procedure.originalParameterMapping ||
-            storedParameterMappings[mappingKey] ||
-            p.procedure.parameterMapping ||
-            {};
-          return {
-            ...p.procedure,
-            parameterMapping,
-            originalParameterMapping,
-            procedureItemId: p.id,
-            procedureType: "pre"
-          };
-        });
+        const fileColumnsFormatted = fileColumns
+          .filter(col => col.name.trim() !== "")
+          .map(col => ({
+            name: col.name,
+            datatype: col.datatype === 'custom' ? (col.customDatatype || 'custom') : col.datatype
+          }));
 
-      const enrichedPostProcedures = selectedPostProcedures
-        .filter(p => p.procedure)
-        .map(p => {
-          const mappingKey = `post_${p.id}_${p.procedure.procedure_name}`;
-          const parameterMapping =
-            storedParameterMappings[mappingKey] ||
-            p.procedure.parameterMapping ||
-            p.procedure.originalParameterMapping ||
-            {};
-          const originalParameterMapping =
-            p.procedure.originalParameterMapping ||
-            storedParameterMappings[mappingKey] ||
-            p.procedure.parameterMapping ||
-            {};
-          return {
-            ...p.procedure,
-            parameterMapping,
-            originalParameterMapping,
-            procedureItemId: p.id,
-            procedureType: "post"
-          };
+        data.onDataChange({
+          sourceType: "database",
+          connection: selectedConnection.name,
+          connectionId: selectedConnection.id,
+          connectionType: selectedConnection.type,
+          schema: selectedSchema,
+          table: selectedTable,
+          columns: fileColumnsFormatted,
+          alias: alias,
+          objectType: selectedObjectType,
+          customQuery: customQuery,
+          fileColumns: fileColumns,
+          enableCountLogging: enableCountLogging,
         });
 
 
 
-      data.onDataChange({
-        sourceType: "database",
-        connection: selectedConnection.name,
-        connectionId: selectedConnection.id,
-        connectionType: selectedConnection.type,
-        schema: selectedSchema,
-        table: currentTable,
-        columns: currentColumns.map(col => ({
-          name: col.name,
-          datatype: col.datatype
-        })),
-        alias: alias,
-        objectType: selectedObjectType,
-        preProcedures: enrichedPreProcedures,
-        postProcedures: enrichedPostProcedures,
-        enableCountLogging: enableCountLogging,
-        customQuery: customQuery,
-      });
+        dispatch({
+          type: ACTION_TYPES.UPDATE_SELECTED_SOURCE_COLUMNS,
+          payload: {
+            sourceNodeId: id,
+            columns: fileColumnsFormatted.map(col => col.name)
+          }
+        });
 
-      dispatch({
-        type: ACTION_TYPES.UPDATE_SELECTED_SOURCE_COLUMNS,
-        payload: {
-          sourceNodeId: id,
-          columns: currentColumns.map(col => col.name)
-        }
-      });
+        dispatch({
+          type: ACTION_TYPES.SET_ORIGINAL_SOURCE_COLUMNS,
+          payload: {
+            sourceNodeId: id,
+            columns: fileColumnsFormatted.map(col => col.name)
+          }
+        });
 
-      dispatch({
-        type: ACTION_TYPES.SET_ORIGINAL_SOURCE_COLUMNS,
-        payload: {
-          sourceNodeId: id,
-          columns: currentColumns.map(col => col.name)
-        }
-      });
+        dispatch({
+          type: ACTION_TYPES.SET_SOURCE_ORIGINAL_COLUMNS,
+          payload: {
+            sourceNodeId: id,
+            columns: fileColumnsFormatted
+          }
+        });
 
-      dispatch({
-        type: ACTION_TYPES.SET_SOURCE_ORIGINAL_COLUMNS,
-        payload: {
-          sourceNodeId: id,
+      } else {
+
+        const currentTable = selectedObjectType === "procedures" && tableSelections.selectedTable
+          ? tableSelections.selectedTable
+          : selectedTable;
+
+        const currentColumns = selectedObjectType === "procedures" && tableSelections.selectedColumns.length > 0
+          ? tableSelections.selectedColumns
+          : selectedColumns;
+
+        const enrichedPreProcedures = selectedPreProcedures
+          .filter(p => p.procedure)
+          .map(p => {
+            const mappingKey = `pre_${p.id}_${p.procedure.procedure_name}`;
+            const parameterMapping =
+              storedParameterMappings[mappingKey] ||
+              p.procedure.parameterMapping ||
+              p.procedure.originalParameterMapping ||
+              {};
+            const originalParameterMapping =
+              p.procedure.originalParameterMapping ||
+              storedParameterMappings[mappingKey] ||
+              p.procedure.parameterMapping ||
+              {};
+            return {
+              ...p.procedure,
+              parameterMapping,
+              originalParameterMapping,
+              procedureItemId: p.id,
+              procedureType: "pre"
+            };
+          });
+
+        const enrichedPostProcedures = selectedPostProcedures
+          .filter(p => p.procedure)
+          .map(p => {
+            const mappingKey = `post_${p.id}_${p.procedure.procedure_name}`;
+            const parameterMapping =
+              storedParameterMappings[mappingKey] ||
+              p.procedure.parameterMapping ||
+              p.procedure.originalParameterMapping ||
+              {};
+            const originalParameterMapping =
+              p.procedure.originalParameterMapping ||
+              storedParameterMappings[mappingKey] ||
+              p.procedure.parameterMapping ||
+              {};
+            return {
+              ...p.procedure,
+              parameterMapping,
+              originalParameterMapping,
+              procedureItemId: p.id,
+              procedureType: "post"
+            };
+          });
+
+
+
+        data.onDataChange({
+          sourceType: "database",
+          connection: selectedConnection.name,
+          connectionId: selectedConnection.id,
+          connectionType: selectedConnection.type,
+          schema: selectedSchema,
+          table: currentTable,
           columns: currentColumns.map(col => ({
             name: col.name,
             datatype: col.datatype
-          }))
-        }
-      });
+          })),
+          alias: alias,
+          objectType: selectedObjectType,
+          preProcedures: enrichedPreProcedures,
+          postProcedures: enrichedPostProcedures,
+          enableCountLogging: enableCountLogging,
+          customQuery: customQuery,
+        });
+
+        dispatch({
+          type: ACTION_TYPES.UPDATE_SELECTED_SOURCE_COLUMNS,
+          payload: {
+            sourceNodeId: id,
+            columns: currentColumns.map(col => col.name)
+          }
+        });
+
+        dispatch({
+          type: ACTION_TYPES.SET_ORIGINAL_SOURCE_COLUMNS,
+          payload: {
+            sourceNodeId: id,
+            columns: currentColumns.map(col => col.name)
+          }
+        });
+
+        dispatch({
+          type: ACTION_TYPES.SET_SOURCE_ORIGINAL_COLUMNS,
+          payload: {
+            sourceNodeId: id,
+            columns: currentColumns.map(col => ({
+              name: col.name,
+              datatype: col.datatype
+            }))
+          }
+        });
+      }
     }
-  }
-}, [sourceType, fileType, filePath, fileName, fileColumns, selectedConnection, selectedSchema, selectedTable, selectedColumns, alias, id, dispatch, ACTION_TYPES, selectedObjectType, tableSelections, selectedPreProcedures, selectedPostProcedures, storedParameterMappings, enableCountLogging, customQuery]);
+  }, [sourceType, fileType, filePath, fileName, fileColumns, selectedConnection, selectedSchema, selectedTable, selectedColumns, alias, id, dispatch, ACTION_TYPES, selectedObjectType, tableSelections, selectedPreProcedures, selectedPostProcedures, storedParameterMappings, enableCountLogging, customQuery]);
 
 
 
@@ -715,7 +715,7 @@ export const SourceNode = ({ id, data }) => {
     columns.filter(col =>
       col.column_name?.toLowerCase().includes(columnSearch.toLowerCase())
     ),
-  [columns, columnSearch]);
+    [columns, columnSearch]);
 
   const filteredPreProcedures = procedures.filter(procedure =>
     procedure.procedure_name?.toLowerCase().includes(preProcedureSearch.toLowerCase())
@@ -853,34 +853,41 @@ export const SourceNode = ({ id, data }) => {
     return aliasWithSuffix;
   }, [id, selectedTable, sourceType, fileName, selectedObjectType]);
 
+  const lastAliasTableRef = useRef(data.table || "");
+
   useEffect(() => {
-    if (sourceType === "database" && selectedObjectType === "source-query" && !alias) {
-      setAlias(getNextAlias());
-    }
-    if (sourceType === "database" && selectedTable && !alias && selectedObjectType !== "source-query") {
-      setAlias(getNextAlias());
-    }
-    if (sourceType === "file" && !alias) {
-      setAlias(getNextAlias());
+    if (sourceType === "database" && selectedObjectType !== "source-query" && selectedTable) {
+      if (!alias || (lastAliasTableRef.current && lastAliasTableRef.current !== selectedTable)) {
+        setAlias(getNextAlias());
+        lastAliasTableRef.current = selectedTable;
+      }
+    } else if (sourceType === "database" && selectedObjectType === "source-query") {
+      if (!alias) {
+        setAlias(getNextAlias());
+      }
+    } else if (sourceType === "file") {
+      if (!alias) {
+        setAlias(getNextAlias());
+      }
     }
   }, [selectedTable, alias, getNextAlias, sourceType, selectedObjectType]);
 
   const handleObjectTypeChange = useCallback((newObjectType) => {
     if (newObjectType === selectedObjectType) return;
-        if (newObjectType === "source-query") {
-        if (selectedObjectType === "tables") {
-          setTableSelections({
-            selectedTable: selectedTable,
-            selectedColumns: selectedColumns,
-          });
-        } else if (selectedObjectType === "procedures") {
-          setProcedureSelections({
-            selectedProcedure: selectedTable,
-            selectedParameters: selectedColumns,
-          });
-        }
-        setSelectedColumns([]);
+    if (newObjectType === "source-query") {
+      if (selectedObjectType === "tables") {
+        setTableSelections({
+          selectedTable: selectedTable,
+          selectedColumns: selectedColumns,
+        });
+      } else if (selectedObjectType === "procedures") {
+        setProcedureSelections({
+          selectedProcedure: selectedTable,
+          selectedParameters: selectedColumns,
+        });
       }
+      setSelectedColumns([]);
+    }
 
     if (selectedObjectType === "procedures" && newObjectType === "tables") {
       setProcedureSelections({
@@ -1062,31 +1069,31 @@ export const SourceNode = ({ id, data }) => {
     data.enableCountLogging
   ]);
 
-const hasInitializedSelectedColumns = useRef(false);
-const hasFetchedColumns = useRef(false);
+  const hasInitializedSelectedColumns = useRef(false);
+  const hasFetchedColumns = useRef(false);
 
-useEffect(() => {
-  if (
-    data.table &&
-    data.columns &&
-    selectedTable === data.table &&
-    !hasInitializedSelectedColumns.current
-  ) {
-    if (data.columns.length > 0) {
-      setSelectedColumns(data.columns);
+  useEffect(() => {
+    if (
+      data.table &&
+      data.columns &&
+      selectedTable === data.table &&
+      !hasInitializedSelectedColumns.current
+    ) {
+      if (data.columns.length > 0) {
+        setSelectedColumns(data.columns);
 
-      if (selectedObjectType === "tables") {
-        setTableSelections(prev => ({
-          ...prev,
-          selectedTable: data.table,
-          selectedColumns: data.columns
-        }));
+        if (selectedObjectType === "tables") {
+          setTableSelections(prev => ({
+            ...prev,
+            selectedTable: data.table,
+            selectedColumns: data.columns
+          }));
+        }
       }
-    }
 
-    hasInitializedSelectedColumns.current = true;
-  }
-}, [data.table, data.columns, selectedTable, selectedObjectType]);
+      hasInitializedSelectedColumns.current = true;
+    }
+  }, [data.table, data.columns, selectedTable, selectedObjectType]);
 
 
   useEffect(() => {
@@ -1118,8 +1125,8 @@ useEffect(() => {
           const procedureOrder = index + 1;
           const mappedParams = procData.parameterMapping
             ? Object.entries(procData.parameterMapping)
-                .filter(([param, value]) => value !== "")
-                .map(([param, value]) => value)
+              .filter(([param, value]) => value !== "")
+              .map(([param, value]) => value)
             : [];
 
           const procedureJSON = {
@@ -1175,8 +1182,8 @@ useEffect(() => {
           const procedureOrder = index + 1;
           const mappedParams = procData.parameterMapping
             ? Object.entries(procData.parameterMapping)
-                .filter(([param, value]) => value !== "")
-                .map(([param, value]) => value)
+              .filter(([param, value]) => value !== "")
+              .map(([param, value]) => value)
             : [];
 
           const procedureJSON = {
@@ -1226,8 +1233,8 @@ useEffect(() => {
         const procedureOrder = index + 1;
         const mappedParams = procData.parameterMapping
           ? Object.entries(procData.parameterMapping)
-              .filter(([param, value]) => value !== "")
-              .map(([param, value]) => value)
+            .filter(([param, value]) => value !== "")
+            .map(([param, value]) => value)
           : [];
 
         const procedureJSON = {
@@ -1274,8 +1281,8 @@ useEffect(() => {
         const procedureOrder = index + 1;
         const mappedParams = procData.parameterMapping
           ? Object.entries(procData.parameterMapping)
-              .filter(([param, value]) => value !== "")
-              .map(([param, value]) => value)
+            .filter(([param, value]) => value !== "")
+            .map(([param, value]) => value)
           : [];
 
         const procedureJSON = {
@@ -1638,11 +1645,10 @@ useEffect(() => {
                 </button>
                 <button
                   onClick={handleCustomDatatypeSave}
-                  className={`px-3 py-1.5 text-sm rounded focus:outline-none focus:ring-2 ${
-                    customDatatypeInput.trim() !== ""
+                  className={`px-3 py-1.5 text-sm rounded focus:outline-none focus:ring-2 ${customDatatypeInput.trim() !== ""
                       ? "bg-[#8E77BB] text-white hover:bg-[#7A6BA3] focus:ring-[#8E77BB]"
                       : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  }`}
+                    }`}
                   disabled={customDatatypeInput.trim() === ""}
                 >
                   Save
@@ -1732,11 +1738,10 @@ useEffect(() => {
                 </button>
                 <button
                   onClick={applyProcedureMapping}
-                  className={`px-3 py-1.5 text-sm rounded focus:outline-none focus:ring-2 ${
-                    areAllParametersMapped()
+                  className={`px-3 py-1.5 text-sm rounded focus:outline-none focus:ring-2 ${areAllParametersMapped()
                       ? "bg-[#8E77BB] text-white hover:bg-[#7A6BA3] focus:ring-[#8E77BB]"
                       : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  }`}
+                    }`}
                   disabled={!areAllParametersMapped()}
                 >
                   Confirm

@@ -267,9 +267,14 @@ export const TargetNode = ({ id, data }) => {
     return aliasWithSuffix;
   }, [id, selectedTable]);
 
+  const lastTargetTableRef = useRef(data.table || "");
+
   useEffect(() => {
-    if (selectedTable && !alias) {
-      setAlias(getNextAlias());
+    if (selectedTable) {
+      if (!alias || (lastTargetTableRef.current && lastTargetTableRef.current !== selectedTable)) {
+        setAlias(getNextAlias());
+        lastTargetTableRef.current = selectedTable;
+      }
     }
   }, [selectedTable, alias, getNextAlias]);
 
