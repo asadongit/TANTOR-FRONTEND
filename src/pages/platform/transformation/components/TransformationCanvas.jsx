@@ -12,6 +12,7 @@ import { DefineNode } from "./nodes/DefineNode";
 import { SourceNode } from "./nodes/SourceNode";
 import { TransformationNode } from "./nodes/TransformationNode";
 import { TargetNode } from "./nodes/TargetNode";
+import SchedulerNode from "./nodes/SchedulerNode";
 import { TransformationSidebar } from "./TransformationSidebar";
 import { TransformationDrawer } from "./drawer/transformationDrawer";
 import { toast } from "react-hot-toast";
@@ -36,6 +37,7 @@ const nodeTypes = {
   source: SourceNode,
   transformation: TransformationNode,
   target: TargetNode,
+  scheduler: SchedulerNode,
 };
 
 const hostname = window._env_?.VITE_FAST_API;
@@ -86,6 +88,15 @@ const initialNodes = [
       onDataChange: () => { },
     },
   },
+  {
+    id: "node_4",
+    type: "scheduler",
+    position: { x: 1600, y: 200 },
+    data: {
+      mode: "manual",
+      onDataChange: () => { },
+    },
+  },
 ];
 
 const initialEdges = [
@@ -104,13 +115,18 @@ const initialEdges = [
     source: "node_2",
     target: "node_3",
   },
+  {
+    id: "edge_3",
+    source: "node_3",
+    target: "node_4",
+  },
 ];
 
 function TransformationCanvasContent() {
   const navigate = useNavigate();
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const nodeIdRef = useRef(4);
+  const nodeIdRef = useRef(5);
   const { generateTransformationJson, dispatch, ACTION_TYPES } =
     useTransformation();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -401,7 +417,11 @@ function TransformationCanvasContent() {
         return false;
       }
 
-      if (sourceNode.type === "target") {
+      if (sourceNode.type === "target" && targetNode.type !== "scheduler") {
+        return false;
+      }
+
+      if (sourceNode.type === "scheduler") {
         return false;
       }
 
@@ -447,6 +467,17 @@ function TransformationCanvasContent() {
         return;
       }
 
+      if (type === "scheduler") {
+        const hasScheduler = nodes.some((n) => n.type === "scheduler");
+        if (hasScheduler) {
+          toast.error("Only one Scheduler node is allowed", {
+            duration: 2000,
+            position: "top-right",
+          });
+          return;
+        }
+      }
+
       const position = {
         x: event.clientX - 500,
         y: event.clientY - 80,
@@ -468,6 +499,7 @@ function TransformationCanvasContent() {
         source: { connection: "", schema: "", tables: [] },
         target: { connection: "", schema: "" },
         transformation: { type: "", function: "" },
+        scheduler: { mode: "manual" },
       };
 
       const newNodeId = `node_${id++}`;
@@ -637,10 +669,46 @@ function TransformationCanvasContent() {
         },
       });
 
+      const schedulerNode = nodes.find((n) => n.type === "scheduler");
+      const isAuto = schedulerNode?.data?.mode === "auto";
+      const workflowType = isAuto ? "schedule" : "manual";
+
+      let flow_type = "";
+      let schedulerConfig = undefined;
+
+      if (isAuto && schedulerNode?.data) {
+        flow_type = schedulerNode.data.flow_type || "single_run";
+        const now = new Date();
+        const istOffset = 5.5 * 60 * 60 * 1000;
+        const istTime = new Date(now.getTime() + istOffset);
+        const year = istTime.getUTCFullYear();
+        const month = String(istTime.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(istTime.getUTCDate()).padStart(2, '0');
+        const hours = String(istTime.getUTCHours()).padStart(2, '0');
+        const minutes = String(istTime.getUTCMinutes()).padStart(2, '0');
+        const startDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+        schedulerConfig = {
+          mode: "auto",
+          endDateTime: "",
+          frequency: flow_type === "periodic" ? (schedulerNode.data.frequency || "hourly") : "",
+          intervalType: flow_type === "single_run" ? "cron" : flow_type,
+          intervalValue: schedulerNode.data.intervalValue || "",
+          runningDays: flow_type === "recurring" ? (schedulerNode.data.runningDays || []) : [],
+          startDateTime,
+          timeZone: "ist"
+        };
+      }
+
       const transformationData = generateTransformationJson({
         name: defineNode.data.name,
         description: defineNode.data.description || "",
-      });
+      }, workflowType);
+
+      if (workflowType === "schedule") {
+        transformationData.flow_type = flow_type;
+        transformationData.scheduler = schedulerConfig;
+      }
 
       if (Object.keys(transformationData.source).length === 0) {
         toast.error(
@@ -819,6 +887,11 @@ function TransformationCanvasContent() {
           edit_flow: editFlowData,
         },
       };
+
+      if (workflowType === "schedule") {
+        payload.flow_type = flow_type;
+        payload.scheduler = schedulerConfig;
+      }
 
       // console.log(payload)
       const isUpdate = isEditMode && editTransformationId;
