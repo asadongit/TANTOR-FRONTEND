@@ -41,59 +41,59 @@ import Migration from '../pages/platform/migration/Migration';
 
 export function PlatformRoutes() {
   return (
-      <Routes>
-        <Route path="/audit" element={<Audit />} />
-        <Route path="/project" element={<Project />} />
-        <Route path="/connections" element={<Connections />} />
-        <Route path="/jobs" element={<Jobs />} />
-        <Route path="/pipeline" element={<Pipeline />} />
-        <Route path="/report" element={<Reports />} />
-        <Route path="/generateReport" element={<GenerateReport />} />
-        <Route path="/reports/viewer" element={<ReportViewer />} />
+    <Routes>
+      <Route path="/audit" element={<Audit />} />
+      <Route path="/project" element={<Project />} />
+      <Route path="/connections" element={<Connections />} />
+      <Route path="/jobs" element={<Jobs />} />
+      <Route path="/pipeline" element={<Pipeline />} />
+      {/* <Route path="/report" element={<Reports />} /> */}
+      <Route path="/generateReport" element={<GenerateReport />} />
+      <Route path="/reports/viewer" element={<ReportViewer />} />
 
-        {/* migration routes */}
-        <Route path="/migration" element={<Migration />} />
+      {/* migration routes */}
+      <Route path="/migration" element={<Migration />} />
 
-        {/* purge routes */}
-        <Route path="/purge" element={<Purge />} />
-        <Route path="/PurgeCanvas" element={<PurgeCanvas />} />
-
-
-        {/* cdc routes */}
-        <Route path="/cdc" element={<CDC />} />
-        <Route path="/cdc/editcdc/:cdcId" element={<EditCDC />} />
-        <Route path="/cdc/Viewcdc/:cdcId" element={<ViewCDC />} />
-
-        {/* federation routes */}
-        <Route path="/editor" element={<Editor />} />
-        <Route path="/federation" element={<FederationDashBoard />} />
-        <Route path="/federation/view/source" element={<Source />} />
-
-        {/* rules routes */}
-        <Route path="/config/rule" element={<RuleDashboard />} />
-        <Route path="/config/rule/create-rule" element={<RuleCanvas />} />
-        <Route path="/config/rule/edit-rule" element={<RuleCanvas />} />
-        <Route path="/config/report" element={<ReportConfigDashboard />} />
-        <Route path="/config/report/ruleLinks" element={<RulesReportsLinks />} />
-        <Route path="/config/report/lineItems" element={<LineItemsPage />} />
-        <Route path="/config/editReport" element={<LineItemsPage />} />
-        <Route path="/reporting/lineItems" element={<LineItemsPage />} />
+      {/* purge routes */}
+      <Route path="/purge" element={<Purge />} />
+      <Route path="/PurgeCanvas" element={<PurgeCanvas />} />
 
 
-        {/* transformation routes */}
-        <Route path="/transformation" element={<Transformation />} />
+      {/* cdc routes */}
+      <Route path="/cdc" element={<CDC />} />
+      <Route path="/cdc/editcdc/:cdcId" element={<EditCDC />} />
+      <Route path="/cdc/Viewcdc/:cdcId" element={<ViewCDC />} />
+
+      {/* federation routes */}
+      <Route path="/editor" element={<Editor />} />
+      <Route path="/federation" element={<FederationDashBoard />} />
+      <Route path="/federation/view/source" element={<Source />} />
+
+      {/* rules routes */}
+      <Route path="/config/rule" element={<RuleDashboard />} />
+      <Route path="/config/rule/create-rule" element={<RuleCanvas />} />
+      <Route path="/config/rule/edit-rule" element={<RuleCanvas />} />
+      <Route path="/config/report" element={<ReportConfigDashboard />} />
+      <Route path="/config/report/ruleLinks" element={<RulesReportsLinks />} />
+      <Route path="/config/report/lineItems" element={<LineItemsPage />} />
+      <Route path="/config/editReport" element={<LineItemsPage />} />
+      <Route path="/reporting/lineItems" element={<LineItemsPage />} />
 
 
-    {/* additional routes */}
+      {/* transformation routes */}
+      <Route path="/transformation" element={<Transformation />} />
 
-        <Route path="/details" element={<Details />}/>
-        <Route path="/dataview" element={<DataView />} />
-        <Route path="/cdc/kafka-dashboard" element={<KafkaDashboard />} />
-        <Route path="/monitoring" element={
-          <MonitoringProvider>
-            <MonitoringDashboard />
-          </MonitoringProvider>
-          } />
-      </Routes>
+
+      {/* additional routes */}
+
+      <Route path="/details" element={<Details />} />
+      <Route path="/dataview" element={<DataView />} />
+      <Route path="/cdc/kafka-dashboard" element={<KafkaDashboard />} />
+      <Route path="/monitoring" element={
+        <MonitoringProvider>
+          <MonitoringDashboard />
+        </MonitoringProvider>
+      } />
+    </Routes>
   );
 }

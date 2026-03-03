@@ -180,7 +180,8 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     {
       name: 'Reports',
       icon: DocumentTextIcon,
-      path: '/report',
+      path: '/reports',
+      expandOnly: true,
       subItems: [
         {
           name: 'Business Reports',
@@ -260,7 +261,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     //{ name: 'Databot', icon: Bot, path: `${DATAGOVERNANCE_PREFIX}/databot` },
     { name: 'Reports', icon: DocumentTextIcon, path: `${DATAGOVERNANCE_PREFIX}/reports`, requiresDataAuditor: true },
     //{ name: 'Import', icon: ArrowsPointingInIcon, path: `${DATAGOVERNANCE_PREFIX}/import` },
-   //{ name: 'Custom Addition', icon: ArrowsPointingOutIcon, path: `${DATAGOVERNANCE_PREFIX}/custom-addition` },
+    //{ name: 'Custom Addition', icon: ArrowsPointingOutIcon, path: `${DATAGOVERNANCE_PREFIX}/custom-addition` },
   ];
 
   const dataGovernanceRoutes = allDataGovernanceRoutes

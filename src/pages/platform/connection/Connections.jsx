@@ -25,10 +25,23 @@ import axios from "axios";
 import Breadcrumb from "../../../components/Breadcrumb";
 
 const Connections = () => {
-  const { token, project, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
+  const { token, project, setSelectedProject, hostnameV1, hostnameV2, decodedToken } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState("both");
-  const [autoRefreshInterval, setAutoRefreshInterval] = useState(0);
+
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(() => {
+    const saved = localStorage.getItem(`autoRefresh_connections_${decodedToken?.preferred_username}`);
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  useEffect(() => {
+    if (decodedToken?.preferred_username) {
+      const saved = localStorage.getItem(`autoRefresh_connections_${decodedToken?.preferred_username}`);
+      if (saved) {
+        setAutoRefreshInterval(parseInt(saved, 10));
+      }
+    }
+  }, [decodedToken]);
   const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
   const autoRefreshMenuRef = useRef(null);
   const [viewConnectionData, setViewConnectionData] = useState(null);
@@ -42,7 +55,7 @@ const Connections = () => {
   const handleClearSort = () => {
     setResetSortTrigger(prev => prev + 1);
   };
-  
+
   const {
     data: cardData,
     isLoading: isCardLoading,
@@ -343,7 +356,7 @@ const Connections = () => {
                 onClick={() => {
                   refetchConnections();
                   refetchCardData();
-                  
+
                   setSearchTerm("");
                   handleClearSort();
                   toast.success("Connections data refreshed successfully");
@@ -383,6 +396,9 @@ const Connections = () => {
                       }`}
                     onClick={() => {
                       setAutoRefreshInterval(option.value);
+                      if (decodedToken?.preferred_username) {
+                        localStorage.setItem(`autoRefresh_connections_${decodedToken?.preferred_username}`, option.value.toString());
+                      }
                       setIsAutoRefreshMenuOpen(false);
                     }}
                   >

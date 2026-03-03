@@ -180,19 +180,19 @@ function transformationReducer(state, action) {
       const newScdConfig =
         action.payload.data.scdConfig !== undefined
           ? {
-              primaryKeys: Array.isArray(
-                action.payload.data.scdConfig.primaryKeys
-              )
-                ? action.payload.data.scdConfig.primaryKeys
-                : [],
-              surrogateKey: action.payload.data.scdConfig.surrogateKey || "",
-              checksumColumns: Array.isArray(
-                action.payload.data.scdConfig.checksumColumns
-              )
-                ? action.payload.data.scdConfig.checksumColumns
-                : [],
-              changeType: action.payload.data.scdConfig.changeType || "",
-            }
+            primaryKeys: Array.isArray(
+              action.payload.data.scdConfig.primaryKeys
+            )
+              ? action.payload.data.scdConfig.primaryKeys
+              : [],
+            surrogateKey: action.payload.data.scdConfig.surrogateKey || "",
+            checksumColumns: Array.isArray(
+              action.payload.data.scdConfig.checksumColumns
+            )
+              ? action.payload.data.scdConfig.checksumColumns
+              : [],
+            changeType: action.payload.data.scdConfig.changeType || "",
+          }
           : currentScdConfig;
 
       const updatedTargetState = {
@@ -301,7 +301,7 @@ function transformationReducer(state, action) {
           procedureMapping.isUpdated || procedureMapping.isRestored
             ? procedureMapping.parameterMapping
             : existingProcedure.parameterMapping ||
-              procedureMapping.parameterMapping;
+            procedureMapping.parameterMapping;
 
         updatedProcedures[existingIndex] = {
           ...procedureMapping,
@@ -491,7 +491,7 @@ export function TransformationProvider({ children }) {
 
   // const generateTransformationJson = () => {
   // Accept optional override for define node data (latest name/description)
-  const generateTransformationJson = (defineOverride = {}) => {
+  const generateTransformationJson = (defineOverride = {}, workflowType = "manual") => {
     const timestamp = new Date().toISOString();
 
     const sourceIdToAlias = {};
@@ -520,7 +520,7 @@ export function TransformationProvider({ children }) {
       // workflow_type : "manual",
       // description: state.define.description || "",
       workflow_name: defineOverride.name || state.define.name,
-      workflow_type: "manual",
+      workflow_type: workflowType,
       description: defineOverride.description || state.define.description || "",
 
       source: {},
@@ -771,22 +771,22 @@ export function TransformationProvider({ children }) {
               loadStrategy: targetData.loadStrategy || "",
               // NEW: SCD params for SCD1/SCD2
               ...(targetData.loadType === "SCD1" ||
-              targetData.loadType === "SCD2"
+                targetData.loadType === "SCD2"
                 ? {
-                    // Use bracketed no-quote format for multi-values
-                    targetPK: serializeBracketed(scd.primaryKeys || []),
-                    surrogateKey: scd.surrogateKey || "",
-                    changeType: scd.checksumColumns?.length
-                      ? scd.changeType || "checksum"
-                      : "",
-                    checksumColumns: serializeBracketed(
-                      scd.checksumColumns || []
-                    ),
-                    // Add surrogate population for SCD1
-                    ...(targetData.loadType === "SCD1"
-                      ? { surPopulation: targetData.surPopulation || false }
-                      : {}),
-                  }
+                  // Use bracketed no-quote format for multi-values
+                  targetPK: serializeBracketed(scd.primaryKeys || []),
+                  surrogateKey: scd.surrogateKey || "",
+                  changeType: scd.checksumColumns?.length
+                    ? scd.changeType || "checksum"
+                    : "",
+                  checksumColumns: serializeBracketed(
+                    scd.checksumColumns || []
+                  ),
+                  // Add surrogate population for SCD1
+                  ...(targetData.loadType === "SCD1"
+                    ? { surPopulation: targetData.surPopulation || false }
+                    : {}),
+                }
                 : {}),
             },
             EnableCountLogging: targetData.enableCountLogging || false,
