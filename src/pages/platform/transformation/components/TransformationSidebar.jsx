@@ -9,6 +9,7 @@ import {
   BarChart3,
   Mail,
   Layers,
+  Calendar,
 } from "lucide-react";
 import { useTransformation } from "./TransformationContext";
 
@@ -16,6 +17,7 @@ const components = [
   { id: "source", name: "Source", icon: Database },
   { id: "transformation", name: "Transformation", icon: ArrowRightLeft },
   { id: "target", name: "Target", icon: Database },
+  { id: "scheduler", name: "Scheduler", icon: Calendar },
 ];
 
 export const TransformationSidebar = () => {
@@ -31,6 +33,10 @@ export const TransformationSidebar = () => {
   const transformationExists =
     Array.isArray(window.allNodes) &&
     window.allNodes.some((n) => n.type === "transformation");
+
+  const schedulerExists =
+    Array.isArray(window.allNodes) &&
+    window.allNodes.some((n) => n.type === "scheduler");
 
   useEffect(() => {
     window.triggerSidebarUpdate = () => {
@@ -106,6 +112,10 @@ export const TransformationSidebar = () => {
 
   const onDragStart = (event, nodeType) => {
     if (nodeType === "transformation" && transformationExists) {
+      event.preventDefault();
+      return;
+    }
+    if (nodeType === "scheduler" && schedulerExists) {
       event.preventDefault();
       return;
     }
@@ -225,9 +235,8 @@ export const TransformationSidebar = () => {
 
       {/* Content */}
       <div
-        className={`p-3 ${
-          collapsed ? "flex flex-col items-center space-y-3" : "space-y-4"
-        }`}
+        className={`p-3 ${collapsed ? "flex flex-col items-center space-y-3" : "space-y-4"
+          }`}
       >
         {/* Divider for Components */}
         <div className="w-full mb-2">
@@ -267,20 +276,20 @@ export const TransformationSidebar = () => {
         <div className={`${collapsed ? "space-y-3" : "space-y-2 mt-2"}`}>
           {components.map((item) => {
             const isTransformation = item.id === "transformation";
-            const disabled = isTransformation && transformationExists;
+            const isScheduler = item.id === "scheduler";
+            const disabled = (isTransformation && transformationExists) || (isScheduler && schedulerExists);
             return (
               <div
                 key={item.id}
-                className={`flex items-center p-3 rounded-lg border border-gray-300 transition cursor-move hover:bg-purple-50 hover:border-purple-300 ${
-                  disabled ? "opacity-50 cursor-not-allowed" : ""
-                }`}
+                className={`flex items-center p-3 rounded-lg border border-gray-300 transition cursor-move hover:bg-purple-50 hover:border-purple-300 ${disabled ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
                 draggable={!disabled}
                 onMouseEnter={() => setIsHovering(item.id)}
                 onMouseLeave={() => setIsHovering(null)}
                 onDragStart={(e) => onDragStart(e, item.id)}
                 title={
                   disabled
-                    ? "Only one Transformation node is allowed"
+                    ? isTransformation ? "Only one Transformation node is allowed" : "Only one Scheduler node is allowed"
                     : undefined
                 }
               >
