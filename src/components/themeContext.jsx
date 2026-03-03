@@ -1,5 +1,5 @@
 export const aithemestyle = {
-    statsCardGradient: 'from-[#2B125C] via-[#8E77BB] to-[#EFE7FF]',
+    statsCardGradient: 'linear-gradient(270deg, #EFE7FF 17.24%, #8E77BB 93.06%, #2B125C 141.05%)',
     iconColor: '#8E77BB',
     trendup: '#82BC66',
     trendDown: '#DF7E39',

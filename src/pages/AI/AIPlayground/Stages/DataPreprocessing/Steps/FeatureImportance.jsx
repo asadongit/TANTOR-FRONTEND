@@ -222,7 +222,7 @@ const SearchableDropdown = ({
                                         {option.toUpperCase()}
                                         {hoveredOption === option && description && (
                                             <div
-                                                className="fixed z-[9999] w-80 p-4 bg-gray-900 text-white text-xs leading-relaxed rounded-lg shadow-2xl pointer-events-none"
+                                                className="fixed z-[9999] w-80 p-4 bg-[#332849] text-white text-xs leading-relaxed rounded-lg shadow-2xl pointer-events-none"
                                                 style={{
                                                     left: menuRef.current ? `${menuRef.current.getBoundingClientRect().right + 12}px` : '0px',
                                                     top: menuRef.current ? `${menuRef.current.getBoundingClientRect().top}px` : '0px',
@@ -289,9 +289,9 @@ const MethodOption = ({ option, name, checked, onChange, readonly }) => (
         </div>
 
         {/* Tooltip */}
-        <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 pointer-events-none">
+        <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-[#332849] text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 pointer-events-none">
             <p className="leading-relaxed">{option.description}</p>
-            <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+            <div className="absolute -top-1 left-4 w-2 h-2 bg-[#332849] transform rotate-45"></div>
         </div>
     </label>
 );

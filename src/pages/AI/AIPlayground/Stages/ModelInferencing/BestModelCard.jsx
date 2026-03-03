@@ -10,8 +10,8 @@ const BestModelCard = ({ bestModel }) => {
 
   return (
     <div
-      className={`bg-gradient-to-r ${aithemestyle.statsCardGradient} rounded-2xl p-4 flex items-stretch gap-3 mb-6`}
-      style={{ display: 'flex', gap: '12px', alignItems: 'stretch' }}
+      className={`rounded-2xl p-4 flex items-stretch gap-3 mb-6`}
+      style={{ display: 'flex', gap: '12px', alignItems: 'stretch', background: aithemestyle.statsCardGradient}}
     >
       {/* Col 1: Best Model label */}
       <div className={`${cardBase} flex items-center gap-3`} style={cardStyle}>

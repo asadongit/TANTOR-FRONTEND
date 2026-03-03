@@ -556,7 +556,7 @@ const Projects = () => {
 
             <div className="space-y-6">
                 {viewMode === 'both' && (
-                    <div className={`bg-gradient-to-r ${aithemestyle.statsCardGradient} rounded-xl p-4`}>
+                    <div className={`rounded-xl p-4`} style={{ background: aithemestyle.statsCardGradient }}>
                         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                             {statsCards.map((stat, index) => (
                                 <StatsCardWithTrend

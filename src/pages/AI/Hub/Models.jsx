@@ -1060,7 +1060,7 @@ function Models() {
 
       {viewMode !== "list" && (
         <>
-          <div className={`bg-gradient-to-r ${aithemestyle.statsCardGradient} rounded-xl p-4`}>
+          <div className={`rounded-xl p-4`} style={{ background: aithemestyle.statsCardGradient }}>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
               {statsCards.map((stat) => (
                 <StatsCardWithTrend
