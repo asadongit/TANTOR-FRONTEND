@@ -81,6 +81,11 @@ export function SchedulerNode({ id, data }) {
         handleDataChange({ runningDays: newDays });
     };
 
+    const getCurrentDateTimeLocal = () => {
+        const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+        return new Date(Date.now() - tzoffset).toISOString().slice(0, 16);
+    };
+
     return (
         <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[320px] max-w-[320px] relative group">
             {/* Delete button (will be handled by canvas if needed, using general nodes delete) */}
@@ -212,6 +217,7 @@ export function SchedulerNode({ id, data }) {
                             type="datetime-local"
                             className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
                             value={intervalValue}
+                            min={getCurrentDateTimeLocal()}
                             onChange={(e) => handleIntervalChange(e.target.value)}
                         />
                     </div>

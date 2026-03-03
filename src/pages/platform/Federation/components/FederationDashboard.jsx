@@ -62,7 +62,20 @@ const FederationDashBoard = () => {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState("both");
-  const [autoRefreshInterval, setAutoRefreshInterval] = useState(0); // 0 = off
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(() => {
+    const saved = localStorage.getItem(`autoRefresh_federation_${decodedToken?.preferred_username}`);
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  useEffect(() => {
+    if (decodedToken?.preferred_username) {
+      const saved = localStorage.getItem(`autoRefresh_federation_${decodedToken?.preferred_username}`);
+      if (saved) {
+        setAutoRefreshInterval(parseInt(saved, 10));
+      }
+    }
+  }, [decodedToken]);
+
   const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
   const autoRefreshMenuRef = useRef(null);
 
@@ -450,6 +463,9 @@ const FederationDashBoard = () => {
                         }`}
                       onClick={() => {
                         setAutoRefreshInterval(option.value);
+                        if (decodedToken?.preferred_username) {
+                          localStorage.setItem(`autoRefresh_federation_${decodedToken?.preferred_username}`, option.value.toString());
+                        }
                         setIsAutoRefreshMenuOpen(false);
                       }}
                     >
