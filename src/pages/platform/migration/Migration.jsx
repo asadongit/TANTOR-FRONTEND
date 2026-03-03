@@ -65,9 +65,23 @@ const MigrationList = () => {
     dagId: null,
   });
 
+  const { token, hostnameV1, hostnameV2, project, decodedToken } = useAuth();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState("both");
-  const [autoRefreshInterval, setAutoRefreshInterval] = useState(0); // 0 = off
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(() => {
+    const saved = localStorage.getItem(`autoRefresh_migration_${decodedToken?.preferred_username}`);
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  useEffect(() => {
+    if (decodedToken?.preferred_username) {
+      const saved = localStorage.getItem(`autoRefresh_migration_${decodedToken?.preferred_username}`);
+      if (saved) {
+        setAutoRefreshInterval(parseInt(saved, 10));
+      }
+    }
+  }, [decodedToken]);
   const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
   const autoRefreshMenuRef = useRef(null);
 
@@ -96,8 +110,6 @@ const MigrationList = () => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const { token, hostnameV1, hostnameV2, project } = useAuth();
 
   const fetchDagFailure = async (dagId) => {
     console.log("dag id ", dagId)
@@ -371,6 +383,9 @@ const MigrationList = () => {
                       }`}
                     onClick={() => {
                       setAutoRefreshInterval(option.value);
+                      if (decodedToken?.preferred_username) {
+                        localStorage.setItem(`autoRefresh_migration_${decodedToken?.preferred_username}`, option.value.toString());
+                      }
                       setIsAutoRefreshMenuOpen(false);
                     }}
                   >

@@ -74,12 +74,25 @@ function Transformation() {
     dagId: null,
   });
 
-  const [autoRefreshInterval, setAutoRefreshInterval] = useState(0); // 0 = off
+  const { project, decodedToken, token } = useAuth();
+
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(() => {
+    const saved = localStorage.getItem(`autoRefresh_transformation_${decodedToken?.preferred_username}`);
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  useEffect(() => {
+    if (decodedToken?.preferred_username) {
+      const saved = localStorage.getItem(`autoRefresh_transformation_${decodedToken?.preferred_username}`);
+      if (saved) {
+        setAutoRefreshInterval(parseInt(saved, 10));
+      }
+    }
+  }, [decodedToken]);
+
   const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
   const autoRefreshMenuRef = useRef(null);
 
-  const { project, decodedToken, token } = useAuth();
-  
   const hostname = window._env_?.VITE_FAST_API;
 
   const [resetSortTrigger, setResetSortTrigger] = useState(0);
@@ -495,19 +508,19 @@ function Transformation() {
   };
 
   const handleDeleteTransformation = (row) => {
-  setDeleteModal({
-    open: true,
-    type: "transformation",
-    onConfirm: async () => {
-      try {
-        const success = await confirmDeleteTransformation(row.transformation_id);
-        if (success) toast.success("Transformation deleted successfully");
-      } catch {
-        toast.error("Failed to delete transformation");
-      }
-    },
-  });
-};
+    setDeleteModal({
+      open: true,
+      type: "transformation",
+      onConfirm: async () => {
+        try {
+          const success = await confirmDeleteTransformation(row.transformation_id);
+          if (success) toast.success("Transformation deleted successfully");
+        } catch {
+          toast.error("Failed to delete transformation");
+        }
+      },
+    });
+  };
 
   const confirmDeleteTransformation = async (transformationId) => {
     try {
@@ -833,6 +846,9 @@ function Transformation() {
                       }`}
                     onClick={() => {
                       setAutoRefreshInterval(option.value);
+                      if (decodedToken?.preferred_username) {
+                        localStorage.setItem(`autoRefresh_transformation_${decodedToken?.preferred_username}`, option.value.toString());
+                      }
                       setIsAutoRefreshMenuOpen(false);
                     }}
                   >

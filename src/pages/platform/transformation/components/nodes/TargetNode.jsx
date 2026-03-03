@@ -267,9 +267,14 @@ export const TargetNode = ({ id, data }) => {
     return aliasWithSuffix;
   }, [id, selectedTable]);
 
+  const lastTargetTableRef = useRef(data.table || "");
+
   useEffect(() => {
-    if (selectedTable && !alias) {
-      setAlias(getNextAlias());
+    if (selectedTable) {
+      if (!alias || (lastTargetTableRef.current && lastTargetTableRef.current !== selectedTable)) {
+        setAlias(getNextAlias());
+        lastTargetTableRef.current = selectedTable;
+      }
     }
   }, [selectedTable, alias, getNextAlias]);
 
@@ -1378,6 +1383,7 @@ export const TargetNode = ({ id, data }) => {
       </button>
 
       <Handle type="target" position={Position.Left} style={{ width: 10, height: 10 }} />
+      <Handle type="source" position={Position.Right} style={{ width: 10, height: 10 }} />
 
       <div className="flex items-center space-x-3 mb-3">
         <Database className="w-5 h-5 text-[#8E77BB]" />

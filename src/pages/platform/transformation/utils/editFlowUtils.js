@@ -280,14 +280,14 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
           schema: node.data.schema,
           table: node.data.table,
           columns: node.type === 'source'
-              ? (sourceOriginalColumns[node.id] || [])
-              : (node.data.columns && Array.isArray(node.data.columns)
-                  ? node.data.columns.map(col => ({
-                      name: typeof col === 'string' ? col : col.name,
-                      datatype: typeof col === 'object' ? col.datatype : undefined
-                    }))
-                  : []
-                ),
+            ? (sourceOriginalColumns[node.id] || [])
+            : (node.data.columns && Array.isArray(node.data.columns)
+              ? node.data.columns.map(col => ({
+                name: typeof col === 'string' ? col : col.name,
+                datatype: typeof col === 'object' ? col.datatype : undefined
+              }))
+              : []
+            ),
           alias: node.data.alias,
           objectType: node.data.objectType,
           preProcedures: finalPreProcedures.map(proc => ({
@@ -314,9 +314,13 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
           selectedSourceId: node.type === 'target' ? finalSelectedSourceId : node.data.selectedSourceId,
           name: node.data.name,
           description: node.data.description,
-          transformations: node.data.transformations || [],
           transformationConfig: node.data.transformationConfig || { operations: [] },
-          enableCountLogging: currentEnableCountLogging
+          enableCountLogging: currentEnableCountLogging,
+          mode: node.type === 'scheduler' ? node.data.mode || 'manual' : undefined,
+          flow_type: node.type === 'scheduler' ? node.data.flow_type || 'single_run' : undefined,
+          intervalValue: node.type === 'scheduler' ? node.data.intervalValue || '' : undefined,
+          frequency: node.type === 'scheduler' ? node.data.frequency || 'hourly' : undefined,
+          runningDays: node.type === 'scheduler' ? node.data.runningDays || [] : undefined
         },
         deletable: node.deletable,
         draggable: node.draggable,
@@ -507,7 +511,12 @@ export const restoreNodesAndEdgesFromEditData = (editFlowData, setNodes, setEdge
         },
         _isRestoring: true,
         transformations: node.data.transformations || [],
-        transformationConfig: node.data.transformationConfig || { operations: [] }
+        transformationConfig: node.data.transformationConfig || { operations: [] },
+        mode: node.type === 'scheduler' ? node.data.mode || 'manual' : undefined,
+        flow_type: node.type === 'scheduler' ? node.data.flow_type || 'single_run' : undefined,
+        intervalValue: node.type === 'scheduler' ? node.data.intervalValue || '' : undefined,
+        frequency: node.type === 'scheduler' ? node.data.frequency || 'hourly' : undefined,
+        runningDays: node.type === 'scheduler' ? node.data.runningDays || [] : undefined
       }
     };
 
