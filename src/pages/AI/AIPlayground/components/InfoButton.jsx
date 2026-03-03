@@ -43,8 +43,8 @@ const InfoButton = ({ sectionDescriptions, section, isLastSection = false }) => 
                 <Info size={16} />
             </button>
             {isHovered && (
-                <div className={`absolute ${tooltipPositionClass} z-50 w-80 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg`}>
-                    <div className={`absolute ${arrowPositionClass} w-2 h-2 bg-gray-900 transform rotate-45`}></div>
+                <div className={`absolute ${tooltipPositionClass} z-50 w-80 p-3 bg-[#332849] text-white text-xs rounded-lg shadow-lg`}>
+                    <div className={`absolute ${arrowPositionClass} w-2 h-2 bg-[#332849] transform rotate-45`}></div>
                     {sectionDescriptions[section]}
                 </div>
             )}

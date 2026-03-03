@@ -184,7 +184,7 @@ const FeatureSection = ({
                             <InfoButton sectionDescriptions={sectionDescriptions} section={sectionKey} />
                         </div>
                         {infoMessage && (
-                            <div className="mt-2 mr-8 flex items-start gap-2 bg-purple-100 border border-[#8e78b7] text-[#8e78b7] rounded-md p-2">
+                            <div className="mt-2 mr-8 flex items-start gap-2 bg-[#FAF8FF] border border-[#8e78b7] text-[#8e78b7] rounded-md p-2">
                                 <Info size={14} className="text-[#8e78b7] mt-0.5 flex-shrink-0" />
                                 <p className="text-xs text-[#8e78b7]">{infoMessage}</p>
                             </div>
@@ -225,7 +225,7 @@ function FeatureEngineering({ onApiCall }) {
         categoricalEncoding: false,
     });
 
-    const [outlierStrategy, setOutlierStrategy] = useState('');
+    const [outlierStrategy, setOutlierStrategy] = useState('cap_95');
     const [encodingStrategy, setEncodingStrategy] = useState('onehot');
     const [hoveredOption, setHoveredOption] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -409,7 +409,7 @@ function FeatureEngineering({ onApiCall }) {
                                     <label
                                         className={`flex items-center gap-3 p-3 rounded-lg transition-all ${
                                             outlierStrategy === option.value
-                                                ? 'bg-purple-100 border border-[#8e78b7]'
+                                                ? 'bg-[#FAF8FF] border border-[#8e78b7]'
                                                 : 'bg-white'
                                         } ${readonly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                                     >
@@ -428,8 +428,8 @@ function FeatureEngineering({ onApiCall }) {
                                     </label>
 
                                     {hoveredOption === option.value && (
-                                        <div className="absolute left-0 top-full mt-2 z-50 w-80 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg">
-                                            <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+                                        <div className="absolute left-0 top-full mt-2 z-50 w-80 p-3 bg-[#332849] text-white text-xs rounded-lg shadow-lg">
+                                            <div className="absolute -top-1 left-4 w-2 h-2 bg-[#332849] transform rotate-45"></div>
                                             <p className="leading-relaxed">{optionDescriptions[option.value]}</p>
                                         </div>
                                     )}
@@ -460,12 +460,12 @@ function FeatureEngineering({ onApiCall }) {
                 >
                     <div className="space-y-4">
                         <div>
-                            <h5 className="text-sm font-medium text-gray-700 mb-3">Categorical Columns</h5>
-                            <div className={`flex flex-wrap gap-2 ${categoricalColumns.length > 10 ? 'max-h-32 overflow-y-auto pr-2' : ''}`}>
+                            <h5 className="text-sm font-medium text-gray-700 mb-3 font-satoshi">Categorical Columns</h5>
+                            <div className={`flex flex-wrap gap-2 ${categoricalColumns.length > 10 ? 'max-h-32 overflow-y-auto pr-2 font-satoshi' : ''}`}>
                                 {categoricalColumns.map((column) => (
                                     <span
                                         key={column}
-                                        className="px-3 py-1.5 bg-purple-100 border border-[#8e78b7] rounded-md text-sm text-[#8e78b7] font-medium"
+                                        className="px-3 py-1.5 border border-[#CCCCCC] rounded-lg text-xs text-[#818181] font-medium font-satoshi"
                                     >
                                         {column}
                                     </span>
@@ -488,7 +488,7 @@ function FeatureEngineering({ onApiCall }) {
                                     <label
                                         className={`flex items-center gap-3 p-3 rounded-lg transition-all ${
                                             encodingStrategy === option.value
-                                                ? 'bg-purple-100 border border-[#8e78b7]'
+                                                ? 'bg-[#FAF8FF] border border-[#8e78b7]'
                                                 : 'bg-white'
                                         } ${readonly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                                     >
@@ -507,8 +507,8 @@ function FeatureEngineering({ onApiCall }) {
                                     </label>
 
                                     {hoveredOption === option.value && (
-                                        <div className="absolute left-0 top-full mt-2 z-50 w-80 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg">
-                                            <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+                                        <div className="absolute left-0 top-full mt-2 z-50 w-80 p-3 bg-[#332849] text-white text-xs rounded-lg shadow-lg">
+                                            <div className="absolute -top-1 left-4 w-2 h-2 bg-[#332849] transform rotate-45"></div>
                                             <p className="">{optionDescriptions[option.value]}</p>
                                         </div>
                                     )}
@@ -516,7 +516,6 @@ function FeatureEngineering({ onApiCall }) {
                             ))}
                         </div>
 
-                        {/* Inline error — only shown after Next is clicked */}
                         {encodingStrategyError && (
                             <p className="text-xs text-red-500 mt-2 pl-0.5">Please select an encoding method</p>
                         )}

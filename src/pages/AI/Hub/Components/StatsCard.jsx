@@ -91,7 +91,7 @@ export const StatsContainer = ({
   padding = 'p-4',
   className = '',
 }) => (
-  <div className={`bg-gradient-to-r ${gradient} rounded-2xl ${padding} ${className}`}>
+  <div className={`rounded-2xl ${padding} ${className}`} style={{ background: gradient }}>
     {children}
   </div>
 );

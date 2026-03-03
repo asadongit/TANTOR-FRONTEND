@@ -250,7 +250,7 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-4 min-w-0 overflow-x-hidden">
-      <div className={`bg-gradient-to-r ${aithemestyle.statsCardGradient} rounded-2xl p-4`}>
+      <div className={` rounded-2xl p-4`} style={{ background: aithemestyle.statsCardGradient }}>
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* <StatCard {...statsData[0]} /> */}

@@ -589,7 +589,7 @@ const Orchestration = () => {
                 {/* Stats Cards */}
                 <div className="flex-shrink-0 p-4">
                     {loading ? (
-                        <div className={`bg-gradient-to-r ${aithemestyle.statsCardGradient} rounded-xl p-4`}>
+                        <div className={`rounded-xl p-4`} style={{ background: aithemestyle.statsCardGradient }}>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                                 {[1, 2, 3, 4, 5].map((_, index) => (
                                     <div key={index} className="bg-gray-100 rounded-lg px-4 py-3 border border-gray-200 animate-pulse">
@@ -605,7 +605,7 @@ const Orchestration = () => {
                             </div>
                         </div>
                     ) : (
-                        <div className={`bg-gradient-to-r ${aithemestyle.statsCardGradient} rounded-xl p-4`}>
+                        <div className={`rounded-xl p-4`} style={{ background: aithemestyle.statsCardGradient }}>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                                 {statsData.map((stat, index) => (
                                     <StatCard key={index} {...stat} />

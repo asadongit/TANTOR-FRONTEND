@@ -55,11 +55,11 @@ const SearchableDropdown = ({
         onClick={() => !readonly && setIsOpen(!isOpen)}
         className={`w-full px-3 py-2 border rounded-lg text-sm text-left focus:outline-none focus:ring-2 focus:border-transparent bg-white flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
           hasError
-            ? 'border-red-400 focus:ring-red-300'
+            ? 'border-[#EF4D5F] bg-[#FFF7F8] focus:ring-red-300'
             : 'border-gray-300 focus:ring-[#8e78b7]'
         }`}
       >
-        <span className={selectedColumn ? "text-gray-700" : "text-gray-500"}>
+        <span className={selectedColumn ? "text-gray-700" : hasError ? "text-[#EF4D5F]" : "text-gray-400"}>
           {selectedColumn || placeholder}
         </span>
         <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,9 +68,7 @@ const SearchableDropdown = ({
       </button>
 
       {isOpen && !readonly && (
-        <div className={`absolute z-50 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden ${
-          dropDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
-        }`}>
+        <div className={`absolute z-50 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden ${dropDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
           <div className="p-2 border-b border-gray-200">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -96,6 +94,163 @@ const SearchableDropdown = ({
                   {option}
                 </button>
               ))
+            ) : (
+              <div className="px-3 py-2 text-sm text-gray-500 text-center">No results found</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const MultiSelectDropdown = ({
+  selectedColumns = [],
+  onSelectionChange,
+  availableOptions,
+  placeholder = "Search and select column...",
+  readonly,
+  dropDirection = "down",
+  hasError = false
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const dropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
+
+  const filteredOptions = availableOptions.filter(option =>
+    option.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const allFilteredSelected = filteredOptions.length > 0 && filteredOptions.every(o => selectedColumns.includes(o));
+  const someFilteredSelected = filteredOptions.some(o => selectedColumns.includes(o));
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+        setSearchTerm('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isOpen]);
+
+  const toggleOption = (option) => {
+    if (readonly) return;
+    if (selectedColumns.includes(option)) {
+      onSelectionChange(selectedColumns.filter(c => c !== option));
+    } else {
+      onSelectionChange([...selectedColumns, option]);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (readonly) return;
+    if (allFilteredSelected) {
+      onSelectionChange(selectedColumns.filter(c => !filteredOptions.includes(c)));
+    } else {
+      const merged = [...new Set([...selectedColumns, ...filteredOptions])];
+      onSelectionChange(merged);
+    }
+  };
+
+  const triggerLabel = selectedColumns.length === 0
+    ? placeholder
+    : selectedColumns.length === 1
+      ? selectedColumns[0]
+      : `${selectedColumns.length} columns selected`;
+
+  return (
+    <div className="relative w-full" ref={dropdownRef}>
+      <button
+        type="button"
+        disabled={readonly}
+        onClick={() => !readonly && setIsOpen(!isOpen)}
+        className={`w-full px-3 py-2 border rounded-lg text-sm text-left focus:outline-none focus:ring-2 focus:border-transparent bg-white flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+          hasError
+            ? 'border-[#EF4D5F] bg-[#FFF7F8] focus:ring-red-300'
+            : 'border-gray-300 focus:ring-[#8e78b7]'
+        }`}
+      >
+        <span className={selectedColumns.length > 0 ? 'text-gray-700' : hasError ? 'text-[#EF4D5F]' : 'text-gray-400'}>
+          {triggerLabel}
+        </span>
+        <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && !readonly && (
+        <div className={`absolute z-50 w-full bg-white border border-gray-300 rounded-md shadow-lg overflow-hidden ${dropDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
+          <div className="p-2 border-b border-gray-200">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search..."
+                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          {filteredOptions.length > 0 && (
+            <div className="border-b border-gray-100">
+              <button
+                type="button"
+                onClick={toggleSelectAll}
+                className="w-full px-3 py-2 text-sm text-left flex items-center gap-2 hover:bg-gray-50 transition-colors"
+              >
+                <span className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${
+                  allFilteredSelected || someFilteredSelected ? 'bg-[#8e78b7] border-[#8e78b7]' : 'border-gray-300 bg-white'
+                }`}>
+                  {allFilteredSelected ? (
+                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : someFilteredSelected ? (
+                    <span className="w-2 h-0.5 bg-white rounded" />
+                  ) : null}
+                </span>
+                <span className="font-medium text-gray-700">Select All</span>
+                <span className="ml-auto text-xs text-gray-400">
+                  {selectedColumns.length}/{availableOptions.length + selectedColumns.length}
+                </span>
+              </button>
+            </div>
+          )}
+
+          <div className="overflow-y-auto max-h-44">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((option) => {
+                const isSelected = selectedColumns.includes(option);
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => toggleOption(option)}
+                    className="w-full px-3 py-2 text-sm text-left flex items-center gap-2 hover:bg-gray-50 transition-colors"
+                  >
+                    <span className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${isSelected ? 'bg-[#8e78b7] border-[#8e78b7]' : 'border-gray-300 bg-white'}`}>
+                      {isSelected && (
+                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </span>
+                    <span className="text-gray-700">{option}</span>
+                  </button>
+                );
+              })
             ) : (
               <div className="px-3 py-2 text-sm text-gray-500 text-center">No results found</div>
             )}
@@ -132,6 +287,9 @@ function DataCleaning({ onValidationChange, onApiCall }) {
   const { workflowState, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
   const readonly = mode === 'view';
 
+  const changeDataTypeSectionRef = useRef(null);
+  const missingValueSectionRef = useRef(null);
+
   const columnsDataTypes = workflowState?.modelGenesis?.apiResponse?.columns_data_types?.manual || {};
   const columnNames = Object.keys(columnsDataTypes);
   const savedStep1 = workflowState?.dataPreprocessing?.step1;
@@ -165,7 +323,6 @@ function DataCleaning({ onValidationChange, onApiCall }) {
     { columnName: '' }
   ]);
 
-  // Only show errors after Next is clicked
   const [showFieldErrors, setShowFieldErrors] = useState(false);
 
   useEffect(() => {
@@ -195,12 +352,10 @@ function DataCleaning({ onValidationChange, onApiCall }) {
     }
   }, [savedStep1, columnsDataTypes]);
 
-  // Always report valid — Next button is never disabled by this step
   useEffect(() => {
     if (onValidationChange) onValidationChange(true);
   }, []);
 
-  // Auto-clear errors once user has fixed everything
   useEffect(() => {
     if (!showFieldErrors) return;
     const changeDataTypeHasError =
@@ -263,6 +418,27 @@ function DataCleaning({ onValidationChange, onApiCall }) {
     const isValid = validateStep();
     if (!isValid) {
       setShowFieldErrors(true);
+
+      const changeDataTypeHasError = toggles.changeDataType && (
+        !dataTypeColumns.some(col => col.columnName && col.newDataType) ||
+        dataTypeColumns.some(col => (col.columnName && !col.newDataType) || (!col.columnName && col.newDataType))
+      );
+      const missingValueHasError = toggles.missingValue && !missingValueColumns.some(col => col.columnName);
+
+      setExpandedSections(prev => ({
+        ...prev,
+        changeDataType: changeDataTypeHasError ? true : prev.changeDataType,
+        missingValue: missingValueHasError ? true : prev.missingValue,
+      }));
+
+      setTimeout(() => {
+        if (changeDataTypeHasError && changeDataTypeSectionRef.current) {
+          changeDataTypeSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (missingValueHasError && missingValueSectionRef.current) {
+          missingValueSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 50);
+
       return false;
     }
 
@@ -328,11 +504,6 @@ function DataCleaning({ onValidationChange, onApiCall }) {
     return columnNames.filter(name => !selected.includes(name));
   };
 
-  const getAvailableColumnsForMissingValue = () => {
-    const selected = missingValueColumns.map(col => col.columnName).filter(Boolean);
-    return columnNames.filter(name => !selected.includes(name));
-  };
-
   const canAddNewRow = () => {
     if (dataTypeColumns.length === 0) return true;
     const last = dataTypeColumns[dataTypeColumns.length - 1];
@@ -365,7 +536,7 @@ function DataCleaning({ onValidationChange, onApiCall }) {
 
   const dataTypeOptions = ['datetime', 'numeric', 'boolean', 'category', 'string'];
 
-  // Derived section-level error flags
+  // ── CHANGE: No longer used for section-level red bg/heading ──
   const changeDataTypeSectionError = showFieldErrors && toggles.changeDataType && (
     !dataTypeColumns.some(col => col.columnName && col.newDataType) ||
     dataTypeColumns.some(col => (col.columnName && !col.newDataType) || (!col.columnName && col.newDataType))
@@ -373,24 +544,19 @@ function DataCleaning({ onValidationChange, onApiCall }) {
   const missingValueSectionError = showFieldErrors && toggles.missingValue &&
     !missingValueColumns.some(col => col.columnName);
 
-  // Helper: section card border class
-  const sectionClass = (hasError) =>
-    `rounded-lg transition-all ${hasError
-      ? 'bg-red-50 border border-red-400'
-      : 'bg-[#FAFAFA]'
-    }`;
-
   return (
     <div className="space-y-4 max-w-full">
 
       {/* ── Change Data Type ── */}
-      <div className={sectionClass(changeDataTypeSectionError)}>
+      <div ref={changeDataTypeSectionRef} className="rounded-lg transition-all bg-[#FAFAFA]">
         <div className="p-4 flex items-center justify-between">
-          <div className="flex-1 flex items-center gap-2">
-            <h4 className={`text-sm font-medium ${changeDataTypeSectionError ? 'text-red-700' : 'text-gray-900'}`}>
-              Change Data Type
-            </h4>
-            <InfoButton sectionDescriptions={sectionDescriptions} section="changeDataType" />
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h4 className="text-sm font-medium text-gray-900">
+                Change Data Type
+              </h4>
+              <InfoButton sectionDescriptions={sectionDescriptions} section="changeDataType" />
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -398,8 +564,11 @@ function DataCleaning({ onValidationChange, onApiCall }) {
               <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
             </label>
             {toggles.changeDataType && (
-              <button onClick={() => toggleSection('changeDataType')} className="text-gray-400 hover:text-gray-600">
-                {expandedSections.changeDataType ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+              <button onClick={() => toggleSection('changeDataType')} className="hover:opacity-70 transition-opacity">
+                {expandedSections.changeDataType
+                  ? <ChevronUp size={20} color="#818181" />
+                  : <ChevronDown size={20} color="#818181" />
+                }
               </button>
             )}
           </div>
@@ -417,7 +586,6 @@ function DataCleaning({ onValidationChange, onApiCall }) {
                 <div />
               </div>
 
-              {/* Each row: use items-start so each cell can have error text below it independently */}
               {dataTypeColumns.map((column, index) => {
                 const colMissingName = showFieldErrors && !column.columnName;
                 const colMissingType = showFieldErrors && column.columnName && !column.newDataType;
@@ -431,45 +599,38 @@ function DataCleaning({ onValidationChange, onApiCall }) {
                         selectedColumn={column.columnName}
                         onSelect={(val) => handleColumnChange(index, val)}
                         availableOptions={getAvailableColumns(index)}
-                        placeholder="Select column"
+                        placeholder="Select"
                         readonly={readonly}
                         dropDirection="down"
                         hasError={colMissingName}
                       />
                       {colMissingName && (
-                        <p className="text-xs text-red-500 mt-1 pl-0.5">Please select a column</p>
+                        <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">Please select a column</p>
                       )}
                     </div>
 
-                    {/* Old Data Type — no error state, purely display */}
+                    {/* Old Data Type */}
                     <div className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 bg-white">
                       {column.oldDataType || '-'}
                     </div>
 
                     {/* New Data Type */}
                     <div className="flex flex-col">
-                      <select
-                        disabled={readonly}
-                        value={column.newDataType}
-                        onChange={(e) => handleNewDataTypeChange(index, e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:border-transparent transition-colors ${
-                          colMissingType
-                            ? 'border-red-400 focus:ring-red-300 bg-white'
-                            : 'border-gray-300 focus:ring-[#8e78b7] bg-white'
-                        }`}
-                      >
-                        <option value="">Select type</option>
-                        {dataTypeOptions.map(type => (
-                          <option key={type} value={type}>{type}</option>
-                        ))}
-                      </select>
-                      {/* Error text sits ONLY under this column */}
+                      <SearchableDropdown
+                        selectedColumn={column.newDataType}
+                        onSelect={(val) => handleNewDataTypeChange(index, val)}
+                        availableOptions={dataTypeOptions}
+                        placeholder="Select"
+                        readonly={readonly}
+                        dropDirection="down"
+                        hasError={!!colMissingType}
+                      />
                       {colMissingType && (
-                        <p className="text-xs text-red-500 mt-1 pl-0.5">Please select a new data type</p>
+                        <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">Please select a new data type</p>
                       )}
                     </div>
 
-                    {/* Remove button — aligned to top of row */}
+                    {/* Remove button */}
                     <div className="flex items-start justify-center pt-2">
                       {dataTypeColumns.length > 1 && (
                         <button
@@ -489,17 +650,19 @@ function DataCleaning({ onValidationChange, onApiCall }) {
                 );
               })}
 
-              <button
-                onClick={addColumn}
-                disabled={readonly || !canAddNewRow()}
-                className={`w-full py-3 border-2 border-dashed rounded-lg text-sm flex items-center justify-center gap-2 transition-colors mt-1 ${
-                  readonly || !canAddNewRow()
+              <div>
+                <button
+                  onClick={addColumn}
+                  disabled={readonly || !canAddNewRow()}
+                  style={{ width: '330px' }}
+                  className={`py-2 border-2 border-dashed rounded-lg text-sm flex items-center justify-center gap-2 transition-colors mt-3 ${readonly || !canAddNewRow()
                     ? 'border-gray-200 text-gray-300 cursor-not-allowed'
-                    : 'border-[#8e78b7] text-[#8e78b7]'
-                }`}
-              >
-                <Plus size={16} /> Add Column
-              </button>
+                    : 'border-[#8e78b7] text-[#8e78b7] hover:bg-purple-50'
+                  }`}
+                >
+                  <Plus size={16} /> Add Column
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -534,10 +697,11 @@ function DataCleaning({ onValidationChange, onApiCall }) {
       </div>
 
       {/* ── Missing Value Indicator ── */}
-      <div className={sectionClass(missingValueSectionError)}>
+      <div ref={missingValueSectionRef} className="rounded-lg transition-all bg-[#FAFAFA]">
         <div className="p-4 flex items-center justify-between">
           <div className="flex-1 flex items-center gap-2">
-            <h4 className={`text-sm font-medium ${missingValueSectionError ? 'text-red-700' : 'text-gray-900'}`}>
+            {/* CHANGE: heading always gray-900, never red */}
+            <h4 className="text-sm font-medium text-gray-900">
               Missing Value Indicator
             </h4>
             <InfoButton sectionDescriptions={sectionDescriptions} section="missingValue" isLastSection={true} />
@@ -548,8 +712,11 @@ function DataCleaning({ onValidationChange, onApiCall }) {
               <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8E77BB]"></div>
             </label>
             {toggles.missingValue && (
-              <button onClick={() => toggleSection('missingValue')} className="text-gray-400 hover:text-gray-600">
-                {expandedSections.missingValue ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+              <button onClick={() => toggleSection('missingValue')} className="hover:opacity-70 transition-opacity">
+                {expandedSections.missingValue
+                  ? <ChevronUp size={20} color="#818181" />
+                  : <ChevronDown size={20} color="#818181" />
+                }
               </button>
             )}
           </div>
@@ -558,23 +725,25 @@ function DataCleaning({ onValidationChange, onApiCall }) {
         {toggles.missingValue && expandedSections.missingValue && (
           <div className="px-4 pb-4 border-t border-gray-100">
             <div className="mt-4 space-y-4">
-              <div className="w-1/2">
+              <div style={{ width: '318px' }}>
                 <label className="text-xs font-medium text-gray-600 mb-2 block">Select Column</label>
-                <SearchableDropdown
-                  selectedColumn=""
-                  onSelect={(columnName) => {
-                    const existing = missingValueColumns.filter(col => col.columnName);
-                    setMissingValueColumns([...existing, { columnName }]);
+                <MultiSelectDropdown
+                  selectedColumns={missingValueColumns.filter(col => col.columnName).map(col => col.columnName)}
+                  onSelectionChange={(newSelection) => {
+                    setMissingValueColumns(
+                      newSelection.length > 0
+                        ? newSelection.map(columnName => ({ columnName }))
+                        : [{ columnName: '' }]
+                    );
                   }}
-                  availableOptions={getAvailableColumnsForMissingValue()}
+                  availableOptions={columnNames}
                   placeholder="Search and select column..."
                   readonly={readonly}
                   dropDirection="up"
                   hasError={missingValueSectionError}
                 />
-                {/* Error text directly under the dropdown */}
                 {missingValueSectionError && (
-                  <p className="text-xs text-red-500 mt-1 pl-0.5">
+                  <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">
                     Please select at least one column
                   </p>
                 )}

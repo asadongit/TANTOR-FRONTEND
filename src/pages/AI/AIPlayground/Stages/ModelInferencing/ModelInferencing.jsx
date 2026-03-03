@@ -345,15 +345,15 @@ const ModelInferencing = () => {
             const hiddenCount = nonSuccessTasks.length - PREVIEW_COUNT;
 
             return (
-              <div className="mb-4 rounded-xl border border-[#c4b5e8] bg-[#f3f0fb] px-4 py-3">
+              <div className="mb-4 rounded-xl bg-[#FAFAFA] px-4 py-3">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`${tw.sectionHeading} text-[#6d4fa8]`}>
+                  <span className={`${tw.sectionHeading} text-[#818181]`}>
                     {nonSuccessTasks.length} model{nonSuccessTasks.length > 1 ? 's' : ''} still training — results update automatically
                   </span>
                   {nonSuccessTasks.length > PREVIEW_COUNT && (
                     <button
                       onClick={() => setShowAllPending(prev => !prev)}
-                      className="text-xs font-medium text-[#8e78b7] underline underline-offset-2 hover:text-[#6d4fa8] transition-colors flex-shrink-0 ml-3"
+                      className="text-xs font-normal text-[#818181] underline underline-offset-2 transition-colors flex-shrink-0 ml-3"
                     >
                       {showAllPending ? 'Show less' : `Show all ${nonSuccessTasks.length}`}
                     </button>
@@ -364,9 +364,9 @@ const ModelInferencing = () => {
                     <span
                       key={task.task_id}
                       title={task.algorithm}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white text-[#6d4fa8] border border-[#b39ddb]"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-normal bg-white text-[#818181] border border-[#CCCCCC]"
                     >
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#8e78b7] flex-shrink-0" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#FAFAFA] flex-shrink-0" />
                       {nonSuccessTasks.length <= 3
                         ? task.algorithm
                         : task.algorithm.length > 28
@@ -377,7 +377,7 @@ const ModelInferencing = () => {
                   {!showAllPending && hiddenCount > 0 && (
                     <button
                       onClick={() => setShowAllPending(true)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#ddd6f3] text-[#6d4fa8] border border-[#b39ddb] hover:bg-[#c4b5e8] transition-colors"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-normal bg-[#FAFAFA] text-[#818181] border border-[#CCCCCC]  transition-colors"
                     >
                       +{hiddenCount} more
                     </button>
