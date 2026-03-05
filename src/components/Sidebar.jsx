@@ -180,8 +180,8 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     {
       name: 'Reports',
       icon: DocumentTextIcon,
-      path: '/reports',
-      expandOnly: true,
+      path: '/generateReport',
+      // expandOnly: true,
       subItems: [
         {
           name: 'Business Reports',
@@ -315,10 +315,10 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     if (typeof IconComponent === 'string') {
       // It's an SVG URL, render as <img>
       return (
-        <img 
-          src={IconComponent} 
-          alt="" 
-          className="h-5 w-5 flex-shrink-0" 
+        <img
+          src={IconComponent}
+          alt=""
+          className="h-5 w-5 flex-shrink-0"
           style={isActive ? { filter: 'brightness(0) saturate(100%) invert(54%) sepia(25%) saturate(471%) hue-rotate(223deg)' } : {}}
         />
       );
@@ -503,7 +503,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
       {showCancelModal && (
         <div className="fixed inset-0 bg-[#00000099] bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-              <div>
+            <div>
               <div className='p-6' >
                 <div className="flex items-center gap-3 mb-4">
                   <h2 className="text-lg font-medium text-[#332849]">Cancel AI Playground Workflow?</h2>

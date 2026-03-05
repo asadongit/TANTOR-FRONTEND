@@ -1,9 +1,10 @@
 import { Icon } from "@iconify-icon/react";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { X, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import ReportDownloader from "./ReportDownloader";
 import { useAuth } from "../../../context/AuthContext";
 import toast from "react-hot-toast";
+import DataTable from "../../../components/DataTable";
 
 const GenerateReport = () => {
   const hostname = window._env_?.VITE_FAST_API;
@@ -16,8 +17,6 @@ const GenerateReport = () => {
   const [error, setError] = useState(null);
   const abortController = useRef(new AbortController());
   const [reports, setReports] = useState([]);
-  const [page, setPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const [isModalOpen, setIsModalOpen] = useState({
     modal1: false,
@@ -100,7 +99,7 @@ const GenerateReport = () => {
   const filteredReportsAccToUserAndCurrData = reports.filter(
     (report) =>
       report?.updated_at.split("T")[0] ===
-        new Date().toISOString().split("T")[0] &&
+      new Date().toISOString().split("T")[0] &&
       report?.created_by === decodedToken.preferred_username
   );
 
@@ -135,6 +134,57 @@ const GenerateReport = () => {
 
   const filteredReports = getReportsBetweenRange(startDate, endDate);
 
+  const columns = useMemo(() => [
+    { key: "workflow_name", label: "Name" },
+    { key: "workflow_type", label: "Report For" },
+    { key: "execute_type", label: "Type" },
+    { key: "project", label: "Project" },
+    { key: "created_by", label: "Users" },
+    {
+      key: "start_time",
+      label: "Start",
+      render: (row) => row.start_time ? row.start_time.split("T")[0] : row.start_time
+    },
+    {
+      key: "end_time",
+      label: "End",
+      render: (row) => row.end_time ? row.end_time.split("T")[0] : row.end_time
+    },
+    { key: "before_source_table_count", label: "Before Source table", },
+    { key: "after_target_table_count", label: "After Target table" },
+    { key: "table_size_before", label: "Table Size Before" },
+    { key: "table_size_after", label: "Table Size After" },
+    {
+      key: "status_choices",
+      label: "Status",
+      render: (row) => (
+        <div className="text-center">
+          <span
+            className={`px-3 py-1 rounded-full text-xs ${row.status_choices === "Completed"
+              ? "bg-green-100 text-green-600"
+              : "bg-red-100 text-red-600"
+              }`}
+          >
+            {row.status_choices}
+          </span>
+        </div>
+      )
+    },
+    {
+      key: "remarks",
+      label: "Remark",
+      render: (row) => row.remarks
+        ? row.remarks
+        : row.workflow_type === "Purge" && row.status_choices === "Completed"
+          ? "Purge successful"
+          : row.workflow_type === "Migration" && row.status_choices === "Completed"
+            ? "Migration successful"
+            : row.status_choices !== "Completed"
+              ? `${row.workflow_type} running`
+              : "-"
+    },
+  ], []);
+
   useEffect(() => {
     return () => {
       abortController.current.abort();
@@ -146,184 +196,10 @@ const GenerateReport = () => {
     fetchReports();
   }, [fetchReports]);
 
-  const sampleData = [
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-      status: "Completed",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-      status: "Completed",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-      status: "Failed",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-      status: "Completed",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-      status: "Failed",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-      status: "Completed",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-      status: "Completed",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-      status: "Completed",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-      status: "Completed",
-    },
-    {
-      id: "02",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-      status: "Completed",
-    },
-    {
-      id: "02",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-      status: "Completed",
-    },
-  ];
-
-  const cards = [
-    {
-      icon: "material-symbols:database-upload-outline",
-      bgcolor: "bg-[#d8d3e4] bg-opacity-25",
-      iconcolor: "text-purple-700",
-      title: "Purge",
-      count: "27",
-    },
-    {
-      icon: "material-symbols-light:two-pager-store-outline",
-      bgcolor: "bg-[#FFC93F] bg-opacity-25",
-      iconcolor: "text-orange-700",
-      title: "Migration",
-      count: "11",
-    },
-    {
-      icon: "material-symbols:cloud-sync-outline",
-      bgcolor: "bg-[#96CF7B] bg-opacity-25",
-      iconcolor: "text-green-700",
-      title: "CDC",
-      count: "07",
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#16ABC2] bg-opacity-25",
-      iconcolor: "text-cyan-700",
-      title: "Federation",
-      count: "17",
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#16ABC2] bg-opacity-25",
-      iconcolor: "text-cyan-700",
-      title: "Transformation",
-      count: "06",
-    },
-  ];
-
-  const totalPages = Math.ceil(filteredReports.length / itemsPerPage);
-  const startIndex = (page - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedFilteredReports = filteredReports.slice(startIndex, endIndex);
-  const paginatedReports = sortFilteredReportAccToStartTime.slice(
-    startIndex,
-    endIndex
-  );
-
-  const handleItemsPerPageChange = (e) => {
-    const newItemsPerPage = Number(e.target.value);
-    setItemsPerPage(newItemsPerPage);
-    setPage(1);
-  };
-
-  const handlePrevPage = () => {
-    setPage((prevPage) => Math.max(prevPage - 1, 1));
-  };
-
-  const handleNextPage = () => {
-    setPage((prevPage) => Math.min(prevPage + 1, totalPages));
-  };
-
   return (
     <div className="p-6">
       <div className="flex gap-2 mb-6 items-center justify-between">
-        <h1 className="text-2xl font-semibold">Details</h1>
+        <h1 className="text-2xl font-semibold">Reports</h1>
         <div>
           <button
             onClick={() => openModal("modal1")}
@@ -439,11 +315,10 @@ const GenerateReport = () => {
                     handleGenerateReport();
                   }}
                   disabled={loading}
-                  className={`px-6 py-2 rounded-lg transition-colors ${
-                    loading
-                      ? "bg-gray-300 cursor-not-allowed"
-                      : "border border-gray-400 hover:bg-[#8e78b7] hover:text-white"
-                  }`}
+                  className={`px-6 py-2 rounded-lg transition-colors ${loading
+                    ? "bg-gray-300 cursor-not-allowed"
+                    : "border border-gray-400 hover:bg-[#8e78b7] hover:text-white"
+                    }`}
                 >
                   {loading ? (
                     <div className="flex items-center gap-2">
@@ -466,165 +341,16 @@ const GenerateReport = () => {
       {/* Add Reports Model */}
 
       {isModalOpen.modal2 && filteredReports.length !== 0 && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl w-auto p-5 mx-9">
-            {/* <div className="overflow-x-auto"> */}
-            <div className="overflow-y-auto h-72">
-              <table className="w-full text-sm text-left rtl:text-right text-black">
-                <thead className="text-xs text-white-700 uppercase bg-black text-white sticky top-0 z-10">
-                  <tr>
-                    <th scope="col" className=" px-3 py-1">
-                      Workflow Name
-                    </th>
-                    <th scope="col" className="px-3 py-2">
-                      Report For
-                    </th>
-                    <th scope="col" className="px-3 py-2">
-                      Execute Type
-                    </th>
-                    <th scope="col" className="px-3 py-2">
-                      Project
-                    </th>
-                    <th scope="col" className="px-3 py-2">
-                      Users
-                    </th>
-                    <th scope="col" className="px-3 py-2">
-                      Start date
-                    </th>
-                    <th scope="col" className="px-3 py-2">
-                      End date
-                    </th>
-                    <th scope="col" className="px-3 py-2">
-                      Before Source table Count
-                    </th>
-                    <th scope="col" className="px-3 py-2">
-                      After Target table Count
-                    </th>
-                    <th scope="col" className="px-3 py-2">
-                      Table Size Before
-                    </th>
-                    <th scope="col" className="px-3 py-2">
-                      Table Size After
-                    </th>
-                    <th scope="col" className="px-3 py-2">
-                      Status
-                    </th>
-                    <th scope="col" className="px-3 py-2">
-                      Remark
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedFilteredReports.map((user, index) => (
-                    // <tr key={index} className="border-b"></tr>
-                    <tr
-                      key={index}
-                      className="border-b  bg-white border-white-700"
-                    >
-                      {/* <th
-                  scope="row"
-                  className="px-3 py-2 font-medium text-black-900 whitespace-nowrap text-black"
-                >
-                  {user.id}
-                </th> */}
-                      <td className="px-3 py-2">{user.workflow_name}</td>
-                      <td className="px-3 py-2">{user.workflow_type}</td>
-                      <td className="px-3 py-2">{user.execute_type}</td>
-                      <td className="px-3 py-2">{user.project}</td>
-                      <td className="px-3 py-2">{user.created_by}</td>
-                      <td className="px-3 py-2">
-                        {user.start_time
-                          ? user.start_time.split("T")[0]
-                          : user.start_time}
-                      </td>
-                      <td className="px-3 py-2">
-                        {user.end_time
-                          ? user.end_time.split("T")[0]
-                          : user.end_time}
-                      </td>
-                      <td className="px-3 py-2">
-                        {user.before_source_table_count}
-                      </td>
-                      <td className="px-3 py-2">
-                        {user.after_target_table_count}
-                      </td>
-                      <td className="px-3 py-2">{user.table_size_before}</td>
-                      <td className="px-3 py-2">{user.table_size_after}</td>
-                      <td className="p-3 text-center">
-                        <span
-                          className={`pr-3 py-1 rounded-full text-sm ${
-                            user.status_choices === "Completed"
-                              ? "text-green-600"
-                              : "text-red-600"
-                          }`}
-                        >
-                          {user.status_choices}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2">
-                        {user.remarks
-                          ? user.remarks
-                          : user.workflow_type === "Purge" &&
-                            user.status_choices === "Completed"
-                          ? "Purge successful"
-                          : user.workflow_type === "Migration" &&
-                            user.status_choices === "Completed"
-                          ? "Migration successful"
-                          : user.status_choices !== "Completed"
-                          ? `${user.workflow_type} running`
-                          : "-"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-[95vw] max-h-[90vh] flex flex-col p-5">
+            <h2 className="text-xl font-bold mb-4">Generated Reports</h2>
+            <div className="flex-1 overflow-auto">
+              <DataTable
+                columns={columns}
+                data={filteredReports}
+              />
             </div>
-            {/* </div> */}
-
-            {/* Pagination */}
-            <div className="flex items-center justify-between p-4 mt-2">
-              <div className="text-sm text-gray-500">
-                {startIndex + 1} to {Math.min(endIndex, filteredReports.length)}{" "}
-                of {filteredReports.length} results
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-500">Show per page</span>
-                <select
-                  className="border rounded p-1 text-sm"
-                  value={itemsPerPage}
-                  onChange={handleItemsPerPageChange}
-                >
-                  <option value="10">10</option>
-                  <option value="25">25</option>
-                </select>
-                <div className="flex">
-                  <button
-                    onClick={handlePrevPage}
-                    className="p-1 border rounded-l hover:bg-gray-100"
-                    disabled={page === 1}
-                  >
-                    <ChevronLeft
-                      size={20}
-                      className={page === 1 ? "text-gray-300" : "text-gray-600"}
-                    />
-                  </button>
-                  <button
-                    onClick={handleNextPage}
-                    className="p-1 border rounded-r border-l-0 hover:bg-gray-100"
-                    disabled={page === totalPages}
-                  >
-                    <ChevronRight
-                      size={20}
-                      className={
-                        page === totalPages ? "text-gray-300" : "text-gray-600"
-                      }
-                    />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-4 mt-8">
+            <div className="flex justify-end gap-4 mt-6">
               <div
                 onClick={() => {
                   closeModal("modal2");
@@ -644,150 +370,11 @@ const GenerateReport = () => {
 
       {/* Project Listing Table */}
 
-      <div className="relative overflow-x-auto shadow-md sm:rounded-lg mt-10">
-        <div className="max-h-[calc(100vh-310px)] overflow-y-auto">
-          <table className="w-auto text-sm text-left rtl:text-right text-black">
-            <thead className="text-xs text-white-700 uppercase bg-black text-white sticky top-0 z-10">
-              <tr>
-                <th scope="col" className="px-6 py-3 w-48">
-                  Workflow Name
-                </th>
-                <th scope="col" className="px-6 py-3">
-                  Report For
-                </th>
-                <th scope="col" className="px-6 py-3">
-                  Execute Type
-                </th>
-                <th scope="col" className="px-6 py-3">
-                  Project
-                </th>
-                <th scope="col" className="px-6 py-3">
-                  Users
-                </th>
-                <th scope="col" className="px-6 py-3">
-                  Start date
-                </th>
-                <th scope="col" className="px-6 py-3">
-                  End date
-                </th>
-                <th scope="col" className="px-6 py-3">
-                  Before Source table Count
-                </th>
-                <th scope="col" className="px-6 py-3">
-                  After Target table Count
-                </th>
-                <th scope="col" className="px-6 py-3">
-                  Table Size Before
-                </th>
-                <th scope="col" className="px-6 py-3">
-                  Table Size After
-                </th>
-                <th scope="col" className="px-6 py-3">
-                  Status
-                </th>
-                <th scope="col" className="px-6 py-3">
-                  Remark
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedReports.map((user, index) => (
-                <tr key={index} className="border-b bg-white border-white-700">
-                  <td className="px-6 py-4 max-w-48 truncate">
-                    {user.workflow_name}
-                  </td>
-                  <td className="px-6 py-4">{user.workflow_type}</td>
-                  <td className="px-6 py-4">{user.execute_type}</td>
-                  <td className="px-6 py-4">{user.project}</td>
-                  <td className="px-3 py-2">{user.created_by}</td>
-                  <td className="px-6 py-4">
-                    {user.start_time
-                      ? user.start_time.split("T")[0]
-                      : user.start_time}
-                  </td>
-                  <td className="px-6 py-4">
-                    {user.end_time
-                      ? user.end_time.split("T")[0]
-                      : user.end_time}
-                  </td>
-                  <td className="px-6 py-4">
-                    {user.before_source_table_count}
-                  </td>
-                  <td className="px-6 py-4">{user.after_target_table_count}</td>
-                  <td className="px-6 py-4">{user.table_size_before}</td>
-                  <td className="px-3 py-2">{user.table_size_after}</td>
-                  <td className="p-4 text-center">
-                    <span
-                      className={`px-2 py-1 rounded-full text-sm ${
-                        user.status_choices === "Completed"
-                          ? "text-green-600"
-                          : "text-red-600"
-                      }`}
-                    >
-                      {user.status_choices}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2">
-                    {user.remarks
-                      ? user.remarks
-                      : user.workflow_type === "Purge" &&
-                        user.status_choices === "Completed"
-                      ? "Purge successful"
-                      : user.workflow_type === "Migration" &&
-                        user.status_choices === "Completed"
-                      ? "Migration successful"
-                      : user.status_choices !== "Completed"
-                      ? `${user.workflow_type} running`
-                      : "-"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between p-4 mt-2">
-        <div className="text-sm text-gray-500">
-          {startIndex + 1} to{" "}
-          {Math.min(endIndex, filteredReports.length || reports.length)} of{" "}
-          {filteredReports.length || reports.length} results
-        </div>
-        <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-500">Show per page</span>
-          <select
-            className="border rounded p-1 text-sm"
-            value={itemsPerPage}
-            onChange={handleItemsPerPageChange}
-          >
-            <option value="10">10</option>
-            <option value="25">25</option>
-          </select>
-          <div className="flex">
-            <button
-              onClick={handlePrevPage}
-              className="p-1 border rounded-l hover:bg-gray-100"
-              disabled={page === 1}
-            >
-              <ChevronLeft
-                size={20}
-                className={page === 1 ? "text-gray-300" : "text-gray-600"}
-              />
-            </button>
-            <button
-              onClick={handleNextPage}
-              className="p-1 border rounded-r border-l-0 hover:bg-gray-100"
-              disabled={page === totalPages}
-            >
-              <ChevronRight
-                size={20}
-                className={
-                  page === totalPages ? "text-gray-300" : "text-gray-600"
-                }
-              />
-            </button>
-          </div>
-        </div>
+      <div className="mt-10">
+        <DataTable
+          columns={columns}
+          data={sortFilteredReportAccToStartTime}
+        />
       </div>
 
       {/* <div className="relative overflow-x-auto shadow-md sm:rounded-lg mt-10">
