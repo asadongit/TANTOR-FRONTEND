@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, AreaChart, Area, ResponsiveContainer, LabelList } from 'recharts';
 import { ArrowUp, ArrowDown, BookOpen, Rocket, Gauge, Bell, Clock, Activity, TrendingUp, Target, Zap } from 'lucide-react';
 import { useAuth } from '../../../../../../../context/AuthContext';
+import { aithemestyle } from '../../../../../../../components/themeContext';
 function Observability({ modelData }) {
     if (!modelData) {
         return (
@@ -127,21 +128,42 @@ function Observability({ modelData }) {
     const periods = ['7 Days', '15 Days', '30 Days'];
 
     const StatsCard = ({ label, value, icon: IconCmp }) => (
-        <div className="bg-white rounded-xl px-4 py-3 border border-purple-200 flex flex-col justify-between min-h-[90px]">
-            <div className="flex items-center gap-2 min-w-0">
-                <IconCmp className="w-4 h-4 text-[#8e78b7] shrink-0" />
-                <span className="text-gray-800 text-sm font-bold truncate">{label}</span>
+        <div className="bg-white rounded-xl px-4 py-4 flex flex-col justify-between min-h-[110px] min-w-0">
+            <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                    <IconCmp className="w-[19px] h-[19px] text-[#8e78b7] shrink-0" />
+                    <span className="satoshi-medium-md truncate leading-none">{label}</span>
+                </div>
             </div>
-            <div className="mt-3">
-                <div className="text-lg font-normal text-gray-600 tabular-nums leading-none">
-                    {value == null ? <div className="h-6 w-14 bg-gray-200 rounded animate-pulse" /> : value}
+
+            <div className="flex items-end justify-between mt-4">
+                <div className="font-bold text-gray-900 tabular-nums leading-none">
+                    {value == null ? (
+                        <div
+                            className="bg-gray-200 rounded animate-pulse"
+                            style={{ width: '19px', height: '27px', opacity: 1 }}
+                        />
+                    ) : (
+                        <span
+                            className="text-[19px]"
+                            style={{
+                                display: 'inline-block',
+                                width: 'auto',
+                                height: '27px',
+                                lineHeight: '27px',
+                                opacity: 1,
+                            }}
+                        >
+                            {value}
+                        </span>
+                    )}
                 </div>
             </div>
         </div>
     );
 
     return (
-        <div className="space-y-6 mt-4 px-4 sm:px-6 lg:px-8 max-w-[1400px] mx-auto">
+        <div className="space-y-6 px-6 pt-2 pb-1 mx-auto">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <h1 className="text-2xl sm:text-3xl font-medium text-gray-900"></h1>
                 <div className="flex items-center gap-2">
@@ -166,54 +188,53 @@ function Observability({ modelData }) {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatsCard
-                    label="Accuracy"
-                    value={avgPerf.accuracy ? `${(avgPerf.accuracy * 100).toFixed(1)}%` : 'N/A'}
-                    icon={Target}
-                />
-                <StatsCard
-                    label="Precision"
-                    value={avgPerf.precision ? `${(avgPerf.precision * 100).toFixed(1)}%` : 'N/A'}
-                    icon={TrendingUp}
-                />
-                <StatsCard
-                    label="Recall"
-                    value={avgPerf.recall ? `${(avgPerf.recall * 100).toFixed(1)}%` : 'N/A'}
-                    icon={Activity}
-                />
-                <StatsCard
-                    label="F1 Score"
-                    value={avgPerf.f1 ? `${(avgPerf.f1 * 100).toFixed(1)}%` : 'N/A'}
-                    icon={Zap}
-                />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatsCard
-                    label="Model Drift"
-                    value={modelDrift != null ? `${(modelDrift * 100).toFixed(1)}%` : 'N/A'}
-                    icon={BookOpen}
-                />
-                <StatsCard
-                    label="Data Drift (PSI)"
-                    value={dataDrift != null ? dataDrift.toFixed(2) : 'N/A'}
-                    icon={Gauge}
-                />
-                <StatsCard
-                    label="Predictions Count"
-                    value={predictionsCount}
-                    icon={Clock}
-                />
-                <StatsCard
-                    label="Avg Latency"
-                    value={`${avgLatencyMin} min`}
-                    icon={Bell}
-                />
+            <div className={`${aithemestyle.statsCardGradient270} rounded-xl p-4`}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <StatsCard
+                        label="Accuracy"
+                        value={avgPerf.accuracy ? `${(avgPerf.accuracy * 100).toFixed(1)}%` : 'N/A'}
+                        icon={Target}
+                    />
+                    <StatsCard
+                        label="Precision"
+                        value={avgPerf.precision ? `${(avgPerf.precision * 100).toFixed(1)}%` : 'N/A'}
+                        icon={TrendingUp}
+                    />
+                    <StatsCard
+                        label="Recall"
+                        value={avgPerf.recall ? `${(avgPerf.recall * 100).toFixed(1)}%` : 'N/A'}
+                        icon={Activity}
+                    />
+                    <StatsCard
+                        label="F1 Score"
+                        value={avgPerf.f1 ? `${(avgPerf.f1 * 100).toFixed(1)}%` : 'N/A'}
+                        icon={Zap}
+                    />
+                    <StatsCard
+                        label="Model Drift"
+                        value={modelDrift != null ? `${(modelDrift * 100).toFixed(1)}%` : 'N/A'}
+                        icon={BookOpen}
+                    />
+                    <StatsCard
+                        label="Data Drift (PSI)"
+                        value={dataDrift != null ? dataDrift.toFixed(2) : 'N/A'}
+                        icon={Gauge}
+                    />
+                    <StatsCard
+                        label="Predictions Count"
+                        value={predictionsCount}
+                        icon={Clock}
+                    />
+                    <StatsCard
+                        label="Avg Latency"
+                        value={`${avgLatencyMin} min`}
+                        icon={Bell}
+                    />
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
+                <div className="bg-white border border-gray-200 rounded-xl p-6">
                     <h3 className="text-xl font-semibold text-gray-900 mb-6">Data Drift Over Time</h3>
                     <ResponsiveContainer width="100%" height={250}>
                         <AreaChart data={dataDriftData}>
@@ -244,7 +265,7 @@ function Observability({ modelData }) {
                     </ResponsiveContainer>
                 </div>
 
-                <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
+                <div className="bg-white border border-gray-200 rounded-xl p-6">
                     <h3 className="text-xl font-semibold text-gray-900 mb-6">Prediction Drift Over Time</h3>
                     <ResponsiveContainer width="100%" height={250}>
                         <AreaChart data={predictionDriftData}>
@@ -276,7 +297,7 @@ function Observability({ modelData }) {
                 </div>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
                 <div className="flex items-start justify-between mb-6">
                     <h3 className="text-xl font-semibold text-gray-900">Feature Importance</h3>
                     {isMulticlass && (

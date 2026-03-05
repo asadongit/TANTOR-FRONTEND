@@ -26,6 +26,9 @@ export const StatCard = ({
     : 'hover:shadow-md';
 
   const isLoading = value == null;
+  
+  // Check if icon is a file path (SVG/image) or Iconify icon name
+  const isFilePath = typeof icon === 'string' && (icon.includes('.svg') || icon.includes('.png') || icon.includes('.jpg'));
 
   return (
     <div
@@ -35,7 +38,11 @@ export const StatCard = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className={variant === 'bordered' ? 'p-2 bg-purple-50 rounded-lg' : ''}>
-            <Icon icon={icon} className="w-5 h-5 text-purple-600" />
+            {isFilePath ? (
+              <img src={icon} alt={title} className="w-5 h-5" />
+            ) : (
+              <Icon icon={icon} className="w-5 h-5 text-purple-600" />
+            )}
           </div>
           <span className="text-gray-700 text-sm font-medium">{title}</span>
         </div>
@@ -75,26 +82,39 @@ export const LinkCard = ({
   icon = 'material-symbols:description-outline',
   onClick,
   className = '',
-}) => (
-  <div
-    onClick={onClick}
-    className={`bg-white rounded-xl px-4 py-4 border border-purple-100 shadow-sm flex items-center gap-2 cursor-pointer hover:bg-purple-50 transition-colors whitespace-nowrap ${className}`}
-  >
-    <Icon icon={icon} className="w-5 h-5 text-purple-600" />
-    <span className="text-purple-600 text-sm font-medium">{title}</span>
-  </div>
-);
+}) => {
+  // Check if icon is a file path (SVG/image) or Iconify icon name
+  const isFilePath = typeof icon === 'string' && (icon.includes('.svg') || icon.includes('.png') || icon.includes('.jpg'));
+
+  return (
+    <div
+      onClick={onClick}
+      className={`bg-white rounded-xl px-4 py-4 border border-purple-100 shadow-sm flex items-center gap-2 cursor-pointer hover:bg-purple-50 transition-colors whitespace-nowrap ${className}`}
+    >
+      {isFilePath ? (
+        <img src={icon} alt={title} className="w-5 h-5" />
+      ) : (
+        <Icon icon={icon} className="w-5 h-5 text-purple-600" />
+      )}
+      <span className="text-purple-600 text-sm font-medium">{title}</span>
+    </div>
+  );
+};
 
 export const StatsContainer = ({
   children,
   gradient = 'from-purple-400 via-purple-300 to-purple-200',
   padding = 'p-4',
   className = '',
-}) => (
-  <div className={`rounded-2xl ${padding} ${className}`} style={{ background: gradient }}>
-    {children}
-  </div>
-);
+}) => {
+  // Check if gradient already includes 'bg-' prefix (e.g., from theme)
+  const gradientClass = gradient.startsWith('bg-') ? gradient : `bg-gradient-to-r ${gradient}`;
+  return (
+    <div className={`${gradientClass} rounded-2xl ${padding} ${className}`}>
+      {children}
+    </div>
+  );
+};
 
 export const StatsGrid = ({
   columns = 4,

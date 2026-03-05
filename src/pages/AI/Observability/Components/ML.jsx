@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import { aithemestyle } from '../../../../components/themeContext';
+import DataTable from '../../../../components/DataTable';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart, Line, ResponsiveContainer, RadialBarChart, RadialBar, PolarAngleAxis, PieChart, Pie, Area, AreaChart } from 'recharts';
 import { ArrowUp, ArrowDown, BookOpen, Rocket, Gauge, Bell, Clock, Activity, TrendingUp, Target, Zap } from 'lucide-react';
 
@@ -105,26 +106,23 @@ function ML({ selectedPeriod, refreshKey }) {
         const trendColor = isUp ? "text-emerald-500" : "text-red-500";
 
         return (
-            <div className="bg-white rounded-xl px-4 py-3 border border-purple-200 flex flex-col justify-between min-h-[90px]">
-                <div className="flex items-center gap-2 min-w-0">
-                    <IconCmp className="w-4 h-4 shrink-0" style={{ color: aithemestyle.iconColor }} />
-                    <span className="text-gray-800 text-xl font-bold truncate">{label}</span>
-                </div>
-
-                <div className="flex items-end justify-between mt-3">
-                    <div className="text-lg font-normal text-gray-600 tabular-nums leading-none">
+            <div className="bg-white rounded-xl px-4 py-3 flex flex-col justify-center min-h-[90px] gap-3">
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <IconCmp className="w-4 h-4 shrink-0" style={{ color: aithemestyle.iconColor }} />
+                        <span className="text-[#282f49] text-[18px] font-medium truncate">{label}</span>
+                    </div>
+                    <div className="text-3xl font-normal text-[#818181] tabular-nums leading-none shrink-0">
                         {value == null ? <div className="h-6 w-14 bg-gray-200 rounded animate-pulse" /> : value}
                     </div>
-
-                    {(trend && trendValue && value != null) ? (
-                        <div className={`flex items-center gap-1 ${trendColor} text-sm font-semibold leading-none`}>
-                            <TrendIcon className="w-4 h-4" />
-                            <span className="tabular-nums">{trendValue}</span>
-                        </div>
-                    ) : (
-                        <div className="h-4 w-10" />
-                    )}
                 </div>
+
+                {(trend && trendValue && value != null) && (
+                    <div className={`flex items-center gap-1 ${trendColor} text-sm font-semibold leading-none justify-end`}>
+                        <TrendIcon className="w-4 h-4" />
+                        <span className="tabular-nums">{trendValue}</span>
+                    </div>
+                )}
             </div>
         );
     };
@@ -154,14 +152,14 @@ function ML({ selectedPeriod, refreshKey }) {
     };
 
     return (
-        <div className="space-y-6 mt-4 px-4 sm:px-6 lg:px-8 max-w-[1400px] mx-auto">
+        <div className="space-y-6 mx-auto pt-6 pb-6">
 
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
 
                 <div className="lg:col-span-3">
-                    <div className="bg-white rounded-2xl p-6 flex flex-col items-center h-full border border-gray-200 shadow-lg">
+                    <div className="bg-white rounded-2xl p-6 flex flex-col items-center h-full">
                         <div className="w-64 h-52 relative">
                             <RadialBarChart
                                 width={256}
@@ -194,61 +192,61 @@ function ML({ selectedPeriod, refreshKey }) {
                             </RadialBarChart>
 
                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                <div className="text-4xl sm:text-5xl font-extrabold tabular-nums text-gray-800">
+                                <div className="text-4xl sm:text-5xl font-extrabold tabular-nums text-[#818181]">
                                     {systemHealthScore}
                                 </div>
-                                <div className="text-xs tracking-widest text-gray-500 mt-1">HEALTH SCORE</div>
+                                <div className="text-xs tracking-widest text-[#282f49] mt-1">HEALTH SCORE</div>
                             </div>
                         </div>
 
-                        <div className="mt-4 text-lg font-semibold text-gray-900">System Health</div>
+                        <div className="mt-4 text-[18px] font-medium text-[#282f49]">System Health</div>
                     </div>
                 </div>
 
 
                 <div className="lg:col-span-5">
-                    <div className="grid grid-cols-2 gap-4 h-full">
-                        <div className="bg-white rounded-xl p-3 flex flex-col justify-between border border-gray-200 shadow-lg">
-                            <div className="flex items-center gap-2">
+                    <div className="grid grid-cols-2 gap-6 h-full">
+                        <div className="bg-white rounded-xl p-3 flex flex-col justify-between">
+                            <div className="flex items-center gap-2 py-2 pl-2">
                                 <BookOpen className="w-5 h-5 shrink-0" style={{ color: aithemestyle.iconColor }} />
-                                <span className="text-xl font-bold text-gray-700">Model Drift</span>
+                                <span className="text-[18px] font-medium text-[#282f49]">Model Drift</span>
                             </div>
-                            <div className="mt-2">
-                                <div className="text-2xl font-normal text-gray-600 tabular-nums">
+                            <div className="py-2 pl-2">
+                                <div className="text-2xl font-normal text-[#818181] tabular-nums">
                                     {modelDriftDisplay ? `${(modelDriftDisplay * 100).toFixed(1)}%` : '0%'}
                                 </div>
                             </div>
                         </div>
 
-                        <div className="bg-white rounded-xl p-3 flex flex-col justify-between border border-gray-200 shadow-lg">
-                            <div className="flex items-center gap-2">
+                        <div className="bg-white rounded-xl p-3 flex flex-col justify-between">
+                            <div className="flex items-center gap-2 py-2 pl-2">
                                 <Rocket className="w-5 h-5 shrink-0" style={{ color: aithemestyle.iconColor }} />
-                                <span className="text-xl font-bold text-gray-700">Accuracy</span>
+                                <span className="text-[18px] font-medium text-[#282f49]">Accuracy</span>
                             </div>
-                            <div className="mt-2">
-                                <div className="text-2xl font-normal text-gray-600 tabular-nums">
+                            <div className="py-2 pl-2">
+                                <div className="text-2xl font-normal text-[#818181] tabular-nums">
                                     {avgPerf.train?.accuracy ? `${(avgPerf.train.accuracy * 100).toFixed(1)}%` : '0%'}
                                 </div>
                             </div>
                         </div>
 
-                        <div className="bg-white rounded-xl p-3 flex flex-col justify-between border border-gray-200 shadow-lg">
-                            <div className="flex items-center gap-2">
+                        <div className="bg-white rounded-xl p-3 flex flex-col justify-between">
+                            <div className="flex items-center gap-2 py-2 pl-2">
                                 <Gauge className="w-5 h-5 shrink-0" style={{ color: aithemestyle.iconColor }} />
-                                <span className="text-xl font-bold text-gray-700">Avg Latency</span>
+                                <span className="text-[18px] font-medium text-[#282f49]">Avg Latency</span>
                             </div>
-                            <div className="mt-2">
-                                <div className="text-2xl font-normal text-gray-600 tabular-nums">{avgLatencyMin} min</div>
+                            <div className="py-2 pl-2">
+                                <div className="text-2xl font-normal text-[#818181] tabular-nums">{avgLatencyMin} min</div>
                             </div>
                         </div>
 
-                        <div className="bg-white rounded-xl p-3 flex flex-col justify-between border border-gray-200 shadow-lg">
-                            <div className="flex items-center gap-2">
+                        <div className="bg-white rounded-xl p-3 flex flex-col justify-between">
+                            <div className="flex items-center gap-2 py-2 pl-2">
                                 <Clock className="w-5 h-5 shrink-0" style={{ color: aithemestyle.iconColor }} />
-                                <span className="text-xl font-bold text-gray-700">Data Quality</span>
+                                <span className="text-[18px] font-medium text-[#282f49]">Data Quality</span>
                             </div>
-                            <div className="mt-2">
-                                <div className="text-2xl font-normal text-gray-600 tabular-nums">
+                            <div className="py-2 pl-2">
+                                <div className="text-2xl font-normal text-[#818181] tabular-nums">
                                     {dataQuality != null ? `${dataQuality}%` : 'N/A'}
                                 </div>
                             </div>
@@ -258,8 +256,8 @@ function ML({ selectedPeriod, refreshKey }) {
 
 
                 <div className="lg:col-span-4">
-                    <div className="bg-white rounded-xl p-4 h-full border border-gray-200 shadow-lg">
-                        <h3 className="text-xl font-semibold text-gray-700 mb-3">Recent Alerts</h3>
+                    <div className="bg-white rounded-xl p-4 h-full">
+                        <h3 className="text-[18px] font-medium text-[#282f49] mb-3">Recent Alerts</h3>
                         <div className="flex flex-col gap-2">
                             {recentAlerts.slice(0, 4).map((a, i) => {
                                 const iconColor =
@@ -276,12 +274,12 @@ function ML({ selectedPeriod, refreshKey }) {
                                     >
                                         <div className="flex-1 min-w-0">
                                             <div
-                                                className="text-xs font-medium text-gray-900 truncate"
+                                                className="text-xs font-medium text-[#282f49] truncate"
                                                 title={a.run_name ?? 'Unknown'}
                                             >
                                                 {a.run_name ?? 'Unknown'}
                                             </div>
-                                            <div className="text-[10px] text-gray-500">
+                                            <div className="text-[10px] text-[#282f49]">
                                                 {a.alert_type} · {new Date(a.timestamp).toLocaleDateString()}
                                             </div>
                                         </div>
@@ -320,8 +318,8 @@ function ML({ selectedPeriod, refreshKey }) {
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-                <div className="lg:col-span-7 bg-white border border-gray-200 rounded-xl shadow-lg p-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-6">Model Performance Over Time</h3>
+                <div className="lg:col-span-7 bg-white rounded-xl p-6">
+                    <h3 className="text-[18px] font-medium text-[#282f49] mb-6">Model Performance Over Time</h3>
 
                     <ResponsiveContainer width="100%" height={300}>
                         <AreaChart data={perfData}>
@@ -361,8 +359,8 @@ function ML({ selectedPeriod, refreshKey }) {
                 </div>
 
 
-                <div className="lg:col-span-5 bg-white border border-gray-200 rounded-xl shadow-lg p-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-6">Predictions Distribution</h3>
+                <div className="lg:col-span-5 bg-white rounded-xl p-6">
+                    <h3 className="text-[18px] font-medium text-[#282f49] mb-6">Predictions Distribution</h3>
                     <div className="flex items-center justify-between h-[300px]">
 
                         <div className="flex-shrink-0" style={{ width: '60%', height: '100%' }}>
@@ -397,10 +395,10 @@ function ML({ selectedPeriod, refreshKey }) {
                                         }}
                                     />
                                     <div className="flex flex-col min-w-0">
-                                        <span className="text-sm font-medium text-gray-900 truncate">
+                                        <span className="text-base font-medium text-[#282f49] truncate">
                                             {type.charAt(0).toUpperCase() + type.slice(1)}
                                         </span>
-                                        <span className="text-xs text-gray-500">{count}</span>
+                                        <span className="text-base font-medium text-[#282f49]">{count}</span>
                                     </div>
                                 </div>
                             ))}
@@ -412,8 +410,8 @@ function ML({ selectedPeriod, refreshKey }) {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-                <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-6">Data Drift Over Time</h3>
+                <div className="bg-white rounded-xl p-6">
+                    <h3 className="text-[18px] font-medium text-[#282f49] mb-6">Data Drift Over Time</h3>
                     <ResponsiveContainer width="100%" height={250}>
                         <AreaChart
                             data={Object.entries(data.data?.data_drift_over_time || {}).map(([date, val]) => ({
@@ -450,8 +448,8 @@ function ML({ selectedPeriod, refreshKey }) {
                 </div>
 
 
-                <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-6">Prediction Drift Over Time</h3>
+                <div className="bg-white rounded-xl p-6">
+                    <h3 className="text-[18px] font-medium text-[#282f49] mb-6">Prediction Drift Over Time</h3>
                     <ResponsiveContainer width="100%" height={250}>
                         <AreaChart
                             data={Object.entries(data.data?.prediction_drift_over_time || {}).map(([date, val]) => ({
@@ -489,75 +487,86 @@ function ML({ selectedPeriod, refreshKey }) {
             </div>
 
 
-            <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">Model Performance</h3>
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead>
-                            <tr className="text-sm text-left text-gray-600">
-                                <th className="px-4 py-2">Model</th>
-                                <th className="px-4 py-2">Accuracy</th>
-                                <th className="px-4 py-2">F1</th>
-                                <th className="px-4 py-2">Latency</th>
-                                <th className="px-4 py-2">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {(data.data?.model_performance || []).map((m) => {
-                                const acc = m.train_metrics?.accuracy;
-                                const f1 = m.train_metrics?.f1;
-                                const latencyDisplay =
-                                    m.latency != null
-                                        ? `${Math.round(Number(m.latency))}ms`
-                                        : (avgLatencyMs ? `${avgLatencyMs}ms` : 'N/A');
+            <div className="bg-white rounded-xl p-6">
+                <h3 className="text-[18px] font-medium text-[#282f49] mb-4">Model Performance</h3>
+                <DataTable
+                    columns={[
+                        {
+                            key: 'model_name',
+                            label: 'Model',
+                            sortable: true,
+                            render: (row) => (
+                                <div className="cursor-pointer text-[#8e78b7] hover:underline" onClick={() => handleModelClick(row)} title={row.model_name}>
+                                    {row.model_name}
+                                </div>
+                            )
+                        },
+                        {
+                            key: 'train_metrics',
+                            label: 'Accuracy',
+                            sortable: false,
+                            render: (row) => {
+                                const acc = row.train_metrics?.accuracy;
+                                return typeof acc === 'number' ? `${(acc * 100).toFixed(1)}%` : 'N/A';
+                            }
+                        },
+                        {
+                            key: 'f1',
+                            label: 'F1',
+                            sortable: false,
+                            render: (row) => {
+                                const f1 = row.train_metrics?.f1;
+                                return typeof f1 === 'number' ? `${(f1 * 100).toFixed(1)}%` : 'N/A';
+                            }
+                        },
+                        {
+                            key: 'latency',
+                            label: 'Latency',
+                            sortable: false,
+                            render: (row) => {
+                                const latencyDisplay = row.latency != null 
+                                    ? `${Math.round(Number(row.latency))}ms`
+                                    : (avgLatencyMs ? `${avgLatencyMs}ms` : 'N/A');
+                                return latencyDisplay;
+                            }
+                        },
+                        {
+                            key: 'status',
+                            label: 'Status',
+                            sortable: false,
+                            render: (row) => {
+                                const acc = row.train_metrics?.accuracy;
                                 let statusLabel = 'No Data';
                                 let statusClass = 'bg-gray-100 text-gray-700';
+                                let customStyle = {};
                                 if (typeof acc === 'number') {
                                     if (acc >= 0.9) {
                                         statusLabel = 'Healthy';
                                         statusClass = 'bg-emerald-100 text-emerald-800';
                                     } else if (acc >= 0.7) {
                                         statusLabel = 'Good';
-                                        statusClass = 'bg-sky-100 text-sky-800';
+                                        statusClass = 'text-xs font-medium';
+                                        customStyle = { backgroundColor: '#2AC79240', color: '#047857' };
                                     } else {
                                         statusLabel = 'Low';
-                                        statusClass = 'bg-amber-100 text-amber-800';
+                                        statusClass = 'text-xs font-medium';
+                                        customStyle = { backgroundColor: '#FBD6E5', color: '#EF4D5F' };
                                     }
                                 }
                                 return (
-                                    <tr key={m.model_id} className="text-sm text-gray-800">
-                                        <td className="px-4 py-3 max-w-[320px]">
-                                            <div className="truncate max-w-[400px] cursor-pointer text-[#8e78b7] hover:underline" title={m.model_name} onClick={() => handleModelClick(m)}>
-                                                {m.model_name}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {typeof acc === 'number' ? `${(acc * 100).toFixed(1)}%` : 'N/A'}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {typeof f1 === 'number' ? `${(f1 * 100).toFixed(1)}%` : 'N/A'}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {latencyDisplay}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${statusClass}`}>
-                                                {statusLabel}
-                                            </span>
-                                        </td>
-                                    </tr>
+                                    <span 
+                                        className={`inline-flex items-center px-2.5 py-1.5 rounded-md ${statusClass}`}
+                                        style={customStyle}
+                                    >
+                                        {statusLabel}
+                                    </span>
                                 );
-                            })}
-                            {(data.data?.model_performance || []).length === 0 && (
-                                <tr>
-                                    <td colSpan={5} className="px-4 py-6 text-center text-sm text-gray-500">
-                                        No model performance data available.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                            }
+                        }
+                    ]}
+                    data={data.data?.model_performance || []}
+                    isLoading={loading}
+                />
             </div>
 
         </div>

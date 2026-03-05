@@ -122,7 +122,8 @@ const XAI = ({ modelData }) => {
             <div className="flex justify-end">
                 <button
                     onClick={handleDownloadPDF}
-                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+                    className="flex items-center gap-2 px-4 py-2 text-white rounded-lg transition hover:opacity-90"
+                    style={{ backgroundColor: '#8E77BB' }}
                 >
                     <Download className="w-4 h-4" />
                     Download PDF

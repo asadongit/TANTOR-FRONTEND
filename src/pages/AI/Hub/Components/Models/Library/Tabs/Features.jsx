@@ -1,9 +1,12 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Icon } from "@iconify-icon/react";
 import DataTable from "../../../../../../../components/DataTable";
 import { StatCard, LinkCard, StatsContainer, StatsRow } from "../../../StatsCard";
 import { useAuth } from "../../../../../../../context/AuthContext";
 import { aithemestyle } from "../../../../../../../components/themeContext";
+import features from "../../../../../../../assets/ai/view_list.svg";
+import fact_check from "../../../../../../../assets/ai/fact_check.svg";
+import bubble_chart from "../../../../../../../assets/ai/bubble_chart.svg";
 
 function Features({ modelData }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -11,30 +14,51 @@ function Features({ modelData }) {
   const [tableData, setTableData] = useState([]);
   const [dataType, setDataType] = useState("processed");
   const [statsCards, setStatsCards] = useState([
-    { title: "Features", value: "-" },
-    { title: "Rows", value: "-" },
+    { title: "Features", value: "-", icon: features },
+    { title: "Datapoints", value: "-", icon: bubble_chart },
   ]);
   const [sampleDrawerOpen, setSampleDrawerOpen] = useState(false);
   const [sampleDrawerTitle, setSampleDrawerTitle] = useState("");
   const [sampleDrawerValues, setSampleDrawerValues] = useState([]);
   const [openRowMenuSno, setOpenRowMenuSno] = useState(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
   const [noDataMessage, setNoDataMessage] = useState("");
+  const menuButtonRef = useRef(null);
   const hostnameAI = window._env_?.VITE_AI_API;
   const { token, decodedToken } = useAuth();
 
   const processedToRows = (dataObj) => {
-    // dataObj: { "0": {feature: importance, ...}, ... }
+    // Handle both formats:
+    // Format 1 (flat): { "PC_1": 0.352..., "PC_2": 0.011..., ... }
+    // Format 2 (nested): { "0": {feature: importance, ...}, ... }
     if (!dataObj) return [];
     const rows = [];
-    Object.entries(dataObj).forEach(([classIdx, features], idx) => {
-      Object.entries(features).forEach(([feature, importance]) => {
+    
+    // Check if it's nested format (value is an object) or flat format (value is a number/string)
+    const isNested = Object.values(dataObj).some(val => typeof val === 'object' && val !== null);
+    
+    if (isNested) {
+      // Format 2: nested structure
+      Object.entries(dataObj).forEach(([classIdx, features], idx) => {
+        Object.entries(features).forEach(([feature, importance]) => {
+          rows.push({
+            sno: rows.length + 1,
+            class: classIdx,
+            feature,
+            importance,
+          });
+        });
+      });
+    } else {
+      // Format 1: flat structure
+      Object.entries(dataObj).forEach(([feature, importance], idx) => {
         rows.push({
-          class: classIdx,
+          sno: idx + 1,
           feature,
           importance,
         });
       });
-    });
+    }
     return rows;
   };
 
@@ -77,38 +101,52 @@ function Features({ modelData }) {
           }
         );
         const json = await res.json();
+        console.log("API Response:", json); // Debug: see the actual response structure
         if (
-          (dataType === "processed" && (!json.feature_importance_available || !json.data)) ||
+          (dataType === "processed" && !json.data) ||
           (dataType === "raw" && !json.data)
         ) {
           setTableData([]);
           setNoDataMessage(json.message || "No data available.");
           setStatsCards([
-            // { title: "Classes", value: "-" },
-            { title: "Features", value: "-" },
+            { title: "Features", value: "-", icon: features },
           ]);
         } else if (dataType === "processed") {
-          // New processed structure: json.data is { "0": {...}, ... }
+          // Handle both formats:
+          // Format 1 (flat): { "PC_1": importance, ... }
+          // Format 2 (nested): { "0": {feature: importance, ...}, ... }
           const processedData = json.data || {};
-          setTableData(processedToRows(processedData));
-          // Count unique features and classes
-          const classCount = Object.keys(processedData).length;
-          const featureSet = new Set();
-          Object.values(processedData).forEach((features) => {
-            Object.keys(features).forEach((f) => featureSet.add(f));
-          });
+          const rows = processedToRows(processedData);
+          console.log("Transformed processed rows:", rows); // Debug
+          setTableData(rows);
+          
+          // Count features based on format
+          const isNested = Object.values(processedData).some(val => typeof val === 'object' && val !== null);
+          let featureCount = 0;
+          if (isNested) {
+            const featureSet = new Set();
+            Object.values(processedData).forEach((features) => {
+              Object.keys(features).forEach((f) => featureSet.add(f));
+            });
+            featureCount = featureSet.size;
+          } else {
+            featureCount = Object.keys(processedData).length;
+          }
+          
           setStatsCards([
-            // { title: "Classes", value: classCount },
-            { title: "Features", value: featureSet.size },
+            { title: "Features", value: featureCount, icon: features },
           ]);
         } else {
-          setTableData(rawToRows(json.data));
+          const rows = rawToRows(json.data);
+          console.log("Transformed raw rows:", rows); // Debug: see the transformed data
+          setTableData(rows);
           setStatsCards([
-            { title: "Features", value: json.data?.no_of_features ?? "-" },
-            { title: "Rows", value: json.data?.no_of_datapoints ?? "-" },
+            { title: "Features", value: json.data?.no_of_features ?? "-", icon: features },
+            { title: "Datapoints", value: json.data?.no_of_datapoints ?? "-", icon: bubble_chart },
           ]);
         }
       } catch (e) {
+        console.error("Features fetch error:", e);
         setTableData([]);
         setNoDataMessage("No data available.");
       }
@@ -117,11 +155,21 @@ function Features({ modelData }) {
     fetchData();
   }, [dataType, modelData.dataset_id, hostnameAI, token]);
 
-  const processedColumns = [
-    { key: "class", label: "Class", sortable: true, width: "80px" },
-    { key: "feature", label: "Feature", sortable: true },
-    { key: "importance", label: "Importance", sortable: true },
-  ];
+  const processedColumns = useMemo(() => {
+    // Check if data has 'class' field (nested format) or not (flat format)
+    const hasClass = tableData.length > 0 && tableData[0].class !== undefined;
+    const cols = [];
+    if (hasClass) {
+      cols.push({ key: "class", label: "Class", sortable: true, width: "80px" });
+    } else {
+      cols.push({ key: "sno", label: "Sno", sortable: true, width: "90px" });
+    }
+    cols.push(
+      { key: "feature", label: "Feature", sortable: true },
+      { key: "importance", label: "Importance", sortable: true }
+    );
+    return cols;
+  }, [tableData]);
 
   const rawColumns = [
     { key: "sno", label: "Sno", sortable: true, width: "90px" },
@@ -145,11 +193,19 @@ function Features({ modelData }) {
         return (
           <div className="relative flex justify-end">
             <button
+              ref={isOpen ? menuButtonRef : null}
               type="button"
               className="p-1.5 rounded-md hover:bg-gray-100 text-gray-600"
               title="More"
               onClick={(e) => {
                 e.stopPropagation();
+                if (!isOpen) {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setMenuPosition({
+                    top: rect.bottom + window.scrollY,
+                    right: window.innerWidth - rect.right,
+                  });
+                }
                 setOpenRowMenuSno((prev) => (prev === row?.sno ? null : row?.sno));
               }}
             >
@@ -165,7 +221,13 @@ function Features({ modelData }) {
                   onClick={() => setOpenRowMenuSno(null)}
                   aria-label="Close menu"
                 />
-                <div className="absolute right-0 top-9 z-20 w-48 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                <div
+                  className="fixed z-20 w-32 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden"
+                  style={{
+                    top: `${menuPosition.top}px`,
+                    right: `${menuPosition.right}px`,
+                  }}
+                >
                   <button
                     type="button"
                     className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
@@ -219,11 +281,11 @@ function Features({ modelData }) {
 
   return (
     <div>
-      <StatsContainer gradient={aithemestyle.statsCardGradient}>
+      <StatsContainer gradient={aithemestyle.statsCardGradient270}>
         <StatsRow
           statsCards={statsCards}
           linkCards={[
-            { title: "DQ Report", style: { color: aithemestyle.iconColor } },
+            { title: "DQ Report", icon: fact_check, style: { color: aithemestyle.iconColor } },
           ]}
           variant="default"
           gap={4}
@@ -237,16 +299,13 @@ function Features({ modelData }) {
             type="button"
             aria-pressed={dataType === "raw"}
             onClick={() => setDataType(dataType === "raw" ? "processed" : "raw")}
-            className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors focus:outline-none ${
-              dataType === "raw" ? "bg-purple-400" : "bg-gray-200"
-            }`}
+            className="relative inline-flex h-6 w-12 items-center rounded-full transition-colors focus:outline-none bg-gray-200"
             style={{
               minWidth: "48px",
-              color: dataType === "raw" ? aithemestyle.iconColor : "inherit",
             }}
           >
             <span
-              className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform ${
+              className={`inline-block h-5 w-5 rounded-full shadow transform transition-transform ${
                 dataType === "raw" ? "translate-x-6" : "translate-x-1"
               }`}
               style={{
