@@ -1,8 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronUp, Plus, X, AlertCircle, Info } from 'lucide-react';
 import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 import InfoButton from '../../../components/InfoButton';
+
+const ChevronSVG = () => (
+  <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+  </svg>
+);
 
 const ColumnSearchableDropdown = ({
   value,
@@ -26,11 +32,9 @@ const ColumnSearchableDropdown = ({
         setShowDropdown(prev => ({ ...prev, [id]: false }));
       }
     };
-
     if (showDropdown[id]) {
       document.addEventListener('mousedown', handleClickOutside);
     }
-
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showDropdown, id]);
 
@@ -38,19 +42,26 @@ const ColumnSearchableDropdown = ({
   const filteredColumns = columns.filter(col =>
     col.toLowerCase().includes(currentSearch.toLowerCase())
   );
-
   const displayValue = value || placeholder;
 
   return (
     <div className="relative" ref={dropdownRef}>
       {label && <label className="block text-xs text-gray-500 mb-1.5">{label}</label>}
-      <div
+      <button
+        type="button"
+        disabled={disabled}
         onClick={() => !disabled && setShowDropdown(prev => ({ ...prev, [id]: !prev[id] }))}
-        className={`w-full px-3 py-2 border rounded-lg text-sm bg-white ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-[#8e78b7]'
-          } ${value ? 'text-gray-700' : 'text-gray-400'} ${hasError ? 'border-red-400' : 'border-gray-300'}`}
+        className={`w-full px-3 py-2 border rounded-lg text-sm bg-white flex items-center justify-between focus:outline-none focus:ring-2 focus:border-transparent transition-colors ${
+          disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-[#8e78b7]'
+        } ${value ? 'text-gray-700' : hasError ? 'text-[#EF4D5F]' : 'text-gray-400'} ${
+          hasError
+            ? 'border-[#EF4D5F] bg-[#FFF7F8] focus:ring-red-300'
+            : 'border-gray-300 focus:ring-[#8e78b7]'
+        }`}
       >
-        {displayValue}
-      </div>
+        <span className={value ? 'text-gray-700' : hasError ? 'text-[#EF4D5F]' : 'text-gray-400'}>{displayValue}</span>
+        <ChevronSVG />
+      </button>
 
       {showDropdown[id] && !disabled && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-hidden">
@@ -86,16 +97,104 @@ const ColumnSearchableDropdown = ({
                     setSearchValue(prev => ({ ...prev, [id]: '' }));
                     setShowDropdown(prev => ({ ...prev, [id]: false }));
                   }}
-                  className={`px-3 py-2 text-sm cursor-pointer hover:bg-purple-50 ${value === col ? 'bg-purple-50 text-[#8e78b7] font-medium' : 'text-gray-700'
-                    }`}
+                  className={`px-3 py-2 text-sm cursor-pointer hover:bg-purple-50 ${value === col ? 'bg-purple-50 text-[#8e78b7] font-medium' : 'text-gray-700'}`}
                 >
                   {col}
                 </div>
               ))
             ) : (
-              <div className="px-3 py-2 text-sm text-gray-400 text-center">
-                No columns found
-              </div>
+              <div className="px-3 py-2 text-sm text-gray-400 text-center">No columns found</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const StrategySearchableDropdown = ({
+  value,
+  onChange,
+  options,
+  placeholder,
+  disabled,
+  hasError
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const dropdownRef = React.useRef(null);
+  const searchRef = React.useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+        setSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && searchRef.current) {
+      searchRef.current.focus();
+    }
+  }, [isOpen]);
+
+  const filtered = options.filter(o => o.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        className={`w-full px-3 py-2 border rounded-lg text-sm bg-white flex items-center justify-between focus:outline-none focus:ring-2 focus:border-transparent transition-colors ${
+          disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-[#8e78b7]'
+        } ${value ? 'text-gray-700' : hasError ? 'text-[#EF4D5F]' : 'text-gray-400'} ${
+          hasError
+            ? 'border-[#EF4D5F] bg-[#FFF7F8] focus:ring-red-300'
+            : 'border-gray-300 focus:ring-[#8e78b7]'
+        }`}
+      >
+        <span>{value || placeholder}</span>
+        <ChevronSVG />
+      </button>
+
+      {isOpen && !disabled && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-hidden">
+          <div className="p-2 border-b border-gray-200">
+            <input
+              ref={searchRef}
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search methods..."
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            />
+          </div>
+          <div className="overflow-y-auto max-h-48">
+            <div
+              onClick={() => { onChange(''); setSearch(''); setIsOpen(false); }}
+              className="px-3 py-2 text-sm text-gray-400 hover:bg-[#FAFAFA] cursor-pointer"
+            >
+              {placeholder}
+            </div>
+            {filtered.length > 0 ? (
+              filtered.map(opt => (
+                <div
+                  key={opt}
+                  onClick={() => { onChange(opt); setSearch(''); setIsOpen(false); }}
+                  className={`px-3 py-2 text-sm cursor-pointer hover:bg-purple-50 ${value === opt ? 'bg-purple-50 text-[#8e78b7] font-medium' : 'text-gray-700'}`}
+                >
+                  {opt}
+                </div>
+              ))
+            ) : (
+              <div className="px-3 py-2 text-sm text-gray-400 text-center">No methods found</div>
             )}
           </div>
         </div>
@@ -109,6 +208,10 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
   const { workflowState, updatePreprocessingStep, datasetState, mode } = useAIPlayground();
   const readonly = mode === 'view';
 
+  const dropLowValueRef = useRef(null);
+  const handleMissingRef = useRef(null);
+  const createBasicRef = useRef(null);
+
   const columns = workflowState?.dataPreprocessing?.step1?.apiResponse?.filtered_uniqueness_report?.map(item => ({
     name: item.column,
     uniqueness: `${(item.uniqueness_ratio * 100).toFixed(2)}%`
@@ -117,23 +220,14 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
   const numericalColumns = workflowState?.dataPreprocessing?.step1?.apiResponse?.numerical_columns || [];
   const categoricalColumns = workflowState?.dataPreprocessing?.step1?.apiResponse?.categorical_columns || [];
   const datetimeColumns = workflowState?.dataPreprocessing?.step1?.apiResponse?.datetime_columns || [];
-
   const allColumns = [...numericalColumns, ...categoricalColumns, ...datetimeColumns];
 
   const [expandedSections, setExpandedSections] = useState({
-    dropLowValue: false,
-    handleMissing: false,
-    createBasic: false,
-    detectOutliers: false,
+    dropLowValue: false, handleMissing: false, createBasic: false, detectOutliers: false,
   });
-
   const [toggles, setToggles] = useState({
-    dropLowValue: false,
-    handleMissing: false,
-    createBasic: false,
-    detectOutliers: false,
+    dropLowValue: false, handleMissing: false, createBasic: false, detectOutliers: false,
   });
-
   const [selectedColumns, setSelectedColumns] = useState({});
   const [selectAll, setSelectAll] = useState(false);
   const [dropColumnsEnabled, setDropColumnsEnabled] = useState(false);
@@ -145,7 +239,6 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
   const [columnOverrides, setColumnOverrides] = useState([]);
   const [basicFeatures, setBasicFeatures] = useState([]);
   const [outlierMethod, setOutlierMethod] = useState('zscore');
-  const [hoveredInfo, setHoveredInfo] = useState(null);
   const [hoveredOutlier, setHoveredOutlier] = useState(null);
   const [searchNumerical, setSearchNumerical] = useState('');
   const [searchCategorical, setSearchCategorical] = useState('');
@@ -159,15 +252,8 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
   const [showColumnOverrideDropdown, setShowColumnOverrideDropdown] = useState({});
   const [showBasicFeatureCol1Dropdown, setShowBasicFeatureCol1Dropdown] = useState({});
   const [showBasicFeatureCol2Dropdown, setShowBasicFeatureCol2Dropdown] = useState({});
-
-  // ── NEW: only show field-level errors after Next is clicked ──
   const [showFieldErrors, setShowFieldErrors] = useState(false);
-
-  const [imputationWarnings, setImputationWarnings] = useState({
-    numerical: false,
-    categorical: false,
-    datetime: false
-  });
+  const [imputationWarnings, setImputationWarnings] = useState({ numerical: false, categorical: false, datetime: false });
 
   const numericalImputationMethods = ['knn', 'mice', 'mean', 'median', 'constant', 'ffill', 'bfill', 'interpolate', 'mice_bayes', 'simple_cv'];
   const categoricalImputationMethods = ['mode', 'constant', 'ffill', 'bfill'];
@@ -197,188 +283,101 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
       simple_cv: "A model-driven approach that evaluates multiple imputation strategies using cross-validation. The method selects the imputation technique that results in the best model performance. It ensures data quality is aligned with predictive accuracy."
     },
     categorical: {
-      mode: "A statistical imputation method that replaces missing categorical values with the most frequently occurring category. Missing values are filled using the category that appears most often in the data. This method preserves the dominant pattern in categorical features.",
-      constant: "A rule-based imputation method that replaces missing categorical values with a predefined category label. A fixed category such as \"Unknown\" or \"Not Available\" is used. This explicitly indicates missing data without altering existing category distributions.",
-      ffill: "A sequential imputation method that fills missing categorical values using the previous valid category. Missing entries are replaced with the last observed category in sequence. Commonly used for ordered or time-dependent categorical data.",
-      bfill: "A sequential imputation method that fills missing categorical values using the next valid category. Missing entries are replaced with the next available category. Useful when future category values are more reliable or consistent."
+      mode: "A statistical imputation method that replaces missing categorical values with the most frequently occurring category.",
+      constant: "A rule-based imputation method that replaces missing categorical values with a predefined category label.",
+      ffill: "A sequential imputation method that fills missing categorical values using the previous valid category.",
+      bfill: "A sequential imputation method that fills missing categorical values using the next valid category."
     },
     timeseries: {
-      mode: "A statistical imputation method that replaces missing values with the most frequently occurring value in the time series. Missing values are filled using the value that appears most often in the data. This method is useful when the time series has repeating or stable patterns.",
-      constant: "A rule-based imputation method that replaces missing time series values with a predefined constant. A fixed value (such as 0 or a domain-specific number) is used to fill gaps. This helps maintain continuity and clearly marks missing observations.",
-      ffill: "A sequential imputation method that propagates the last observed value forward in time. Missing values are replaced with the most recent known value. Commonly used when values are expected to change gradually over time.",
-      bfill: "A sequential imputation method that fills missing values using the next observed value. Missing values are replaced with the next available data point in the series. Useful when future values are more reliable than earlier ones."
+      mode: "A statistical imputation method that replaces missing values with the most frequently occurring value in the time series.",
+      constant: "A rule-based imputation method that replaces missing time series values with a predefined constant.",
+      ffill: "A sequential imputation method that propagates the last observed value forward in time.",
+      bfill: "A sequential imputation method that fills missing values using the next observed value."
     }
   };
 
   const outlierMethods = [
-    {
-      value: 'zscore',
-      label: 'Z-Score',
-      description: 'A statistical method that identifies outliers based on how far a data point deviates from the mean in terms of standard deviation. Values with very high or low Z-scores are considered outliers. Best suited for data that follows a normal distribution.'
-    },
-    {
-      value: 'modified_zscore',
-      label: 'Modified Z-Score',
-      description: 'A robust version of Z-score that uses the median and median absolute deviation (MAD). It reduces the impact of extreme values. More reliable than standard Z-score for skewed data.'
-    },
-    {
-      value: 'iqr',
-      label: 'IQR',
-      description: 'A statistical method that identifies outliers using the range between the first and third quartiles. Values falling far below or above this range are treated as outliers. Commonly used for non-normal data distributions.'
-    },
-    {
-      value: 'isolation_forest',
-      label: 'Isolation Forest',
-      description: 'A tree-based anomaly detection algorithm that isolates outliers by randomly partitioning data. Outliers are detected because they require fewer splits to isolate. Effective for large and high-dimensional datasets.'
-    },
-    {
-      value: 'lof',
-      label: 'LOF',
-      description: 'A density-based method that detects outliers by comparing local data density. Points with significantly lower density than their neighbors are flagged as outliers. Captures local anomalies effectively.'
-    },
-    {
-      value: 'one_class_svm',
-      label: 'One Class SVM',
-      description: 'A machine learning algorithm that learns the boundary of normal data. Data points falling outside the learned boundary are treated as outliers. Useful when only normal data is available for training.'
-    },
-    {
-      value: 'elliptic_envelope',
-      label: 'Elliptic Envelope',
-      description: 'A statistical method that fits an elliptical boundary around normal data points. Observations outside the ellipse are considered outliers. Works best when data follows a Gaussian distribution.'
-    },
-    {
-      value: 'dbscan',
-      label: 'DBSCAN',
-      description: 'A density-based clustering algorithm that identifies noise points as outliers. Points not belonging to any dense cluster are labeled as outliers. Effective for detecting clusters of arbitrary shape.'
-    }
+    { value: 'zscore', label: 'Z-Score', description: 'A statistical method that identifies outliers based on how far a data point deviates from the mean in terms of standard deviation. Values with very high or low Z-scores are considered outliers. Best suited for data that follows a normal distribution.' },
+    { value: 'modified_zscore', label: 'Modified Z-Score', description: 'A robust version of Z-score that uses the median and median absolute deviation (MAD). It reduces the impact of extreme values. More reliable than standard Z-score for skewed data.' },
+    { value: 'iqr', label: 'IQR', description: 'A statistical method that identifies outliers using the range between the first and third quartiles. Values falling far below or above this range are treated as outliers. Commonly used for non-normal data distributions.' },
+    { value: 'isolation_forest', label: 'Isolation Forest', description: 'A tree-based anomaly detection algorithm that isolates outliers by randomly partitioning data. Outliers are detected because they require fewer splits to isolate. Effective for large and high-dimensional datasets.' },
+    { value: 'lof', label: 'LOF', description: 'A density-based method that detects outliers by comparing local data density. Points with significantly lower density than their neighbors are flagged as outliers. Captures local anomalies effectively.' },
+    { value: 'one_class_svm', label: 'One Class SVM', description: 'A machine learning algorithm that learns the boundary of normal data. Data points falling outside the learned boundary are treated as outliers. Useful when only normal data is available for training.' },
+    { value: 'elliptic_envelope', label: 'Elliptic Envelope', description: 'A statistical method that fits an elliptical boundary around normal data points. Observations outside the ellipse are considered outliers. Works best when data follows a Gaussian distribution.' },
+    { value: 'dbscan', label: 'DBSCAN', description: 'A density-based clustering algorithm that identifies noise points as outliers. Points not belonging to any dense cluster are labeled as outliers. Effective for detecting clusters of arbitrary shape.' }
   ];
 
   useEffect(() => {
     if ((mode === 'view' || mode === 'edit') && workflowState?.dataPreprocessing?.step2?.config) {
       const config = workflowState.dataPreprocessing.step2.config;
-
-      const newToggles = {
+      setToggles({
         dropLowValue: config.drop_high_uniqueness_active || false,
         handleMissing: config.drop_high_null_active || false,
         createBasic: config.feature_creation_active || false,
         detectOutliers: config.outlier_detection_active || false,
-      };
-      setToggles(newToggles);
-
+      });
       if (config.columns_to_drop_manually && config.columns_to_drop_manually.length > 0) {
         const newSelectedColumns = {};
         config.columns_to_drop_manually.forEach(columnName => {
           const columnIndex = columns.findIndex(col => col.name === columnName);
-          if (columnIndex !== -1) {
-            newSelectedColumns[`${columnName}-${columnIndex}`] = true;
-          }
+          if (columnIndex !== -1) newSelectedColumns[`${columnName}-${columnIndex}`] = true;
         });
         setSelectedColumns(newSelectedColumns);
       }
-
-      if (config.null_threshold !== undefined) {
-        setThreshold(String(Math.round(config.null_threshold * 100)));
-      }
-
+      if (config.null_threshold !== undefined) setThreshold(String(Math.round(config.null_threshold * 100)));
       if (config.imputation_strategy_by_type) {
-        if (config.imputation_strategy_by_type.numeric) {
-          setNumericalImputation(config.imputation_strategy_by_type.numeric);
-        }
-        if (config.imputation_strategy_by_type.categorical) {
-          setCategoricalImputation(config.imputation_strategy_by_type.categorical);
-        }
-        if (config.imputation_strategy_by_type.datetime) {
-          setTimeSeriesImputation(config.imputation_strategy_by_type.datetime);
-        }
+        if (config.imputation_strategy_by_type.numeric) setNumericalImputation(config.imputation_strategy_by_type.numeric);
+        if (config.imputation_strategy_by_type.categorical) setCategoricalImputation(config.imputation_strategy_by_type.categorical);
+        if (config.imputation_strategy_by_type.datetime) setTimeSeriesImputation(config.imputation_strategy_by_type.datetime);
       }
-
       if (config.imputation_strategy_by_column && Object.keys(config.imputation_strategy_by_column).length > 0) {
-        const overrides = Object.entries(config.imputation_strategy_by_column).map(([column, method], index) => ({
-          id: Date.now() + index,
-          column: column,
-          method: method
-        }));
-        setColumnOverrides(overrides);
+        setColumnOverrides(Object.entries(config.imputation_strategy_by_column).map(([column, method], index) => ({ id: Date.now() + index, column, method })));
       }
-
       if (config.math_ops && config.math_ops.length > 0) {
-        const features = config.math_ops.map((op, index) => ({
+        setBasicFeatures(config.math_ops.map((op, index) => ({
           id: Date.now() + index,
-          column1: op.col1 || '',
-          column2: op.col2 || '',
-          operator: op.operation === 'add' ? '+' :
-            op.operation === 'subtract' ? '-' :
-              op.operation === 'multiply' ? '*' :
-                op.operation === 'divide' ? '/' :
-                  op.operation === 'modulo' ? '%' : '+',
+          column1: op.col1 || '', column2: op.col2 || '',
+          operator: op.operation === 'add' ? '+' : op.operation === 'subtract' ? '-' : op.operation === 'multiply' ? '*' : op.operation === 'divide' ? '/' : op.operation === 'modulo' ? '%' : '+',
           newColumnName: op.new_col || ''
-        }));
-        setBasicFeatures(features);
+        })));
       }
-
-      if (config.outlier_detection_method) {
-        setOutlierMethod(config.outlier_detection_method);
-      }
-
-      if (config.drop_high_null_active) {
-        setDropColumnsEnabled(true);
-        setImputationEnabled(true);
-      }
+      if (config.outlier_detection_method) setOutlierMethod(config.outlier_detection_method);
+      if (config.drop_high_null_active) { setDropColumnsEnabled(true); setImputationEnabled(true); }
     }
   }, [mode, workflowState?.dataPreprocessing?.step2?.config]);
 
-  // Always report valid to parent — errors are shown on Next click
-  useEffect(() => {
-    if (onValidationChange) {
-      onValidationChange(true);
-    }
-  }, []);
+  useEffect(() => { if (onValidationChange) onValidationChange(true); }, []);
 
-  // ── Compute per-section error flags (only shown after showFieldErrors = true) ──
   const getDropLowValueError = () => {
     if (!toggles.dropLowValue) return '';
-    const selectedCount = Object.values(selectedColumns).filter(Boolean).length;
-    if (selectedCount === 0) return 'Please select at least one column.';
+    if (Object.values(selectedColumns).filter(Boolean).length === 0) return 'Please select at least one column.';
     return '';
   };
 
   const getHandleMissingError = () => {
     if (!toggles.handleMissing) return '';
     const thresholdValue = parseFloat(threshold);
-    if (threshold && (isNaN(thresholdValue) || thresholdValue < 1 || thresholdValue > 100)) {
-      return 'Threshold must be between 1 and 100';
-    }
-    const hasIncompleteOverride = columnOverrides.some(o => !o.column || !o.method);
-    if (hasIncompleteOverride) return 'Please complete all column override configurations.';
+    if (threshold && (isNaN(thresholdValue) || thresholdValue < 1 || thresholdValue > 100)) return 'Threshold must be between 1 and 100';
+    if (columnOverrides.some(o => !o.column || !o.method)) return 'Please complete all column override configurations.';
     return '';
   };
 
   const getCreateBasicError = () => {
     if (!toggles.createBasic) return '';
-    const hasValidFeature = basicFeatures.some(f => f.column1 && f.column2 && f.operator && f.newColumnName);
-    if (!hasValidFeature) return 'Please add at least one complete operation.';
-    const hasIncomplete = basicFeatures.some(f => !f.column1 || !f.column2 || !f.operator || !f.newColumnName);
-    if (hasIncomplete) return 'Please complete all operation fields before proceeding.';
+    if (!basicFeatures.some(f => f.column1 && f.column2 && f.operator && f.newColumnName)) return 'Please add at least one complete operation.';
+    if (basicFeatures.some(f => !f.column1 || !f.column2 || !f.operator || !f.newColumnName)) return 'Please complete all operation fields before proceeding.';
     return '';
   };
 
-  // Missing-value mandatory check (not a toggle-based error, a data-based requirement)
   const getMissingValueRequirementError = () => {
-    const columnsToDropManually = Object.entries(selectedColumns)
-      .filter(([_, v]) => v)
-      .map(([key]) => key.substring(0, key.lastIndexOf('-')));
-
+    const columnsToDropManually = Object.entries(selectedColumns).filter(([_, v]) => v).map(([key]) => key.substring(0, key.lastIndexOf('-')));
     const missingNumeric = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_numeric_column || {};
     const missingCategorical = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_categorical_column || {};
     const missingDatetime = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_datetime_column || {};
-
     const hasNumericMissing = Object.entries(missingNumeric).some(([col, val]) => val === 1 && !columnsToDropManually.includes(col));
     const hasCategoricalMissing = Object.entries(missingCategorical).some(([col, val]) => val === 1 && !columnsToDropManually.includes(col));
     const hasDatetimeMissing = Object.entries(missingDatetime).some(([col, val]) => val === 1 && !columnsToDropManually.includes(col));
-
-    if (!toggles.handleMissing && (hasNumericMissing || hasCategoricalMissing || hasDatetimeMissing)) {
-      return 'Handle Missing Values must be enabled as there are columns with missing values';
-    }
+    if (!toggles.handleMissing && (hasNumericMissing || hasCategoricalMissing || hasDatetimeMissing)) return 'Handle Missing Values must be enabled as there are columns with missing values';
     if (toggles.handleMissing) {
       if (hasNumericMissing && !numericalImputation) return 'Numerical imputation method is required';
       if (hasCategoricalMissing && !categoricalImputation) return 'Categorical imputation method is required';
@@ -387,73 +386,53 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
     return '';
   };
 
-  // Auto-clear showFieldErrors once all errors resolved
   useEffect(() => {
     if (!showFieldErrors) return;
-    const allClear =
-      !getDropLowValueError() &&
-      !getHandleMissingError() &&
-      !getCreateBasicError() &&
-      !getMissingValueRequirementError();
-    if (allClear) setShowFieldErrors(false);
+    if (!getDropLowValueError() && !getHandleMissingError() && !getCreateBasicError() && !getMissingValueRequirementError()) setShowFieldErrors(false);
   }, [toggles, selectedColumns, threshold, columnOverrides, basicFeatures, numericalImputation, categoricalImputation, timeSeriesImputation]);
 
-  const validateStep = () => {
-    return (
-      !getDropLowValueError() &&
-      !getHandleMissingError() &&
-      !getCreateBasicError() &&
-      !getMissingValueRequirementError()
-    );
-  };
+  const validateStep = () => !getDropLowValueError() && !getHandleMissingError() && !getCreateBasicError() && !getMissingValueRequirementError();
 
   const makeApiCall = async () => {
     if (readonly) return true;
-
     const isValid = validateStep();
     if (!isValid) {
+      const dropErr = getDropLowValueError();
+      const missingErr = getHandleMissingError() || getMissingValueRequirementError();
+      const basicErr = getCreateBasicError();
+
       setShowFieldErrors(true);
-      // Expand sections that have errors so the user can see what needs fixing
       setExpandedSections({
-        dropLowValue: !!getDropLowValueError(),
-        handleMissing: !!(getHandleMissingError() || getMissingValueRequirementError()),
-        createBasic: !!getCreateBasicError(),
+        dropLowValue: !!dropErr,
+        handleMissing: !!missingErr,
+        createBasic: !!basicErr,
         detectOutliers: false,
       });
-      // toast.error('Please fix the highlighted errors before proceeding.', { duration: 4000, position: 'top-right' });
+
+      setTimeout(() => {
+        if (dropErr && dropLowValueRef.current) {
+          dropLowValueRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (missingErr && handleMissingRef.current) {
+          handleMissingRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (basicErr && createBasicRef.current) {
+          createBasicRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 50);
+
       return false;
     }
-
     try {
-      const columnsToDropManually = Object.entries(selectedColumns)
-        .filter(([_, isSelected]) => isSelected)
-        .map(([key]) => key.substring(0, key.lastIndexOf('-')));
-
+      const columnsToDropManually = Object.entries(selectedColumns).filter(([_, isSelected]) => isSelected).map(([key]) => key.substring(0, key.lastIndexOf('-')));
       const imputationStrategyByType = {};
       if (categoricalImputation) imputationStrategyByType.categorical = categoricalImputation;
       if (numericalImputation) imputationStrategyByType.numeric = numericalImputation;
       if (timeSeriesImputation) imputationStrategyByType.datetime = timeSeriesImputation;
-
       const imputationStrategyByColumn = {};
-      columnOverrides.forEach(override => {
-        if (override.column && override.method) {
-          imputationStrategyByColumn[override.column] = override.method;
-        }
-      });
-
-      const mathOps = basicFeatures
-        .filter(f => f.column1 && f.column2 && f.operator && f.newColumnName)
-        .map(f => ({
-          operation: f.operator === '+' ? 'add' :
-            f.operator === '-' ? 'subtract' :
-              f.operator === '*' ? 'multiply' :
-                f.operator === '/' ? 'divide' :
-                  f.operator === '%' ? 'modulo' : 'add',
-          col1: f.column1,
-          col2: f.column2,
-          new_col: f.newColumnName
-        }));
-
+      columnOverrides.forEach(override => { if (override.column && override.method) imputationStrategyByColumn[override.column] = override.method; });
+      const mathOps = basicFeatures.filter(f => f.column1 && f.column2 && f.operator && f.newColumnName).map(f => ({
+        operation: f.operator === '+' ? 'add' : f.operator === '-' ? 'subtract' : f.operator === '*' ? 'multiply' : f.operator === '/' ? 'divide' : f.operator === '%' ? 'modulo' : 'add',
+        col1: f.column1, col2: f.column2, new_col: f.newColumnName
+      }));
       const requestBody = {
         session_id: datasetState.sessionId,
         drop_high_uniqueness_active: toggles.dropLowValue,
@@ -467,31 +446,19 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
         outlier_detection_active: toggles.detectOutliers,
         outlier_detection_method: outlierMethod
       };
-
       const response = await fetch(`${hostnameAI}/data/preprocess/feature_selection`, {
         method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
+        headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)
       });
-
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `API error: ${response.status}`);
       }
-
       const apiResponse = await response.json();
-
-      updatePreprocessingStep('step2', {
-        config: requestBody,
-        apiResponse: apiResponse
-      });
-
+      updatePreprocessingStep('step2', { config: requestBody, apiResponse });
       toast.success('Feature selection completed successfully!', { duration: 3000, position: 'top-right' });
       return true;
-
     } catch (error) {
       console.error('API call failed:', error);
       toast.error(error.message || 'Feature selection failed. Please try again.', { duration: 4000, position: 'top-right' });
@@ -500,61 +467,33 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
   };
 
   useEffect(() => {
-    if (onApiCall) {
-      onApiCall(makeApiCall);
-    }
-  }, [toggles, selectedColumns, dropColumnsEnabled, imputationEnabled, threshold, numericalImputation,
-    categoricalImputation, timeSeriesImputation, columnOverrides, basicFeatures, outlierMethod, datasetState.sessionId]);
+    if (onApiCall) onApiCall(makeApiCall);
+  }, [toggles, selectedColumns, dropColumnsEnabled, imputationEnabled, threshold, numericalImputation, categoricalImputation, timeSeriesImputation, columnOverrides, basicFeatures, outlierMethod, datasetState.sessionId]);
 
   const toggleSection = (section) => {
-    setExpandedSections({
-      dropLowValue: false,
-      handleMissing: false,
-      createBasic: false,
-      detectOutliers: false,
-      [section]: !expandedSections[section]
-    });
+    setExpandedSections({ dropLowValue: false, handleMissing: false, createBasic: false, detectOutliers: false, [section]: !expandedSections[section] });
   };
 
   const toggleSwitch = (key) => {
     if (readonly) return;
-
     if (key === 'handleMissing') {
       const hasMissingValues = checkHasMissingValues();
       if (hasMissingValues && toggles.handleMissing) {
-        toast.error('Handle Missing Values cannot be disabled as there are columns with missing values that need to be addressed.', {
-          duration: 4000,
-          position: 'top-right',
-        });
+        toast.error('Handle Missing Values cannot be disabled as there are columns with missing values that need to be addressed.', { duration: 4000, position: 'top-right' });
         return;
       }
     }
-
     const newToggleState = !toggles[key];
-
     setToggles(prev => ({ ...prev, [key]: newToggleState }));
-
     if (newToggleState && (key === 'dropLowValue' || key === 'handleMissing' || key === 'createBasic' || key === 'detectOutliers')) {
-      setExpandedSections({
-        dropLowValue: false,
-        handleMissing: false,
-        createBasic: false,
-        detectOutliers: false,
-        [key]: true
-      });
+      setExpandedSections({ dropLowValue: false, handleMissing: false, createBasic: false, detectOutliers: false, [key]: true });
     }
-
     if (key === 'handleMissing' && newToggleState) {
       setDropColumnsEnabled(true);
       setImputationEnabled(true);
-      if (!threshold || threshold === '') {
-        setThreshold('70');
-      }
+      if (!threshold || threshold === '') setThreshold('70');
     }
-
-    if (!newToggleState) {
-      setExpandedSections(prev => ({ ...prev, [key]: false }));
-    }
+    if (!newToggleState) setExpandedSections(prev => ({ ...prev, [key]: false }));
   };
 
   const handleSelectAll = () => {
@@ -562,9 +501,7 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
     const newSelectAll = !selectAll;
     setSelectAll(newSelectAll);
     const newSelectedColumns = {};
-    columns.forEach((col, idx) => {
-      newSelectedColumns[`${col.name}-${idx}`] = newSelectAll;
-    });
+    columns.forEach((col, idx) => { newSelectedColumns[`${col.name}-${idx}`] = newSelectAll; });
     setSelectedColumns(newSelectedColumns);
   };
 
@@ -580,94 +517,39 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
     return [];
   };
 
-  const addColumnOverride = () => {
-    if (readonly) return;
-    setColumnOverrides([...columnOverrides, { id: Date.now(), column: '', method: '' }]);
-  };
-
-  const removeColumnOverride = (id) => {
-    if (readonly) return;
-    setColumnOverrides(columnOverrides.filter(override => override.id !== id));
-  };
-
-  const updateColumnOverride = (id, field, value) => {
-    if (readonly) return;
-    setColumnOverrides(prevOverrides =>
-      prevOverrides.map(override => {
-        if (override.id === id) {
-          return { ...override, [field]: value };
-        }
-        return override;
-      })
-    );
-  };
-
-  const addBasicFeature = () => {
-    if (readonly) return;
-    setBasicFeatures([...basicFeatures, {
-      id: Date.now(),
-      column1: '',
-      operator: '+',
-      column2: '',
-      newColumnName: ''
-    }]);
-  };
-
-  const removeBasicFeature = (id) => {
-    if (readonly) return;
-    setBasicFeatures(basicFeatures.filter(feature => feature.id !== id));
-  };
-
-  const updateBasicFeature = (id, field, value) => {
-    if (readonly) return;
-    setBasicFeatures(basicFeatures.map(feature =>
-      feature.id === id ? { ...feature, [field]: value } : feature
-    ));
-  };
+  const addColumnOverride = () => { if (readonly) return; setColumnOverrides([...columnOverrides, { id: Date.now(), column: '', method: '' }]); };
+  const removeColumnOverride = (id) => { if (readonly) return; setColumnOverrides(columnOverrides.filter(o => o.id !== id)); };
+  const updateColumnOverride = (id, field, value) => { if (readonly) return; setColumnOverrides(prev => prev.map(o => o.id === id ? { ...o, [field]: value } : o)); };
+  const addBasicFeature = () => { if (readonly) return; setBasicFeatures([...basicFeatures, { id: Date.now(), column1: '', operator: '+', column2: '', newColumnName: '' }]); };
+  const removeBasicFeature = (id) => { if (readonly) return; setBasicFeatures(basicFeatures.filter(f => f.id !== id)); };
+  const updateBasicFeature = (id, field, value) => { if (readonly) return; setBasicFeatures(basicFeatures.map(f => f.id === id ? { ...f, [field]: value } : f)); };
 
   const ToggleSwitch = ({ checked, onChange, disabled }) => (
     <label className={`relative inline-flex items-center ${readonly || disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={onChange}
-        disabled={readonly || disabled}
-        className="sr-only peer"
-      />
+      <input type="checkbox" checked={checked} onChange={onChange} disabled={readonly || disabled} className="sr-only peer" />
       <div className={`w-11 h-6 ${disabled ? 'bg-gray-200' : 'bg-gray-300'} peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${disabled ? 'peer-checked:bg-[#a899c9]' : 'peer-checked:bg-[#8E77BB]'}`}></div>
     </label>
   );
 
   const selectedCount = Object.values(selectedColumns).filter(Boolean).length;
   const totalFields = columns.length;
-
   const highCardinalityDropped = workflowState?.dataPreprocessing?.step1?.apiResponse?.high_cardinality_columns_dropped || [];
 
   const checkHasMissingValues = () => {
-    const columnsToDropManually = Object.entries(selectedColumns)
-      .filter(([_, isSelected]) => isSelected)
-      .map(([key]) => key.substring(0, key.lastIndexOf('-')));
-
+    const columnsToDropManually = Object.entries(selectedColumns).filter(([_, isSelected]) => isSelected).map(([key]) => key.substring(0, key.lastIndexOf('-')));
     const missingNumeric = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_numeric_column || {};
     const missingCategorical = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_categorical_column || {};
     const missingDatetime = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_datetime_column || {};
-
-    const hasNumericMissing = Object.entries(missingNumeric).some(([col, val]) => val === 1 && !columnsToDropManually.includes(col));
-    const hasCategoricalMissing = Object.entries(missingCategorical).some(([col, val]) => val === 1 && !columnsToDropManually.includes(col));
-    const hasDatetimeMissing = Object.entries(missingDatetime).some(([col, val]) => val === 1 && !columnsToDropManually.includes(col));
-
-    return hasNumericMissing || hasCategoricalMissing || hasDatetimeMissing;
+    return Object.entries(missingNumeric).some(([col, val]) => val === 1 && !columnsToDropManually.includes(col)) ||
+      Object.entries(missingCategorical).some(([col, val]) => val === 1 && !columnsToDropManually.includes(col)) ||
+      Object.entries(missingDatetime).some(([col, val]) => val === 1 && !columnsToDropManually.includes(col));
   };
 
   const getMissingValuesByType = () => {
-    const columnsToDropManually = Object.entries(selectedColumns)
-      .filter(([_, isSelected]) => isSelected)
-      .map(([key]) => key.substring(0, key.lastIndexOf('-')));
-
+    const columnsToDropManually = Object.entries(selectedColumns).filter(([_, isSelected]) => isSelected).map(([key]) => key.substring(0, key.lastIndexOf('-')));
     const missingNumeric = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_numeric_column || {};
     const missingCategorical = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_categorical_column || {};
     const missingDatetime = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_datetime_column || {};
-
     return {
       hasNumericMissing: Object.entries(missingNumeric).some(([col, val]) => val === 1 && !columnsToDropManually.includes(col)),
       hasCategoricalMissing: Object.entries(missingCategorical).some(([col, val]) => val === 1 && !columnsToDropManually.includes(col)),
@@ -677,15 +559,12 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
 
   useEffect(() => {
     const hasMissingValues = checkHasMissingValues();
-
     if (hasMissingValues && !toggles.handleMissing) {
       setToggles(prev => ({ ...prev, handleMissing: true }));
       setExpandedSections(prev => ({ ...prev, handleMissing: true }));
       setDropColumnsEnabled(true);
       setImputationEnabled(true);
-      if (!threshold || threshold === '') {
-        setThreshold('70');
-      }
+      if (!threshold || threshold === '') setThreshold('70');
     }
   }, [selectedColumns, workflowState?.dataPreprocessing?.step1?.apiResponse]);
 
@@ -702,53 +581,40 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
     }
   }, [toggles.handleMissing, selectedColumns, numericalImputation, categoricalImputation, timeSeriesImputation, workflowState?.dataPreprocessing?.step1?.apiResponse]);
 
-  // ── sectionClass helper (mirrors DataCleaning) ──
-  const sectionClass = (hasError) =>
-    `rounded-lg transition-all ${hasError ? 'bg-red-50' : 'bg-[#FAFAFA]'}`;
+  const sectionClass = () => `rounded-lg transition-all bg-[#FAFAFA]`;
 
-  const SearchableDropdown = ({
-    value,
-    onChange,
-    options,
-    placeholder,
-    disabled,
-    label,
-    searchValue,
-    setSearchValue,
-    showDropdown,
-    setShowDropdown,
-    type,
-    hasError
-  }) => {
+  const SearchableDropdown = ({ value, onChange, options, placeholder, disabled, label, searchValue, setSearchValue, showDropdown, setShowDropdown, type, hasError }) => {
     const dropdownRef = React.useRef(null);
     const [hoveredOption, setHoveredOption] = useState(null);
 
     useEffect(() => {
       const handleClickOutside = (event) => {
-        if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-          setShowDropdown(false);
-        }
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target)) setShowDropdown(false);
       };
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [setShowDropdown]);
 
-    const filteredOptions = options.filter(option =>
-      option.toLowerCase().includes(searchValue.toLowerCase())
-    );
-
-    const displayValue = value || placeholder;
+    const filteredOptions = options.filter(option => option.toLowerCase().includes(searchValue.toLowerCase()));
 
     return (
       <div className="relative" ref={dropdownRef}>
         <label className="block text-sm text-gray-600 mb-2">{label}</label>
-        <div
+        <button
+          type="button"
+          disabled={disabled}
           onClick={() => !disabled && setShowDropdown(!showDropdown)}
-          className={`w-full px-3 py-2 border rounded-lg text-sm bg-white ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-[#8e78b7]'
-            } ${value ? 'text-gray-700' : 'text-gray-400'} ${hasError ? 'border-red-400' : 'border-gray-300'}`}
+          className={`w-full px-3 py-2 border rounded-lg text-sm bg-white flex items-center justify-between focus:outline-none focus:ring-2 focus:border-transparent transition-colors ${
+            disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-[#8e78b7]'
+          } ${value ? 'text-gray-700' : hasError ? 'text-[#EF4D5F]' : 'text-gray-400'} ${
+            hasError
+              ? 'border-[#EF4D5F] bg-[#FFF7F8] focus:ring-red-300'
+              : 'border-gray-300 focus:ring-[#8e78b7]'
+          }`}
         >
-          {displayValue}
-        </div>
+          <span>{value || placeholder}</span>
+          <ChevronSVG />
+        </button>
 
         {showDropdown && !disabled && (
           <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-visible">
@@ -766,44 +632,29 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
             </div>
             <div className="overflow-y-auto max-h-48 overflow-x-visible">
               <div
-                onClick={() => {
-                  onChange('');
-                  setSearchValue('');
-                  setShowDropdown(false);
-                }}
+                onClick={() => { onChange(''); setSearchValue(''); setShowDropdown(false); }}
                 className="px-3 py-2 text-sm text-gray-400 hover:bg-[#FAFAFA] cursor-pointer"
               >
                 {placeholder}
               </div>
               {filteredOptions.length > 0 ? (
                 filteredOptions.map(option => (
-                  <div
-                    key={option}
-                    className="relative group"
-                    onMouseEnter={() => setHoveredOption(option)}
-                    onMouseLeave={() => setHoveredOption(null)}
-                  >
+                  <div key={option} className="relative group" onMouseEnter={() => setHoveredOption(option)} onMouseLeave={() => setHoveredOption(null)}>
                     <div
-                      onClick={() => {
-                        onChange(option);
-                        setSearchValue('');
-                        setShowDropdown(false);
-                      }}
-                      className={`px-3 py-2 text-sm cursor-pointer hover:bg-purple-50 ${value === option ? 'bg-purple-50 text-[#8e78b7] font-medium' : 'text-gray-700'
-                        }`}
+                      onClick={() => { onChange(option); setSearchValue(''); setShowDropdown(false); }}
+                      className={`px-3 py-2 text-sm cursor-pointer hover:bg-purple-50 ${value === option ? 'bg-purple-50 text-[#8e78b7] font-medium' : 'text-gray-700'}`}
                     >
                       {option}
                     </div>
                     {hoveredOption === option && imputationMethodDescriptions[type]?.[option] && (
-                      <div className="fixed z-[9999] w-96 p-4 bg-gray-900 text-white text-xs leading-relaxed rounded-lg shadow-2xl pointer-events-none"
+                      <div
+                        className="fixed z-[9999] w-96 p-4 bg-[#332849] text-white text-xs leading-relaxed rounded-lg shadow-2xl pointer-events-none"
                         style={{
                           ...((() => {
                             const rect = dropdownRef.current?.getBoundingClientRect();
                             const spaceOnRight = window.innerWidth - (rect?.right || 0);
                             const tooltipWidth = 384;
-                            if (spaceOnRight < tooltipWidth + 20) {
-                              return { right: `${window.innerWidth - (rect?.left || 0) + 10}px`, top: `${rect?.top || 0}px` };
-                            }
+                            if (spaceOnRight < tooltipWidth + 20) return { right: `${window.innerWidth - (rect?.left || 0) + 10}px`, top: `${rect?.top || 0}px` };
                             return { left: `${(rect?.right || 0) + 10}px`, top: `${rect?.top || 0}px` };
                           })()),
                           maxWidth: 'calc(100vw - 20px)'
@@ -826,30 +677,24 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
   };
 
   const getAvailableColumnsForOverride = (currentOverrideId) => {
-    const selectedColumnsInOverrides = columnOverrides
-      .filter(override => override.id !== currentOverrideId && override.column)
-      .map(override => override.column);
+    const selectedColumnsInOverrides = columnOverrides.filter(o => o.id !== currentOverrideId && o.column).map(o => o.column);
     return allColumns.filter(col => !selectedColumnsInOverrides.includes(col));
   };
 
   const isAddOverrideDisabled = () => {
     if (readonly) return true;
-    const hasIncompleteOverride = columnOverrides.some(override => !override.column || !override.method);
-    const allColumnsUsed = columnOverrides.length >= allColumns.length;
-    return hasIncompleteOverride || allColumnsUsed;
+    return columnOverrides.some(o => !o.column || !o.method) || columnOverrides.length >= allColumns.length;
   };
 
   const isAddBasicFeatureDisabled = () => {
     if (readonly) return true;
-    return basicFeatures.some(feature => !feature.column1 || !feature.column2 || !feature.operator || !feature.newColumnName);
+    return basicFeatures.some(f => !f.column1 || !f.column2 || !f.operator || !f.newColumnName);
   };
 
-  // ── Derived error flags (only active after Next is clicked) ──
   const dropLowValueError = showFieldErrors ? getDropLowValueError() : '';
   const handleMissingError = showFieldErrors ? (getHandleMissingError() || getMissingValueRequirementError()) : '';
   const createBasicError = showFieldErrors ? getCreateBasicError() : '';
 
-  // Per-field imputation errors (shown after Next)
   const { hasNumericMissing, hasCategoricalMissing, hasDatetimeMissing } = getMissingValuesByType();
   const showNumericalImputationError = showFieldErrors && toggles.handleMissing && hasNumericMissing && !numericalImputation;
   const showCategoricalImputationError = showFieldErrors && toggles.handleMissing && hasCategoricalMissing && !categoricalImputation;
@@ -858,14 +703,12 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
   return (
     <div className="space-y-4">
       {highCardinalityDropped.length > 0 && (
-        <div className="bg-purple-100 border border-[#8e78b7] rounded-lg p-4">
+        <div className="bg-[#FAF8FF] border border-[#8e78b7] rounded-lg p-4">
           <div className="flex items-start gap-3">
             <AlertCircle size={18} className="text-[#8e78b7] mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-sm text-[#8e78b7]">
-                <span className="font-medium">
-                  {highCardinalityDropped.map(item => item.column).join(', ')}
-                </span>
+                <span className="font-medium">{highCardinalityDropped.map(item => item.column).join(', ')}</span>
                 {' '}column{highCardinalityDropped.length > 1 ? 's are' : ' is'} dropped since {highCardinalityDropped.length > 1 ? 'they have' : 'it has'} more than 30 unique values
               </p>
             </div>
@@ -875,12 +718,10 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
 
       {/* ── Drop Low-Value Columns ── */}
       {workflowState?.dataPreprocessing?.step1?.config?.uniqueness_filter_active && (
-        <div className={sectionClass(!!dropLowValueError)}>
+        <div ref={dropLowValueRef} className={sectionClass()}>
           <div className="p-4 flex items-center justify-between">
             <div className="flex-1 flex items-center gap-2">
-              <h4 className={`text-sm font-medium ${dropLowValueError ? 'text-red-700' : 'text-gray-900'}`}>
-                Drop Low-Value Columns
-              </h4>
+              <h4 className="text-sm font-medium text-gray-900">Drop Low-Value Columns</h4>
               <InfoButton sectionDescriptions={sectionDescriptions} section="dropLowValue" />
             </div>
             <div className="flex items-center gap-3">
@@ -898,37 +739,21 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
               <div className="mt-4">
                 <div className="flex items-center justify-between mb-4">
                   <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectAll}
-                      onChange={handleSelectAll}
-                      disabled={readonly}
-                      className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded"
-                    />
+                    <input type="checkbox" checked={selectAll} onChange={handleSelectAll} disabled={readonly} className="w-4 h-4 border-gray-300 rounded" style={{ accentColor: '#8E77BB' }} />
                     Select All
                   </label>
                   <span className="text-xs text-gray-400">Total Fields: {totalFields} | Selected: {selectedCount}</span>
                 </div>
-
-                <div className="grid grid-cols-3 gap-x-8 gap-y-4 max-h-96 overflow-y-auto pr-2">
+                <div className="grid grid-cols-3 gap-x-3 gap-y-3 max-h-96 overflow-y-auto pr-2">
                   {columns.map((column, idx) => {
                     const columnKey = `${column.name}-${idx}`;
                     return (
                       <div
                         key={columnKey}
                         onClick={() => !readonly && handleColumnToggle(columnKey)}
-                        className={`flex items-center gap-2 p-2 rounded transition-all ${selectedColumns[columnKey]
-                          ? 'border-[#8e78b7] bg-purple-50'
-                          : 'border-gray-200 bg-white hover:border-gray-300'
-                          } ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                        className={`flex items-center gap-2 p-2 rounded transition-all ${selectedColumns[columnKey] ? 'border-[#8E77BB] bg-purple-50' : 'border-gray-200 bg-white hover:border-gray-300'} ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                       >
-                        <input
-                          type="checkbox"
-                          checked={selectedColumns[columnKey] || false}
-                          onChange={() => { }}
-                          disabled={readonly}
-                          className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded mt-0.5 pointer-events-none"
-                        />
+                        <input type="checkbox" checked={selectedColumns[columnKey] || false} onChange={() => {}} disabled={readonly} className="w-4 h-4 border-gray-300 rounded mt-0.5 pointer-events-none" style={{ accentColor: '#8E77BB' }} />
                         <div className="flex-1">
                           <div className="text-sm text-gray-700">{column.name}</div>
                           <div className="text-xs text-gray-400">{column.uniqueness}</div>
@@ -937,38 +762,26 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
                     );
                   })}
                 </div>
-
-                {dropLowValueError && (
-                  <p className="text-xs text-red-500 mt-3 pl-0.5">{dropLowValueError}</p>
-                )}
+                {dropLowValueError && <p className="text-xs text-[#EF4D5F] mt-3 pl-0.5">{dropLowValueError}</p>}
               </div>
             </div>
           )}
 
-          {/* Show error text even when collapsed */}
           {toggles.dropLowValue && !expandedSections.dropLowValue && dropLowValueError && (
-            <div className="px-4 pb-3">
-              <p className="text-xs text-red-500">{dropLowValueError}</p>
-            </div>
+            <div className="px-4 pb-3"><p className="text-xs text-[#EF4D5F]">{dropLowValueError}</p></div>
           )}
         </div>
       )}
 
       {/* ── Handle Missing Values ── */}
-      <div className={sectionClass(!!handleMissingError)}>
+      <div ref={handleMissingRef} className={sectionClass()}>
         <div className="p-4 flex items-center justify-between">
           <div className="flex-1 flex items-center gap-2">
-            <h4 className={`text-sm font-medium ${handleMissingError ? 'text-red-700' : 'text-gray-900'}`}>
-              Handle Missing Values
-            </h4>
+            <h4 className="text-sm font-medium text-gray-900">Handle Missing Values</h4>
             <InfoButton sectionDescriptions={sectionDescriptions} section="handleMissing" />
           </div>
           <div className="flex items-center gap-3">
-            <ToggleSwitch
-              checked={toggles.handleMissing}
-              onChange={() => toggleSwitch('handleMissing')}
-              disabled={checkHasMissingValues()}
-            />
+            <ToggleSwitch checked={toggles.handleMissing} onChange={() => toggleSwitch('handleMissing')} disabled={checkHasMissingValues()} />
             {toggles.handleMissing && (
               <button onClick={() => toggleSection('handleMissing')} className="text-gray-400 hover:text-gray-600">
                 {expandedSections.handleMissing ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -980,42 +793,36 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
         {toggles.handleMissing && expandedSections.handleMissing && (
           <div className="px-4 pb-4 border-t border-gray-100">
             <div className="mt-4 space-y-6">
-
-              {/* Drop Columns */}
               <div className="bg-white rounded-lg p-4">
                 <div className="mb-3 flex-1 flex items-center gap-2">
                   <h5 className="text-sm font-medium text-gray-900">Drop Columns</h5>
                   <InfoButton sectionDescriptions={sectionDescriptions} section="dropColumns" />
                 </div>
-                <div className="mt-3">
+                <div className="mt-3" style={{ width: '318px' }}>
                   <label className="block text-sm text-gray-600 mb-2">Threshold (%)</label>
                   <input
                     type="number"
-                    min="0"
-                    max="100"
-                    step="1"
+                    min="0" max="100" step="1"
                     value={threshold}
                     onChange={(e) => !readonly && setThreshold(e.target.value)}
                     disabled={readonly}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent ${showFieldErrors && threshold && (isNaN(parseFloat(threshold)) || parseFloat(threshold) < 1 || parseFloat(threshold) > 100) ? 'border-red-400' : 'border-gray-300'}`}
+                    className={`w-full px-3 py-2 border rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent ${showFieldErrors && threshold && (isNaN(parseFloat(threshold)) || parseFloat(threshold) < 1 || parseFloat(threshold) > 100) ? 'border-[#EF4D5F] bg-[#FFF7F8]' : 'border-gray-300'}`}
                     placeholder="70"
                   />
                   {showFieldErrors && threshold && (isNaN(parseFloat(threshold)) || parseFloat(threshold) < 1 || parseFloat(threshold) > 100) && (
-                    <p className="text-xs text-red-500 mt-1 pl-0.5">Threshold must be between 1 and 100</p>
+                    <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">Threshold must be between 1 and 100</p>
                   )}
-                  {!showFieldErrors || !(isNaN(parseFloat(threshold)) || parseFloat(threshold) < 1 || parseFloat(threshold) > 100) ? (
+                  {(!showFieldErrors || !(isNaN(parseFloat(threshold)) || parseFloat(threshold) < 1 || parseFloat(threshold) > 100)) ? (
                     <p className="text-xs text-gray-400 mt-1">Drop columns with more than {threshold || 0}% missing values</p>
                   ) : null}
                 </div>
               </div>
 
-              {/* Imputation */}
               <div className="bg-white rounded-lg p-4">
                 <div className="mb-3 flex-1 flex items-center gap-2">
                   <h5 className="text-sm font-medium text-gray-900">Imputation</h5>
                   <InfoButton sectionDescriptions={sectionDescriptions} section="imputation" />
                 </div>
-
                 <div className="mt-3 space-y-2">
                   <div className={`grid gap-4 ${(numericalColumns.length > 0 ? 1 : 0) + (categoricalColumns.length > 0 ? 1 : 0) + (datetimeColumns.length > 0 ? 1 : 0) === 3 ? 'grid-cols-3' : (numericalColumns.length > 0 ? 1 : 0) + (categoricalColumns.length > 0 ? 1 : 0) + (datetimeColumns.length > 0 ? 1 : 0) === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
                     {numericalColumns.length > 0 && (
@@ -1034,9 +841,7 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
                           type="numerical"
                           hasError={showNumericalImputationError}
                         />
-                        {showNumericalImputationError && (
-                          <p className="text-xs text-red-500 mt-1 pl-0.5">Required: Numerical columns have missing values</p>
-                        )}
+                        {showNumericalImputationError && <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">Required: Numerical columns have missing values</p>}
                       </div>
                     )}
                     {categoricalColumns.length > 0 && (
@@ -1055,9 +860,7 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
                           type="categorical"
                           hasError={showCategoricalImputationError}
                         />
-                        {showCategoricalImputationError && (
-                          <p className="text-xs text-red-500 mt-1 pl-0.5">Required: Categorical columns have missing values</p>
-                        )}
+                        {showCategoricalImputationError && <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">Required: Categorical columns have missing values</p>}
                       </div>
                     )}
                     {datetimeColumns.length > 0 && (
@@ -1076,14 +879,11 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
                           type="timeseries"
                           hasError={showDatetimeImputationError}
                         />
-                        {showDatetimeImputationError && (
-                          <p className="text-xs text-red-500 mt-1 pl-0.5">Required: Datetime columns have missing values</p>
-                        )}
+                        {showDatetimeImputationError && <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">Required: Datetime columns have missing values</p>}
                       </div>
                     )}
                   </div>
 
-                  {/* Column Overrides */}
                   <div className="mt-2">
                     <div className="space-y-3">
                       {columnOverrides.map((override, index) => {
@@ -1110,32 +910,21 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
                                   id={`override-${override.id}`}
                                   hasError={overrideColError}
                                 />
-                                {overrideColError && (
-                                  <p className="text-xs text-red-500 mt-1 pl-0.5">Please select a column</p>
-                                )}
+                                {overrideColError && <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">Please select a column</p>}
                               </div>
                               <div className="flex-1">
                                 <label className="block text-xs text-gray-500 mb-1.5">&nbsp;</label>
-                                <select
+                                <StrategySearchableDropdown
                                   value={override.method}
-                                  onChange={(e) => updateColumnOverride(override.id, 'method', e.target.value)}
+                                  onChange={(value) => updateColumnOverride(override.id, 'method', value)}
+                                  options={getImputationMethodsForColumn(override.column)}
+                                  placeholder={override.column ? 'Strategy' : 'Select column first'}
                                   disabled={readonly || !override.column}
-                                  className={`w-full px-3 py-2 border rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent ${overrideMethodError ? 'border-red-400' : 'border-gray-300'}`}
-                                >
-                                  <option value="">{override.column ? 'Strategy' : 'Select column first'}</option>
-                                  {getImputationMethodsForColumn(override.column).map(method => (
-                                    <option key={method} value={method}>{method}</option>
-                                  ))}
-                                </select>
-                                {overrideMethodError && (
-                                  <p className="text-xs text-red-500 mt-1 pl-0.5">Please select a strategy</p>
-                                )}
+                                  hasError={overrideMethodError}
+                                />
+                                {overrideMethodError && <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">Please select a strategy</p>}
                               </div>
-                              <button
-                                onClick={() => removeColumnOverride(override.id)}
-                                disabled={readonly}
-                                className="mt-5 p-2 text-gray-400 hover:text-red-500 transition-colors"
-                              >
+                              <button onClick={() => removeColumnOverride(override.id)} disabled={readonly} className="mt-5 p-2 text-gray-400 hover:text-red-500 transition-colors">
                                 <X size={16} />
                               </button>
                             </div>
@@ -1146,10 +935,7 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
                       <button
                         onClick={addColumnOverride}
                         disabled={isAddOverrideDisabled()}
-                        className={`w-full py-2 rounded-lg text-sm transition-colors flex items-center justify-center gap-2 ${isAddOverrideDisabled()
-                          ? 'border-gray-200 text-gray-400 cursor-not-allowed opacity-50'
-                          : 'border-[#8e78b7] text-[#8e78b7]'
-                          }`}
+                        className={`w-full py-2 rounded-lg text-sm transition-colors flex items-center justify-center gap-2 ${isAddOverrideDisabled() ? 'border-gray-200 text-gray-400 cursor-not-allowed opacity-50' : 'border-[#8e78b7] text-[#8e78b7]'}`}
                       >
                         <Plus size={16} />
                         Add Override
@@ -1162,21 +948,16 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
           </div>
         )}
 
-        {/* Show error text even when collapsed */}
         {handleMissingError && (!toggles.handleMissing || !expandedSections.handleMissing) && (
-          <div className="px-4 pb-3">
-            <p className="text-xs text-red-500">{handleMissingError}</p>
-          </div>
+          <div className="px-4 pb-3"><p className="text-xs text-[#EF4D5F]">{handleMissingError}</p></div>
         )}
       </div>
 
       {/* ── Create Basic Features ── */}
-      <div className={sectionClass(!!createBasicError)}>
+      <div ref={createBasicRef} className={sectionClass()}>
         <div className="p-4 flex items-center justify-between">
           <div className="flex-1 flex items-center gap-2">
-            <h4 className={`text-sm font-medium ${createBasicError ? 'text-red-700' : 'text-gray-900'}`}>
-              Create Basic Features
-            </h4>
+            <h4 className="text-sm font-medium text-gray-900">Create Basic Features</h4>
             <InfoButton sectionDescriptions={sectionDescriptions} section="createBasic" />
           </div>
           <div className="flex items-center gap-3">
@@ -1193,8 +974,8 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
           <div className="px-4 pb-4 border-t border-gray-100">
             <div className="mt-4 space-y-3">
               {basicFeatures.length === 0 ? (
-                <div className="text-center py-4">
-                  <p className="text-sm text-gray-500 mb-3">No operations added yet</p>
+                <div className="text-center pb-1">
+                  <p className="text-sm text-gray-500">No operations added yet</p>
                 </div>
               ) : (
                 basicFeatures.map((feature, index) => {
@@ -1205,15 +986,10 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
                     <div key={feature.id} className="bg-white rounded-lg p-4">
                       <div className="flex items-center justify-between mb-3">
                         <label className="text-sm font-medium text-gray-700">Operation {index + 1}</label>
-                        <button
-                          onClick={() => removeBasicFeature(feature.id)}
-                          disabled={readonly}
-                          className="p-1 text-gray-400 hover:text-red-500 transition-colors rounded hover:bg-red-50"
-                        >
+                        <button onClick={() => removeBasicFeature(feature.id)} disabled={readonly} className="p-1 text-gray-400 hover:text-red-500 transition-colors rounded hover:bg-red-50">
                           <X size={18} />
                         </button>
                       </div>
-
                       <div className="grid grid-cols-[1fr_80px_1fr_1fr] gap-3 items-start">
                         <div className="col-span-1">
                           <ColumnSearchableDropdown
@@ -1230,25 +1006,24 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
                             id={`col1-${feature.id}`}
                             hasError={col1Error}
                           />
-                          {col1Error && (
-                            <p className="text-xs text-red-500 mt-1 pl-0.5">Please select a column</p>
-                          )}
+                          {col1Error && <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">Please select a column</p>}
                         </div>
-
                         <div>
                           <label className="block text-xs text-gray-500 mb-1.5">Operator</label>
-                          <select
+                          <ColumnSearchableDropdown
                             value={feature.operator}
-                            onChange={(e) => updateBasicFeature(feature.id, 'operator', e.target.value)}
+                            onChange={(value) => updateBasicFeature(feature.id, 'operator', value || '+')}
+                            columns={operators}
                             disabled={readonly}
-                            className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent bg-white text-center font-medium"
-                          >
-                            {operators.map(op => (
-                              <option key={op} value={op}>{op}</option>
-                            ))}
-                          </select>
+                            label=""
+                            searchValue={searchBasicFeatureCol1}
+                            setSearchValue={setSearchBasicFeatureCol1}
+                            showDropdown={showBasicFeatureCol2Dropdown}
+                            setShowDropdown={setShowBasicFeatureCol2Dropdown}
+                            id={`op-${feature.id}`}
+                            hasError={false}
+                          />
                         </div>
-
                         <div>
                           <ColumnSearchableDropdown
                             value={feature.column2}
@@ -1259,16 +1034,13 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
                             label="Second Column"
                             searchValue={searchBasicFeatureCol2}
                             setSearchValue={setSearchBasicFeatureCol2}
-                            showDropdown={showBasicFeatureCol2Dropdown}
-                            setShowDropdown={setShowBasicFeatureCol2Dropdown}
+                            showDropdown={showBasicFeatureCol1Dropdown}
+                            setShowDropdown={setShowBasicFeatureCol1Dropdown}
                             id={`col2-${feature.id}`}
                             hasError={col2Error}
                           />
-                          {col2Error && (
-                            <p className="text-xs text-red-500 mt-1 pl-0.5">Please select a column</p>
-                          )}
+                          {col2Error && <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">Please select a column</p>}
                         </div>
-
                         <div>
                           <label className="block text-xs text-gray-500 mb-1.5">New Column Name</label>
                           <input
@@ -1277,11 +1049,9 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
                             onChange={(e) => updateBasicFeature(feature.id, 'newColumnName', e.target.value)}
                             disabled={readonly}
                             placeholder="e.g., total_amount"
-                            className={`w-full px-3 py-2 border rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent ${nameError ? 'border-red-400' : 'border-gray-300'}`}
+                            className={`w-full px-3 py-2 border rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent ${nameError ? 'border-[#EF4D5F] bg-[#FFF7F8]' : 'border-gray-300'}`}
                           />
-                          {nameError && (
-                            <p className="text-xs text-red-500 mt-1 pl-0.5">Please enter a column name</p>
-                          )}
+                          {nameError && <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">Please enter a column name</p>}
                         </div>
                       </div>
                     </div>
@@ -1292,27 +1062,23 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
               <button
                 onClick={addBasicFeature}
                 disabled={isAddBasicFeatureDisabled()}
-                className={`w-full py-3 rounded-lg text-sm transition-all flex items-center justify-center gap-2 font-medium ${isAddBasicFeatureDisabled()
-                  ? 'border-gray-200 text-gray-400 cursor-not-allowed opacity-50'
-                  : 'border-gray-300 text-gray-500 hover:border-[#8e78b7] hover:text-[#8e78b7] hover:bg-purple-50'
-                  }`}
+                className={`w-full py-2 border-2 border-dashed rounded-lg text-sm transition-all flex items-center justify-center gap-2 font-medium ${
+                  isAddBasicFeatureDisabled()
+                    ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                    : 'border-[#8e78b7] text-[#8e78b7] hover:bg-purple-50'
+                }`}
               >
                 <Plus size={18} />
                 Add New Operation
               </button>
             </div>
 
-            {createBasicError && (
-              <p className="text-xs text-red-500 mt-3 pl-0.5">{createBasicError}</p>
-            )}
+            {createBasicError && <p className="text-xs text-[#EF4D5F] mt-3 pl-0.5">{createBasicError}</p>}
           </div>
         )}
 
-        {/* Show error text even when collapsed */}
         {toggles.createBasic && !expandedSections.createBasic && createBasicError && (
-          <div className="px-4 pb-3">
-            <p className="text-xs text-red-500">{createBasicError}</p>
-          </div>
+          <div className="px-4 pb-3"><p className="text-xs text-[#EF4D5F]">{createBasicError}</p></div>
         )}
       </div>
 
@@ -1339,10 +1105,7 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
               {outlierMethods.map(method => (
                 <div key={method.value} className="relative">
                   <label
-                    className={`flex items-center gap-3 p-3 rounded-lg transition-all ${outlierMethod === method.value
-                      ? 'border-[#8e78b7] bg-purple-50'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
-                      } ${readonly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                    className={`flex items-center gap-3 p-3 rounded-lg transition-all ${outlierMethod === method.value ? 'border-[#8E77BB] bg-purple-50' : 'border-gray-200 bg-white hover:border-gray-300'} ${readonly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                     onMouseEnter={() => setHoveredOutlier(method.value)}
                     onMouseLeave={() => setHoveredOutlier(null)}
                   >
@@ -1353,16 +1116,16 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
                       checked={outlierMethod === method.value}
                       onChange={(e) => !readonly && setOutlierMethod(e.target.value)}
                       disabled={readonly}
-                      className="w-4 h-4 text-[#8e78b7] border-gray-300 focus:ring-[#8e78b7]"
+                      className="w-4 h-4 border-gray-300 focus:ring-[#8E77BB]"
+                      style={{ accentColor: '#8E77BB' }}
                     />
-                    <span className={`text-sm font-medium ${outlierMethod === method.value ? 'text-[#8e78b7]' : 'text-gray-700'}`}>
+                    <span className={`text-sm font-medium ${outlierMethod === method.value ? 'text-[#8E77BB]' : 'text-gray-700'}`}>
                       {method.label}
                     </span>
                   </label>
-
                   {hoveredOutlier === method.value && (
-                    <div className="absolute left-0 top-full mt-2 z-50 w-80 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg">
-                      <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+                    <div className="absolute left-0 top-full mt-2 z-50 w-80 p-3 bg-[#332849] text-white text-xs rounded-lg shadow-lg">
+                      <div className="absolute -top-1 left-4 w-2 h-2 bg-[#332849] transform rotate-45"></div>
                       {method.description}
                     </div>
                   )}

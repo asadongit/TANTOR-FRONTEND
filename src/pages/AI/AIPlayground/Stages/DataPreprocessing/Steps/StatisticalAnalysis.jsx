@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronDown, ChevronUp, CircleCheckBig, CircleX, TriangleAlert, Image as ImageIcon } from 'lucide-react';
 import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
@@ -12,6 +12,8 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
     const step4Response = workflowState?.dataPreprocessing?.step4?.apiResponse;
     const correlationPlot = step4Response?.correlation_plot;
     const vifReport = step4Response?.vif_report || [];
+
+    const vifDropperRef = useRef(null);
 
     const [toggles, setToggles] = useState({
         correlation: false,
@@ -104,11 +106,17 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
     const handleStatisticalAnalysis = useCallback(async () => {
         if (readonly) return true;
 
-        // Validate — show inline error instead of blocking Next
         if (vifDropperEnabled && selectedFeatures.length === 0) {
             setShowFieldErrors(true);
-            // Auto-expand VIF section so user can see the error
+
             setExpandedSections(prev => ({ ...prev, vif: true }));
+
+            setTimeout(() => {
+                if (vifDropperRef.current) {
+                    vifDropperRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 50);
+
             return false;
         }
 
@@ -205,7 +213,7 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                                 disabled={readonly}
                                 className="sr-only peer"
                             />
-                            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
+                            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#CCCCCC] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
                         </label>
                         {toggles.correlation && (
                             <button onClick={() => toggleSection('correlation')} className="text-gray-400 hover:text-gray-600">
@@ -236,14 +244,12 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                 )}
             </div>
 
-            {/* ── VIF Analysis Section ── */}
-            {/* Whole card turns red if featuresError is true */}
-            <div className={`rounded-lg transition-all ${featuresError ? 'bg-red-50 border border-red-400' : 'bg-gray-50'}`}>
+            <div className="bg-gray-50 rounded-lg">
                 <div className="p-4 flex items-center justify-between">
                     <div className="flex-1 flex items-center gap-2">
                         <div>
                             <div className='flex flex-row'>
-                                <h4 className={`text-sm font-medium mr-2 ${featuresError ? 'text-red-700' : 'text-gray-700'}`}>VIF Analysis</h4>
+                                <h4 className="text-sm font-medium text-gray-700 mr-2">VIF Analysis</h4>
                                 <InfoButton sectionDescriptions={sectionDescriptions} section="vif" isLastSection={true} />
                             </div>
                             <p className="text-xs text-gray-400 mt-0.5">{`${vifReport.length} features analyzed | ${selectedFeatures.length} selected to drop`}</p>
@@ -258,7 +264,7 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                                 disabled={readonly}
                                 className="sr-only peer"
                             />
-                            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
+                            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#CCCCCC] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
                         </label>
                         {toggles.vif && (
                             <button onClick={() => toggleSection('vif')} className="text-gray-400 hover:text-gray-600">
@@ -272,39 +278,38 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                     <div className="px-6 pb-6">
                         {/* Risk summary cards */}
                         <div className="grid grid-cols-3 gap-4 mb-6">
-                            <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex items-center justify-between">
+                            <div className="bg-[#F7FFFC] border border-[#36AD8F] rounded-lg px-4 py-3 flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <div className="w-10 h-10 rounded-md bg-green-100 flex items-center justify-center">
-                                        <CircleCheckBig className="w-5 h-5 text-green-600" />
+                                    <div className="w-10 h-10 rounded-md bg-[#D4FFF4] flex items-center justify-center">
+                                        <CircleCheckBig className="w-5 h-5 text-[#36AD8F]" />
                                     </div>
-                                    <span className="text-sm font-medium text-green-600">Low Risk</span>
+                                    <span className="text-sm font-medium text-[#332849]">Low Risk</span>
                                 </div>
-                                <div className="text-3xl font-bold text-green-600">{riskCounts.low}</div>
+                                <div className="text-3xl font-bold text-[#36AD8F]">{riskCounts.low}</div>
                             </div>
 
-                            <div className="bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 flex items-center justify-between">
+                            <div className="bg-[#FFF8F2] border border-[#E08E40] rounded-lg px-4 py-3 flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <div className="w-10 h-10 rounded-md bg-orange-100 flex items-center justify-center">
-                                        <TriangleAlert className="w-5 h-5 text-orange-600" />
+                                    <div className="w-10 h-10 rounded-md bg-[#FFE8D3] flex items-center justify-center">
+                                        <TriangleAlert className="w-5 h-5 text-[#E08E40]" />
                                     </div>
-                                    <span className="text-sm font-medium text-orange-600">Moderate Risk</span>
+                                    <span className="text-sm font-medium text-[#332849]">Moderate Risk</span>
                                 </div>
-                                <div className="text-3xl font-bold text-orange-600">{riskCounts.moderate}</div>
+                                <div className="text-3xl font-bold text-[#E08E40]">{riskCounts.moderate}</div>
                             </div>
 
-                            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center justify-between">
+                            <div className="bg-[#FFF7F8] border border-[#EF4D5F] rounded-lg px-4 py-3 flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <div className="w-10 h-10 rounded-md bg-red-100 flex items-center justify-center">
-                                        <CircleX className="w-5 h-5 text-red-600" />
+                                    <div className="w-10 h-10 rounded-md bg-[#FFDCE0] flex items-center justify-center">
+                                        <CircleX className="w-5 h-5 text-[#EF4D5F]" />
                                     </div>
-                                    <span className="text-sm font-medium text-red-600">High Risk</span>
+                                    <span className="text-sm font-medium text-[#332849]">High Risk</span>
                                 </div>
-                                <div className="text-3xl font-bold text-red-600">{riskCounts.high}</div>
+                                <div className="text-3xl font-bold text-[#EF4D5F]">{riskCounts.high}</div>
                             </div>
                         </div>
 
-                        {/* VIF Column Dropper toggle + Select All */}
-                        <div className="flex items-center justify-between mb-4">
+                        <div ref={vifDropperRef} className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-4">
                                 <span className="text-sm font-medium text-gray-700">VIF Column Dropper</span>
                                 <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -315,7 +320,7 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                                         disabled={readonly}
                                         className="sr-only peer"
                                     />
-                                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
+                                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#CCCCCC] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
                                 </label>
                             </div>
                             {vifDropperEnabled && (
@@ -326,7 +331,8 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                                             checked={vifReport.length > 0 && selectedFeatures.length === vifReport.length}
                                             onChange={toggleAllFeatures}
                                             disabled={readonly}
-                                            className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded focus:ring-[#8e78b7]"
+                                            style={{ accentColor: '#8E77BB' }}
+                                            className="w-4 h-4 border-[#CCCCCC] rounded focus:ring-[#8E77BB]"
                                         />
                                         <span className="text-[#8e78b7] font-medium">Select All</span>
                                     </label>
@@ -335,15 +341,15 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                             )}
                         </div>
 
-                        {/* Inline error — only shown after Next is clicked */}
                         {featuresError && (
-                            <p className="text-xs text-red-500 mb-3 pl-0.5">Please select at least one feature to drop</p>
+                            <p className="text-xs text-[#EF4D5F] mb-3 pl-0.5">Please select at least one feature to drop</p>
                         )}
 
-                        {/* VIF Table */}
-                        <div className="border border-gray-300 rounded-lg overflow-hidden max-h-96 overflow-y-auto">
+                        <div className={`border rounded-lg overflow-hidden max-h-96 overflow-y-auto transition-colors ${
+                            featuresError ? 'border-[#EF4D5F] bg-[#FFF7F8]' : 'border-[#CCCCCC]'
+                        }`}>
                             <table className="w-full">
-                                <thead className="bg-gray-50 sticky top-0 z-10">
+                                <thead className={`sticky top-0 z-10 border-b ${featuresError ? 'bg-[#FFF7F8] border-[#EF4D5F]' : 'bg-gray-50 border-[#CCCCCC]'}`}>
                                     <tr>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Feature</th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">VIF Score</th>
@@ -366,10 +372,10 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                                                     <td className="px-4 py-3">
                                                         <span className={`inline-block px-4 py-1 rounded-md text-xs font-medium ${
                                                             row.Multicollinearity_Risk?.toLowerCase().includes('high')
-                                                                ? 'bg-red-100 text-red-700'
+                                                                ? 'bg-[#F276A74D] text-[#EF4D5F]'
                                                                 : row.Multicollinearity_Risk?.toLowerCase().includes('moderate')
                                                                     ? 'bg-orange-100 text-orange-700'
-                                                                    : 'bg-green-100 text-green-700'
+                                                                    : 'bg-[#2AC79240] text-[#069B68]'
                                                         }`}>
                                                             {row.Multicollinearity_Risk}
                                                         </span>
@@ -381,7 +387,12 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
                                                                 checked={selectedFeatures.includes(row.Feature)}
                                                                 onChange={() => toggleFeatureSelection(row.Feature)}
                                                                 disabled={readonly}
-                                                                className="w-4 h-4 text-[#8e78b7] border-gray-300 rounded focus:ring-[#8e78b7]"
+                                                                style={{ accentColor: featuresError ? '#EF4D5F' : '#8E77BB' }}
+                                                                className={`w-4 h-4 rounded border transition-colors ${
+                                                                    featuresError
+                                                                        ? 'border-[#EF4D5F] focus:ring-red-300'
+                                                                        : 'border-[#CCCCCC] focus:ring-[#8E77BB]'
+                                                                }`}
                                                             />
                                                         ) : (
                                                             <span className="text-sm text-gray-400 italic">Enable switch to drop</span>

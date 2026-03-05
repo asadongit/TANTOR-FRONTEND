@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { Icon } from "@iconify-icon/react";
 import { Info, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
+import bookmarkAddSvg from "../../../../../assets/ai/bookmark_add.svg";
 
 const COLORS = {
   all: "#5B63D3",
@@ -23,7 +24,7 @@ export default function ModelFlow() {
   const [hover, setHover] = useState(null);
   const [showInfo, setShowInfo] = useState(false);
 
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(1.2);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -312,35 +313,35 @@ export default function ModelFlow() {
   );
 
   return (
-    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm h-[300px]">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Icon icon="material-symbols:account-tree-outline" className="w-5 h-5 text-purple-600" />
-          <h3 className="text-base font-semibold text-gray-800">Model Flow Distribution</h3>
+    <div className="bg-white pt-4 px-6 pb-6 rounded-xl border border-gray-200 shadow-sm h-[350px] flex flex-col">
+      <div className="flex items-center justify-between pb-4">
+        <div className="flex items-center gap-[8px]">
+          <img src={bookmarkAddSvg} alt="Model Flow" className="w-[21px] h-[21px]" />
+          <h3 className="satoshi-medium-md m-0">Model Flow Distribution</h3>
         </div>
         <div className="flex items-center gap-3">
           {/* Zoom controls */}
-          <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-1">
+          <div className="flex items-center gap-0.5 border border-gray-200 rounded-lg p-0.5">
             <button
               onClick={handleZoomOut}
-              className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+              className="p-1 hover:bg-gray-100 rounded transition-colors"
               title="Zoom Out"
             >
               <ZoomOut className="w-4 h-4 text-gray-600" />
             </button>
-            <span className="text-xs text-gray-600 min-w-[3rem] text-center font-medium">
+            <span className="text-xs text-gray-600 min-w-[2.5rem] text-center font-medium">
               {Math.round(zoom * 100)}%
             </span>
             <button
               onClick={handleZoomIn}
-              className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+              className="p-1 hover:bg-gray-100 rounded transition-colors"
               title="Zoom In"
             >
               <ZoomIn className="w-4 h-4 text-gray-600" />
             </button>
             <button
               onClick={handleReset}
-              className="p-1.5 hover:bg-gray-100 rounded transition-colors border-l border-gray-200 ml-1"
+              className="p-1 hover:bg-gray-100 rounded transition-colors border-l border-gray-200 ml-0.5"
               title="Reset View"
             >
               <Maximize2 className="w-4 h-4 text-gray-600" />
@@ -363,7 +364,7 @@ export default function ModelFlow() {
       </div>
 
       <div
-        className="h-[200px] overflow-x-auto overflow-y-hidden rounded-lg bg-gradient-to-br from-gray-50 to-white relative border border-gray-100"
+        className="flex-1 overflow-x-auto overflow-y-hidden rounded-lg bg-gradient-to-br from-gray-50 to-white relative border border-gray-100"
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         style={{ cursor: isDragging ? "grabbing" : "grab" }}

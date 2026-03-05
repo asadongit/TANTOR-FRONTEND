@@ -17,10 +17,10 @@ function Observability() {
     const periods = ['7 Days', '15 Days', '30 Days'];
 
     return (
-        <div className="p-3 sm:p-4 lg:p-6 bg-gray-50 min-h-screen">
+        <div className="p-6 bg-gray-50 min-h-screen">
             <Breadcrumb />
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <h1 className="text-2xl sm:text-3xl font-medium text-gray-900">Observability</h1>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                <h1 className="satoshi-heading">Observability</h1>
 
                 <div className="flex items-center gap-2">
                     <div className="inline-flex rounded-md" role="group" aria-label="Periods">
@@ -51,16 +51,16 @@ function Observability() {
                 </div>
             </div>
 
-            <div className="border-b border-gray-200">
-                <nav className="flex">
+            <div>
+                <nav className="flex gap-2">
                     {tabs.map((tab, idx) => (
                         <button
                             key={tab.key}
                             onClick={() => setActiveTab(idx)}
-                            className={`px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
+                            className={`px-4 py-1 rounded-full text-sm transition-colors duration-200 ${
                                 activeTab === idx
-                                    ? 'border-b-2 border-[#8e78b7] text-[#8e78b7]'
-                                    : 'text-gray-500 hover:text-gray-700'
+                                    ? 'bg-white text-[#8e78b7] ring-1 ring-[#8e78b7]'
+                                    : 'bg-gray-50 text-gray-600 ring-1 ring-gray-200 hover:bg-gray-100'
                             }`}
                         >
                             {tab.label}

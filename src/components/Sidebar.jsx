@@ -41,7 +41,7 @@ import {
 import { Flag } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useAIPlayground } from '../context/AIPlaygroundContext';
-import DashboardIcon from '../assets/dashboard.svg';
+import DashboardIcon from '../assets/space_dashboard.svg';
 import AIHubIcon from '../assets/ai/hub.svg';
 import AIPlaygroundIcon from '../assets/ai/aiplayground.svg';
 import AgentMeshIcon from '../assets/ai/agentmesh.svg';
@@ -311,11 +311,20 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
       currentActiveSection === 'ai' ? aiRoutes :
         dataGovernanceRoutes;
 
-  const renderIcon = (IconComponent) => {
+  const renderIcon = (IconComponent, isActive) => {
     if (typeof IconComponent === 'string') {
-      return <img src={IconComponent} alt="" className="h-5 w-5 flex-shrink-0" />;
+      // It's an SVG URL, render as <img>
+      return (
+        <img 
+          src={IconComponent} 
+          alt="" 
+          className="h-5 w-5 flex-shrink-0" 
+          style={isActive ? { filter: 'brightness(0) saturate(100%) invert(54%) sepia(25%) saturate(471%) hue-rotate(223deg)' } : {}}
+        />
+      );
     }
-    return <IconComponent className="h-5 w-5 flex-shrink-0" />;
+    // Otherwise, assume it's a React component
+    return <IconComponent className="h-5 w-5 flex-shrink-0" style={isActive ? { color: '#8E77BB' } : {}} />;
   };
 
   const renderNavItem = (route) => {
@@ -339,24 +348,29 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
             handleNavClick(e, route.path, route.name);
           }}
           className={({ isActive }) =>
-            `flex items-center gap-3 px-3 py-2 rounded-lg mb-1 ${isActive ? 'bg-purple-100 text-purple-700' : 'text-gray-700 hover:bg-gray-100'
+            `flex items-center gap-3 px-3 py-2 rounded-lg mb-1 ${isActive ? 'bg-purple-100' : 'text-gray-700 hover:bg-gray-100'
             }`
           }
+          style={({ isActive }) => isActive ? { color: '#8E77BB' } : {}}
         >
-          {renderIcon(route.icon)}
-          {!isCollapsed && (
+          {({ isActive }) => (
             <>
-              <span className="truncate flex-grow">{route.name}</span>
-              {hasSubItems && (
-                <button
-                  onClick={(e) => toggleExpand(e, route.name)}
-                  className="p-1 hover:bg-gray-200 rounded-full transition-transform duration-300"
-                >
-                  <ChevronRightIcon
-                    className={`h-4 w-4 transition-transform duration-300 ${isExpanded ? 'rotate-90' : 'rotate-0'
-                      }`}
-                  />
-                </button>
+              {renderIcon(route.icon, isActive)}
+              {!isCollapsed && (
+                <>
+                  <span className="truncate flex-grow">{route.name}</span>
+                  {hasSubItems && (
+                    <button
+                      onClick={(e) => toggleExpand(e, route.name)}
+                      className="p-1 hover:bg-gray-200 rounded-full transition-transform duration-300"
+                    >
+                      <ChevronRightIcon
+                        className={`h-4 w-4 transition-transform duration-300 ${isExpanded ? 'rotate-90' : 'rotate-0'
+                          }`}
+                      />
+                    </button>
+                  )}
+                </>
               )}
             </>
           )}
@@ -380,22 +394,27 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
                         onClick={(e) => handleNavClick(e, subItem.path, subItem.name)}
                         className={({ isActive }) =>
                           `flex items-center justify-between px-3 py-2 rounded-lg transition-colors duration-200 ${isActive
-                            ? 'bg-purple-100 text-purple-700'
+                            ? 'bg-purple-100'
                             : 'text-gray-500 hover:bg-gray-100'
                           }`
                         }
+                        style={({ isActive }) => isActive ? { color: '#8E77BB' } : {}}
                       >
-                        <span>{subItem.name}</span>
-                        {hasNestedSubItems && (
-                          <button
-                            onClick={(e) => toggleSubExpand(e, subItem.name)}
-                            className="p-1 hover:bg-gray-200 rounded-full transition-transform duration-300"
-                          >
-                            <ChevronRightIcon
-                              className={`h-3 w-3 transition-transform duration-300 ${isSubExpanded ? 'rotate-90' : 'rotate-0'
-                                }`}
-                            />
-                          </button>
+                        {({ isActive }) => (
+                          <>
+                            <span>{subItem.name}</span>
+                            {hasNestedSubItems && (
+                              <button
+                                onClick={(e) => toggleSubExpand(e, subItem.name)}
+                                className="p-1 hover:bg-gray-200 rounded-full transition-transform duration-300"
+                              >
+                                <ChevronRightIcon
+                                  className={`h-3 w-3 transition-transform duration-300 ${isSubExpanded ? 'rotate-90' : 'rotate-0'
+                                    }`}
+                                />
+                              </button>
+                            )}
+                          </>
                         )}
                       </NavLink>
                     ) : (
@@ -428,12 +447,15 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
                               onClick={(e) => handleNavClick(e, nestedItem.path, nestedItem.name)}
                               className={({ isActive }) =>
                                 `block px-6 py-2 rounded-lg transition-colors duration-200 ${isActive
-                                  ? 'bg-purple-100 text-purple-700'
+                                  ? 'bg-purple-100'
                                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
                                 }`
                               }
+                              style={({ isActive }) => isActive ? { color: '#8E77BB' } : {}}
                             >
-                              {nestedItem.name}
+                              {({ isActive }) => (
+                                <>{nestedItem.name}</>
+                              )}
                             </NavLink>
                           ))}
                         </div>
@@ -479,28 +501,30 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
       </aside>
 
       {showCancelModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-[#00000099] bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">Cancel AI Playground Workflow?</h2>
+              <div>
+              <div className='p-6' >
+                <div className="flex items-center gap-3 mb-4">
+                  <h2 className="text-lg font-medium text-[#332849]">Cancel AI Playground Workflow?</h2>
+                </div>
+
+                <p className="text-base text-[#818181] mb-6">
+                  Are you sure you want to cancel? All unsaved progress and configurations will be lost. This action cannot be undone.
+                </p>
               </div>
 
-              <p className="text-gray-600 mb-6">
-                Are you sure you want to cancel? All unsaved progress and configurations will be lost. This action cannot be undone.
-              </p>
-
-              <div className="flex gap-3 justify-end">
+              <div className="flex gap-3 p-3 justify-end font-satoshi border-t border-slate-200 shadow-[0_-2px_10px_0px_rgba(0,0,0,0.07)]">
                 <button
                   onClick={handleCancelModalClose}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-[#818181] hover:bg-gray-50 transition-colors"
                 >
                   Continue Working
                 </button>
                 <button
                   onClick={handleConfirmCancel}
                   disabled={isCancelLoading}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                  className="px-4 py-2 bg-[#EF4D5F] text-white rounded-lg text-sm hover:bg-red-500 transition-colors disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
                 >
                   {isCancelLoading && (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

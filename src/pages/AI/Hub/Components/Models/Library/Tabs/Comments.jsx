@@ -3,6 +3,7 @@ import { RefreshCw, Pin, Eye, Trash2, Plus, MessageSquare, X, MoreVertical, Send
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../../../../../context/AuthContext';
 import DataTable from '../../../../../../../components/DataTable';
+import Searchicon from '../../../../../../../assets/governance/search.svg';
 import { aithemestyle } from '../../../../../../../components/themeContext';
 
 const Comments = (modelData) => {
@@ -375,10 +376,11 @@ const Comments = (modelData) => {
                     <div className="w-1/2 max-w-[270px]">
                         <label className="block text-xs text-gray-600 mb-1">&nbsp;</label>
                         <div className="relative">
+                            <img src={Searchicon} alt="Search" className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-5 text-gray-400 pointer-events-none" />
                             <input
                                 value={filters.q}
                                 onChange={(e) => setFilters((s) => ({ ...s, q: e.target.value }))}
-                                className="w-full border border-gray-300 rounded-lg pl-3 pr-3 py-2 text-sm"
+                                className="w-full border border-gray-300 rounded-lg pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
                                 placeholder="Search Comments"
                             />
                         </div>
@@ -388,12 +390,16 @@ const Comments = (modelData) => {
                         <label className="block text-xs text-gray-600 mb-1">&nbsp;</label>
                         <button
                             onClick={() => setShowOnlyPinned(!showOnlyPinned)}
-                            className={`inline-flex items-center justify-center w-10 h-10 border rounded-lg ${
-                                showOnlyPinned ? 'bg-[#8e78b7] text-white border-[#8e78b7]' : 'border-gray-300 hover:bg-gray-50'
+                            className={`inline-flex items-center justify-center gap-2 px-3 py-2 border rounded-lg font-medium text-sm ${
+                                showOnlyPinned 
+                                    ? 'border-[#8E77BB] text-[#8E77BB]' 
+                                    : 'border-gray-300 text-[#818181] hover:bg-gray-50'
                             }`}
                             title={showOnlyPinned ? 'Stop highlighting pinned comments' : 'Highlight pinned comments'}
                         >
                             <Pin className="w-4 h-4" />
+                            <span>Pinned</span>
+                            {showOnlyPinned && <X className="w-4 h-4" style={{ color: '#818181' }} />}
                         </button>
                     </div>
                 </div>

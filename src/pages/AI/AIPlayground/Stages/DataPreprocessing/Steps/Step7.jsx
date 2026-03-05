@@ -18,9 +18,9 @@ const RadioOption = ({ name, value, checked, onChange, label, description, reado
             <span className={`text-sm font-medium ${checked ? 'text-[#8e78b7]' : 'text-gray-700'}`}>{label}</span>
         </div>
         {description && (
-            <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 pointer-events-none">
+            <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-[#332849] text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 pointer-events-none">
                 <p className="leading-relaxed">{description}</p>
-                <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+                <div className="absolute -top-1 left-4 w-2 h-2 bg-[#332849] transform rotate-45"></div>
             </div>
         )}
     </label>
@@ -59,45 +59,70 @@ const FeatureSection = ({ title, isToggled, isExpanded, onToggle, onExpand, chil
     );
 };
 
-// Reusable clean table component matching the screenshot style
-const CleanDataTable = ({ title, subtitle, data }) => {
+const CleanDataTable = ({ title, data }) => {
     if (!data || data.length === 0) return null;
+
     const rowCount = data.length;
     const columnCount = Object.keys(data[0]).length;
 
     return (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="flex flex-col bg-white border border-gray-200 rounded-lg">
+
+            {/* Header */}
             {title && (
-                <div className="p-4 border-b border-gray-200">
-                    <h3 className="text-base font-semibold text-gray-900">{title}</h3>
-                    {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
+                <div className="px-4 py-3 border-b border-gray-200 shrink-0">
+                    <h3 className="text-base font-medium text-gray-900">
+                        {title}
+                    </h3>
                 </div>
             )}
-            <div className="overflow-x-auto">
-                <table className="w-full">
-                    <thead style={{ backgroundColor: '#F9F9F9' }}>
-                        <tr className="border-b border-gray-200">
-                            <th className="px-5 py-3 text-left text-sm font-semibold text-gray-800 sticky left-0 z-10" style={{ backgroundColor: '#F9F9F9' }}>#</th>
-                            {Object.keys(data[0]).map(key => (
-                                <th key={key} className="px-5 py-3 text-left text-sm font-semibold text-gray-800 whitespace-nowrap">
-                                    {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+
+            {/* Table Scroll Area */}
+            <div className="">
+                <div className="overflow-auto">
+                    <table className="min-w-full border-collapse">
+                        <thead className="sticky top-0 z-20 bg-[#F9F9F9]">
+                            <tr className="border-b border-gray-200">
+                                <th className="px-5 py-3 text-left text-sm font-medium text-gray-800 sticky left-0 bg-[#F9F9F9] z-30">
+                                    #
                                 </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {data.slice(0, 10).map((row, index) => (
-                            <tr key={index} className="bg-white hover:bg-gray-50 transition-colors">
-                                <td className="px-5 py-3 text-sm text-gray-500 sticky left-0 bg-inherit z-10">{index + 1}</td>
-                                {Object.entries(row).map(([key, value]) => (
-                                    <td key={key} className="px-5 py-3 text-sm text-gray-600 whitespace-nowrap">
-                                        {typeof value === 'number' ? value.toFixed(4) : value}
-                                    </td>
+                                {Object.keys(data[0]).map(key => (
+                                    <th
+                                        key={key}
+                                        className="px-5 py-3 text-left text-sm font-medium text-gray-800 whitespace-nowrap"
+                                    >
+                                        {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                    </th>
                                 ))}
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+
+                        <tbody className="divide-y divide-gray-100">
+                            {data.map((row, index) => (
+                                <tr key={index} className="hover:bg-gray-50">
+                                    <td className="px-5 py-3 text-sm text-gray-500 sticky left-0 bg-white">
+                                        {index + 1}
+                                    </td>
+                                    {Object.entries(row).map(([key, value]) => (
+                                        <td
+                                            key={key}
+                                            className="px-5 py-3 text-sm text-gray-600 whitespace-nowrap"
+                                        >
+                                            {typeof value === 'number'
+                                                ? value.toFixed(4)
+                                                : value}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Bottom Info */}
+            <div className="px-4 py-3 border-t border-gray-200 text-sm text-gray-600 shrink-0">
+                Showing 1 to {rowCount} of {rowCount} results • {columnCount} columns
             </div>
         </div>
     );
@@ -254,7 +279,7 @@ function Step7({ onShowPreview, showPreview, onApiCall }) {
                 );
             }
             return (
-                <div className="space-y-4">
+                <div className="space-y-4 -mx-6">
                     <CleanDataTable
                         title="Cleaned Data Preview"
                         subtitle={`Showing 1-${Math.min(10, displayData.length)} of ${displayData.length} rows • ${Object.keys(displayData[0]).length} columns`}
@@ -278,11 +303,7 @@ function Step7({ onShowPreview, showPreview, onApiCall }) {
         }
 
         return (
-            <div className="space-y-4">
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
-                    <CircleCheckBig className="w-5 h-5 text-green-600 flex-shrink-0" />
-                    <h3 className="text-sm font-medium text-green-800">Processing Complete!</h3>
-                </div>
+            <div className="space-y-4 -mx-6">
                 {validVariants.map(variantKey => (
                     <VariantDataTable key={variantKey} variantKey={variantKey} displayData={cleanedDfPreview[variantKey]} />
                 ))}

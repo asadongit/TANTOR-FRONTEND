@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 const StatusFilterDropdown = ({ selectedStatuses, onStatusChange, statusOptions }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -33,8 +33,8 @@ const StatusFilterDropdown = ({ selectedStatuses, onStatusChange, statusOptions 
         className="h-10 border border-gray-300 rounded-lg text-sm px-3 bg-white flex items-center justify-between min-w-[120px]"
         title="Filter by Status"
       >
-        <span>{getDisplayText()}</span>
-        <ArrowDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <span style={{ color: '#818181' }}>{getDisplayText()}</span>
+        <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} style={{ color: '#818181', fontWeight: 'bold' }} />
       </button>
 
       {isOpen && (
@@ -43,7 +43,7 @@ const StatusFilterDropdown = ({ selectedStatuses, onStatusChange, statusOptions 
             className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute top-full mt-1 w-48 bg-white border border-gray-300 rounded-lg shadow-lg z-20">
+          <div className="absolute top-full mt-1 min-w-[120px] bg-white border border-gray-300 rounded-lg shadow-lg z-20">
             {statusOptions.map((option) => (
               <label
                 key={option.value}
@@ -53,9 +53,9 @@ const StatusFilterDropdown = ({ selectedStatuses, onStatusChange, statusOptions 
                   type="checkbox"
                   checked={selectedStatuses.includes(option.value)}
                   onChange={() => handleStatusToggle(option.value)}
-                  className="mr-2 h-4 w-4 text-[#8e78b7] border-gray-300 rounded focus:ring-[#8e78b7]"
+                  className="mr-2 h-4 w-4 accent-[#8E77BB] border-gray-300 rounded focus:ring-[#8e78b7]"
                 />
-                <span className="text-sm text-gray-700">{option.label}</span>
+                <span className="text-sm" style={{ color: '#818181' }}>{option.label}</span>
               </label>
             ))}
           </div>

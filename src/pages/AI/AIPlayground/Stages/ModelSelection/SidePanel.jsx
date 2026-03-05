@@ -43,7 +43,7 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
 
     return (
         <div className="space-y-6">
-            <div className="bg-[#FAFAFA] rounded-xl p-4 border border-gray-200">
+            <div className="bg-[#FAFAFA] rounded-xl p-4">
                 <div className="flex items-start justify-between mb-2">
                     <h3 className={tw.sectionHeading}>Normalise Data</h3>
                     <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -58,14 +58,14 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
                     </label>
                 </div>
                 <p className="text-sm text-gray-600">Scale Features to standard range before training</p>
-                <div className="mt-4 p-3 bg-white border border-purple-200 rounded-lg">
+                <div className="mt-4 p-2 bg-white border border-[#8E77BB] rounded-lg">
                     <p className="text-xs text-gray-700">
                         <span className="font-medium text-[#8e78b7]">Note:</span> If a feature scaler has already been applied during data pre-processing, you do not need to normalise the data again.
                     </p>
                 </div>
             </div>
 
-            <div className={`bg-[#FAFAFA] rounded-xl p-4 border ${metricsHasError ? 'border-red-400 ring-1 ring-red-400' : 'border-gray-200'}`}>
+            <div className={`bg-[#FAFAFA] rounded-xl p-4 ${metricsHasError ? ' border border-red-400 ring-1 ring-red-400' : ''}`}>
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex-1">
                         <h3 className={`${tw.sectionHeading} ${metricsHasError ? 'text-red-700' : ''}`}>
