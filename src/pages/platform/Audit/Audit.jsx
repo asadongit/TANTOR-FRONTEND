@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import toast from 'react-hot-toast';
 import Breadcrumb from "../../../components/Breadcrumb";
 import { useAuth } from '../../../context/AuthContext';
 import axios from 'axios';
@@ -37,6 +38,7 @@ function Audit() {
         { value: "project", label: "Project" },
         { value: "transformation", label: "Transformation" },
         { value: "migration", label: "Migration" },
+        { value: "metadata", label: "Metadata" },
         { value: "cdc", label: "CDC" },
         { value: "user-report", label: "User Report" },
         { value: "reports", label: "Dashboard Reports" },
@@ -349,9 +351,9 @@ function Audit() {
 
     const downloadCSV = () => {
         const data = prepareDataForExport();
-                const visibleColumns = columns.map(col => col.key);
-                const headerRow = columns.map(col => col.label).join(',');
-                const csvRows = data.map(row => {
+        const visibleColumns = columns.map(col => col.key);
+        const headerRow = columns.map(col => col.label).join(',');
+        const csvRows = data.map(row => {
             return visibleColumns.map(key => {
                 let cellData = row[key] === null || row[key] === undefined ? '' : String(row[key]);
                 cellData = cellData.replace(/"/g, '""');
@@ -375,7 +377,7 @@ function Audit() {
 
     const downloadExcel = () => {
         const data = prepareDataForExport();
-                const wb = XLSX.utils.book_new();
+        const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.json_to_sheet(data);
 
         XLSX.utils.book_append_sheet(wb, ws, "Audit Data");
@@ -390,6 +392,8 @@ function Audit() {
             fetchAuditData(decodedToken.preferred_username);
         }
     }, []);
+
+    const maxDateTime = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 
     return (
         <div className="p-6">
@@ -448,6 +452,7 @@ function Audit() {
                                 className="w-full p-2 border rounded"
                                 value={startDate}
                                 onChange={(e) => setStartDate(e.target.value)}
+                                max={maxDateTime}
                             />
                         </div>
 
@@ -458,6 +463,7 @@ function Audit() {
                                 className="w-full p-2 border rounded"
                                 value={endDate}
                                 onChange={(e) => setEndDate(e.target.value)}
+                                max={maxDateTime}
                             />
                         </div>
 
@@ -516,9 +522,14 @@ function Audit() {
                             <div className="relative" ref={downloadRef}>
                                 <button
                                     type="button"
-                                    onClick={() => setShowDownloadOptions(!showDownloadOptions)}
+                                    onClick={() => {
+                                        if (auditData.length === 0) {
+                                            toast.error("No data to download");
+                                        } else {
+                                            setShowDownloadOptions(!showDownloadOptions);
+                                        }
+                                    }}
                                     className="px-4 py-2 border rounded hover:bg-gray-50 text-gray-700 flex items-center"
-                                    disabled={auditData.length === 0}
                                     title={auditData.length === 0 ? "No data to download" : "Download data"}
                                 >
                                     <Download size={16} className="mr-1" />
