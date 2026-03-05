@@ -96,17 +96,9 @@ const GenerateReport = () => {
     }
   }, []);
 
-  const filteredReportsAccToUserAndCurrData = reports.filter(
-    (report) =>
-      report?.updated_at.split("T")[0] ===
-      new Date().toISOString().split("T")[0] &&
-      report?.created_by === decodedToken.preferred_username
+  const sortFilteredReportAccToStartTime = [...reports].sort(
+    (a, b) => new Date(b.start_time) - new Date(a.start_time)
   );
-
-  const sortFilteredReportAccToStartTime =
-    filteredReportsAccToUserAndCurrData.sort(
-      (a, b) => new Date(b.start_time) - new Date(a.start_time)
-    );
 
   //for pop up reports
   function getReportsBetweenRange(startDate, endDate) {
@@ -135,28 +127,31 @@ const GenerateReport = () => {
   const filteredReports = getReportsBetweenRange(startDate, endDate);
 
   const columns = useMemo(() => [
-    { key: "workflow_name", label: "Name" },
-    { key: "workflow_type", label: "Report For" },
-    { key: "execute_type", label: "Type" },
-    { key: "project", label: "Project" },
-    { key: "created_by", label: "Users" },
+    { key: "workflow_name", label: "Name", minWidth: "120px" },
+    { key: "workflow_type", label: "Report\u00a0For", minWidth: "110px" },
+    { key: "execute_type", label: "Type", minWidth: "90px" },
+    { key: "project", label: "Project", minWidth: "100px" },
+    { key: "created_by", label: "Users", minWidth: "100px" },
     {
       key: "start_time",
-      label: "Start",
+      label: "Start\u00a0Date",
+      minWidth: "100px",
       render: (row) => row.start_time ? row.start_time.split("T")[0] : row.start_time
     },
     {
       key: "end_time",
-      label: "End",
+      label: "End\u00a0Date",
+      minWidth: "100px",
       render: (row) => row.end_time ? row.end_time.split("T")[0] : row.end_time
     },
-    { key: "before_source_table_count", label: "Before Source table", },
-    { key: "after_target_table_count", label: "After Target table" },
-    { key: "table_size_before", label: "Table Size Before" },
-    { key: "table_size_after", label: "Table Size After" },
+    { key: "before_source_table_count", label: "Before\u00a0Source\u00a0Table\u00a0Count", minWidth: "160px" },
+    { key: "after_target_table_count", label: "After\u00a0Target\u00a0Table\u00a0Count", minWidth: "150px" },
+    { key: "table_size_before", label: "Table\u00a0Size\u00a0Before", minWidth: "110px" },
+    { key: "table_size_after", label: "Table\u00a0Size\u00a0After", minWidth: "100px" },
     {
       key: "status_choices",
       label: "Status",
+      minWidth: "100px",
       render: (row) => (
         <div className="text-center">
           <span
@@ -173,6 +168,7 @@ const GenerateReport = () => {
     {
       key: "remarks",
       label: "Remark",
+      minWidth: "130px",
       render: (row) => row.remarks
         ? row.remarks
         : row.workflow_type === "Purge" && row.status_choices === "Completed"
