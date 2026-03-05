@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, Download } from 'lucide-react';
+import { AlertTriangle, Download, Search, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 
-export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, modelsList = [], sessionId }) {
+export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, modelsList = [], sessionId, modelsLoading, isInitializing, jobLoading }) {
+  const isLoading = modelsLoading || isInitializing || jobLoading;
   const hostnameAI = window._env_?.VITE_AI_API;
   const [selectedModels, setSelectedModels] = useState({});
   const [descriptions, setDescriptions] = useState({});
@@ -14,7 +15,9 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
   const [currentReportData, setCurrentReportData] = useState(null);
   const [currentModelName, setCurrentModelName] = useState('');
   const [alreadyStartedCount, setAlreadyStartedCount] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const reportRef = useRef(null);
+  const searchInputRef = useRef(null);
   const { workflowState } = useAIPlayground();
 
   useEffect(() => {
@@ -25,14 +28,13 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
       setCurrentReportData(null);
       setCurrentModelName('');
       setAlreadyStartedCount(null);
+      setSearchQuery('');
     }
   }, [isOpen]);
 
-  // useEffect(() => {
-  //   if (isOpen) {
-  //     cancelJob();
-  //   }
-  // }, [isOpen]);
+  const filteredModelsList = modelsList.filter(model =>
+    model.run_name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const cancelJob = async () => {
     const jobId = workflowState?.completedJobs?.config?.job_id;
@@ -92,7 +94,7 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
         run_id: model.run_id,
         description: descriptions[model.run_name] || ''
       }));
-    
+
     onSave(modelsToSave);
     setShowConfirmation(false);
   };
@@ -107,12 +109,18 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
     setShowConfirmation(false);
     setCurrentReportData(null);
     setCurrentModelName('');
+    setSearchQuery('');
     onClose();
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    searchInputRef.current?.focus();
   };
 
   const handleDownloadGovernanceReports = async () => {
     const selectedModelNames = Object.keys(selectedModels).filter(name => selectedModels[name]);
-    
+
     if (selectedModelNames.length === 0) {
       toast.error('Please select at least one model to download reports', {
         duration: 3000,
@@ -199,14 +207,14 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
 
     try {
       const input = reportRef.current;
-      const canvas = await html2canvas(input, { 
+      const canvas = await html2canvas(input, {
         scale: 2,
         useCORS: true,
         logging: false,
         windowWidth: input.scrollWidth,
         windowHeight: input.scrollHeight
       });
-      
+
       const imgData = canvas.toDataURL("image/png");
       const imgWidth = 210;
       const pageHeight = 297;
@@ -244,6 +252,7 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900">Save Models</h2>
@@ -251,20 +260,20 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
               {/* Governance Report button beside close icon */}
               <button
                 onClick={handleDownloadGovernanceReports}
-                disabled={readonly || selectedCount === 0 || downloadingReports}
+                disabled={readonly || selectedCount === 0 || downloadingReports || isLoading}
                 className="flex items-center gap-2 px-4 py-1.5 border border-gray-400 text-gray-400 hover:text-gray-600 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Download size={15} />
                 {downloadingReports ? 'Downloading...' : 'Governance Report'}
               </button>
 
-              {/* Close icon as SVG */}
+              {/* Close icon */}
               <button
                 onClick={handleClose}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M18 6L6 18M6 6L18 18" stroke="#818181" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M18 6L6 18M6 6L18 18" stroke="#818181" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
             </div>
@@ -281,81 +290,146 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-6">
-            <p className="text-sm text-gray-600 mb-4">
-              Select the models you want to save and provide descriptions for each selected model.
-            </p>
-
-            {modelsList.length === 0 ? (
-              <div className="py-8 text-center">
-                <p className="text-sm text-gray-500">No models available to save.</p>
+            {isLoading ? (
+              <div className="py-16 flex flex-col items-center justify-center gap-3">
+                <div className="w-8 h-8 border-2 border-[#8e78b7] border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-gray-500">Loading models...</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {modelsList.map((model) => (
-                  <div
-                    key={model.run_id}
-                    className={`border rounded-lg p-4 transition-all ${
-                      selectedModels[model.run_name]
-                        ? 'border-[#8e78b7] bg-purple-50'
-                        : 'border-gray-200 bg-white'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        id={`model-${model.run_id}`}
-                        checked={selectedModels[model.run_name] || false}
-                        onChange={() => handleCheckboxChange(model.run_name)}
-                        disabled={readonly}
-                        className="mt-1 w-4 h-4 border-gray-300 rounded cursor-pointer"
-                        style={{ accentColor: '#8e78b7' }}
-                      />
-                      <div className="flex-1">
-                        <label
-                          htmlFor={`model-${model.run_id}`}
-                          className="block text-sm font-medium text-gray-900 cursor-pointer"
-                        >
-                          {model.run_name}
-                        </label>
+              <>
+                <p className="text-sm text-gray-600 mb-4">
+                  Select the models you want to save and provide descriptions for each selected model.
+                </p>
 
-                        {selectedModels[model.run_name] && (
-                          <div className="mt-3">
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Description
-                            </label>
-                            <textarea
-                              value={descriptions[model.run_name] || ''}
-                              onChange={(e) => handleDescriptionChange(model.run_name, e.target.value)}
-                              disabled={readonly}
-                              placeholder="Enter model description..."
-                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent resize-none"
-                              rows={3}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                {/* Search Bar */}
+                {modelsList.length > 0 && (
+                  <div className="relative mb-4">
+                    <Search
+                      size={15}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                    />
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search models..."
+                      className="w-full pl-9 pr-9 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={handleClearSearch}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
                   </div>
-                ))}
-              </div>
+                )}
+
+                {modelsList.length === 0 ? (
+                  <div className="py-8 text-center">
+                    <p className="text-sm text-gray-500">No models available to save.</p>
+                  </div>
+                ) : filteredModelsList.length === 0 ? (
+                  <div className="py-8 text-center">
+                    <p className="text-sm text-gray-500">No models match your search.</p>
+                    <button
+                      onClick={handleClearSearch}
+                      className="mt-2 text-sm text-[#8e78b7] hover:underline"
+                    >
+                      Clear search
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {filteredModelsList.map((model) => (
+                      <div
+                        key={model.run_id}
+                        className={`border rounded-lg p-4 transition-all ${
+                          selectedModels[model.run_name]
+                            ? 'border-[#8e78b7] bg-purple-50'
+                            : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            id={`model-${model.run_id}`}
+                            checked={selectedModels[model.run_name] || false}
+                            onChange={() => handleCheckboxChange(model.run_name)}
+                            disabled={readonly}
+                            className="mt-1 w-4 h-4 border-gray-300 rounded cursor-pointer"
+                            style={{ accentColor: '#8e78b7' }}
+                          />
+                          <div className="flex-1">
+                            <label
+                              htmlFor={`model-${model.run_id}`}
+                              className="block text-sm font-medium text-gray-900 cursor-pointer"
+                              title={model.run_name}
+                            >
+                              <span className="block truncate max-w-[500px]">
+                                {searchQuery ? (
+                                  (() => {
+                                    const name = model.run_name;
+                                    const idx = name.toLowerCase().indexOf(searchQuery.toLowerCase());
+                                    if (idx === -1) return name;
+                                    return (
+                                      <>
+                                        {name.slice(0, idx)}
+                                        {name.slice(idx, idx + searchQuery.length)}
+                                        {name.slice(idx + searchQuery.length)}
+                                      </>
+                                    );
+                                  })()
+                                ) : (
+                                  model.run_name
+                                )}
+                              </span>
+                            </label>
+
+                            {selectedModels[model.run_name] && (
+                              <div className="mt-3">
+                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                  Description
+                                </label>
+                                <textarea
+                                  value={descriptions[model.run_name] || ''}
+                                  onChange={(e) => handleDescriptionChange(model.run_name, e.target.value)}
+                                  disabled={readonly}
+                                  placeholder="Enter model description..."
+                                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent resize-none"
+                                  rows={3}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
           {/* Footer */}
           <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 shadow-[0_-2px_8px_0_rgba(0,0,0,0.06)]">
-            <button
-              onClick={handleClose}
-              className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSaveClick}
-              disabled={readonly || selectedCount === 0}
-              className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium hover:bg-[#7d67a6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Save Model{selectedCount > 1 ? 's' : ''}
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleClose}
+                className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveClick}
+                disabled={readonly || selectedCount === 0 || isLoading}
+                className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium hover:bg-[#7d67a6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Save Model{selectedCount > 1 ? 's' : ''}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -474,7 +548,7 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
               <h4 className="text-sm font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-[#8e78b7]">
                 Evaluation
               </h4>
-              
+
               {/* Development - Project Info */}
               <div className="mb-4 pt-4 border-t border-gray-300">
                 <h5 className="text-sm font-semibold text-gray-900 mb-3 bg-gray-100 px-3 py-2 rounded">Development</h5>
@@ -523,7 +597,7 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
                           <tr key={index} className="border-b">
                             <td className="px-4 py-2 text-sm text-gray-900 capitalize">{metric}</td>
                             <td className="px-4 py-2 text-sm text-gray-900">
-                              {typeof currentReportData.models[currentModelName].training_metrics.train[metric] === 'number' 
+                              {typeof currentReportData.models[currentModelName].training_metrics.train[metric] === 'number'
                                 ? currentReportData.models[currentModelName].training_metrics.train[metric].toFixed(6)
                                 : currentReportData.models[currentModelName].training_metrics.train[metric]}
                             </td>

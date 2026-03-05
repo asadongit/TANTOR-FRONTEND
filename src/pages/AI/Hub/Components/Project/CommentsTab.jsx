@@ -5,7 +5,10 @@ import { useAuth } from '../../../../../context/AuthContext';
 import DataTable from '../../../../../components/DataTable';
 import AddCommentModal from './AddCommentModal';
 import CommentDetailModal from './CommentDetailModal';
+import CustomDropdown from '../../../../../components/CustomDropdown';
 import { aithemestyle } from '../../../../../components/themeContext';
+import Searchicon from '../../../../../assets/governance/search.svg';
+import keep from '../../../../../assets/ai/keep.svg';
 
 const CommentsTab = ({ projectData }) => {
     const { token, decodedToken } = useAuth();
@@ -24,6 +27,7 @@ const CommentsTab = ({ projectData }) => {
             toDate: '',
             sortBy: 'date',
             q: '',
+            component: '',
         }),
         []
     );
@@ -108,6 +112,10 @@ const CommentsTab = ({ projectData }) => {
                 if (to && t > to.getTime()) return false;
                 return true;
             });
+        }
+
+        if (filters.component) {
+            out = out.filter((c) => (c?.component || '').toLowerCase() === filters.component.toLowerCase());
         }
 
         const q = (filters.q || '').trim().toLowerCase();
@@ -394,12 +402,16 @@ const CommentsTab = ({ projectData }) => {
                 sortable: false,
                 width: '100px',
                 render: (row) => (
-                    <span
-                        className="text-xs font-medium"
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            openReplies(row.__raw);
+                        }}
+                        className="text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity"
                         style={{ color: aithemestyle.iconColor }}
                     >
                         {String(row.repliesCount).padStart(2, '0')} Replies
-                    </span>
+                    </button>
                 ),
             },
         ],
@@ -425,67 +437,127 @@ const CommentsTab = ({ projectData }) => {
 
     return (
         <div className="bg-white rounded-xl">
-            <div className="flex justify-between items-center p-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">Comments</h2>
+            <div className="flex items-end gap-3 mb-4 p-4">
+                <div className="min-w-[140px]">
+                    <CustomDropdown
+                        label="Component"
+                        value={filters.component || ''}
+                        onChange={(e) => setFilters((s) => ({ ...s, component: e.target.value }))}
+                        options={[
+                            { value: '', label: 'All' },
+                            { value: 'Project', label: 'Project' },
+                            { value: 'Data', label: 'Data' },
+                            { value: 'Model', label: 'Model' },
+                        ]}
+                        placeholder="All"
+                        rounded="lg"
+                    />
+                </div>
+
+                <div className="w-px h-9 bg-gray-300"></div>
+
+                <div className="min-w-[140px]">
+                    <label className="block satoshi-14 mb-1">From Date</label>
+                    <input
+                        type="date"
+                        value={filters.fromDate}
+                        onChange={(e) => setFilters((s) => ({ ...s, fromDate: e.target.value }))}
+                        max={today}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
+                    />
+                </div>
+
+                <div className="min-w-[140px]">
+                    <label className="block satoshi-14 mb-1">To Date</label>
+                    <input
+                        type="date"
+                        value={filters.toDate}
+                        onChange={(e) => setFilters((s) => ({ ...s, toDate: e.target.value }))}
+                        max={today}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
+                    />
+                </div>
+
+                <div className="w-px h-9 bg-gray-300"></div>
+
+                <div className="min-w-[140px]">
+                    <CustomDropdown
+                        label="Sort by"
+                        value={filters.sortBy || 'date'}
+                        onChange={(e) => setFilters((s) => ({ ...s, sortBy: e.target.value }))}
+                        options={[
+                            { value: 'date', label: 'Date' },
+                            { value: 'replies', label: 'Replies' },
+                            { value: 'user', label: 'User' },
+                            { value: 'subject', label: 'Subject' },
+                            { value: 'component', label: 'Component' },
+                        ]}
+                        placeholder="Date"
+                        rounded="lg"
+                    />
+                </div>
+
+                {/* <div className="w-px h-9 bg-gray-300"></div> */}
+
+                <div style={{ width: '205px' }}>
+                    <label className="block text-xs text-gray-600 mb-1">&nbsp;</label>
+                    <div className="relative">
+                        <img src={Searchicon} alt="Search" className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-5 text-gray-400 pointer-events-none" />
+                        <input
+                            value={filters.q}
+                            onChange={(e) => setFilters((s) => ({ ...s, q: e.target.value }))}
+                            className="w-full border border-gray-300 rounded-lg pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
+                            placeholder="Search Comments"
+                        />
+                    </div>
+                </div>
+
+                <div className="w-px h-9 bg-gray-300"></div>
+
+                <div>
+                    <label className="block text-xs text-gray-600 mb-1">&nbsp;</label>
+                    <button
+                        onClick={() => setShowOnlyPinned(!showOnlyPinned)}
+                        className={`inline-flex items-center justify-center gap-2 px-3 py-2 border rounded-lg font-medium text-sm ${
+                            showOnlyPinned 
+                                ? 'border-[#8E77BB] text-[#8E77BB]' 
+                                : 'border-gray-300 text-[#818181] hover:bg-gray-50'
+                        }`}
+                        title={showOnlyPinned ? 'Stop highlighting pinned comments' : 'Highlight pinned comments'}
+                    >
+                        <Pin className="w-4 h-4" />
+                        <span>Pinned</span>
+                        {showOnlyPinned && <X className="w-4 h-4" style={{ color: '#818181' }} />}
+                    </button>
+                </div>
+
                 <button
                     onClick={openAdd}
-                    className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-[#8E77BB] text-white border border-gray-300"
-                    // style={{ color: aithemestyle.iconColor }}
+                    style={{
+                        width: '119px',
+                        height: '40px',
+                        borderRadius: '8px',
+                        paddingTop: '10px',
+                        paddingRight: '16px',
+                        paddingBottom: '10px',
+                        paddingLeft: '12px',
+                        gap: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: '#8E77BB',
+                        color: 'white',
+                        border: '1px solid #8E77BB',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        opacity: 1,
+                        marginLeft: 'auto',
+                    }}
                 >
                     <Plus className="w-4 h-4" />
                      Comment
                 </button>
-            </div>
-
-            <div className="flex flex-col gap-3 mb-4">
-                <div className="flex flex-wrap items-end gap-3">
-                    <div className="min-w-[140px]">
-                        <label className="block text-xs text-gray-600 mb-1">From Date</label>
-                        <input
-                            type="date"
-                            value={filters.fromDate}
-                            onChange={(e) => setFilters((s) => ({ ...s, fromDate: e.target.value }))}
-                            max={today}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                        />
-                    </div>
-
-                    <div className="min-w-[140px]">
-                        <label className="block text-xs text-gray-600 mb-1">To Date</label>
-                        <input
-                            type="date"
-                            value={filters.toDate}
-                            onChange={(e) => setFilters((s) => ({ ...s, toDate: e.target.value }))}
-                            max={today}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                        />
-                    </div>
-
-                    <div className="w-1/2 max-w-[270px]">
-                        <label className="block text-xs text-gray-600 mb-1">&nbsp;</label>
-                        <div className="relative">
-                            <input
-                                value={filters.q}
-                                onChange={(e) => setFilters((s) => ({ ...s, q: e.target.value }))}
-                                className="w-full border border-gray-300 rounded-lg pl-3 pr-3 py-2 text-sm"
-                                placeholder="Search Comments"
-                            />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-xs text-gray-600 mb-1">&nbsp;</label>
-                        <button
-                            onClick={() => setShowOnlyPinned(!showOnlyPinned)}
-                            className={`inline-flex items-center justify-center w-10 h-10 border rounded-lg ${
-                                showOnlyPinned ? 'bg-[#8e78b7] text-white border-[#8e78b7]' : 'border-gray-300 hover:bg-gray-50'
-                            }`}
-                            title={showOnlyPinned ? 'Stop highlighting pinned comments' : 'Highlight pinned comments'}
-                        >
-                            <Pin className="w-4 h-4" />
-                        </button>
-                    </div>
-                </div>
             </div>
 
             {error && (
@@ -523,60 +595,66 @@ const CommentsTab = ({ projectData }) => {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 {/* Component Type */}
                                 <div>
-                                    <label className="block text-xs text-gray-600 mb-1">Component Type</label>
-                                    <select
+                                    <CustomDropdown
+                                        label="Component Type"
                                         value={componentType}
                                         onChange={(e) => {
                                             setComponentType(e.target.value);
                                             setAddForm((s) => ({ ...s, component: e.target.value }));
                                         }}
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
-                                    >
-                                        <option value="Project">Project</option>
-                                        <option value="Data">Data</option>
-                                        <option value="Model">Model</option>
-                                    </select>
+                                        options={[
+                                            { value: 'Project', label: 'Project' },
+                                            { value: 'Data', label: 'Data' },
+                                            { value: 'Model', label: 'Model' },
+                                        ]}
+                                        placeholder="Select"
+                                        rounded="lg"
+                                    />
                                 </div>
                                 {/* Component Name */}
                                 <div>
-                                    <label className="block text-xs text-gray-600 mb-1">Component Name</label>
-                                    <select
+                                    <CustomDropdown
+                                        label="Component Name"
                                         value={componentName}
                                         onChange={(e) => setComponentName(e.target.value)}
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+                                        options={[
+                                            { value: '', label: 'Select' },
+                                            ...(componentType === 'Data'
+                                                ? componentOptions.map((d) => ({
+                                                    value: d.dataset_name,
+                                                    label: d.dataset_name,
+                                                }))
+                                                : []),
+                                            ...(componentType === 'Model'
+                                                ? componentOptions.map((m) => ({
+                                                    value: m.model_name,
+                                                    label: m.model_name,
+                                                }))
+                                                : []),
+                                        ]}
+                                        placeholder="Select"
                                         disabled={isComponentNameDisabled}
-                                    >
-                                        <option value="">Select</option>
-                                        {componentType === 'Data' &&
-                                            componentOptions.map((d) => (
-                                                <option key={d.dataset_id} value={d.dataset_name}>
-                                                    {d.dataset_name}
-                                                </option>
-                                            ))}
-                                        {componentType === 'Model' &&
-                                            componentOptions.map((m) => (
-                                                <option key={m.model_id} value={m.model_name}>
-                                                    {m.model_name}
-                                                </option>
-                                            ))}
-                                    </select>
+                                        rounded="lg"
+                                    />
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-xs text-gray-600 mb-1">Category</label>
-                                    <select
+                                    <CustomDropdown
+                                        label="Category"
                                         value={addForm.type}
                                         onChange={(e) => setAddForm((s) => ({ ...s, type: e.target.value }))}
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
-                                    >
-                                        <option value="">Select</option>
-                                        <option value="accuracy">Accuracy</option>
-                                        <option value="data per-processing">Data Pre-Processing</option>
-                                        <option value="modelling">Modelling</option>
-                                        <option value="training data">Training Data</option>
-                                    </select>
+                                        options={[
+                                            { value: '', label: 'Select' },
+                                            { value: 'accuracy', label: 'Accuracy' },
+                                            { value: 'data per-processing', label: 'Data Pre-Processing' },
+                                            { value: 'modelling', label: 'Modelling' },
+                                            { value: 'training data', label: 'Training Data' },
+                                        ]}
+                                        placeholder="Select"
+                                        rounded="lg"
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-xs text-gray-600 mb-1">Subject</label>
@@ -688,26 +766,26 @@ const CommentsTab = ({ projectData }) => {
                         {/* Subject / Component row */}
                         <div style={{ padding: '10px 24px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexShrink: 0, flexWrap: 'wrap', gap: '12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span style={{ fontSize: '13px', fontWeight: 700, color: '#332849', lineHeight: '100%' }}>Subject :</span>
+                                <span className="satoshi-14" style={{ lineHeight: '100%' }}>Subject :</span>
                                 <span style={{ fontSize: '13px', fontWeight: 500, color: '#818181', lineHeight: '100%', wordBreak: 'break-word', whiteSpace: 'pre-wrap', maxWidth: '320px', display: 'inline-block' }}>{activeComment?.subject || '—'}</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span style={{ fontSize: '13px', fontWeight: 700, color: '#332849', lineHeight: '100%' }}>Component :</span>
+                                <span className="satoshi-14" style={{ lineHeight: '100%' }}>Component :</span>
                                 <span style={{ fontSize: '13px', fontWeight: 500, color: '#818181', lineHeight: '100%', wordBreak: 'break-word', whiteSpace: 'pre-wrap', maxWidth: '220px', display: 'inline-block' }}>{activeComment?.component_name || activeComment?.component || 'Project'}</span>
                             </div>
                         </div>
 
                         {/* Comment list */}
-                        <div style={{ padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
+                        <div style={{ padding: '16px', margin: '12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, background: '#FAFAFA', borderRadius: '8px' }}>
                             {/* Original comment */}
                             {activeComment && (
-                                <div style={{ background: '#FAFAFA', borderRadius: '8px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <div style={{ paddingTop: '12px', paddingBottom: '12px', display: 'flex', flexDirection: 'column', gap: '8px', borderBottom: '1px solid #E0E0E0' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#F2EBFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 500, fontSize: '13px', color: '#8E77BB', flexShrink: 0 }}>
+                                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#F2EBFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 500, fontSize: '13px', color: '#8E77BB', flexShrink: 0 }}>
                                             {(activeComment.user_name || activeComment.user_id || '?').slice(0, 1).toUpperCase()}
                                         </div>
                                         <div>
-                                            <div style={{ fontSize: '13px', fontWeight: 500, color: '#332849' }}>{activeComment.user_name || activeComment.user_id || 'Unknown'}</div>
+                                            <div style={{ fontSize: '15px', fontWeight: 500, color: '#332849' }}>{activeComment.user_name || activeComment.user_id || 'Unknown'}</div>
                                             <div style={{ fontSize: '11px', color: '#818181' }}>{activeComment.created_at ? fmtFull(activeComment.created_at) : ''}</div>
                                         </div>
                                     </div>
@@ -724,14 +802,14 @@ const CommentsTab = ({ projectData }) => {
                             {(activeComment?.replies || []).length === 0 ? (
                                 <div style={{ fontSize: '13px', color: '#818181', textAlign: 'center', paddingTop: '8px' }}>No replies yet.</div>
                             ) : (
-                                activeComment.replies.map((r) => (
-                                    <div key={r.id} style={{ background: '#FAFAFA', borderRadius: '8px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                activeComment.replies.map((r, idx) => (
+                                    <div key={r.id} style={{ paddingTop: '12px', paddingBottom: '12px', display: 'flex', flexDirection: 'column', gap: '8px', borderBottom: idx < activeComment.replies.length - 1 ? '1px solid #E0E0E0' : 'none' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#F2EBFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 500, fontSize: '13px', color: '#8E77BB', flexShrink: 0 }}>
+                                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#F2EBFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 500, fontSize: '13px', color: '#8E77BB', flexShrink: 0 }}>
                                                 {(r.user_name || r.user_id || '?').slice(0, 1).toUpperCase()}
                                             </div>
                                             <div>
-                                                <div style={{ fontSize: '13px', fontWeight: 500, color: '#332849' }}>{r.user_name || r.user_id || 'Unknown'}</div>
+                                                <div style={{ fontSize: '15px', fontWeight: 500, color: '#332849' }}>{r.user_name || r.user_id || 'Unknown'}</div>
                                                 <div style={{ fontSize: '11px', color: '#818181' }}>{r.created_at ? fmtFull(r.created_at) : ''}</div>
                                             </div>
                                         </div>

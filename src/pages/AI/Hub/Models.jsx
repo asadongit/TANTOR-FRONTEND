@@ -6,7 +6,6 @@ import {
   ArrowDown,
   Info,
   Sparkles,
-  Search,
   Archive,
   Trash2,
   Rocket,
@@ -36,8 +35,19 @@ import Latencyicon from "../../../assets/ai/latency.svg"
 import Deployedicon from "../../../assets/ai/deployed.svg"
 import Alerticon from "../../../assets/ai/alerts.svg"
 import Accuracyicon from "../../../assets/ai/accuracy.svg"
+import searchicon from '../../../assets/ai/search.svg';
+import notifications_active from '../../../assets/ai/notifications_active.svg';
+import bookmark_add from '../../../assets/ai/bookmark_add.svg';
 
-
+const rotateAnimation = `
+  @keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(-360deg); }
+  }
+  .icon-rotate {
+    animation: rotate 1s linear infinite;
+  }
+`;
 
 function Models() {
   const navigate = useNavigate();
@@ -317,18 +327,33 @@ function Models() {
   };
 
   const getStatusStyle = (status) => {
-    switch (status) {
-      case "Deployed":
-        return "bg-green-100 text-green-700";
-      case "Archived":
-        return "bg-gray-100 text-gray-600";
-      case "In progress":
+    const normalized = String(status || '').toLowerCase();
+    switch (normalized) {
+      case "deployed":
+        return "";
+      case "archived":
+        return "";
+      case "saved":
+        return "";
+      case "in progress":
         return "bg-blue-100 text-blue-700";
-      case "Inactive":
+      case "inactive":
         return "bg-red-100 text-red-600";
       default:
         return "bg-gray-100 text-gray-600";
     }
+  };
+
+  const getStatusStyle_Inline = (status) => {
+    const normalized = String(status || '').toLowerCase();
+    if (normalized === "deployed") {
+      return { background: "#FFC93F40", color: "#E08E40" };
+    } else if (normalized === "archived") {
+      return { background: "#D9D9D980", color: "#666666" };
+    } else if (normalized === "saved") {
+      return { background: "#2AC79240", color: "#15803d" };
+    }
+    return {};
   };
 
   const columns = [
@@ -363,15 +388,19 @@ function Models() {
       label: "Status",
       width: '100px',
       sortable: true,
-      render: (row) => (
-        <span
-          className={`px-3 py-1 rounded-md text-xs font-medium ${getStatusStyle(
-            row.status
-          )}`}
-        >
-          {row.status}
-        </span>
-      ),
+      render: (row) => {
+        const inlineStyle = getStatusStyle_Inline(row.status);
+        const baseClass = "inline-flex items-center px-2.5 py-1.5 rounded-md text-xs font-medium";
+        const fallbackClass = getStatusStyle(row.status);
+        return (
+          <span
+            className={inlineStyle ? baseClass : `${baseClass} ${fallbackClass}`}
+            style={inlineStyle}
+          >
+            {row.status}
+          </span>
+        );
+      },
     },
     { label: "Action", sortable: false },
   ];
@@ -794,31 +823,34 @@ function Models() {
       return statusFilter.includes(rowStatus);
     });
 
-    if (!searchTerm.trim()) {
-      return statusFiltered;
+    let result = statusFiltered;
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
+      result = statusFiltered.filter((row) =>
+        Object.values(row || {}).some((val) =>
+          String(val ?? "")
+            .toLowerCase()
+            .includes(q)
+        )
+      );
     }
-    const q = searchTerm.toLowerCase();
-    return statusFiltered.filter((row) =>
-      Object.values(row || {}).some((val) =>
-        String(val ?? "")
-          .toLowerCase()
-          .includes(q)
-      )
-    );
+
+    // Recalculate sno based on filtered data position
+    return result.map((row, index) => ({
+      ...row,
+      sno: index + 1,
+    }));
   }, [searchTerm, modelsData, statusFilter]);
 
   const AlertsPanel = () => {
     const [showInfo, setShowInfo] = useState(false);
 
     return (
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm h-[300px]">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Icon
-              icon="material-symbols:notifications-outline"
-              className="w-5 h-5 text-purple-600"
-            />
-            <h3 className="text-md font-semibold text-gray-800">Alerts</h3>
+      <div className="bg-white pt-4 px-4 pb-6 rounded-xl border border-gray-200 shadow-sm h-[350px]">
+        <div className="flex items-center justify-between pb-4">
+          <div className="flex items-center gap-[8px]">
+            <img src={notifications_active} alt="Alerts" className="w-[21px] h-[21px]" />
+            <h3 className="satoshi-medium-md m-0">Alerts</h3>
           </div>
           <div className="relative">
             <Info
@@ -921,21 +953,21 @@ function Models() {
     const TrendIcon = isUp ? ArrowUp : ArrowDown;
 
     return (
-      <div className="bg-white rounded-xl px-4 py-4 border border-purple-200 flex flex-col justify-between min-h-[110px]">
+      <div className="bg-white rounded-xl px-4 py-4 flex flex-col justify-between min-h-[110px]">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <IconCmp className="w-4 h-4 text-[#8e78b7] shrink-0" />
-            <span className="text-gray-900 text-sm font-medium truncate">{label}</span>
+            <IconCmp className="w-[18px] h-[18px] text-[#8e78b7] shrink-0 flex-shrink-0" />
+            <span className="satoshi-medium-md m-0 truncate">{label}</span>
           </div>
         </div>
 
         <div className="flex items-end justify-between mt-4">
-          <div className="text-xl font-bold text-gray-900 tabular-nums leading-none">
+          <div className="satoshi-count m-0">
             {value == null ? <div className="h-8 w-14 bg-gray-200 rounded animate-pulse" /> : value}
           </div>
 
           {(trend && trendValue && value != null) ? (
-            <div className={`flex items-center gap-1 text-sm font-semibold leading-none`} style={{ color: isUp ? aithemestyle.trendup : aithemestyle.trendDown }}>
+            <div className={`flex items-center gap-1 text-base font-semibold leading-none`} style={{ color: isUp ? aithemestyle.trendup : aithemestyle.trendDown }}>
               <TrendIcon className="w-4 h-4" />
               <span className="tabular-nums">{trendValue}</span>
             </div>
@@ -949,11 +981,11 @@ function Models() {
 
   const metricIcon = (key) => {
     const iconStyle = {
-      width: "19px",
-      height: "19px",
+      width: "18px",
+      height: "18px",
       position: "relative",
-      top: "2.5px",
-      left: "2.5px",
+      top: "0px",
+      left: "0px",
     };
 
     switch (key) {
@@ -987,80 +1019,90 @@ function Models() {
   }, [metricsData]);
 
   return (
-    <div className="p-3 sm:p-4 lg:p-6 space-y-4 min-w-0 overflow-x-hidden">
-      <Breadcrumb link="/" skipLinkSegments={['hub']} />
+    <div className="p-3 sm:p-4 lg:p-6 bg-gray-50 min-h-screen">
+      <style>{rotateAnimation}</style>
 
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
-        <h1
-          style={{
-            fontWeight: 700,
-            fontStyle: 'bold',
-            fontSize: '24px',
-            lineHeight: '100%'
-          }}
-          className="text-gray-900"
-        >
-          Models
-        </h1>
+      <div className="sticky top-0 z-40 bg-gray-50 -mx-3 sm:-mx-4 lg:-mx-6 px-3 sm:px-4 lg:px-6">
+        <Breadcrumb link="/" skipLinkSegments={['hub']} />
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* ADD: Status filter dropdown */}
-          <div className="relative">
-            <StatusFilterDropdown
-              selectedStatuses={statusFilter}
-              onStatusChange={setStatusFilter}
-              statusOptions={[
-                { value: 'saved', label: 'Saved' },
-                { value: 'deployed', label: 'Deployed' },
-                { value: 'archived', label: 'Archived' }
-              ]}
-            />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 py-3 sm:py-4 lg:py-6" style={{ height: '18px' }}>
+          <h1 className="satoshi-heading mt-[1px]">
+            Models
+          </h1>
+
+          <div className="flex items-center gap-2">
+            {/* ADD: Status filter dropdown */}
+            <div className="relative">
+              <StatusFilterDropdown
+                selectedStatuses={statusFilter}
+                onStatusChange={setStatusFilter}
+                statusOptions={[
+                  { value: 'saved', label: 'Saved' },
+                  { value: 'deployed', label: 'Deployed' },
+                  { value: 'archived', label: 'Archived' }
+                ]}
+                style={{ color: '#818181' }}
+              />
+            </div>
+
+            <div className="relative flex-1 sm:flex-initial">
+              <img src={searchicon} alt="Search" className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search"
+                className="focus:ring-2 focus:ring-[#8E77BB] focus:border-transparent"
+                value={searchTerm}
+                onChange={handleSearchChange}
+                style={{
+                  width: '248px',
+                  height: '40px',
+                  borderRadius: '8px',
+                  paddingLeft: '40px',
+                  paddingRight: '8px',
+                  paddingTop: '8px',
+                  paddingBottom: '8px',
+                  borderWidth: '1px',
+                  borderColor: '#d1d5db',
+                  fontSize: '14px',
+                  boxSizing: 'border-box',
+                  background: '#fff',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                }}
+              />
+            </div>
+
+            {/* <button
+              className={`p-1.5 rounded-lg border ${viewMode === "list"
+                ? "bg-gray-100 border-gray-500"
+                : "border-gray-300"
+                } hover:bg-gray-50`}
+              onClick={() => setViewMode(viewMode === "list" ? "both" : "list")}
+              title={viewMode === "list" ? "Show All Views" : "Show List Only"}
+            >
+              <Icon
+                icon="material-symbols-light:format-list-bulleted"
+                width="25"
+                height="22"
+                className="text-purple-600"
+              />
+            </button> */}
+
+            <button
+              className="p-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 h-[40px] flex items-center justify-center"
+              onClick={handleRefresh}
+              disabled={isLoading}
+            >
+              <RefreshCcw size={20} className={isLoading ? 'icon-rotate' : ''} style={{ color: '#818181' }} strokeWidth={1.7} />
+            </button>
           </div>
-
-          <div className="relative flex-1 min-w-[160px] sm:flex-initial">
-            <input
-              type="text"
-              placeholder="Search"
-              className="pl-10 pr-4 py-2 w-full sm:w-56 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-400"
-              value={searchTerm}
-              onChange={handleSearchChange}
-            />
-            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-          </div>
-
-          <button
-            className={`p-1.5 rounded-lg border ${viewMode === "list"
-              ? "bg-gray-100 border-gray-500"
-              : "border-gray-300"
-              } hover:bg-gray-50`}
-            onClick={() => setViewMode(viewMode === "list" ? "both" : "list")}
-            title={viewMode === "list" ? "Show All Views" : "Show List Only"}
-          >
-            <Icon
-              icon="material-symbols-light:format-list-bulleted"
-              width="25"
-              height="22"
-              className="text-purple-600"
-            />
-          </button>
-
-          <button
-            className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50"
-            onClick={handleRefresh}
-            title="Refresh data"
-            disabled={isLoading}
-          >
-            <RefreshCcw
-              className={`h-5 w-5 text-gray-600 ${isLoading ? "animate-spin" : ""
-                }`}
-            />
-          </button>
         </div>
       </div>
 
-      {viewMode !== "list" && (
-        <>
-          <div className={`bg-gradient-to-r ${aithemestyle.statsCardGradient} rounded-xl p-4`}>
+      <div className="space-y-4">
+        {viewMode !== "list" && (
+          <>
+            <div className={`${aithemestyle.statsCardGradient270} rounded-xl p-4`}>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
               {statsCards.map((stat) => (
                 <StatsCardWithTrend
@@ -1085,9 +1127,9 @@ function Models() {
           </div>
 
         </>
-      )}
+        )}
 
-      <DataTable
+        <DataTable
         columns={columns}
         data={filteredData}
         actions={actions}
@@ -1129,6 +1171,8 @@ function Models() {
         confirmText="Unarchive"
       />
       <DeployModal />
+      </div>
+
       {isCanvasLoading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">

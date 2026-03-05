@@ -493,33 +493,30 @@ const AIPlayground = () => {
       )}
 
       {showCancelModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-[#00000099] bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                  <AlertTriangle className="text-red-600" size={24} />
+            <div>
+              <div className='p-6' >
+                <div className="flex items-center gap-3 mb-4">
+                  <h2 className="text-lg font-medium text-[#332849]">Cancel AI Playground Workflow?</h2>
                 </div>
-                <h2 className={tw.pageHeading}>
-                  Cancel AI Playground Workflow?
-                </h2>
+
+                <p className="text-base text-[#818181] mb-6">
+                  Are you sure you want to cancel? All unsaved progress and configurations will be lost. This action cannot be undone.
+                </p>
               </div>
 
-              <p className={tw.body + " mb-6"}>
-                Are you sure you want to cancel? All unsaved progress and configurations will be lost. This action cannot be undone.
-              </p>
-
-              <div className="flex gap-3 justify-end">
+              <div className="flex gap-3 p-3 justify-end font-satoshi border-t border-slate-200 shadow-[0_-2px_10px_0px_rgba(0,0,0,0.07)]">
                 <button
                   onClick={handleCancelModalClose}
-                  className="px-4 py-2 border border-slate-200 rounded-md text-sm font-medium text-[#332849] leading-normal hover:bg-slate-50 transition-colors"
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-[#818181] hover:bg-gray-50 transition-colors"
                 >
                   Continue Working
                 </button>
                 <button
                   onClick={handleConfirmCancel}
                   disabled={isCancelLoading}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                  className="px-4 py-2 bg-[#EF4D5F] text-white rounded-lg text-sm hover:bg-red-500 transition-colors disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
                 >
                   {isCancelLoading && (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

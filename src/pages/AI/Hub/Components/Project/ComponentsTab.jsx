@@ -1,8 +1,9 @@
-import { ChevronDown, ChevronRight, Search, BookOpen, Gauge, Palette, Archive, Trash2, Rocket, Sparkles } from "lucide-react"
+import { ChevronDown, ChevronRight, BookOpen, Gauge, Palette, Archive, Trash2, Rocket, Sparkles } from "lucide-react"
 import DataTable from "../../../../../components/DataTable"
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../../context/AuthContext";
+import Searchicon from '../../../../../assets/governance/search.svg';
 
 const ComponentsTab = ({ projectData }) => {
     const navigate = useNavigate();
@@ -259,7 +260,42 @@ const ComponentsTab = ({ projectData }) => {
         { key: 'size_mb', label: 'Size', width: '100px', sortable: true, render: (row) => (row?.size_mb ?? row?.size_mb === 0) ? `${row.size_mb} MB` : '' },
         { key: 'row_count', width: '100px', label: 'Rows', sortable: true },
         { key: 'column_count', width: '100px', label: 'Columns', sortable: true },
-        { key: 'status', label: 'Status', sortable: true },
+        {
+            key: 'status',
+            label: 'Status',
+            sortable: true,
+            render: (row) => {
+                const status = String(row.status || '').toLowerCase();
+                let statusClass = '';
+                let statusText = status.charAt(0).toUpperCase() + status.slice(1);
+
+                switch (status) {
+                    case 'active':
+                        statusClass = 'text-[#069B68]';
+                        break;
+                    case 'archived':
+                        statusClass = 'text-[#818181]';
+                        break;
+                    default:
+                        statusClass = 'bg-blue-100 text-blue-800';
+                }
+
+                return (
+                    <span
+                        className={`inline-flex items-center px-2.5 py-1.5 rounded-md text-xs font-medium ${statusClass}`}
+                        style={
+                            status === 'active'
+                                ? { background: '#2AC79240' }
+                                : status === 'archived'
+                                    ? { background: '#D9D9D980' }
+                                    : {}
+                        }
+                    >
+                        {statusText}
+                    </span>
+                );
+            },
+        },
         // { label: 'Action', sortable: false, width: '100px' },
     ];
 
@@ -288,7 +324,50 @@ const ComponentsTab = ({ projectData }) => {
         // { key: 'project_name', width: '150px', label: 'Project', sortable: true },
         { key: 'owner_name', width: '120px', label: 'Created By', sortable: true },
         { key: 'modeling_type', width: '120px', label: 'Type', sortable: true },
-        { key: 'status', label: 'Status', width: '100px', sortable: true },
+        {
+            key: 'status',
+            label: 'Status',
+            sortable: true,
+            render: (row) => {
+                const status = String(row.status || '').toLowerCase();
+                let statusClass = '';
+                let statusText = status.charAt(0).toUpperCase() + status.slice(1);
+
+                switch (status) {
+                    case 'active':
+                        statusClass = 'text-[#069B68]';
+                        break;
+                    case 'deployed':
+                        statusClass = 'text-[#E08E40]';
+                        break;
+                    case 'saved':
+                        statusClass = 'text-[#15803d]';
+                        break;
+                    case 'archived':
+                        statusClass = 'text-[#818181]';
+                        break;
+                    default:
+                        statusClass = 'bg-blue-100 text-blue-800';
+                }
+
+                return (
+                    <span
+                        className={`inline-flex items-center px-2.5 py-1.5 rounded-md text-xs font-medium ${statusClass}`}
+                        style={
+                            status === 'deployed'
+                                ? { background: '#FFC93F40' }
+                                : status === 'saved'
+                                    ? { background: '#2AC79240' }
+                                    : status === 'archived'
+                                        ? { background: '#D9D9D980' }
+                                        : {}
+                        }
+                    >
+                        {statusText}
+                    </span>
+                );
+            },
+        },
         // { label: 'Action', sortable: false, width: '100px' },
     ];
 
@@ -317,25 +396,42 @@ const ComponentsTab = ({ projectData }) => {
     };
 
     return (
-        <div className="space-y-4">
-            <div className="relative mb-6">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <div className="space-y-3">
+            <div className="relative flex-1 sm:flex-initial">
+                <img src={Searchicon} alt="Search" className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-5 text-gray-400 pointer-events-none" />
                 <input
                     type="text"
                     placeholder="Search Components"
-                    className="w-full sm:w-80 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                    style={{
+                        width: '290px',
+                        height: '40px',
+                        borderRadius: '8px',
+                        paddingLeft: '40px',
+                        paddingRight: '8px',
+                        paddingTop: '8px',
+                        paddingBottom: '8px',
+                        borderWidth: '1px',
+                        borderColor: '#d1d5db',
+                        fontSize: '14px',
+                        boxSizing: 'border-box',
+                        background: '#fff',
+                        outline: 'none',
+                        transition: 'border-color 0.2s',
+                    }}
+                    className="focus:ring-2 focus:ring-[#8E77BB] focus:border-transparent"
                 />
             </div>
 
             <div className="border border-gray-200 rounded-lg">
                 <button
                     onClick={() => toggleSection('datasets')}
-                    className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                    className="w-full flex items-center justify-between pt-3 pb-3 pl-4 pr-4 hover:bg-gray-50 transition-colors"
+                    style={{ height: '48px', backgroundColor: expandedSections.datasets ? '#FAF8FF' : 'transparent' }}
                 >
                     <div className="w-full flex items-center justify-between">
-                        <span className="text-base font-medium text-[#8e78b7]">
+                        <span className="text-[#8e78b7]" style={{ fontSize: '18px', fontWeight: 500 }}>
                             Datasets ({datasets.length})
                         </span>
                         {expandedSections.datasets ? (
@@ -345,27 +441,28 @@ const ComponentsTab = ({ projectData }) => {
                         )}
                     </div>
                 </button>
-                {expandedSections.datasets && (
-                    <div className="px-4 pb-4">
-                        {datasetsError && <div className="text-red-600 text-sm mb-2">{datasetsError}</div>}
-                        <DataTable
-                            columns={datasetColumns}
-                            data={filteredDatasets}
-                            actions={datasetActions}
-                            isLoading={datasetsLoading}
-                            isError={!!datasetsError}
-                        />
-                    </div>
-                )}
             </div>
+            {expandedSections.datasets && (
+                <div>
+                    {datasetsError && <div className="text-red-600 text-sm mb-2">{datasetsError}</div>}
+                    <DataTable
+                        columns={datasetColumns}
+                        data={filteredDatasets}
+                        actions={datasetActions}
+                        isLoading={datasetsLoading}
+                        isError={!!datasetsError}
+                    />
+                </div>
+            )}
 
             <div className="border border-gray-200 rounded-lg">
                 <button
                     onClick={() => toggleSection('models')}
-                    className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                    className="w-full flex items-center justify-between pt-3 pb-3 pl-4 pr-4 hover:bg-gray-50 transition-colors"
+                    style={{ height: '48px', backgroundColor: expandedSections.models ? '#f3f4f6' : 'transparent' }}
                 >
                     <div className="w-full flex items-center justify-between">
-                        <span className="text-base font-medium text-[#8e78b7]">
+                        <span className="text-[#8e78b7]" style={{ fontSize: '18px', fontWeight: 500 }}>
                             Models ({models.length})
                         </span>
                         {expandedSections.models ? (
@@ -375,19 +472,19 @@ const ComponentsTab = ({ projectData }) => {
                         )}
                     </div>
                 </button>
-                {expandedSections.models && (
-                    <div className="px-4 pb-4">
-                        {modelsError && <div className="text-red-600 text-sm mb-2">{modelsError}</div>}
-                        <DataTable
-                            columns={modelColumns}
-                            data={filteredModels}
-                            actions={modelActions}
-                            isLoading={modelsLoading}
-                            isError={!!modelsError}
-                        />
-                    </div>
-                )}
             </div>
+            {expandedSections.models && (
+                <div>
+                    {modelsError && <div className="text-red-600 text-sm mb-2">{modelsError}</div>}
+                    <DataTable
+                        columns={modelColumns}
+                        data={filteredModels}
+                        actions={modelActions}
+                        isLoading={modelsLoading}
+                        isError={!!modelsError}
+                    />
+                </div>
+            )}
         </div>
     )
 }

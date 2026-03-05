@@ -55,7 +55,6 @@ function DataPreprocessing() {
   const [isStep5Valid, setIsStep5Valid] = useState(true);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
-
   const step1ApiCallRef = useRef(null);
   const step2ApiCallRef = useRef(null);
   const step3ApiCallRef = useRef(null);
@@ -83,7 +82,6 @@ function DataPreprocessing() {
               config: { job_id: jobId },
               apiResponse: data
             });
-            
           }
         }
       } catch (error) {
@@ -92,13 +90,8 @@ function DataPreprocessing() {
       return true;
     }
 
-    if (currentStep === 7 && isStep7Preview && isDataPreprocessingAuto) {
-      return true;
-    }
-
-    if (currentStep === 7 && isStep7Preview) {
-      return true;
-    }
+    if (currentStep === 7 && isStep7Preview && isDataPreprocessingAuto) return true;
+    if (currentStep === 7 && isStep7Preview) return true;
 
     let apiCallFn = null;
     switch (currentStep) {
@@ -127,59 +120,21 @@ function DataPreprocessing() {
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
-        return (
-          <DataCleaning
-            onValidationChange={setIsStep1Valid}
-            onApiCall={(fn) => step1ApiCallRef.current = fn}
-          />
-        );
+        return <DataCleaning onValidationChange={setIsStep1Valid} onApiCall={(fn) => step1ApiCallRef.current = fn} />;
       case 2:
-        return (
-          <FeatureSelection
-            onValidationChange={setIsStep2Valid}
-            onApiCall={(fn) => step2ApiCallRef.current = fn}
-          />
-        );
+        return <FeatureSelection onValidationChange={setIsStep2Valid} onApiCall={(fn) => step2ApiCallRef.current = fn} />;
       case 3:
-        return (
-          <FeatureEngineering
-            onApiCall={(fn) => step3ApiCallRef.current = fn}
-          />
-        );
+        return <FeatureEngineering onApiCall={(fn) => step3ApiCallRef.current = fn} />;
       case 4:
-        return (
-          <ScalingTransformation
-            onValidationChange={setIsStep4Valid}
-            onApiCall={(fn) => step4ApiCallRef.current = fn}
-          />
-        );
+        return <ScalingTransformation onValidationChange={setIsStep4Valid} onApiCall={(fn) => step4ApiCallRef.current = fn} />;
       case 5:
-        return (
-          <StatisticalAnalysis
-            onValidationChange={setIsStep5Valid}
-            onApiCall={(fn) => step5ApiCallRef.current = fn}
-          />
-        );
+        return <StatisticalAnalysis onValidationChange={setIsStep5Valid} onApiCall={(fn) => step5ApiCallRef.current = fn} />;
       case 6:
-        return (
-          <FeatureImportance
-            onApiCall={(fn) => step6ApiCallRef.current = fn}
-          />
-        );
+        return <FeatureImportance onApiCall={(fn) => step6ApiCallRef.current = fn} />;
       case 7:
-        return (
-          <Step7
-            showPreview={isStep7Preview}
-            onApiCall={(fn) => step7ApiCallRef.current = fn}
-          />
-        );
+        return <Step7 showPreview={isStep7Preview} onApiCall={(fn) => step7ApiCallRef.current = fn} />;
       default:
-        return (
-          <DataCleaning
-            onValidationChange={setIsStep1Valid}
-            onApiCall={(fn) => step1ApiCallRef.current = fn}
-          />
-        );
+        return <DataCleaning onValidationChange={setIsStep1Valid} onApiCall={(fn) => step1ApiCallRef.current = fn} />;
     }
   };
 
@@ -191,7 +146,6 @@ function DataPreprocessing() {
     return false;
   };
 
-  // Show preview button only for steps 2-7
   const showPreviewButton = currentStep > 1 && !(currentStep === 7 && isStep7Preview);
 
   return (
@@ -205,56 +159,75 @@ function DataPreprocessing() {
         onNextClick={handleNextClick}
         isNextDisabled={getIsNextDisabled()}
       >
-        <div className="w-full">
-          <div className={`
-            flex flex-col lg:flex-row gap-6
-          `}>
 
+        <div className="w-full h-full overflow-hidden">
+          <div className="flex flex-row h-full overflow-hidden">
             {!(currentStep === 7 && isStep7Preview) && (
-              <div className="w-full lg:w-72 flex-shrink-0">
-                <div className="bg-white px-3 pt-2 border-r border-[#CCCCCC]">
-                  <h3 className="bg-[#FAFAFA] text-sm font-medium text-gray-700 mb-2 px-3 py-2 rounded-md">
-                    Pre-processing Steps <span className="text-gray-400 ml-2">{currentStep} of {preprocessingSteps.length}</span>
+              <div className="w-72 flex-shrink-0 h-full overflow-hidden">
+                <div className="bg-white px-3 border-r border-[#CCCCCC] h-full flex flex-col">
+
+                  {/* Header */}
+                  <h3 className="bg-[#FAFAFA] text-sm font-medium text-gray-700 mb-3 px-3 py-2 rounded-md flex-shrink-0">
+                    Pre-processing Steps{' '}
+                    <span className="text-gray-400 ml-2">
+                      {currentStep} of {preprocessingSteps.length}
+                    </span>
                   </h3>
 
-                  <div className="relative flex lg:block overflow-x-auto lg:overflow-x-visible lg:pb-0 gap-4 lg:gap-0">
+                  <div className="flex-1 min-h-0 flex flex-col justify-between pb-4">
                     {preprocessingSteps.map((step, index) => {
-                      const isCompleted = readonly ? step.id !== currentStep : step.id < currentStep;
+                      const isCompleted = readonly
+                        ? step.id !== currentStep
+                        : step.id < currentStep;
+                      const isLast = index === preprocessingSteps.length - 1;
 
                       return (
-                        <div key={step.id} className="relative flex-shrink-0 lg:w-full">
-                          {index < preprocessingSteps.length - 1 && (
-                            <div className="hidden lg:block absolute left-4 top-12 w-0.5 h-10 bg-gray-200" />
-                          )}
-
+                        <React.Fragment key={step.id}>
+                          {/* Step row — flex-shrink-0 so it never compresses */}
                           <button
-                            className={`flex items-center gap-3 py-3 lg:py-4 text-left transition-colors relative ${currentStep === step.id ? 'text-[#8e78b7]' : 'text-gray-500'
+                            className={`flex items-center gap-3 w-full text-left transition-colors flex-shrink-0 ${currentStep === step.id ? 'text-[#8e78b7]' : 'text-gray-500'
                               }`}
                           >
-                            <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-medium border transition-all ${isCompleted
-                              ? 'bg-[#e6f6f4] text-[#2ba995] border-[#2ba995]'
-                              : currentStep === step.id
-                                ? 'bg-purple-100 border-[#8e78b7] text-[#8e78b7]'
-                                : 'bg-white border-gray-300 text-gray-500'
-                              }`}>
+                            <div
+                              className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-medium border transition-all ${isCompleted
+                                  ? 'bg-[#e6f6f4] text-[#2ba995] border-[#2ba995]'
+                                  : currentStep === step.id
+                                    ? 'bg-purple-100 border-[#8e78b7] text-[#8e78b7]'
+                                    : 'bg-white border-gray-300 text-gray-500'
+                                }`}
+                            >
                               {isCompleted ? <Check className="w-4 h-4" /> : step.id}
                             </div>
-                            <span className="text-sm font-medium whitespace-nowrap">{step.label}</span>
+                            <span className="text-sm font-medium whitespace-nowrap">
+                              {step.label}
+                            </span>
                           </button>
-                        </div>
+
+                          {/* Connector: flex-1 + min-h-0 grows to fill the equal gap */}
+                          {!isLast && (
+                            <div className="flex-1 min-h-0 flex justify-start pl-[15px]">
+                              <div className="w-px bg-gray-200 h-full" />
+                            </div>
+                          )}
+                        </React.Fragment>
                       );
                     })}
                   </div>
+
                 </div>
               </div>
             )}
-
-            <div className="flex-1 min-w-0">
+            <div
+              className={`flex-1 min-w-0 h-full px-6 flex flex-col ${currentStep === 7 && isStep7Preview
+                  ? 'overflow-y-auto'
+                  : 'overflow-y-auto'
+                }`}
+            >
               {showPreviewButton && (
                 <div className="flex justify-end mb-4">
                   <button
                     onClick={handlePreviewClick}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a6ba0] transition-all shadow-md hover:shadow-lg transform"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a6ba0] transition-all shadow-md hover:shadow-lg"
                   >
                     <Eye className="w-4 h-4" />
                     <span className="font-medium">Preview Processed Data</span>
@@ -264,6 +237,7 @@ function DataPreprocessing() {
 
               {renderStepContent()}
             </div>
+
           </div>
         </div>
       </AIPlaygroundLayout>

@@ -49,6 +49,8 @@ function XAI() {
   const [pendingTasks, setPendingTasks] = useState([]);
   const [jobLoading, setJobLoading] = useState(false);
   const [showAllPending, setShowAllPending] = useState(false);
+  const [initializing, setInitializing] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
 
   const filteredModels = modelsList.filter(model =>
     model.run_name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -87,10 +89,21 @@ function XAI() {
   useEffect(() => {
     if (!readonly) {
       const initializeData = async () => {
-        await fetchJobStatus();
-        await fetchRunsLogged();
-        await fetchLoggedModels();
+        setInitializing(true);
+        setIsFetching(true);
+        try {
+          const jobSuccess = await fetchJobStatus();
+          if (!jobSuccess) return;
+          const runsSuccess = await fetchRunsLogged();
+          if (!runsSuccess) return;
+          const modelsSuccess = await fetchLoggedModels();
+          if (!modelsSuccess) return;
+        } finally {
+          setInitializing(false);
+          setIsFetching(false);
+        }
       };
+
       initializeData();
     }
   }, []);
@@ -211,6 +224,8 @@ function XAI() {
 
   const handleReload = async () => {
     setJobLoading(true);
+    setLoadingModels(true);
+    setIsFetching(true);
 
     try {
       const jobSuccess = await fetchJobStatus();
@@ -224,6 +239,8 @@ function XAI() {
 
     } finally {
       setJobLoading(false);
+      setLoadingModels(false);
+      setIsFetching(false);
     }
   };
 
@@ -451,6 +468,10 @@ function XAI() {
     }));
   };
 
+  useEffect(() => {
+    console.log("loadingModels changed:", loadingModels);
+  }, [loadingModels]);
+
   const PDPChart = ({ imageData, title }) => (
     <div className="bg-white border border-gray-200 rounded p-4">
       <h4 className="text-sm font-medium text-gray-900 mb-3">{title}</h4>
@@ -481,10 +502,21 @@ function XAI() {
 
             {/* Header Row */}
             <div className="flex items-center flex-wrap justify-between  w-full">
-              <span className="text-sm font-semibold text-[#6d4fa8]">
-                {pendingTasks.length} model
-                {pendingTasks.length > 1 ? 's' : ''} still training
-              </span>
+              <div>
+                <span className="text-sm font-semibold text-[#6d4fa8]">
+                  {pendingTasks.length} model
+                  {pendingTasks.length > 1 ? 's' : ''} still training
+                </span>
+                {pendingTasks.length > PREVIEW_COUNT && (
+                  <button
+                    onClick={() => setShowAllPending(prev => !prev)}
+                    className="ml-4 text-xs font-medium text-[#8e78b7] underline underline-offset-2 
+                       hover:text-[#6d4fa8] transition-colors"
+                  >
+                    {showAllPending ? 'Show less' : `Show all ${pendingTasks.length}`}
+                  </button>
+                )}
+              </div>
 
               <button
                 onClick={handleReload}
@@ -499,15 +531,6 @@ function XAI() {
                 {jobLoading ? 'Reloading...' : 'Reload'}
               </button>
 
-              {pendingTasks.length > PREVIEW_COUNT && (
-                <button
-                  onClick={() => setShowAllPending(prev => !prev)}
-                  className="text-xs font-medium text-[#8e78b7] underline underline-offset-2 
-                       hover:text-[#6d4fa8] transition-colors"
-                >
-                  {showAllPending ? 'Show less' : `Show all ${pendingTasks.length}`}
-                </button>
-              )}
             </div>
 
             {/* Pills */}
@@ -605,8 +628,12 @@ function XAI() {
                     {/* Trigger button — highlighted when open, text truncated */}
                     <button
                       type="button"
-                      onClick={() => { if (!loadingModels) setIsDropdownOpen(prev => !prev); }}
-                      disabled={loadingModels}
+                      onClick={() => {
+                        if (!initializing && !loadingModels) {
+                          setIsDropdownOpen(prev => !prev);
+                        }
+                      }}
+                      disabled={initializing || loadingModels}
                       style={{ overflow: 'hidden' }}
                       className={`
                         w-full flex items-center justify-between bg-white
@@ -625,16 +652,27 @@ function XAI() {
                           minWidth: 0,
                           flex: 1,
                           marginRight: '8px',
-                          textAlign: 'left',   // ← add this
+                          textAlign: 'left',
                           color: selectedModel ? '#111827' : '#9ca3af'
                         }}
                       >
-                        {selectedModel || 'Select'}
+                        {initializing
+                          ? 'Loading models...'
+                          : selectedModel || 'Select'}
                       </span>
-                      <ChevronDown
-                        size={16}
-                        style={{ flexShrink: 0, color: '#9ca3af', transition: 'transform 0.2s', transform: isDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
-                      />
+                      {initializing ? (
+                        <div className="w-4 h-4 border-2 border-[#8e78b7] border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <ChevronDown
+                          size={16}
+                          style={{
+                            flexShrink: 0,
+                            color: '#9ca3af',
+                            transition: 'transform 0.2s',
+                            transform: isDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)'
+                          }}
+                        />
+                      )}
                     </button>
 
                     {/* Dropdown panel */}
@@ -805,10 +843,16 @@ function XAI() {
             </div>
           )}
 
-          {reportData.counterfactual_report && reportData.counterfactual_report.length > 0 && (
+          {reportData?.counterfactual_report && reportData?.counterfactual_report?.length > 0 && (
             <div className="bg-white rounded-lg p-6 border border-gray-200">
               <h3 className="text-base font-semibold text-gray-900 mb-4">Counterfactual Report</h3>
-              <DataTable columns={counterfactualColumns} data={getCounterfactualData()} isLoading={false} isError={false} />
+              {reportData?.counterfactual_report[0]?.message ? (
+                <div className="pb-2 text-center">
+                  <p className="text-sm text-gray-500">{reportData?.counterfactual_report[0].message}</p>
+                </div>
+              ) : (
+                <DataTable columns={counterfactualColumns} data={getCounterfactualData()} isLoading={false} isError={false} />
+              )}
             </div>
           )}
 
@@ -871,7 +915,9 @@ function XAI() {
         onSave={handleSaveModel}
         readonly={readonly}
         modelsList={modelsList}
+        modelsLoading={loadingModels}
         sessionId={sessionId}
+        isFetching={isFetching}
       />
 
       <GovernanceReportModal

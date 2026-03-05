@@ -1,5 +1,15 @@
-import { FileText, Database, FolderKanban, Box, Scale, ArrowUp, ArrowDown, Info, Activity, Search, List, RefreshCw, BookOpenText, Archive, Trash2, Rocket, Palette, BookOpen, Gauge, LayoutGrid, Loader2, X, Zap } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+// Add rotate animation CSS for refresh icon
+const rotateAnimation = `
+  @keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(-360deg); }
+  }
+  .icon-rotate {
+    animation: rotate 1s linear infinite;
+  }
+`;
+import { FileText, Database, FolderKanban, Box, Scale, ArrowUp, ArrowDown, Info, Activity, Search, List, RefreshCw, BookOpenText, Archive, Trash2, Rocket, Palette, BookOpen, Gauge, LayoutGrid, Loader2, X, Zap , RefreshCcw, MoreHorizontal} from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Customized } from 'recharts';
 import { useState, useMemo, useEffect } from 'react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import DataTable from '../../../components/DataTable';
@@ -18,6 +28,12 @@ import DatasetsIcon from '../../../assets/ai/datadataseticon.svg';
 import SizeIcon from '../../../assets/ai/datasizeicon.svg';
 import AdditionIcons from '../../../assets/ai/dataadditionicon.svg';
 import BoltIcon from '../../../assets/ai/bolt.svg';
+import GauageBg from '../../../assets/ai/Container.svg';
+import Searchicon from '../../../assets/governance/search.svg';
+import lastaccessedicon from '../../../assets/ai/menu_book.svg';
+import history from '../../../assets/ai/history.svg';
+import speed2 from '../../../assets/ai/speed2.svg';
+
 
 
 const F1ModeModal = ({ isOpen }) => {
@@ -180,9 +196,12 @@ const Data = () => {
   }, [recentAccessed]);
 
   const qualityData = [
-    { name: 'Good', value: 45, color: aithemestyle.piechart.good },
-    { name: 'Average', value: 30, color: aithemestyle.piechart.average },
     { name: 'Poor', value: 25, color: aithemestyle.piechart.poor },
+    { name: 'Poor', value: 25, color: aithemestyle.piechart.poor },
+    { name: 'Average', value: 25, color: aithemestyle.piechart.average },
+    { name: 'Average', value: 25, color: aithemestyle.piechart.average },
+    { name: 'Good', value: 25, color: aithemestyle.piechart.good },
+    { name: 'Good', value: 25, color: aithemestyle.piechart.good },
   ];
 
   const handleSearchChange = (e) => {
@@ -241,17 +260,26 @@ const Data = () => {
 
         switch (status) {
           case 'active':
-            statusClass = 'bg-green-100 text-green-800 border-green-200';
+            statusClass = 'text-[#069B68]';
             break;
           case 'archived':
-            statusClass = 'bg-gray-100 text-gray-800 border-gray-200';
+            statusClass = 'text-[#818181]';
             break;
           default:
-            statusClass = 'bg-blue-100 text-blue-800 border-blue-200';
+            statusClass = 'bg-blue-100 text-blue-800';
         }
 
         return (
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusClass}`}>
+          <span
+            className={`inline-flex items-center px-2.5 py-1.5 rounded-md text-xs font-medium  ${statusClass}`}
+            style={
+              status === 'active'
+                ? { background: '#2AC79240' }
+                : status === 'archived'
+                  ? { background: '#D9D9D980' }
+                  : {}
+            }
+          >
             {statusText}
           </span>
         );
@@ -595,16 +623,16 @@ const Data = () => {
   }, [searchTerm, tableData, statusFilter]);
 
   const StatsCardSimple = ({ label, value, icon: Icon }) => (
-    <div className="bg-white rounded-xl px-4 py-4 border border-purple-200 flex items-center min-h-[80px] min-w-0">
+    <div className="bg-white rounded-xl px-4 py-4 flex items-center min-h-[80px] min-w-0">
       <div className="flex items-center gap-2 flex-1 min-w-0">
         <img src={Icon} alt={label} width={24} height={24} className="shrink-0 mr-1" />
-        <span className="text-black text-sm font-medium truncate">{label}</span>
+        <span className="satoshi-medium truncate">{label}</span>
       </div>
       <div className="flex items-center justify-end ml-2 shrink-0">
         {value == null ? (
           <div className="h-6 w-10 bg-gray-200 rounded animate-pulse"></div>
         ) : (
-          <span className="text-xl font-medium text-gray-900 tabular-nums">{value}</span>
+          <span className="satoshi-count">{value}</span>
         )}
       </div>
     </div>
@@ -614,11 +642,11 @@ const Data = () => {
     const [showInfoLocal, setShowInfoLocal] = useState(false);
 
     return (
-      <div className={`bg-white rounded-lg p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow ${className}`}>
+      <div className={`bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow ${className}`}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Icon className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: aithemestyle.iconColor }} />
-            <span className="text-gray-700 font-medium text-sm sm:text-base">{title}</span>
+            <span className="satoshi-medium-md">{title}</span>
           </div>
           <div className="relative">
             <Info
@@ -627,7 +655,7 @@ const Data = () => {
               onMouseLeave={() => setShowInfoLocal(false)}
             />
             {showInfoLocal && (
-              <div className="absolute right-0 top-6 z-10 w-48 p-2 bg-gray-800 text-white text-xs rounded-lg shadow-lg">
+              <div className="absolute right-0 top-6 z-10 w-48 p-2 text-white text-xs rounded-lg shadow-lg" style={{ backgroundColor: '#332849' }}>
                 {infoText}
               </div>
             )}
@@ -679,21 +707,13 @@ const Data = () => {
 
   return (
     <div className="p-3 sm:p-4 lg:p-6 bg-gray-50 min-h-screen">
-      <Breadcrumb skipLinkSegments={['hub']} />
+      <style>{rotateAnimation}</style>
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <h1
-          style={{
-            fontWeight: 700,
-            fontStyle: 'bold',
-            fontSize: '24px',
-            lineHeight: '100%'
-          }}
-          className="text-gray-900"
-        >
-          Data
-        </h1>
-        <div className="flex items-center gap-2 sm:gap-3">
+      <div className="sticky top-0 z-40 bg-gray-50 -mx-3 sm:-mx-4 lg:-mx-6 px-3 sm:px-4 lg:px-6">
+        <Breadcrumb skipLinkSegments={['hub']} />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 py-3 sm:py-4 lg:py-6" style={{ height: '18px' }}>
+          <h1 className="satoshi-heading">Data</h1>
+        <div className="flex items-center gap-2">
           <div className="relative">
             <StatusFilterDropdown
               selectedStatuses={statusFilter}
@@ -702,20 +722,39 @@ const Data = () => {
                 { value: 'active', label: 'Active' },
                 { value: 'archived', label: 'Archived' }
               ]}
+              style={{ color: '#818181' }}
             />
           </div>
 
           <div className="relative flex-1 sm:flex-initial">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-5 text-gray-400" />
+            <img src={Searchicon} alt="Search" className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-5 text-gray-400 pointer-events-none" />
             <input
               type="text"
               placeholder="Search"
               value={searchTerm}
               onChange={handleSearchChange}
-              className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm"
+              style={{
+                width: '248px',
+                height: '40px',
+                borderRadius: '8px',
+                paddingLeft: '40px', // to account for icon
+                paddingRight: '8px',
+                paddingTop: '8px',
+                paddingBottom: '8px',
+                borderWidth: '1px',
+                borderColor: '#d1d5db',
+                fontSize: '14px',
+                boxSizing: 'border-box',
+                background: '#fff',
+                outline: 'none',
+                transition: 'border-color 0.2s',
+              }}
+              className="focus:ring-2 focus:ring-[#8E77BB] focus:border-transparent"
             />
           </div>
-          <button
+
+          
+          {/* <button
             className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
             onClick={toggleView}
             title={isTableView ? "Grid View" : "List View"}
@@ -725,14 +764,17 @@ const Data = () => {
             ) : (
               <List className="w-5 h-5 text-gray-600" />
             )}
-          </button>
+          </button> */}
+
+          
           <button
-            className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="p-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50"
             onClick={handleRefresh}
             disabled={isLoading}
           >
-            <RefreshCw className={`w-5 h-5 text-gray-600 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCcw size={20} className={isLoading ? 'icon-rotate' : ''} style={{ color: '#818181' }} strokeWidth={1.7} />
           </button>
+        </div>
         </div>
       </div>
 
@@ -740,7 +782,7 @@ const Data = () => {
         {!isTableView && (
           <>
             {/* --- Updated Stats Card Row --- */}
-            <div className={`bg-gradient-to-r ${aithemestyle.statsCardGradient} rounded-xl p-4`}>
+            <div className={`${aithemestyle.statsCardGradient270} rounded-xl p-4`}>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {statsData.map((stat, index) => (
                   <StatsCardSimple
@@ -757,13 +799,13 @@ const Data = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <ChartCard
                 title="Quality"
-                icon={Scale}
+                icon={() => <img src={speed2} alt="Quality" style={{ color: aithemestyle.iconColor }} className="w-4 h-4 sm:w-5 sm:h-5" />}
                 infoText="Data quality distribution across all datasets"
                 className="lg:col-span-2"
               >
                 <div className="flex flex-col items-center w-full">
-                  <div className="relative w-full">
-                    <ResponsiveContainer width="100%" height={200}>
+                  <div className="relative w-full flex justify-center">
+                    <ResponsiveContainer width="95%" height={280}>
                       <PieChart>
                         <defs>
                           <linearGradient id="qualityInnerGradient" x1="0" y1="0" x2="0" y2="1">
@@ -771,47 +813,61 @@ const Data = () => {
                             <stop offset="100%" stopColor={aithemestyle.piechart.innerGradientTo} />
                           </linearGradient>
                         </defs>
+                        {/* Render SVG background first so Pie is above */}
+                        <Customized
+                          component={({ width, height }) => {
+                            const svgWidth = width * 1;
+                            const svgHeight = height * 0.90;
+                            const svgX = (width - svgWidth) / 2 ;
+                            const svgY = (height - svgHeight) / 2;
+                            return (
+                              <g>
+                                <image
+                                  href={GauageBg}
+                                  x={svgX}
+                                  y={svgY}
+                                  width={svgWidth}
+                                  height={svgHeight}
+                                  preserveAspectRatio="xMidYMid meet"
+                                />
+                              </g>
+                            );
+                          }}
+                        />
+                        {/* Colored Pie arcs above SVG */}
                         <Pie
                           data={qualityData}
                           cx="50%"
                           cy="100%"
                           startAngle={180}
                           endAngle={0}
-                          innerRadius={130}
-                          outerRadius={150}
-                          paddingAngle={3}
+                          innerRadius={255}
+                          outerRadius={275}
+                          paddingAngle={1}
                           dataKey="value"
                         >
                           {qualityData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
                         </Pie>
-                        <Pie
-                          data={[{ value: 1 }]}
-                          cx="50%"
-                          cy="100%"
-                          startAngle={180}
-                          endAngle={0}
-                          innerRadius={0}
-                          outerRadius={129}
-                          dataKey="value"
-                          isAnimationActive={false}
-                          stroke="none"
-                        >
-                          <Cell fill="url(#qualityInnerGradient)" />
-                        </Pie>
+                        
+                        
+                        
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
-                      <div className="text-white text-xs font-semibold px-5 py-1.5 rounded-full whitespace-nowrap" style={{ backgroundColor: aithemestyle.piechart.labelColor }}>
-                        Good Quality
+                      <div className="w-full flex justify-center">
+                        <div className="text-white text-xs font-semibold rounded-full whitespace-nowrap" 
+                          style={{ backgroundColor: aithemestyle.piechart.labelColor, height: '28px', width: '140px', padding: '6px 0', textAlign: 'center' }}>
+                          Good Quality
+                        </div>
+                        </div>
                       </div>
-                    </div>
                   </div>
                   <div className="flex justify-center gap-6 mt-3">
-                    {qualityData.map((item, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
+                    {[...new Map(qualityData.map(item => [item.name + item.color, item])).values()].map((item, index) => (
+                      <div key={item.name + item.color} className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-md" style={{ backgroundColor: item.color }}></div>
                         <span className="text-xs text-gray-600">{item.name}</span>
                       </div>
                     ))}
@@ -821,7 +877,7 @@ const Data = () => {
 
               <ChartCard
                 title="Last Accessed"
-                icon={Activity}
+                icon={() => <img src={history} alt="History"  style={{ color: aithemestyle.iconColor }} />}
                 infoText="Recently accessed datasets and their last access time"
                 className="lg:col-span-1"
               >
@@ -865,7 +921,7 @@ const Data = () => {
                             onClick={() => handleLastAccessedClick(item)}
                             title={`Open ${item.name}`}
                           >
-                            <BookOpenText className="w-4 h-4" style={{ color: aithemestyle.iconColor }} />
+                            <img src={lastaccessedicon} alt="Last Accessed" className="w-4 h-4" style={{ color: aithemestyle.iconColor }} />
                           </button>
                         </div>
                         {index < lastAccessedData.length - 1 && (
@@ -879,7 +935,7 @@ const Data = () => {
                     No recently accessed datasets
                   </div>
                 )}
-              </ChartCard>
+              </ChartCard>  
             </div>
           </>
         )}

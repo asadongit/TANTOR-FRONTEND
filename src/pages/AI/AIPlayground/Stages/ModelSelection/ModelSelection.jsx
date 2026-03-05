@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AIPlaygroundLayout } from '../../AIPlaygroundLayout';
 import { Search } from 'lucide-react';
 import algorithmsData from '../../../../../components/classification_models_hyperparameters.json';
@@ -41,6 +41,9 @@ function ModelSelection() {
 
     // Tracks whether user has attempted to proceed (triggers inline validation)
     const [showValidation, setShowValidation] = useState(false);
+
+    // Refs map: algoId → DOM element, for scroll-to-error
+    const cardRefs = useRef({});
 
     useEffect(() => {
         if (datasetState.sessionId == '') {
@@ -281,7 +284,6 @@ function ModelSelection() {
         const algo = allAlgorithmsState[id];
         const newEnabled = !algo.enabled;
 
-        // Reset validation state so newly added algorithms don't show red immediately
         if (newEnabled) {
             setShowValidation(false);
         }
@@ -425,13 +427,14 @@ function ModelSelection() {
         setShowValidation(true);
 
         if (!isFormValid()) {
-            // Auto-expand algorithms that have errors so user can see them
             const enabledAlgos = Object.values(allAlgorithmsState).filter(algo => algo.enabled);
             const invalidAlgo = enabledAlgos.find(algo => !validateAlgorithm(algo));
+
             if (invalidAlgo) {
                 // Switch to the tab of the first invalid algorithm
                 setSelectedTab(invalidAlgo.category);
-                // Expand it
+
+                // Expand the invalid algorithm so its fields are visible
                 const updates = {};
                 Object.keys(allAlgorithmsState).forEach(key => {
                     updates[key] = {
@@ -440,6 +443,14 @@ function ModelSelection() {
                     };
                 });
                 setAllAlgorithmsState(updates);
+
+                // Scroll to the invalid algorithm card after state updates settle
+                setTimeout(() => {
+                    const cardEl = cardRefs.current[invalidAlgo.id];
+                    if (cardEl) {
+                        cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 80);
             }
 
             const enabledCount = enabledAlgos.length;
@@ -525,7 +536,7 @@ function ModelSelection() {
 
     const hasEnabledMetrics = metrics.some(m => m.enabled);
 
-    // Check if current tab has any invalid algorithms (for red tab indicator)
+    // Check if current tab has any invalid algorithms (for red dot tab indicator)
     const categoryHasErrors = (category) => {
         if (!showValidation) return false;
         return Object.values(allAlgorithmsState).some(algo =>
@@ -565,7 +576,7 @@ function ModelSelection() {
             `}</style>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-white rounded-xl p-6 border border-gray-200">
+                <div className="lg:col-span-2 bg-white rounded-xl pl-2">
                     <div className="mb-6">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className={`${tw.sectionHeading} text-xl`}>Algorithms</h3>
@@ -588,8 +599,8 @@ function ModelSelection() {
                                             <button
                                                 key={category}
                                                 onClick={() => handleTabChange(category)}
-                                                className={`px-4 py-2 ${tw.sectionHeading} whitespace-nowrap flex items-center gap-1.5 ${selectedTab === category
-                                                    ? 'text-[#8e78b7] border-b-4 border-[#8e78b7]'
+                                                className={`px-8 py-2 ${tw.sectionHeading} whitespace-nowrap flex items-center gap-1.5 ${selectedTab === category
+                                                    ? 'text-[#8e78b7] border-b-[3px] border-[#8e78b7] bg-[#FAF8FF] rounded-t'
                                                     : 'text-gray-600 hover:text-gray-900'
                                                     }`}
                                             >
@@ -626,6 +637,7 @@ function ModelSelection() {
                                     onUpdate={updateAlgorithmState}
                                     showValidation={showValidation}
                                     onResetValidation={() => setShowValidation(false)}
+                                    cardRef={(el) => { cardRefs.current[algo.id] = el; }}
                                 />
                             ))
                         )}

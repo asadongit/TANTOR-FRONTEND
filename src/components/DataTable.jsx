@@ -8,14 +8,17 @@ import React, {
 import {
   ArrowUpDown,
   MoreHorizontal,
+  MoreVertical,
   Pencil,
   Trash2,
   Play,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Search,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import CustomDropdown from "./CustomDropdown";
 
 const DataTable = ({
   columns,
@@ -80,14 +83,22 @@ const DataTable = ({
     };
   }, [columnCount]);
 
-  const cellBaseStyle = useMemo(
-    () => ({
-      padding: `${density.paddingY}px ${density.paddingX}px`,
-      fontSize: density.cellFontSize,
-      lineHeight: density.lineHeight,
-    }),
-    [density]
-  );
+  // const cellBaseStyle = useMemo(
+  //   () => ({
+  //     padding: `${density.paddingY}px ${density.paddingX}px`,
+  //     fontSize: density.cellFontSize,
+  //     lineHeight: density.lineHeight,
+  //   }),
+  //   [density]
+  // );
+  // row styling and layout  according to figma style 
+  const cellBaseStyle = {
+  padding: "11.50px 16px",
+  fontSize: "14px",
+  fontWeight: 400,
+  lineHeight: "18.5px",
+  color: "#23252D",
+};
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -207,7 +218,11 @@ const DataTable = ({
 
   const renderSkeletonRows = () => {
     return Array.from({ length: itemsPerPage }).map((_, rowIndex) => (
-      <tr key={`skeleton-${rowIndex}`} className="border-b animate-pulse align-middle">
+      <tr
+  key={`skeleton-${rowIndex}`}
+  className="animate-pulse align-middle border-b"
+  style={{ borderColor: "#cccccc" }}
+>
         {columns.map((column, colIndex) => (
           <td
             key={`skeleton-cell-${rowIndex}-${colIndex}`}
@@ -232,31 +247,43 @@ const DataTable = ({
   return (
     <div className="w-full mt-6" style={{ fontSize: density.cellFontSize, lineHeight: density.lineHeight }}>
       <div
-        className="overflow-y-auto overflow-x-auto border rounded-lg mb-4"
-        style={{ maxHeight: "calc(100vh - 240px)" }}
-      >
-        <table
-          className="w-full bg-white table-fixed"
-          aria-label={title || "Data table"}
-          style={{ tableLayout: columnCount > 10 ? "auto" : "fixed" }}
+  className="border rounded-lg mb-4 overflow-y-auto"
+  style={{ maxHeight: "calc(100vh - 240px)"}}
+>
+  <table
+    className="w-full bg-white"
+    style={{
+      borderCollapse: "collapse",
+      borderSpacing: 0,
+    }}
         >
           <thead>
-            <tr className="bg-gray-800 text-white sticky top-0 z-10">
+            <tr className="sticky top-0 z-10">
               {columns.map((column, index) => (
                 <th
                   key={column.key || column.label}
-                  className="text-left sticky top-0 bg-gray-800 z-10 whitespace-normal break-words"
+                  className="text-left sticky top-0 z-10 whitespace-normal break-words satoshi-medium-3"
+                  // style={{
+                  //   background: '#F9F9F9',
+                  //   borderBottom: '1px solid #e5e5e5',
+                    
+                  //   width:
+                  //     column.width ||
+                  //     (column.label === "Action" ? "100px" : "auto"),
+                  //   minWidth:
+                  //     column.minWidth ||
+                  //     `clamp(${density.minColumnWidth}px, ${density.relativeWidthPercent}%, 200px)`,
+                  //   padding: `${density.paddingY}px ${density.paddingX}px`,
+                  //   fontSize: density.headerFontSize,
+                  //   lineHeight: density.lineHeight,
+                  // }}
                   style={{
-                    width:
-                      column.width ||
-                      (column.label === "Action" ? "100px" : "auto"),
-                    minWidth:
-                      column.minWidth ||
-                      `clamp(${density.minColumnWidth}px, ${density.relativeWidthPercent}%, 200px)`,
-                    padding: `${density.paddingY}px ${density.paddingX}px`,
-                    fontSize: density.headerFontSize,
-                    lineHeight: density.lineHeight,
-                  }}
+    background: "#F9F9F9",
+    padding: "16px",
+    fontSize: "16px",
+    lineHeight: "22px",
+    borderBottom: "1px solid #e5e5e5",
+  }}  // header row layout fixed according to the figma 
                   onClick={() =>
                     column.key &&
                     column.sortable !== false &&
@@ -274,8 +301,9 @@ const DataTable = ({
                     {column.label}
                     {column.key && column.sortable !== false && (
                       <ArrowUpDown
-                        className={`ml-2 cursor-pointer ${sortConfig.key === column.key ? "text-blue-300" : ""
-                          }`}
+                        className={`ml-2 cursor-pointer ${
+                          sortConfig.key === column.key ? "text-gray-500" : ""
+                        }`}
                         size={16}
                         aria-hidden="true"
                       />
@@ -284,8 +312,9 @@ const DataTable = ({
                 </th>
               ))}
             </tr>
+            
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-[#e5e5e5]">
             {isLoading ? (
               renderSkeletonRows()
             ) : isError ? (
@@ -312,14 +341,16 @@ const DataTable = ({
             ) : (
               paginatedData.map((row, rowIndex) => (
                 <tr
-                  key={rowIndex}
-                  className={`border-b transition-colors align-middle ${onRowClick ? 'cursor-pointer' : ''
-                    } ${selectedRowId && row.sno === selectedRowId
-                      ? 'bg-[#f3f0f8] border-l-4 border-l-[#8e78b7]'
-                      : 'hover:bg-gray-50'
-                    } ${row.rowClassName || ''}`}
-                  onClick={(e) => handleRowClickInternal(row, e)}
-                >
+  key={rowIndex}
+  style={{ height: "52px" }}
+  className={`transition-colors align-middle ${
+    onRowClick ? "cursor-pointer" : ""
+  } ${
+    selectedRowId && row.sno === selectedRowId
+      ? "bg-[#f3f0f8] border-l-4 border-l-[#8e78b7]"
+      : "hover:bg-gray-50"
+  } ${row.rowClassName || ""}`}
+>
                   {columns.map((column, cellIndex) => {
                     if (column.label === "Action") {
                       const availableActions = actions.filter(
@@ -344,10 +375,14 @@ const DataTable = ({
                         <td
                           key={cellIndex}
                           className="text-center align-middle relative action-menu"
-                          style={cellBaseStyle}
+                          style={{
+          ...cellBaseStyle,
+          paddingTop: "12px",
+          paddingBottom: "12px",
+        }}
                         >
                           <button
-                            className="p-2 text-gray-600 hover:text-gray-800 rounded-full hover:bg-gray-100"
+                            className="flex items-center justify-center p-1 text-gray-600 hover:text-gray-800 rounded-full hover:bg-gray-100"
                             onClick={(e) => {
                               e.stopPropagation();
                               toggleActionMenu(rowIndex);
@@ -356,7 +391,7 @@ const DataTable = ({
                             aria-expanded={activeMenu === rowIndex}
                             aria-haspopup="true"
                           >
-                            <MoreHorizontal size={20} />
+                            <MoreVertical size={20} />
                           </button>
 
                           {activeMenu === rowIndex && (
@@ -436,29 +471,29 @@ const DataTable = ({
                     }
 
                     if (column.render) {
-                      return (
-                        <td
-                          key={cellIndex}
-                          className={`align-middle ${column.wrap ? 'whitespace-normal break-words' : 'whitespace-nowrap text-ellipsis overflow-hidden'}`}
-                          style={{ ...cellBaseStyle, maxWidth: "100%" }}
-                          title={column.renderTitle ? column.renderTitle(row, rowIndex) : undefined}
-                        >
-                          {column.render(row, rowIndex)}
-                        </td>
-                      );
-                    }
+  return (
+    <td
+      key={cellIndex}
+      className={`align-middle ${column.wrap ? 'whitespace-normal break-words' : 'whitespace-nowrap text-ellipsis overflow-hidden'}`}
+      style={{ ...cellBaseStyle, maxWidth: "260px", overflow: "hidden", textOverflow: "ellipsis" }}
+      title={column.renderTitle ? column.renderTitle(row, rowIndex) : undefined}
+    >
+      {column.render(row, rowIndex)}
+    </td>
+  );
+}
 
                     return (
                       <td
-                        key={cellIndex}
-                        className={`text-gray-600 align-middle ${column.wrap ? 'whitespace-normal break-words' : 'whitespace-nowrap overflow-hidden text-ellipsis'}`}
-                        style={{ ...cellBaseStyle, maxWidth: "100%" }}
-                        title={column.key ? row[column.key] : undefined}
-                      >
+                      key={cellIndex}
+                      className={`text-gray-600 align-middle ${column.wrap ? 'whitespace-normal break-words' : 'whitespace-nowrap overflow-hidden text-ellipsis'}`}
+                      style={{ ...cellBaseStyle, maxWidth: "260px", height: "52px", overflow: "hidden", textOverflow: "ellipsis" }}
+                      title={column.key ? row[column.key] : undefined}
+                    >
                         {column.key ? (
                           column.key === "status" ? (
                             <span
-                              className={`px-3 py-1 rounded-full text-xs ${getStatusStyles(
+                              className={`px-3  rounded-full text-xs ${getStatusStyles(
                                 row[column.key]
                               )}`}
                             >
@@ -476,54 +511,139 @@ const DataTable = ({
               ))
             )}
           </tbody>
+          <tfoot
+  className="sticky bottom-0 z-20 bg-white"
+>
+  <tr>
+    <td colSpan={columns.length} style={{ padding: '12px 16px', borderTop: '1px solid #cccccc' }}>
+      <div className="flex items-center justify-between">
+        
+        {/* Left Side - Results Info */}
+        <div className="text-sm" style={{ color: '#818181' }}>
+          {totalItems > 0
+            ? `${startItem} to ${endItem} of ${totalItems} results`
+            : "No results found"}
+        </div>
+
+        {/* Right Side Controls */}
+        <div className="flex items-center space-x-2">
+          <span className="text-sm" style={{ color: '#818181' }}>
+            Show per page
+          </span>
+
+          {/* Select */}
+          <div style={{ width: '55px', height: '31px' }}>
+            <CustomDropdown
+              value={String(itemsPerPage)}
+              onChange={(e) => handleItemsPerPageChange({ target: { value: e.target.value } })}
+              options={[
+                { value: '10', label: '10' },
+                { value: '25', label: '25' },
+                { value: '50', label: '50' },
+              ]}
+              disabled={isLoading}
+              rounded="lg"
+              borderColor="#cccccc"
+              focusColor="#8e78b7"
+              compact={true}
+            />
+          </div>
+
+          {/* Pagination Buttons */}
+          <div className="flex" style={{ width: '55px', height: '31px' }}>
+            <button
+              onClick={handlePrevPage}
+              disabled={page === 1 || isLoading}
+              className="flex-1 border border-[#cccccc] rounded-l flex items-center justify-center"
+            >
+              <ChevronLeft
+                size={16}
+                style={{ color: page === 1 ? '#cccccc' : '#818181' }}
+              />
+            </button>
+
+            <button
+              onClick={handleNextPage}
+              disabled={page >= totalPages || isLoading}
+              className="flex-1 border border-[#cccccc] rounded-r border-l-0 flex items-center justify-center"
+            >
+              <ChevronRight
+                size={16}
+                style={{ color: page >= totalPages ? '#cccccc' : '#818181' }}
+              />
+            </button>
+          </div>
+        </div>
+      </div>
+    </td>
+  </tr>
+</tfoot>
         </table>
       </div>
 
-      <div className="flex flex-col md:flex-row items-center justify-between">
-        <div className="text-sm text-gray-500 mb-2 md:mb-0">
+      {/* <div className="flex flex-col md:flex-row items-center justify-between">
+        <div className="text-sm mb-2 md:mb-0" style={{ color: '#818181' }}>
           {isLoading ? (
             <div className="h-4 w-40 bg-gray-200 rounded animate-pulse"></div>
           ) : totalItems > 0 ? (
-            `Showing ${startItem} to ${endItem} of ${totalItems} results`
+            ` ${startItem} to ${endItem} of ${totalItems} results`
           ) : (
             "No results found"
           )}
         </div>
         <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-500">Show per page</span>
-          <select
-            className="border rounded p-1 text-sm"
-            value={itemsPerPage}
-            onChange={handleItemsPerPageChange}
-            aria-label="Show per page"
-            disabled={isLoading}
-          >
-            {[10, 25, 50].map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-          <div className="flex items-center">
-            <button
-              onClick={handlePrevPage}
-              className="p-1 border rounded-l hover:bg-gray-100 disabled:opacity-50"
-              disabled={page === 1 || isLoading}
-              aria-label="Previous page"
+          <span className="text-sm" style={{ color: '#818181' }}>Show per page</span>
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <select
+              className="rounded p-1 text-sm pr-6"
+              value={itemsPerPage}
+              onChange={handleItemsPerPageChange}
+              aria-label="Show per page"
+              disabled={isLoading}
+              style={{ borderColor: '#cccccc', borderWidth: '1px', outline: 'none', boxShadow: 'none', color: '#282F49', appearance: 'none', width: '51px', height: '31px' }}
+              onFocus={e => { e.target.style.borderColor = '#cccccc'; }}
+              onBlur={e => { e.target.style.borderColor = '#cccccc'; }}
             >
-              <ChevronLeft size={20} />
-            </button>
-            <button
-              onClick={handleNextPage}
-              className="p-1 border rounded-r border-l-0 hover:bg-gray-100 disabled:opacity-50"
-              disabled={page >= totalPages || isLoading}
-              aria-label="Next page"
-            >
-              <ChevronRight size={20} />
-            </button>
+              {[10, 25, 50].map((option) => (
+                <option key={option} value={option} style={{ color: '#282F49' }}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+              <ChevronDown size={18} style={{ color: '#818181' }} />
+            </span>
           </div>
+          <div
+  className="flex"
+  style={{ width: '55px', height: '31px' }}
+>
+  <button
+    onClick={handlePrevPage}
+    disabled={page === 1 || isLoading}
+    aria-label="Previous page"
+    className="flex-1 border border-[#cccccc] rounded-l hover:bg-gray-100 disabled:opacity-50 flex items-center justify-center"
+  >
+    <ChevronLeft
+      size={18}
+      style={{ color: (page === 1 || isLoading) ? '#cccccc' : '#818181' }}
+    />
+  </button>
+
+  <button
+    onClick={handleNextPage}
+    disabled={page >= totalPages || isLoading}
+    aria-label="Next page"
+    className="flex-1 border border-[#cccccc] rounded-r border-l-0 hover:bg-gray-100 disabled:opacity-50 flex items-center justify-center"
+  >
+    <ChevronRight
+      size={18}
+      style={{ color: (page >= totalPages || isLoading) ? '#cccccc' : '#818181' }}
+    />
+  </button>
+</div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };
