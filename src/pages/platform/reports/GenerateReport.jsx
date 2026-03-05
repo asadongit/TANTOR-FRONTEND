@@ -11,6 +11,7 @@ const GenerateReport = () => {
   const { token, decodedToken, project } = useAuth();
 
   const [reportType, setReportType] = useState("");
+  const [reportName, setReportName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,13 +33,14 @@ const GenerateReport = () => {
   };
 
   const handleCancel = () => {
+    setReportName("");
     setReportType("");
     setStartDate("");
     setEndDate("");
   };
 
   const handleGenerateReport = async () => {
-    if (!reportType || !startDate || !endDate) {
+    if (!reportName || !reportType || !startDate || !endDate) {
       toast.error("Please fill all required fields");
       setError("Please fill all required fields");
       return;
@@ -48,12 +50,28 @@ const GenerateReport = () => {
       setLoading(true);
       setError(null);
 
-      const payload = { reportType, startDate, endDate };
+      const payload = {
+        workflow_name: reportName,
+        workflow_type: reportType,
+        condition: "N/A",
+        execute_type: "Manual",
+        status_choices: "Completed",
+        before_source_table_count: 0,
+        after_target_table_count: 0,
+        project: project || "default",
+        created_by: decodedToken?.preferred_username || "user",
+        start_time: startDate ? new Date(startDate).toISOString() : null,
+        end_time: endDate ? new Date(endDate).toISOString() : null,
+      };
       const response = await fetch(
-        "https://jsonplaceholder.typicode.com/posts",
+        `${hostname}/reports`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            "x-project": project,
+          },
           body: JSON.stringify(payload),
           signal: abortController.current.signal,
         }
@@ -235,6 +253,20 @@ const GenerateReport = () => {
               </div>
 
               <div className="border-b border-gray-200 mb-4"></div>
+
+              {/* Report Name */}
+              <div className="mb-4">
+                <label className="block text-sm text-black mb-1.5">
+                  Report Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={reportName}
+                  onChange={(e) => setReportName(e.target.value)}
+                  placeholder="Enter report name"
+                  className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]"
+                />
+              </div>
 
               {/* Report Type */}
               <div className="relative mb-4">
