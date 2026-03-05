@@ -44,7 +44,7 @@ const useDynamicData = (componentType) => {
 const Details = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { token, project, hostnameV2, hostnameV1 } = useAuth();
+  const { token, project, hostnameV2, hostnameV1, decodedToken } = useAuth();
   const encryptedQuery = location.search.slice(1);
   const decryptedQuery = decrypt(decodeURIComponent(encryptedQuery));
   const queryString = decryptedQuery.startsWith("/") ? decryptedQuery.slice(1) : decryptedQuery;
@@ -65,6 +65,7 @@ const Details = () => {
 
 
   const selectedType = cardType || componentType;
+  const storageKeyIdentifier = [componentType, dataScope].filter(Boolean).join('_').toLowerCase();
 
   const { data = [], isLoading, isError, refetch } = useDynamicData(selectedType);
 
@@ -73,18 +74,32 @@ const Details = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [activeMenu, setActiveMenu] = useState(null);
-  
-  const [autoRefreshInterval, setAutoRefreshInterval] = useState(0); // 0 = off
+
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(() => {
+    const saved = localStorage.getItem(`autoRefresh_details_${storageKeyIdentifier}_${decodedToken?.preferred_username}`);
+    return saved ? parseInt(saved, 10) : 0;
+  });
   const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
   const autoRefreshMenuRef = useRef(null);
-  
+
   const [deleteModal, setDeleteModal] = useState({ open: false, id: null, type: null, onConfirm: null });
-  
+
   const [resetSortTrigger, setResetSortTrigger] = useState(0);
   const handleClearSort = () => {
     setResetSortTrigger(prev => prev + 1);
-  };  
-  
+  };
+
+  useEffect(() => {
+    if (decodedToken?.preferred_username && storageKeyIdentifier) {
+      const saved = localStorage.getItem(`autoRefresh_details_${storageKeyIdentifier}_${decodedToken?.preferred_username}`);
+      if (saved) {
+        setAutoRefreshInterval(parseInt(saved, 10));
+      } else {
+        setAutoRefreshInterval(0);
+      }
+    }
+  }, [decodedToken, storageKeyIdentifier]);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (autoRefreshMenuRef.current && !autoRefreshMenuRef.current.contains(event.target)) {
@@ -235,6 +250,9 @@ const Details = () => {
                       }`}
                     onClick={() => {
                       setAutoRefreshInterval(option.value);
+                      if (decodedToken?.preferred_username) {
+                        localStorage.setItem(`autoRefresh_details_${storageKeyIdentifier}_${decodedToken?.preferred_username}`, option.value.toString());
+                      }
                       setIsAutoRefreshMenuOpen(false);
                     }}
                   >
