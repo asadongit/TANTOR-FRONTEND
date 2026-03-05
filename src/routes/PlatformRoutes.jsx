@@ -47,7 +47,7 @@ export function PlatformRoutes() {
       <Route path="/connections" element={<Connections />} />
       <Route path="/jobs" element={<Jobs />} />
       <Route path="/pipeline" element={<Pipeline />} />
-      {/* <Route path="/report" element={<Reports />} /> */}
+      <Route path="/report" element={<Reports />} />
       <Route path="/generateReport" element={<GenerateReport />} />
       <Route path="/reports/viewer" element={<ReportViewer />} />
 
