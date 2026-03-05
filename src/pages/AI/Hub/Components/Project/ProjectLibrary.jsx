@@ -111,43 +111,55 @@ const ProjectLibrary = () => {
 
     return (
         <div className="min-h-screen bg-gray-50 p-6 space-y-4">
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+            <div className="bg-white rounded-xl  shadow-sm">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                         <button
                             onClick={handleLibraryBack}
-                            className="hover:bg-gray-100 rounded-lg transition-colors p-1"
+                            className="hover:bg-gray-100 rounded-lg transition-colors "
                             aria-label="Go back to projects"
                         >
-                            <ChevronLeft className="w-5 h-5 text-gray-600" />
+                            <ChevronLeft className="w-6 h-6" style={{ color: '#818181' }} />
+
                         </button>
                         <div className="flex items-center gap-2">
-                            <h1 style={{ fontWeight: 700, fontSize: '24px', lineHeight: '100%' }} className="text-gray-900">Project Library - </h1>
+                            <h1 className="satoshi-heading leading-8  ">Project Library - </h1>
                             <span style={{ fontWeight: 700, fontSize: '24px', lineHeight: '100%', color: aithemestyle.iconColor }}>{ProjectName}</span>
                         </div>
                     </div>
 
                 </div>
 
-                <div className="flex items-center gap-2 px-6 pt-2">
+                <div className="flex items-center gap-2 px-6 pt-4">
                     {tabs.map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
-                            style={activeTab === tab ? {
-                                backgroundColor: aithemestyle.tab.activeBackground,
-                                borderBottom: `${aithemestyle.tab.activeBorderWidth} solid ${aithemestyle.tab.activeBorderColor}`,
-                                color: aithemestyle.tab.activeTextColor,
-                                fontSize: aithemestyle.tab.fontSize,
-                                paddingTop: '12px',
-                                paddingBottom: '6px',
-                            } : {
-                                fontSize: aithemestyle.tab.fontSize,
-                                color: aithemestyle.tab.inactiveTextColor,
-                                paddingTop: '12px',
-                                paddingBottom: '6px',
+                            style={{
+                                width: '136px',
+                                height: '38px',
+                                paddingTop: '8px',
+                                paddingBottom: '8px',
+                                paddingLeft: '34px',
+                                paddingRight: '34px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                ...(activeTab === tab
+                                    ? {
+                                        backgroundColor: aithemestyle.tab.activeBackground,
+                                        borderBottom: `${aithemestyle.tab.activeBorderWidth} solid ${aithemestyle.tab.activeBorderColor}`,
+                                        color: aithemestyle.tab.activeTextColor,
+                                        fontSize: aithemestyle.tab.fontSize,
+                                        
+                                    }
+                                    : {
+                                        fontSize: aithemestyle.tab.fontSize,
+                                        color: aithemestyle.tab.inactiveTextColor,
+                                        
+                                    }),
                             }}
-                            className="px-4 font-medium transition-colors relative rounded-t hover:text-gray-700"
+                            className={`px-4 font-medium transition-colors relative rounded-t hover:text-gray-700`}
                         >
                             {tab}
                         </button>
@@ -155,7 +167,7 @@ const ProjectLibrary = () => {
                 </div>
             </div>
 
-            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <div className="bg-white p-4 rounded-xl shadow-sm" style={{ minHeight: "600px" }}>
                 {activeTab === 'Overview' && <OverviewTab projectData={projectData} />}
                 {activeTab === 'Components' && <ComponentsTab projectData={projectData} />}
                 {activeTab === 'Comments' && <CommentsTab projectData={projectData} />}

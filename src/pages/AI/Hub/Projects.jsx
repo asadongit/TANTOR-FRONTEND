@@ -1,4 +1,4 @@
-import { Search, List, RefreshCw, CheckCircle, Target, BookOpenText, Trash2, Plus, LayoutGrid, Folder, Database, Bot, ArrowUp, ArrowDown, Archive } from 'lucide-react';
+import { Search, List, RefreshCcw, CheckCircle, Target, BookOpenText, Trash2, Plus, LayoutGrid, Folder, Database, Bot, ArrowUp, ArrowDown, Archive } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Breadcrumb from '../../../components/Breadcrumb';
@@ -12,6 +12,23 @@ import StatusFilterDropdown from './Components/StateSelector';
 import { updateRecentAccess, unarchiveEntity } from './Components/Hooks';
 import toast from 'react-hot-toast';
 import { aithemestyle } from '../../../components/themeContext';
+import modelsicon from '../../../assets/ai/assistant_on_hub.svg';
+import dataseticon from '../../../assets/ai/dataset.svg';
+import history from '../../../assets/ai/history2.svg';
+import code_blocks from '../../../assets/ai/code_blocks.svg';
+import file_open from '../../../assets/ai/file_open.svg';
+import searchicon from '../../../assets/ai/search.svg';
+import target from '../../../assets/ai/target.svg';
+
+const rotateAnimation = `
+  @keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(-360deg); }
+  }
+  .icon-rotate {
+    animation: rotate 1s linear infinite;
+  }
+`;
 
 const Projects = () => {
     const navigate = useNavigate();
@@ -125,9 +142,9 @@ const Projects = () => {
     const statsCards = useMemo(() => {
         if (dashboardLoading || !dashboardData?.counts) {
             return [
-                { label: 'Projects', value: null, icon: Folder, trend: null, trendValue: null },
+                { label: 'Projects', value: null, icon: file_open, trend: null, trendValue: null },
                 { label: 'Models', value: null, icon: Bot, trend: null, trendValue: null },
-                { label: 'Datasets', value: null, icon: Database, trend: null, trendValue: null },
+                { label: 'Datasets', value: null, icon: dataseticon, trend: null, trendValue: null },
             ];
         }
 
@@ -137,21 +154,21 @@ const Projects = () => {
             {
                 label: 'Projects',
                 value: String(counts.projects?.current ?? 0),
-                icon: Folder,
+                icon: file_open,
                 trend: toTrend(counts.projects?.trend, counts.projects?.percentage_change),
                 trendValue: `${pct(counts.projects?.percentage_change)}%`,
             },
             {
                 label: 'Models',
                 value: String(counts.models?.current ?? 0),
-                icon: Bot,
+                icon: modelsicon,
                 trend: toTrend(counts.models?.trend, counts.models?.percentage_change),
                 trendValue: `${pct(counts.models?.percentage_change)}%`,
             },
             {
                 label: 'Datasets',
                 value: String(counts.datasets?.current ?? 0),
-                icon: Database,
+                icon: dataseticon,
                 trend: toTrend(counts.datasets?.trend, counts.datasets?.percentage_change),
                 trendValue: `${pct(counts.datasets?.percentage_change)}%`,
             },
@@ -161,13 +178,18 @@ const Projects = () => {
     const StatsCardWithTrend = ({ label, value, icon: Icon, trend, trendValue }) => {
             const isUp = trend === 'up';
             const TrendIcon = isUp ? ArrowUp : ArrowDown;
+            const isStringIcon = typeof Icon === 'string';
 
         return (
-            <div className="bg-white rounded-xl px-4 py-4 border border-purple-200 flex flex-col justify-between min-h-[110px] min-w-0">
+            <div className="bg-white rounded-xl px-4 py-4 flex flex-col justify-between min-h-[110px] min-w-0">
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                        <Icon className="w-4 h-4 text-[#8e78b7] shrink-0" />
-                        <span className="text-gray-900 text-[24px] font-medium truncate leading-none">{label}</span>
+                        {isStringIcon ? (
+                            <img src={Icon} alt={label} className="w-[19px] h-[19px] shrink-0" />
+                        ) : (
+                            <Icon className="w-[19px] h-[19px] text-[#8e78b7] shrink-0" />
+                        )}
+                        <span className="satoshi-medium-md truncate leading-none">{label}</span>
                     </div>
                 </div>
 
@@ -197,7 +219,7 @@ const Projects = () => {
                     </div>
 
                     {(trend && trendValue && value != null) ? (
-                        <div className={`flex items-center gap-1 text-sm font-semibold leading-none`} style={{ color: isUp ? aithemestyle.trendup : aithemestyle.trendDown }}>
+                        <div className={`flex items-center gap-1 text-[16px] font-semibold leading-none`} style={{ color: isUp ? aithemestyle.trendup : aithemestyle.trendDown }}>
                             <TrendIcon className="w-4 h-4" />
                             <span className="tabular-nums">{trendValue}</span>
                         </div>
@@ -225,8 +247,8 @@ const Projects = () => {
         switch (normalized) {
             case 'active':
                 return 'bg-green-100 text-green-700';
-            case 'inactive':
-                return 'bg-red-100 text-red-600';
+            case 'archived':
+                return 'bg-gray-100 text-gray-600';
             default:
                 return 'bg-gray-100 text-gray-600';
         }
@@ -366,11 +388,24 @@ const Projects = () => {
             key: 'status',
             label: 'Status',
             sortable: true,
-            render: (row) => (
-                <span className={`px-3 py-1 rounded-md text-xs font-medium ${getStatusStyle(row.status)}`}>
-                    {String(row.status || '').toLowerCase() === 'active' ? 'Active' : String(row.status || '—')}
-                </span>
-            ),
+            render: (row) => {
+                const status = String(row.status || '').toLowerCase();
+                const statusText = status.charAt(0).toUpperCase() + status.slice(1);
+                return (
+                    <span 
+                        className={`inline-flex items-center px-2.5 py-1.5 rounded-md text-xs font-medium ${getStatusStyle(row.status)}`}
+                        style={
+                            status === 'active'
+                                ? { background: '#2AC79240' }
+                                : status === 'archived'
+                                    ? { background: '#D9D9D980' }
+                                    : {}
+                        }
+                    >
+                        {statusText}
+                    </span>
+                );
+            },
         },
         { label: 'Action', sortable: false },
     ];
@@ -456,8 +491,8 @@ const Projects = () => {
     const LastAccessedCard = () => (
         <div className="bg-white rounded-xl px-5 py-4 border border-purple-200 shadow-sm flex flex-col h-full min-h-[110px]">
             <div className="flex items-center gap-2 mb-3">
-                <CheckCircle className="w-5 h-5 text-[#8e78b7]" />
-                <span className="text-gray-700 text-[24px] font-medium">Last Accessed</span>
+                <img src={history} alt="Last Accessed" className="w-5 h-5" />
+                <span className="satoshi-medium">Last Accessed</span>
             </div>
             <div className="flex-1 flex flex-col justify-center">
                 {(recentProjectsLoading || dashboardLoading) ? (
@@ -476,7 +511,7 @@ const Projects = () => {
                                     onClick={() => handleRecentProjectClick(project)}
                                     title={fullName}
                                 >
-                                    <Target className="w-4 h-4 text-gray-500 shrink-0" />
+                                    <img src={target} alt="Target" className="w-4 h-4 shrink-0" />
                                     <span className="block min-w-0 flex-1 text-sm text-gray-700 font-medium whitespace-nowrap overflow-hidden text-ellipsis">
                                         {fullName}
                                     </span>
@@ -493,10 +528,13 @@ const Projects = () => {
 
     return (
                 <div className="p-3 sm:p-4 lg:p-6 bg-gray-50 min-h-screen">
-                        <Breadcrumb skipLinkSegments={['hub']} />
+                        <style>{rotateAnimation}</style>
 
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                                <h1
+                        <div className="sticky top-0 z-40 bg-gray-50 -mx-3 sm:-mx-4 lg:-mx-6 px-3 sm:px-4 lg:px-6">
+                                <Breadcrumb skipLinkSegments={['hub']} />
+
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 py-3 sm:py-4 lg:py-6" style={{ height: '18px' }}>
+                                {/* <h1
                                     style={{
                                         fontWeight: 700,
                                         fontStyle: 'bold',
@@ -506,8 +544,11 @@ const Projects = () => {
                                     className="text-gray-900"
                                 >
                                     Projects
-                                </h1>
-                <div className="flex items-center gap-2 sm:gap-3">
+                                </h1> */}
+                                <h1 className="satoshi-heading ">
+    Projects
+</h1>
+                <div className="flex items-center gap-2">
                     {/* ADD: Status filter dropdown */}
                     <div className="relative">
                         <StatusFilterDropdown
@@ -517,46 +558,64 @@ const Projects = () => {
                                 { value: 'active', label: 'Active' },
                                 { value: 'archived', label: 'Archived' }
                             ]}
+                            style={{ color: '#818181' }}
                         />
                     </div>
                     <div className="relative flex-1 sm:flex-initial">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <img src={searchicon} alt="Search" className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" />
                         <input
                             type="text"
                             placeholder="Search"
-                            className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm"
                             value={searchTerm}
                             onChange={handleSearchChange}
+                            style={{
+                                width: '248px',
+                                height: '40px',
+                                borderRadius: '8px',
+                                paddingLeft: '40px',
+                                paddingRight: '8px',
+                                paddingTop: '8px',
+                                paddingBottom: '8px',
+                                borderWidth: '1px',
+                                borderColor: '#d1d5db',
+                                fontSize: '14px',
+                                boxSizing: 'border-box',
+                                background: '#fff',
+                                outline: 'none',
+                                transition: 'border-color 0.2s',
+                            }}
+                            className="focus:ring-2 focus:ring-[#8E77BB] focus:border-transparent"
                         />
                     </div>
-                    <button
+                    {/* <button
                         className={`p-2 rounded-lg border ${viewMode === 'list' ? 'bg-gray-100 border-gray-500' : 'border-gray-300'} hover:bg-gray-50`}
                         onClick={() => setViewMode(viewMode === 'list' ? 'both' : 'list')}
                         title={viewMode === 'list' ? 'Show All Views' : 'Show List Only'}
                     >
                         {viewMode === 'list' ? <LayoutGrid className="w-5 h-5 text-gray-600" /> : <List className="w-5 h-5 text-gray-600" />}
-                    </button>
+                    </button> */}
                     <button
-                        className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                        className="p-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 h-[40px] flex items-center justify-center"
                         onClick={handleRefresh}
                         disabled={isLoading}
                     >
-                        <RefreshCw className={`w-5 h-5 text-gray-600 ${isLoading ? 'animate-spin' : ''}`} />
+                        <RefreshCcw size={20} className={isLoading ? 'icon-rotate' : ''} style={{ color: '#818181' }} strokeWidth={1.7} />
                     </button>
                     <button
-                        className="flex items-center gap-2 px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7d6aa3] transition-colors"
+                        className="flex items-center w-[147px] pl-[12px] pr-[16px] gap-[8px] bg-[#8e78b7] text-white rounded-lg hover:bg-[#7d6aa3] transition-colors h-[40px]"
                         onClick={() => setIsCreateModalOpen(true)}
                         type="button"
                     >
-                        <Plus className="w-4 h-4" />
+                        <Plus className="w-4 h-4 shrink-0" />
                         <span className="text-sm font-medium">Create Project</span>
                     </button>
                 </div>
-            </div>
+                </div>
+        </div>
 
             <div className="space-y-6">
                 {viewMode === 'both' && (
-                    <div className={`rounded-xl p-4`} style={{ background: aithemestyle.statsCardGradient }}>
+                    <div className={` ${aithemestyle.statsCardGradient270} rounded-xl p-4`}>
                         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                             {statsCards.map((stat, index) => (
                                 <StatsCardWithTrend

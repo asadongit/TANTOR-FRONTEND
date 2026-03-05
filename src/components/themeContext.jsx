@@ -1,7 +1,8 @@
 export const aithemestyle = {
     statsCardGradient: 'linear-gradient(270deg, #EFE7FF 17.24%, #8E77BB 93.06%, #2B125C 141.05%)',
+    statsCardGradient270: 'bg-[linear-gradient(270deg,_#EFE7FF_17.24%,_#8E77BB_93.06%,_#2B125C_141.05%)]',
     iconColor: '#8E77BB',
-    trendup: '#82BC66',
+    trendup: '#36AD8F',
     trendDown: '#DF7E39',
     piechart: {
         good: '#82BC66',

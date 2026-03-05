@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, LayoutDashboard } from 'lucide-react';
-import { Icon } from '@iconify-icon/react';
+import { ChevronLeft } from 'lucide-react';
 import {
   Overview,
   Features,
@@ -115,12 +114,10 @@ function Library() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-center min-h-[200px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8e78b7] mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading model...</p>
-          </div>
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8e78b7] mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading model...</p>
         </div>
       </div>
     );
@@ -128,17 +125,15 @@ function Library() {
 
   if (error) {
     return (
-      <div className="p-6 space-y-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-center min-h-[200px]">
-          <div className="text-center">
-            <p className="text-red-600 mb-4">Error: {error}</p>
-            <button
-              onClick={() => navigate('/ai/hub/models')}
-              className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a5fa8] transition-colors"
-            >
-              Back to Models
-            </button>
-          </div>
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Error: {error}</p>
+          <button
+            onClick={() => navigate('/ai/hub/models')}
+            className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a5fa8] transition-colors"
+          >
+            Back to Models
+          </button>
         </div>
       </div>
     );
@@ -146,69 +141,75 @@ function Library() {
 
   if (!processedModelData) {
     return (
-      <div className="p-6 space-y-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-center min-h-[200px]">
-          <div className="text-center">
-            <p className="text-gray-600 mb-4">Model not found</p>
-            <button
-              onClick={() => navigate('/ai/hub/models')}
-              className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a5fa8] transition-colors"
-            >
-              Back to Models
-            </button>
-          </div>
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Model not found</p>
+          <button
+            onClick={() => navigate('/ai/hub/models')}
+            className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a5fa8] transition-colors"
+          >
+            Back to Models
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-gray-50 p-6 space-y-4">
+      <div className="bg-white rounded-xl shadow-sm">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => navigate(-1)}
-              className="p-1 hover:bg-gray-100 rounded-lg"
+              className="hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Go back to models"
             >
-              <ChevronLeft className="w-6 h-6 text-gray-600" />
+              <ChevronLeft className="w-6 h-6" style={{ color: '#818181' }} />
             </button>
-            <h1 style={{ fontWeight: 700, fontSize: '24px', lineHeight: '100%' }}>
-              Model Library - <span style={{ color: aithemestyle.iconColor }}>{modelName}</span>
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="satoshi-heading leading-8">Model Library - </h1>
+              <span style={{ fontWeight: 700, fontSize: '24px', lineHeight: '100%', color: aithemestyle.iconColor }}>{modelName}</span>
+            </div>
           </div>
-
         </div>
 
-        <div className="mt-4 border-t border-gray-200 pt-2">
-          <nav className="flex gap-2">
-            {tabs.map((tab, index) => (
-              <button
-                key={tab.name}
-                onClick={() => setActiveTab(index)}
-                style={activeTab === index ? {
-                  backgroundColor: aithemestyle.tab.activeBackground,
-                  borderBottom: `${aithemestyle.tab.activeBorderWidth} solid ${aithemestyle.tab.activeBorderColor}`,
-                  color: aithemestyle.tab.activeTextColor,
-                  fontSize: aithemestyle.tab.fontSize,
-                  paddingTop: '12px',
-                  paddingBottom: '6px',
-                } : {
-                  fontSize: aithemestyle.tab.fontSize,
-                  color: aithemestyle.tab.inactiveTextColor,
-                  paddingTop: '12px',
-                  paddingBottom: '6px',
-                }}
-                className="px-4 font-medium transition-colors relative rounded-t hover:text-gray-700"
-              >
-                {tab.name}
-              </button>
-            ))}
-          </nav>
+        <div className="flex items-center gap-2 px-6 pt-4">
+          {tabs.map((tab, index) => (
+            <button
+              key={tab.name}
+              onClick={() => setActiveTab(index)}
+              style={{
+                width: '136px',
+                height: '38px',
+                paddingTop: '8px',
+                paddingBottom: '8px',
+                paddingLeft: '34px',
+                paddingRight: '34px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                ...(activeTab === index
+                  ? {
+                    backgroundColor: aithemestyle.tab.activeBackground,
+                    borderBottom: `${aithemestyle.tab.activeBorderWidth} solid ${aithemestyle.tab.activeBorderColor}`,
+                    color: aithemestyle.tab.activeTextColor,
+                    fontSize: aithemestyle.tab.fontSize,
+                  }
+                  : {
+                    fontSize: aithemestyle.tab.fontSize,
+                    color: aithemestyle.tab.inactiveTextColor,
+                  }),
+              }}
+              className="px-4 font-medium transition-colors relative rounded-t hover:text-gray-700"
+            >
+              {tab.name}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white p-4 rounded-xl shadow-sm" style={{ minHeight: "600px" }}>
         <ActiveTabComponent modelData={processedModelData} />
       </div>
 

@@ -678,23 +678,53 @@ function Parameters({ modelData }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       <div className="flex items-center justify-between">
       </div>
 
-      {(isAuto || isManual) ? (
-        <div className="space-y-3">
+      {isAuto ? (
+        <div className="space-y-4">
+          <div className="bg-purple-50 border border-purple-200 rounded-lg px-4 py-3">
+            <div className="text-sm" style={{ color: '#8E77BB' }}>
+              Data is preprocessed by <span className="font-semibold">"{details?.prefill?.data_preprocessing?.request?.genesis?.model_mode || dpMode}"</span> mode
+            </div>
+          </div>
+        </div>
+      ) : isManual ? (
+        <div className="space-y-2">
           <div className="border-b border-gray-200">
-            <nav className="flex">
-              {(isAuto ? autoTabs : manualTabs).map((tab, idx) => (
+            <nav className="flex flex-wrap items-center gap-2 px-4 pt-4">
+              {manualTabs.map((tab, idx) => (
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(idx)}
-                  className={`px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
-                    activeTab === idx
-                      ? 'border-b-2 border-purple-600 text-purple-600'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
+                  style={{
+                    width: '179.66665649414062px',
+                    height: '38px',
+                    paddingTop: '8px',
+                    paddingBottom: '8px',
+                    paddingLeft: '34px',
+                    paddingRight: '34px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '14px',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    ...(activeTab === idx
+                      ? {
+                          backgroundColor: '#f3f0ff',
+                          borderBottom: '2px solid #8E77BB',
+                          color: '#8E77BB',
+                          fontWeight: '600'
+                        }
+                      : {
+                          color: '#6b7280',
+                          fontWeight: '500'
+                        })
+                  }}
+                  className="transition-colors relative rounded-t hover:text-gray-700"
                 >
                   {tab.label}
                 </button>
@@ -702,7 +732,7 @@ function Parameters({ modelData }) {
             </nav>
           </div>
 
-          {renderManualTab((isAuto ? autoTabs : manualTabs)[activeTab]?.key)}
+          {renderManualTab(manualTabs[activeTab]?.key)}
         </div>
       ) : (
         <Empty
