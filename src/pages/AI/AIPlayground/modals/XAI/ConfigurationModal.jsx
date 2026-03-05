@@ -56,11 +56,10 @@ const SearchableDropdown = ({
         type="button"
         disabled={isDisabled}
         onClick={() => !isDisabled && setIsOpen(!isOpen)}
-        className={`w-full px-3 py-2 border rounded-lg text-sm text-left focus:outline-none focus:ring-2 focus:border-transparent bg-white flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
-          hasError
+        className={`w-full px-3 py-2 border rounded-lg text-sm text-left focus:outline-none focus:ring-2 focus:border-transparent bg-white flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${hasError
             ? 'border-[#EF4D5F] bg-[#FFF7F8] focus:ring-red-300'
             : 'border-gray-300 focus:ring-[#8e78b7]'
-        }`}
+          }`}
       >
         <span className={selectedColumn ? "text-gray-700" : hasError ? "text-[#EF4D5F]" : "text-gray-400"}>
           {selectedColumn || placeholder}
@@ -222,14 +221,14 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
   const featuresList = Object.keys(xaiConfig.feature_metadata || {});
   const maxIndex = xaiConfig.indices?.max_index || 0;
   const pdpTargetClasses = (xaiConfig.pdp_target_classes || []).map(cls => String(cls));
-  const cfDesiredClasses  = (xaiConfig.cf_desired_classes  || []).map(cls => String(cls));
+  const cfDesiredClasses = (xaiConfig.cf_desired_classes || []).map(cls => String(cls));
   const allSelected = featuresList.length > 0 && featuresList.every(f => configData.pdpFeatures.includes(f));
   const modelName = xaiConfig.model_name || '';
 
   // Per-field error flags — only shown after the first failed submit attempt
   const pdpTargetError = showFieldErrors && !configData.pdpTargetClass;
   const cfDesiredError = showFieldErrors && !configData.cfDesiredClass;
-  const cfIndexError   = showFieldErrors && !(configData.cfInstanceIndex >= 0 && configData.cfInstanceIndex <= maxIndex);
+  const cfIndexError = showFieldErrors && !(configData.cfInstanceIndex >= 0 && configData.cfInstanceIndex <= maxIndex);
   const limeIndexError = showFieldErrors && !(configData.limeInstanceIndex >= 0 && configData.limeInstanceIndex <= maxIndex);
 
   const handleGenerate = () => {
@@ -397,11 +396,10 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                   }
                 }}
                 disabled={readonly || isGenerating}
-                className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors ${
-                  cfIndexError
+                className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors ${cfIndexError
                     ? 'border-[#EF4D5F] bg-[#FFF7F8] text-[#EF4D5F]'
                     : 'border-gray-300'
-                } ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                  } ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''}`}
               />
               {cfIndexError && (
                 <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">CF Instance Index must be between 0 and {maxIndex}</p>
@@ -424,11 +422,10 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
                   }
                 }}
                 disabled={readonly || isGenerating}
-                className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors ${
-                  limeIndexError
+                className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors ${limeIndexError
                     ? 'border-[#EF4D5F] bg-[#FFF7F8] text-[#EF4D5F]'
                     : 'border-gray-300'
-                } ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                  } ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''}`}
               />
               {limeIndexError && (
                 <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">LIME Instance Index must be between 0 and {maxIndex}</p>
