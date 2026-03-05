@@ -221,8 +221,8 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
 
   const featuresList = Object.keys(xaiConfig.feature_metadata || {});
   const maxIndex = xaiConfig.indices?.max_index || 0;
-  const pdpTargetClasses = (xaiConfig.pdp_target_classes || []).map(cls => 'Class ' + cls);
-  const cfDesiredClasses  = (xaiConfig.cf_desired_classes  || []).map(cls => 'Class ' + cls);
+  const pdpTargetClasses = (xaiConfig.pdp_target_classes || []).map(cls => String(cls));
+  const cfDesiredClasses  = (xaiConfig.cf_desired_classes  || []).map(cls => String(cls));
   const allSelected = featuresList.length > 0 && featuresList.every(f => configData.pdpFeatures.includes(f));
   const modelName = xaiConfig.model_name || '';
 
