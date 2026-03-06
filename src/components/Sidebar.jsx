@@ -49,6 +49,14 @@ import CollaboratorIcon from '../assets/ai/collabarator.svg';
 import MarketplaceIcon from '../assets/ai/margetplace.svg';
 import NeoModeIcon from '../assets/ai/neomode.svg';
 import ObservabilityIcon from '../assets/ai/observability.svg';
+import AccountTreeIcon from '../assets/ai/account_tree.svg';
+
+const ACTIVE_COLOR = '#8E77BB';
+const INACTIVE_ICON_COLOR = '#818181';
+const INACTIVE_TEXT_COLOR = '#282F49';
+
+const ACTIVE_FILTER = 'brightness(0) saturate(100%) invert(54%) sepia(25%) saturate(471%) hue-rotate(223deg)';
+const INACTIVE_FILTER = 'brightness(0) saturate(100%) invert(53%) sepia(6%) saturate(300%) hue-rotate(190deg) brightness(90%)';
 
 const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const [expandedItem, setExpandedItem] = useState(null);
@@ -96,8 +104,6 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   };
 
   const handleNavClick = (e, path, routeName) => {
-    console.log("getting clicked ")
-    console.log("routename is @@@ ", routeName)
     if ((routeName === 'F1 Mode' || routeName === 'AI Playground') && !isCollapsed) {
       toggleSidebar();
     }
@@ -181,7 +187,6 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
       name: 'Reports',
       icon: DocumentTextIcon,
       path: '/generateReport',
-      // expandOnly: true,
       subItems: [
         {
           name: 'Business Reports',
@@ -224,8 +229,6 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
         { name: 'Schema', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/schema` },
         { name: 'Table', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/table` },
         { name: 'Column', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/column` },
-        //{ name: 'View', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/view` },
-        //{ name: 'View', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/view` },
       ]
     },
     {
@@ -297,7 +300,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     },
     { name: 'AI Playground', icon: AIPlaygroundIcon, path: `${AI_PREFIX}/playground` },
     { name: 'F1 Mode', icon: Flag, path: `${AI_PREFIX}/f1mode` },
-    { name: 'Orchestration', icon: Workflow, path: `${AI_PREFIX}/orchestration` },
+    { name: 'Orchestration', icon: AccountTreeIcon, path: `${AI_PREFIX}/orchestration` },
     { name: 'Agent Mesh', icon: AgentMeshIcon, path: `${AI_PREFIX}/agent-mesh` },
     { name: 'Marketplace', icon: MarketplaceIcon, path: `${AI_PREFIX}/marketplace` },
     { name: 'Observability', icon: ObservabilityIcon, path: `${AI_PREFIX}/observability` },
@@ -313,23 +316,28 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
 
   const renderIcon = (IconComponent, isActive) => {
     if (typeof IconComponent === 'string') {
-      // It's an SVG URL, render as <img>
+      // SVG file path — render as <img> with CSS filter
       return (
         <img
           src={IconComponent}
           alt=""
           className="h-5 w-5 flex-shrink-0"
-          style={isActive ? { filter: 'brightness(0) saturate(100%) invert(54%) sepia(25%) saturate(471%) hue-rotate(223deg)' } : {}}
+          style={{ filter: isActive ? ACTIVE_FILTER : INACTIVE_FILTER }}
         />
       );
     }
-    // Otherwise, assume it's a React component
-    return <IconComponent className="h-5 w-5 flex-shrink-0" style={isActive ? { color: '#8E77BB' } : {}} />;
+    // React component icon (Heroicons / Lucide)
+    return (
+      <IconComponent
+        className="h-5 w-5 flex-shrink-0"
+        style={{ color: isActive ? ACTIVE_COLOR : INACTIVE_ICON_COLOR }}
+      />
+    );
   };
 
   const renderNavItem = (route) => {
     if (route.type === 'divider') {
-      return <div key={`divider-${route.name}`} className="my-2 border-t border-gray-200" />;
+      return <div key={`divider-${Math.random()}`} className="my-2 border-t border-gray-200" />;
     }
 
     const hasSubItems = route.subItems && route.subItems.length > 0;
@@ -348,25 +356,28 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
             handleNavClick(e, route.path, route.name);
           }}
           className={({ isActive }) =>
-            `flex items-center gap-3 px-3 py-2 rounded-lg mb-1 ${isActive ? 'bg-purple-100' : 'text-gray-700 hover:bg-gray-100'
-            }`
+            `flex items-center gap-3 px-3 py-2 rounded-lg mb-1 ${isActive ? 'bg-purple-100' : 'hover:bg-gray-100'}`
           }
-          style={({ isActive }) => isActive ? { color: '#8E77BB' } : {}}
         >
           {({ isActive }) => (
             <>
               {renderIcon(route.icon, isActive)}
               {!isCollapsed && (
                 <>
-                  <span className="truncate flex-grow">{route.name}</span>
+                  <span
+                    className="truncate flex-grow text-sm font-medium"
+                    style={{ color: isActive ? ACTIVE_COLOR : INACTIVE_TEXT_COLOR }}
+                  >
+                    {route.name}
+                  </span>
                   {hasSubItems && (
                     <button
                       onClick={(e) => toggleExpand(e, route.name)}
                       className="p-1 hover:bg-gray-200 rounded-full transition-transform duration-300"
                     >
                       <ChevronRightIcon
-                        className={`h-4 w-4 transition-transform duration-300 ${isExpanded ? 'rotate-90' : 'rotate-0'
-                          }`}
+                        className={`h-4 w-4 transition-transform duration-300 ${isExpanded ? 'rotate-90' : 'rotate-0'}`}
+                        style={{ color: isActive ? ACTIVE_COLOR : INACTIVE_ICON_COLOR }}
                       />
                     </button>
                   )}
@@ -378,8 +389,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
 
         {hasSubItems && !isCollapsed && (
           <div
-            className={`ml-9 overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
-              }`}
+            className={`ml-9 overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}
           >
             <div className="space-y-1 py-1">
               {route.subItems.map((subItem) => {
@@ -393,24 +403,25 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
                         to={subItem.path}
                         onClick={(e) => handleNavClick(e, subItem.path, subItem.name)}
                         className={({ isActive }) =>
-                          `flex items-center justify-between px-3 py-2 rounded-lg transition-colors duration-200 ${isActive
-                            ? 'bg-purple-100'
-                            : 'text-gray-500 hover:bg-gray-100'
-                          }`
+                          `flex items-center justify-between px-3 py-2 rounded-lg transition-colors duration-200 ${isActive ? 'bg-purple-100' : 'hover:bg-gray-100'}`
                         }
-                        style={({ isActive }) => isActive ? { color: '#8E77BB' } : {}}
                       >
                         {({ isActive }) => (
                           <>
-                            <span>{subItem.name}</span>
+                            <span
+                              className="text-sm"
+                              style={{ color: isActive ? ACTIVE_COLOR : INACTIVE_TEXT_COLOR }}
+                            >
+                              {subItem.name}
+                            </span>
                             {hasNestedSubItems && (
                               <button
                                 onClick={(e) => toggleSubExpand(e, subItem.name)}
                                 className="p-1 hover:bg-gray-200 rounded-full transition-transform duration-300"
                               >
                                 <ChevronRightIcon
-                                  className={`h-3 w-3 transition-transform duration-300 ${isSubExpanded ? 'rotate-90' : 'rotate-0'
-                                    }`}
+                                  className={`h-3 w-3 transition-transform duration-300 ${isSubExpanded ? 'rotate-90' : 'rotate-0'}`}
+                                  style={{ color: isActive ? ACTIVE_COLOR : INACTIVE_ICON_COLOR }}
                                 />
                               </button>
                             )}
@@ -418,16 +429,21 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
                         )}
                       </NavLink>
                     ) : (
-                      <div className="flex items-center justify-between px-3 py-2 text-gray-500 font-medium">
-                        <span>{subItem.name}</span>
+                      <div className="flex items-center justify-between px-3 py-2">
+                        <span
+                          className="text-sm font-medium"
+                          style={{ color: INACTIVE_TEXT_COLOR }}
+                        >
+                          {subItem.name}
+                        </span>
                         {hasNestedSubItems && (
                           <button
                             onClick={(e) => toggleSubExpand(e, subItem.name)}
                             className="p-1 hover:bg-gray-200 rounded-full transition-transform duration-300"
                           >
                             <ChevronRightIcon
-                              className={`h-3 w-3 transition-transform duration-300 ${isSubExpanded ? 'rotate-90' : 'rotate-0'
-                                }`}
+                              className={`h-3 w-3 transition-transform duration-300 ${isSubExpanded ? 'rotate-90' : 'rotate-0'}`}
+                              style={{ color: INACTIVE_ICON_COLOR }}
                             />
                           </button>
                         )}
@@ -436,8 +452,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
 
                     {hasNestedSubItems && (
                       <div
-                        className={`ml-4 overflow-hidden transition-all duration-300 ease-in-out ${isSubExpanded ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'
-                          }`}
+                        className={`ml-4 overflow-hidden transition-all duration-300 ease-in-out ${isSubExpanded ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'}`}
                       >
                         <div className="space-y-1 py-1">
                           {subItem.subItems.map((nestedItem) => (
@@ -446,15 +461,16 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
                               to={nestedItem.path}
                               onClick={(e) => handleNavClick(e, nestedItem.path, nestedItem.name)}
                               className={({ isActive }) =>
-                                `block px-6 py-2 rounded-lg transition-colors duration-200 ${isActive
-                                  ? 'bg-purple-100'
-                                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
-                                }`
+                                `block px-6 py-2 rounded-lg transition-colors duration-200 ${isActive ? 'bg-purple-100' : 'hover:bg-gray-50'}`
                               }
-                              style={({ isActive }) => isActive ? { color: '#8E77BB' } : {}}
                             >
                               {({ isActive }) => (
-                                <>{nestedItem.name}</>
+                                <span
+                                  className="text-sm"
+                                  style={{ color: isActive ? ACTIVE_COLOR : INACTIVE_TEXT_COLOR }}
+                                >
+                                  {nestedItem.name}
+                                </span>
                               )}
                             </NavLink>
                           ))}
@@ -474,16 +490,14 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   return (
     <>
       <aside
-        className={`bg-white border-r border-gray-200 h-[calc(100vh-64px)] transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'
-          } fixed flex flex-col`}
+        className={`bg-white border-r border-gray-200 h-[calc(100vh-64px)] transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} fixed flex flex-col`}
       >
         <nav className="px-2 py-2 flex-1 overflow-y-auto">
           {currentRoutes.map(renderNavItem)}
         </nav>
 
         <div
-          className={`mt-auto p-2 border-t border-gray-100 flex ${isCollapsed ? 'justify-center' : 'justify-end'
-            }`}
+          className={`mt-auto p-2 border-t border-gray-100 flex ${isCollapsed ? 'justify-center' : 'justify-end'}`}
         >
           <button
             onClick={toggleSidebar}
@@ -492,28 +506,27 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
             title={isCollapsed ? 'Expand' : 'Collapse'}
           >
             {isCollapsed ? (
-              <PanelLeftOpen className="h-5 w-5" />
+              <PanelLeftOpen className="h-5 w-5" style={{ color: INACTIVE_ICON_COLOR }} />
             ) : (
-              <PanelLeftClose className="h-5 w-5" />
+              <PanelLeftClose className="h-5 w-5" style={{ color: INACTIVE_ICON_COLOR }} />
             )}
           </button>
         </div>
       </aside>
 
+      {/* AI Playground Cancel Modal */}
       {showCancelModal && (
         <div className="fixed inset-0 bg-[#00000099] bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <div>
-              <div className='p-6' >
+              <div className='p-6'>
                 <div className="flex items-center gap-3 mb-4">
                   <h2 className="text-lg font-medium text-[#332849]">Cancel AI Playground Workflow?</h2>
                 </div>
-
                 <p className="text-base text-[#818181] mb-6">
                   Are you sure you want to cancel? All unsaved progress and configurations will be lost. This action cannot be undone.
                 </p>
               </div>
-
               <div className="flex gap-3 p-3 justify-end font-satoshi border-t border-slate-200 shadow-[0_-2px_10px_0px_rgba(0,0,0,0.07)]">
                 <button
                   onClick={handleCancelModalClose}
@@ -545,11 +558,9 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
               <div className="flex items-center gap-3 mb-4">
                 <h2 className="text-xl font-semibold text-gray-900">Exit F1 Mode</h2>
               </div>
-
               <p className="text-gray-600 mb-6">
                 Are you sure you want to leave? Your active F1 Mode session will be terminated.
               </p>
-
               <div className="flex gap-3 justify-end">
                 <button
                   onClick={handleF1CancelModalClose}

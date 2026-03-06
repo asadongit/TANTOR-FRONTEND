@@ -150,7 +150,7 @@ const RecipientsTab = ({ onRecipientsChange, initialRecipients = [] }) => {
     const selectedCount = selectedUserIds.size;
 
     return (
-        <div className="w-full">
+        <div className="w-full flex flex-col h-full">
             {/* Add Recipients Section */}
             <div className="mb-6">
                 <h2 className={tw.sectionHeading}>Add Recipients</h2>
@@ -160,7 +160,7 @@ const RecipientsTab = ({ onRecipientsChange, initialRecipients = [] }) => {
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">Recipient</label>
                         <button
                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-left bg-white focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] flex items-center justify-between"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-left bg-white focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] flex items-center justify-between"
                         >
                             <span className={selectedCount > 0 ? 'text-gray-700' : 'text-gray-400'}>
                                 {selectedCount > 0 ? `${selectedCount} user${selectedCount > 1 ? 's' : ''} selected` : 'Select'}
@@ -265,7 +265,7 @@ const RecipientsTab = ({ onRecipientsChange, initialRecipients = [] }) => {
                         <button
                             onClick={handleAddRecipients}
                             disabled={selectedCount === 0}
-                            className={`px-6 py-2 rounded text-sm font-medium transition-colors ${
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                                 selectedCount > 0
                                     ? 'bg-[#8e78b7] text-white hover:bg-[#7a6aa0] cursor-pointer'
                                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -278,31 +278,34 @@ const RecipientsTab = ({ onRecipientsChange, initialRecipients = [] }) => {
             </div>
 
             {/* Selected Users Section */}
-            <div>
+            <div className="flex flex-col flex-1">
                 <h3 className={tw.sectionHeading}>Selected Users</h3>
                 {recipients.length === 0 ? (
-                    <div className="text-center py-20">
+                    <div
+                        className="flex flex-col items-center justify-center rounded-lg mt-4 py-20"
+                        style={{ backgroundColor: '#FAFAFA'}}
+                    >
                         <p className="text-base font-medium text-gray-900 mb-1">No recipients added yet</p>
                         <p className="text-sm text-gray-500">Add recipients to receive alerts and reports for this schedule.</p>
                     </div>
                 ) : (
-                    <div className="max-h-[400px] overflow-y-auto mt-4 rounded-lg border border-gray-100">
+                    <div className="overflow-y-auto mt-4 rounded-lg">
                         {recipients.map((recipient) => (
                             <div
                                 key={recipient.recipientId}
-                                className="flex items-center justify-between px-4 py-3 mb-1.5 mx-1.5 rounded-lg"
+                                className="flex items-center justify-between px-4 py-2 mb-1.5 rounded-lg"
                                 style={{ backgroundColor: '#FAFAFA' }}
                             >
                                 {/* Avatar + Name + Email */}
                                 <div className="flex items-center gap-3 flex-1 min-w-0">
                                     <div
-                                        className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium text-gray-700 flex-shrink-0"
-                                        style={{ backgroundColor: recipient.color }}
+                                        className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium text-[#8E77BB] flex-shrink-0"
+                                        style={{ backgroundColor: '#F2EBFF' }}
                                     >
                                         {recipient.initials}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-gray-900 truncate">{recipient.name}</p>
+                                        <p className="text-sm text-[#332849] truncate">{recipient.name}</p>
                                         {recipient.email && (
                                             <p className="text-xs text-gray-500 truncate">{recipient.email}</p>
                                         )}

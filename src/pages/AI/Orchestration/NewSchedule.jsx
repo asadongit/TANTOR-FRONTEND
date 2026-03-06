@@ -1,13 +1,41 @@
 import { useState, useEffect, useRef } from "react";
 import DiscardModal from "./modals/DiscardModal";
-import { CheckCircle, ChevronLeft, Loader2, X } from 'lucide-react';
+import { CheckCircle, ChevronLeft, Loader2, X, Check } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
 import DeliveryAlertsTab from "./Tabs/DeliveryAlertsTab";
 import ConfigurationTab from "./Tabs/ConfigurationTab";
 import RecipientsTab from "./Tabs/RecipientsTab";
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 import { useAuth } from "../../../context/AuthContext";
-import { tw } from '../../../components/themeContext';
+import TuneIcons from '../../../assets/ai/tune.svg';
+import NotificationIcon from '../../../assets/ai/notifications_active.svg';
+import GroupIcon from '../../../assets/ai/group_add.svg';
+
+function SvgIcon({ src, size = 18, className = '', style = {} }) {
+    return (
+        <img
+            src={src}
+            alt=""
+            className={className}
+            style={{
+                width: size, height: size,
+                minWidth: size, minHeight: size,
+                maxWidth: size, maxHeight: size,
+                display: 'block', objectFit: 'contain',
+                ...style,
+            }}
+        />
+    );
+}
+
+const ACTIVE_ICON_FILTER =
+    'invert(51%) sepia(29%) saturate(672%) hue-rotate(221deg) brightness(88%) contrast(87%)';
+
+const TABS = [
+    { id: 'Configuration', label: 'Configurations', icon: TuneIcons },
+    { id: 'Delivery & Alerts', label: 'Delivery & Alerts', icon: NotificationIcon },
+    { id: 'Recipients', label: 'Recipients', icon: GroupIcon },
+];
 
 const NewSchedule = () => {
     const navigate = useNavigate();
@@ -29,10 +57,7 @@ const NewSchedule = () => {
         reportFormat: ''
     });
 
-    // Ref to trigger validation inside ConfigurationTab
     const validateConfigRef = useRef(null);
-
-    const tabs = ['Configuration', 'Delivery & Alerts', 'Recipients'];
 
     useEffect(() => {
         const fetchUserId = async () => {
@@ -52,7 +77,8 @@ const NewSchedule = () => {
         fetchUserId();
     }, [decodedToken?.preferred_username, setSchedulerState]);
 
-    const handleAlertInputChange = (field, value) => setAlertFormData(prev => ({ ...prev, [field]: value }));
+    const handleAlertInputChange = (field, value) =>
+        setAlertFormData(prev => ({ ...prev, [field]: value }));
 
     const hasUnsavedChanges = () =>
         schedulerState.project || schedulerState.model || schedulerState.source.source_table ||
@@ -185,49 +211,94 @@ const NewSchedule = () => {
         navigate('/ai/orchestration');
     };
 
+    const activeTabIndex = TABS.findIndex(t => t.id === activeTab);
+
     return (
-        <div className="h-full flex flex-col overflow-hidden bg-gray-50 px-4 ">
+        <div className="h-full flex flex-col overflow-hidden bg-gray-50 p-4 gap-2">
 
             {/* ── Header ── */}
-            <div className="flex-shrink-0 bg-white border-b border-gray-200 px-6 py-4 mt-4">
+            <div className="flex-shrink-0 bg-white rounded-md px-6 py-3">
                 <div className="flex items-center gap-2">
                     <button
                         onClick={handleBackClick}
-                        className="text-gray-600 hover:text-gray-900"
+                        className="text-[#818181] hover:text-gray-700 mt-0.5"
                         disabled={isCreating}
                     >
-                        <ChevronLeft className="w-5 h-5" />
+                        <ChevronLeft className="w-6 h-6" />
                     </button>
-                    <h1 className="text-2xl font-bold text-[#332849] leading-none tracking-normal" style={{ fontFamily: 'Satoshi, sans-serif' }}>New Schedule</h1>
+                    <h1
+                        className="text-xl font-medium text-[#332849] leading-none tracking-normal"
+                        style={{ fontFamily: 'Satoshi, sans-serif' }}
+                    >
+                        New Schedule
+                    </h1>
                 </div>
             </div>
 
-            {/* ── Tabs ── */}
-            <div className="flex-shrink-0 bg-white border-b border-gray-200 px-8">
-                <div className="flex gap-6">
-                    {tabs.map((tab) => (
-                        <button
-                            key={tab}
-                            className={`py-3 px-1 text-sm font-normal relative whitespace-nowrap ${activeTab === tab
-                                    ? 'text-[#8e78b7]'
-                                    : 'text-gray-500 hover:text-gray-700'
-                                }`}
-                        >
-                            {tab}
-                            {activeTab === tab && (
-                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#8e78b7]" />
-                            )}
-                        </button>
-                    ))}
+            <div className="flex-shrink-0 bg-white rounded-md px-6 pt-3 pb-4 relative overflow-hidden">
+                <div className="flex items-center justify-between">
+                    {TABS.map((tab, index) => {
+                        const isActive = tab.id === activeTab;
+                        const isPast = index < activeTabIndex;
+
+                        return (
+                            <div key={tab.id} className="flex items-center" style={{ flex: index < TABS.length - 1 ? '1' : undefined }}>
+                                <div className="flex items-center gap-3">
+                                    <div
+                                        className={`w-9 h-9 rounded-md flex items-center justify-center transition-all ${isActive
+                                                ? 'bg-[#F2EBFF] border border-[#8E77BB]'
+                                                : isPast
+                                                    ? 'bg-[#D4FFEF]'
+                                                    : 'bg-[#F9F9F9]'
+                                            }`}
+                                    >
+                                        {isPast ? (
+                                            <div className="bg-[#2ba995] rounded-full p-1">
+                                                <Check size={12} className="text-white stroke-[4]" />
+                                            </div>
+                                        ) : (
+                                            <SvgIcon
+                                                src={tab.icon}
+                                                size={16}
+                                                style={isActive ? { filter: ACTIVE_ICON_FILTER } : { filter: 'opacity(0.45)' }}
+                                            />
+                                        )}
+                                    </div>
+
+                                    <span
+                                        className={`text-sm font-medium whitespace-nowrap ${isActive ? 'text-[#8e78b7]'
+                                                : isPast ? 'text-[#36AD8F]'
+                                                    : 'text-[#818181]'
+                                            }`}
+                                    >
+                                        {tab.label}
+                                    </span>
+                                </div>
+
+                                {index < TABS.length - 1 && (
+                                    <div className="flex-1 flex items-center justify-center px-4">
+                                        <div className="w-full border-t border-dashed border-[#818181] relative flex items-center justify-end">
+                                            <div className="absolute right-0 w-1.5 h-1.5 border-t border-r border-dashed border-[#818181] rotate-45 -mr-0.5" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
+
+                <div
+                    className="absolute bottom-0 left-0 right-0 h-[5px]"
+                    style={{
+                        background: 'linear-gradient(90deg, #8E77BB 0%, #F2EBFF 100%)'
+                    }}
+                />
             </div>
 
-            {/* ── Scrollable content area + pinned footer ── */}
             <div className="flex flex-col flex-1 overflow-hidden min-h-0">
 
-                {/* Only this scrolls */}
-                <div className="flex-1 overflow-y-auto min-h-0 pt-5">
-                    <div className="bg-white rounded-t-lg shadow-sm p-6">
+                <div className="flex-1 overflow-y-auto min-h-0">
+                    <div className="bg-white rounded-t-lg shadow-sm p-5">
                         {activeTab === 'Configuration' && (
                             <ConfigurationTab
                                 onValidationErrors={(fn) => { validateConfigRef.current = fn(); }}
@@ -248,15 +319,17 @@ const NewSchedule = () => {
                     </div>
                 </div>
 
-                {/* ── Pinned bottom bar (no fixed positioning needed) ── */}
-                <div className="flex-shrink-0 bg-white border-t border-gray-200 px-8 py-3">
+                <div
+                    className="flex-shrink-0 bg-white border-t border-gray-200 px-8 py-2"
+                    style={{ boxShadow: '0px -4px 9px 0px #0000001A' }}
+                >
                     <div className="flex justify-end gap-3">
                         {activeTab === 'Configuration' && (
                             <button
                                 onClick={handleSaveAndContinue}
-                                className="px-6 py-2 rounded text-sm font-medium transition-colors bg-[#8e78b7] text-white hover:bg-[#b5a3cc] cursor-pointer"
+                                className="px-6 py-2 rounded-md text-sm font-medium transition-colors bg-[#8e78b7] text-white hover:bg-[#7a6aa0] cursor-pointer"
                             >
-                                Save & Continue
+                                Save &amp; Continue
                             </button>
                         )}
                         {activeTab === 'Delivery & Alerts' && (
@@ -264,13 +337,13 @@ const NewSchedule = () => {
                                 <button
                                     onClick={handleBackFromDeliveryAlerts}
                                     disabled={isCreating}
-                                    className="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                                    className="px-8 py-2 bg-white border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
                                 >
                                     Back
                                 </button>
                                 <button
                                     onClick={handleNextFromDeliveryAlerts}
-                                    className="px-6 py-2 bg-[#8e78b7] text-white rounded text-sm font-medium hover:bg-[#7a6aa0] transition-colors"
+                                    className="px-8 py-2 bg-[#8e78b7] text-white rounded-md text-sm font-medium hover:bg-[#7a6aa0] transition-colors"
                                 >
                                     Next
                                 </button>
@@ -281,14 +354,14 @@ const NewSchedule = () => {
                                 <button
                                     onClick={handleBackFromRecipients}
                                     disabled={isCreating}
-                                    className="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                                    className="px-8 py-2 bg-white border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
                                 >
                                     Back
                                 </button>
                                 <button
                                     onClick={handleCreateSchedule}
                                     disabled={isCreating}
-                                    className={`px-6 py-2 rounded text-sm font-medium transition-colors flex items-center gap-2 ${isCreating
+                                    className={`px-6 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${isCreating
                                             ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                             : 'bg-[#8e78b7] text-white hover:bg-[#7a6aa0] cursor-pointer'
                                         }`}
@@ -302,9 +375,7 @@ const NewSchedule = () => {
                         )}
                     </div>
                 </div>
-
             </div>
-            {/* ── END scrollable content ── */}
 
             {/* ── Success Modal ── */}
             {showSuccessModal && (
