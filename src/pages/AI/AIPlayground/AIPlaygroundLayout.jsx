@@ -658,7 +658,7 @@ export function AIPlaygroundLayout({
                     <div
                         className="absolute bottom-0 left-0 right-0 h-[5px]"
                         style={{
-                            background: 'linear-gradient(90deg, #8e78b7 0%, #b09ef4ff 50%, #f3f4f6 100%)'
+                            background: 'linear-gradient(90deg, #8E77BB 0%, #F2EBFF 100%)'
                         }}
                     />
                 </div>
