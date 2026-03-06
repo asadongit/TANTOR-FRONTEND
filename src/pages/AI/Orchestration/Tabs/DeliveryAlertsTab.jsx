@@ -68,6 +68,33 @@ const DeliveryAlertsTab = () => {
 
     return (
       <div className="bg-gray-50 rounded-lg p-4">
+        <style>{`
+          .custom-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            outline: none;
+          }
+          .custom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 2.5px solid #8E77BB;
+            cursor: pointer;
+            box-shadow: 0 1px 4px rgba(142, 119, 187, 0.25);
+          }
+          .custom-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 2.5px solid #8E77BB;
+            cursor: pointer;
+            box-shadow: 0 1px 4px rgba(142, 119, 187, 0.25);
+          }
+        `}</style>
         <div className="flex items-center justify-between mb-3">
           <label className="text-sm font-medium text-gray-700">
             {label}
@@ -84,7 +111,7 @@ const DeliveryAlertsTab = () => {
             step={step}
             value={value}
             onChange={onChange}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+            className="custom-slider w-full h-2 rounded-lg cursor-pointer"
             style={{
               background: `linear-gradient(to right, #8e78b7 0%, #8e78b7 ${percentage}%, #e5e7eb ${percentage}%, #e5e7eb 100%)`,
             }}
@@ -128,6 +155,15 @@ const DeliveryAlertsTab = () => {
 
             {/* Right: toggle + chevron */}
             <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isDataDriftEnabled}
+                  onChange={(e) => handleDataDriftToggle(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#8e78b7] rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
+              </label>
               {isDataDriftEnabled && (
                 <button
                   onClick={() => setIsDataDriftExpanded(!isDataDriftExpanded)}
@@ -140,15 +176,6 @@ const DeliveryAlertsTab = () => {
                   )}
                 </button>
               )}
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isDataDriftEnabled}
-                  onChange={(e) => handleDataDriftToggle(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#8e78b7] rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
-              </label>
             </div>
           </div>
 
@@ -198,6 +225,15 @@ const DeliveryAlertsTab = () => {
 
             {/* Right: toggle + chevron */}
             <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isModelDriftEnabled}
+                  onChange={(e) => handleModelDriftToggle(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#8e78b7] rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
+              </label>
               {isModelDriftEnabled && (
                 <button
                   onClick={() => setIsModelDriftExpanded(!isModelDriftExpanded)}
@@ -210,15 +246,6 @@ const DeliveryAlertsTab = () => {
                   )}
                 </button>
               )}
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isModelDriftEnabled}
-                  onChange={(e) => handleModelDriftToggle(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#8e78b7] rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
-              </label>
             </div>
           </div>
 

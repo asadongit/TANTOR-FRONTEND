@@ -28,18 +28,11 @@ function Features({ modelData }) {
   const { token, decodedToken } = useAuth();
 
   const processedToRows = (dataObj) => {
-    // Handle both formats:
-    // Format 1 (flat): { "PC_1": 0.352..., "PC_2": 0.011..., ... }
-    // Format 2 (nested): { "0": {feature: importance, ...}, ... }
     if (!dataObj) return [];
     const rows = [];
-    
-    // Check if it's nested format (value is an object) or flat format (value is a number/string)
     const isNested = Object.values(dataObj).some(val => typeof val === 'object' && val !== null);
-    
     if (isNested) {
-      // Format 2: nested structure
-      Object.entries(dataObj).forEach(([classIdx, features], idx) => {
+      Object.entries(dataObj).forEach(([classIdx, features]) => {
         Object.entries(features).forEach(([feature, importance]) => {
           rows.push({
             sno: rows.length + 1,
@@ -50,7 +43,6 @@ function Features({ modelData }) {
         });
       });
     } else {
-      // Format 1: flat structure
       Object.entries(dataObj).forEach(([feature, importance], idx) => {
         rows.push({
           sno: idx + 1,
@@ -62,7 +54,6 @@ function Features({ modelData }) {
     return rows;
   };
 
-  // Helper to transform raw API data to table rows
   const rawToRows = (dataObj) => {
     if (!dataObj) return [];
     const { no_of_features, no_of_datapoints, ...features } = dataObj;
@@ -81,18 +72,27 @@ function Features({ modelData }) {
       min: meta.min,
       max: meta.max,
       median: meta.median,
-      samples: Array.isArray(meta.samples) ? meta.samples : [], // keep as array (drawer uses it)
+      samples: Array.isArray(meta.samples) ? meta.samples : [],
     }));
   };
 
-  // Fetch API data
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      setNoDataMessage(""); // reset
+      setNoDataMessage("");
       try {
+        const params = new URLSearchParams({
+          data_type: dataType,
+          dataset_id: modelData.dataset_id,
+          ...(modelData.dataset_name && { dataset_name: modelData.dataset_name }),
+          ...(modelData.project_id && { project_id: modelData.project_id }),
+          ...(modelData.workflow_id && { workflow_id: modelData.workflow_id }),
+          ...(modelData.mlflow_model_id && { model_id: modelData.mlflow_model_id }),
+          ...(modelData.run_id && { mlflow_run_id: modelData.run_id }),
+        });
+
         const res = await fetch(
-          `${hostnameAI}/canvas/dataset/metadata/raw/processed?data_type=${dataType}&dataset_id=${modelData.dataset_id}`,
+          `${hostnameAI}/canvas/dataset/metadata/raw/processed?${params.toString()}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -101,7 +101,7 @@ function Features({ modelData }) {
           }
         );
         const json = await res.json();
-        console.log("API Response:", json); // Debug: see the actual response structure
+        console.log("API Response:", json);
         if (
           (dataType === "processed" && !json.data) ||
           (dataType === "raw" && !json.data)
@@ -112,15 +112,11 @@ function Features({ modelData }) {
             { title: "Features", value: "-", icon: features },
           ]);
         } else if (dataType === "processed") {
-          // Handle both formats:
-          // Format 1 (flat): { "PC_1": importance, ... }
-          // Format 2 (nested): { "0": {feature: importance, ...}, ... }
           const processedData = json.data || {};
           const rows = processedToRows(processedData);
-          console.log("Transformed processed rows:", rows); // Debug
+          console.log("Transformed processed rows:", rows);
           setTableData(rows);
-          
-          // Count features based on format
+
           const isNested = Object.values(processedData).some(val => typeof val === 'object' && val !== null);
           let featureCount = 0;
           if (isNested) {
@@ -132,13 +128,13 @@ function Features({ modelData }) {
           } else {
             featureCount = Object.keys(processedData).length;
           }
-          
+
           setStatsCards([
             { title: "Features", value: featureCount, icon: features },
           ]);
         } else {
           const rows = rawToRows(json.data);
-          console.log("Transformed raw rows:", rows); // Debug: see the transformed data
+          console.log("Transformed raw rows:", rows);
           setTableData(rows);
           setStatsCards([
             { title: "Features", value: json.data?.no_of_features ?? "-", icon: features },
@@ -156,7 +152,6 @@ function Features({ modelData }) {
   }, [dataType, modelData.dataset_id, hostnameAI, token]);
 
   const processedColumns = useMemo(() => {
-    // Check if data has 'class' field (nested format) or not (flat format)
     const hasClass = tableData.length > 0 && tableData[0].class !== undefined;
     const cols = [];
     if (hasClass) {
@@ -214,7 +209,6 @@ function Features({ modelData }) {
 
             {isOpen && (
               <>
-                {/* click-catcher to close */}
                 <button
                   type="button"
                   className="fixed inset-0 z-10 cursor-default"
@@ -267,7 +261,6 @@ function Features({ modelData }) {
     setSampleDrawerOpen(true);
   }, []);
 
-  // Close drawer/menu on ESC
   useEffect(() => {
     const onKeyDown = (e) => {
       if (e.key === "Escape") {
@@ -300,9 +293,7 @@ function Features({ modelData }) {
             aria-pressed={dataType === "raw"}
             onClick={() => setDataType(dataType === "raw" ? "processed" : "raw")}
             className="relative inline-flex h-6 w-12 items-center rounded-full transition-colors focus:outline-none bg-gray-200"
-            style={{
-              minWidth: "48px",
-            }}
+            style={{ minWidth: "48px" }}
           >
             <span
               className={`inline-block h-5 w-5 rounded-full shadow transform transition-transform ${
@@ -322,13 +313,12 @@ function Features({ modelData }) {
         <DataTable
           columns={dataType === "processed" ? processedColumns : rawColumns}
           data={filteredData}
-          actions={[]} // No actions for feature table
+          actions={[]}
           isLoading={isLoading}
           isError={false}
         />
       )}
 
-      {/* Right Drawer: Sample Values */}
       {sampleDrawerOpen && (
         <div className="fixed inset-0 z-50">
           <div

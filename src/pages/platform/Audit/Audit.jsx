@@ -40,6 +40,7 @@ function Audit() {
         { value: "migration", label: "Migration" },
         { value: "metadata", label: "Metadata" },
         { value: "cdc", label: "CDC" },
+        { value: "purge", label: "Purge" },
         { value: "user-report", label: "User Report" },
         { value: "reports", label: "Dashboard Reports" },
     ];
@@ -52,6 +53,38 @@ function Audit() {
         { value: "TRIGGER", label: "Trigger" },
         { value: "OTHER", label: "Other" },
     ];
+
+    const filteredActionOptions = useMemo(() => {
+        if (!module) return actionOptions;
+        switch (module) {
+            case "reports":
+                return actionOptions.filter(a => ["READ", "OTHER"].includes(a.value));
+            case "user-report":
+            case "user":
+                return actionOptions.filter(a => ["CREATE", "UPDATE", "DELETE"].includes(a.value));
+            case "transformation":
+            case "cdc":
+            case "migration":
+            case "purge":
+                return actionOptions.filter(a => ["CREATE", "UPDATE", "DELETE", "TRIGGER"].includes(a.value));
+            case "project":
+            case "connection":
+                return actionOptions.filter(a => ["CREATE", "UPDATE", "DELETE"].includes(a.value));
+            case "metadata":
+                return actionOptions.filter(a => ["CREATE", "DELETE"].includes(a.value));
+            default:
+                return actionOptions;
+        }
+    }, [module]);
+
+    useEffect(() => {
+        if (module && action) {
+            const validActions = filteredActionOptions.map(a => a.value);
+            if (!validActions.includes(action)) {
+                setAction("");
+            }
+        }
+    }, [module, action, filteredActionOptions]);
 
     const limitOptions = [
         { value: "none", label: "None (All Records)" },
@@ -93,73 +126,108 @@ function Audit() {
     const isReportRow = selectedRow?.module === "reports";
 
     const formatDateTime = (value) => {
-        if (!value) return "—";
+        if (!value) return null;
         const date = new Date(value);
         return isNaN(date.getTime()) ? value : date.toLocaleString();
     };
 
-    const renderKeyValue = (label, value) => (
-        <div>
-            <div className="text-[11px] uppercase tracking-wide text-gray-500">{label}</div>
-            <div className="text-sm font-medium break-words">{value ?? "—"}</div>
-        </div>
-    );
+    const renderKeyValue = (label, value) => {
+        if (value === null || value === undefined || value === "" || value === "—" || (Array.isArray(value) && value.length === 0)) {
+            return null;
+        }
+        return (
+            <div>
+                <div className="text-[11px] uppercase tracking-wide text-gray-500">{label}</div>
+                <div className="text-sm font-medium break-words">{typeof value === 'boolean' ? String(value) : value}</div>
+            </div>
+        );
+    };
 
     const renderReportState = (state) => {
         if (!state) {
             return <div className="text-sm text-gray-500">No data available</div>;
         }
 
-        const chart = state.chart || {};
-        const dashboard = state.dashboard || {};
-        const api = state.api || {};
+        const chart = state.chart;
+        const dashboard = state.dashboard;
+        const api = state.api;
+
+        const hasValidData = (obj) => {
+            if (!obj || typeof obj !== 'object') return false;
+            return Object.values(obj).some(val =>
+                val !== null && val !== undefined && val !== "" && val !== "—" &&
+                !(Array.isArray(val) && val.length === 0) &&
+                !(typeof val === 'object' && !Array.isArray(val) && Object.keys(val).length === 0)
+            );
+        };
+
+        const showChart = hasValidData(chart);
+        const showDashboard = hasValidData(dashboard);
+        const showApi = hasValidData(api);
 
         return (
             <div className="space-y-4 text-sm">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {renderKeyValue("Summary", state.summary)}
-                    {renderKeyValue("Object", state.object_type)}
-                    {renderKeyValue("Operation", state.operation)}
-                    {renderKeyValue("User", state.username)}
-                    {renderKeyValue("Event Time", formatDateTime(state.event_time))}
-                    {renderKeyValue("Log Id", state.log_id)}
-                </div>
+                {hasValidData({
+                    summary: state.summary,
+                    object_type: state.object_type,
+                    operation: state.operation,
+                    username: state.username,
+                    event_time: state.event_time,
+                    log_id: state.log_id
+                }) && (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            {renderKeyValue("Summary", state.summary)}
+                            {renderKeyValue("Object", state.object_type)}
+                            {renderKeyValue("Operation", state.operation)}
+                            {renderKeyValue("User", state.username)}
+                            {renderKeyValue("Event Time", formatDateTime(state.event_time))}
+                            {renderKeyValue("Log Id", state.log_id)}
+                        </div>
+                    )}
 
-                <div className="grid md:grid-cols-2 gap-3">
+                {(showChart || showDashboard) && (
+                    <div className="grid md:grid-cols-2 gap-3">
+                        {showChart && (
+                            <div className="border rounded p-3 bg-white/50">
+                                <div className="font-semibold mb-2">Chart</div>
+                                <div className="space-y-2">
+                                    {renderKeyValue("Name", chart.name)}
+                                    {renderKeyValue("Id", chart.id)}
+                                    {renderKeyValue("Created", formatDateTime(chart.created_on))}
+                                    {renderKeyValue("Updated", formatDateTime(chart.updated_on))}
+                                    {renderKeyValue("Parent Dashboards", chart.parent_dashboard_titles?.join(", ") || chart.parent_dashboard_ids?.join(", ") || null)}
+                                </div>
+                            </div>
+                        )}
+                        {showDashboard && (
+                            <div className="border rounded p-3 bg-white/50">
+                                <div className="font-semibold mb-2">Dashboard</div>
+                                <div className="space-y-2">
+                                    {renderKeyValue("Title", dashboard.title)}
+                                    {renderKeyValue("Id", dashboard.id)}
+                                    {renderKeyValue("Created", formatDateTime(dashboard.created_on))}
+                                    {renderKeyValue("Updated", formatDateTime(dashboard.updated_on))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {showApi && (
                     <div className="border rounded p-3 bg-white/50">
-                        <div className="font-semibold mb-2">Chart</div>
-                        <div className="space-y-2">
-                            {renderKeyValue("Name", chart.name)}
-                            {renderKeyValue("Id", chart.id)}
-                            {renderKeyValue("Created", formatDateTime(chart.created_on))}
-                            {renderKeyValue("Updated", formatDateTime(chart.updated_on))}
-                            {renderKeyValue("Parent Dashboards", (chart.parent_dashboard_titles || chart.parent_dashboard_ids || [])?.join(", ") || "—")}
+                        <div className="font-semibold mb-2">API Request</div>
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                            {renderKeyValue("Path", api.path)}
+                            {renderKeyValue("Page", api.page)}
+                            {renderKeyValue("Page Size", api.page_size)}
+                            {renderKeyValue("Order By", api.order_by)}
+                            {renderKeyValue("Direction", api.order_direction)}
+                            {renderKeyValue("Has Filters", api.has_filters)}
                         </div>
                     </div>
-                    <div className="border rounded p-3 bg-white/50">
-                        <div className="font-semibold mb-2">Dashboard</div>
-                        <div className="space-y-2">
-                            {renderKeyValue("Title", dashboard.title)}
-                            {renderKeyValue("Id", dashboard.id)}
-                            {renderKeyValue("Created", formatDateTime(dashboard.created_on))}
-                            {renderKeyValue("Updated", formatDateTime(dashboard.updated_on))}
-                        </div>
-                    </div>
-                </div>
+                )}
 
-                <div className="border rounded p-3 bg-white/50">
-                    <div className="font-semibold mb-2">API Request</div>
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                        {renderKeyValue("Path", api.path)}
-                        {renderKeyValue("Page", api.page)}
-                        {renderKeyValue("Page Size", api.page_size)}
-                        {renderKeyValue("Order By", api.order_by)}
-                        {renderKeyValue("Direction", api.order_direction)}
-                        {renderKeyValue("Has Filters", api.has_filters)}
-                    </div>
-                </div>
-
-                {state.raw_details && (
+                {state.raw_details && hasValidData(state.raw_details) && (
                     <div>
                         <div className="font-semibold mb-2">Raw Details</div>
                         <pre className="bg-gray-50 p-3 rounded overflow-auto text-xs">
@@ -439,7 +507,7 @@ function Audit() {
                                 onChange={(e) => setAction(e.target.value)}
                             >
                                 <option value="">All Actions</option>
-                                {actionOptions.map((opt) => (
+                                {filteredActionOptions.map((opt) => (
                                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                                 ))}
                             </select>

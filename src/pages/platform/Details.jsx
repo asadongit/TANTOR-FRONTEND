@@ -127,7 +127,7 @@ const Details = () => {
   const processedData = useMemo(() => {
     let result = [...data];
 
-    if (project !== "none" && project !== "default" && project) {
+    if (project !== "none" && project !== "default" && project && componentType !== "project") {
       result = result.filter((row) => row.project === project);
     }
 

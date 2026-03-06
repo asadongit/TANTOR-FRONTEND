@@ -9,6 +9,7 @@ import InterventionsTab from '../Orchestration/Tabs/InterventionsTab';
 import toast from 'react-hot-toast';
 import ScheduleDetailsModal from './modals/ScheduleDetailsModal';
 import { tw, backgrounds, aithemestyle } from '../../../components/themeContext';
+import HistoryIcon from '../../../assets/ai/history.svg';
 
 const Orchestration = () => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -288,19 +289,19 @@ const Orchestration = () => {
 
         switch (status) {
             case 'Prediction Successful':
-                statusColor = 'bg-green-100 text-green-700';
+                statusColor = 'bg-[#D4FFEF] text-[#36AD8F]';
                 break;
             case 'Data Drift Failed':
             case 'Model Drift Failed':
             case 'Prediction Failed':
-                statusColor = 'bg-red-100 text-red-700';
+                statusColor = 'bg-[#FBD6E5] text-[#EF4D5F]';
                 break;
             case 'Data Drift Detected':
             case 'Model Drift Detected':
-                statusColor = 'bg-yellow-100 text-yellow-700';
+                statusColor = 'bg-[#FFF8F2] text-[#E08E40]';
                 break;
             default:
-                statusColor = 'bg-gray-100 text-gray-700';
+                statusColor = 'bg-[#D9D9D980] text-[#818181]';
         }
 
         return (
@@ -317,12 +318,12 @@ const Orchestration = () => {
     );
 
     const StatCard = ({ label, value, icon: Icon }) => (
-        <div className="bg-white rounded-lg px-4 py-3 border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white rounded-lg px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center gap-2 mb-2">
                 <Icon className="w-5 h-5 text-[#8e78b7]" />
                 <span className={tw.sectionHeading}>{label}</span>
             </div>
-            <div className="pl-8">
+            <div className="">
                 <span className="text-xl sm:text-2xl font-bold text-gray-800">{value}</span>
             </div>
         </div>
@@ -332,11 +333,11 @@ const Orchestration = () => {
         switch (status) {
             case 'Running':
             case 'active':
-                return 'bg-green-100 text-green-700';
+                return 'bg-[#D4FFEF] text-[#36AD8F]';
             case 'Blocked':
-                return 'bg-red-100 text-red-700';
+                return 'bg-[#FBD6E5] text-[#EF4D5F]';
             default:
-                return 'bg-gray-100 text-gray-700';
+                return 'bg-[#D9D9D980] text-[#818181]';
         }
     };
 
@@ -572,7 +573,6 @@ const Orchestration = () => {
                         className={`flex items-center gap-2 px-3 py-2 rounded-lg hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed ${tw.secondaryButton}`}
                     >
                         <RefreshCw className={`w-4 h-4 ${refreshLoading ? 'animate-spin' : ''}`} />
-                        <span>Refresh</span>
                     </button>
                     <button
                         onClick={handleNavigate}
@@ -584,7 +584,7 @@ const Orchestration = () => {
             </div>
 
             {/* Combined Stats + Tabs Card */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col flex-1 min-h-0">
+            <div className="bg-white rounded-xl shadow-sm flex flex-col flex-1 min-h-0">
 
                 {/* Stats Cards */}
                 <div className="flex-shrink-0 p-4">
@@ -616,7 +616,7 @@ const Orchestration = () => {
                 </div>
 
                 {/* Tab Headers */}
-                <div className="border-b border-gray-200 flex-shrink-0">
+                <div className="flex-shrink-0">
                     <div className="flex gap-5 pt-1 pb-0 pl-5">
                         {tabs.map((tab) => (
                             <button
@@ -650,30 +650,32 @@ const Orchestration = () => {
                 {/* Tab Content — scrollable */}
                 <div className="flex-1 overflow-y-auto px-4 py-2">
                     {activeTab === 'Recent Activity' && (
-                        <div className="space-y-1">
+                        <div className="space-y-2 py-2">
                             {activityLoading ? (
                                 <div className="text-center py-8 text-gray-500">Loading...</div>
                             ) : recentActivityData.length === 0 ? (
                                 <div className="text-center py-8 text-gray-500">No recent activity</div>
                             ) : (
                                 recentActivityData.map((activity, index) => {
-                                    const ActivityIcon = getActivityIcon(activity.status);
-                                    const iconColor = getActivityIconColor(activity.status);
-
                                     return (
                                         <div
                                             key={index}
-                                            className="flex items-start gap-3 py-2 px-3 rounded-lg transition-colors group"
+                                            className="flex items-center gap-3 py-2 px-4 rounded-lg"
                                             style={{ backgroundColor: '#FAFAFA' }}
                                         >
-                                            <div className={`mt-1 ${iconColor}`}>
-                                                <ActivityIcon className="w-4 h-4 flex-shrink-0" />
+                                            <div
+                                                className="flex items-center justify-center rounded-md flex-shrink-0"
+                                                style={{ backgroundColor: '#F1F0F3', width: '32px', height: '32px' }}
+                                            >
+                                                <img
+                                                    src={HistoryIcon}
+                                                    alt="history"
+                                                    className="w-4 h-4"
+                                                />
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className={`${tw.label} leading-relaxed`}>
-                                                    {activity.message}
-                                                </p>
-                                            </div>
+                                            <p className="text-sm text-gray-700 font-normal leading-none">
+                                                {activity.message}
+                                            </p>
                                         </div>
                                     );
                                 })

@@ -31,12 +31,11 @@ const SearchableSelect = ({ label, value, options, field, onChange, isLoading = 
 
     return (
         <div ref={dropdownRef} className="relative">
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">{label}</label>
+            <label className="block text-sm font-medium text-[#332849] mb-1.5">{label}</label>
             <div
                 onClick={() => !isLoading && !isDisabled && hasRealOptions && setIsOpen(!isOpen)}
-                className={`w-full px-3 py-2 border rounded text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] cursor-pointer flex items-center justify-between ${
-                    error ? 'border-red-500' : 'border-gray-300'
-                } ${isLoading || isDisabled || !hasRealOptions ? 'text-gray-400 cursor-not-allowed bg-gray-50' : 'text-gray-700'}`}
+                className={`w-full px-3 py-2 border rounded-md text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] cursor-pointer flex items-center justify-between ${error ? 'border-red-500' : 'border-[#CCCCCC]'
+                    } ${isLoading || isDisabled || !hasRealOptions ? 'text-gray-400 cursor-not-allowed bg-gray-50' : 'text-[#332849]'}`}
             >
                 <span className={`${!value ? 'text-gray-500' : ''} truncate pr-2`}>
                     {isLoading ? 'Loading...' : !hasRealOptions ? 'No values available' : (selectedOption?.label || 'Select')}
@@ -48,7 +47,7 @@ const SearchableSelect = ({ label, value, options, field, onChange, isLoading = 
             {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
 
             {isOpen && !isLoading && !isDisabled && hasRealOptions && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
+                <div className="absolute z-10 w-full mt-1 bg-white border border-[#CCCCCC] rounded-md shadow-lg max-h-60 overflow-hidden">
                     <div className="p-2 border-b border-gray-200">
                         <div className="relative">
                             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -57,7 +56,7 @@ const SearchableSelect = ({ label, value, options, field, onChange, isLoading = 
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 placeholder="Search..."
-                                className="w-full pl-8 pr-8 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
+                                className="w-full pl-8 pr-8 py-1.5 border border-[#CCCCCC] rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
                                 onClick={(e) => e.stopPropagation()}
                             />
                             {searchTerm && (
@@ -78,7 +77,7 @@ const SearchableSelect = ({ label, value, options, field, onChange, isLoading = 
                                 <div
                                     key={opt.value}
                                     onClick={() => { onChange(field, opt.value); setIsOpen(false); setSearchTerm(''); }}
-                                    className={`px-3 py-2 text-sm cursor-pointer hover:bg-purple-50 ${value === opt.value ? 'bg-purple-100 text-[#8e78b7] font-medium' : 'text-gray-700'}`}
+                                    className={`px-3 py-2 text-sm cursor-pointer hover:bg-purple-50 ${value === opt.value ? 'bg-purple-100 text-[#8e78b7] font-medium' : 'text-[#332849]'}`}
                                 >
                                     {opt.label}
                                 </div>
@@ -113,11 +112,22 @@ const ConfigurationTab = ({ onValidationErrors }) => {
     const [validationStatus, setValidationStatus] = useState(null);
     const [isValidating, setIsValidating] = useState(false);
 
-    const [scheduleType, setScheduleType] = useState(schedulerState?.flow_type || 'Single Run');
+    const flowTypeToLabel = {
+        'single_run': 'Single Run',
+        'Recurring': 'Recurring',
+        'Periodic': 'Periodic',
+    };
+
+    const [scheduleType, setScheduleType] = useState(
+        flowTypeToLabel[schedulerState?.flow_type] || 'Single Run'
+    );
     const [showDateModal, setShowDateModal] = useState(false);
 
     // Field-level errors shown when user tries to proceed
     const [fieldErrors, setFieldErrors] = useState({});
+
+    // Summary state
+    const [summary, setSummary] = useState(null);
 
     const hostnameAI = window._env_?.VITE_AI_API;
 
@@ -136,7 +146,7 @@ const ConfigurationTab = ({ onValidationErrors }) => {
         if (onValidationErrors) {
             onValidationErrors(() => validateAndGetErrors);
         }
-    }, [schedulerState, validationStatus]);
+    }, [schedulerState, validationStatus, scheduleType]);
 
     const validateAndGetErrors = () => {
         const errors = {};
@@ -147,17 +157,27 @@ const ConfigurationTab = ({ onValidationErrors }) => {
         if (!schedulerState.target.destination_table) errors.destination_table = 'Destination table is required';
         if (!schedulerState.scheduler.timeZone) errors.timeZone = 'Time zone is required';
         if (!schedulerState.scheduler.intervalValue) errors.intervalValue = 'Schedule date & time is required';
-        // if (!schedulerState.isValidated) errors.validated = 'Please validate the tables before continuing';
+        if (scheduleType === 'Recurring' && (!schedulerState.scheduler.runningDays || schedulerState.scheduler.runningDays.length === 0))
+            errors.runDays = 'Please select at least one run day';
+        if (scheduleType === 'Periodic' && !schedulerState.scheduler.frequency)
+            errors.frequency = 'Frequency is required';
+        if (!schedulerState.isValidated) errors.validated = 'Please validate the tables before continuing';
         setFieldErrors(errors);
         return errors;
     };
 
     const handleInputChange = (field, value) => {
-        // Clear field error on change
-        setFieldErrors(prev => ({ ...prev, [field]: undefined }));
+        const errorKeyMap = {
+            dataSource: 'source_table',
+            destinationTable: 'destination_table',
+        };
+        const errorKey = errorKeyMap[field] || field;
+        setFieldErrors(prev => ({ ...prev, [errorKey]: undefined }));
 
+        // Reset summary when key fields change
         if (['project', 'model', 'dataSource', 'destinationTable'].includes(field)) {
             setValidationStatus(null);
+            setSummary(null);
         }
 
         switch (field) {
@@ -169,6 +189,7 @@ const ConfigurationTab = ({ onValidationErrors }) => {
                     model: '',
                     project_id: selectedProject ? selectedProject.id : ''
                 }));
+                setSummary(null);
                 break;
             }
             case 'model': {
@@ -178,23 +199,30 @@ const ConfigurationTab = ({ onValidationErrors }) => {
                     model: value,
                     model_id: selectedModel ? selectedModel.model_id : ''
                 }));
+                setSummary(null);
                 break;
             }
             case 'dataSource':
                 setSchedulerState(prev => ({ ...prev, source: { ...prev.source, source_table: value } }));
+                setSummary(null);
                 break;
             case 'destinationTable':
                 setSchedulerState(prev => ({ ...prev, target: { ...prev.target, destination_table: value } }));
+                setSummary(null);
                 break;
             case 'frequency':
                 setSchedulerState(prev => ({ ...prev, scheduler: { ...prev.scheduler, frequency: value } }));
+                setSummary(null);
                 break;
             case 'timeZone':
                 setFieldErrors(prev => ({ ...prev, timeZone: undefined }));
                 setSchedulerState(prev => ({ ...prev, scheduler: { ...prev.scheduler, timeZone: value } }));
+                setSummary(null);
                 break;
             case 'runDays':
+                setFieldErrors(prev => ({ ...prev, runDays: undefined }));
                 setSchedulerState(prev => ({ ...prev, scheduler: { ...prev.scheduler, runningDays: value } }));
+                setSummary(null);
                 break;
             default:
                 break;
@@ -203,6 +231,15 @@ const ConfigurationTab = ({ onValidationErrors }) => {
 
     const handleScheduleTypeChange = (type) => {
         setScheduleType(type);
+        setSummary(null);
+        setFieldErrors(prev => ({
+            ...prev,
+            runDays: undefined,
+            frequency: undefined,
+            timeZone: undefined,
+            intervalValue: undefined,
+        }));
+
         let flowType = 'single_run';
         let intervalType = '';
         if (type === 'Single Run') { flowType = 'single_run'; intervalType = 'cron'; }
@@ -227,6 +264,7 @@ const ConfigurationTab = ({ onValidationErrors }) => {
 
         setSchedulerState(prev => ({ ...prev, scheduler: { ...prev.scheduler, intervalValue: isoDateTime } }));
         setFieldErrors(prev => ({ ...prev, intervalValue: undefined }));
+        setSummary(null);
         setShowDateModal(false);
         toast.success('Date and time set successfully', { duration: 2000, position: 'top-right' });
     };
@@ -405,14 +443,13 @@ const ConfigurationTab = ({ onValidationErrors }) => {
 
     const renderSelect = (label, value, options, field, isLoading = false, isDisabled = false) => (
         <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">{label}</label>
+            <label className="block text-sm font-medium text-[#332849] mb-1.5">{label}</label>
             <select
                 value={value}
                 onChange={(e) => handleInputChange(field, e.target.value)}
                 disabled={isLoading || isDisabled}
-                className={`w-full px-3 py-2 border rounded text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] ${
-                    fieldErrors[field] ? 'border-red-500' : 'border-gray-300'
-                } ${isLoading || isDisabled ? 'text-gray-400 cursor-not-allowed bg-gray-50' : 'text-gray-500 cursor-pointer'}`}
+                className={`w-full px-3 py-2 border rounded text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] ${fieldErrors[field] ? 'border-red-500' : 'border-[#CCCCCC]'
+                    } ${isLoading || isDisabled ? 'text-gray-400 cursor-not-allowed bg-gray-50' : 'text-gray-500 cursor-pointer'}`}
             >
                 {isLoading ? (
                     <option value="">Loading...</option>
@@ -429,6 +466,74 @@ const ConfigurationTab = ({ onValidationErrors }) => {
             setSchedulerState(prev => ({ ...prev, isValidated: validationStatus === 'valid' }));
         }
     }, [validationStatus]);
+
+    // ── Generate Summary helpers ──────────────────────────────────────────────
+
+    const isGenerateSummaryEnabled = () => {
+        const s = schedulerState;
+        const hasBase =
+            s.workflow_name &&
+            s.project &&
+            s.model &&
+            s.source.source_table &&
+            s.target.destination_table &&
+            s.scheduler.timeZone &&
+            s.scheduler.intervalValue;
+        if (!hasBase) return false;
+        if (scheduleType === 'Recurring') return (s.scheduler.runningDays || []).length > 0;
+        if (scheduleType === 'Periodic') return !!s.scheduler.frequency;
+        return true;
+    };
+
+    const formatSummaryDateTime = (isoDateTime) => {
+        if (!isoDateTime) return { dateLabel: '', timeLabel: '' };
+        const [datePart, timePart] = isoDateTime.split('T');
+        const [year, month, day] = datePart.split('-');
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const dateLabel = `${months[parseInt(month) - 1]} ${parseInt(day)}`;
+        const [h, m] = timePart.split(':');
+        const hour = parseInt(h);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+        const timeLabel = `${displayHour}:${m} ${ampm}`;
+        return { dateLabel, timeLabel };
+    };
+
+    const generateSummary = () => {
+        const s = schedulerState;
+        const { dateLabel, timeLabel } = formatSummaryDateTime(s.scheduler.intervalValue);
+        const tz = s.scheduler.timeZone?.toUpperCase() || 'IST';
+
+        if (scheduleType === 'Single Run') {
+            setSummary({
+                type: 'Single Run',
+                lines: [
+                    `Scheduled to run once on ${dateLabel} at ${timeLabel} (${tz}).`,
+                    `One-time execution scheduled for ${dateLabel}, ${timeLabel} ${tz}.`,
+                ]
+            });
+        } else if (scheduleType === 'Recurring') {
+            const days = (s.scheduler.runningDays || []).join(', ');
+            setSummary({
+                type: 'Recurring',
+                lines: [
+                    `Scheduled to run every week on ${days} at ${timeLabel} (${tz}).`,
+                    `Recurring execution starting ${dateLabel}, ${timeLabel} ${tz}.`,
+                ]
+            });
+        } else if (scheduleType === 'Periodic') {
+            const freq = s.scheduler.frequency || '';
+            setSummary({
+                type: 'Periodic',
+                lines: [
+                    `Scheduled to run ${freq} starting ${dateLabel} at ${timeLabel} (${tz}).`,
+                    `Periodic execution every ${freq} from ${dateLabel}, ${timeLabel} ${tz}.`,
+                ]
+            });
+        }
+    };
+
+    // ── Options ───────────────────────────────────────────────────────────────
 
     const projectOptions = [
         { value: '', label: 'Select' },
@@ -450,246 +555,318 @@ const ConfigurationTab = ({ onValidationErrors }) => {
         ...destinationTables.map(t => ({ value: t, label: t }))
     ];
 
+    const timezoneOptions = [
+        { value: '', label: 'Select' },
+        { value: 'ist', label: 'IST' }
+    ];
+
+    const frequencyOptions = [
+        { value: '', label: 'Select' },
+        { value: 'hourly', label: 'Hourly' },
+        { value: 'daily', label: 'Daily' },
+        { value: 'monthly', label: 'Monthly' },
+        { value: 'quarterly', label: 'Quarterly' },
+        { value: 'half_yearly', label: 'Half Yearly' },
+        { value: 'yearly', label: 'Yearly' },
+    ];
+
     const isPreFilledFromDeploy = mode === 'deploy' && schedulerState.project && schedulerState.model;
 
     return (
-        <div className="max-w-6xl space-y-10">
+        <>
+            <div className="space-y-7 bg-[#FAFAFA] p-4 rounded-md">
 
-            {/* ── Schedule Information ── */}
-            <div>
-                <h2 className={tw.sectionHeading}>Schedule Information</h2>
-                <div className="max-w-2xl mt-4">
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Schedule Name</label>
-                    <input
-                        type="text"
-                        value={scheduleName}
-                        onChange={(e) => {
-                            const value = e.target.value;
-                            setScheduleName(value);
-                            const error = validateScheduleName(value);
-                            if (error) {
-                                setScheduleNameError(error);
-                                setSchedulerState(prev => ({ ...prev, workflow_name: '' }));
-                            } else {
-                                setScheduleNameError('');
-                                setFieldErrors(prev => ({ ...prev, workflow_name: undefined }));
-                                setSchedulerState(prev => ({ ...prev, workflow_name: value }));
-                            }
-                        }}
-                        disabled={schedulerState?.mode === 'edit'}
-                        placeholder="Enter a unique name for this schedule"
-                        className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-1 ${
-                            schedulerState.mode === 'edit'
-                                ? 'bg-gray-100 cursor-not-allowed text-gray-600 border-gray-300'
+                {/* ── Schedule Information ── */}
+                <div>
+                    <div className="max-w-md">
+                        <label className="block text-base font-medium text-[#332849] mb-1.5">Schedule Name</label>
+                        <input
+                            type="text"
+                            value={scheduleName}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setScheduleName(value);
+                                setSummary(null);
+                                const error = validateScheduleName(value);
+                                if (error) {
+                                    setScheduleNameError(error);
+                                    setSchedulerState(prev => ({ ...prev, workflow_name: '' }));
+                                } else {
+                                    setScheduleNameError('');
+                                    setFieldErrors(prev => ({ ...prev, workflow_name: undefined }));
+                                    setSchedulerState(prev => ({ ...prev, workflow_name: value }));
+                                }
+                            }}
+                            disabled={schedulerState?.mode === 'edit'}
+                            placeholder="Enter a unique name for this schedule"
+                            className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 ${schedulerState.mode === 'edit'
+                                ? 'bg-gray-100 cursor-not-allowed text-gray-600 border-[#CCCCCC]'
                                 : (scheduleNameError || fieldErrors.workflow_name)
-                                    ? 'border-red-500 focus:ring-red-500 focus:border-red-500 text-gray-700 bg-white'
-                                    : 'border-gray-300 focus:ring-[#8e78b7] focus:border-[#8e78b7] text-gray-700 bg-white'
-                        }`}
-                    />
-                    {(scheduleNameError || fieldErrors.workflow_name) && schedulerState?.mode !== 'edit' && (
-                        <p className="text-xs text-red-500 mt-1">{scheduleNameError || fieldErrors.workflow_name}</p>
-                    )}
-                </div>
-            </div>
-
-            {/* ── Model Configuration ── */}
-            <div>
-                <h2 className={tw.sectionHeading}>Model Configuration</h2>
-                <div className="space-y-4 mt-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {isPreFilledFromDeploy ? (
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Project</label>
-                                <input type="text" value={schedulerState.project} readOnly className="w-full px-3 py-2 border border-gray-300 rounded text-sm bg-gray-50 text-gray-700 cursor-not-allowed focus:outline-none" />
-                            </div>
-                        ) : (
-                            <SearchableSelect
-                                label="Project"
-                                value={schedulerState.project}
-                                options={projectOptions}
-                                field="project"
-                                onChange={handleInputChange}
-                                isLoading={loadingProjects}
-                                error={fieldErrors.project}
-                            />
-                        )}
-
-                        {isPreFilledFromDeploy ? (
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Model</label>
-                                <input type="text" value={schedulerState.model} readOnly className="w-full px-3 py-2 border border-gray-300 rounded text-sm bg-gray-50 text-gray-700 cursor-not-allowed focus:outline-none" />
-                            </div>
-                        ) : (
-                            <SearchableSelect
-                                label="Model"
-                                value={schedulerState.model}
-                                options={modelOptions}
-                                field="model"
-                                onChange={handleInputChange}
-                                isLoading={loadingModels}
-                                isDisabled={!schedulerState.project || schedulerState.project === ''}
-                                error={fieldErrors.model}
-                            />
-                        )}
-
-                        <SearchableSelect
-                            label="Data source"
-                            value={schedulerState.source.source_table}
-                            options={dataSourceOptions}
-                            field="dataSource"
-                            onChange={handleInputChange}
-                            isLoading={loadingDataSources}
-                            error={fieldErrors.source_table}
+                                    ? 'border-red-500 focus:ring-red-500 focus:border-red-500 text-[#332849] bg-white'
+                                    : 'border-[#CCCCCC] focus:ring-[#8e78b7] focus:border-[#8e78b7] text-[#332849] bg-white'
+                                }`}
                         />
-                        <SearchableSelect
-                            label="Destination Table"
-                            value={schedulerState.target.destination_table}
-                            options={destinationTableOptions}
-                            field="destinationTable"
-                            onChange={handleInputChange}
-                            isLoading={loadingDestinations}
-                            error={fieldErrors.destination_table}
-                        />
+                        {(scheduleNameError || fieldErrors.workflow_name) && schedulerState?.mode !== 'edit' && (
+                            <p className="text-xs text-red-500 mt-1">{scheduleNameError || fieldErrors.workflow_name}</p>
+                        )}
                     </div>
+                </div>
 
-                    <div className="flex flex-col gap-1">
-                        <button
-                            onClick={validateTables}
-                            disabled={isValidateDisabled() || isValidating || validationStatus === 'valid'}
-                            className={`w-fit px-8 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
-                                validationStatus === 'valid'
+                {/* ── Model Configuration ── */}
+                <div>
+                    <h2 className={tw.sectionHeading}>Model Configuration</h2>
+                    <div className="space-y-4 mt-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {isPreFilledFromDeploy ? (
+                                <div>
+                                    <label className="block text-sm font-medium text-[#332849] mb-1.5">Project</label>
+                                    <input type="text" value={schedulerState.project} readOnly className="w-full px-3 py-2 border border-[#CCCCCC] rounded text-sm bg-gray-50 text-[#332849] cursor-not-allowed focus:outline-none" />
+                                </div>
+                            ) : (
+                                <SearchableSelect
+                                    label="Project"
+                                    value={schedulerState.project}
+                                    options={projectOptions}
+                                    field="project"
+                                    onChange={handleInputChange}
+                                    isLoading={loadingProjects}
+                                    error={fieldErrors.project}
+                                />
+                            )}
+
+                            {isPreFilledFromDeploy ? (
+                                <div>
+                                    <label className="block text-sm font-medium text-[#332849] mb-1.5">Model</label>
+                                    <input type="text" value={schedulerState.model} readOnly className="w-full px-3 py-2 border border-[#CCCCCC] rounded text-sm bg-gray-50 text-[#332849] cursor-not-allowed focus:outline-none" />
+                                </div>
+                            ) : (
+                                <SearchableSelect
+                                    label="Model"
+                                    value={schedulerState.model}
+                                    options={modelOptions}
+                                    field="model"
+                                    onChange={handleInputChange}
+                                    isLoading={loadingModels}
+                                    isDisabled={!schedulerState.project || schedulerState.project === ''}
+                                    error={fieldErrors.model}
+                                />
+                            )}
+
+                            <SearchableSelect
+                                label="Data source"
+                                value={schedulerState.source.source_table}
+                                options={dataSourceOptions}
+                                field="dataSource"
+                                onChange={handleInputChange}
+                                isLoading={loadingDataSources}
+                                error={fieldErrors.source_table}
+                            />
+                            <SearchableSelect
+                                label="Destination Table"
+                                value={schedulerState.target.destination_table}
+                                options={destinationTableOptions}
+                                field="destinationTable"
+                                onChange={handleInputChange}
+                                isLoading={loadingDestinations}
+                                error={fieldErrors.destination_table}
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                            <button
+                                onClick={validateTables}
+                                disabled={isValidateDisabled() || isValidating || validationStatus === 'valid'}
+                                className={`w-fit px-8 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${validationStatus === 'valid'
                                     ? 'bg-green-100 text-green-700 cursor-default border border-green-400'
                                     : isValidateDisabled() || isValidating
                                         ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                         : 'bg-[#8e78b7] text-white hover:bg-[#7d67a6]'
-                            }`}
-                        >
-                            {isValidating ? (
-                                <>Validating...<div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div></>
-                            ) : validationStatus === 'valid' ? (
-                                <>Validated <CheckCircle className="w-5 h-5" /></>
-                            ) : 'Validate'}
-                        </button>
-                        {fieldErrors.validated && <p className="text-xs text-red-500">{fieldErrors.validated}</p>}
+                                    }`}
+                            >
+                                {isValidating ? (
+                                    <>Validating...<div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div></>
+                                ) : validationStatus === 'valid' ? (
+                                    <>Validated <CheckCircle className="w-5 h-5" /></>
+                                ) : 'Validate'}
+                            </button>
+                            {fieldErrors.validated && <p className="text-xs text-red-500">{fieldErrors.validated}</p>}
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* ── Schedule Type ── */}
-            <div>
-                <h2 className={`${tw.sectionHeading} mb-0.5`}>Schedule Type</h2>
-                <p className="text-xs text-gray-500 mb-3">Select how and when this model should run.</p>
-                <div className="flex flex-wrap gap-3">
-                    {['Single Run', 'Recurring', 'Periodic'].map((type) => (
-                        <label
-                            key={type}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-md cursor-pointer transition-colors ${scheduleType === type ? 'text-[#8e78b7] bg-purple-50' : 'text-gray-700'}`}
-                        >
-                            <input
-                                type="radio"
-                                name="scheduleType"
-                                value={type}
-                                checked={scheduleType === type}
-                                onChange={(e) => handleScheduleTypeChange(e.target.value)}
-                                className="w-4 h-4 border-gray-300 focus:ring-[#8e78b7]"
-                                style={{ accentColor: '#8e78b7' }}
-                            />
-                            <span className={`text-sm ${scheduleType === type ? 'text-[#8e78b7]' : 'text-gray-700'}`}>{type}</span>
-                        </label>
-                    ))}
+                {/* ── Schedule Type ── */}
+                <div>
+                    <h2 className={`${tw.sectionHeading} mb-0.5`}>Schedule Type</h2>
+                    <p className="text-xs text-gray-500 mt-2 mb-3">Select how and when this model should run.</p>
+                    <div className="flex flex-wrap gap-3">
+                        {['Single Run', 'Recurring', 'Periodic'].map((type) => (
+                            <label
+                                key={type}
+                                className={`flex items-center gap-4 pr-16 pl-3 py-2 rounded-md cursor-pointer transition-colors ${scheduleType === type ? 'text-[#8e78b7] bg-[#F2EBFF]' : 'text-[#332849] bg-white'}`}
+                            >
+                                <input
+                                    type="radio"
+                                    name="scheduleType"
+                                    value={type}
+                                    checked={scheduleType === type}
+                                    onChange={(e) => handleScheduleTypeChange(e.target.value)}
+                                    className="w-4 h-4 border-[#CCCCCC] focus:ring-[#8e78b7]"
+                                    style={{ accentColor: '#8e78b7' }}
+                                />
+                                <span className={`text-sm ${scheduleType === type ? 'text-[#8e78b7]' : 'text-[#332849]'}`}>{type}</span>
+                            </label>
+                        ))}
+                    </div>
                 </div>
-            </div>
 
-            {/* ── Schedule-type-specific fields ── */}
-            <div className="space-y-4">
-                {scheduleType === 'Recurring' && (
-                    <>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
-                            {renderSelect('Time Zone', schedulerState.scheduler.timeZone, [
-                                { value: '', label: 'Select' },
-                                { value: 'ist', label: 'IST' }
-                            ], 'timeZone')}
-                        </div>
-                        <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Run Days</label>
-                            <p className="text-xs text-gray-500 mb-3">Choose the days the model should execute.</p>
-                            <div className="flex gap-3">
-                                {dayAbbreviations.map((day, idx) => (
-                                    <button
-                                        key={idx}
-                                        onClick={() => {
-                                            const days = schedulerState.scheduler.runningDays || [];
-                                            const dayName = dayNames[idx];
-                                            handleInputChange('runDays', days.includes(dayName) ? days.filter(d => d !== dayName) : [...days, dayName]);
-                                        }}
-                                        className={`w-10 h-10 rounded-full text-sm font-medium transition-colors border ${
-                                            (schedulerState.scheduler.runningDays || []).includes(dayNames[idx])
+                {/* ── Schedule-type-specific fields ── */}
+                <div className="space-y-4">
+                    {scheduleType === 'Recurring' && (
+                        <>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+                                <SearchableSelect
+                                    label="Time Zone"
+                                    value={schedulerState.scheduler.timeZone}
+                                    options={timezoneOptions}
+                                    field="timeZone"
+                                    onChange={handleInputChange}
+                                    error={fieldErrors.timeZone}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-[#332849] mb-1.5">Run Days</label>
+                                <p className="text-xs text-gray-500 mb-3">Choose the days the model should execute.</p>
+                                <div className="flex gap-3">
+                                    {dayAbbreviations.map((day, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => {
+                                                const days = schedulerState.scheduler.runningDays || [];
+                                                const dayName = dayNames[idx];
+                                                handleInputChange('runDays', days.includes(dayName) ? days.filter(d => d !== dayName) : [...days, dayName]);
+                                            }}
+                                            className={`w-10 h-10 rounded-full text-sm font-medium transition-colors ${(schedulerState.scheduler.runningDays || []).includes(dayNames[idx])
                                                 ? 'bg-[#8e78b7] text-white border-[#8e78b7]'
-                                                : 'bg-white text-gray-500 border-gray-300 hover:border-[#8e78b7] hover:text-[#8e78b7]'
+                                                : 'bg-white text-gray-500 border-[#CCCCCC] hover:border-[#8e78b7] hover:text-[#8e78b7]'
+                                                }`}
+                                        >
+                                            {day}
+                                        </button>
+                                    ))}
+                                </div>
+                                {fieldErrors.runDays && <p className="text-xs text-red-500 mt-2">{fieldErrors.runDays}</p>}
+                            </div>
+                        </>
+                    )}
+
+                    {scheduleType === 'Periodic' && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+                            <SearchableSelect
+                                label="Frequency"
+                                value={schedulerState.scheduler.frequency}
+                                options={frequencyOptions}
+                                field="frequency"
+                                onChange={handleInputChange}
+                                error={fieldErrors.frequency}
+                            />
+                            <SearchableSelect
+                                label="Time Zone"
+                                value={schedulerState.scheduler.timeZone}
+                                options={timezoneOptions}
+                                field="timeZone"
+                                onChange={handleInputChange}
+                                error={fieldErrors.timeZone}
+                            />
+                        </div>
+                    )}
+
+                    {scheduleType === 'Single Run' && (
+                        <div className="max-w-xs">
+                            <SearchableSelect
+                                label="Time Zone"
+                                value={schedulerState.scheduler.timeZone}
+                                options={timezoneOptions}
+                                field="timeZone"
+                                onChange={handleInputChange}
+                                error={fieldErrors.timeZone}
+                            />
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+                        <div>
+                            <label className="block text-sm font-medium text-[#332849] mb-1.5">Schedule Date & Time</label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={formatDateTimeForDisplay(schedulerState.scheduler.intervalValue)}
+                                    readOnly
+                                    onClick={() => setShowDateModal(true)}
+                                    placeholder="DD/MM/YYYY HH:MM"
+                                    className={`w-full px-3 py-2 border rounded-md text-sm text-[#332849] bg-white focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] pr-10 cursor-pointer ${fieldErrors.intervalValue ? 'border-red-500' : 'border-[#CCCCCC]'
                                         }`}
-                                    >
-                                        {day}
-                                    </button>
-                                ))}
+                                />
+                                <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                            </div>
+                            {fieldErrors.intervalValue && <p className="text-xs text-red-500 mt-1">{fieldErrors.intervalValue}</p>}
+                        </div>
+                    </div>
+                </div>
+
+                {/* ── Generate Summary ── */}
+                <div className="space-y-4">
+                    <button
+                        onClick={generateSummary}
+                        disabled={!isGenerateSummaryEnabled()}
+                        className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors ${isGenerateSummaryEnabled()
+                            ? 'bg-[#8e78b7] text-white hover:bg-[#7d67a6] cursor-pointer'
+                            : 'bg-[#8e78b7] text-white cursor-not-allowed opacity-40'
+                            }`}
+                    >
+                        Generate Summary
+                    </button>
+
+                </div>
+
+            </div>
+            {summary && (
+                <div
+                    className="rounded-md mt-5"
+                    style={{
+                        padding: '3px',
+                        background: 'linear-gradient(360deg, #8E77BB -11.35%, #EDE4FF 138.65%)',
+                    }}
+                >
+                    <div className="rounded-md px-3 py-4" style={{ backgroundColor: '#FAF8FF' }}>
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-9 h-9 rounded-lg bg-[#8e78b7] flex items-center justify-center flex-shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <polyline points="12 6 12 12 16 14" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold text-[#332849]">Summary</p>
+                                <p className="text-xs text-[#8e78b7]">{summary.type}</p>
                             </div>
                         </div>
-                    </>
-                )}
-
-                {scheduleType === 'Periodic' && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
-                        {renderSelect('Frequency', schedulerState.scheduler.frequency, [
-                            { value: '', label: 'Select' },
-                            { value: 'hourly', label: 'Hourly' },
-                            { value: 'daily', label: 'Daily' },
-                            { value: 'monthly', label: 'Monthly' },
-                            { value: 'quarterly', label: 'Quarterly' },
-                            { value: 'half_yearly', label: 'Half Yearly' },
-                            { value: 'yearly', label: 'Yearly' },
-                        ], 'frequency')}
-                        {renderSelect('Time Zone', schedulerState.scheduler.timeZone, [
-                            { value: '', label: 'Select' },
-                            { value: 'ist', label: 'IST' }
-                        ], 'timeZone')}
-                    </div>
-                )}
-
-                {scheduleType === 'Single Run' && (
-                    <div className="max-w-xs">
-                        {renderSelect('Time Zone', schedulerState.scheduler.timeZone, [
-                            { value: '', label: 'Select' },
-                            { value: 'ist', label: 'IST' }
-                        ], 'timeZone')}
-                    </div>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Schedule Date & Time</label>
-                        <div className="relative">
-                            <input
-                                type="text"
-                                value={formatDateTimeForDisplay(schedulerState.scheduler.intervalValue)}
-                                readOnly
-                                onClick={() => setShowDateModal(true)}
-                                placeholder="DD/MM/YYYY HH:MM"
-                                className={`w-full px-3 py-2 border rounded text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] pr-10 cursor-pointer ${
-                                    fieldErrors.intervalValue ? 'border-red-500' : 'border-gray-300'
-                                }`}
-                            />
-                            <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                        </div>
-                        {fieldErrors.intervalValue && <p className="text-xs text-red-500 mt-1">{fieldErrors.intervalValue}</p>}
+                        <ul className="space-y-2 p-3 bg-white rounded-md">
+                            {summary.lines.map((line, i) => (
+                                <li key={i} className="text-sm text-[#332849] flex items-start gap-2">
+                                    <span className="mt-2 w-1 h-1 rounded-full bg-[#332849] flex-shrink-0" />
+                                    {line}
+                                </li>
+                            ))}
+                        </ul>
                     </div>
                 </div>
-            </div>
-
+            )}
             <DatePickerModal
                 isOpen={showDateModal}
                 onClose={() => setShowDateModal(false)}
                 onAdd={handleDateModalAdd}
             />
-        </div>
+        </>
     );
 };
 
