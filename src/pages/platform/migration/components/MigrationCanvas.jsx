@@ -266,39 +266,39 @@ function MigrationCanvasInner() {
 
   const isMigrationPayloadValid = (payload) => {
 
-    if(!payload?.source_conn_name || !payload?.source_conn_id){
+    if (!payload?.source_conn_name || !payload?.source_conn_id) {
       toast.error("Source connection can't be empty!");
       return false;
     }
 
-    if(!payload?.source_schema){
+    if (!payload?.source_schema) {
       toast.error("Source schema can't be empty!");
       return false;
     }
 
-     if(!payload?.target_conn_name || !payload?.target_conn_id){
+    if (!payload?.target_conn_name || !payload?.target_conn_id) {
       toast.error("Target connection can't be empty!");
       return false;
     }
 
-    if(!payload?.target_schema){
+    if (!payload?.target_schema) {
       toast.error("Target schema can't be empty!");
       return false;
     }
 
-    if(!payload?.migration_list || payload?.migration_list?.length === 0){
+    if (!payload?.migration_list || payload?.migration_list?.length === 0) {
       toast.error("Source and target table(s) can't be empty!");
       return false;
     }
 
-    if(!payload?.migration_auto_name){
+    if (!payload?.migration_auto_name) {
       toast.error("Migration name can't be empty!");
       return false;
     };
 
     const migrationList = payload?.migration_list || [];
     const invalidMigrations = migrationList.some(m => !m?.source_table || !m?.target_table);
-    if(invalidMigrations){
+    if (invalidMigrations) {
       toast.error("Either source or target table is missing!");
       return false;
     }
@@ -379,11 +379,26 @@ function MigrationCanvasInner() {
       op_types: {
         datafederation: false,
       },
-      scheduler: migrationData?.scheduler,
+      scheduler: (() => {
+        const sched = migrationData?.scheduler;
+        if (!sched || sched.mode !== 'scheduled') return sched;
+        // Refresh startDateTime to current IST time at the moment of save
+        const now = new Date();
+        const istOffset = 5.5 * 60 * 60 * 1000;
+        const istTime = new Date(now.getTime() + istOffset);
+        const startDateTime = istTime.toISOString().slice(0, 16);
+        return {
+          ...sched,
+          scheduled: {
+            ...sched.scheduled,
+            startDateTime,
+          },
+        };
+      })(),
       ui_json: migrationData
     };
 
-    if(!isMigrationPayloadValid(payload))
+    if (!isMigrationPayloadValid(payload))
       return;
 
     // console.log("Payload ==> ", payload);
@@ -475,7 +490,7 @@ function MigrationCanvasInner() {
         return;
       }
 
-      if(!metadataData.source?.bulk_list || metadataData.source?.bulk_list.length === 0) {
+      if (!metadataData.source?.bulk_list || metadataData.source?.bulk_list.length === 0) {
         toast.error("Source node must have at least one table selected.");
         return;
       }
