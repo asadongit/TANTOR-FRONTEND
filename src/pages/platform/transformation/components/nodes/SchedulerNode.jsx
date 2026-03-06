@@ -6,7 +6,7 @@ export function SchedulerNode({ id, data }) {
     const [selectedOption, setSelectedOption] = useState(data?.mode || "manual");
     const [flowType, setFlowType] = useState(data?.flow_type || "single_run"); // single_run, periodic, recurring
     const [intervalValue, setIntervalValue] = useState(data?.intervalValue || "");
-    const [frequency, setFrequency] = useState(data?.frequency || "hourly");
+    const [frequency, setFrequency] = useState(data?.frequency || "");
     const [runningDays, setRunningDays] = useState(data?.runningDays || []);
 
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -45,16 +45,18 @@ export function SchedulerNode({ id, data }) {
         const updates = { flow_type: newFlowType };
 
         if (newFlowType === "single_run") {
-            setFrequency("hourly");
+            setFrequency("");
             setRunningDays([]);
-            updates.frequency = "hourly";
+            updates.frequency = "";
             updates.runningDays = [];
         } else if (newFlowType === "periodic") {
+            setFrequency("");
             setRunningDays([]);
+            updates.frequency = "";
             updates.runningDays = [];
         } else if (newFlowType === "recurring") {
-            setFrequency("hourly");
-            updates.frequency = "hourly";
+            setFrequency("");
+            updates.frequency = "";
         }
 
         handleDataChange(updates);
