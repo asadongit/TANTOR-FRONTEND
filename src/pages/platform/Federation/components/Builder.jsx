@@ -8,9 +8,9 @@ import {
 import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
-import { ChevronDown, X } from 'lucide-react'; // Added X for toast close button
+import { ChevronDown, X, Download } from 'lucide-react'; // Added X for toast close button
 import { Icon } from "@iconify/react"; // Added for toast icons
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "../../../../context/AuthContext";
 
 export default function Builder({ handleSwitch, checked }) {
@@ -24,6 +24,10 @@ export default function Builder({ handleSwitch, checked }) {
     const [toast, setToast] = useState({ show: false, message: '', type: '' }); // Added toast state
 
     const [pageSize, setPageSize] = useState(100);
+
+    const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+    const [fullDataLoading, setFullDataLoading] = useState(false);
+    const downloadMenuRef = useRef(null);
 
     useEffect(() => {
         const fetchViews = async () => {
@@ -48,6 +52,116 @@ export default function Builder({ handleSwitch, checked }) {
 
         fetchViews();
     }, []);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (downloadMenuRef.current && !downloadMenuRef.current.contains(e.target)) {
+                setShowDownloadMenu(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const convertToCSV = (jsonData) => {
+    const headers = Object.keys(jsonData[0]).join(',');
+    const csvRows = jsonData.map(obj => Object.values(obj).map(val => `"${val}"`).join(','));
+    return [headers, ...csvRows].join('\n');
+};
+
+    const triggerCSVDownload = (csvContent, filename) => {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
+    const handleDownloadCurrentPage = () => {
+        setShowDownloadMenu(false);
+        if (!data || data.length === 0) {
+            setToast({ show: true, message: "No data to download", type: "error" });
+            setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+            return;
+        }
+        const csvContent = convertToCSV(data);
+        triggerCSVDownload(csvContent, `data_page_${pageNo}.csv`);
+    };
+
+    const handleDownloadFullData = async () => {
+        setShowDownloadMenu(false);
+        if (!selectedView) {
+            setToast({ show: true, message: "Select a view first to download full data", type: "error" });
+            setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+            return;
+        }
+
+        setFullDataLoading(true);
+        setToast({ show: true, message: "Fetching full data, please wait...", type: "success" });
+
+        try {
+            let allRows = [];
+            let currentPage = 1;
+            let morePages = true;
+            const batchSize = 1000;
+
+            while (morePages) {
+                const payload = { page: currentPage, page_size: batchSize };
+                const cachingResponse = await fetch(`${hostnameV1}/checkCaching/${selectedView}`);
+                const cachingData = await cachingResponse.json();
+
+                let response;
+                if (cachingData.result) {
+                    response = await fetch(`${hostnameV1}/view/${selectedView}`, {
+                        method: "POST",
+                        headers: { accept: "application/json", "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                        body: JSON.stringify(payload),
+                    });
+                    if (!response.ok) throw new Error("Failed to fetch page " + currentPage);
+                    const rows = await response.json();
+                    allRows = allRows.concat(rows);
+                    if (rows.length < batchSize) morePages = false;
+                    else currentPage++;
+                } else {
+                    response = await fetch(`${hostnameV1}/view/${selectedView}`, {
+                        method: "POST",
+                        headers: { accept: "application/json", "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                        body: JSON.stringify(payload),
+                    });
+                    if (!response.ok) throw new Error("Failed to fetch page " + currentPage);
+                    const dataText = await response.text();
+                    const rows = dataText.trim().split("\n")
+                        .filter(r => r.trim() !== "")
+                        .map(r => JSON.parse(r));
+                    allRows = allRows.concat(rows);
+                    if (rows.length < batchSize) morePages = false;
+                    else currentPage++;
+                }
+            }
+
+            if (allRows.length === 0) {
+                setToast({ show: true, message: "No data available to download", type: "error" });
+                setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+                return;
+            }
+
+            const csvContent = convertToCSV(allRows);
+            triggerCSVDownload(csvContent, `${selectedView}_full_${Date.now()}.csv`);
+            setToast({ show: true, message: `Downloaded ${allRows.length} rows successfully`, type: "success" });
+            setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+        } catch (error) {
+            console.error("Error downloading full data:", error);
+            setToast({ show: true, message: "Failed to download full data", type: "error" });
+            setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+        } finally {
+            setFullDataLoading(false);
+        }
+    };
 
     const handleViewChange = async (event, value) => {
         setSelectedView(value);
@@ -330,7 +444,50 @@ export default function Builder({ handleSwitch, checked }) {
                             Execute
                         </button>
                     </div>
-                    <div className="flex items-center">
+                    <div className="flex items-center gap-2">
+                        <div className="relative" ref={downloadMenuRef}>
+                            <button
+                                type="button"
+                                onClick={() => setShowDownloadMenu((prev) => !prev)}
+                                disabled={fullDataLoading}
+                                title="Download CSV"
+                                className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-1.5 bg-white focus:outline-none flex items-center gap-1 transition-colors"
+                            >
+                                {fullDataLoading ? (
+                                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]" />
+                                ) : (
+                                    <Download className="h-4 w-4" />
+                                )}
+                                <ChevronDown className="h-3 w-3" />
+                            </button>
+
+                            {showDownloadMenu && (
+                                <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                                    <button
+                                        onClick={handleDownloadCurrentPage}
+                                        className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-[#f3f0f9] hover:text-[#8e78b7] flex items-center gap-2 transition-colors"
+                                    >
+                                        <Download className="h-4 w-4 flex-shrink-0" />
+                                        <div>
+                                            <div className="font-medium">Current Page</div>
+                                            <div className="text-xs text-gray-400">Page {pageNo} · {data.length} rows</div>
+                                        </div>
+                                    </button>
+                                    <div className="border-t border-gray-100" />
+                                    <button
+                                        onClick={handleDownloadFullData}
+                                        className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-[#f3f0f9] hover:text-[#8e78b7] flex items-center gap-2 transition-colors"
+                                    >
+                                        <Download className="h-4 w-4 flex-shrink-0" />
+                                        <div>
+                                            <div className="font-medium">Full Data</div>
+                                            <div className="text-xs text-gray-400">All pages · may take a moment</div>
+                                        </div>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
                         <Switch
                             checked={checked}
                             onChange={handleSwitch}

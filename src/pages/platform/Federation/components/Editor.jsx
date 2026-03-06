@@ -1,5 +1,4 @@
-
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Database,
   Search,
@@ -52,8 +51,21 @@ export default function Editor() {
   const [connectionsLoading, setConnectionsLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
-
   const [pageSize, setPageSize] = useState(100);
+
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const [fullDataLoading, setFullDataLoading] = useState(false);
+  const downloadMenuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (downloadMenuRef.current && !downloadMenuRef.current.contains(e.target)) {
+        setShowDownloadMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const fetchConnections = async () => {
@@ -292,7 +304,6 @@ export default function Editor() {
             project: (project === "default" || project === "none") ? "default" : project,
             type: 'df'
           };
-
           await fetch(`${hostnameV1}/save_query`, {
             method: "POST",
             headers: {
@@ -302,7 +313,6 @@ export default function Editor() {
             },
             body: JSON.stringify(failedHistoryPayload),
           });
-
           const updatedHistory = await fetchQueryHistory();
           if (updatedHistory) setQueryHistory(updatedHistory);
         }
@@ -400,7 +410,6 @@ export default function Editor() {
         project: (project === "default" || project === "none") ? "default" : project,
         type: 'df'
       };
-
       await fetch(`${hostnameV1}/save_query`, {
         method: "POST",
         headers: {
@@ -506,7 +515,6 @@ export default function Editor() {
           setTables((prevTables) => ({ ...prevTables, [`${connection}-${schema}`]: [] }));
           return;
         }
-
         const response = await fetch(`${hostnameV1}/tables/list`, {
           method: "POST",
           headers: {
@@ -527,11 +535,9 @@ export default function Editor() {
         }
 
         const data = await response.json();
-
         const tableData = data.schemas.find(
           (item) => item.connection_name.toLowerCase() === connection.toLowerCase() && item.schema.toLowerCase() === schema.toLowerCase()
         );
-
         const tableNames = tableData && tableData.tables ? tableData.tables : [];
         setTables((prevTables) => ({
           ...prevTables,
@@ -562,7 +568,6 @@ export default function Editor() {
           setColumns((prevColumns) => ({ ...prevColumns, [`${connection}-${schema}-${table}`]: [] }));
           return;
         }
-
         const response = await fetch(`${hostnameV1}/columns/list`, {
           method: "POST",
           headers: {
@@ -747,18 +752,99 @@ export default function Editor() {
     return [headers, ...csvRows].join('\n');
   };
 
-  const handleDownloadCSV = () => {
-    const csvContent = convertToCSV(data);
+  const handleDownloadCSV = (csvContent, filename) => {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', 'data.csv');
+    link.setAttribute('download', filename);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadCurrentPage = () => {
+    setShowDownloadMenu(false);
+    if (!data || data.length === 0) {
+      setToast({ show: true, message: "No data to download", type: "error" });
+      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+      return;
+    }
+    const csvContent = convertToCSV(data);
+    handleDownloadCSV(csvContent, `data_page_${pageNo}.csv`);
+  };
+
+  const handleDownloadFullData = async () => {
+    setShowDownloadMenu(false);
+    if (!securedQuery) {
+      setToast({ show: true, message: "Run a query first to download full data", type: "error" });
+      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+      return;
+    }
+
+    setFullDataLoading(true);
+    setToast({ show: true, message: "Fetching full data, please wait...", type: "success" });
+
+    try {
+      let allRows = [];
+      let currentPage = 1;
+      let morePages = true;
+      const batchSize = 1000;
+
+      while (morePages) {
+        const payload = {
+          page: currentPage,
+          page_size: batchSize,
+          query: securedQuery,
+          project: (project === "default" || project === "none") ? "default" : project,
+          created_by: decodedToken?.preferred_username,
+        };
+
+        const response = await fetch(`${hostnameV1}/runQuery`, {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "Content-Type": "application/json",
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch page " + currentPage);
+        }
+
+        const dataText = await response.text();
+        const rows = dataText.trim().split("\n").map((row) => JSON.parse(row));
+        allRows = allRows.concat(rows);
+
+        if (rows.length < batchSize) {
+          morePages = false;
+        } else {
+          currentPage++;
+        }
+      }
+
+      if (allRows.length === 0) {
+        setToast({ show: true, message: "No data available to download", type: "error" });
+        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+        return;
+      }
+
+      const csvContent = convertToCSV(allRows);
+      handleDownloadCSV(csvContent, `data_full_${Date.now()}.csv`);
+
+      setToast({ show: true, message: `Downloaded ${allRows.length} rows successfully`, type: "success" });
+      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+    } catch (error) {
+      console.error("Error downloading full data:", error);
+      setToast({ show: true, message: "Failed to download full data", type: "error" });
+      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+    } finally {
+      setFullDataLoading(false);
+    }
   };
 
   const handleQueryDetails = async () => {
@@ -970,14 +1056,50 @@ export default function Editor() {
               <div className={`${(data?.length > 0 || loading) ? "h-[41%]" : "h-[100%]"} flex flex-col`}>
                 <div className="w-[100%] flex justify-between pr-3">
                   <h2 className="text-xl font-bold">Query Editor</h2>
-                  <div className="flex justify-center items-center">
-                    <button
-                      type="button"
-                      onClick={handleDownloadCSV}
-                      className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-1.5 mr-1 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
-                    >
-                      <Download className="h-4 w-4" />
-                    </button>
+                  <div className="flex justify-center items-center gap-2">
+                    <div className="relative" ref={downloadMenuRef}>
+                      <button
+                        type="button"
+                        onClick={() => setShowDownloadMenu((prev) => !prev)}
+                        disabled={fullDataLoading}
+                        title="Download CSV"
+                        className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-1.5 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] flex items-center gap-1 transition-colors"
+                      >
+                        {fullDataLoading ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]" />
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )}
+                        <ChevronDown className="h-3 w-3" />
+                      </button>
+
+                      {showDownloadMenu && (
+                        <div className="download-menu-enter absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                          <button
+                            onClick={handleDownloadCurrentPage}
+                            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-[#f3f0f9] hover:text-[#8e78b7] flex items-center gap-2 transition-colors"
+                          >
+                            <Download className="h-4 w-4 flex-shrink-0" />
+                            <div>
+                              <div className="font-medium">Current Page</div>
+                              <div className="text-xs text-gray-400">Page {pageNo} · {data.length} rows</div>
+                            </div>
+                          </button>
+                          <div className="border-t border-gray-100" />
+                          <button
+                            onClick={handleDownloadFullData}
+                            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-[#f3f0f9] hover:text-[#8e78b7] flex items-center gap-2 transition-colors"
+                          >
+                            <Download className="h-4 w-4 flex-shrink-0" />
+                            <div>
+                              <div className="font-medium">Full Data</div>
+                              <div className="text-xs text-gray-400">All pages · may take a moment</div>
+                            </div>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
                     <Switch
                       checked={checked}
                       onChange={handleSwitch}
