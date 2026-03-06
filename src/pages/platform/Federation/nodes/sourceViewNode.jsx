@@ -106,6 +106,8 @@ export function SourceViewNode({ id, onSave }) {
   const [isLoadingColumns, setIsLoadingColumns] = useState(false);
   const hasIncrementedRef = useRef(false);
 
+  const [columnSearchTerm, setColumnSearchTerm] = useState("");
+
   const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
   const { showToast } = useToast();
 
@@ -162,6 +164,7 @@ export function SourceViewNode({ id, onSave }) {
 
   const handleViewChange = (e) => {
     setSelectedColumns([])
+    setColumnSearchTerm("");
     setColumnSettings(prevSettings => {
       const updatedSettings = { ...prevSettings };
       delete updatedSettings[selectedView];
@@ -254,12 +257,15 @@ export function SourceViewNode({ id, onSave }) {
 
 
   const handleSelectAllChange = (isChecked) => {
-    if (isChecked && columnsForViews[selectedView]) {
-      setSelectedColumns(columnsForViews[selectedView]);
-      setSelectedColumnsOrder(columnsForViews[selectedView]);
+    const visibleColumns = filteredColumns;
+
+    if (isChecked) {
+      const newColumns = visibleColumns.filter(col => !selectedColumns.includes(col));
+      setSelectedColumns(prev => [...prev, ...newColumns]);
+      setSelectedColumnsOrder(prev => [...prev, ...newColumns]);
       setColumnSettings((prevSettings) => {
         const updatedSettings = { ...prevSettings };
-        columnsForViews[selectedView].forEach((column) => {
+        visibleColumns.forEach((column) => {
           updatedSettings[selectedView] = {
             ...updatedSettings[selectedView],
             [column]: {
@@ -271,27 +277,27 @@ export function SourceViewNode({ id, onSave }) {
         return updatedSettings;
       });
     } else {
-      setSelectedColumns([]);
-      setSelectedColumnsOrder([]);
+      setSelectedColumns(prev => prev.filter(col => !visibleColumns.includes(col)));
+      setSelectedColumnsOrder(prev => prev.filter(col => !visibleColumns.includes(col)));
       setColumnSettings((prevSettings) => {
         const updatedSettings = { ...prevSettings };
-        if (columnsForViews[selectedView]) {
-          columnsForViews[selectedView].forEach((column) => {
-            updatedSettings[selectedView] = {
-              ...updatedSettings[selectedView],
-              [column]: {
-                ...(updatedSettings[selectedView]?.[column] || {}),
-                output: "No",
-              },
-            };
-          });
-        }
+        visibleColumns.forEach((column) => {
+          if (updatedSettings[selectedView]) {
+            delete updatedSettings[selectedView][column];
+          }
+        });
         return updatedSettings;
       });
     }
   };
 
-  const isAllSelected = selectedColumns.length === (columnsForViews[selectedView]?.length || 0);
+  const filteredColumns = (columnsForViews[selectedView] || []).filter(col =>
+    col.toLowerCase().includes(columnSearchTerm.toLowerCase())
+  );
+
+  const isAllSelected =
+    filteredColumns.length > 0 &&
+    filteredColumns.every(col => selectedColumns.includes(col));
 
   useEffect(() => {
     if (selectedView && columnSettings[selectedView]) {
@@ -507,7 +513,30 @@ export function SourceViewNode({ id, onSave }) {
                   <label className="block text-sm font-medium text-black mb-1">
                     Select Columns
                   </label>
-                  <div className="p-3 space-y-2">
+                  <div className="pt-1 space-y-2">
+
+                    <div
+                      className="relative mb-2"
+                      onWheelCapture={(e) => e.stopPropagation()}
+                    >
+                      <Search className="absolute left-2 top-2.5 w-3.5 h-3.5 text-gray-700" />
+                      <input
+                        type="text"
+                        className="w-full pl-7 pr-3 py-1.5 text-gray-700 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-[#8E77BB]"
+                        placeholder="Search columns..."
+                        value={columnSearchTerm}
+                        onChange={(e) => setColumnSearchTerm(e.target.value)}
+                      />
+                      {columnSearchTerm && (
+                        <button
+                          className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+                          onClick={() => setColumnSearchTerm("")}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
                     <div className="flex items-center space-x-2">
                       <input
                         type="checkbox"
@@ -521,9 +550,14 @@ export function SourceViewNode({ id, onSave }) {
                       </label>
                     </div>
 
-                    <div className="max-h-32 overflow-y-auto space-y-2 custom-scrollbar">
-                      {columnsForViews[selectedView]?.length > 0 &&
-                        columnsForViews[selectedView].map((column) => (
+                    <div
+                      className="max-h-32 overflow-y-auto space-y-2 custom-scrollbar"
+                      onWheelCapture={(e) => e.stopPropagation()}
+                    >
+                      {filteredColumns.length === 0 ? (
+                        <div className="text-sm text-gray-400 py-1 text-center">No columns match</div>
+                      ) : (
+                        filteredColumns.map((column) => (
                           <div className="flex justify-between" key={column}>
                             <div className="flex items-center space-x-2">
                               <input
@@ -549,7 +583,8 @@ export function SourceViewNode({ id, onSave }) {
                               className="mr-3 h-4 w-4 text-[#8E77BB] cursor-pointer hover:text-[#7a64a0]"
                             />
                           </div>
-                        ))}
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>
