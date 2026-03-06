@@ -40,6 +40,7 @@ function Audit() {
         { value: "migration", label: "Migration" },
         { value: "metadata", label: "Metadata" },
         { value: "cdc", label: "CDC" },
+        { value: "purge", label: "Purge" },
         { value: "user-report", label: "User Report" },
         { value: "reports", label: "Dashboard Reports" },
     ];
@@ -52,6 +53,38 @@ function Audit() {
         { value: "TRIGGER", label: "Trigger" },
         { value: "OTHER", label: "Other" },
     ];
+
+    const filteredActionOptions = useMemo(() => {
+        if (!module) return actionOptions;
+        switch (module) {
+            case "reports":
+                return actionOptions.filter(a => ["READ", "OTHER"].includes(a.value));
+            case "user-report":
+            case "user":
+                return actionOptions.filter(a => ["CREATE", "UPDATE", "DELETE"].includes(a.value));
+            case "transformation":
+            case "cdc":
+            case "migration":
+            case "purge":
+                return actionOptions.filter(a => ["CREATE", "UPDATE", "DELETE", "TRIGGER"].includes(a.value));
+            case "project":
+            case "connection":
+                return actionOptions.filter(a => ["CREATE", "UPDATE", "DELETE"].includes(a.value));
+            case "metadata":
+                return actionOptions.filter(a => ["CREATE", "DELETE"].includes(a.value));
+            default:
+                return actionOptions;
+        }
+    }, [module]);
+
+    useEffect(() => {
+        if (module && action) {
+            const validActions = filteredActionOptions.map(a => a.value);
+            if (!validActions.includes(action)) {
+                setAction("");
+            }
+        }
+    }, [module, action, filteredActionOptions]);
 
     const limitOptions = [
         { value: "none", label: "None (All Records)" },
@@ -474,7 +507,7 @@ function Audit() {
                                 onChange={(e) => setAction(e.target.value)}
                             >
                                 <option value="">All Actions</option>
-                                {actionOptions.map((opt) => (
+                                {filteredActionOptions.map((opt) => (
                                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                                 ))}
                             </select>
