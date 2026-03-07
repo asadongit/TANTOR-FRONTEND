@@ -108,6 +108,9 @@ export function ConnectionNode({ id, onSave }) {
   const [selectedColumnsOrder, setSelectedColumnsOrder] = useState([]);
   const [policyIds, setPolicyIds] = useState([]);
   const hasIncrementedRef = useRef(false);
+
+  const [columnSearchTerm, setColumnSearchTerm] = useState("");
+
   // Loading states
   const [isLoadingConnections, setIsLoadingConnections] = useState(false);
   const [isLoadingSchemas, setIsLoadingSchemas] = useState(false);
@@ -132,6 +135,7 @@ export function ConnectionNode({ id, onSave }) {
       hasIncrementedRef.current = true;
     }
   }, []);
+
   const fetchConnections = async () => {
     setIsLoadingConnections(true);
     try {
@@ -155,7 +159,6 @@ export function ConnectionNode({ id, onSave }) {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("Fetch error:", errorText);
         throw new Error(`Failed to fetch connections: ${errorText}`);
       }
 
@@ -185,36 +188,23 @@ export function ConnectionNode({ id, onSave }) {
     setSelectedColumns([]);
     setColumnData([]);
     setColId("");
+    setColumnSearchTerm("");
 
     setIsLoadingSchemas(true);
     try {
-      if (policyIds.length === 0) {
-        setSchemas([]);
-        return;
-      }
+      if (policyIds.length === 0) { setSchemas([]); return; }
 
       const response = await fetch(`${hostnameV1}/schemas/list`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          matched_policy_ids: policyIds,
-          connection_name: conn,
-        }),
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ matched_policy_ids: policyIds, connection_name: conn }),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Fetch error:", errorText);
-        throw new Error(`Failed to fetch schemas: ${errorText}`);
-      }
+      if (!response.ok) throw new Error(`Failed to fetch schemas: ${await response.text()}`);
 
       const data = await response.json();
       const connectionData = data.find((item) => item[conn]);
-      const schemaList = connectionData ? connectionData[conn] : [];
-      setSchemas(schemaList);
+      setSchemas(connectionData ? connectionData[conn] : []);
     } catch (error) {
       console.error("Error fetching schema data:", error);
       setSchemas([]);
@@ -233,48 +223,27 @@ export function ConnectionNode({ id, onSave }) {
     setSelectedColumns([]);
     setColumnData([]);
     setColId("");
+    setColumnSearchTerm("");
 
     setIsLoadingTables(true);
     try {
-      if (policyIds.length === 0) {
-        setTables([]);
-        return;
-      }
+      if (policyIds.length === 0) { setTables([]); return; }
 
       const response = await fetch(`${hostnameV1}/tables/list`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          matched_policy_ids: policyIds,
-          connection_name: selectedConnection,
-          schema_name: [schema],
-        }),
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ matched_policy_ids: policyIds, connection_name: selectedConnection, schema_name: [schema] }),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Fetch error:", errorText);
-        throw new Error(`Failed to fetch tables: ${errorText}`);
-      }
+      if (!response.ok) throw new Error(`Failed to fetch tables: ${await response.text()}`);
 
       const data = await response.json();
-
-      if (!data || !data.schemas || !Array.isArray(data.schemas)) {
-        console.error("Invalid response structure:", data);
-        throw new Error("Invalid response structure from /tables/list");
-      }
+      if (!data || !data.schemas || !Array.isArray(data.schemas)) throw new Error("Invalid response structure from /tables/list");
 
       const schemaData = data.schemas.find(
         (item) => item.connection_name === selectedConnection && item.schema === schema
       );
-      if (schemaData && schemaData.tables) {
-        setTables(schemaData.tables);
-      } else {
-        setTables([]);
-      }
+      setTables(schemaData?.tables || []);
     } catch (error) {
       console.error("Error fetching table data:", error);
       setTables([]);
@@ -293,65 +262,34 @@ export function ConnectionNode({ id, onSave }) {
     setAllowedColumns([]);
     setSelectedColumns([]);
     setColumnData([]);
+    setColumnSearchTerm(""); // reset column search
 
     setIsLoadingColumns(true);
     try {
       const detailedColumnsResponse = await fetch(
         `${hostnameV1}/${selectedConnection}/schemas/${selectedSchema}/tables/${table}/columns`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
+        { method: "GET", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
       );
 
-      if (!detailedColumnsResponse.ok) {
-        const errorText = await detailedColumnsResponse.text();
-        console.error("Fetch error:", errorText);
-        throw new Error(`Failed to fetch detailed columns: ${errorText}`);
-      }
+      if (!detailedColumnsResponse.ok) throw new Error(`Failed to fetch detailed columns: ${await detailedColumnsResponse.text()}`);
       const detailedColumnsData = await detailedColumnsResponse.json();
       setColumns(detailedColumnsData);
 
       const secureQueryResponse = await secureQuery({ user_query: "" }, token);
       const fetchedPolicyIds = secureQueryResponse.matched_policy_ids || [];
 
-      if (fetchedPolicyIds.length === 0) {
-        setAllowedColumns([]);
-        setColumnData([]);
-        return;
-      }
+      if (fetchedPolicyIds.length === 0) { setAllowedColumns([]); setColumnData([]); return; }
 
       const allowedColumnsResponse = await fetch(`${hostnameV1}/columns/list`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          matched_policy_ids: fetchedPolicyIds,
-          connection_name: selectedConnection,
-          schema_name: [selectedSchema],
-          table_name: [table],
-        }),
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ matched_policy_ids: fetchedPolicyIds, connection_name: selectedConnection, schema_name: [selectedSchema], table_name: [table] }),
       });
 
-      if (!allowedColumnsResponse.ok) {
-        const errorText = await allowedColumnsResponse.text();
-        console.error("Fetch error:", errorText);
-        throw new Error(`Failed to fetch allowed columns: ${errorText}`);
-      }
+      if (!allowedColumnsResponse.ok) throw new Error(`Failed to fetch allowed columns: ${await allowedColumnsResponse.text()}`);
 
       const allowedColumnsData = await allowedColumnsResponse.json();
-
-      if (!allowedColumnsData || !allowedColumnsData.columns) {
-        console.error("Invalid response structure:", allowedColumnsData);
-        setAllowedColumns([]);
-        setColumnData([]);
-        return;
-      }
+      if (!allowedColumnsData || !allowedColumnsData.columns) { setAllowedColumns([]); setColumnData([]); return; }
 
       const columnData = allowedColumnsData.columns.find(
         (item) =>
@@ -360,11 +298,8 @@ export function ConnectionNode({ id, onSave }) {
           item.table_name.toLowerCase() === table.toLowerCase()
       );
 
-      const formattedColumns = columnData && columnData.columns
-        ? columnData.columns.map((item) => ({
-          column: item.column_name,
-          datatype: item.metadata?.DATA_TYPE || "unknown",
-        }))
+      const formattedColumns = columnData?.columns
+        ? columnData.columns.map((item) => ({ column: item.column_name, datatype: item.metadata?.DATA_TYPE || "unknown" }))
         : [];
 
       setAllowedColumns(formattedColumns);
@@ -388,9 +323,7 @@ export function ConnectionNode({ id, onSave }) {
           const updatedSettings = { ...prevSettings };
           if (updatedSettings[colId]) {
             delete updatedSettings[colId][column];
-            if (Object.keys(updatedSettings[colId]).length === 0) {
-              delete updatedSettings[colId];
-            }
+            if (Object.keys(updatedSettings[colId]).length === 0) delete updatedSettings[colId];
           }
           return updatedSettings;
         });
@@ -401,10 +334,7 @@ export function ConnectionNode({ id, onSave }) {
           ...prevSettings,
           [colId]: {
             ...(prevSettings[colId] || {}),
-            [column]: {
-              ...(prevSettings[colId]?.[column] || {}),
-              output: "Yes",
-            },
+            [column]: { ...(prevSettings[colId]?.[column] || {}), output: "Yes" },
           },
         }));
         setSelectedColumnsOrder((prevOrder) => [...prevOrder, column]);
@@ -418,44 +348,43 @@ export function ConnectionNode({ id, onSave }) {
     setSelectedColumn(column);
   };
 
+  const visibleColumns = allowedColumns
+    .filter((col) => columns.some((c) => c.column.toLowerCase() === col.column.toLowerCase()))
+    .filter((col) => col.column.toLowerCase().includes(columnSearchTerm.toLowerCase()));
+
   const handleSelectAllChange = (isChecked) => {
+    const visibleColumnNames = visibleColumns.map((col) => col.column);
+
     if (isChecked) {
-      const columnNames = allowedColumns.map((col) => col.column);
-      setSelectedColumns(columnNames);
-      setSelectedColumnsOrder(columnNames);
+      const newCols = visibleColumnNames.filter((c) => !selectedColumns.includes(c));
+      setSelectedColumns((prev) => [...prev, ...newCols]);
+      setSelectedColumnsOrder((prev) => [...prev, ...newCols]);
       setColumnSettings((prevSettings) => {
         const updatedSettings = { ...prevSettings };
-        columnNames.forEach((column) => {
+        visibleColumnNames.forEach((column) => {
           updatedSettings[colId] = {
             ...updatedSettings[colId],
-            [column]: {
-              ...(updatedSettings[colId]?.[column] || {}),
-              output: "Yes",
-            },
+            [column]: { ...(updatedSettings[colId]?.[column] || {}), output: "Yes" },
           };
         });
         return updatedSettings;
       });
     } else {
-      setSelectedColumns([]);
-      setSelectedColumnsOrder([]);
+      setSelectedColumns((prev) => prev.filter((c) => !visibleColumnNames.includes(c)));
+      setSelectedColumnsOrder((prev) => prev.filter((c) => !visibleColumnNames.includes(c)));
       setColumnSettings((prevSettings) => {
         const updatedSettings = { ...prevSettings };
-        allowedColumns.forEach((column) => {
-          updatedSettings[colId] = {
-            ...updatedSettings[colId],
-            [column.column]: {
-              ...(updatedSettings[colId]?.[column.column] || {}),
-              output: "No",
-            },
-          };
+        visibleColumnNames.forEach((column) => {
+          if (updatedSettings[colId]) delete updatedSettings[colId][column];
         });
         return updatedSettings;
       });
     }
   };
 
-  const isAllSelected = selectedColumns.length === allowedColumns.length && allowedColumns.length > 0;
+  const isAllSelected =
+    visibleColumns.length > 0 &&
+    visibleColumns.every((col) => selectedColumns.includes(col.column));
 
   useEffect(() => {
     if (colId && columnSettings[colId]) {
@@ -468,32 +397,15 @@ export function ConnectionNode({ id, onSave }) {
   }, [columnSettings, colId]);
 
   const handleSave = () => {
-    if (!selectedConnection) {
-      showToast('Please select a connection', 'error');
-      return;
-    }
-
-    if (!selectedSchema) {
-      showToast('Please select a schema', 'error');
-      return;
-    }
-
-    if (!selectedTable) {
-      showToast('Please select a table', 'error');
-      return;
-    }
-
-    if (!selectedColumns || selectedColumns.length === 0) {
-      showToast('Please select at least one column', 'error');
-      return;
-    }
+    if (!selectedConnection) { showToast('Please select a connection', 'error'); return; }
+    if (!selectedSchema) { showToast('Please select a schema', 'error'); return; }
+    if (!selectedTable) { showToast('Please select a table', 'error'); return; }
+    if (!selectedColumns || selectedColumns.length === 0) { showToast('Please select at least one column', 'error'); return; }
 
     if (!finalPayload.operation && previousColId !== colId) {
       handleFinalPayload((prevData) => ({
         ...prevData,
-        joins: prevData?.joins?.filter(
-          (join) => join.view1 !== previousColId && join.view2 !== previousColId
-        ),
+        joins: prevData?.joins?.filter((join) => join.view1 !== previousColId && join.view2 !== previousColId),
       }));
     } else if (finalPayload.operation) {
       handleFinalPayload({});
@@ -510,26 +422,16 @@ export function ConnectionNode({ id, onSave }) {
       }));
 
     const newPayload = {
-      id,
-      type: "Connection",
-      view: colId,
-      selectedConnection,
-      selectedSchema,
-      selectedTable,
-      selectedColumns,
-      def: `Select * from ${selectedConnection}.${selectedSchema}.${selectedTable}`,
+      id, type: "Connection", view: colId, selectedConnection, selectedSchema, selectedTable,
+      selectedColumns, def: `Select * from ${selectedConnection}.${selectedSchema}.${selectedTable}`,
       Columns: filteredColumns,
     };
 
     const currentPayloads = connectionPayload || [];
     const updatedPayloads = [...currentPayloads];
     const existingIndex = updatedPayloads.findIndex((payload) => payload.id === id);
-
-    if (existingIndex !== -1) {
-      updatedPayloads[existingIndex] = newPayload;
-    } else {
-      updatedPayloads.push(newPayload);
-    }
+    if (existingIndex !== -1) updatedPayloads[existingIndex] = newPayload;
+    else updatedPayloads.push(newPayload);
 
     handleConnectionPayload(updatedPayloads);
     onSave?.(newPayload);
@@ -539,30 +441,13 @@ export function ConnectionNode({ id, onSave }) {
 
   const cleanFinalPayload = (finalPayload, viewName) => {
     let updatedPayload = { ...finalPayload };
-
-    if (updatedPayload.defs && updatedPayload.defs[viewName]) {
-      delete updatedPayload.defs[viewName];
-      if (Object.keys(updatedPayload.defs).length === 0) delete updatedPayload.defs;
-    }
-
-    if (updatedPayload.union_fields && updatedPayload.union_fields[viewName]) {
-      delete updatedPayload.union_fields[viewName];
-      if (Object.keys(updatedPayload.union_fields).length === 0) delete updatedPayload.union_fields;
-    }
-
-    if (updatedPayload.union) {
-      updatedPayload.union = updatedPayload.union.filter((item) => item !== viewName);
-      if (updatedPayload.union.length === 0) delete updatedPayload.union;
-    }
-
+    if (updatedPayload.defs?.[viewName]) { delete updatedPayload.defs[viewName]; if (!Object.keys(updatedPayload.defs).length) delete updatedPayload.defs; }
+    if (updatedPayload.union_fields?.[viewName]) { delete updatedPayload.union_fields[viewName]; if (!Object.keys(updatedPayload.union_fields).length) delete updatedPayload.union_fields; }
+    if (updatedPayload.union) { updatedPayload.union = updatedPayload.union.filter((item) => item !== viewName); if (!updatedPayload.union.length) delete updatedPayload.union; }
     if (updatedPayload.metadata) {
-      if (updatedPayload.metadata.views) {
-        updatedPayload.metadata.views = updatedPayload.metadata.views.filter((view) => view !== viewName);
-        if (updatedPayload.metadata.views.length === 0) delete updatedPayload.metadata.views;
-      }
-      if (Object.keys(updatedPayload.metadata).length === 0) delete updatedPayload.metadata;
+      if (updatedPayload.metadata.views) { updatedPayload.metadata.views = updatedPayload.metadata.views.filter((view) => view !== viewName); if (!updatedPayload.metadata.views.length) delete updatedPayload.metadata.views; }
+      if (!Object.keys(updatedPayload.metadata).length) delete updatedPayload.metadata;
     }
-
     return updatedPayload;
   };
 
@@ -571,15 +456,9 @@ export function ConnectionNode({ id, onSave }) {
     handleConnectionPayload(updatedPayload);
 
     if (!finalPayload.operation) {
-      handleFinalPayload((prevData) => ({
-        ...prevData,
-        joins: prevData?.joins?.filter(
-          (join) => join.view1 !== colId && join.view2 !== colId
-        ),
-      }));
+      handleFinalPayload((prevData) => ({ ...prevData, joins: prevData?.joins?.filter((join) => join.view1 !== colId && join.view2 !== colId) }));
     } else if (finalPayload.operation) {
-      const cleanedPayload = cleanFinalPayload(finalPayload, colId);
-      handleFinalPayload(cleanedPayload);
+      handleFinalPayload(cleanFinalPayload(finalPayload, colId));
     }
 
     setColumnSettings((prevSettings) => {
@@ -590,19 +469,14 @@ export function ConnectionNode({ id, onSave }) {
     });
 
     decrementNodeCount('connection');
-
     window.deleteNode?.(id);
   };
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const toggleModal = (value) => {
-    setIsModalOpen(value);
-  };
+  const toggleModal = (value) => setIsModalOpen(value);
 
   const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
-  const toggleEditorModal = (value) => {
-    setIsEditorModalOpen(value);
-  };
+  const toggleEditorModal = (value) => setIsEditorModalOpen(value);
 
   const updateNodeInternals = useUpdateNodeInternals();
 
@@ -623,72 +497,63 @@ export function ConnectionNode({ id, onSave }) {
           </div>
           <div>
             {modalState.queryType === "Complex" && (
-              <button
-                onClick={() => toggleEditorModal(true)}
-                className="p-1 rounded-md hover:bg-gray-200"
-              >
+              <button onClick={() => toggleEditorModal(true)} className="p-1 rounded-md hover:bg-gray-200">
                 <FileCode className="h-5 text-gray-500" />
               </button>
             )}
-            <button
-              onClick={handleCollapse}
-              className="p-1 rounded-md hover:bg-gray-200"
-            >
+            <button onClick={handleCollapse} className="p-1 rounded-md hover:bg-gray-200">
               {isCollapsed ? <ChevronDown className="h-5 text-gray-500" /> : <ChevronUp className="h-5 text-gray-500" />}
             </button>
-            <button
-              onClick={() => handleDelete(id)}
-              className="p-1 rounded-md hover:bg-gray-200"
-            >
+            <button onClick={() => handleDelete(id)} className="p-1 rounded-md hover:bg-gray-200">
               <X className="h-5 text-gray-500" />
             </button>
           </div>
         </div>
+
         {!isCollapsed && (
           <>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-black mb-1">Connection</label>
-                <SearchableSelect
-                  options={connections}
-                  value={selectedConnection}
-                  onChange={handleConnectionChange}
-                  placeholder="Select a connection"
-                  isLoading={isLoadingConnections}
-                />
+                <SearchableSelect options={connections} value={selectedConnection} onChange={handleConnectionChange} placeholder="Select a connection" isLoading={isLoadingConnections} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-black mb-1">Schema</label>
-                <SearchableSelect
-                  options={schemas}
-                  value={selectedSchema}
-                  onChange={handleSchemaChange}
-                  placeholder="Select a schema"
-                  disabled={!selectedConnection}
-                  isLoading={isLoadingSchemas}
-                />
+                <SearchableSelect options={schemas} value={selectedSchema} onChange={handleSchemaChange} placeholder="Select a schema" disabled={!selectedConnection} isLoading={isLoadingSchemas} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-black mb-1">Table</label>
-                <SearchableSelect
-                  options={tables}
-                  value={selectedTable}
-                  onChange={handleTableChange}
-                  placeholder="Select a table"
-                  disabled={!selectedSchema}
-                  isLoading={isLoadingTables}
-                />
+                <SearchableSelect options={tables} value={selectedTable} onChange={handleTableChange} placeholder="Select a table" disabled={!selectedSchema} isLoading={isLoadingTables} />
               </div>
+
               {isLoadingColumns && (
                 <div className="flex items-center justify-center py-4">
                   <Loader2 className="w-6 h-6 animate-spin text-[#8E77BB]" />
                   <span className="ml-2 text-sm text-gray-600">Loading columns...</span>
                 </div>
               )}
+
               {!isLoadingColumns && allowedColumns?.length > 0 && (
                 <div>
                   <label className="block text-sm font-medium text-black mb-1">Select Columns</label>
-                  <div className="p-3 space-y-2">
+                  <div className="pt-1 space-y-2">
+
+                    <div className="relative mb-2" onWheelCapture={(e) => e.stopPropagation()}>
+                      <Search className="absolute left-2 top-2.5 w-3.5 h-3.5 text-gray-700" />
+                      <input
+                        type="text"
+                        className="w-full pl-7 pr-3 py-1.5 text-gray-700 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-[#8E77BB]"
+                        placeholder="Search columns..."
+                        value={columnSearchTerm}
+                        onChange={(e) => setColumnSearchTerm(e.target.value)}
+                      />
+                      {columnSearchTerm && (
+                        <button className="absolute right-2 top-2 text-gray-700 hover:text-gray-600" onClick={() => setColumnSearchTerm("")}>
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
                     <div className="flex items-center space-x-2">
                       <input
                         type="checkbox"
@@ -701,12 +566,15 @@ export function ConnectionNode({ id, onSave }) {
                         Select All
                       </label>
                     </div>
-                    <div className="max-h-32 overflow-y-auto space-y-2 custom-scrollbar">
-                      {allowedColumns
-                        .filter((col) =>
-                          columns.some((c) => c.column.toLowerCase() === col.column.toLowerCase())
-                        )
-                        .map((col) => (
+
+                    <div
+                      className="max-h-32 overflow-y-auto space-y-2 custom-scrollbar"
+                      onWheelCapture={(e) => e.stopPropagation()}
+                    >
+                      {visibleColumns.length === 0 ? (
+                        <div className="text-sm text-gray-400 py-1 text-center">No columns match</div>
+                      ) : (
+                        visibleColumns.map((col) => (
                           <div className="flex justify-between" key={col.column}>
                             <div className="flex items-center space-x-2">
                               <input
@@ -717,9 +585,7 @@ export function ConnectionNode({ id, onSave }) {
                                 onChange={() => handleColumnChange(col.column)}
                                 className="text-purple-600 focus:ring-purple-500"
                               />
-                              <label htmlFor={col.column} className="text-sm text-gray-700">
-                                {col.column}
-                              </label>
+                              <label htmlFor={col.column} className="text-sm text-gray-700">{col.column}</label>
                             </div>
                             <Pencil
                               name="edit"
@@ -727,7 +593,8 @@ export function ConnectionNode({ id, onSave }) {
                               className="mr-3 h-4 w-4 text-[#8E77BB] cursor-pointer hover:text-[#7a64a0]"
                             />
                           </div>
-                        ))}
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>
@@ -742,33 +609,16 @@ export function ConnectionNode({ id, onSave }) {
             </button>
           </>
         )}
+
         <style jsx>{`
-          .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb {
-            background-color: #a0aec0;
-            border-radius: 3px;
-          }
-          @keyframes spin {
-            to {
-              transform: rotate(360deg);
-            }
-          }
-          .animate-spin {
-            animation: spin 1s linear infinite;
-          }
+          .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+          .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #a0aec0; border-radius: 3px; }
+          @keyframes spin { to { transform: rotate(360deg); } }
+          .animate-spin { animation: spin 1s linear infinite; }
         `}</style>
       </div>
-      <Modal
-        open={isModalOpen}
-        onClose={() => toggleModal(false)}
-        BackdropProps={{
-          style: {
-            backgroundColor: "transparent",
-          },
-        }}
-      >
+
+      <Modal open={isModalOpen} onClose={() => toggleModal(false)} BackdropProps={{ style: { backgroundColor: "transparent" } }}>
         <div className="absolute top-0 right-0 h-full w-full sm:w-1/2 md:w-1/3 lg:w-[22%]">
           <Columns
             id={colId}
@@ -778,15 +628,7 @@ export function ConnectionNode({ id, onSave }) {
           />
         </div>
       </Modal>
-      <Modal
-        open={isEditorModalOpen}
-        onClose={() => toggleEditorModal(false)}
-        BackdropProps={{
-          style: {
-            backgroundColor: "transparent",
-          },
-        }}
-      >
+      <Modal open={isEditorModalOpen} onClose={() => toggleEditorModal(false)} BackdropProps={{ style: { backgroundColor: "transparent" } }}>
         <div className="absolute top-0 right-0 h-full">
           <ComplexQueryEditor setShowQueryEditor={toggleEditorModal} />
         </div>
