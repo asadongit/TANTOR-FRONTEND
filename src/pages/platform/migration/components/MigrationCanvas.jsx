@@ -367,6 +367,7 @@ function MigrationCanvasInner() {
       migration_name: migrationData?.define?.name,
       migration_auto_name: migrationData?.define?.name,
       description: migrationData?.define?.description || "",
+      workflow_type: migrationData?.scheduler?.mode === 'scheduled' ? 'scheduled' : 'manual',
       source_conn_id: migrationData?.source?.connection_id,
       target_conn_id: migrationData?.target?.connection_id,
       source_conn_name: migrationData?.source?.connection,
