@@ -31,6 +31,7 @@ const DataTable = ({
   resetSortTrigger,
   onRowClick,
   selectedRowId,
+  onDeleteSelected,
 }) => {
   const [sortConfig, setSortConfig] = useState({ key: "", direction: "asc" });
   const [searchTerm, setSearchTerm] = useState("");
@@ -38,6 +39,7 @@ const DataTable = ({
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [activeMenu, setActiveMenu] = useState(null);
   const [hoveredAction, setHoveredAction] = useState(null);
+  const [selectedRows, setSelectedRows] = useState(new Set());
   const menuRef = useRef(null);
   const { project } = useAuth();
   const columnCount = columns.length;
@@ -123,6 +125,11 @@ const DataTable = ({
     setPage(1);
   }, [searchTerm]);
 
+  // Clear selection when data changes
+  useEffect(() => {
+    setSelectedRows(new Set());
+  }, [data]);
+
   const handleSort = useCallback((key) => {
     setSortConfig((prev) => ({
       key,
@@ -170,6 +177,53 @@ const DataTable = ({
     return processedData.slice(startIndex, startIndex + itemsPerPage);
   }, [processedData, page, itemsPerPage]);
 
+  // Selection helpers
+  const allPageRowKeys = useMemo(
+    () => paginatedData.map((_, idx) => (page - 1) * itemsPerPage + idx),
+    [paginatedData, page, itemsPerPage]
+  );
+
+  const isAllPageSelected =
+    allPageRowKeys.length > 0 &&
+    allPageRowKeys.every((key) => selectedRows.has(key));
+
+  const isIndeterminate =
+    !isAllPageSelected && allPageRowKeys.some((key) => selectedRows.has(key));
+
+  const handleSelectAll = useCallback(() => {
+    setSelectedRows((prev) => {
+      const next = new Set(prev);
+      if (isAllPageSelected) {
+        allPageRowKeys.forEach((key) => next.delete(key));
+      } else {
+        allPageRowKeys.forEach((key) => next.add(key));
+      }
+      return next;
+    });
+  }, [isAllPageSelected, allPageRowKeys]);
+
+  const handleSelectRow = useCallback((globalIndex, e) => {
+    e.stopPropagation();
+    setSelectedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(globalIndex)) {
+        next.delete(globalIndex);
+      } else {
+        next.add(globalIndex);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleBulkDelete = useCallback(() => {
+    if (!onDeleteSelected) return;
+    const selectedItems = processedData.filter((_, idx) =>
+      selectedRows.has(idx)
+    );
+    onDeleteSelected(selectedItems);
+    setSelectedRows(new Set());
+  }, [selectedRows, processedData, onDeleteSelected]);
+
   const toggleActionMenu = useCallback((index) => {
     setActiveMenu((prev) => (prev === index ? null : index));
   }, []);
@@ -201,7 +255,8 @@ const DataTable = ({
   const handleRowClickInternal = (row, e) => {
     if (
       e.target.closest('button') ||
-      e.target.closest('.action-menu')
+      e.target.closest('.action-menu') ||
+      e.target.closest('.row-checkbox')
     ) {
       return;
     }
@@ -223,6 +278,12 @@ const DataTable = ({
   className="animate-pulse align-middle border-b"
   style={{ borderColor: "#cccccc" }}
 >
+        {/* Checkbox skeleton */}
+        {onDeleteSelected && (
+          <td className="whitespace-normal break-words" style={{ ...cellBaseStyle, width: "44px" }}>
+            <div className="h-4 w-4 bg-gray-200 rounded mx-auto"></div>
+          </td>
+        )}
         {columns.map((column, colIndex) => (
           <td
             key={`skeleton-cell-${rowIndex}-${colIndex}`}
@@ -246,6 +307,27 @@ const DataTable = ({
 
   return (
     <div className="w-full mt-6" style={{ fontSize: density.cellFontSize, lineHeight: density.lineHeight }}>
+
+      {/* Bulk Delete Bar */}
+      {onDeleteSelected && selectedRows.size > 0 && (
+        <div
+          className="flex items-center justify-between rounded-lg px-4 py-2 mb-3"
+          style={{ background: "#f3f0f8", border: "1px solid #d4cce8" }}
+        >
+          <span className="text-sm" style={{ color: "#5b4a8a" }}>
+            {selectedRows.size} row{selectedRows.size > 1 ? "s" : ""} selected
+          </span>
+          <button
+            onClick={handleBulkDelete}
+            className="flex items-center gap-1 px-3 py-1 rounded text-sm font-medium text-white"
+            style={{ background: "#e05252" }}
+          >
+            <Trash2 size={14} />
+            Delete Selected
+          </button>
+        </div>
+      )}
+
       <div
   className="border rounded-lg mb-4 overflow-y-auto"
   style={{ maxHeight: "calc(100vh - 240px)"}}
@@ -259,6 +341,29 @@ const DataTable = ({
         >
           <thead>
             <tr className="sticky top-0 z-10">
+              {/* Select-all checkbox header */}
+              {onDeleteSelected && <th
+                className="sticky top-0 z-10"
+                style={{
+                  background: "#F9F9F9",
+                  padding: "16px",
+                  fontSize: "16px",
+                  lineHeight: "22px",
+                  borderBottom: "1px solid #e5e5e5",
+                  width: "44px",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={isAllPageSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = isIndeterminate;
+                  }}
+                  onChange={handleSelectAll}
+                  aria-label="Select all rows on this page"
+                  style={{ cursor: "pointer", accentColor: "#8e78b7" }}
+                />
+              </th>}
               {columns.map((column, index) => (
                 <th
                   key={column.key || column.label}
@@ -319,7 +424,7 @@ const DataTable = ({
               renderSkeletonRows()
             ) : isError ? (
               <tr>
-                <td colSpan={columns.length} className="py-6 px-4 text-center">
+                <td colSpan={columns.length + (onDeleteSelected ? 1 : 0)} className="py-6 px-4 text-center">
                   <div className="text-red-500 mb-2">Error loading data</div>
                   <button
                     onClick={refetch}
@@ -332,25 +437,49 @@ const DataTable = ({
             ) : paginatedData.length === 0 ? (
               <tr>
                 <td
-                  colSpan={columns.length}
+                  colSpan={columns.length + (onDeleteSelected ? 1 : 0)}
                   className="py-4 px-4 text-center text-gray-500"
                 >
                   No data found
                 </td>
               </tr>
             ) : (
-              paginatedData.map((row, rowIndex) => (
-                <tr
+              paginatedData.map((row, rowIndex) => {
+                const globalIndex = (page - 1) * itemsPerPage + rowIndex;
+                const isRowSelected = selectedRows.has(globalIndex);
+
+                return (
+                  <tr
   key={rowIndex}
   style={{ height: "52px" }}
   className={`transition-colors align-middle ${
     onRowClick ? "cursor-pointer" : ""
   } ${
-    selectedRowId && row.sno === selectedRowId
+    isRowSelected
+      ? "bg-[#f3f0f8]"
+      : selectedRowId && row.sno === selectedRowId
       ? "bg-[#f3f0f8] border-l-4 border-l-[#8e78b7]"
       : "hover:bg-gray-50"
   } ${row.rowClassName || ""}`}
+  onClick={(e) => handleRowClickInternal(row, e)}
 >
+                    {/* Row checkbox */}
+                    {onDeleteSelected && (
+                      <td
+                        className="row-checkbox align-middle text-center"
+                        style={{ ...cellBaseStyle, width: "44px" }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isRowSelected}
+                          onChange={(e) => handleSelectRow(globalIndex, e)}
+                          aria-label={`Select row ${rowIndex + 1}`}
+                          style={{ cursor: "pointer", accentColor: "#8e78b7" }}
+                        />
+                      </td>
+                    )}
+
                   {columns.map((column, cellIndex) => {
                     if (column.label === "Action") {
                       const availableActions = actions.filter(
@@ -508,14 +637,15 @@ const DataTable = ({
                     );
                   })}
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
           <tfoot
   className="sticky bottom-0 z-20 bg-white"
 >
   <tr>
-    <td colSpan={columns.length} style={{ padding: '12px 16px', borderTop: '1px solid #cccccc' }}>
+    <td colSpan={columns.length + (onDeleteSelected ? 1 : 0)} style={{ padding: '12px 16px', borderTop: '1px solid #cccccc' }}>
       <div className="flex items-center justify-between">
         
         {/* Left Side - Results Info */}

@@ -240,30 +240,60 @@ const MigrationList = () => {
 
   const [deleteModal, setDeleteModal] = useState({
     open: false,
-    migrationId: null,
+    migrationIds: [],
   });
 
+
   const handleDeleteClick = (row) => {
-    setDeleteModal({ open: true, migrationId: row.migration_id });
+    setDeleteModal({
+      open: true,
+      migrationIds: [row.migration_id],
+    });
   };
 
+
+  const handleBulkDeleteMigrations = (rows) => {
+    const ids = rows.map((r) => r.migration_id);
+
+    setDeleteModal({
+      open: true,
+      migrationIds: ids,
+    });
+  };
+
+
   const confirmDeleteMigration = async () => {
-    if (!deleteModal.migrationId) return;
+    if (!deleteModal.migrationIds.length) return;
+
     try {
-      await axios.delete(
-        `${hostnameV2}/delete-migration/${deleteModal.migrationId}`,
-        {
+      if (deleteModal.migrationIds.length === 1) {
+        await axios.delete(
+          `${hostnameV2}/delete-migration/${deleteModal.migrationIds[0]}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+      } else {
+        await axios.delete(`${hostnameV2}/delete-migrations`, {
           headers: { Authorization: `Bearer ${token}` },
-        }
+          data: deleteModal.migrationIds,
+        });
+      }
+
+      toast.success(
+        deleteModal.migrationIds.length === 1
+          ? "Migration removed from platform."
+          : `${deleteModal.migrationIds.length} migrations removed from platform.`
       );
-      toast.success("Migration removed from platform.");
+
       refetchArchival();
     } catch (error) {
-      toast.error("Failed to remove migration.");
+      toast.error("Failed to remove migration(s).");
     } finally {
-      setDeleteModal({ open: false, migrationId: null });
+      setDeleteModal({ open: false, migrationIds: [] });
     }
   };
+
 
   const handleEditClick = async (row) => {
     try {
@@ -289,7 +319,7 @@ const MigrationList = () => {
     {
       label: "Edit",
       icon: <Pencil size={16} />,
-      show: (row) => (["ready to run", "failed", "scheduled"].includes(row?.status?.toLowerCase())),
+      show: (row) => (["ready to run", "failed", "scheduled", "completed"].includes(row?.status?.toLowerCase())),
       onClick: handleEditClick,
     },
     {
@@ -458,6 +488,7 @@ const MigrationList = () => {
         isError={archivalError}
         refetch={refetchArchival}
         resetSortTrigger={resetSortTrigger}
+        onDeleteSelected={handleBulkDeleteMigrations}
       />
 
       <DagErrorModal
@@ -475,7 +506,9 @@ const MigrationList = () => {
               Remove Migration
             </h2>
             <p className="mb-4 text-gray-700">
-              Are you sure you want to remove this migration?
+              {deleteModal.migrationIds.length === 1
+                ? "Are you sure you want to remove this migration?"
+                : `Are you sure you want to remove ${deleteModal.migrationIds.length} migrations?`}
             </p>
             <div className="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded-lg text-sm">
               Note: This will only remove the listing from the platform, not
