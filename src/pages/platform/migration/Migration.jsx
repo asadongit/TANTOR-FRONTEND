@@ -289,7 +289,7 @@ const MigrationList = () => {
     {
       label: "Edit",
       icon: <Pencil size={16} />,
-      show: (row) => (["ready to run", "failed"].includes(row?.status?.toLowerCase())),
+      show: (row) => (["ready to run", "failed", "scheduled"].includes(row?.status?.toLowerCase())),
       onClick: handleEditClick,
     },
     {
@@ -300,7 +300,7 @@ const MigrationList = () => {
     {
       label: "Run",
       icon: <Play size={16} fill="currentColor" />,
-      show: (row) => (["ready to run", "failed"].includes(row?.status?.toLowerCase())),
+      show: (row) => (["ready to run", "failed", "scheduled"].includes(row?.status?.toLowerCase())),
       onClick: async (row) => {
         try {
           const response = await axios.get(
