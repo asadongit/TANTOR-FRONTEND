@@ -151,7 +151,7 @@ const PurgeList = () => {
     {
       label: "Edit",
       icon: <Pencil size={16} />,
-      show: (row) => (["ready to run", "failed"].includes(row?.status?.toLowerCase())),
+      show: (row) => (["ready to run", "failed", "completed"].includes(row?.status?.toLowerCase())),
       onClick: (row) => {
         // Navigate to edit/canvas page and pass ui_json for node pre-population
         navigate("/PurgeCanvas", { state: { ui_json: row?.ui_json, purge_id: row?.purge_id } });
@@ -162,6 +162,7 @@ const PurgeList = () => {
       icon: <Trash2 size={16} />,
       onClick: (row) => {
         setPurgeToDelete(row);
+        setBulkPurgeIds([]);
         setShowDeleteModal(true);
       },
     },
@@ -247,23 +248,48 @@ const PurgeList = () => {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [purgeToDelete, setPurgeToDelete] = useState(null);
+  const [bulkPurgeIds, setBulkPurgeIds] = useState([]);
 
   const handleDeletePurge = async () => {
-    if (!purgeToDelete) return;
     try {
-      await axios.delete(`${hostnameV1}/purges/${purgeToDelete.purge_id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+
+      // SINGLE DELETE
+      if (purgeToDelete) {
+        await axios.delete(`${hostnameV1}/purges/${purgeToDelete.purge_id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+
+      // BULK DELETE
+      if (bulkPurgeIds.length > 0) {
+        await axios.delete(`${hostnameV1}/purges`, {
+          headers: { Authorization: `Bearer ${token}` },
+          data: bulkPurgeIds,
+        });
+      }
+
       toast.success("Purge deleted successfully!");
       setShowDeleteModal(false);
       setPurgeToDelete(null);
+      setBulkPurgeIds([]);
       refetchPurges();
+
     } catch (error) {
       toast.error("Failed to delete Purge.");
       setShowDeleteModal(false);
       setPurgeToDelete(null);
+      setBulkPurgeIds([]);
     }
   };
+
+
+  const handleBulkDelete = (rows) => {
+    const ids = rows.map((row) => row.purge_id);
+    setBulkPurgeIds(ids);
+    setPurgeToDelete(null);
+    setShowDeleteModal(true);
+  };
+
 
   return (
     <div className="p-6">
@@ -383,6 +409,7 @@ const PurgeList = () => {
         isError={purgeError}
         refetch={refetchPurges}
         resetSortTrigger={resetSortTrigger}
+        onDeleteSelected={handleBulkDelete}
       />
 
       <DagErrorModal
@@ -395,7 +422,11 @@ const PurgeList = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
             <h2 className="text-lg font-semibold mb-4">Delete Purge</h2>
-            <p className="mb-6">Are you sure you want to delete this purge?</p>
+            <p className="mb-6">
+              {bulkPurgeIds.length > 0
+                ? "Are you sure you want to delete the selected purges?"
+                : "Are you sure you want to delete this purge?"}
+            </p>
             <div className="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded-lg text-sm">
               Note: This will only remove the listing from the platform, not
               from the connections.

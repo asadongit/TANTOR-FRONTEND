@@ -22,6 +22,7 @@ import columnConfigurations from "../../components/columnsConfig";
 import { useAuth } from "../../context/AuthContext";
 import Breadcrumb from "../../components/Breadcrumb";
 import { useRef } from "react";
+import axios from "axios";
 
 const useDynamicData = (componentType) => {
 
@@ -178,6 +179,66 @@ const Details = () => {
     return () => clearInterval(intervalId);
   }, [refetch, autoRefreshInterval]);
 
+  const handleCDCDeleteSelected = (selectedItems) => {
+    if (!selectedItems || selectedItems.length === 0) return;
+
+    const cdcIds = selectedItems.map((row) => row.cdc_id);
+
+    setDeleteModal({
+      open: true,
+      type: "CDC connectors",
+      onConfirm: async () => {
+        const loadingToast = toast.loading("Deleting selected CDC connectors...");
+
+        try {
+          await axios.delete(`${hostnameV2}/cdc/bulk-delete`, {
+            headers: { Authorization: `Bearer ${token}` },
+            data: cdcIds,
+          });
+
+          toast.dismiss(loadingToast);
+          toast.success("Selected CDC connectors deleted successfully");
+
+          if (refetch) await refetch();
+        } catch (error) {
+          toast.dismiss(loadingToast);
+          console.error("Bulk delete failed:", error);
+          toast.error("Failed to delete selected CDC connectors");
+        }
+      },
+    });
+  };
+
+  const handleMetadataDeleteSelected = (selectedItems) => {
+    if (!selectedItems || selectedItems.length === 0) return;
+
+    const metadataIds = selectedItems.map((row) => row.metadata_id);
+
+    setDeleteModal({
+      open: true,
+      type: "selected metadata records",
+      onConfirm: async () => {
+        const loadingToast = toast.loading("Deleting selected metadata records...");
+
+        try {
+          await axios.delete(`${hostnameV1}/metadata-archivals/bulk-delete`, {
+            headers: { Authorization: `Bearer ${token}` },
+            data: metadataIds,
+          });
+
+          toast.dismiss(loadingToast);
+          toast.success("Selected metadata records deleted successfully");
+
+          if (refetch) await refetch();
+        } catch (error) {
+          toast.dismiss(loadingToast);
+          console.error("Bulk metadata delete failed:", error);
+          toast.error("Failed to delete selected metadata records");
+        }
+      },
+    });
+  };
+
 
   return (
     <div className="flex flex-col h-full p-4">
@@ -276,6 +337,14 @@ const Details = () => {
         isError={isError}
         refetch={refetch}
         resetSortTrigger={resetSortTrigger}
+        onDeleteSelected={
+          selectedType === "cdc"
+            ? handleCDCDeleteSelected
+            : selectedType === "metadata"
+              ? handleMetadataDeleteSelected
+              : undefined
+        }
+
       />
 
       {deleteModal.open && (
@@ -285,7 +354,7 @@ const Details = () => {
               Confirm Deletion
             </h2>
             <p className="mb-6 text-gray-700">
-              Are you sure you want to delete this {deleteModal.type}?
+              Are you sure you want to delete {deleteModal.type}?
             </p>
             <div className="flex justify-end gap-4">
               <button
