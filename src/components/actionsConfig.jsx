@@ -86,7 +86,7 @@ export const getActionConfigurations = ({ token, project, hostnameV2, hostnameV1
       {
         label: "Edit",
         icon: React.createElement(Pencil, { size: 16 }),
-        show: (row) => (["ready to run", "failed"].includes(row?.status?.toLowerCase())),
+        show: (row) => (["ready to run", "failed", "completed"].includes(row?.status?.toLowerCase())),
         onClick: (row) => {
           try {
             const nodeJson = row.ui_json
@@ -132,7 +132,7 @@ export const getActionConfigurations = ({ token, project, hostnameV2, hostnameV1
       {
         label: "Edit",
         icon: React.createElement(Pencil, { size: 16 }),
-        show: (row) => (["ready to run", "failed"].includes(row?.status?.toLowerCase())),
+        show: (row) => (["ready to run", "failed", "completed"].includes(row?.status?.toLowerCase())),
         onClick: (row) => navigate("/PurgeCanvas", { state: { ui_json: row?.ui_json, purge_id: row?.purge_id } }),
       },
       {

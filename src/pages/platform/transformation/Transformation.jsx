@@ -522,6 +522,24 @@ function Transformation() {
     });
   };
 
+  const handleBulkDeleteTransformation = (rows) => {
+    const ids = rows.map((row) => row.transformation_id);
+
+    setDeleteModal({
+      open: true,
+      type: "transformations",
+      onConfirm: async () => {
+        try {
+          const success = await confirmBulkDeleteTransformation(ids);
+          if (success) toast.success("Transformations deleted successfully");
+        } catch {
+          toast.error("Failed to delete transformations");
+        }
+      },
+    });
+  };
+
+
   const confirmDeleteTransformation = async (transformationId) => {
     try {
       const response = await axios.delete(
@@ -545,6 +563,33 @@ function Transformation() {
       throw error;
     }
   };
+
+  const confirmBulkDeleteTransformation = async (transformationIds) => {
+    try {
+      const response = await axios.delete(
+        `${hostname}/etl/transformation/bulk-delete`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          data: transformationIds,
+        }
+      );
+
+      if (response.status === 200) {
+        fetchTransformationData();
+        fetchDashboardData();
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error("Error bulk deleting transformations:", error);
+      toast.error("Failed to delete transformations");
+      throw error;
+    }
+  };
+
 
   const calculateTotalCount = (countObj) => {
     if (!countObj || Object.keys(countObj).length === 0) {
@@ -933,6 +978,7 @@ function Transformation() {
         refetch={fetchTransformationData}
         title="Transformations"
         resetSortTrigger={resetSortTrigger}
+        onDeleteSelected={handleBulkDeleteTransformation}
       />
 
       {deleteModal.open && (
@@ -940,8 +986,9 @@ function Transformation() {
           <div className="bg-white rounded-2xl w-[400px] p-8 max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-[#8e78b7] mb-4">Confirm Deletion</h2>
             <p className="mb-6 text-gray-700">
-              Are you sure you want to delete this {deleteModal.type}?
+              {deleteModal.type === "transformations" ? "Are you sure you want to delete the selected transformations" : "Are you sure you want to delete this transformation"}
             </p>
+
             <div className="flex justify-end gap-4">
               <button
                 onClick={() => setDeleteModal({ open: false, type: null, onConfirm: null })}
