@@ -195,7 +195,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
             { name: 'Reports Config', path: '/config/report' },
           ]
         },
-        { name: 'Audit Report', path: '/audit' },
+        ...(isUserManager ? [{ name: 'Audit Report', path: '/audit' }] : []),
       ]
     },
     { type: 'divider' },
