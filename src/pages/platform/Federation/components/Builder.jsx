@@ -461,11 +461,13 @@ export default function Builder({ handleSwitch, checked }) {
                                                                 position: "sticky",
                                                                 top: 0,
                                                                 zIndex: 10,
+                                                                textAlign: "left",
+                                                                verticalAlign: "middle",
                                                             }}
                                                         >
                                                             <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden" }}>
                                                                 <GripVertical size={12} style={{ opacity: 0.5, flexShrink: 0 }} />
-                                                                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
+                                                                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
                                                                     {toTitleCase(col)}
                                                                 </span>
                                                                 <ArrowUpDown size={13} style={{ flexShrink: 0, opacity: sortConfig.key === col ? 1 : 0.5 }} />
@@ -481,7 +483,7 @@ export default function Builder({ handleSwitch, checked }) {
                                                             const val = row[col];
                                                             const isLink = typeof val === "string" && val.startsWith("http");
                                                             return (
-                                                                <td key={ci} style={{ padding: "11px 16px", fontSize: "14px", color: "#23252D", whiteSpace: "nowrap", maxWidth: "260px", overflow: "hidden", textOverflow: "ellipsis" }} title={String(val ?? "")}>
+                                                                <td key={ci} style={{ padding: "11px 16px", fontSize: "14px", color: "#23252D", whiteSpace: "nowrap", maxWidth: "260px", overflow: "hidden", textOverflow: "ellipsis", verticalAlign: "middle", }} title={String(val ?? "")}>
                                                                     {isLink ? <a href={val} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">{val}</a> : (val === 0 ? 0 : val ?? "-")}
                                                                 </td>
                                                             );
