@@ -85,9 +85,9 @@ export default function Editor() {
     if (!sortConfig.key) return 0;
     const av = a[sortConfig.key], bv = b[sortConfig.key];
     if (typeof av === "number" && typeof bv === "number") return sortConfig.direction === "asc" ? av - bv : bv - av;
-    return sortConfig.direction === "asc" ? String(av||"").localeCompare(String(bv||"")) : String(bv||"").localeCompare(String(av||""));
+    return sortConfig.direction === "asc" ? String(av || "").localeCompare(String(bv || "")) : String(bv || "").localeCompare(String(av || ""));
   });
-  const toTitleCase = s => s.replace(/_/g," ").toLowerCase().replace(/\w/g,c=>c.toUpperCase());
+  const toTitleCase = s => s.replace(/_/g, " ").toLowerCase().replace(/\w/g, c => c.toUpperCase());
   // ──────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -943,14 +943,16 @@ export default function Editor() {
                                     position: "sticky",
                                     top: 0,
                                     zIndex: 10,
+                                    textAlign: "left",
+                                    verticalAlign: "middle"
                                   }}
                                 >
-                                  <div style={{ display:"flex", alignItems:"center", gap:"6px", overflow:"hidden" }}>
-                                    <GripVertical size={12} style={{ opacity:0.5, flexShrink:0 }} />
-                                    <span style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1, minWidth:0 }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden" }}>
+                                    <GripVertical size={12} style={{ opacity: 0.5, flexShrink: 0 }} />
+                                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
                                       {toTitleCase(col)}
                                     </span>
-                                    <ArrowUpDown size={13} style={{ flexShrink:0, opacity: sortConfig.key===col ? 1 : 0.5 }} />
+                                    <ArrowUpDown size={13} style={{ flexShrink: 0, opacity: sortConfig.key === col ? 1 : 0.5 }} />
                                   </div>
                                 </th>
                               ))}
@@ -958,12 +960,12 @@ export default function Editor() {
                           </thead>
                           <tbody>
                             {sortedData.map((row, ri) => (
-                              <tr key={ri} style={{ borderBottom:"1px solid #e5e5e5" }} className="hover:bg-gray-50">
+                              <tr key={ri} style={{ borderBottom: "1px solid #e5e5e5" }} className="hover:bg-gray-50">
                                 {orderedCols.map((col, ci) => {
                                   const val = row[col];
                                   const isLink = typeof val === "string" && val.startsWith("http");
                                   return (
-                                    <td key={ci} style={{ padding:"11px 16px", fontSize:"14px", color:"#23252D", whiteSpace:"nowrap", maxWidth:"260px", overflow:"hidden", textOverflow:"ellipsis" }} title={val}>
+                                    <td key={ci} style={{ padding: "11px 16px", fontSize: "14px", color: "#23252D", whiteSpace: "nowrap", maxWidth: "260px", overflow: "hidden", textOverflow: "ellipsis",verticalAlign: "middle",}} title={val}>
                                       {isLink ? <a href={val} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">{val}</a> : (val === 0 ? 0 : val ?? "-")}
                                     </td>
                                   );
