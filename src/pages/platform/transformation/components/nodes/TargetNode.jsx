@@ -317,7 +317,7 @@ export const TargetNode = ({ id, data }) => {
     // This reflects the actual pipeline output: renamed columns use new names,
     // restricted/dropped columns are excluded, new columns from transformations are included
     if (window.replayedDataframeColumns && Object.keys(window.replayedDataframeColumns).length > 0) {
-      const replayedCols = new Set();
+      const replayedColsMap = new Map();
 
       // Find transformation nodes connected to this target
       if (window.allNodes && window.allEdges) {
@@ -339,8 +339,11 @@ export const TargetNode = ({ id, data }) => {
               const replayedDf = window.replayedDataframeColumns[alias] || window.replayedDataframeColumns[srcNode.id];
               if (replayedDf && Array.isArray(replayedDf.columns)) {
                 replayedDf.columns.forEach(col => {
-                  const colName = typeof col === "object" ? col.name : col;
-                  if (colName) replayedCols.add(colName);
+                  const colObj = typeof col === "object" ? { ...col } : { name: col, datatype: null };
+                  if (colObj.name) {
+                    const key = `${colObj.name}|${colObj.datatype || ''}`;
+                    replayedColsMap.set(key, colObj);
+                  }
                 });
               }
             }
@@ -348,13 +351,18 @@ export const TargetNode = ({ id, data }) => {
         });
       }
 
-      if (replayedCols.size > 0) {
-        return Array.from(replayedCols);
+      if (replayedColsMap.size > 0) {
+        return Array.from(replayedColsMap.values());
       }
     }
 
     // Fallback: naive aggregation when replayed data isn't available yet
-    let allCols = getAllSelectedSourceColumns();
+    let allCols = [];
+    const rawCols = getAllSelectedSourceColumns() || [];
+    rawCols.forEach(col => {
+      if (typeof col === 'object') allCols.push({ ...col });
+      else allCols.push({ name: col, datatype: null });
+    });
 
     if (window.allNodes && window.allEdges) {
       const incomingEdges = window.allEdges.filter(e => e.target === id);
@@ -369,7 +377,10 @@ export const TargetNode = ({ id, data }) => {
         if (transNode && transNode.data && Array.isArray(transNode.data.transformations)) {
           transNode.data.transformations.forEach(tr => {
             if (Array.isArray(tr.target_column)) {
-              allCols = [...allCols, ...tr.target_column];
+              tr.target_column.forEach(col => {
+                if (typeof col === 'object') allCols.push({ ...col });
+                else allCols.push({ name: col, datatype: null });
+              });
             }
           });
         }
@@ -389,10 +400,10 @@ export const TargetNode = ({ id, data }) => {
       sourceIds.forEach(sourceId => {
         const sourceNode = window.allNodes.find(n => n.id === sourceId);
         if (sourceNode && sourceNode.data && Array.isArray(sourceNode.data.columns)) {
-          const sourceCols = sourceNode.data.columns.map(col =>
-            typeof col === "object" ? col.name : col
-          );
-          allCols = [...allCols, ...sourceCols];
+          sourceNode.data.columns.forEach(col => {
+            if (typeof col === 'object') allCols.push({ ...col });
+            else allCols.push({ name: col, datatype: null });
+          });
         }
       });
     }
@@ -400,15 +411,30 @@ export const TargetNode = ({ id, data }) => {
     if (data && Array.isArray(data.transformations)) {
       data.transformations.forEach(tr => {
         if (Array.isArray(tr.target_column)) {
-          allCols = [...allCols, ...tr.target_column];
+          tr.target_column.forEach(col => {
+            if (typeof col === 'object') allCols.push({ ...col });
+            else allCols.push({ name: col, datatype: null });
+          });
         }
         if (Array.isArray(tr.source_column)) {
-          allCols = [...allCols, ...tr.source_column];
+          tr.source_column.forEach(col => {
+            if (typeof col === 'object') allCols.push({ ...col });
+            else allCols.push({ name: col, datatype: null });
+          });
         }
       });
     }
 
-    return Array.from(new Set(allCols.filter(Boolean)));
+    // Deduplicate objects by name and datatype
+    const uniqueColsMap = new Map();
+    allCols.filter(Boolean).forEach(col => {
+      const key = `${col.name}|${col.datatype || ''}`;
+      if (!uniqueColsMap.has(key)) {
+        uniqueColsMap.set(key, col);
+      }
+    });
+
+    return Array.from(uniqueColsMap.values());
   };
 
   const getAllTargetColumns = () => {

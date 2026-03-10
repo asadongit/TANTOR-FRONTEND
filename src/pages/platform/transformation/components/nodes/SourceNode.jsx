@@ -522,6 +522,14 @@ export const SourceNode = ({ id, data }) => {
         type: ACTION_TYPES.SET_ORIGINAL_SOURCE_COLUMNS,
         payload: {
           sourceNodeId: id,
+          columns: fileColumnsFormatted
+        }
+      });
+
+      dispatch({
+        type: ACTION_TYPES.SET_ORIGINAL_SOURCE_COLUMN_NAMES,
+        payload: {
+          sourceNodeId: id,
           columns: fileColumnsFormatted.map(col => col.name)
         }
       });
@@ -573,6 +581,14 @@ export const SourceNode = ({ id, data }) => {
 
         dispatch({
           type: ACTION_TYPES.SET_ORIGINAL_SOURCE_COLUMNS,
+          payload: {
+            sourceNodeId: id,
+            columns: fileColumnsFormatted
+          }
+        });
+
+        dispatch({
+          type: ACTION_TYPES.SET_ORIGINAL_SOURCE_COLUMN_NAMES,
           payload: {
             sourceNodeId: id,
             columns: fileColumnsFormatted.map(col => col.name)
@@ -674,6 +690,17 @@ export const SourceNode = ({ id, data }) => {
 
         dispatch({
           type: ACTION_TYPES.SET_ORIGINAL_SOURCE_COLUMNS,
+          payload: {
+            sourceNodeId: id,
+            columns: currentColumns.map(col => ({
+              name: col.name,
+              datatype: col.datatype
+            }))
+          }
+        });
+
+        dispatch({
+          type: ACTION_TYPES.SET_ORIGINAL_SOURCE_COLUMN_NAMES,
           payload: {
             sourceNodeId: id,
             columns: currentColumns.map(col => col.name)
