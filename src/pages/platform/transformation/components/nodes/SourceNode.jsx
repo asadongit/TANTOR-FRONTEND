@@ -1646,8 +1646,8 @@ export const SourceNode = ({ id, data }) => {
                 <button
                   onClick={handleCustomDatatypeSave}
                   className={`px-3 py-1.5 text-sm rounded focus:outline-none focus:ring-2 ${customDatatypeInput.trim() !== ""
-                      ? "bg-[#8E77BB] text-white hover:bg-[#7A6BA3] focus:ring-[#8E77BB]"
-                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    ? "bg-[#8E77BB] text-white hover:bg-[#7A6BA3] focus:ring-[#8E77BB]"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
                     }`}
                   disabled={customDatatypeInput.trim() === ""}
                 >
@@ -1739,8 +1739,8 @@ export const SourceNode = ({ id, data }) => {
                 <button
                   onClick={applyProcedureMapping}
                   className={`px-3 py-1.5 text-sm rounded focus:outline-none focus:ring-2 ${areAllParametersMapped()
-                      ? "bg-[#8E77BB] text-white hover:bg-[#7A6BA3] focus:ring-[#8E77BB]"
-                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    ? "bg-[#8E77BB] text-white hover:bg-[#7A6BA3] focus:ring-[#8E77BB]"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
                     }`}
                   disabled={!areAllParametersMapped()}
                 >

@@ -1,6 +1,7 @@
 import React from "react";
 import { Plus, X } from "lucide-react";
 import { DATE_FORMATS, getFormatExample } from "../../drawer/operations/timeZoneFormatMapping";
+import { featureFlags } from "../../../../../../components/FeatureFlag";
 
 export const SourceFileType = ({
   fileType,
@@ -46,7 +47,8 @@ export const SourceFileType = ({
   };
 
   const handleUseData = (data) => {
-    const pathParts = data.output_json_file.split('/');
+    const normalizedOutputPath = data.output_json_file.replace(/\\/g, '/');
+    const pathParts = normalizedOutputPath.split('/');
     const fileNameFromPath = pathParts.pop();
     const directoryPath = pathParts.join('/') + '/';
 
@@ -142,6 +144,8 @@ export const SourceFileType = ({
           </button>
           {fileTypeDropdownOpen && (
             <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1">
+
+
               <div
                 className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${fileType === "CSV" ? "bg-gray-100" : ""}`}
                 onClick={() => {
@@ -152,21 +156,37 @@ export const SourceFileType = ({
                 CSV
               </div>
 
-              <div
-                className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${fileType === "JSON" ? "bg-gray-100" : ""}`}
-                onClick={() => {
-                  setFileType("JSON");
-                  setFileTypeDropdownOpen(false);
-                }}
-              >
-                JSON
-              </div>
+              {featureFlags.SHOW_UNSTRUCTURED_IN_ETL && (
+                <div
+                  className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${fileType === "JSON" ? "bg-gray-100" : ""}`}
+                  onClick={() => {
+                    setFileType("JSON");
+                    setFileTypeDropdownOpen(false);
+                  }}
+                >
+                  JSON
+                </div>
+              )}
+
+              {featureFlags.SHOW_UNSTRUCTURED_IN_ETL && (
+                <div
+                  className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${fileType === "XML" ? "bg-gray-100" : ""}`}
+                  onClick={() => {
+                    setFileType("XML");
+                    setFileTypeDropdownOpen(false);
+                  }}
+                >
+                  XML
+                </div>
+              )}
+
+
             </div>
           )}
         </div>
       </div>
 
-      {fileType === "JSON" && (
+      {(fileType === "JSON" || fileType === 'XML') && (
         <div className="mb-2">
           <label className="text-xs font-semibold text-black mb-0.5 block">
             Upload File
@@ -176,7 +196,7 @@ export const SourceFileType = ({
             <input
               ref={fileInputRef}
               type="file"
-              accept=".txt,text/plain"
+              accept=".txt,text/plain,.json,.xml"
               className="hidden"
               onChange={handleTxtFileChange}
             />
@@ -406,11 +426,10 @@ export const SourceFileType = ({
               </button>
               <button
                 onClick={handleFormatSave}
-                className={`px-3 py-1.5 text-sm rounded focus:outline-none focus:ring-2 ${
-                  (selectedFormat === "custom" ? customFormatInput.trim() !== "" : selectedFormat.trim() !== "")
-                    ? "bg-[#8E77BB] text-white hover:bg-[#7A6BA3] focus:ring-[#8E77BB]"
-                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                }`}
+                className={`px-3 py-1.5 text-sm rounded focus:outline-none focus:ring-2 ${(selectedFormat === "custom" ? customFormatInput.trim() !== "" : selectedFormat.trim() !== "")
+                  ? "bg-[#8E77BB] text-white hover:bg-[#7A6BA3] focus:ring-[#8E77BB]"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  }`}
                 disabled={selectedFormat === "custom" ? customFormatInput.trim() === "" : selectedFormat.trim() === ""}
               >
                 Save
