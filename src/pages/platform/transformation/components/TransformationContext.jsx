@@ -16,6 +16,7 @@ const initialState = {
   originalSourceColumns: {}, // New property to store original selections
   preservedTargetMappings: {}, // New property to maintain target mappings across edit sessions
   sourceOriginalColumns: {}, // <-- Add this for original columns per source node
+  originalSourceColumnNames: {}, // New property for name-only JSON generation
   properties: {
     logging: {
       isLoggingEnabled: true,
@@ -50,6 +51,7 @@ const ACTION_TYPES = {
   PRESERVE_TARGET_MAPPING: "PRESERVE_TARGET_MAPPING", // New action type
   RESTORE_TARGET_MAPPINGS: "RESTORE_TARGET_MAPPINGS", // New action type
   SET_SOURCE_ORIGINAL_COLUMNS: "SET_SOURCE_ORIGINAL_COLUMNS", // <-- Add new action type
+  SET_ORIGINAL_SOURCE_COLUMN_NAMES: "SET_ORIGINAL_SOURCE_COLUMN_NAMES", // New action type for name-only JSON
   UPDATE_GLOBAL_PROPERTIES: "UPDATE_GLOBAL_PROPERTIES",
 };
 
@@ -266,6 +268,18 @@ function transformationReducer(state, action) {
         },
       };
     }
+
+    case ACTION_TYPES.SET_ORIGINAL_SOURCE_COLUMN_NAMES: {
+      const { sourceNodeId, columns } = action.payload;
+      return {
+        ...state,
+        originalSourceColumnNames: {
+          ...state.originalSourceColumnNames,
+          [sourceNodeId]: columns,
+        },
+      };
+    }
+
     case ACTION_TYPES.UPDATE_TARGET_SELECTED_SOURCE: {
       const { targetNodeId, sourceNodeId } = action.payload;
       return {
@@ -613,7 +627,8 @@ export function TransformationProvider({ children }) {
 
         if (sourceData) {
           const sourceKey = sourceData.alias || `source_${sourceId}`;
-          const originalColumns = state.originalSourceColumns[sourceId] || [];
+          const originalColumns = state.originalSourceColumnNames[sourceId] || state.originalSourceColumns[sourceId] || [];
+
 
 
 
