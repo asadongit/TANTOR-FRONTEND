@@ -425,12 +425,12 @@ export const TargetNode = ({ id, data }) => {
       });
     }
 
-    // Deduplicate objects by name and datatype
+    // Deduplicate objects by name, preferring those with datatypes
     const uniqueColsMap = new Map();
     allCols.filter(Boolean).forEach(col => {
-      const key = `${col.name}|${col.datatype || ''}`;
-      if (!uniqueColsMap.has(key)) {
-        uniqueColsMap.set(key, col);
+      const existing = uniqueColsMap.get(col.name);
+      if (!existing || (col.datatype && !existing.datatype)) {
+        uniqueColsMap.set(col.name, col);
       }
     });
 
@@ -533,26 +533,37 @@ export const TargetNode = ({ id, data }) => {
   }, [selectedSourceForMapping, connectedSourceNodes]);
 
   const sourceColumnOptionsForMapping = useMemo(() => {
-    // Start with columns from the selected source
-    let cols = [];
-    if (selectedSourceNode) {
-      cols = Array.isArray(selectedSourceNode.data?.columns)
-        ? selectedSourceNode.data.columns
-        : [];
+    // Collect all columns from multiple sources
+    const allColsRaw = [];
+
+    // 1. Columns from the selected source
+    if (selectedSourceNode && Array.isArray(selectedSourceNode.data?.columns)) {
+      selectedSourceNode.data.columns.forEach(col => {
+        if (typeof col === "object") allColsRaw.push({ ...col });
+        else allColsRaw.push({ name: col, datatype: null });
+      });
     }
 
-    // Add columns from transformations
+    // 2. Columns from transformations (already deduplicated by name in getAllSourceColumns)
     const allAvailableCols = getAllSourceColumns();
+    allAvailableCols.forEach(col => {
+      if (typeof col === "object") allColsRaw.push({ ...col });
+      else allColsRaw.push({ name: col, datatype: null });
+    });
 
-    // Combine both sources
-    const combinedCols = [...cols.map(col =>
-      typeof col === "object" ? col.name : col
-    ), ...allAvailableCols];
+    // Deduplicate by name, preferring those with datatypes
+    const uniqueColsMap = new Map();
+    allColsRaw.filter(col => col && col.name).forEach(col => {
+      const existing = uniqueColsMap.get(col.name);
+      if (!existing || (col.datatype && !existing.datatype)) {
+        uniqueColsMap.set(col.name, col);
+      }
+    });
 
-    // Remove duplicates
-    const uniqueCols = Array.from(new Set(combinedCols.filter(Boolean)));
-
-    return uniqueCols.map(col => ({ value: col, label: col }));
+    return Array.from(uniqueColsMap.values()).map(col => ({
+      value: col,
+      label: col.name
+    }));
   }, [selectedSourceNode, getAllSourceColumns]);
 
   // FIXED: Add effect to handle column updates and SCD config refresh
