@@ -32,25 +32,42 @@ export const TransformationNode = ({ id, data }) => {
       data.sourceNodes.forEach(sourceNode => {
         if (sourceNode && sourceNode.data && sourceNode.data.columns) {
           const nodeColumns = Array.isArray(sourceNode.data.columns)
-            ? sourceNode.data.columns.map(col => typeof col === 'object' ? col.name : col)
+            ? sourceNode.data.columns.map(col => typeof col === 'object' ? { name: col.name, datatype: col.datatype } : { name: col, datatype: null })
             : [];
           columns = [...columns, ...nodeColumns];
         }
       });
     }
 
-    if (state && state.selectedSourceColumnsSet) {
-      Object.values(state.selectedSourceColumnsSet).forEach(columnSet => {
-        if (columnSet instanceof Set) {
-          columns = [...columns, ...Array.from(columnSet)];
+    if (state && state.sourceOriginalColumns) {
+      Object.entries(state.sourceOriginalColumns).forEach(([sourceId, sourceCols]) => {
+        // Only include columns from sources that are actually connected to this transformation node
+        const isConnected = data.sourceNodes?.some(sn => sn.id === sourceId || sn.data?.alias === sourceId);
+        if (isConnected && Array.isArray(sourceCols)) {
+          sourceCols.forEach(col => {
+            if (typeof col === 'object') {
+              columns.push({ name: col.name, datatype: col.datatype });
+            } else {
+              columns.push({ name: col, datatype: null });
+            }
+          });
         }
       });
     }
 
-    columns = Array.from(new Set(columns.filter(Boolean)));
-    setSourceColumns(columns);
+    // Deduplicate objects by name and datatype
+    const uniqueColumnsMap = new Map();
+    columns.filter(Boolean).forEach(col => {
+      const key = `${col.name}|${col.datatype || ''}`;
+      if (!uniqueColumnsMap.has(key)) {
+        uniqueColumnsMap.set(key, col);
+      }
+    });
 
-    const hasColumns = columns.length > 0;
+    const finalColumns = Array.from(uniqueColumnsMap.values());
+    setSourceColumns(finalColumns);
+
+    const hasColumns = finalColumns.length > 0;
     setIsDataReady(hasColumns && isConnected.hasSource && isConnected.hasTarget);
 
   }, [data, state, id, isConnected]);

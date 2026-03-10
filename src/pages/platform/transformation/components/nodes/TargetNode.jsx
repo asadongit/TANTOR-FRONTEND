@@ -317,7 +317,7 @@ export const TargetNode = ({ id, data }) => {
     // This reflects the actual pipeline output: renamed columns use new names,
     // restricted/dropped columns are excluded, new columns from transformations are included
     if (window.replayedDataframeColumns && Object.keys(window.replayedDataframeColumns).length > 0) {
-      const replayedCols = new Set();
+      const replayedColsMap = new Map();
 
       // Find transformation nodes connected to this target
       if (window.allNodes && window.allEdges) {
@@ -339,8 +339,11 @@ export const TargetNode = ({ id, data }) => {
               const replayedDf = window.replayedDataframeColumns[alias] || window.replayedDataframeColumns[srcNode.id];
               if (replayedDf && Array.isArray(replayedDf.columns)) {
                 replayedDf.columns.forEach(col => {
-                  const colName = typeof col === "object" ? col.name : col;
-                  if (colName) replayedCols.add(colName);
+                  const colObj = typeof col === "object" ? { ...col } : { name: col, datatype: null };
+                  if (colObj.name) {
+                    const key = `${colObj.name}|${colObj.datatype || ''}`;
+                    replayedColsMap.set(key, colObj);
+                  }
                 });
               }
             }
@@ -348,13 +351,18 @@ export const TargetNode = ({ id, data }) => {
         });
       }
 
-      if (replayedCols.size > 0) {
-        return Array.from(replayedCols);
+      if (replayedColsMap.size > 0) {
+        return Array.from(replayedColsMap.values());
       }
     }
 
     // Fallback: naive aggregation when replayed data isn't available yet
-    let allCols = getAllSelectedSourceColumns();
+    let allCols = [];
+    const rawCols = getAllSelectedSourceColumns() || [];
+    rawCols.forEach(col => {
+      if (typeof col === 'object') allCols.push({ ...col });
+      else allCols.push({ name: col, datatype: null });
+    });
 
     if (window.allNodes && window.allEdges) {
       const incomingEdges = window.allEdges.filter(e => e.target === id);
@@ -369,7 +377,10 @@ export const TargetNode = ({ id, data }) => {
         if (transNode && transNode.data && Array.isArray(transNode.data.transformations)) {
           transNode.data.transformations.forEach(tr => {
             if (Array.isArray(tr.target_column)) {
-              allCols = [...allCols, ...tr.target_column];
+              tr.target_column.forEach(col => {
+                if (typeof col === 'object') allCols.push({ ...col });
+                else allCols.push({ name: col, datatype: null });
+              });
             }
           });
         }
@@ -389,10 +400,10 @@ export const TargetNode = ({ id, data }) => {
       sourceIds.forEach(sourceId => {
         const sourceNode = window.allNodes.find(n => n.id === sourceId);
         if (sourceNode && sourceNode.data && Array.isArray(sourceNode.data.columns)) {
-          const sourceCols = sourceNode.data.columns.map(col =>
-            typeof col === "object" ? col.name : col
-          );
-          allCols = [...allCols, ...sourceCols];
+          sourceNode.data.columns.forEach(col => {
+            if (typeof col === 'object') allCols.push({ ...col });
+            else allCols.push({ name: col, datatype: null });
+          });
         }
       });
     }
@@ -400,15 +411,30 @@ export const TargetNode = ({ id, data }) => {
     if (data && Array.isArray(data.transformations)) {
       data.transformations.forEach(tr => {
         if (Array.isArray(tr.target_column)) {
-          allCols = [...allCols, ...tr.target_column];
+          tr.target_column.forEach(col => {
+            if (typeof col === 'object') allCols.push({ ...col });
+            else allCols.push({ name: col, datatype: null });
+          });
         }
         if (Array.isArray(tr.source_column)) {
-          allCols = [...allCols, ...tr.source_column];
+          tr.source_column.forEach(col => {
+            if (typeof col === 'object') allCols.push({ ...col });
+            else allCols.push({ name: col, datatype: null });
+          });
         }
       });
     }
 
-    return Array.from(new Set(allCols.filter(Boolean)));
+    // Deduplicate objects by name, preferring those with datatypes
+    const uniqueColsMap = new Map();
+    allCols.filter(Boolean).forEach(col => {
+      const existing = uniqueColsMap.get(col.name);
+      if (!existing || (col.datatype && !existing.datatype)) {
+        uniqueColsMap.set(col.name, col);
+      }
+    });
+
+    return Array.from(uniqueColsMap.values());
   };
 
   const getAllTargetColumns = () => {
@@ -507,26 +533,37 @@ export const TargetNode = ({ id, data }) => {
   }, [selectedSourceForMapping, connectedSourceNodes]);
 
   const sourceColumnOptionsForMapping = useMemo(() => {
-    // Start with columns from the selected source
-    let cols = [];
-    if (selectedSourceNode) {
-      cols = Array.isArray(selectedSourceNode.data?.columns)
-        ? selectedSourceNode.data.columns
-        : [];
+    // Collect all columns from multiple sources
+    const allColsRaw = [];
+
+    // 1. Columns from the selected source
+    if (selectedSourceNode && Array.isArray(selectedSourceNode.data?.columns)) {
+      selectedSourceNode.data.columns.forEach(col => {
+        if (typeof col === "object") allColsRaw.push({ ...col });
+        else allColsRaw.push({ name: col, datatype: null });
+      });
     }
 
-    // Add columns from transformations
+    // 2. Columns from transformations (already deduplicated by name in getAllSourceColumns)
     const allAvailableCols = getAllSourceColumns();
+    allAvailableCols.forEach(col => {
+      if (typeof col === "object") allColsRaw.push({ ...col });
+      else allColsRaw.push({ name: col, datatype: null });
+    });
 
-    // Combine both sources
-    const combinedCols = [...cols.map(col =>
-      typeof col === "object" ? col.name : col
-    ), ...allAvailableCols];
+    // Deduplicate by name, preferring those with datatypes
+    const uniqueColsMap = new Map();
+    allColsRaw.filter(col => col && col.name).forEach(col => {
+      const existing = uniqueColsMap.get(col.name);
+      if (!existing || (col.datatype && !existing.datatype)) {
+        uniqueColsMap.set(col.name, col);
+      }
+    });
 
-    // Remove duplicates
-    const uniqueCols = Array.from(new Set(combinedCols.filter(Boolean)));
-
-    return uniqueCols.map(col => ({ value: col, label: col }));
+    return Array.from(uniqueColsMap.values()).map(col => ({
+      value: col,
+      label: col.name
+    }));
   }, [selectedSourceNode, getAllSourceColumns]);
 
   // FIXED: Add effect to handle column updates and SCD config refresh

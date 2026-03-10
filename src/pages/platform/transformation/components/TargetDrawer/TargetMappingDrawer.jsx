@@ -120,7 +120,7 @@ const TargetMappingDrawer = ({
     const refreshSourceColumns = useCallback(() => {
         if (!window.allNodes || !window.allEdges) return;
 
-        const sourceColumns = new Set();
+        const sourceColsRaw = [];
 
         // Find all transformation nodes connected to this target
         const incomingEdges = window.allEdges.filter(e => e.target === nodeId);
@@ -131,7 +131,6 @@ const TargetMappingDrawer = ({
             });
 
         // ETL-correct approach: use post-transformation replayed columns
-        // These already reflect restrict, rename, drop, join, and new-column effects
         if (window.replayedDataframeColumns && Object.keys(window.replayedDataframeColumns).length > 0) {
             transformationNodeIds.forEach(transId => {
                 const transIncoming = window.allEdges.filter(e => e.target === transId);
@@ -142,18 +141,13 @@ const TargetMappingDrawer = ({
                         const replayedDf = window.replayedDataframeColumns[alias] || window.replayedDataframeColumns[sourceNode.id];
                         if (replayedDf && Array.isArray(replayedDf.columns)) {
                             replayedDf.columns.forEach(col => {
-                                const colName = typeof col === 'object' ? col.name : col;
-                                if (colName) sourceColumns.add(colName);
+                                if (typeof col === 'object') sourceColsRaw.push({ ...col });
+                                else sourceColsRaw.push({ name: col, datatype: null });
                             });
                         }
                     }
                 });
             });
-
-            if (sourceColumns.size > 0) {
-                setAvailableSourceColumns(Array.from(sourceColumns));
-                return;
-            }
         }
 
         // Fallback: gather from source nodes and transformation outputs directly
@@ -163,37 +157,56 @@ const TargetMappingDrawer = ({
                 const sourceNode = window.allNodes.find(n => n.id === e.source && n.type === 'source');
                 if (sourceNode && sourceNode.data && Array.isArray(sourceNode.data.columns)) {
                     sourceNode.data.columns.forEach(col => {
-                        const colName = typeof col === 'object' ? col.name : col;
-                        if (colName) sourceColumns.add(colName);
+                        if (typeof col === 'object') sourceColsRaw.push({ ...col });
+                        else sourceColsRaw.push({ name: col, datatype: null });
                     });
                 }
             });
 
-            // Also get columns from transformation outputs
             const transNode = window.allNodes.find(n => n.id === transId);
             if (transNode && transNode.data && Array.isArray(transNode.data.transformations)) {
                 transNode.data.transformations.forEach(tr => {
                     if (Array.isArray(tr.target_column)) {
                         tr.target_column.forEach(col => {
-                            if (col) sourceColumns.add(col);
+                            if (typeof col === 'object') sourceColsRaw.push({ ...col });
+                            else if (col) sourceColsRaw.push({ name: col, datatype: null });
                         });
                     }
                 });
             }
         });
 
-        const columnsArray = Array.from(sourceColumns);
-        if (columnsArray.length > 0) {
-            setAvailableSourceColumns(columnsArray);
-        }
+        // Deduplicate by name, preferring objects with datatypes
+        const uniqueColsMap = new Map();
+        sourceColsRaw.filter(col => col && col.name).forEach(col => {
+            const existing = uniqueColsMap.get(col.name);
+            if (!existing || (col.datatype && !existing.datatype)) {
+                uniqueColsMap.set(col.name, col);
+            }
+        });
+
+        setAvailableSourceColumns(Array.from(uniqueColsMap.values()));
     }, [nodeId]);
 
     useEffect(() => {
         if (sourceColumnOptions && sourceColumnOptions.length > 0) {
-            const sourceColValues = sourceColumnOptions.map(opt => opt.value);
             setAvailableSourceColumns(prevCols => {
-                const allCols = [...prevCols, ...sourceColValues];
-                return Array.from(new Set(allCols));
+                const allColsRaw = [...prevCols];
+                sourceColumnOptions.forEach(opt => {
+                    if (typeof opt.value === 'object') allColsRaw.push({ ...opt.value });
+                    else if (opt.value) allColsRaw.push({ name: opt.value, datatype: null });
+                });
+
+                // Deduplicate by name, preferring those with datatypes
+                const uniqueColsMap = new Map();
+                allColsRaw.filter(col => col && col.name).forEach(col => {
+                    const existing = uniqueColsMap.get(col.name);
+                    if (!existing || (col.datatype && !existing.datatype)) {
+                        uniqueColsMap.set(col.name, col);
+                    }
+                });
+
+                return Array.from(uniqueColsMap.values());
             });
         }
 
@@ -224,7 +237,10 @@ const TargetMappingDrawer = ({
         const hasNonEmptyMapping =
             targetMapping &&
             typeof targetMapping === 'object' &&
-            Object.values(targetMapping).some(val => val && val.trim() !== "");
+            Object.values(targetMapping).some(val => {
+                const valToCheck = typeof val === 'object' ? val.name : val;
+                return valToCheck && valToCheck.trim() !== "";
+            });
 
         if (hasNonEmptyMapping) {
             effectiveMapping = { ...targetMapping };
@@ -239,15 +255,19 @@ const TargetMappingDrawer = ({
             }
             const sourceColMap = {};
             allSourceCols.forEach(col => {
-                if (col) sourceColMap[col.toLowerCase()] = col;
+                if (col) {
+                    const colName = typeof col === 'object' ? col.name : col;
+                    if (colName) sourceColMap[colName.toLowerCase()] = col;
+                }
             });
             const targetCols = getAllTargetColumns();
             effectiveMapping = {};
             targetCols.forEach(targetCol => {
-                if (sourceColMap[targetCol.toLowerCase()]) {
-                    effectiveMapping[targetCol] = sourceColMap[targetCol.toLowerCase()];
+                const targetColName = typeof targetCol === 'object' ? targetCol.name : targetCol;
+                if (targetColName && sourceColMap[targetColName.toLowerCase()]) {
+                    effectiveMapping[targetColName] = sourceColMap[targetColName.toLowerCase()];
                 } else {
-                    effectiveMapping[targetCol] = "";
+                    effectiveMapping[targetColName || targetCol] = "";
                 }
             });
         }
@@ -269,9 +289,10 @@ const TargetMappingDrawer = ({
     }, [targetMapping, nodeId, getAllTargetColumns, sourceColumnOptions, availableSourceColumns]);
 
     const filteredTargetColumns = useMemo(
-        () => getAllTargetColumns().filter(col =>
-            col.toLowerCase().includes(globalSearch.toLowerCase())
-        ),
+        () => getAllTargetColumns().filter(col => {
+            const colName = typeof col === 'object' ? col.name : col;
+            return colName && colName.toLowerCase().includes(globalSearch.toLowerCase());
+        }),
         [getAllTargetColumns, globalSearch]
     );
 
@@ -339,10 +360,16 @@ const TargetMappingDrawer = ({
 
     // FIXED: Move finalizeMappingAndClose before handleConfirmMapping to avoid reference error
     const finalizeMappingAndClose = useCallback(() => {
-        window.localStorage.setItem(`targetMappingConfirmed_${nodeId}`, "true");
-        window.localStorage.setItem(`targetMapping_${nodeId}`, JSON.stringify(localMapping));
+        // Flatten the mapping to store only strings (names) instead of objects
+        const cleanedMapping = {};
+        Object.entries(localMapping).forEach(([targetCol, sourceCol]) => {
+            cleanedMapping[targetCol] = typeof sourceCol === 'object' ? sourceCol.name : sourceCol;
+        });
 
-        setTargetMapping(localMapping);
+        window.localStorage.setItem(`targetMappingConfirmed_${nodeId}`, "true");
+        window.localStorage.setItem(`targetMapping_${nodeId}`, JSON.stringify(cleanedMapping));
+
+        setTargetMapping(cleanedMapping);
 
         // Force persist SCD config regardless of mapping changes
         let finalScdConfig;
@@ -362,7 +389,7 @@ const TargetMappingDrawer = ({
         const targetNode = allNodes.find(node => node.id === nodeId);
         if (targetNode && targetNode.data && targetNode.data.onDataChange) {
             targetNode.data.onDataChange({
-                targetMapping: localMapping,
+                targetMapping: cleanedMapping,
                 scdConfig: finalScdConfig
             });
 
@@ -376,7 +403,7 @@ const TargetMappingDrawer = ({
                         payload: {
                             id: nodeId,
                             data: {
-                                targetMapping: localMapping,
+                                targetMapping: cleanedMapping,
                                 scdConfig: finalScdConfig
                             }
                         }
@@ -385,7 +412,7 @@ const TargetMappingDrawer = ({
                     // Preserve target mapping
                     dispatch({
                         type: ACTION_TYPES.PRESERVE_TARGET_MAPPING,
-                        payload: { targetId: nodeId, mapping: localMapping }
+                        payload: { targetId: nodeId, mapping: cleanedMapping }
                     });
                 }
             }
@@ -400,7 +427,10 @@ const TargetMappingDrawer = ({
             forcePersistScdConfig();
         }
 
-        const hasAnyMapping = Object.values(localMapping).some(val => val && val.trim() !== "");
+        const hasAnyMapping = Object.values(localMapping).some(val => {
+            const valToCheck = typeof val === 'object' ? val.name : val;
+            return valToCheck && valToCheck.trim() !== "";
+        });
         if (!hasAnyMapping) {
             setShowConfirmModal(true);
             return;
@@ -437,25 +467,30 @@ const TargetMappingDrawer = ({
 
     // Use both sourceColumnOptions prop and our internal state for mapping
     const allSourceColumnsForMapping = useMemo(() => {
-        // Start with the provided source column options
-        let combined = [...sourceColumnOptions];
+        // Collect all options from both sources
+        const allOptions = [...sourceColumnOptions];
 
-        // Add any columns we've found ourselves
         if (availableSourceColumns.length > 0) {
-            combined = [...combined, ...availableSourceColumns.map(col => ({ value: col, label: col }))];
+            availableSourceColumns.forEach(col => {
+                allOptions.push({ value: col, label: typeof col === 'object' ? col.name : col });
+            });
         }
 
-        // Deduplicate based on value
-        const valueSet = new Set();
-        const uniqueOptions = combined.filter(opt => {
-            if (!valueSet.has(opt.value)) {
-                valueSet.add(opt.value);
-                return true;
+        // Deduplicate by name, preferring objects with datatypes
+        const uniqueOptionsMap = new Map();
+        allOptions.forEach(opt => {
+            const colName = typeof opt.value === 'object' ? opt.value.name : opt.value;
+            if (!colName) return;
+
+            const existing = uniqueOptionsMap.get(colName);
+            const hasDataType = typeof opt.value === 'object' && opt.value.datatype;
+
+            if (!existing || (hasDataType && (!existing.value || typeof existing.value !== 'object' || !existing.value.datatype))) {
+                uniqueOptionsMap.set(colName, opt);
             }
-            return false;
         });
 
-        return uniqueOptions;
+        return Array.from(uniqueOptionsMap.values());
     }, [sourceColumnOptions, availableSourceColumns]);
 
     // Make drawer wider for SCD to avoid clutter
@@ -534,13 +569,19 @@ const TargetMappingDrawer = ({
                             {filteredTargetColumns.map((targetCol) => {
                                 const open = dropdownOpen[targetCol] || false;
                                 const search = searchTerms[targetCol] || "";
-                                const filteredOptions = allSourceColumnsForMapping.filter(opt =>
-                                    opt.label.toLowerCase().includes(search.toLowerCase())
-                                );
+                                const filteredOptions = allSourceColumnsForMapping.filter(opt => {
+                                    const label = typeof opt.label === 'object' ? opt.label.name : opt.label;
+                                    return label && label.toLowerCase().includes(search.toLowerCase());
+                                });
 
                                 const currentValue = localMapping[targetCol] || "";
-                                const selectedOption = allSourceColumnsForMapping.find(opt => opt.value === currentValue);
-                                const selectedLabel = selectedOption ? selectedOption.label : "";
+                                const selectedOption = allSourceColumnsForMapping.find(opt => {
+                                    const optValue = typeof opt.value === 'object' ? opt.value.name : opt.value;
+                                    const searchVal = typeof currentValue === 'object' ? currentValue.name : currentValue;
+                                    return optValue === searchVal;
+                                });
+                                const selectedLabelObj = selectedOption ? selectedOption.label : "";
+                                const selectedLabel = typeof selectedLabelObj === 'object' ? selectedLabelObj.name : selectedLabelObj;
 
                                 if (isSCD) {
                                     const pkChecked = (localScd.primaryKeys || []).includes(targetCol);
@@ -568,7 +609,7 @@ const TargetMappingDrawer = ({
                                                     onClick={() => setDropdownOpen(prev => ({ ...prev, [targetCol]: !prev[targetCol] }))}
                                                 >
                                                     <span className={currentValue ? "" : "text-gray-400"}>
-                                                        {selectedLabel || currentValue || "Select source column"}
+                                                        {selectedLabel || (typeof currentValue === 'object' ? currentValue.name : currentValue) || "Select source column"}
                                                     </span>
                                                     <span className="ml-auto pl-2 text-xs">&#9662;</span>
                                                 </button>
@@ -595,18 +636,26 @@ const TargetMappingDrawer = ({
                                                             >
                                                                 <span className="text-gray-400">No Mapping</span>
                                                             </div>
-                                                            {filteredOptions.map(opt => (
-                                                                <div
-                                                                    key={opt.value}
-                                                                    className={`p-2 text-xs text-gray-700 cursor-pointer hover:bg-[#e9e3f7] rounded ${currentValue === opt.value ? "bg-[#e9e3f7] font-semibold" : ""}`}
-                                                                    onClick={() => {
-                                                                        handleUpdateMapping(targetCol, opt.value);
-                                                                        setDropdownOpen(prev => ({ ...prev, [targetCol]: false }));
-                                                                    }}
-                                                                >
-                                                                    {opt.label}
-                                                                </div>
-                                                            ))}
+                                                            {filteredOptions.map(opt => {
+                                                                const optLabel = typeof opt.label === 'object' ? opt.label.name : opt.label;
+                                                                const optValue = typeof opt.value === 'object' ? opt.value.name : opt.value;
+                                                                const isSelected = typeof currentValue === 'object'
+                                                                    ? currentValue.name === optValue
+                                                                    : currentValue === optValue;
+
+                                                                return (
+                                                                    <div
+                                                                        key={optValue}
+                                                                        className={`p-2 text-xs text-gray-700 cursor-pointer hover:bg-[#e9e3f7] rounded ${isSelected ? "bg-[#e9e3f7] font-semibold" : ""}`}
+                                                                        onClick={() => {
+                                                                            handleUpdateMapping(targetCol, opt.value);
+                                                                            setDropdownOpen(prev => ({ ...prev, [targetCol]: false }));
+                                                                        }}
+                                                                    >
+                                                                        {optLabel}
+                                                                    </div>
+                                                                );
+                                                            })}
                                                         </div>
                                                     </div>
                                                 )}
@@ -630,7 +679,7 @@ const TargetMappingDrawer = ({
                                                 onClick={() => setDropdownOpen(prev => ({ ...prev, [targetCol]: !prev[targetCol] }))}
                                             >
                                                 <span className={currentValue ? "" : "text-gray-400"}>
-                                                    {selectedLabel || currentValue || "Select source column"}
+                                                    {selectedLabel || (typeof currentValue === 'object' ? currentValue.name : currentValue) || "Select source column"}
                                                 </span>
                                                 <span className="ml-auto pl-2 text-xs">&#9662;</span>
                                             </button>
@@ -657,18 +706,26 @@ const TargetMappingDrawer = ({
                                                         >
                                                             <span className="text-gray-400">No Mapping</span>
                                                         </div>
-                                                        {filteredOptions.map(opt => (
-                                                            <div
-                                                                key={opt.value}
-                                                                className={`p-2 text-xs text-gray-700 cursor-pointer hover:bg-[#e9e3f7] rounded ${currentValue === opt.value ? "bg-[#e9e3f7] font-semibold" : ""}`}
-                                                                onClick={() => {
-                                                                    handleUpdateMapping(targetCol, opt.value);
-                                                                    setDropdownOpen(prev => ({ ...prev, [targetCol]: false }));
-                                                                }}
-                                                            >
-                                                                {opt.label}
-                                                            </div>
-                                                        ))}
+                                                        {filteredOptions.map(opt => {
+                                                            const optLabel = typeof opt.label === 'object' ? opt.label.name : opt.label;
+                                                            const optValue = typeof opt.value === 'object' ? opt.value.name : opt.value;
+                                                            const isSelected = typeof currentValue === 'object'
+                                                                ? currentValue.name === optValue
+                                                                : currentValue === optValue;
+
+                                                            return (
+                                                                <div
+                                                                    key={optValue}
+                                                                    className={`p-2 text-xs text-gray-700 cursor-pointer hover:bg-[#e9e3f7] rounded ${isSelected ? "bg-[#e9e3f7] font-semibold" : ""}`}
+                                                                    onClick={() => {
+                                                                        handleUpdateMapping(targetCol, opt.value);
+                                                                        setDropdownOpen(prev => ({ ...prev, [targetCol]: false }));
+                                                                    }}
+                                                                >
+                                                                    {optLabel}
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
                                             )}
