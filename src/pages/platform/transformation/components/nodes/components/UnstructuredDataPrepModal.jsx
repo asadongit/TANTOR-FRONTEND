@@ -9,6 +9,37 @@ const UnStructureDataPrep = ({ open, onClose, txtFile }) => {
   const [preparedData, setPreparedData] = useState(null);
   const [error, setError] = useState(null);
 
+  const getPreviewData = (data) => {
+    if (!data) return [];
+    const findArray = (obj) => {
+      if (Array.isArray(obj)) return obj;
+      if (obj && typeof obj === 'object') {
+        for (const key in obj) {
+          const result = findArray(obj[key]);
+          if (result) return result;
+        }
+      }
+      return null;
+    };
+    return findArray(data) || [];
+  };
+
+  const getCellValue = (row, colPath) => {
+    // If exact match exists (e.g. JSON fields without nested structure)
+    if (row[colPath] !== undefined) {
+      return typeof row[colPath] === 'object' ? JSON.stringify(row[colPath]) : row[colPath];
+    }
+    // Attempt fallback for nested keys where the array root is omitted
+    const parts = colPath.split('.');
+    if (parts.length > 0) {
+      const lastPart = parts[parts.length - 1];
+      if (row[lastPart] !== undefined) {
+        return typeof row[lastPart] === 'object' ? JSON.stringify(row[lastPart]) : row[lastPart];
+      }
+    }
+    return "";
+  };
+
   useEffect(() => {
     if (txtFile) {
       const reader = new FileReader();
@@ -107,14 +138,14 @@ const UnStructureDataPrep = ({ open, onClose, txtFile }) => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {preparedData.structured_data.slice(0, 10).map((row, idx) => (
+                      {getPreviewData(preparedData.structured_data).slice(0, 10).map((row, idx) => (
                         <tr key={idx}>
                           {preparedData.columns.map((col, colIdx) => (
                             <td
                               key={colIdx}
                               className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
                             >
-                              {row[col]}
+                              {getCellValue(row, col)}
                             </td>
                           ))}
                         </tr>
