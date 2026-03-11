@@ -164,11 +164,11 @@ function F1XAI() {
                                 onClick={() => setIsDropdownOpen(o => !o)}
                                 className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm outline-none transition-all duration-150"
                                 style={{
-                                    background: isDropdownOpen ? '#8E77BB' : '#f3f0fa',
-                                    border: isDropdownOpen ? '1px solid #8E77BB' : '1px solid #c4b5e8',
-                                    color: isDropdownOpen ? '#fff' : (selectedModel ? '#3b2d5e' : '#9585c0'),
+                                    background: isDropdownOpen ? '#8D1718' : '#fdf2f2',
+                                    border: isDropdownOpen ? '1px solid #8D1718' : '1px solid #f0c0c0',
+                                    color: isDropdownOpen ? '#fff' : (selectedModel ? '#5a0e0e' : '#b06060'),
                                     cursor: 'pointer',
-                                    boxShadow: isDropdownOpen ? '0 0 0 3px rgba(142,119,187,0.18)' : 'none',
+                                    boxShadow: isDropdownOpen ? '0 0 0 3px rgba(141,23,24,0.15)' : 'none',
                                 }}
                             >
                                 <span className="overflow-hidden text-ellipsis whitespace-nowrap flex-1 text-left mr-2">
@@ -178,7 +178,7 @@ function F1XAI() {
                                     size={16}
                                     className="flex-shrink-0 transition-transform duration-200"
                                     style={{
-                                        color: isDropdownOpen ? '#fff' : '#9585c0',
+                                        color: isDropdownOpen ? '#fff' : '#b06060',
                                         transform: isDropdownOpen ? 'rotate(180deg)' : 'none',
                                     }}
                                 />
@@ -190,17 +190,17 @@ function F1XAI() {
                                     className="absolute top-full left-0 right-0 z-50 mt-1 rounded-lg overflow-hidden"
                                     style={{
                                         background: '#fff',
-                                        border: '1px solid rgba(142,119,187,0.4)',
-                                        boxShadow: '0 8px 24px rgba(142,119,187,0.2)',
+                                        border: '1px solid rgba(141,23,24,0.3)',
+                                        boxShadow: '0 8px 24px rgba(141,23,24,0.15)',
                                     }}
                                 >
                                     {/* Search bar */}
-                                    <div className="px-3 py-2" style={{ borderBottom: '1px solid #f0ebfa' }}>
+                                    <div className="px-3 py-2" style={{ borderBottom: '1px solid #fde8e8' }}>
                                         <div
                                             className="flex items-center gap-2 px-2.5 py-[5px] rounded-md"
-                                            style={{ background: '#f3f0fa' }}
+                                            style={{ background: '#fdf2f2' }}
                                         >
-                                            <Search size={13} className="flex-shrink-0" style={{ color: '#8E77BB' }} />
+                                            <Search size={13} className="flex-shrink-0" style={{ color: '#8D1718' }} />
                                             <input
                                                 type="text"
                                                 value={searchQuery}
@@ -208,7 +208,7 @@ function F1XAI() {
                                                 placeholder="Search..."
                                                 autoFocus
                                                 className="bg-transparent border-none outline-none text-[13px] w-full"
-                                                style={{ color: '#3b2d5e' }}
+                                                style={{ color: '#5a0e0e' }}
                                             />
                                         </div>
                                     </div>
@@ -225,13 +225,13 @@ function F1XAI() {
                                                 onClick={() => handleModelSelect(name)}
                                                 className="block w-full text-left px-4 py-2.5 text-[13px] border-none cursor-pointer transition-all duration-100"
                                                 style={{
-                                                    background: selectedModel === name ? 'rgba(142,119,187,0.12)' : 'transparent',
-                                                    color: selectedModel === name ? '#8E77BB' : '#374151',
+                                                    background: selectedModel === name ? 'rgba(141,23,24,0.10)' : 'transparent',
+                                                    color: selectedModel === name ? '#8D1718' : '#374151',
                                                     fontWeight: selectedModel === name ? 600 : 400,
                                                 }}
                                                 onMouseEnter={e => {
                                                     if (selectedModel !== name)
-                                                        e.currentTarget.style.background = '#f3f0fa';
+                                                        e.currentTarget.style.background = '#fdf2f2';
                                                 }}
                                                 onMouseLeave={e => {
                                                     if (selectedModel !== name)
@@ -254,7 +254,9 @@ function F1XAI() {
                         className="px-5 py-2 rounded-lg border-none text-white text-sm font-semibold whitespace-nowrap tracking-wide transition-all duration-150"
                         style={{
                             fontFamily: 'Satoshi, sans-serif',
-                            background: !selectedModel ? 'rgba(142,119,187,0.35)' : '#8E77BB',
+                            background: !selectedModel
+                                ? 'rgba(141,23,24,0.30)'
+                                : 'linear-gradient(270deg, #D30101 0%, #6D0101 117.78%)',
                             cursor: !selectedModel ? 'not-allowed' : 'pointer',
                         }}
                     >
@@ -275,8 +277,9 @@ function F1XAI() {
                     <div className="bg-white rounded-xl px-6 py-12 text-center" style={{ border: '1px solid #E5E7EB' }}>
                         <div className="mx-auto mb-3" style={{
                             width: 36, height: 36,
-                            border: '3px solid rgba(142,119,187,0.2)',
-                            borderTopColor: '#8E77BB', borderRadius: '50%',
+                            border: '3px solid rgba(141,23,24,0.15)',
+                            borderTopColor: '#8D1718',
+                            borderRadius: '50%',
                             animation: 'f1spin 0.8s linear infinite',
                         }} />
                         <p className="text-gray-500 text-sm">
@@ -289,12 +292,13 @@ function F1XAI() {
                     <div className="px-6 py-16 text-center">
                         <div className="mx-auto mb-4 flex items-center justify-center" style={{
                             width: 48, height: 48,
-                            background: 'rgba(142,119,187,0.1)',
+                            background: 'rgba(141,23,24,0.08)',
+                            borderRadius: 12,
                         }}>
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                                 <path
                                     d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                                    stroke="#8E77BB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                                    stroke="#8D1718" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
                                 />
                             </svg>
                         </div>

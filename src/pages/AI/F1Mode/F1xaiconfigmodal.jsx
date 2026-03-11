@@ -1,7 +1,182 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { Search } from "lucide-react";
 
+const SearchableDropdown = ({
+  selectedValue,
+  onSelect,
+  options,
+  placeholder = "Select",
+  disabled = false,
+  hasError = false,
+  dropDirection = "down",
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const dropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
+
+  const filteredOptions = options.filter(opt =>
+    String(opt).toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false);
+        setSearchTerm('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && searchInputRef.current) searchInputRef.current.focus();
+  }, [isOpen]);
+
+  const handleSelect = (opt) => {
+    if (!disabled) {
+      onSelect(String(opt));
+      setIsOpen(false);
+      setSearchTerm('');
+    }
+  };
+
+  return (
+    <div className="relative w-full" ref={dropdownRef}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => !disabled && setIsOpen(o => !o)}
+        className="w-full px-3 py-2 border rounded-lg text-sm text-left flex items-center justify-between transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        style={{
+          background: hasError ? '#FFF7F8' : '#fff',
+          borderColor: hasError ? '#EF4D5F' : isOpen ? '#8D1718' : '#d1d5db',
+          boxShadow: isOpen ? '0 0 0 2px rgba(141,23,24,0.15)' : 'none',
+          outline: 'none',
+        }}
+      >
+        <span style={{ color: selectedValue ? '#111827' : hasError ? '#EF4D5F' : '#9ca3af' }}>
+          {selectedValue || placeholder}
+        </span>
+        <svg
+          className="w-4 h-4 flex-shrink-0 transition-transform duration-200"
+          style={{ color: '#9ca3af', transform: isOpen ? 'rotate(180deg)' : 'none' }}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && !disabled && (
+        <div
+          className="absolute z-50 w-full bg-white rounded-lg shadow-lg overflow-hidden"
+          style={{
+            border: '1px solid rgba(141,23,24,0.25)',
+            boxShadow: '0 8px 24px rgba(141,23,24,0.12)',
+            ...(dropDirection === 'up' ? { bottom: '100%', marginBottom: 4 } : { top: '100%', marginTop: 4 }),
+          }}
+        >
+          <div className="p-2" style={{ borderBottom: '1px solid #fde8e8' }}>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: '#8D1718' }} />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Search..."
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md border"
+                style={{
+                  background: '#fdf2f2',
+                  borderColor: '#f0c0c0',
+                  outline: 'none',
+                  color: '#5a0e0e',
+                }}
+              />
+            </div>
+          </div>
+          <div className="overflow-y-auto" style={{ maxHeight: 180 }}>
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => handleSelect(opt)}
+                  className="w-full px-3 py-2 text-sm text-left transition-colors"
+                  style={{
+                    background: selectedValue === String(opt) ? 'rgba(141,23,24,0.08)' : 'transparent',
+                    color: selectedValue === String(opt) ? '#8D1718' : '#374151',
+                    fontWeight: selectedValue === String(opt) ? 600 : 400,
+                  }}
+                  onMouseEnter={e => { if (selectedValue !== String(opt)) e.currentTarget.style.background = '#fdf2f2'; }}
+                  onMouseLeave={e => { if (selectedValue !== String(opt)) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  Class {opt}
+                </button>
+              ))
+            ) : (
+              <div className="px-3 py-2 text-xs text-gray-400 text-center">No results found</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Field Tooltip ─────────────────────────────────────────────────────────────
+const FieldTooltip = ({ lines, position = "right" }) => {
+  const [visible, setVisible] = useState(false);
+
+  const bubbleStyle = position === "left"
+    ? { right: 0, top: '1.5rem' }
+    : { left: 0, top: '1.5rem' };
+
+  const arrowStyle = position === "left"
+    ? { right: '0.375rem', top: '-0.375rem' }
+    : { left: '0.75rem', top: '-0.375rem' };
+
+  return (
+    <div className="relative inline-flex items-center">
+      <button
+        type="button"
+        className="ml-1.5 flex-shrink-0 focus:outline-none"
+        onMouseEnter={() => setVisible(true)}
+        onMouseLeave={() => setVisible(false)}
+        tabIndex={-1}
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="#9CA3AF" strokeWidth="2" />
+          <path d="M12 8v4M12 16h.01" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      </button>
+
+      {visible && (
+        <div
+          className="absolute w-72 text-white text-xs p-3 rounded-lg shadow-xl z-[9999] space-y-1.5"
+          style={{
+            ...bubbleStyle,
+            background: '#1f0a0a',
+            border: '1px solid rgba(141,23,24,0.4)',
+            pointerEvents: 'none',
+          }}
+        >
+          {lines.map((line, i) =>
+            line.bold
+              ? <p key={i}><strong style={{ color: '#f87171' }}>{line.bold}</strong>{line.rest}</p>
+              : <p key={i}>{line}</p>
+          )}
+          <div
+            className="absolute w-3 h-3 rotate-45 rounded-sm"
+            style={{ ...arrowStyle, background: '#1f0a0a', border: '1px solid rgba(141,23,24,0.4)' }}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
 function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGenerating = false }) {
-  const hostnameAI = window._env_?.VITE_AI_API;
   const [showInfoTooltip, setShowInfoTooltip] = useState(false);
   const [configData, setConfigData] = useState({
     pdpTargetClass: '',
@@ -67,45 +242,74 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
     !cfIndexValid ||
     !limeIndexValid;
 
+  const pdpTargetTooltip = [
+    { bold: "Partial Dependence Plot (PDP): ", rest: "Shows the average effect of a feature on a model's prediction by marginalizing over other features. Helps understand global feature influence across the dataset." },
+  ];
+
+  const pdpFeaturesTooltip = [
+    { bold: "PDP Features: ", rest: "A graphical visualization of the partial dependence function. Displays how predicted outcomes change as one feature varies." }
+  ];
+
+  const cfDesiredTooltip = [
+    { bold: "Counterfactual Explanation: ", rest: "An explanation that shows the minimal changes needed in input features to alter a model's prediction. Answers the question: “What needs to change to get a different outcome?”" },
+    { bold: "Desired Class: ", rest: "The target outcome you want the model to predict instead." }
+  ];
+
+  const cfInstanceTooltip = [
+    { bold: "Counterfactual Explanation: ", rest: "An explanation that shows the minimal changes needed in input features to alter a model's prediction. Answers the question: “What needs to change to get a different outcome?”" },
+    { bold: "Instance index: ", rest: "The specific data point (row) for which the counterfactual explanation is generated." }
+  ];
+
+  const limeInstanceTooltip = [
+    { bold: "LIME (Local Interpretable Model-agnostic Explanations): ", rest: "A technique that explains individual predictions by approximating the model locally with a simple interpretable model. It highlights which features contributed most to a specific prediction." }
+  ];
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/55 flex items-center justify-center z-50 p-4">
+      <style>{`@keyframes f1spin { to { transform: rotate(360deg); } }`}</style>
       <div className="bg-white rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.2)] max-w-[720px] w-full max-h-[90vh] overflow-y-auto">
 
         {/* ── Header ── */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-xl z-10">
-          <h3 className="font-[Satoshi,sans-serif] font-bold text-lg text-gray-900">
+          <h3 className="font-bold text-lg text-gray-900" style={{ fontFamily: 'Satoshi, sans-serif' }}>
             XAI Configurations
           </h3>
           <div className="flex items-center gap-2.5">
             {/* Info tooltip */}
             <div className="relative">
               <button
+                className="flex items-center justify-center rounded-lg p-1.5 transition-colors"
+                style={{ background: '#FAFAFA', border: '1px solid #E5E7EB' }}
                 onMouseEnter={() => setShowInfoTooltip(true)}
                 onMouseLeave={() => setShowInfoTooltip(false)}
-                className="bg-transparent border-none cursor-pointer p-0 flex"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="10" stroke="#9CA3AF" strokeWidth="2" />
                   <path d="M12 8v4M12 16h.01" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" />
                 </svg>
               </button>
               {showInfoTooltip && (
-                <div className="absolute right-0 top-7 w-[300px] bg-gray-800 text-white text-xs p-3 rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.2)] z-[60] leading-relaxed">
-                  <p className="mb-1"><strong>SHAP:</strong> Shows feature importance and contribution to predictions.</p>
-                  <p className="mb-1"><strong>PDP:</strong> Reveals how features influence model output across ranges.</p>
-                  <p className="mb-1"><strong>LIME:</strong> Provides local explanations for individual predictions.</p>
-                  <p className="mb-1"><strong>Counterfactuals:</strong> Suggest minimal changes needed to achieve different outcomes.</p>
-                  <p><strong>Feature Flip:</strong> Summarizes the effect of flipping key features on model decisions.</p>
+                <div
+                  className="absolute right-0 top-9 w-80 text-white text-xs p-3 rounded-lg shadow-xl z-[60] space-y-1.5 leading-relaxed"
+                  style={{ background: '#1f0a0a', border: '1px solid rgba(141,23,24,0.4)' }}
+                >
+                  <p><strong style={{ color: '#f87171' }}>SHAP:</strong> Shows feature importance and contribution to predictions.</p>
+                  <p><strong style={{ color: '#f87171' }}>PDP:</strong> Reveals how features influence model output across ranges.</p>
+                  <p><strong style={{ color: '#f87171' }}>LIME:</strong> Provides local explanations for individual predictions.</p>
+                  <p><strong style={{ color: '#f87171' }}>Counterfactuals:</strong> Suggest minimal changes needed to achieve different outcomes.</p>
+                  <p><strong style={{ color: '#f87171' }}>Feature Flip:</strong> Summarises the effect of flipping key features on model decisions.</p>
                 </div>
               )}
             </div>
+
             {/* Close */}
             <button
               onClick={onClose}
               disabled={isGenerating}
-              className={`bg-transparent border-none p-0 flex ${isGenerating ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+              className={`flex items-center justify-center ${isGenerating ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:opacity-70'}`}
+              style={{ background: 'none', border: 'none', padding: 0 }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path d="M18 6L6 18M6 6L18 18" stroke="#818181" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -120,44 +324,41 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
           {/* PDP Target Class + CF Desired Class */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-1.5">
-                PDP Target Class <span className="text-red-500">*</span>
+              <label className="flex items-center text-sm font-medium text-gray-900 mb-1.5">
+                PDP Target Class <span className="text-red-500 ml-0.5">*</span>
+                <FieldTooltip lines={pdpTargetTooltip} position="right" />
               </label>
-              <select
-                value={configData.pdpTargetClass}
-                onChange={e => !isGenerating && setConfigData({ ...configData, pdpTargetClass: e.target.value })}
+              <SearchableDropdown
+                selectedValue={configData.pdpTargetClass}
+                onSelect={(val) => setConfigData({ ...configData, pdpTargetClass: val })}
+                options={targetClasses}
+                placeholder="Select class"
                 disabled={isGenerating}
-                className={`w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900 outline-none ${isGenerating ? 'bg-gray-50 cursor-not-allowed' : 'bg-white cursor-pointer'}`}
-              >
-                <option value="">Select class</option>
-                {targetClasses.map(cls => (
-                  <option key={cls} value={cls.toString()}>Class {cls}</option>
-                ))}
-              </select>
+                dropDirection="down"
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-1.5">
-                CF Desired Class <span className="text-red-500">*</span>
+              <label className="flex items-center text-sm font-medium text-gray-900 mb-1.5">
+                CF Desired Class <span className="text-red-500 ml-0.5">*</span>
+                <FieldTooltip lines={cfDesiredTooltip} position="left" />
               </label>
-              <select
-                value={configData.cfDesiredClass}
-                onChange={e => !isGenerating && setConfigData({ ...configData, cfDesiredClass: e.target.value })}
+              <SearchableDropdown
+                selectedValue={configData.cfDesiredClass}
+                onSelect={(val) => setConfigData({ ...configData, cfDesiredClass: val })}
+                options={targetClasses}
+                placeholder="Select class"
                 disabled={isGenerating}
-                className={`w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900 outline-none ${isGenerating ? 'bg-gray-50 cursor-not-allowed' : 'bg-white cursor-pointer'}`}
-              >
-                <option value="">Select class</option>
-                {targetClasses.map(cls => (
-                  <option key={cls} value={cls.toString()}>Class {cls}</option>
-                ))}
-              </select>
+                dropDirection="down"
+              />
             </div>
           </div>
 
           {/* CF Instance Index + LIME Instance Index */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-1.5">
-                CF Instance Index (0–{rowCount}) <span className="text-red-500">*</span>
+              <label className="flex items-center text-sm font-medium text-gray-900 mb-1.5">
+                CF Instance Index (0–{rowCount}) <span className="text-red-500 ml-0.5">*</span>
+                <FieldTooltip lines={cfInstanceTooltip} position="right" />
               </label>
               <input
                 type="number"
@@ -173,17 +374,24 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
                   }
                 }}
                 disabled={isGenerating}
-                className={`w-full px-3 py-2 rounded-lg border text-sm text-gray-900 outline-none box-border ${!cfIndexValid ? 'border-red-500' : 'border-gray-300'} ${isGenerating ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
+                className="w-full px-3 py-2 rounded-lg border text-sm text-gray-900 transition-colors"
+                style={{
+                  borderColor: !cfIndexValid ? '#EF4D5F' : '#d1d5db',
+                  background: !cfIndexValid ? '#FFF7F8' : isGenerating ? '#f9fafb' : '#fff',
+                  outline: 'none',
+                  cursor: isGenerating ? 'not-allowed' : 'auto',
+                }}
+                onFocus={e => { if (cfIndexValid) e.target.style.borderColor = '#8D1718'; e.target.style.boxShadow = '0 0 0 2px rgba(141,23,24,0.15)'; }}
+                onBlur={e => { e.target.style.borderColor = !cfIndexValid ? '#EF4D5F' : '#d1d5db'; e.target.style.boxShadow = 'none'; }}
               />
               {!cfIndexValid && (
-                <p className="text-red-500 text-xs mt-1">
-                  Must be between 0 and {rowCount}
-                </p>
+                <p className="text-red-500 text-xs mt-1">Must be between 0 and {rowCount}</p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-1.5">
-                LIME Instance Index (0–{rowCount}) <span className="text-red-500">*</span>
+              <label className="flex items-center text-sm font-medium text-gray-900 mb-1.5">
+                LIME Instance Index (0–{rowCount}) <span className="text-red-500 ml-0.5">*</span>
+                <FieldTooltip lines={limeInstanceTooltip} position="left" />
               </label>
               <input
                 type="number"
@@ -199,27 +407,37 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
                   }
                 }}
                 disabled={isGenerating}
-                className={`w-full px-3 py-2 rounded-lg border text-sm text-gray-900 outline-none box-border ${!limeIndexValid ? 'border-red-500' : 'border-gray-300'} ${isGenerating ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
+                className="w-full px-3 py-2 rounded-lg border text-sm text-gray-900 transition-colors"
+                style={{
+                  borderColor: !limeIndexValid ? '#EF4D5F' : '#d1d5db',
+                  background: !limeIndexValid ? '#FFF7F8' : isGenerating ? '#f9fafb' : '#fff',
+                  outline: 'none',
+                  cursor: isGenerating ? 'not-allowed' : 'auto',
+                }}
+                onFocus={e => { if (limeIndexValid) e.target.style.borderColor = '#8D1718'; e.target.style.boxShadow = '0 0 0 2px rgba(141,23,24,0.15)'; }}
+                onBlur={e => { e.target.style.borderColor = !limeIndexValid ? '#EF4D5F' : '#d1d5db'; e.target.style.boxShadow = 'none'; }}
               />
               {!limeIndexValid && (
-                <p className="text-red-500 text-xs mt-1">
-                  Must be between 0 and {rowCount}
-                </p>
+                <p className="text-red-500 text-xs mt-1">Must be between 0 and {rowCount}</p>
               )}
             </div>
           </div>
 
           {/* PDP Features */}
-          <div className="bg-[#FAFAFA] rounded-[10px] p-4">
+          <div className="rounded-[10px] p-4" style={{ background: '#FAFAFA', border: '1px solid #F3F4F6' }}>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-sm font-medium text-gray-900">PDP Features</label>
+              <label className="flex items-center text-sm font-medium text-gray-900">
+                PDP Features
+                <FieldTooltip lines={pdpFeaturesTooltip} position="right" />
+              </label>
               <label className={`flex items-center gap-1.5 ${isGenerating ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                 <input
                   type="checkbox"
                   checked={allSelected}
                   onChange={toggleSelectAll}
                   disabled={isGenerating}
-                  className="w-[15px] h-[15px] accent-[#8E77BB]"
+                  className="w-[15px] h-[15px]"
+                  style={{ accentColor: '#8D1718' }}
                 />
                 <span className="text-[13px] font-medium text-gray-700">Select All</span>
               </label>
@@ -229,13 +447,17 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
             </p>
             <div className="grid grid-cols-3 gap-x-6 gap-y-2.5 max-h-[200px] overflow-y-auto">
               {featuresList.map(feature => (
-                <label key={feature} className={`flex items-center gap-2 ${isGenerating ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                <label
+                  key={feature}
+                  className={`flex items-center gap-2 ${isGenerating ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                >
                   <input
                     type="checkbox"
                     checked={configData.pdpFeatures.includes(feature)}
                     onChange={() => toggleFeature(feature)}
                     disabled={isGenerating}
-                    className="w-[15px] h-[15px] accent-[#8E77BB] shrink-0"
+                    className="w-[15px] h-[15px] shrink-0"
+                    style={{ accentColor: '#8D1718' }}
                   />
                   <span className="text-[13px] text-gray-700 break-words">{feature}</span>
                 </label>
@@ -249,20 +471,29 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
           <button
             onClick={onClose}
             disabled={isGenerating}
-            className={`px-5 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium font-[Satoshi,sans-serif] ${isGenerating ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+            className="px-5 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium transition-colors"
+            style={{
+              fontFamily: 'Satoshi, sans-serif',
+              opacity: isGenerating ? 0.5 : 1,
+              cursor: isGenerating ? 'not-allowed' : 'pointer',
+            }}
           >
             Cancel
           </button>
           <button
-            onClick={() => onGenerate(configData)}
+            onClick={() => !isSubmitDisabled && onGenerate(configData)}
             disabled={isSubmitDisabled}
+            className="px-6 py-2 rounded-lg border-none text-white text-sm font-semibold flex items-center gap-2 transition-all duration-150"
             style={{
-              background: isSubmitDisabled ? 'rgba(142,119,187,0.35)' : '#8E77BB',
+              fontFamily: 'Satoshi, sans-serif',
+              background: isSubmitDisabled
+                ? 'rgba(141,23,24,0.30)'
+                : 'linear-gradient(270deg, #D30101 0%, #6D0101 117.78%)',
+              cursor: isSubmitDisabled ? 'not-allowed' : 'pointer',
             }}
-            className={`px-6 py-2 rounded-lg border-none text-white text-sm font-semibold font-[Satoshi,sans-serif] flex items-center gap-2 transition-all duration-150 ${isSubmitDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
           >
             {isGenerating && (
-              <svg style={{ animation: 'f1spin 0.8s linear infinite' }} width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <svg style={{ animation: 'f1spin 0.8s linear infinite', flexShrink: 0 }} width="16" height="16" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" strokeWidth="4" />
                 <path fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
@@ -270,7 +501,6 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
             {isGenerating ? 'Generating...' : 'Generate Report'}
           </button>
         </div>
-
       </div>
     </div>
   );
