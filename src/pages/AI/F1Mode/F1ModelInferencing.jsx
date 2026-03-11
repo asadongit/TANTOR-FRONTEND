@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { TrendingUp, ChevronLeft, ChevronRight, Search, X, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { TrendingUp, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, Search, X, ArrowUpDown, ArrowUp, ArrowDown, TableIcon } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 import BatchIcon from '../../../assets/ai/workspace_premium.svg';
@@ -63,6 +63,310 @@ function BestModelCard({ bestAlgorithm, bestScore, metricName }) {
                 <div>
                     <p className="text-xs text-gray-500 mb-1">{displayMetric}</p>
                     <p className="text-md font-bold text-gray-900">{displayValue}</p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+const ALL_METRIC_KEYS = [
+    { key: 'accuracy',  label: 'Accuracy',  isLogLoss: false },
+    { key: 'precision', label: 'Precision', isLogLoss: false },
+    { key: 'recall',    label: 'Recall',    isLogLoss: false },
+    { key: 'f1',        label: 'F1',        isLogLoss: false },
+    { key: 'log_loss',  label: 'Log Loss',  isLogLoss: true  },
+];
+
+const SortIcon = ({ active, direction }) => {
+    if (!active) return <ChevronsUpDown className="w-3 h-3 ml-1 text-gray-400 inline-block" />;
+    return direction === 'asc'
+        ? <ChevronUp className="w-3 h-3 ml-1 text-[#8D1718] inline-block" />
+        : <ChevronDown className="w-3 h-3 ml-1 text-[#8D1718] inline-block" />;
+};
+
+const HighlightMatch = ({ text, query }) => {
+    if (!query) return <span>{text}</span>;
+    const idx = text.toLowerCase().indexOf(query.toLowerCase());
+    if (idx === -1) return <span>{text}</span>;
+    return (
+        <span>
+            {text.slice(0, idx)}
+            {text.slice(idx, idx + query.length)}
+            {text.slice(idx + query.length)}
+        </span>
+    );
+};
+
+const TablePagination = ({ currentPage, totalPages, onPrev, onNext, startIndex, endIndex, total }) => (
+    <div className="text-xs text-gray-500 flex items-center justify-between">
+        <span>
+            Showing {total === 0 ? 0 : startIndex + 1}–{Math.min(endIndex, total)} of {total} results
+        </span>
+        <div className="flex items-center gap-2">
+            <button
+                onClick={onPrev}
+                disabled={currentPage === 1}
+                className={currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:text-gray-900'}
+            >
+                <ChevronLeft className="w-5 h-5" />
+            </button>
+            <span className="text-gray-600">Page {currentPage} of {Math.max(totalPages, 1)}</span>
+            <button
+                onClick={onNext}
+                disabled={currentPage === totalPages || totalPages === 0}
+                className={currentPage === totalPages || totalPages === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:text-gray-900'}
+            >
+                <ChevronRight className="w-5 h-5" />
+            </button>
+        </div>
+    </div>
+);
+
+const formatTableVal = (val, isLogLoss = false) => {
+    if (val === null || val === undefined || val === 'N/A') return 'N/A';
+    const num = parseFloat(val);
+    if (isNaN(num)) return 'N/A';
+    return isLogLoss ? num.toFixed(4) : `${(num * 100).toFixed(2)}%`;
+};
+
+function PerformanceTable({ allResults }) {
+    const ROWS_PER_PAGE = 10;
+    const [sortConfig, setSortConfig] = useState({ key: null, prefix: null, direction: 'asc' });
+    const [currentPage, setCurrentPage] = useState(1);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const tableData = useMemo(() => {
+        return allResults.map((result) => {
+            const row = { fullName: result.algorithm };
+            ALL_METRIC_KEYS.forEach(({ key }) => {
+                row[`test_${key}`] = result.metrics?.test?.[key] ?? null;
+                row[`train_${key}`] = result.metrics?.train?.[key] ?? null;
+            });
+            return row;
+        });
+    }, [allResults]);
+
+    const visibleMetrics = useMemo(() => {
+        return ALL_METRIC_KEYS.filter((m) =>
+            tableData.some(
+                (row) =>
+                    (row[`test_${m.key}`] !== null && row[`test_${m.key}`] !== undefined) ||
+                    (row[`train_${m.key}`] !== null && row[`train_${m.key}`] !== undefined)
+            )
+        );
+    }, [tableData]);
+
+    const testVisible = useMemo(() => {
+        const map = {};
+        visibleMetrics.forEach((m) => {
+            map[m.key] = tableData.some((r) => r[`test_${m.key}`] !== null && r[`test_${m.key}`] !== undefined);
+        });
+        return map;
+    }, [visibleMetrics, tableData]);
+
+    const trainVisible = useMemo(() => {
+        const map = {};
+        visibleMetrics.forEach((m) => {
+            map[m.key] = tableData.some((r) => r[`train_${m.key}`] !== null && r[`train_${m.key}`] !== undefined);
+        });
+        return map;
+    }, [visibleMetrics, tableData]);
+
+    const testColCount = visibleMetrics.filter((m) => testVisible[m.key]).length;
+    const trainColCount = visibleMetrics.filter((m) => trainVisible[m.key]).length;
+
+    const processedData = useMemo(() => {
+        let filtered = tableData.filter((row) =>
+            row.fullName.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+        if (sortConfig.key && sortConfig.prefix) {
+            const dataKey = `${sortConfig.prefix}_${sortConfig.key}`;
+            filtered = [...filtered].sort((a, b) => {
+                const aVal = a[dataKey];
+                const bVal = b[dataKey];
+                if (aVal === null && bVal === null) return 0;
+                if (aVal === null) return 1;
+                if (bVal === null) return -1;
+                const aNum = parseFloat(aVal);
+                const bNum = parseFloat(bVal);
+                if (!isNaN(aNum) && !isNaN(bNum))
+                    return sortConfig.direction === 'asc' ? aNum - bNum : bNum - aNum;
+                return 0;
+            });
+        }
+        return filtered;
+    }, [tableData, sortConfig, searchQuery]);
+
+    const totalPages = Math.ceil(processedData.length / ROWS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
+    const endIndex = startIndex + ROWS_PER_PAGE;
+    const pageData = processedData.slice(startIndex, endIndex);
+
+    const handleSort = (key, prefix) => {
+        setSortConfig((prev) => {
+            if (prev.key === key && prev.prefix === prefix) {
+                if (prev.direction === 'asc') return { key, prefix, direction: 'desc' };
+                if (prev.direction === 'desc') return { key: null, prefix: null, direction: 'asc' };
+            }
+            return { key, prefix, direction: 'asc' };
+        });
+        setCurrentPage(1);
+    };
+
+    return (
+        <div className="bg-white rounded-lg p-4 sm:p-6 border border-gray-200 shadow-sm mt-4">
+            {/* Header */}
+            <div className="flex items-center gap-2 mb-1">
+                <h2 className="text-lg font-semibold text-gray-900">Model Performance Overview</h2>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">
+                Compare training and testing performance across standard evaluation metrics.
+            </p>
+
+            {/* Search */}
+            <div className="relative mb-4 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                    placeholder="Search models by name..."
+                    className="w-full pl-9 pr-8 py-2 text-xs border border-gray-200 rounded-lg bg-gray-50 text-gray-800 placeholder-gray-400"
+                    style={{ outline: 'none' }}
+                    onFocus={(e) => (e.currentTarget.style.boxShadow = '0 0 0 2px #f0a0a0')}
+                    onBlur={(e) => (e.currentTarget.style.boxShadow = 'none')}
+                />
+                {searchQuery && (
+                    <button
+                        onClick={() => { setSearchQuery(''); setCurrentPage(1); }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                        <X className="w-3.5 h-3.5" />
+                    </button>
+                )}
+            </div>
+
+            {/* Table */}
+            <div className="rounded-xl border border-gray-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                        <thead>
+                            {/* Group header row */}
+                            <tr className="bg-gray-50 border-b border-gray-100">
+                                <th
+                                    rowSpan={2}
+                                    className="text-left py-2.5 px-4 font-semibold text-gray-600 border-r border-gray-200 whitespace-nowrap align-middle min-w-[180px]"
+                                >
+                                    Algorithms
+                                </th>
+                                {testColCount > 0 && (
+                                    <th
+                                        colSpan={testColCount}
+                                        className="text-center py-1.5 px-4 font-semibold text-gray-600 border-r border-gray-200 tracking-wide uppercase text-[10px]"
+                                    >
+                                        Test
+                                    </th>
+                                )}
+                                {trainColCount > 0 && (
+                                    <th
+                                        colSpan={trainColCount}
+                                        className="text-center py-1.5 px-4 font-semibold text-gray-600 tracking-wide uppercase text-[10px]"
+                                    >
+                                        Train
+                                    </th>
+                                )}
+                            </tr>
+
+                            {/* Sub-header row */}
+                            <tr className="bg-gray-50 border-b border-gray-200">
+                                {visibleMetrics.filter((m) => testVisible[m.key]).map((m, i, arr) => (
+                                    <th
+                                        key={`test-${m.key}`}
+                                        onClick={() => handleSort(m.key, 'test')}
+                                        className={`text-left py-1.5 px-4 font-semibold text-gray-500 cursor-pointer select-none whitespace-nowrap ${
+                                            i === arr.length - 1 ? 'border-r border-gray-200' : ''
+                                        }`}
+                                    >
+                                        <span className="inline-flex items-center hover:text-[#8D1718] transition-colors duration-150">
+                                            {m.label}
+                                            <SortIcon
+                                                active={sortConfig.key === m.key && sortConfig.prefix === 'test'}
+                                                direction={sortConfig.direction}
+                                            />
+                                        </span>
+                                    </th>
+                                ))}
+                                {visibleMetrics.filter((m) => trainVisible[m.key]).map((m) => (
+                                    <th
+                                        key={`train-${m.key}`}
+                                        onClick={() => handleSort(m.key, 'train')}
+                                        className="text-left py-1.5 px-4 font-semibold text-gray-500 cursor-pointer select-none whitespace-nowrap"
+                                    >
+                                        <span className="inline-flex items-center hover:text-[#8D1718] transition-colors duration-150">
+                                            {m.label}
+                                            <SortIcon
+                                                active={sortConfig.key === m.key && sortConfig.prefix === 'train'}
+                                                direction={sortConfig.direction}
+                                            />
+                                        </span>
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {pageData.length > 0 ? (
+                                pageData.map((row, idx) => (
+                                    <tr
+                                        key={idx}
+                                        className="border-b border-gray-100 last:border-b-0 hover:bg-red-50/30 transition-colors duration-100"
+                                    >
+                                        <td className="py-2 px-4 text-gray-800 border-r border-gray-200 font-medium" title={row.fullName}>
+                                            <HighlightMatch text={row.fullName} query={searchQuery} />
+                                        </td>
+
+                                        {visibleMetrics.filter((m) => testVisible[m.key]).map((m, i, arr) => (
+                                            <td
+                                                key={`test-${m.key}`}
+                                                className={`py-2 px-4 text-gray-700 ${i === arr.length - 1 ? 'border-r border-gray-200' : ''}`}
+                                            >
+                                                {formatTableVal(row[`test_${m.key}`], m.isLogLoss)}
+                                            </td>
+                                        ))}
+
+                                        {visibleMetrics.filter((m) => trainVisible[m.key]).map((m) => (
+                                            <td key={`train-${m.key}`} className="py-2 px-4 text-gray-700">
+                                                {formatTableVal(row[`train_${m.key}`], m.isLogLoss)}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td
+                                        colSpan={1 + testColCount + trainColCount}
+                                        className="py-10 text-center text-gray-400 text-xs"
+                                    >
+                                        No algorithms match your search
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Pagination */}
+                <div className="px-4 py-2.5 border-t border-gray-100 bg-white">
+                    <TablePagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPrev={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                        onNext={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                        startIndex={startIndex}
+                        endIndex={endIndex}
+                        total={processedData.length}
+                    />
                 </div>
             </div>
         </div>
@@ -362,7 +666,6 @@ function F1MetricsChart({ allResults }) {
                             >
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                                 <XAxis dataKey="metric" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={{ stroke: '#e5e7eb' }} />
-                                {/* ✅ FIX 5: auto domain so log_loss values are not clipped to 100 */}
                                 <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={{ stroke: '#e5e7eb' }} domain={['auto', 'auto']} />
                                 <Tooltip content={() => null} />
                                 <Legend content={<CustomLegend />} />
@@ -388,6 +691,9 @@ function F1MetricsChart({ allResults }) {
                     </div>
                 )}
             </div>
+
+            <PerformanceTable allResults={allResults} />
+
             <PortalTooltip />
         </div>
     );
