@@ -20,7 +20,6 @@ import toast from 'react-hot-toast';
 
 const API_URL = `${window._env_?.VITE_AI_API}/data/f1/launch`;
 
-
 const getBarColor = (score) => {
   if (score === null) return '#D9D9D9';
   const pct = score * 100;
@@ -39,6 +38,8 @@ const formatLabel = (value) => {
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 };
+
+const PROGRESS_TO_NODE = { 38: 1, 42: 2, 58: 3, 67: 4, 76: 5, 85: 6, 90: 7, 100: 8 };
 
 function Dropdown({ label, options, value, onChange, disabled, multiple, searchable }) {
   const [open, setOpen] = useState(false);
@@ -243,9 +244,7 @@ function StandingsPage({ onBack, sessionId }) {
 
   return (
     <div className="flex flex-col" style={{ minHeight: '100vh' }}>
-
       <div className="flex-1 p-4">
-        {/* Header banner */}
         <div
           className="relative w-full rounded-2xl overflow-hidden"
           style={{ background: 'linear-gradient(205.53deg, #8D1718 0.09%, #010200 156.48%)' }}
@@ -267,8 +266,6 @@ function StandingsPage({ onBack, sessionId }) {
               zIndex: 1,
             }}
           />
-
-          {/* Back button row */}
           <div className="relative flex items-center gap-3 px-6 pt-5 pb-3" style={{ zIndex: 10 }}>
             <button
               onClick={onBack}
@@ -284,8 +281,6 @@ function StandingsPage({ onBack, sessionId }) {
               Standings
             </button>
           </div>
-
-          {/* Tabs */}
           <div className="relative flex gap-0 px-6 pb-0" style={{ zIndex: 10 }}>
             {tabs.map((tab) => {
               const isActive = activeTab === tab.key;
@@ -312,8 +307,6 @@ function StandingsPage({ onBack, sessionId }) {
             })}
           </div>
         </div>
-
-        {/* Tab content area */}
         <div
           className="w-full"
           style={{
@@ -325,8 +318,6 @@ function StandingsPage({ onBack, sessionId }) {
           {activeTab === 'xai' && <F1XAI />}
         </div>
       </div>
-
-      {/* Sticky footer */}
       <div
         style={{
           position: 'sticky',
@@ -341,13 +332,13 @@ function StandingsPage({ onBack, sessionId }) {
         <button
           onClick={() => setShowConfirm(true)}
           style={{
-            background: '#8E77BB',
+            background: 'linear-gradient(270deg, #D30101 0%, #6D0101 117.78%)',
             color: '#FFFFFF',
             border: 'none',
             borderRadius: '8px',
             padding: '10px 24px',
             fontSize: '14px',
-            fontWeight: 400,
+            fontWeight: 500,
             cursor: 'pointer',
             fontFamily: 'Satoshi, sans-serif',
           }}
@@ -355,21 +346,15 @@ function StandingsPage({ onBack, sessionId }) {
           Continue to AI Playground
         </button>
       </div>
-
-      {/* Confirm modal */}
       {showConfirm && (
         <div className="fixed inset-0 z-[200] bg-black/45 flex items-center justify-center">
           <div className="bg-white rounded-xl p-6 w-[90%] max-w-[360px] shadow-2xl flex flex-col gap-3">
-            <h2 className="text-base font-bold text-gray-900 m-0">
-              Continue to AI Playground?
-            </h2>
-            <p className="text-sm text-gray-500 m-0">
-              You'll leave F1 Mode and navigate to the AI Playground. Are you sure?
-            </p>
+            <h2 className="text-base font-bold text-gray-900 m-0">Continue to AI Playground?</h2>
+            <p className="text-sm text-gray-500 m-0">You'll leave F1 Mode and navigate to the AI Playground. Are you sure?</p>
             <div className="flex justify-end gap-2 mt-2">
               <button
                 onClick={() => setShowConfirm(false)}
-                className="px-5 py-2 text-sm text-gray-500 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors font-[Satoshi,sans-serif]"
+                className="px-5 py-2 text-sm text-gray-500 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors font-[Satoshi,sans-serif]"
               >
                 Cancel
               </button>
@@ -377,7 +362,7 @@ function StandingsPage({ onBack, sessionId }) {
                 onClick={handleContinueToPlayground}
                 disabled={isDeleting}
                 className="px-5 py-2 text-sm font-semibold text-white rounded-lg cursor-pointer hover:opacity-90 transition-opacity font-[Satoshi,sans-serif]"
-                style={{ background: '#8E77BB', opacity: isDeleting ? 0.7 : 1, cursor: isDeleting ? 'not-allowed' : 'pointer' }}
+                style={{  background: 'linear-gradient(270deg, #D30101 0%, #6D0101 117.78%)', opacity: isDeleting ? 0.7 : 1, cursor: isDeleting ? 'not-allowed' : 'pointer' }}
               >
                 {isDeleting ? 'Leaving…' : 'Continue'}
               </button>
@@ -423,6 +408,7 @@ function F1Mode() {
   const [bestScore, setBestScore] = useState(null);
   const [completedAlgs, setCompletedAlgs] = useState(0);
   const [totalAlgs, setTotalAlgs] = useState(0);
+  const [stageData, setStageData] = useState({});
 
   const [showBackModal, setShowBackModal] = useState(false);
   const [isBackCancelLoading, setIsBackCancelLoading] = useState(false);
@@ -435,23 +421,14 @@ function F1Mode() {
   useEffect(() => {
     const handlePopState = () => {
       const currentPath = window.location.pathname;
-
       if (currentPath === '/ai/f1mode' && sessionId) {
-        // Push state back so user stays on the page
         window.history.pushState(null, '', currentPath);
         setShowBackModal(true);
       }
     };
-
     window.addEventListener('popstate', handlePopState);
-
-    if (sessionId) {
-      window.history.pushState(null, '', window.location.pathname);
-    }
-
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-    };
+    if (sessionId) window.history.pushState(null, '', window.location.pathname);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, [sessionId]);
 
   const handleBackConfirm = async () => {
@@ -470,9 +447,7 @@ function F1Mode() {
     navigate(-2);
   };
 
-  const handleBackCancel = () => {
-    setShowBackModal(false);
-  };
+  const handleBackCancel = () => setShowBackModal(false);
 
   useEffect(() => {
     if (F1ModeCtx?.selected_table && !ingestedTable) {
@@ -501,8 +476,19 @@ function F1Mode() {
     if (typeof data.time_elapsed_seconds === 'number') setElapsed(data.time_elapsed_seconds);
     if (data.stage === 'connected') return;
 
-    const progressToNodeMap = { 38: 1, 42: 2, 58: 3, 67: 4, 76: 5, 85: 6, 90: 7, 100: 8 };
-    if (progressToNodeMap[data.progress] !== undefined) setActiveFlagNode(progressToNodeMap[data.progress]);
+    const nodeIndex = PROGRESS_TO_NODE[data.progress];
+
+    if (nodeIndex !== undefined) {
+      setStageData((prev) => ({
+        ...prev,
+        [nodeIndex]: {
+          step_time: data.step_time ?? null,
+          completed: data.completed ?? null,
+          message: data.message ?? null,
+        },
+      }));
+      setActiveFlagNode(nodeIndex);
+    }
 
     if (data.algorithm_status) {
       setAlgorithmStatus(data.algorithm_status);
@@ -542,6 +528,7 @@ function F1Mode() {
     setModelsTested(null);
     setBestScoreStat(null);
     setLaunchSuccess(false);
+    setStageData({});
 
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
@@ -557,16 +544,11 @@ function F1Mode() {
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
           const detail = errData?.detail || '';
-          toast.error(detail, {
-            duration: 4000,
-            position: 'top-right',
-          });
+          toast.error(detail, { duration: 4000, position: 'top-right' });
           throw new Error(`Launch API error: ${res.status}`);
         }
         const launchData = await res.json();
-
         setF1Mode((prev) => ({ ...prev, launch: launchData }));
-
         if (launchData.raw_data_shape) {
           setRowsSampled(launchData.raw_data_shape[0]);
           setFeaturesCount(launchData.raw_data_shape[1]);
@@ -617,19 +599,12 @@ function F1Mode() {
           </div>
 
           <div className="px-6 pb-6">
-            <div
-              className="grid gap-5"
-              style={{ gridTemplateColumns: '40% 60%' }}
-            >
+            <div className="grid gap-5" style={{ gridTemplateColumns: '40% 60%' }}>
 
               <div className="flex flex-col gap-5">
                 <div>
-                  <p className="text-white/85 text-[0.95rem] font-semibold mb-[0.6rem]">
-                    Qualifying Analysis
-                  </p>
-
+                  <p className="text-white/85 text-[0.95rem] font-semibold mb-[0.6rem]">Qualifying Analysis</p>
                   <div className="flex flex-col gap-4">
-
                     {/* Data Ingestion Box */}
                     <div
                       className="relative flex flex-col items-center justify-center py-7 rounded-xl"
@@ -661,6 +636,7 @@ function F1Mode() {
                               setTotalAlgs(0);
                               setBestScore(null);
                               setLaunchSuccess(false);
+                              setStageData({});
                               setF1Mode(null);
                               if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
                               isFinishedRef.current = false;
@@ -669,12 +645,10 @@ function F1Mode() {
                             style={{ top: 10, right: 10, width: 24, height: 24 }}>
                             <X width={18} height={18} />
                           </button>
-
                           <p className="text-white text-sm font-semibold text-center mb-[0.2rem]"
                             style={{ maxWidth: '80%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {ingestedTable}
                           </p>
-
                           <p className="text-xs text-center" style={{ color: 'rgba(255,255,255,0.4)' }}>
                             Table ready · Ingested
                           </p>
@@ -722,7 +696,6 @@ function F1Mode() {
                       }}>
                       {isLaunching ? 'Race in Progress…' : isRunning ? 'Race in Progress…' : overallProgress === 100 ? 'Launch Again' : 'Launch'}
                     </button>
-
                   </div>
                 </div>
 
@@ -734,7 +707,6 @@ function F1Mode() {
                       border: '1px solid #BD6665',
                     }}
                   >
-                    {/* Header */}
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-white text-base font-bold" style={{ fontFamily: 'Satoshi, sans-serif', fontStyle: 'normal' }}>
                         View Standings
@@ -759,7 +731,6 @@ function F1Mode() {
                         View All
                       </button>
                     </div>
-
                     <div>
                       {algoEntries.length === 0 ? (
                         <div className="flex items-center gap-3 py-2.5">
@@ -789,11 +760,9 @@ function F1Mode() {
               </div>
 
               <div className="flex flex-col gap-5">
-
                 {/* Live Run Status */}
                 <div>
                   <p className="text-white/85 text-[0.95rem] font-semibold mb-[0.6rem]">Live Run Status</p>
-
                   <div
                     className="rounded-2xl p-3"
                     style={{
@@ -823,7 +792,11 @@ function F1Mode() {
                       </div>
                     </div>
 
-                    <RaceTrack activeNodeIndex={activeFlagNode} isFinished={isRaceFinished} />
+                    <RaceTrack
+                      activeNodeIndex={activeFlagNode}
+                      isFinished={isRaceFinished}
+                      stageData={stageData}
+                    />
                   </div>
                 </div>
 
@@ -836,26 +809,10 @@ function F1Mode() {
                   }}
                 >
                   <div className="grid grid-cols-2 gap-2">
-                    <StatCard
-                      label="Rows Sampled"
-                      icon={TableRowsIcon}
-                      value={rowsSampled !== null ? rowsSampled.toLocaleString() : '—'}
-                    />
-                    <StatCard
-                      label="Features"
-                      icon={TuneIcon}
-                      value={featuresCount !== null ? featuresCount : '—'}
-                    />
-                    <StatCard
-                      label="Models Tested"
-                      icon={SpeedIcon}
-                      value={modelsTested !== null ? modelsTested : '—'}
-                    />
-                    <StatCard
-                      label="Best Score"
-                      icon={CrownIcon}
-                      value={bestScoreStat !== null ? bestScoreStat.toFixed(3) : '—'}
-                    />
+                    <StatCard label="Rows Sampled" icon={TableRowsIcon} value={rowsSampled !== null ? rowsSampled.toLocaleString() : '—'} />
+                    <StatCard label="Features" icon={TuneIcon} value={featuresCount !== null ? featuresCount : '—'} />
+                    <StatCard label="Models Tested" icon={SpeedIcon} value={modelsTested !== null ? modelsTested : '—'} />
+                    <StatCard label="Best Score" icon={CrownIcon} value={bestScoreStat !== null ? bestScoreStat.toFixed(3) : '—'} />
                   </div>
                 </div>
               </div>
@@ -874,11 +831,9 @@ function F1Mode() {
               <div className="flex items-center gap-3 mb-4">
                 <h2 className="text-xl font-semibold text-gray-900">Exit F1 Mode</h2>
               </div>
-
               <p className="text-gray-600 mb-6">
                 Are you sure you want to leave? Your active F1 Mode session will be terminated.
               </p>
-
               <div className="flex gap-3 justify-end">
                 <button
                   onClick={handleBackCancel}
