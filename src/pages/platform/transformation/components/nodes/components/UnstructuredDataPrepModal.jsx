@@ -24,19 +24,56 @@ const UnStructureDataPrep = ({ open, onClose, txtFile }) => {
     return findArray(data) || [];
   };
 
+  // const getCellValue = (row, colPath) => {
+  //   // If exact match exists (e.g. JSON fields without nested structure)
+  //   if (row[colPath] !== undefined) {
+  //     return typeof row[colPath] === 'object' ? JSON.stringify(row[colPath]) : row[colPath];
+  //   }
+  //   // Attempt fallback for nested keys where the array root is omitted
+  //   const parts = colPath.split('.');
+  //   if (parts.length > 0) {
+  //     const lastPart = parts[parts.length - 1];
+  //     if (row[lastPart] !== undefined) {
+  //       return typeof row[lastPart] === 'object' ? JSON.stringify(row[lastPart]) : row[lastPart];
+  //     }
+  //   }
+  //   return "";
+  // };
+
   const getCellValue = (row, colPath) => {
     // If exact match exists (e.g. JSON fields without nested structure)
     if (row[colPath] !== undefined) {
       return typeof row[colPath] === 'object' ? JSON.stringify(row[colPath]) : row[colPath];
     }
-    // Attempt fallback for nested keys where the array root is omitted
+
     const parts = colPath.split('.');
-    if (parts.length > 0) {
-      const lastPart = parts[parts.length - 1];
-      if (row[lastPart] !== undefined) {
-        return typeof row[lastPart] === 'object' ? JSON.stringify(row[lastPart]) : row[lastPart];
+    const traverse = (obj, keys) => {
+      if (obj === null || obj === undefined) return [];
+      if (keys.length === 0) return [typeof obj === 'object' ? JSON.stringify(obj) : String(obj)];
+      const [head, ...tail] = keys;
+      if (obj[head] !== undefined) {
+        const next = obj[head];
+        if (Array.isArray(next)) {
+          return next.flatMap((item) => traverse(item, tail));
+        }
+        return traverse(next, tail);
+      }
+     
+      return traverse(obj, tail);
+    };
+
+    for (let i = 0; i < parts.length; i++) {
+      if (row[parts[i]] !== undefined) {
+        const values = traverse(row, parts.slice(i));
+        return values.filter(Boolean).join('; ');
       }
     }
+
+    const lastPart = parts[parts.length - 1];
+    if (row[lastPart] !== undefined) {
+      return typeof row[lastPart] === 'object' ? JSON.stringify(row[lastPart]) : row[lastPart];
+    }
+
     return "";
   };
 
