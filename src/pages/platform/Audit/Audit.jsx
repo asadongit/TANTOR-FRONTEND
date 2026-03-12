@@ -43,6 +43,7 @@ function Audit() {
         { value: "purge", label: "Purge" },
         { value: "user-report", label: "User Report" },
         { value: "reports", label: "Dashboard Reports" },
+        { value: "audit", label: "Audit" },
     ];
 
     const actionOptions = [
@@ -50,6 +51,7 @@ function Audit() {
         { value: "UPDATE", label: "Update" },
         { value: "DELETE", label: "Delete" },
         { value: "READ", label: "Read" },
+        { value: "DOWNLOAD", label: "Download" },
         { value: "TRIGGER", label: "Trigger" },
         { value: "OTHER", label: "Other" },
     ];
@@ -72,6 +74,8 @@ function Audit() {
                 return actionOptions.filter(a => ["CREATE", "UPDATE", "DELETE"].includes(a.value));
             case "metadata":
                 return actionOptions.filter(a => ["CREATE", "DELETE"].includes(a.value));
+            case "audit":
+                return actionOptions.filter(a => ["READ", "DOWNLOAD"].includes(a.value));
             default:
                 return actionOptions;
         }
@@ -397,6 +401,36 @@ function Audit() {
         };
     }, [downloadRef]);
 
+    const triggerDownloadAudit = async (type) => {
+        try {
+            const auditPayload = {
+                user_name: decodedToken?.preferred_username || "unknown",
+                module: "audit",
+                action: "DOWNLOAD",
+                type: type,
+                downloaded_at: new Date().toISOString(),
+                filters: {
+                    user_id: userId,
+                    module: module,
+                    action: action,
+                    start_date: startDate,
+                    end_date: endDate,
+                    limit: limit,
+                    custom_limit: customLimit,
+                    show_previous_state: showPreviousState,
+                    show_new_state: showNewState
+                }
+            };
+            await axios.post(`${hostname}/audit/audit-download`, auditPayload, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+        } catch (error) {
+            console.error("Error triggering download audit:", error);
+        }
+    };
+
     const prepareDataForExport = () => {
         return auditData.map(row => {
             const exportRow = { ...row };
@@ -441,6 +475,7 @@ function Audit() {
         document.body.removeChild(link);
 
         setShowDownloadOptions(false);
+        triggerDownloadAudit('csv');
     };
 
     const downloadExcel = () => {
@@ -453,6 +488,7 @@ function Audit() {
         XLSX.writeFile(wb, `audit_data_${new Date().toISOString().split('T')[0]}.xlsx`);
 
         setShowDownloadOptions(false);
+        triggerDownloadAudit('excel');
     };
 
     useEffect(() => {

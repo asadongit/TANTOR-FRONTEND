@@ -1,6 +1,7 @@
 import { Icon } from "@iconify-icon/react";
-import { useState, useEffect, useRef } from "react";
-import { List, RefreshCcw, BarChart3, ChevronDown, CheckCircle } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { List, RefreshCcw, BarChart3 } from "lucide-react";
+import { useRealtimeUpdate } from "../../../hooks/platform/realtime_update";
 import Charts from "./components/Charts";
 import { Navigate } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
@@ -35,42 +36,16 @@ const CDCDashboard = () => {
   const navigate = useNavigate();
   const { decodedToken } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
-  const autoRefreshMenuRef = useRef(null);
-  const [autoRefreshInterval, setAutoRefreshInterval] = useState(() => {
-    const saved = localStorage.getItem(`autoRefresh_cdc_${decodedToken?.preferred_username}`);
-    return saved ? parseInt(saved, 10) : 0;
-  });
 
-  useEffect(() => {
-    if (decodedToken?.preferred_username) {
-      const saved = localStorage.getItem(`autoRefresh_cdc_${decodedToken?.preferred_username}`);
-      if (saved) {
-        setAutoRefreshInterval(parseInt(saved, 10));
-      }
-    }
-  }, [decodedToken]);
+  const handleRealtimeUpdate = useCallback(() => {
+    refetchCDCData();
+    refetchCardCounts();
+  }, [refetchCDCData, refetchCardCounts]);
 
-  useEffect(() => {
-    if (autoRefreshInterval === 0) return;
+  useRealtimeUpdate("cdcv2", handleRealtimeUpdate);
 
-    const interval = setInterval(() => {
-      refetchCDCData();
-      refetchCardCounts();
-    }, autoRefreshInterval);
 
-    return () => clearInterval(interval);
-  }, [autoRefreshInterval, refetchCDCData, refetchCardCounts]);
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (autoRefreshMenuRef.current && !autoRefreshMenuRef.current.contains(event.target)) {
-        setIsAutoRefreshMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
 
   const cards = [
@@ -148,71 +123,28 @@ const CDCDashboard = () => {
         <h1 className="text-2xl font-semibold">CDC</h1>
         <div className="flex items-center gap-2">
           <FeatureFlag flag={featureFlags.SHOW_KAFKA_METRICS_IN_CDC}>
-          <button
-            type="button"
-            className="flex items-center gap-2 w-auto h-10 px-3 rounded-lg border border-gray-400 hover:bg-gray-50"
-            onClick={handleMetricsClick}
-            title="Metrics Dashboard"
-          >
-            <BarChart3 className="h-5 w-5 text-[#8d77ba]" />
-            <span className="text-[#8d77ba] font-medium">Dashboard</span>
-          </button>
+            <button
+              type="button"
+              className="flex items-center gap-2 w-auto h-10 px-3 rounded-lg border border-gray-400 hover:bg-gray-50"
+              onClick={handleMetricsClick}
+              title="Metrics Dashboard"
+            >
+              <BarChart3 className="h-5 w-5 text-[#8d77ba]" />
+              <span className="text-[#8d77ba] font-medium">Dashboard</span>
+            </button>
           </FeatureFlag>
 
-          <div className="relative flex items-center" ref={autoRefreshMenuRef}>
-            <div className="flex rounded-lg border border-gray-400 hover:bg-gray-50 h-10">
-              <button
-                className="w-10 flex items-center justify-center border-r border-gray-300"
-                onClick={handleRefresh}
-                title="Refresh data"
-                disabled={isRefreshing || isCDCLoading || isCardLoading}
-              >
-                <RefreshCcw
-                  className={`h-5 w-5 text-gray-600 ${(isRefreshing || isCDCLoading || isCardLoading) ? "icon-rotate" : ""}`}
-                />
-              </button>
-              <button
-                className="px-2 flex items-center justify-center"
-                onClick={() => setIsAutoRefreshMenuOpen(!isAutoRefreshMenuOpen)}
-                title="Auto Refresh Settings"
-              >
-                <ChevronDown className="h-4 w-4 text-gray-600" />
-              </button>
-            </div>
-
-            {isAutoRefreshMenuOpen && (
-              <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
-                <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                  Auto Refresh
-                </div>
-                {[
-                  { label: "Off", value: 0 },
-                  { label: "5 seconds", value: 5000 },
-                  { label: "10 seconds", value: 10000 },
-                  { label: "1 minute", value: 60000 },
-                  { label: "2 minutes", value: 120000 },
-                  { label: "5 minutes", value: 300000 },
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center justify-between ${autoRefreshInterval === option.value ? "text-[#8d77ba] font-medium bg-purple-50" : "text-gray-700"
-                      }`}
-                    onClick={() => {
-                      setAutoRefreshInterval(option.value);
-                      if (decodedToken?.preferred_username) {
-                        localStorage.setItem(`autoRefresh_cdc_${decodedToken?.preferred_username}`, option.value.toString());
-                      }
-                      setIsAutoRefreshMenuOpen(false);
-                    }}
-                  >
-                    {option.label}
-                    {autoRefreshInterval === option.value && (
-                      <CheckCircle className="h-4 w-4" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
+          <div className="relative flex items-center">
+            <button
+              className="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-400 hover:bg-gray-50"
+              onClick={handleRefresh}
+              title="Refresh data"
+              disabled={isRefreshing || isCDCLoading || isCardLoading}
+            >
+              <RefreshCcw
+                className={`h-5 w-5 text-gray-600 ${(isRefreshing || isCDCLoading || isCardLoading) ? "icon-rotate" : ""}`}
+              />
+            </button>
           </div>
 
           <button
@@ -240,7 +172,7 @@ const CDCDashboard = () => {
         </div>
       </div>
 
-      <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading}/>
+      <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading} />
 
       <div className="flex flex-col items-start gap-2.5 m-2">
         <h2

@@ -17,6 +17,7 @@ import { useMetadataData } from "../../hooks/platform/metadata";
 import { useProjectData } from "../../hooks/platform/project";
 import { useRuleData } from "../../hooks/platform/reportingframework/rules";
 import DataTable from "../../components/DataTable";
+import { useRealtimeUpdate } from "../../hooks/platform/realtime_update";
 import { getActionConfigurations } from "../../components/actionsConfig";
 import columnConfigurations from "../../components/columnsConfig";
 import { useAuth } from "../../context/AuthContext";
@@ -76,13 +77,6 @@ const Details = () => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [activeMenu, setActiveMenu] = useState(null);
 
-  const [autoRefreshInterval, setAutoRefreshInterval] = useState(() => {
-    const saved = localStorage.getItem(`autoRefresh_details_${storageKeyIdentifier}_${decodedToken?.preferred_username}`);
-    return saved ? parseInt(saved, 10) : 0;
-  });
-  const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
-  const autoRefreshMenuRef = useRef(null);
-
   const [deleteModal, setDeleteModal] = useState({ open: false, id: null, type: null, onConfirm: null });
 
   const [resetSortTrigger, setResetSortTrigger] = useState(0);
@@ -90,26 +84,7 @@ const Details = () => {
     setResetSortTrigger(prev => prev + 1);
   };
 
-  useEffect(() => {
-    if (decodedToken?.preferred_username && storageKeyIdentifier) {
-      const saved = localStorage.getItem(`autoRefresh_details_${storageKeyIdentifier}_${decodedToken?.preferred_username}`);
-      if (saved) {
-        setAutoRefreshInterval(parseInt(saved, 10));
-      } else {
-        setAutoRefreshInterval(0);
-      }
-    }
-  }, [decodedToken, storageKeyIdentifier]);
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (autoRefreshMenuRef.current && !autoRefreshMenuRef.current.contains(event.target)) {
-        setIsAutoRefreshMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const getColumnConfiguration = useCallback((type) => {
     const resolvedType = columnAliases[type] || type;
@@ -167,17 +142,24 @@ const Details = () => {
     return getActionConfigurations({ token, project, hostnameV2, hostnameV1, navigate, setDeleteModal, refetch })[selectedType];
   }, [selectedType, token, project, hostnameV2, hostnameV1, navigate, refetch]);
 
+  const handleRealtimeUpdate = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  const wsTableMap = {
+    migration: "migration",
+    purge: "purge",
+    transformation: "etl",
+    connections: "connectionsave",
+    metadata: "migration",
+    cdc: "cdcv2",
+  };
+
+  useRealtimeUpdate(wsTableMap[selectedType], handleRealtimeUpdate);
+
   useEffect(() => {
     refetch();
-
-    if (autoRefreshInterval === 0) return;
-
-    const intervalId = setInterval(() => {
-      refetch();
-    }, autoRefreshInterval);
-
-    return () => clearInterval(intervalId);
-  }, [refetch, autoRefreshInterval]);
+  }, [refetch]);
 
   const handleCDCDeleteSelected = (selectedItems) => {
     if (!selectedItems || selectedItems.length === 0) return;
@@ -266,65 +248,22 @@ const Details = () => {
             <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
           </div>
 
-          <div className="relative flex items-center" ref={autoRefreshMenuRef}>
-            <div className="flex rounded-lg border border-gray-400 hover:bg-gray-50 h-10">
-              <button
-                className="w-10 flex items-center justify-center border-r border-gray-300"
-                onClick={() => {
-                  refetch();
-                  setSearchTerm("");
-                  handleClearSort();
-                  toast.success("Details data refreshed successfully");
-                }}
-                title="Refresh data"
-                disabled={isLoading}
-              >
-                <RefreshCcw
-                  className={`h-5 w-5 text-gray-600 ${isLoading ? "icon-rotate" : ""}`}
-                />
-              </button>
-              <button
-                className="px-2 flex items-center justify-center"
-                onClick={() => setIsAutoRefreshMenuOpen(!isAutoRefreshMenuOpen)}
-                title="Auto Refresh Settings"
-              >
-                <ChevronDown className="h-4 w-4 text-gray-600" />
-              </button>
-            </div>
-
-            {isAutoRefreshMenuOpen && (
-              <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
-                <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                  Auto Refresh
-                </div>
-                {[
-                  { label: "Off", value: 0 },
-                  { label: "5 seconds", value: 5000 },
-                  { label: "10 seconds", value: 10000 },
-                  { label: "1 minute", value: 60000 },
-                  { label: "2 minutes", value: 120000 },
-                  { label: "5 minutes", value: 300000 },
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center justify-between ${autoRefreshInterval === option.value ? "text-[#8d77ba] font-medium bg-purple-50" : "text-gray-700"
-                      }`}
-                    onClick={() => {
-                      setAutoRefreshInterval(option.value);
-                      if (decodedToken?.preferred_username) {
-                        localStorage.setItem(`autoRefresh_details_${storageKeyIdentifier}_${decodedToken?.preferred_username}`, option.value.toString());
-                      }
-                      setIsAutoRefreshMenuOpen(false);
-                    }}
-                  >
-                    {option.label}
-                    {autoRefreshInterval === option.value && (
-                      <CheckCircle className="h-4 w-4" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
+          <div className="relative flex items-center">
+            <button
+              className="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-400 hover:bg-gray-50"
+              onClick={() => {
+                refetch();
+                setSearchTerm("");
+                handleClearSort();
+                toast.success("Details data refreshed successfully");
+              }}
+              title="Refresh data"
+              disabled={isLoading}
+            >
+              <RefreshCcw
+                className={`h-5 w-5 text-gray-600 ${isLoading ? "icon-rotate" : ""}`}
+              />
+            </button>
           </div>
         </div>
       </div>
