@@ -24,6 +24,7 @@ import { useAuth } from "../../context/AuthContext";
 import Breadcrumb from "../../components/Breadcrumb";
 import { useRef } from "react";
 import axios from "axios";
+import { DagErrorModal } from "../../components/DagErrorModal";
 
 const useDynamicData = (componentType) => {
 
@@ -84,6 +85,14 @@ const Details = () => {
     setResetSortTrigger(prev => prev + 1);
   };
 
+  const [dagErrorModal, setDagErrorModal] = useState({
+    isOpen: false,
+    isLoading: false,
+    data: null,
+    dagId: null,
+    title: null,
+  });
+
 
 
   const getColumnConfiguration = useCallback((type) => {
@@ -94,9 +103,49 @@ const Details = () => {
     ];
   }, []);
 
+  const handleFailedClick = useCallback((row) => {
+    setDagErrorModal({
+      isOpen: true,
+      isLoading: false,
+      data: { error: row.remarks },
+      dagId: row.dag_id || row.cdc_id || row.id,
+      title: "CDC Pipeline Failure"
+    });
+  }, []);
+
   const columns = useMemo(
-    () => getColumnConfiguration(cardType || componentType),
-    [getColumnConfiguration, cardType, componentType]
+    () => {
+      const cols = getColumnConfiguration(cardType || componentType);
+      return cols.map((col) => {
+        if (col.key === "status" && selectedType === "cdc") {
+          return {
+            ...col,
+            render: (row) => {
+              let className = "px-2 py-1 rounded-full font-medium";
+              if (row.status === "Failed" || row.status === "failed") {
+                className += " bg-red-100 text-red-600";
+                return (
+                  <button
+                    onClick={() => handleFailedClick(row)}
+                    className={`flex items-center gap-1 ${className} hover:bg-red-200`}
+                    title="View failure details"
+                  >
+                    <span>Failed</span>
+                  </button>
+                );
+              } else if (row.status === "Success" || row.status === "success") {
+                className += " bg-green-100 text-green-600";
+              } else {
+                className += " bg-gray-100 text-gray-600";
+              }
+              return <span className={className}>{row.status}</span>;
+            },
+          };
+        }
+        return col;
+      });
+    },
+    [getColumnConfiguration, cardType, componentType, selectedType, handleFailedClick]
   );
 
 
@@ -284,6 +333,14 @@ const Details = () => {
               : undefined
         }
 
+      />
+
+      <DagErrorModal
+        isOpen={dagErrorModal.isOpen}
+        onClose={() => setDagErrorModal({ isOpen: false, isLoading: false, data: null, dagId: null })}
+        isLoading={dagErrorModal.isLoading}
+        data={dagErrorModal.data}
+        title={dagErrorModal.title}
       />
 
       {deleteModal.open && (
