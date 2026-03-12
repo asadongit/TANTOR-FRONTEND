@@ -47,32 +47,9 @@ const ReportConfigDashboard = () => {
 
   const [viewMode, setViewMode] = useState("list");
 
-  const [autoRefreshInterval, setAutoRefreshInterval] = useState(() => {
-    const saved = localStorage.getItem(`autoRefresh_report_${decodedToken?.preferred_username}`);
-    return saved ? parseInt(saved, 10) : 0;
-  });
 
-  const [isAutoRefreshMenuOpen, setIsAutoRefreshMenuOpen] = useState(false);
-  const autoRefreshMenuRef = useRef(null);
 
-  useEffect(() => {
-    if (decodedToken?.preferred_username) {
-      const saved = localStorage.getItem(`autoRefresh_report_${decodedToken?.preferred_username}`);
-      if (saved) {
-        setAutoRefreshInterval(parseInt(saved, 10));
-      }
-    }
-  }, [decodedToken]);
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (autoRefreshMenuRef.current && !autoRefreshMenuRef.current.contains(event.target)) {
-        setIsAutoRefreshMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const navigate = useNavigate();
 
@@ -282,15 +259,7 @@ const ReportConfigDashboard = () => {
     fetchReports();
   };
 
-  useEffect(() => {
-    if (autoRefreshInterval === 0) return;
 
-    const interval = setInterval(() => {
-      refetchReports();
-    }, autoRefreshInterval);
-
-    return () => clearInterval(interval);
-  }, [autoRefreshInterval]);
 
   const [chartData, setChartData] = useState([
     {
@@ -406,66 +375,23 @@ const ReportConfigDashboard = () => {
         <h1 className="text-2xl font-semibold">Reports</h1>
         <div className="flex items-center gap-2">
 
-          <div className="relative inline-flex items-center bg-white rounded-lg border border-gray-400 shadow-sm hover:border-[#8d77ba] transition-colors" ref={autoRefreshMenuRef}>
-            <div className="flex items-center">
-              <button
-                className="px-3 py-2 flex items-center justify-center border-r border-gray-200 hover:bg-gray-50 rounded-l-lg transition-colors"
-                onClick={handleRefresh}
-                title="Refresh data"
-                disabled={isReportsLoading}
-              >
-                <RefreshCcw
-                  className={`h-5 w-5 text-gray-600 ${isReportsLoading ? "animate-spin" : ""}`}
-                />
-              </button>
-              <button
-                className="px-2 flex items-center justify-center rounded-r-lg hover:bg-gray-50 transition-colors py-2.5"
-                onClick={() => setIsAutoRefreshMenuOpen(!isAutoRefreshMenuOpen)}
-                title="Auto Refresh Settings"
-              >
-                <ChevronDown className="h-4 w-4 text-gray-600" />
-              </button>
-            </div>
-
-            {isAutoRefreshMenuOpen && (
-              <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
-                <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                  Auto Refresh
-                </div>
-                {[
-                  { label: "Off", value: 0 },
-                  { label: "5 seconds", value: 5000 },
-                  { label: "10 seconds", value: 10000 },
-                  { label: "1 minute", value: 60000 },
-                  { label: "2 minutes", value: 120000 },
-                  { label: "5 minutes", value: 300000 },
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center justify-between ${autoRefreshInterval === option.value ? "text-[#8d77ba] font-medium bg-purple-50" : "text-gray-700"
-                      }`}
-                    onClick={() => {
-                      setAutoRefreshInterval(option.value);
-                      if (decodedToken?.preferred_username) {
-                        localStorage.setItem(`autoRefresh_report_${decodedToken?.preferred_username}`, option.value.toString());
-                      }
-                      setIsAutoRefreshMenuOpen(false);
-                    }}
-                  >
-                    {option.label}
-                    {autoRefreshInterval === option.value && (
-                      <CheckCircle className="h-4 w-4" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
+          <div className="relative flex items-center">
+            <button
+              className="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-400 hover:bg-gray-50 transition-colors"
+              onClick={handleRefresh}
+              title="Refresh data"
+              disabled={isReportsLoading}
+            >
+              <RefreshCcw
+                className={`h-5 w-5 text-gray-600 ${isReportsLoading ? "animate-spin" : ""}`}
+              />
+            </button>
           </div>
 
           <button
             className={`w-10 h-10 flex items-center justify-center rounded-lg border ${viewMode === "list"
-                ? "bg-gray-100 border-gray-500"
-                : "border-gray-400"
+              ? "bg-gray-100 border-gray-500"
+              : "border-gray-400"
               } hover:bg-gray-50`}
             onClick={() => setViewMode(viewMode === "list" ? "both" : "list")}
             title={viewMode === "list" ? "Show All Views" : "Show List Only"}
