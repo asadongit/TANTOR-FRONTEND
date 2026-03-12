@@ -1,7 +1,7 @@
 import { X, Loader, Download } from "lucide-react";
 import { Icon } from "@iconify-icon/react";
 
-export const DagErrorModal = ({ isOpen, onClose, isLoading, data }) => {
+export const DagErrorModal = ({ isOpen, onClose, isLoading, data, title = null }) => {
     if (!isOpen) return null;
     
     console.log("data ==> ", data);
@@ -23,7 +23,7 @@ export const DagErrorModal = ({ isOpen, onClose, isLoading, data }) => {
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                         <Icon icon="material-symbols:error-outline" className="w-5 h-5 text-red-500" />
-                        <h2 className="text-xl font-semibold text-gray-800">DAG Failure Details</h2>
+                        <h2 className="text-xl font-semibold text-gray-800">{title ? title : "DAG Failure Details"}</h2>
                     </div>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
                         <X className="h-5 w-5" />
