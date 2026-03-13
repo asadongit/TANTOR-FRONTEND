@@ -5,6 +5,7 @@ import {
   Search,
   ChevronDown,
   CheckCircle,
+  ExternalLink
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { decrypt } from "../../utils/Crypto";
@@ -117,7 +118,7 @@ const Details = () => {
     () => {
       const cols = getColumnConfiguration(cardType || componentType);
       return cols.map((col) => {
-        if (col.key === "status" && selectedType === "cdc") {
+        if (col.key === "status" && (selectedType === "cdc" || selectedType === "metadata")) {
           return {
             ...col,
             render: (row) => {
@@ -131,6 +132,7 @@ const Details = () => {
                     title="View failure details"
                   >
                     <span>Failed</span>
+                    <ExternalLink className="ml-1 w-3 h-3" />
                   </button>
                 );
               } else if (row.status === "Success" || row.status === "success") {
