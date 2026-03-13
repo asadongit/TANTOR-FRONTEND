@@ -104,13 +104,13 @@ const Details = () => {
     ];
   }, []);
 
-  const handleFailedClick = useCallback((row) => {
+  const handleFailedClick = useCallback((row, title = null) => {
     setDagErrorModal({
       isOpen: true,
       isLoading: false,
       data: { error: row.remarks },
       dagId: row.dag_id || row.cdc_id || row.id,
-      title: "CDC Pipeline Failure"
+      title: title
     });
   }, []);
 
@@ -127,7 +127,9 @@ const Details = () => {
                 className += " bg-red-100 text-red-600";
                 return (
                   <button
-                    onClick={() => handleFailedClick(row)}
+                    onClick={() => {
+                      handleFailedClick(row, `${selectedType.toUpperCase()} Failure`)
+                    }}
                     className={`flex items-center gap-1 ${className} hover:bg-red-200`}
                     title="View failure details"
                   >
