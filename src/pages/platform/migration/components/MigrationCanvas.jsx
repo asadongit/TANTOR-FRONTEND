@@ -85,15 +85,23 @@ function MigrationCanvasInner() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
 
-  useEffect(() => {
-    const state = location.state;
-    // console.log("Navigation State:", state);
-    if (state?.isEditMode && state?.nodeJson) {
-      setMigrationData(state.nodeJson);
-      setIsEditMode(true);
+useEffect(() => {
+  const state = location.state;
+   // console.log("Navigation State:", state);
+   
+  if (state?.isEditMode && state?.nodeJson) {
+    setMigrationData(state.nodeJson);
+    setIsEditMode(true);
       // console.log("Prefilled Migration Data:", state.nodeJson);
-    }
-  }, [location.state, setMigrationData]);
+  }
+
+  if (state?.action === "CLONE" && state?.existingMetadata) {
+    setMetadataData({...state.existingMetadata, action: state?.action || null});
+    setMode("metadata");
+    setNodes(metadataInitialNodes);
+    setEdges(metadataInitialEdges);
+  }
+}, [location.state, setMigrationData]);
 
   const nodeTypes = mode === "migration" ? migrationNodeTypes : metadataNodeTypes;
 
@@ -197,6 +205,7 @@ function MigrationCanvasInner() {
       conn_type: metadataData.source?.source_conn_type ?? "",
       source_conn_id: metadataData.source?.source_conn_id ?? "",
       target_conn_id: metadataData.target?.target_conn_id ?? "",
+      ui_json: metadataData ?? {},
       table_list:
         metadataData.target?.transformedTables?.map(t => ({ [t.source]: t.target })) ?? [],
     };

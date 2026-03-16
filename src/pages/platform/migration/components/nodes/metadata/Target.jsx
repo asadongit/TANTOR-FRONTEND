@@ -26,15 +26,39 @@ const Target = ({ id }) => {
     return sourceNode?.bulk_list || [];
   }, [sourceNode]);
 
-  useEffect(() => {
-    const nodeData = metadataData[id] || {};
-    setSelectedConnection(nodeData.connection || '');
-    setSelectedSchema(nodeData.schema || '');
-    setSettings(nodeData.settings || 'As is');
-    setSettingsValue(nodeData.settingsValue || '');
-  }, [metadataData, id]);
+  // useEffect(() => {
+  //   const nodeData = metadataData[id] || {};
+  //   setSelectedConnection(nodeData.connection || '');
+  //   setSelectedSchema(nodeData.schema || '');
+  //   setSettings(nodeData.settings || 'As is');
+  //   setSettingsValue(nodeData.settingsValue || '');
+  // }, [metadataData, id]);
+
+const [cloneApplied, setCloneApplied] = useState(false);
+
+useEffect(() => {
+  if (metadataData?.action !== "CLONE") {
+    setCloneApplied(true);
+    return;
+  }
+  if (!connections?.length) return;
+
+  const existingTargetData = metadataData?.target;
+  if (!existingTargetData) return;
+
+  const match = connections.find(c => c.connection_name === existingTargetData.connection) || null;
+  setSelectedConnectionObj(match);
+  setSelectedConnection(existingTargetData.connection || "");
+  setSelectedSchema(existingTargetData.schema || "");
+  setSettings(existingTargetData.settings || "As is");
+  setSettingsValue(existingTargetData.settingsValue || "");
+  setCloneApplied(true);
+
+}, [metadataData?.action, metadataData?.target, connections]);
 
   useEffect(() => {
+    if (!cloneApplied) return;
+    
     const transformed = sourceTables.map((table) => {
       let newName = `${selectedSchema}.${table}`;
       if (settings === 'Prefix' && settingsValue) {
