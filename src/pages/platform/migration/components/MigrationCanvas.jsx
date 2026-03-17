@@ -546,7 +546,7 @@ useEffect(() => {
           className="bg-gray-50"
           style={{ width: "100%", height: "100%" }}
         >
-          <MigrationSidebar presentNodeTypes={presentNodeTypes} onModeChange={handleModeChange} isEditMode={isEditMode} />
+          <MigrationSidebar presentNodeTypes={presentNodeTypes} onModeChange={handleModeChange} isEditMode={isEditMode} mode={mode}/>
           <Controls className="fill-white stroke-black" />
         </ReactFlow>
       </div>
