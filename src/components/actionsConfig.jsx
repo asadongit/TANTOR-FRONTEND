@@ -1,6 +1,6 @@
 import axios from "axios";
 import React from "react";
-import { Pencil, Trash2, Play, Pause, Eye, EyeIcon } from "lucide-react";
+import { Pencil, Trash2, Play, Pause, Eye, EyeIcon, ClipboardPenLine, Copy } from "lucide-react";
 import toast from "react-hot-toast";
 import { deleteCDCConnectors } from "../hooks/platform/cdc";
 import { deleteMetadata } from "../hooks/platform/metadata";
@@ -175,8 +175,21 @@ export const getActionConfigurations = ({ token, project, hostnameV2, hostnameV1
               toast.error("Failed to delete metadata record");
             }
           }, "Metadata");
-        },
+        }, 
       },
+
+      {
+        label: "Clone",
+        icon: React.createElement(Copy, { size: 16 }),
+        onClick: (row) => {          
+          navigate("/migrationCanvas", {
+          state: {
+            existingMetadata: row?.extra_info?.ui_json,
+            action: "CLONE"
+          }
+        })
+      }, 
+      }
     ],
     rules: [
       // {
