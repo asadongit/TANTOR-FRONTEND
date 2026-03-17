@@ -12,10 +12,9 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 
-export default function MigrationSidebar({ presentNodeTypes = {}, onModeChange, isEditMode }) {
+export default function MigrationSidebar({ presentNodeTypes = {}, onModeChange, isEditMode, mode }) {
     const [collapsed, setCollapsed] = useState(false);
     const [isHovering, setIsHovering] = useState(null);
-    const [mode, setMode] = useState("migration");
 
     const migrationNodes = [
         {
@@ -88,7 +87,6 @@ export default function MigrationSidebar({ presentNodeTypes = {}, onModeChange, 
 
     const handleModeToggle = () => {
         const newMode = mode === "migration" ? "metadata" : "migration";
-        setMode(newMode);
         onModeChange(newMode);
     };
 
