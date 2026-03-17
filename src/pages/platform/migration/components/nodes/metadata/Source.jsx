@@ -11,11 +11,13 @@ const Source = ({ id, data, selected }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedItems, setSelectedItems] = useState([]);
   const [selectedConnectionObj, setSelectedConnectionObj] = useState(null);
-  const { updateMetadataNodeData } = useMetadata();
+  const {metadataData, updateMetadataNodeData } = useMetadata();
 
   const { data: connections, isLoading: isLoadingConnections } = useConnections('source');
   const { data: schemas, isLoading: isLoadingSchemas } = useSchemas(selectedConnection);
   const { data: tables, isLoading: isLoadingTables } = useTables(selectedConnection, selectedSchema);
+
+  const [cloneApplied, setCloneApplied] = useState(false);
 
   const filteredTables = useMemo(() => {
     if (!tables || !Array.isArray(tables)) return [];
@@ -27,6 +29,28 @@ const Source = ({ id, data, selected }) => {
   }, [tables, searchTerm]);
 
   useEffect(() => {
+    if (metadataData?.action !== "CLONE") {
+      setCloneApplied(true);
+      return;
+    }
+    if (!connections?.length) return;
+
+    const existingSourceData = metadataData?.source;
+    if (!existingSourceData) return;
+
+    setSelectedConnection(existingSourceData.connection || "");
+    setSelectedConnectionObj(
+      connections.find(c => c.connection_name === existingSourceData.connection) || null
+    );
+    setSelectedSchema(existingSourceData.schema || "");
+    setSelectedItems(existingSourceData.bulk_list || []);
+    setCloneApplied(true);
+
+  }, [metadataData?.action, metadataData?.source, connections]);
+
+  useEffect(() => {
+    if (!cloneApplied) return;
+
     const nodeData = data || {};
     const hasChanges =
       nodeData.connection !== selectedConnection ||
@@ -36,18 +60,17 @@ const Source = ({ id, data, selected }) => {
       nodeData.source_conn_type !== selectedConnectionObj?.connection_type;
 
     if (hasChanges) {
-      const updatedData = {
+      updateMetadataNodeData(id, {
         type: "source",
         connection: selectedConnection,
         schema: selectedSchema,
         bulk_list: selectedItems,
         source_conn_id: selectedConnectionObj?.connection_id ?? null,
         source_conn_type: selectedConnectionObj?.connection_type ?? null,
-      };
-      updateMetadataNodeData(id, updatedData);
+      });
     }
-  }, [selectedConnection, selectedSchema, selectedItems, selectedConnectionObj, id, updateMetadataNodeData, data]);
-
+  }, [selectedConnection, selectedSchema, selectedItems, selectedConnectionObj, id, updateMetadataNodeData, data, cloneApplied]);
+  
   const handleSelectConnection = (connection) => {
     setSelectedConnectionObj(connection);
     setSelectedConnection(connection.connection_name);
