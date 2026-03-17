@@ -17,6 +17,7 @@ function Audit() {
     const [modalContent, setModalContent] = useState({ type: null, data: null });
     const [selectedRow, setSelectedRow] = useState(null);
     const [viewMode, setViewMode] = useState('single');
+    const [showChangesOnly, setShowChangesOnly] = useState(false);
 
     const [userId, setUserId] = useState("");
     const [module, setModule] = useState("");
@@ -147,6 +148,37 @@ function Audit() {
         );
     };
 
+    const getDiffData = (base, target) => {
+        if (!base || typeof base !== 'object' || !target || typeof target !== 'object') {
+            return target;
+        }
+
+        const diff = {};
+        const keys = new Set([...Object.keys(base), ...Object.keys(target)]);
+
+        keys.forEach(key => {
+            const val1 = base[key];
+            const val2 = target[key];
+
+            if (val2 === undefined) return; // Field removed in target (rare for our audit use case)
+            if (val1 === undefined) {
+                diff[key] = val2; // New field
+                return;
+            }
+
+            if (typeof val1 === 'object' && typeof val2 === 'object' && val1 !== null && val2 !== null) {
+                const nestedDiff = getDiffData(val1, val2);
+                if (Object.keys(nestedDiff).length > 0) {
+                    diff[key] = nestedDiff;
+                }
+            } else if (val1 !== val2) {
+                diff[key] = val2;
+            }
+        });
+
+        return diff;
+    };
+
     const renderReportState = (state) => {
         if (!state) {
             return <div className="text-sm text-gray-500">No data available</div>;
@@ -263,6 +295,7 @@ function Audit() {
         const baseColumns = [
             { key: "user_id", label: "User" },
             { key: "module", label: "Module" },
+            { key: "description", label: "Description", width: "300px" },
             { key: "action", label: "Type" },
             {
                 key: "performed_at",
@@ -437,6 +470,15 @@ function Audit() {
 
             if (exportRow.performed_at) {
                 exportRow.performed_at = new Date(exportRow.performed_at).toLocaleString();
+            }
+
+            if (row.previous_state && row.new_state) {
+                const diff = getDiffData(row.previous_state, row.new_state);
+                exportRow.changes = JSON.stringify(diff);
+            } else if (row.new_state) {
+                exportRow.changes = JSON.stringify(row.new_state);
+            } else {
+                exportRow.changes = "—";
             }
 
             if (exportRow.previous_state) {
@@ -728,6 +770,19 @@ function Audit() {
                                         >
                                             <SplitSquareVertical size={18} />
                                         </button>
+                                        <div className="h-4 w-[1px] bg-gray-300 mx-1"></div>
+                                        <div className="flex items-center space-x-2 px-1">
+                                            <input
+                                                type="checkbox"
+                                                id="showChangesOnlyModal"
+                                                checked={showChangesOnly}
+                                                onChange={(e) => setShowChangesOnly(e.target.checked)}
+                                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                            />
+                                            <label htmlFor="showChangesOnlyModal" className="text-sm text-gray-600 cursor-pointer select-none">
+                                                Changes Only
+                                            </label>
+                                        </div>
                                     </>
                                 )}
                                 <button
@@ -741,19 +796,36 @@ function Audit() {
 
                         <div className="p-4 flex-grow overflow-auto">
                             {viewMode === 'single' ? (
-                                renderStatePanel(modalContent.data)
+                                renderStatePanel(
+                                    showChangesOnly && selectedRow.previous_state && selectedRow.new_state
+                                        ? getDiffData(
+                                            modalContent.type === 'previous' ? selectedRow.new_state : selectedRow.previous_state,
+                                            modalContent.data
+                                        )
+                                        : modalContent.data
+                                )
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
                                     <div className="flex flex-col h-full">
                                         <h4 className="font-medium text-blue-600 mb-2">Previous State</h4>
                                         <div className="flex-1">
-                                            {renderStatePanel(selectedRow.previous_state, 'No previous state data available')}
+                                            {renderStatePanel(
+                                                showChangesOnly && selectedRow.previous_state && selectedRow.new_state
+                                                    ? getDiffData(selectedRow.new_state, selectedRow.previous_state)
+                                                    : selectedRow.previous_state,
+                                                'No previous state data available'
+                                            )}
                                         </div>
                                     </div>
-                                    <div className="flex flex-col h-full">
+                                    <div className="flex col h-full">
                                         <h4 className="font-medium text-green-600 mb-2">New State</h4>
                                         <div className="flex-1">
-                                            {renderStatePanel(selectedRow.new_state, 'No new state data available')}
+                                            {renderStatePanel(
+                                                showChangesOnly && selectedRow.previous_state && selectedRow.new_state
+                                                    ? getDiffData(selectedRow.previous_state, selectedRow.new_state)
+                                                    : selectedRow.new_state,
+                                                'No new state data available'
+                                            )}
                                         </div>
                                     </div>
                                 </div>
