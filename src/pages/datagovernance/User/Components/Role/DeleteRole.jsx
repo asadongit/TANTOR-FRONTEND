@@ -9,7 +9,8 @@ const DeleteRole = ({ showModal, setShowModal, roleName, onConfirm }) => {
   const [isDeleted, setIsDeleted] = useState(false);
   const [policyCount, setPolicyCount] = useState(null);
   const [policyCountLoading, setPolicyCountLoading] = useState(false);
-  const { token } = useAuth();
+  const { token, decodedToken } = useAuth();
+  const updated_by = decodedToken?.preferred_username; 
 
   useEffect(() => {
     if (showModal && roleName) {
@@ -63,14 +64,18 @@ const DeleteRole = ({ showModal, setShowModal, roleName, onConfirm }) => {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `${window._env_?.VITE_FAST_API}/auth/deleterole/${encodeURIComponent(roleName)}`,
+        `${window._env_?.VITE_FAST_API}/auth/deleterole`,
         {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: roleName,
+          updated_by: updated_by,
+        }),
+      }
       );
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);

@@ -107,7 +107,8 @@ const Role = () => {
   const [showViewModeMenu, setShowViewModeMenu] = useState(false);
   const initialFetchDoneRef = useRef(false);
   const { token } = useAuth();
-
+  const { decodedToken } = useAuth();
+  
   const filteredRoles = roles.filter(role =>
     role.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -143,7 +144,8 @@ const Role = () => {
         },
         body: JSON.stringify({
           name: roleToUpdate.title,
-          status: newStatus ? "Enabled" : "Disabled"
+          status: newStatus ? "Enabled" : "Disabled",
+          updated_by: decodedToken?.preferred_username
         }),
       });
 
@@ -285,28 +287,6 @@ const Role = () => {
       return { success: false, error: error.message };
     } finally {
       setRefreshing(false);
-    }
-  };
-
-  const handleDeleteRole = async () => {
-    if (!roleToDelete) return;
-    try {
-      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/deleterole/${roleToDelete.name}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Error: ${response.status} ${response.statusText}`);
-      }
-      await refreshAllData();
-      return true;
-    } catch (error) {
-      console.error("Error deleting role:", error);
-      throw error;
     }
   };
 
@@ -692,7 +672,15 @@ const Role = () => {
 
       <EditRole show={showEditModal} onClose={() => setShowEditModal(false)} onSave={handleEditSave} roleData={roleToEdit} />
 
-      <DeleteRole showModal={showDeleteModal} setShowModal={setShowDeleteModal} roleName={roleToDelete?.name || ""} onConfirm={async () => { await handleDeleteRole(); setRoleToDelete(null); }} />
+      <DeleteRole 
+        showModal={showDeleteModal} 
+        setShowModal={setShowDeleteModal} 
+        roleName={roleToDelete?.name || ""} 
+        onConfirm={async () => { 
+          await refreshAllData(); 
+          setRoleToDelete(null); 
+        }} 
+      />
     </div>
   );
 };
