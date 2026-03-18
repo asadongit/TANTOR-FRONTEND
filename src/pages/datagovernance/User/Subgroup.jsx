@@ -85,7 +85,7 @@ function Subgroup() {
   const [viewMode, setViewMode] = useState('cards');
   const [togglingStatus, setTogglingStatus] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
-  const { token } = useAuth();
+  const { token, decodedToken } = useAuth();
 
   const [activeMenu, setActiveMenu] = useState(null);
   const [showViewModeMenu, setShowViewModeMenu] = useState(false);
@@ -279,7 +279,8 @@ function Subgroup() {
         },
         body: JSON.stringify({
           name: subgroupName,
-          status: newStatus ? "Enabled" : "Disabled"
+          status: newStatus ? "Enabled" : "Disabled",
+          updated_by: decodedToken?.preferred_username
         }),
       });
 

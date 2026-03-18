@@ -9,7 +9,7 @@ function EditGroup({ showModal, setShowModal, groupData, onGroupEdited }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const { token } = useAuth();
+  const { token, decodedToken } = useAuth();
 
   useEffect(() => {
     if (groupData) {
@@ -46,7 +46,8 @@ function EditGroup({ showModal, setShowModal, groupData, onGroupEdited }) {
           name: groupData.name,
           new_name: formData.newName,
           description: formData.description,
-          createdOn: groupData.createdDate || new Date().toISOString()
+          createdOn: groupData.createdDate || new Date().toISOString(),
+          updated_by: decodedToken?.preferred_username
         }),
       });
 
