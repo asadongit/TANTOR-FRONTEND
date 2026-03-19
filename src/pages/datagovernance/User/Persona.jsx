@@ -178,6 +178,7 @@ const Persona = () => {
 
   const initialFetchDoneRef = useRef(false);
   const { token } = useAuth();
+  const { decodedToken } = useAuth();
 
   const processCards = (data = []) => data.map(item => ({
     id: item.id,
@@ -287,7 +288,7 @@ const Persona = () => {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ name: persona.title, status: newStatus ? "Enabled" : "Disabled" }),
+        body: JSON.stringify({ name: persona.title, status: newStatus ? "Enabled" : "Disabled", updated_by: decodedToken?.preferred_username}),
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
@@ -353,9 +354,16 @@ const Persona = () => {
     setIsDeleting(true);
     try {
       const nameEncoded = encodeURIComponent(personaToDelete.name);
-      const res = await fetch(`${window._env_?.VITE_FAST_API}/auth/deletepersona/${nameEncoded}`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch(`${window._env_?.VITE_FAST_API}/auth/deletepersona`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          name: personaToDelete.name,
+          updated_by: decodedToken?.preferred_username
+        })
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
@@ -386,7 +394,7 @@ const Persona = () => {
     try {
       if (personaToEdit) {
         // edit
-        const payload = { name: personaToEdit.name, new_name: formData.name.trim(), description: formData.description.trim() };
+        const payload = { name: personaToEdit.name, new_name: formData.name.trim(), description: formData.description.trim(), updated_by: decodedToken?.preferred_username };
         const res = await fetch(`${window._env_?.VITE_FAST_API}/auth/editpersona`, {
           method: 'PATCH',
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },

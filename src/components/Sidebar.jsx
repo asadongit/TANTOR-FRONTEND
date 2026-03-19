@@ -229,6 +229,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
         { name: 'Schema', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/schema` },
         { name: 'Table', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/table` },
         { name: 'Column', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/column` },
+        //{ name: 'View', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/view` },
       ]
     },
     {
@@ -353,7 +354,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
               toggleExpand(e, route.name);
               return;
             }
-            handleNavClick(e, route.path, route.name);
+            handleNavClick(e, route.path);
           }}
           className={({ isActive }) =>
             `flex items-center gap-3 px-3 py-2 rounded-lg mb-1 ${isActive ? 'bg-purple-100' : 'hover:bg-gray-100'}`

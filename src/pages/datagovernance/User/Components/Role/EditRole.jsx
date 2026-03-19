@@ -15,7 +15,7 @@ const EditRole = ({ show, onClose, onSave, roleData }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const { token } = useAuth();
+  const { token, decodedToken } = useAuth();
 
   useEffect(() => {
     if (roleData && show) {
@@ -54,7 +54,8 @@ const EditRole = ({ show, onClose, onSave, roleData }) => {
           new_name: formData.name,
           description: formData.description,
           startDate: formData.duration.from,
-          endDate: formData.duration.to
+          endDate: formData.duration.to,
+          updated_by: decodedToken?.preferred_username
         })
       });
 

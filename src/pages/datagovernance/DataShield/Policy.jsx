@@ -45,7 +45,7 @@ const Toggle = ({ enabled, onToggle }) => {
 };
 
 const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPolicyComplete = () => { } }) => {
-    const { token } = useAuth();
+    const { token, decodedToken } = useAuth();
     const [policy, setPolicy] = useState([]);
     const [loading, setLoading] = useState(true);
     const [sampleData, setSampleData] = useState([]);
@@ -198,14 +198,18 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
 
     const deletePolicy = async (policyId) => {
         try {
-            const response = await fetch(`${window._env_?.VITE_FAST_API}/deletepolicy/${policyId}`, {
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/deletepolicy`, {
                 method: 'PATCH',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
-                }
-            });
-            if (!response.ok) {
+                },
+            body: JSON.stringify({
+                policy_id: policyId,
+                updated_by: decodedToken?.preferred_username
+            })
+        });
+           if (!response.ok) {
                 throw new Error('Failed to delete policy');
             }
             const data = await response.json();
@@ -810,8 +814,9 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
                 },
                 body: JSON.stringify({
                     policy_ids: policyIds,
-                    status: newStatus
-                })
+                    status: newStatus,
+                    updated_by: decodedToken?.preferred_username
+               })
             });
             if (!response.ok) {
                 throw new Error('Failed to update policy status');
