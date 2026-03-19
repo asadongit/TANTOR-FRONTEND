@@ -28,6 +28,12 @@ const Project = () => {
   const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useProjectCardData();
   const { data: projectData = [], isLoading: isProjectLoading, error: projectError, refetch: refetchProjects } = useProjectData();
   const { token, decodedToken, hostnameV1 } = useAuth();
+
+  useEffect(() => {
+    refetchProjects();
+    refetchCardData();
+  }, []);
+
   const initialFormState = {
     project: "",
     description: "",

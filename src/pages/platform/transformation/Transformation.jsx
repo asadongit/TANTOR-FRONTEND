@@ -136,7 +136,7 @@ function Transformation() {
     if (showLoader) setIsLoading(true);
     try {
       const response = await axios.get(
-        `${hostname}/etl/transformation/tableview?project=${project}&created_by=${decodedToken.preferred_username}`,
+        `${hostname}/etl/transformation/tableview?${project !== "default" ? `project=${project}&` : ""}created_by=${decodedToken.preferred_username}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -161,7 +161,7 @@ function Transformation() {
   const fetchDashboardData = async () => {
     try {
       const response = await axios.get(
-        `${hostname}/etl/dashboarddata?project=${project}&created_by=${decodedToken.preferred_username}`,
+        `${hostname}/etl/dashboarddata?${project !== "default" ? `project=${project}&` : ""}created_by=${decodedToken.preferred_username}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
