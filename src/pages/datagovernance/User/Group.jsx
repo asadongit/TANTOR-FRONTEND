@@ -115,6 +115,8 @@ function Group() {
   const [togglingStatus, setTogglingStatus] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const { token } = useAuth();
+  const { decodedToken } = useAuth();
+  const updated_by = decodedToken?.preferred_username; 
 
   // const [visibleCards, setVisibleCards] = useState(9);
   // const [currentCardPage, setCurrentCardPage] = useState(1); 
@@ -239,7 +241,8 @@ function Group() {
         },
         body: JSON.stringify({
           name: groupToUpdate.title,
-          status: newStatus ? "Enabled" : "Disabled"
+          status: newStatus ? "Enabled" : "Disabled",
+          updated_by: updated_by
         }),
       });
 
@@ -274,12 +277,15 @@ function Group() {
     if (!groupToDelete) return;
 
     try {
-      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/deletegroup/${groupToDelete.name}`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/deletegroup`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
-        },
+        },body: JSON.stringify({
+          name: groupToDelete.name,
+          updated_by: updated_by,
+        }),
       });
 
       if (!response.ok) {

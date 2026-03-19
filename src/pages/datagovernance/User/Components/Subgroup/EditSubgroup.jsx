@@ -11,7 +11,7 @@ function EditSubgroup({ showModal, setShowModal, subgroupData, onSubgroupUpdated
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { token } = useAuth();
+  const { token, decodedToken } = useAuth();
 
   useEffect(() => {
     if (showModal && subgroupData) {
@@ -54,6 +54,7 @@ function EditSubgroup({ showModal, setShowModal, subgroupData, onSubgroupUpdated
           name: formData.name,
           new_name: formData.new_name,
           description: formData.description,
+          updated_by: decodedToken?.preferred_username
         }),
       });
 

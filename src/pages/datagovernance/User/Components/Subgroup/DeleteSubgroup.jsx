@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect } from 'react';
 import { X, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
 import { useAuth } from '../../../../../context/AuthContext';
@@ -12,8 +9,8 @@ const DeleteSubgroup = ({ showModal, setShowModal, subgroupName, onConfirm }) =>
   const [error, setError] = useState("");
   const [policyCount, setPolicyCount] = useState(null);
   const [policyCountLoading, setPolicyCountLoading] = useState(false);
-  const { token } = useAuth();
-
+  const { token, decodedToken } = useAuth();
+  const updated_by = decodedToken?.preferred_username; 
 
   useEffect(() => {
     if (showModal && subgroupName) {
@@ -75,12 +72,16 @@ const DeleteSubgroup = ({ showModal, setShowModal, subgroupName, onConfirm }) =>
 
 
     try {
-      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/deletesubgroup/${subgroupName}`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/deletesubgroup`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
+        body: JSON.stringify({
+          name: subgroupName,
+          updated_by: updated_by
+        })
       });
 
 

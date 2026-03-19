@@ -220,7 +220,7 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
     }, [isOpen]);
 
     useEffect(() => {
-        if (formData.reportType === 'Authentication Reporting') {
+        if (formData.reportType === 'Authentication Reporting' || formData.reportType === 'Data Access Reporting') {
             setFormData(prev => ({
                 ...prev,
                 resourceTypes: [],
@@ -402,7 +402,11 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
 
         try {
             const requestBody = {
-                criteria: formData.reportType === 'Authentication Reporting' ? 'authenticationReporting' : 'governanceReporting',
+                criteria: formData.reportType === 'Authentication Reporting'
+                ? 'authenticationReporting'
+                : formData.reportType === 'Data Access Reporting'
+                ? 'dataAccessReporting'
+                : 'governanceReporting',
                 reportName: formData.reportName.trim()
             };
 
@@ -497,6 +501,9 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
     const availableOperations = getAvailableOperations();
     const userOptions = getUserOptions();
     const isAuthenticationReport = formData.reportType === 'Authentication Reporting';
+    const isDataAccessReport = formData.reportType === 'Data Access Reporting';
+    const hideResourceOperationFilters = isAuthenticationReport || isDataAccessReport;
+    
 
     return (
         <>
@@ -598,7 +605,7 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
                                             isLoading={isLoadingStakeholders}
                                         />
 
-                                        {!isAuthenticationReport && (
+                                        {!hideResourceOperationFilters && (
                                             <div className="space-y-6 pt-2">
                                                 <MultiSelectDropdown
                                                     title="Resource Types"
