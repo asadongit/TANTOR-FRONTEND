@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import CustomDropdown from "./CustomDropdown";
+import { formatDate } from "../utils/DateUtils";
 
 const DataTable = ({
   columns,
@@ -95,12 +96,12 @@ const DataTable = ({
   // );
   // row styling and layout  according to figma style 
   const cellBaseStyle = {
-  padding: "11.50px 16px",
-  fontSize: "14px",
-  fontWeight: 400,
-  lineHeight: "18.5px",
-  color: "#23252D",
-};
+    padding: "11.50px 16px",
+    fontSize: "14px",
+    fontWeight: 400,
+    lineHeight: "18.5px",
+    color: "#23252D",
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -274,10 +275,10 @@ const DataTable = ({
   const renderSkeletonRows = () => {
     return Array.from({ length: itemsPerPage }).map((_, rowIndex) => (
       <tr
-  key={`skeleton-${rowIndex}`}
-  className="animate-pulse align-middle border-b"
-  style={{ borderColor: "#cccccc" }}
->
+        key={`skeleton-${rowIndex}`}
+        className="animate-pulse align-middle border-b"
+        style={{ borderColor: "#cccccc" }}
+      >
         {/* Checkbox skeleton */}
         {onDeleteSelected && (
           <td className="whitespace-normal break-words" style={{ ...cellBaseStyle, width: "44px" }}>
@@ -329,15 +330,15 @@ const DataTable = ({
       )}
 
       <div
-  className="border rounded-lg mb-4 overflow-y-auto"
-  style={{ maxHeight: "calc(100vh - 240px)"}}
->
-  <table
-    className="w-full bg-white"
-    style={{
-      borderCollapse: "collapse",
-      borderSpacing: 0,
-    }}
+        className="border rounded-lg mb-4 overflow-y-auto"
+        style={{ maxHeight: "calc(100vh - 240px)" }}
+      >
+        <table
+          className="w-full bg-white"
+          style={{
+            borderCollapse: "collapse",
+            borderSpacing: 0,
+          }}
         >
           <thead>
             <tr className="sticky top-0 z-10">
@@ -371,7 +372,7 @@ const DataTable = ({
                   // style={{
                   //   background: '#F9F9F9',
                   //   borderBottom: '1px solid #e5e5e5',
-                    
+
                   //   width:
                   //     column.width ||
                   //     (column.label === "Action" ? "100px" : "auto"),
@@ -383,12 +384,12 @@ const DataTable = ({
                   //   lineHeight: density.lineHeight,
                   // }}
                   style={{
-    background: "#F9F9F9",
-    padding: "16px",
-    fontSize: "16px",
-    lineHeight: "22px",
-    borderBottom: "1px solid #e5e5e5",
-  }}  // header row layout fixed according to the figma 
+                    background: "#F9F9F9",
+                    padding: "16px",
+                    fontSize: "16px",
+                    lineHeight: "22px",
+                    borderBottom: "1px solid #e5e5e5",
+                  }}  // header row layout fixed according to the figma 
                   onClick={() =>
                     column.key &&
                     column.sortable !== false &&
@@ -406,9 +407,8 @@ const DataTable = ({
                     {column.label}
                     {column.key && column.sortable !== false && (
                       <ArrowUpDown
-                        className={`ml-2 cursor-pointer ${
-                          sortConfig.key === column.key ? "text-gray-500" : ""
-                        }`}
+                        className={`ml-2 cursor-pointer ${sortConfig.key === column.key ? "text-gray-500" : ""
+                          }`}
                         size={16}
                         aria-hidden="true"
                       />
@@ -417,7 +417,7 @@ const DataTable = ({
                 </th>
               ))}
             </tr>
-            
+
           </thead>
           <tbody className="divide-y divide-[#e5e5e5]">
             {isLoading ? (
@@ -450,19 +450,17 @@ const DataTable = ({
 
                 return (
                   <tr
-  key={rowIndex}
-  style={{ height: "52px" }}
-  className={`transition-colors align-middle ${
-    onRowClick ? "cursor-pointer" : ""
-  } ${
-    isRowSelected
-      ? "bg-[#f3f0f8]"
-      : selectedRowId && row.sno === selectedRowId
-      ? "bg-[#f3f0f8] border-l-4 border-l-[#8e78b7]"
-      : "hover:bg-gray-50"
-  } ${row.rowClassName || ""}`}
-  onClick={(e) => handleRowClickInternal(row, e)}
->
+                    key={rowIndex}
+                    style={{ height: "52px" }}
+                    className={`transition-colors align-middle ${onRowClick ? "cursor-pointer" : ""
+                      } ${isRowSelected
+                        ? "bg-[#f3f0f8]"
+                        : selectedRowId && row.sno === selectedRowId
+                          ? "bg-[#f3f0f8] border-l-4 border-l-[#8e78b7]"
+                          : "hover:bg-gray-50"
+                      } ${row.rowClassName || ""}`}
+                    onClick={(e) => handleRowClickInternal(row, e)}
+                  >
                     {/* Row checkbox */}
                     {onDeleteSelected && (
                       <td
@@ -480,234 +478,246 @@ const DataTable = ({
                       </td>
                     )}
 
-                  {columns.map((column, cellIndex) => {
-                    if (column.label === "Action") {
-                      const availableActions = actions.filter(
-                        (action) =>
-                          action.show === undefined ||
-                          (typeof action.show === "function"
-                            ? action.show(row)
-                            : action.show)
-                      );
+                    {columns.map((column, cellIndex) => {
+                      if (column.label === "Action") {
+                        const availableActions = actions.filter(
+                          (action) =>
+                            action.show === undefined ||
+                            (typeof action.show === "function"
+                              ? action.show(row)
+                              : action.show)
+                        );
 
-                      if (actions.length > 0 && availableActions.length === 0) {
+                        if (actions.length > 0 && availableActions.length === 0) {
+                          return (
+                            <td
+                              key={cellIndex}
+                              className="text-center align-middle"
+                              style={cellBaseStyle}
+                            ></td>
+                          );
+                        }
+
                         return (
                           <td
                             key={cellIndex}
-                            className="text-center align-middle"
-                            style={cellBaseStyle}
-                          ></td>
+                            className="text-center align-middle relative action-menu"
+                            style={{
+                              ...cellBaseStyle,
+                              paddingTop: "12px",
+                              paddingBottom: "12px",
+                            }}
+                          >
+                            <button
+                              className="flex items-center justify-center p-1 text-gray-600 hover:text-gray-800 rounded-full hover:bg-gray-100"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleActionMenu(rowIndex);
+                              }}
+                              aria-label="Open actions menu"
+                              aria-expanded={activeMenu === rowIndex}
+                              aria-haspopup="true"
+                            >
+                              <MoreVertical size={20} />
+                            </button>
+
+                            {activeMenu === rowIndex && (
+                              <div
+                                ref={menuRef}
+                                className={`absolute right-4 bg-white shadow-lg rounded-lg py-1 px-3 z-10 border ${rowIndex >= paginatedData.length - 2 ? 'bottom-full mb-2' : 'mt-2'
+                                  }`}
+                                role="menu"
+                                aria-orientation="horizontal"
+                              >
+                                <div className="flex items-center space-x-3">
+                                  {availableActions.map((action, actionIndex) => (
+                                    <div key={actionIndex} className="relative">
+                                      <button
+                                        className="p-1 text-gray-500 hover:text-gray-800 transition-colors"
+                                        onClick={() => handleAction(action, row)}
+                                        onMouseEnter={() => setHoveredAction(`${rowIndex}-${actionIndex}`)}
+                                        onMouseLeave={() => setHoveredAction(null)}
+                                        aria-label={action.label}
+                                        role="menuitem"
+                                      >
+                                        {action.icon && (
+                                          <span>{action.icon}</span>
+                                        )}
+                                      </button>
+                                      {hoveredAction === `${rowIndex}-${actionIndex}` && (action.tooltip || action.label) && (
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap z-20">
+                                          {action.tooltip || action.label}
+                                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                  {actions.length === 0 && (
+                                    <>
+                                      <button
+                                        className="px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center"
+                                        onClick={() =>
+                                          handleAction({ type: "edit" }, row)
+                                        }
+                                        aria-label="Edit"
+                                        role="menuitem"
+                                      >
+                                        <Pencil size={16} className="mr-2" />
+                                      </button>
+                                      <button
+                                        className="px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center"
+                                        onClick={() =>
+                                          handleAction({ type: "delete" }, row)
+                                        }
+                                        aria-label="Delete"
+                                        role="menuitem"
+                                      >
+                                        <Trash2 size={16} className="mr-2" />
+                                      </button>
+                                      <button
+                                        className="px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center"
+                                        onClick={() =>
+                                          handleAction({ type: "view" }, row)
+                                        }
+                                        aria-label="View"
+                                        role="menuitem"
+                                      >
+                                        <Play
+                                          size={16}
+                                          className="mr-2"
+                                          fill="currentColor"
+                                        />
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </td>
+                        );
+                      }
+
+                      if (column.render) {
+                        return (
+                          <td
+                            key={cellIndex}
+                            className={`align-middle ${column.wrap ? 'whitespace-normal break-words' : 'whitespace-nowrap text-ellipsis overflow-hidden'}`}
+                            style={{ ...cellBaseStyle, maxWidth: "260px", overflow: "hidden", textOverflow: "ellipsis" }}
+                            title={column.renderTitle ? column.renderTitle(row, rowIndex) : undefined}
+                          >
+                            {column.render(row, rowIndex)}
+                          </td>
                         );
                       }
 
                       return (
                         <td
                           key={cellIndex}
-                          className="text-center align-middle relative action-menu"
-                          style={{
-          ...cellBaseStyle,
-          paddingTop: "12px",
-          paddingBottom: "12px",
-        }}
+                          className={`text-gray-600 align-middle ${column.wrap ? 'whitespace-normal break-words' : 'whitespace-nowrap overflow-hidden text-ellipsis'}`}
+                          style={{ ...cellBaseStyle, maxWidth: "260px", height: "52px", overflow: "hidden", textOverflow: "ellipsis" }}
+                          title={column.key ? row[column.key] : undefined}
                         >
-                          <button
-                            className="flex items-center justify-center p-1 text-gray-600 hover:text-gray-800 rounded-full hover:bg-gray-100"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleActionMenu(rowIndex);
-                            }}
-                            aria-label="Open actions menu"
-                            aria-expanded={activeMenu === rowIndex}
-                            aria-haspopup="true"
-                          >
-                            <MoreVertical size={20} />
-                          </button>
-
-                          {activeMenu === rowIndex && (
-                            <div
-                              ref={menuRef}
-                              className={`absolute right-4 bg-white shadow-lg rounded-lg py-1 px-3 z-10 border ${rowIndex >= paginatedData.length - 2 ? 'bottom-full mb-2' : 'mt-2'
-                                }`}
-                              role="menu"
-                              aria-orientation="horizontal"
-                            >
-                              <div className="flex items-center space-x-3">
-                                {availableActions.map((action, actionIndex) => (
-                                  <div key={actionIndex} className="relative">
-                                    <button
-                                      className="p-1 text-gray-500 hover:text-gray-800 transition-colors"
-                                      onClick={() => handleAction(action, row)}
-                                      onMouseEnter={() => setHoveredAction(`${rowIndex}-${actionIndex}`)}
-                                      onMouseLeave={() => setHoveredAction(null)}
-                                      aria-label={action.label}
-                                      role="menuitem"
-                                    >
-                                      {action.icon && (
-                                        <span>{action.icon}</span>
-                                      )}
-                                    </button>
-                                    {hoveredAction === `${rowIndex}-${actionIndex}` && (action.tooltip || action.label) && (
-                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap z-20">
-                                        {action.tooltip || action.label}
-                                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                                {actions.length === 0 && (
-                                  <>
-                                    <button
-                                      className="px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center"
-                                      onClick={() =>
-                                        handleAction({ type: "edit" }, row)
-                                      }
-                                      aria-label="Edit"
-                                      role="menuitem"
-                                    >
-                                      <Pencil size={16} className="mr-2" />
-                                    </button>
-                                    <button
-                                      className="px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center"
-                                      onClick={() =>
-                                        handleAction({ type: "delete" }, row)
-                                      }
-                                      aria-label="Delete"
-                                      role="menuitem"
-                                    >
-                                      <Trash2 size={16} className="mr-2" />
-                                    </button>
-                                    <button
-                                      className="px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center"
-                                      onClick={() =>
-                                        handleAction({ type: "view" }, row)
-                                      }
-                                      aria-label="View"
-                                      role="menuitem"
-                                    >
-                                      <Play
-                                        size={16}
-                                        className="mr-2"
-                                        fill="currentColor"
-                                      />
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          )}
+                          {column.key ? (
+                            column.key === "status" ? (
+                              <span
+                                className={`px-3  rounded-full text-xs ${getStatusStyles(
+                                  row[column.key]
+                                )}`}
+                              >
+                                {row[column.key]}
+                              </span>
+                            ) : [
+                              "created_at",
+                              "updated_at",
+                              "created_date",
+                              "updated_date",
+                              "last_run_date",
+                              "timestamp",
+                              "created",
+                              "updated",
+                            ].includes(column.key) ? (
+                              formatDate(row[column.key])
+                            ) : row[column.key] === 0 ? (
+                              0
+                            ) : (
+                              row[column.key] || "-"
+                            )
+                          ) : null}
                         </td>
                       );
-                    }
-
-                    if (column.render) {
-  return (
-    <td
-      key={cellIndex}
-      className={`align-middle ${column.wrap ? 'whitespace-normal break-words' : 'whitespace-nowrap text-ellipsis overflow-hidden'}`}
-      style={{ ...cellBaseStyle, maxWidth: "260px", overflow: "hidden", textOverflow: "ellipsis" }}
-      title={column.renderTitle ? column.renderTitle(row, rowIndex) : undefined}
-    >
-      {column.render(row, rowIndex)}
-    </td>
-  );
-}
-
-                    return (
-                      <td
-                      key={cellIndex}
-                      className={`text-gray-600 align-middle ${column.wrap ? 'whitespace-normal break-words' : 'whitespace-nowrap overflow-hidden text-ellipsis'}`}
-                      style={{ ...cellBaseStyle, maxWidth: "260px", height: "52px", overflow: "hidden", textOverflow: "ellipsis" }}
-                      title={column.key ? row[column.key] : undefined}
-                    >
-                        {column.key ? (
-                          column.key === "status" ? (
-                            <span
-                              className={`px-3  rounded-full text-xs ${getStatusStyles(
-                                row[column.key]
-                              )}`}
-                            >
-                              {row[column.key]}
-                            </span>
-                          ) : (row[column.key] === 0
-                            ? 0
-                            : row[column.key] || "-"
-                          )
-                        ) : null}
-                      </td>
-                    );
-                  })}
-                </tr>
+                    })}
+                  </tr>
                 );
               })
             )}
           </tbody>
           <tfoot
-  className="sticky bottom-0 z-20 bg-white"
->
-  <tr>
-    <td colSpan={columns.length + (onDeleteSelected ? 1 : 0)} style={{ padding: '12px 16px', borderTop: '1px solid #cccccc' }}>
-      <div className="flex items-center justify-between">
-        
-        {/* Left Side - Results Info */}
-        <div className="text-sm" style={{ color: '#818181' }}>
-          {totalItems > 0
-            ? `${startItem} to ${endItem} of ${totalItems} results`
-            : "No results found"}
-        </div>
+            className="sticky bottom-0 z-20 bg-white"
+          >
+            <tr>
+              <td colSpan={columns.length + (onDeleteSelected ? 1 : 0)} style={{ padding: '12px 16px', borderTop: '1px solid #cccccc' }}>
+                <div className="flex items-center justify-between">
 
-        {/* Right Side Controls */}
-        <div className="flex items-center space-x-2">
-          <span className="text-sm" style={{ color: '#818181' }}>
-            Show per page
-          </span>
+                  {/* Left Side - Results Info */}
+                  <div className="text-sm" style={{ color: '#818181' }}>
+                    {totalItems > 0
+                      ? `${startItem} to ${endItem} of ${totalItems} results`
+                      : "No results found"}
+                  </div>
 
-          {/* Select */}
-          <div style={{ width: '55px', height: '31px' }}>
-            <CustomDropdown
-              value={String(itemsPerPage)}
-              onChange={(e) => handleItemsPerPageChange({ target: { value: e.target.value } })}
-              options={[
-                { value: '10', label: '10' },
-                { value: '25', label: '25' },
-                { value: '50', label: '50' },
-              ]}
-              disabled={isLoading}
-              rounded="lg"
-              borderColor="#cccccc"
-              focusColor="#8e78b7"
-              compact={true}
-            />
-          </div>
+                  {/* Right Side Controls */}
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm" style={{ color: '#818181' }}>
+                      Show per page
+                    </span>
 
-          {/* Pagination Buttons */}
-          <div className="flex" style={{ width: '55px', height: '31px' }}>
-            <button
-              onClick={handlePrevPage}
-              disabled={page === 1 || isLoading}
-              className="flex-1 border border-[#cccccc] rounded-l flex items-center justify-center"
-            >
-              <ChevronLeft
-                size={16}
-                style={{ color: page === 1 ? '#cccccc' : '#818181' }}
-              />
-            </button>
+                    {/* Select */}
+                    <div style={{ width: '55px', height: '31px' }}>
+                      <CustomDropdown
+                        value={String(itemsPerPage)}
+                        onChange={(e) => handleItemsPerPageChange({ target: { value: e.target.value } })}
+                        options={[
+                          { value: '10', label: '10' },
+                          { value: '25', label: '25' },
+                          { value: '50', label: '50' },
+                        ]}
+                        disabled={isLoading}
+                        rounded="lg"
+                        borderColor="#cccccc"
+                        focusColor="#8e78b7"
+                        compact={true}
+                      />
+                    </div>
 
-            <button
-              onClick={handleNextPage}
-              disabled={page >= totalPages || isLoading}
-              className="flex-1 border border-[#cccccc] rounded-r border-l-0 flex items-center justify-center"
-            >
-              <ChevronRight
-                size={16}
-                style={{ color: page >= totalPages ? '#cccccc' : '#818181' }}
-              />
-            </button>
-          </div>
-        </div>
-      </div>
-    </td>
-  </tr>
-</tfoot>
+                    {/* Pagination Buttons */}
+                    <div className="flex" style={{ width: '55px', height: '31px' }}>
+                      <button
+                        onClick={handlePrevPage}
+                        disabled={page === 1 || isLoading}
+                        className="flex-1 border border-[#cccccc] rounded-l flex items-center justify-center"
+                      >
+                        <ChevronLeft
+                          size={16}
+                          style={{ color: page === 1 ? '#cccccc' : '#818181' }}
+                        />
+                      </button>
+
+                      <button
+                        onClick={handleNextPage}
+                        disabled={page >= totalPages || isLoading}
+                        className="flex-1 border border-[#cccccc] rounded-r border-l-0 flex items-center justify-center"
+                      >
+                        <ChevronRight
+                          size={16}
+                          style={{ color: page >= totalPages ? '#cccccc' : '#818181' }}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tfoot>
         </table>
       </div>
 

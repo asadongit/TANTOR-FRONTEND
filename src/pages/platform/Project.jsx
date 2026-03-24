@@ -460,12 +460,21 @@ const Project = () => {
                       onChange={handleInputChange}
                       placeholder="Name"
                       maxLength={100}
-                      className={`w-full p-2.5 border ${errors.project ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
-                    />
+                      disabled={editMode} // Disable editing project name in edit mode
+                      className={`w-full p-2.5 border rounded-lg focus:outline-none
+                      ${editMode 
+                        ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed' 
+                        : errors.project  ? 'border-red-500'  : 'border-gray-400 focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]' }`}
+                     />
+                    {editMode 
+                      ? <p className="mt-1 text-sm text-red-500">Name is not editable</p>
+                      : errors.project && <p className="mt-1 text-sm text-red-500">{errors.project}</p>
+                    }
                     {errors.project && (
                       <p className="mt-1 text-sm text-red-500">{errors.project}</p>
                     )}
                   </div>
+                  
 
                   {/* <div>
                     <div className="relative">

@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import RuleRunSummary from './RuleRunSummary';
 import { useAuth } from "../../../../../context/AuthContext";
 import { useLocation } from 'react-router-dom';
+import { formatDate } from '../../../../../utils/DateUtils';
 
 const Rules = () => {
   const location = useLocation();
@@ -245,13 +246,13 @@ const Rules = () => {
     } else {
       idsToSchedule = [item.id];
     }
-    
+
     const serialNumbersToDisplay = idsToSchedule.map(id => idToSerialNumberMap.get(id));
 
     setSchedulerData(prev => ({
-        ...prev,
-        rule_ids: idsToSchedule,
-        display_s_nos: serialNumbersToDisplay
+      ...prev,
+      rule_ids: idsToSchedule,
+      display_s_nos: serialNumbersToDisplay
     }));
     setShowScheduler(true);
   };
@@ -296,13 +297,13 @@ const Rules = () => {
 
   const handleScheduleAllSelected = () => {
     if (selectedRows.length === 0) return;
-    
+
     const serialNumbersToDisplay = selectedRows.map(id => idToSerialNumberMap.get(id));
-    
+
     setSchedulerData(prev => ({
-        ...prev,
-        rule_ids: selectedRows,
-        display_s_nos: serialNumbersToDisplay
+      ...prev,
+      rule_ids: selectedRows,
+      display_s_nos: serialNumbersToDisplay
     }));
     setShowScheduler(true);
     setShowSelectAllOptions(false);
@@ -439,7 +440,7 @@ const Rules = () => {
     } else {
       idsToDelete = [item.id];
     }
-    
+
     const serialNumbersToDelete = idsToDelete.map(id => idToSerialNumberMap.get(id));
 
     setDeleteConfirmation({
@@ -454,9 +455,9 @@ const Rules = () => {
   // <-- MODIFIED: Update handler to store serial numbers -->
   const handleDeleteAllSelected = async () => {
     if (selectedRows.length === 0) return;
-    
+
     const serialNumbersToDelete = selectedRows.map(id => idToSerialNumberMap.get(id));
-    
+
     setDeleteConfirmation({
       show: true,
       ids: selectedRows,
@@ -935,9 +936,9 @@ const Rules = () => {
                             {item.status}
                           </span>
                         </td>
-                        <td className="p-4 text-gray-600">{item.created_date}</td>
-                        <td className="p-4 text-gray-600">{item.updated_date}</td>
-                        <td className="p-4 text-gray-600">{item.last_run_date}</td>
+                        <td className="p-4 text-gray-600">{formatDate(item.created_date)}</td>
+                        <td className="p-4 text-gray-600">{formatDate(item.updated_date)}</td>
+                        <td className="p-4 text-gray-600">{formatDate(item.last_run_date)}</td>
                         <td className="p-4">
                           <div className="flex items-center gap-2">
                             <div className="relative group">
@@ -1071,8 +1072,8 @@ const Rules = () => {
                     key={index}
                     onClick={() => goToPage(index + 1)}
                     className={`px-3 py-1 mx-1 rounded-md ${currentPage === index + 1
-                        ? 'bg-[#8e78b7] text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
+                      ? 'bg-[#8e78b7] text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
                       }`}
                   >
                     {index + 1}
