@@ -180,6 +180,8 @@ const Persona = () => {
   const { token } = useAuth();
   const { decodedToken } = useAuth();
 
+  const [selectedPersonas, setSelectedPersonas] = useState([]);
+
   const processCards = (data = []) => data.map(item => ({
     id: item.id,
     title: item.name,
@@ -243,6 +245,11 @@ const Persona = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setSelectedPersonas([]);
+  }, [searchTerm, itemsPerPage, viewMode]);
 
   const refreshAllData = async (showToast = false) => {
     setRefreshing(true);
@@ -343,46 +350,41 @@ const Persona = () => {
   };
 
   const handleOpenDeleteModal = (p) => {
-    setPersonaToDelete(p);
-    setShowDeleteModal(true);
-    setActiveMenu(null);
-    if (p?.name) fetchPolicyCount(p.name);
-  };
+  setPersonaToDelete(isBulk ? null : p);
+  setShowDeleteModal(true);
+  setActiveMenu(null);
+  if (!isBulk && p?.name) fetchPolicyCount(p.name);
+};
 
   const handleConfirmDelete = async () => {
-    if (!personaToDelete) return;
-    setIsDeleting(true);
-    try {
-      const nameEncoded = encodeURIComponent(personaToDelete.name);
-      const res = await fetch(`${window._env_?.VITE_FAST_API}/auth/deletepersona`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          name: personaToDelete.name,
-          updated_by: decodedToken?.preferred_username
-        })
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || `Failed to delete: ${res.status}`);
-      }
-      await refreshAllData(true);
-      setToast({ show: true, message: `Persona "${personaToDelete.name}" deleted`, type: "success" });
-      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-    } catch (err) {
-      console.error("handleConfirmDelete:", err);
-      setToast({ show: true, message: `Failed to delete persona: ${err.message}`, type: "error" });
-      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-    } finally {
-      setIsDeleting(false);
-      setShowDeleteModal(false);
-      setPersonaToDelete(null);
-      setPolicyCount(null);
+  if (!personaToDelete && !isBulk) return;
+  setIsDeleting(true);
+  const names = isBulk ? selectedPersonas : [personaToDelete.name];
+  try {
+    const res = await fetch(`${window._env_?.VITE_FAST_API}/auth/deletepersona`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ name: names, updated_by: decodedToken?.preferred_username })
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || `Failed to delete: ${res.status}`);
     }
-  };
+    await refreshAllData(true);
+    setToast({ show: true, message: isBulk ? `${names.length} personas deleted` : `Persona "${personaToDelete.name}" deleted`, type: "success" });
+    setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+  } catch (err) {
+    console.error("handleConfirmDelete:", err);
+    setToast({ show: true, message: `Failed to delete persona: ${err.message}`, type: "error" });
+    setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+  } finally {
+    setIsDeleting(false);
+    setShowDeleteModal(false);
+    setPersonaToDelete(null);
+    setSelectedPersonas([]);
+    setPolicyCount(null);
+  }
+};
 
   const handleSaveNew = async (closeOnSave = true) => {
     if (!formData.name.trim() || !formData.description.trim()) {
@@ -448,6 +450,14 @@ const Persona = () => {
   const listStartIndex = (currentPage - 1) * itemsPerPage;
   const displayedRows = filteredTable.slice(listStartIndex, listStartIndex + itemsPerPage);
 
+  const isAllSelected = displayedRows.length > 0 && selectedPersonas.length === displayedRows.length;
+  const isIndeterminate = selectedPersonas.length > 0 && selectedPersonas.length < displayedRows.length;
+  const toggleSelectAll = () => setSelectedPersonas(isAllSelected ? [] : displayedRows.map(r => r.name));
+  const toggleSelectPersona = (name) => setSelectedPersonas(prev =>
+    prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
+  );
+  const isBulk = selectedPersonas.length >= 2;
+  
   const handlePrevPage = () => setCurrentPage(p => Math.max(1, p - 1));
   const handleNextPage = () => {
     const max = viewMode === "cards" ? cardTotalPages : listTotalPages;
@@ -659,7 +669,17 @@ const Persona = () => {
         <table className="w-full min-w-[900px]">
                   <thead>
                     <tr className="bg-[#29304a] text-white text-sm">
-                      <th className="text-left" style={{ padding: '16px 19.75px' }}>ID</th>
+                      <th style={{ padding: '16px 12px 16px 19.75px', width: '40px' }}>
+                        <input
+                          type="checkbox"
+                          checked={isAllSelected}
+                          ref={el => { if (el) el.indeterminate = isIndeterminate; }}
+                          onChange={toggleSelectAll}
+                          className="w-4 h-4 cursor-pointer"
+                          style={{ accentColor: '#8e78b7' }}
+                        />
+                      </th>
+                      <th className="text-left" style={{ padding: '16px 19.75px' }}>#</th>
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>Name</th>
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>Description</th>
                       <th className="text-center" style={{ padding: '16px 19.75px' }}>Status</th>
@@ -670,7 +690,18 @@ const Persona = () => {
                   <tbody className="text-sm">
                     {displayedRows.map((row, idx) => (
                       <tr key={row.id || idx} className="border-b hover:bg-gray-50">
-                        <td style={{ padding: '16px 19.75px' }} title={row.id}>{row.id?.substring(0, 8)}...</td>
+                        <td style={{ padding: '16px 12px 16px 19.75px' }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedPersonas.includes(row.name)}
+                            onChange={() => toggleSelectPersona(row.name)}
+                            className="w-4 h-4 cursor-pointer"
+                            style={{ accentColor: '#8e78b7' }}
+                          />
+                        </td>
+                        <td style={{ padding: '16px 19.75px' }} className="text-gray-600">
+                          {listStartIndex + idx + 1}
+                        </td>
                         <td style={{ padding: '16px 19.75px' }} className="text-gray-600">
                           <div className="flex items-center">
                             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#8d77ba] bg-opacity-25 text-[#8d77ba] mr-2">
@@ -701,23 +732,25 @@ const Persona = () => {
                                 <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
                                 <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
                                   <div className="flex items-center p-1 gap-1">
-                                    <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" onClick={() => { setPersonaToEdit(row); setFormData({ name: row.name, description: row.description, enabled: (row.status || "").toLowerCase() === 'enabled' }); setShowEditModal(true); setActiveMenu(null); }}>
-                                      <Pencil className="h-4 w-4" />
-                                    </button>
-
-                                    <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2" 
-  onClick={async () => { setActiveMenu(null); await togglePersona(row.name); }} 
-  disabled={togglingStatus === row.name} 
-  title={row.status === 'Enabled' ? 'Disable' : 'Enable'}>
-  <Toggle
-    enabled={togglingStatus === row.name ? row.status !== 'Enabled' : row.status === 'Enabled'}
-    onToggle={async () => { setActiveMenu(null); await togglePersona(row.name); }}
-    disabled={togglingStatus === row.name}
-    size="sm"
-  />
-</button>
-
-                                    <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" onClick={() => { setPersonaToDelete(row); setShowDeleteModal(true); setActiveMenu(null); }}>
+                                    {!isBulk && (
+                                      <>
+                                        <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" onClick={() => { setPersonaToEdit(row); setFormData({ name: row.name, description: row.description, enabled: (row.status || "").toLowerCase() === 'enabled' }); setShowEditModal(true); setActiveMenu(null); }}>
+                                          <Pencil className="h-4 w-4" />
+                                        </button>
+                                        <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2"
+                                          onClick={async () => { setActiveMenu(null); await togglePersona(row.name); }}
+                                          disabled={togglingStatus === row.name}
+                                          title={row.status === 'Enabled' ? 'Disable' : 'Enable'}>
+                                          <Toggle
+                                            enabled={togglingStatus === row.name ? row.status !== 'Enabled' : row.status === 'Enabled'}
+                                            onToggle={async () => { setActiveMenu(null); await togglePersona(row.name); }}
+                                            disabled={togglingStatus === row.name}
+                                            size="sm"
+                                          />
+                                        </button>
+                                      </>
+                                    )}
+                                    <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" onClick={() => { handleOpenDeleteModal(row); setActiveMenu(null); }}>
                                       <Trash2 className="h-4 w-4" />
                                     </button>
                                   </div>
@@ -731,7 +764,7 @@ const Persona = () => {
 
                     {!loading && displayedRows.length === 0 && (
                       <tr>
-                        <td colSpan="6" className="p-4 text-center text-gray-500">
+                        <td colSpan="7" className="p-4 text-center text-gray-500">
                           {searchTerm ? (
                             <div className="flex flex-col items-center justify-center py-8">
                               <Icon icon="material-symbols:search-off-outline" width="48" height="48" className="mb-4 text-gray-400" />
@@ -837,7 +870,10 @@ const Persona = () => {
         onClose={() => { setShowDeleteModal(false); setPolicyCount(null); setPolicyCountLoading(false); }}
         onConfirm={handleConfirmDelete}
         title="Confirm Deletion"
-        message={`Are you sure you want to delete the persona "${personaToDelete?.name}"? This action cannot be undone.`}
+        message={isBulk
+            ? `You are about to delete ${selectedPersonas.length} personas. This action cannot be undone.`
+            : `Are you sure you want to delete the persona "${personaToDelete?.name}"? This action cannot be undone.`
+          }
         isConfirming={isDeleting}
         policyCount={policyCount}
         policyCountLoading={policyCountLoading}

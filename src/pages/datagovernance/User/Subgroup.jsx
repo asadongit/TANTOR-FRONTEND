@@ -86,6 +86,7 @@ function Subgroup() {
   const [togglingStatus, setTogglingStatus] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const { token, decodedToken } = useAuth();
+  const [selectedSubgroups, setSelectedSubgroups] = useState([]);
 
   const [activeMenu, setActiveMenu] = useState(null);
   const [showViewModeMenu, setShowViewModeMenu] = useState(false);
@@ -104,8 +105,9 @@ function Subgroup() {
   );
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm]);
+  setCurrentPage(1);
+  setSelectedSubgroups([]);
+}, [searchTerm, itemsPerPage, viewMode]);
 
   const cardViewTotalPages = Math.ceil(filteredSubgroups.length / itemsPerPage);
   const cardViewStartIndex = (currentPage - 1) * itemsPerPage;
@@ -116,7 +118,12 @@ function Subgroup() {
   const listViewStartIndex = (currentPage - 1) * itemsPerPage;
   const listViewEndIndex = listViewStartIndex + itemsPerPage;
   const listViewCurrentRows = filteredTableData.slice(listViewStartIndex, listViewEndIndex);
-
+  const isAllSelected = listViewCurrentRows.length > 0 && selectedSubgroups.length === listViewCurrentRows.length;
+  const isIndeterminate = selectedSubgroups.length > 0 && selectedSubgroups.length < listViewCurrentRows.length;
+  const toggleSelectAll = () => setSelectedSubgroups(isAllSelected ? [] : listViewCurrentRows.map(s => s.name));
+  const toggleSelectSubgroup = (name) => setSelectedSubgroups(prev =>
+    prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
+  );
   const handleClickOutside = () => {
     setActiveMenu(null);
     setShowViewModeMenu(false);
@@ -618,7 +625,17 @@ function Subgroup() {
               <table className="w-full min-w-[900px]">
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-[#29304a] text-white text-sm">
-                      <th className="text-left" style={{ padding: '16px 19.75px' }}>ID</th>
+                      <th style={{ padding: '16px 12px 16px 19.75px', width: '40px' }}>
+                        <input
+                          type="checkbox"
+                          checked={isAllSelected}
+                          ref={el => { if (el) el.indeterminate = isIndeterminate; }}
+                          onChange={toggleSelectAll}
+                          className="w-4 h-4 cursor-pointer"
+                          style={{ accentColor: '#8e78b7' }}
+                        />
+                      </th>
+                      <th className="text-left" style={{ padding: '16px 19.75px' }}>#</th>
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>Name</th>
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>Parent Group</th>
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>Description</th>
@@ -639,7 +656,18 @@ function Subgroup() {
                     ) : (
                       listViewCurrentRows.map((subgroup, index) => (
                         <tr key={index} className="border-b hover:bg-gray-50">
-                          <td style={{ padding: '16px 19.75px' }} title={subgroup.id}>{subgroup.id.substring(0, 8)}...</td>
+                          <td style={{ padding: '16px 12px 16px 19.75px' }}>
+                            <input
+                              type="checkbox"
+                              checked={selectedSubgroups.includes(subgroup.name)}
+                              onChange={() => toggleSelectSubgroup(subgroup.name)}
+                              className="w-4 h-4 cursor-pointer"
+                              style={{ accentColor: '#8e78b7' }}
+                            />
+                          </td>
+                          <td style={{ padding: '16px 19.75px' }} className="text-gray-600">
+                            {listViewStartIndex + index + 1}
+                          </td>
                           <td style={{ padding: '16px 19.75px' }} className="text-gray-600">
                             <div className="flex items-center">
                               <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#8d77ba] bg-opacity-25 text-[#8d77ba] mr-2" aria-hidden="true">
@@ -671,24 +699,31 @@ function Subgroup() {
                                   <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
                                   <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
                                     <div className="flex items-center p-1 gap-1">
-                                      <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" onClick={() => { setSubgroupToEdit(subgroup); setShowEditModal(true); setActiveMenu(null); }}>
-                                        <Pencil className="h-4 w-4" />
-                                      </button>
-
-                                      <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2" onClick={async () => { setActiveMenu(null); await toggleRole(subgroup.name); }} disabled={togglingStatus === subgroup.name} title={subgroup.status === 'Enabled' ? 'Disable' : 'Enable'}>
-                                        {togglingStatus === subgroup.name ? (
-                                          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]" />
-                                        ) : (
-                                          <Toggle
-                                            enabled={togglingStatus === subgroup.name ? subgroup.status !== 'Enabled' : subgroup.status === 'Enabled'}
-                                            onToggle={async () => { setActiveMenu(null); await toggleRole(subgroup.name); }}
+                                      {selectedSubgroups.length < 2 && (
+                                        <>
+                                          <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                            onClick={() => { setSubgroupToEdit(subgroup); setShowEditModal(true); setActiveMenu(null); }}>
+                                            <Pencil className="h-4 w-4" />
+                                          </button>
+                                          <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2"
+                                            onClick={async () => { setActiveMenu(null); await toggleRole(subgroup.name); }}
                                             disabled={togglingStatus === subgroup.name}
-                                            size="sm"
-                                          />
-                                        )}
-                                      </button>
-
-                                      <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" onClick={() => { setSubgroupToDelete(subgroup); setShowDeleteModal(true); setActiveMenu(null); }}>
+                                            title={subgroup.status === 'Enabled' ? 'Disable' : 'Enable'}>
+                                            {togglingStatus === subgroup.name ? (
+                                              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]" />
+                                            ) : (
+                                              <Toggle
+                                                enabled={togglingStatus === subgroup.name ? subgroup.status !== 'Enabled' : subgroup.status === 'Enabled'}
+                                                onToggle={async () => { setActiveMenu(null); await toggleRole(subgroup.name); }}
+                                                disabled={togglingStatus === subgroup.name}
+                                                size="sm"
+                                              />
+                                            )}
+                                          </button>
+                                        </>
+                                      )}
+                                      <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                        onClick={() => { setSubgroupToDelete(subgroup); setShowDeleteModal(true); setActiveMenu(null); }}>
                                         <Trash2 className="h-4 w-4" />
                                       </button>
                                     </div>
@@ -763,8 +798,17 @@ function Subgroup() {
 
       <AddSubgroup showModal={showModal} setShowModal={setShowModal} onSubgroupAdded={handleSave} />
 
-      <DeleteSubgroup showModal={showDeleteModal} setShowModal={setShowDeleteModal} subgroupName={subgroupToDelete?.name || ""} onConfirm={refreshAllData} />
-
+      <DeleteSubgroup
+        showModal={showDeleteModal}
+        setShowModal={setShowDeleteModal}
+        subgroupName={subgroupToDelete?.name || ""}
+        selectedSubgroups={selectedSubgroups}
+        onConfirm={async () => {
+          await refreshAllData();
+          setSubgroupToDelete(null);
+          setSelectedSubgroups([]);
+        }}
+      />
       <EditSubgroup showModal={showEditModal} setShowModal={setShowEditModal} subgroupData={subgroupToEdit} onSubgroupUpdated={handleEditSave} />
     </div>
   );

@@ -6,12 +6,16 @@ import React, { useState, useEffect } from 'react';
 import { X, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
 import { useAuth } from '../../../../../context/AuthContext';
 
-const DeleteGroup = ({ showModal, setShowModal, groupName, onConfirm }) => {
+const DeleteGroup = ({ showModal, setShowModal, groupName, selectedGroups = [], onConfirm }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
   const [policyCount, setPolicyCount] = useState(null);
   const [policyCountLoading, setPolicyCountLoading] = useState(false);
-  const { token } = useAuth();
+  const { token, decodedToken } = useAuth();
+  const updated_by = decodedToken?.preferred_username;
+  const isBulk = selectedGroups.length >= 2;
+  const [wasBulk, setWasBulk] = useState(false);
+  const [deletedCount, setDeletedCount] = useState(0);
 
   useEffect(() => {
     if (showModal && groupName) {
@@ -63,11 +67,27 @@ const DeleteGroup = ({ showModal, setShowModal, groupName, onConfirm }) => {
 
   const handleConfirmDelete = async () => {
     setIsLoading(true);
+    const bulkSnapshot = isBulk;
+    const countSnapshot = isBulk ? selectedGroups.length : 1;
     try {
-      await onConfirm();
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/deletegroup`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: isBulk ? selectedGroups : [groupName],
+          updated_by,
+        }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.detail || "Failed to delete group(s)");
+      }
+      setWasBulk(bulkSnapshot);
+      setDeletedCount(countSnapshot);
       setIsDeleted(true);
+      if (onConfirm) await onConfirm();
     } catch (error) {
-      console.error('Error deleting group:', error);
+      console.error("Error deleting group(s):", error);
     } finally {
       setIsLoading(false);
     }
@@ -84,7 +104,7 @@ const DeleteGroup = ({ showModal, setShowModal, groupName, onConfirm }) => {
               <AlertTriangle className="h-5 w-5 text-red-500" />
             )}
             <h2 className="text-xl font-bold text-red-500">
-              {isDeleted ? 'Group Deleted' : 'Delete Confirmation'}
+              {isDeleted ? (wasBulk ? 'Groups Deleted' : 'Group Deleted') : 'Delete Confirmation'}
             </h2>
           </div>
           {!isLoading && (
@@ -98,7 +118,9 @@ const DeleteGroup = ({ showModal, setShowModal, groupName, onConfirm }) => {
           {isLoading && (
             <div className="p-4 bg-gray-50 rounded-lg text-center mb-6 flex flex-col items-center">
               <Loader className="h-16 w-16 text-blue-500 mx-auto mb-4 animate-spin" />
-              <p className="text-lg font-medium text-gray-800">Deleting group...</p>
+              <p className="text-lg font-medium text-gray-800">
+                {isBulk ? `Deleting ${selectedGroups.length} groups...` : 'Deleting group...'}
+              </p>
             </div>
           )}
 
@@ -106,8 +128,8 @@ const DeleteGroup = ({ showModal, setShowModal, groupName, onConfirm }) => {
             <div className="p-4 bg-green-50 rounded-lg text-center mb-6">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
               <p className="text-lg font-medium text-gray-800 break-words" style={{ wordWrap: 'break-word', whiteSpace: 'normal', overflowWrap: 'break-word' }}>
-  Group "{groupName}" deleted successfully
-</p>
+                {wasBulk ? `${deletedCount} groups deleted successfully` : `Group "${groupName}" deleted successfully`}
+              </p>
               <button
                 onClick={handleClose}
                 className="mt-6 px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
@@ -122,8 +144,8 @@ const DeleteGroup = ({ showModal, setShowModal, groupName, onConfirm }) => {
               <div className="p-4 bg-red-50 rounded-lg text-center mb-6">
                 <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-2" />
                 <p className="text-lg font-medium text-gray-800 break-words" style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
-  You are about to delete the group "{groupName}"
-</p>
+                  {isBulk ? `You are about to delete ${selectedGroups.length} groups` : `You are about to delete the group "${groupName}"`}
+                </p>
                 
                 {/* Policy Count Warning */}
                 {policyCountLoading ? (
