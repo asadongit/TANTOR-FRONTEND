@@ -4,13 +4,16 @@ import { X, AlertTriangle, CheckCircle, Loader } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
 import { toast } from "react-toastify";
 
-const DeleteRole = ({ showModal, setShowModal, roleName, onConfirm }) => {
+const DeleteRole = ({ showModal, setShowModal, roleName, selectedRoles = [], onConfirm }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
   const [policyCount, setPolicyCount] = useState(null);
   const [policyCountLoading, setPolicyCountLoading] = useState(false);
   const { token, decodedToken } = useAuth();
   const updated_by = decodedToken?.preferred_username; 
+  const isBulk = selectedRoles.length >= 2;
+  const [wasBulk, setWasBulk] = useState(false);
+  const [deletedCount, setDeletedCount] = useState(0);
 
   useEffect(() => {
     if (showModal && roleName) {
@@ -62,34 +65,31 @@ const DeleteRole = ({ showModal, setShowModal, roleName, onConfirm }) => {
 
   const handleConfirmDelete = async () => {
     setIsLoading(true);
+    const bulkSnapshot = isBulk;
+    const countSnapshot = isBulk ? selectedRoles.length : 1;
     try {
-      const response = await fetch(
-        `${window._env_?.VITE_FAST_API}/auth/deleterole`,
-        {
+      const name = isBulk ? selectedRoles : [roleName];
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/deleterole`, {
         method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: roleName,
-          updated_by: updated_by,
-        }),
-      }
-      );
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: isBulk ? selectedRoles : [roleName], updated_by }),
+      });
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        toast.error(errorData?.detail || "Failed to delete role");
-        throw new Error(errorData?.detail || "Failed to delete role");
+        toast.error(errorData?.detail || "Failed to delete role(s)");
+        throw new Error(errorData?.detail || "Failed to delete role(s)");
       }
+      setWasBulk(bulkSnapshot);
+      setDeletedCount(countSnapshot);
       setIsDeleted(true);
       if (onConfirm) onConfirm();
     } catch (error) {
-      console.error("Error deleting role:", error);
+      console.error("Error deleting role(s):", error);
     } finally {
       setIsLoading(false);
     }
   };
+    
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -102,7 +102,7 @@ const DeleteRole = ({ showModal, setShowModal, roleName, onConfirm }) => {
               <AlertTriangle className="h-5 w-5 text-red-500" />
             )}
             <h2 className="text-xl font-bold text-red-500">
-              {isDeleted ? "Role Deleted" : "Delete Confirmation"}
+              {isDeleted ? (wasBulk ? "Roles Deleted" : "Role Deleted") : "Delete Confirmation"}
             </h2>
           </div>
           {!isLoading && (
@@ -116,7 +116,9 @@ const DeleteRole = ({ showModal, setShowModal, roleName, onConfirm }) => {
           {isLoading && (
             <div className="p-4 bg-gray-50 rounded-lg text-center mb-6 flex flex-col items-center">
               <Loader className="h-16 w-16 text-blue-500 mx-auto mb-4 animate-spin" />
-              <p className="text-lg font-medium text-gray-800">Deleting role...</p>
+              <p className="text-lg font-medium text-gray-800">
+                {isBulk ? `Deleting ${selectedRoles.length} roles...` : "Deleting role..."}
+              </p>
             </div>
           )}
 
@@ -124,7 +126,7 @@ const DeleteRole = ({ showModal, setShowModal, roleName, onConfirm }) => {
             <div className="p-4 bg-green-50 rounded-lg text-center mb-6">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
               <p className="text-lg font-medium text-gray-800 break-words">
-                Role "{roleName}" deleted successfully
+                {wasBulk ? `${deletedCount} roles deleted successfully` : `Role "${roleName}" deleted successfully`}
               </p>
               <button
                 onClick={handleClose}
@@ -140,7 +142,7 @@ const DeleteRole = ({ showModal, setShowModal, roleName, onConfirm }) => {
               <div className="p-4 bg-red-50 rounded-lg text-center mb-6">
                 <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-2" />
                 <p className="text-lg font-medium text-gray-800 break-words">
-                  You are about to delete the role "{roleName}"
+                  {isBulk ? `You are about to delete ${selectedRoles.length} roles` : `You are about to delete the role "${roleName}"`}
                 </p>
                 
                 {/* Policy Count Warning - Before "This action cannot be undone" */}

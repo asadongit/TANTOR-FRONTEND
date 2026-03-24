@@ -117,6 +117,7 @@ function Group() {
   const { token } = useAuth();
   const { decodedToken } = useAuth();
   const updated_by = decodedToken?.preferred_username; 
+  const [selectedGroups, setSelectedGroups] = useState([]);
 
   // const [visibleCards, setVisibleCards] = useState(9);
   // const [currentCardPage, setCurrentCardPage] = useState(1); 
@@ -137,8 +138,11 @@ function Group() {
   );
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm]);
+  setCurrentPage(1);
+  setSelectedGroups([]);
+}, [searchTerm, itemsPerPage, viewMode]);
+
+  
 
   // const handleViewMore = () => {
   //   setVisibleCards(prev => prev + cardsPerPage);
@@ -156,7 +160,12 @@ function Group() {
   const listViewStartIndex = (currentPage - 1) * itemsPerPage;
   const listViewEndIndex = listViewStartIndex + itemsPerPage;
   const listViewCurrentRows = filteredTableData.slice(listViewStartIndex, listViewEndIndex);
-
+  const isAllSelected = listViewCurrentRows.length > 0 && selectedGroups.length === listViewCurrentRows.length;
+  const isIndeterminate = selectedGroups.length > 0 && selectedGroups.length < listViewCurrentRows.length;
+  const toggleSelectAll = () => setSelectedGroups(isAllSelected ? [] : listViewCurrentRows.map(g => g.name));
+  const toggleSelectGroup = (name) => setSelectedGroups(prev =>
+    prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
+  );
   //   const goToNextCardPage = () => {
   //   if (currentCardPage < totalCardPages) {
   //     setCurrentCardPage(currentCardPage + 1);
@@ -563,6 +572,7 @@ function Group() {
     const match = str.match(/[A-Za-z0-9]/);
     return match ? match[0].toUpperCase() : "";
   };
+  
 
   return (
     //changed bg color and and reduced padding to p-4 , initially was p-6
@@ -916,7 +926,17 @@ function Group() {
             <thead>
               <tr className="bg-[#29304a] text-white text-sm">
                 {/* enforce 19.75px horizontal spacing between cells */}
-                <th className="text-left" style={{ padding: '16px 19.75px' }}>ID</th>
+                <th style={{ padding: '16px 12px 16px 19.75px', width: '40px' }}>
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    ref={el => { if (el) el.indeterminate = isIndeterminate; }}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 cursor-pointer"
+                    style={{ accentColor: '#8e78b7' }}
+                  />
+                </th>
+                <th className="text-left" style={{ padding: '16px 19.75px' }}>#</th>
                 <th className="text-left" style={{ padding: '16px 19.75px' }}>Name</th>
                 <th className="text-left" style={{ padding: '16px 19.75px' }}>Description</th>
                 <th className="text-center" style={{ padding: '16px 19.75px' }}>Status</th>
@@ -938,7 +958,18 @@ function Group() {
                 listViewCurrentRows.map((group, index) => (
                   <tr key={index} className="border-b hover:bg-gray-50">
                     {/* apply same horizontal padding to every cell so gap between "textboxes" = 19.75px */}
-                    <td style={{ padding: '16px 19.75px' }} title={group.id}>{group.id.substring(0, 8)}...</td>
+                    <td style={{ padding: '16px 12px 16px 19.75px' }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedGroups.includes(group.name)}
+                        onChange={() => toggleSelectGroup(group.name)}
+                        className="w-4 h-4 cursor-pointer"
+                        style={{ accentColor: '#8e78b7' }}
+                      />
+                    </td>
+                    <td style={{ padding: '16px 19.75px' }} className="text-gray-600">
+                      {listViewStartIndex + index + 1}
+                    </td>
                     <td style={{ padding: '16px 19.75px' }} className="text-gray-600">
                       <div className="flex items-center">
                         <div
@@ -990,32 +1021,25 @@ function Group() {
                              <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
                              <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
                                <div className="flex items-center p-1 gap-1">
-                                 <button
-                                   className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                                   onClick={() => {
-                                     setGroupToEdit(group);
-                                     setShowEditModal(true);
-                                     setActiveMenu(null);
-                                   }}
-                                 >
-                                   <Pencil className="h-4 w-4" />
-                                 </button>
-                                 <button
-                                 className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2"
-                                 disabled={togglingStatus === group.name}
-                                 onClick={async () => {
-                                   setActiveMenu(null);
-                                   await toggleRole(group.name);
-                                 }}
-                                 title={group.status === 'Enabled' ? 'Disable' : 'Enable'}
-                               >
-                                 <Toggle
-                                   enabled={togglingStatus === group.name ? group.status !== 'Enabled' : group.status === 'Enabled'}
-                                   onToggle={async () => { setActiveMenu(null); await toggleRole(group.name); }}
-                                   disabled={togglingStatus === group.name}
-                                   size="sm"
-                                 />
-                               </button>
+                                 {selectedGroups.length < 2 && (
+                                  <>
+                                    <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                      onClick={() => { setGroupToEdit(group); setShowEditModal(true); setActiveMenu(null); }}>
+                                      <Pencil className="h-4 w-4" />
+                                    </button>
+                                    <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2"
+                                      disabled={togglingStatus === group.name}
+                                      onClick={async () => { setActiveMenu(null); await toggleRole(group.name); }}
+                                      title={group.status === 'Enabled' ? 'Disable' : 'Enable'}>
+                                      <Toggle
+                                        enabled={togglingStatus === group.name ? group.status !== 'Enabled' : group.status === 'Enabled'}
+                                        onToggle={async () => { setActiveMenu(null); await toggleRole(group.name); }}
+                                        disabled={togglingStatus === group.name}
+                                        size="sm"
+                                      />
+                                    </button>
+                                  </>
+                                )}
 
                               <button
                                 className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
@@ -1135,7 +1159,12 @@ function Group() {
         showModal={showDeleteModal}
         setShowModal={setShowDeleteModal}
         groupName={groupToDelete?.name || ""}
-        onConfirm={handleDeleteGroup}
+        selectedGroups={selectedGroups}
+        onConfirm={async () => {
+          await refreshAllData();
+          setGroupToDelete(null);
+          setSelectedGroups([]);
+        }}
       />
 
       <EditGroup

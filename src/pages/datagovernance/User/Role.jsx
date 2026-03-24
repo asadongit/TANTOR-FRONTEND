@@ -108,7 +108,7 @@ const Role = () => {
   const initialFetchDoneRef = useRef(false);
   const { token } = useAuth();
   const { decodedToken } = useAuth();
-  
+  const [selectedRoles, setSelectedRoles] = useState([]);
   const filteredRoles = roles.filter(role =>
     role.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -119,8 +119,9 @@ const Role = () => {
   );
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, itemsPerPage, viewMode]);
+  setCurrentPage(1);
+  setSelectedRoles([]);
+}, [searchTerm, itemsPerPage, viewMode]);
 
   const handleClickOutside = () => {
     setActiveMenu(null);
@@ -300,7 +301,12 @@ const Role = () => {
   const listStartIndex = (currentPage - 1) * itemsPerPage;
   const listEndIndex = listStartIndex + itemsPerPage;
   const listCurrentRows = filteredTableData.slice(listStartIndex, listEndIndex);
-
+  const isAllSelected = listCurrentRows.length > 0 && selectedRoles.length === listCurrentRows.length;
+  const isIndeterminate = selectedRoles.length > 0 && selectedRoles.length < listCurrentRows.length;
+  const toggleSelectAll = () => setSelectedRoles(isAllSelected ? [] : listCurrentRows.map(r => r.name));
+  const toggleSelectRole = (id, name) => setSelectedRoles(prev =>
+    prev.includes(name) ? prev.filter(i => i !== name) : [...prev, name]
+  );
   const handlePrevPage = () => {
     if (currentPage > 1) setCurrentPage(currentPage - 1);
   };
@@ -542,7 +548,17 @@ const Role = () => {
         <table className="w-full min-w-[900px]">
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-[#29304a] text-white rounded-t-lg text-sm">
-                      <th className="text-left" style={{ padding: '16px 19.75px' }}>ID</th>
+                      <th style={{ padding: '16px 12px 16px 19.75px', width: '40px' }}>
+                          <input
+                            type="checkbox"
+                            checked={isAllSelected}
+                            ref={el => { if (el) el.indeterminate = isIndeterminate; }}
+                            onChange={toggleSelectAll}
+                            className="w-4 h-4 cursor-pointer"
+                            style={{ accentColor: '#8e78b7' }}
+                          />
+                        </th>
+                      <th className="text-left" style={{ padding: '16px 19.75px' }}>#</th>
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>Name</th>
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>Description</th>
                       <th className="text-center" style={{ padding: '16px 19.75px' }}>Status</th>
@@ -555,7 +571,18 @@ const Role = () => {
                   <tbody className="text-sm">
                     {listCurrentRows.map((role, index) => (
                       <tr key={index} className="border-b hover:bg-gray-50 relative">
-                        <td style={{ padding: '16px 19.75px' }} title={role.id}>{role.id?.substring(0, 8)}...</td>
+                        <td style={{ padding: '16px 12px 16px 19.75px' }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedRoles.includes(role.name)}
+                            onChange={() => toggleSelectRole(role.id, role.name)}
+                            className="w-4 h-4 cursor-pointer"
+                            style={{ accentColor: '#8e78b7' }}
+                          />
+                        </td>
+                        <td style={{ padding: '16px 19.75px' }} className="text-gray-600">
+                          {listStartIndex + index + 1}
+                        </td>
                         <td style={{ padding: '16px 19.75px' }} className="text-gray-600">
                           <div className="flex items-center">
                             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#8d77ba] bg-opacity-25 text-[#8d77ba] mr-2">
@@ -588,19 +615,21 @@ const Role = () => {
                                 <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
                                 <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-50 animate-fadeIn min-w-max">
                                   <div className="flex items-center p-1 gap-1">
-                                    <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" onClick={() => { setRoleToEdit(role); setShowEditModal(true); setActiveMenu(null); }}>
-                                      <Pencil className="h-4 w-4" />
-                                    </button>
-
-                                    <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2" onClick={async () => { setActiveMenu(null); await toggleRole(role.name); }} disabled={togglingStatus === role.name} title={role.status === 'Enabled' ? 'Disable' : 'Enable'}>
-                                      <Toggle
-                                        enabled={togglingStatus === role.name ? role.status !== 'Enabled' : role.status === 'Enabled'}
-                                        onToggle={async () => { setActiveMenu(null); await toggleRole(role.name); }}
-                                        disabled={togglingStatus === role.name}
-                                        size="sm"
-                                      />
-                                    </button>
-
+                                    {selectedRoles.length < 2 && (
+                                      <>
+                                        <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" onClick={() => { setRoleToEdit(role); setShowEditModal(true); setActiveMenu(null); }}>
+                                          <Pencil className="h-4 w-4" />
+                                        </button>
+                                        <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2" onClick={async () => { setActiveMenu(null); await toggleRole(role.name); }} disabled={togglingStatus === role.name} title={role.status === 'Enabled' ? 'Disable' : 'Enable'}>
+                                          <Toggle
+                                            enabled={togglingStatus === role.name ? role.status !== 'Enabled' : role.status === 'Enabled'}
+                                            onToggle={async () => { setActiveMenu(null); await toggleRole(role.name); }}
+                                            disabled={togglingStatus === role.name}
+                                            size="sm"
+                                          />
+                                        </button>
+                                      </>
+                                    )}
                                     <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" onClick={() => { setRoleToDelete(role); setShowDeleteModal(true); setActiveMenu(null); }}>
                                       <Trash2 className="h-4 w-4" />
                                     </button>
@@ -615,7 +644,7 @@ const Role = () => {
 
                     {!loading && listCurrentRows.length === 0 && (
                       <tr>
-                        <td colSpan="8" className="p-4 text-center text-gray-500">
+                        <td colSpan="9" className="p-4 text-center text-gray-500">
                           {searchTerm ? (
                             <div className="flex flex-col items-center justify-center py-8">
                               <Icon icon="material-symbols:search-off-outline" width="48" height="48" className="mb-4 text-gray-400" />
@@ -672,14 +701,16 @@ const Role = () => {
 
       <EditRole show={showEditModal} onClose={() => setShowEditModal(false)} onSave={handleEditSave} roleData={roleToEdit} />
 
-      <DeleteRole 
-        showModal={showDeleteModal} 
-        setShowModal={setShowDeleteModal} 
-        roleName={roleToDelete?.name || ""} 
-        onConfirm={async () => { 
-          await refreshAllData(); 
-          setRoleToDelete(null); 
-        }} 
+      <DeleteRole
+        showModal={showDeleteModal}
+        setShowModal={setShowDeleteModal}
+        roleName={roleToDelete?.name || ""}
+        selectedRoles={selectedRoles}
+        onConfirm={async () => {
+          await refreshAllData();
+          setRoleToDelete(null);
+          setSelectedRoles([]);
+        }}
       />
     </div>
   );
