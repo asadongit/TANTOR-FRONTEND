@@ -3,7 +3,7 @@ import { X, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
 import { useAuth } from '../../../../../context/AuthContext';
 
 
-const DeleteSubgroup = ({ showModal, setShowModal, subgroupName, onConfirm }) => {
+const DeleteSubgroup = ({ showModal, setShowModal, subgroupName, selectedSubgroups = [], onConfirm }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
   const [error, setError] = useState("");
@@ -11,13 +11,16 @@ const DeleteSubgroup = ({ showModal, setShowModal, subgroupName, onConfirm }) =>
   const [policyCountLoading, setPolicyCountLoading] = useState(false);
   const { token, decodedToken } = useAuth();
   const updated_by = decodedToken?.preferred_username; 
-
+  const [wasBulk, setWasBulk] = useState(false);
+  const [deletedCount, setDeletedCount] = useState(0);
+  const isBulk = selectedSubgroups.length >= 2;
+  
   useEffect(() => {
-    if (showModal && subgroupName) {
+    if (showModal) {
       setIsDeleted(false);
       setIsLoading(false);
       setError("");
-      fetchPolicyCount();
+      if (!isBulk && subgroupName) fetchPolicyCount();
     }
   }, [showModal, subgroupName]);
 
@@ -53,7 +56,7 @@ const DeleteSubgroup = ({ showModal, setShowModal, subgroupName, onConfirm }) =>
   };
 
 
-  if (!showModal) return null;
+  if (!showModal || (!subgroupName && !isBulk)) return null;
 
 
   const handleClose = () => {
@@ -69,37 +72,29 @@ const DeleteSubgroup = ({ showModal, setShowModal, subgroupName, onConfirm }) =>
   const handleConfirm = async () => {
     setIsLoading(true);
     setError("");
-
-
+    const bulkSnapshot = isBulk;
+    const countSnapshot = isBulk ? selectedSubgroups.length : 1;
     try {
       const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/deletesubgroup`, {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: subgroupName,
-          updated_by: updated_by
-        })
+        name: isBulk ? selectedSubgroups : [subgroupName],
+        updated_by,
+      }),
       });
-
-
-      if (response.ok) {
-        setIsDeleted(true);
-        if (onConfirm) {
-          await onConfirm();
-        }
-        setTimeout(() => {
-          setShowModal(false);
-        }, 1500);
-      } else {
+      if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        setError(errorData.detail || `Failed to delete subgroup (${response.status})`);
+        setError(errorData.detail || `Failed to delete subgroup(s) (${response.status})`);
+        return;
       }
+      setWasBulk(bulkSnapshot);
+      setDeletedCount(countSnapshot);
+      setIsDeleted(true);
+      if (onConfirm) await onConfirm();
     } catch (error) {
-      console.error('Error deleting subgroup:', error);
-      setError(error.message || "An error occurred while deleting the subgroup");
+      console.error('Error deleting subgroup(s):', error);
+      setError(error.message || "An error occurred while deleting the subgroup(s)");
     } finally {
       setIsLoading(false);
     }
@@ -117,7 +112,7 @@ const DeleteSubgroup = ({ showModal, setShowModal, subgroupName, onConfirm }) =>
               <AlertTriangle className="h-5 w-5 text-red-500" />
             )}
             <h2 className="text-xl font-bold text-red-500">
-              {isDeleted ? 'Subgroup Deleted' : 'Delete Confirmation'}
+              {isDeleted ? (wasBulk ? 'Subgroups Deleted' : 'Subgroup Deleted') : 'Delete Confirmation'}
             </h2>
           </div>
           {!isLoading && (
@@ -132,7 +127,8 @@ const DeleteSubgroup = ({ showModal, setShowModal, subgroupName, onConfirm }) =>
           {isLoading && (
             <div className="p-4 bg-gray-50 rounded-lg text-center mb-6 flex flex-col items-center">
               <Loader className="h-16 w-16 text-blue-500 mx-auto mb-4 animate-spin" />
-              <p className="text-lg font-medium text-gray-800">Deleting subgroup...</p>
+              {isBulk ? `Deleting ${selectedSubgroups.length} subgroups...` : 'Deleting subgroup...'}
+
             </div>
           )}
 
@@ -148,7 +144,7 @@ const DeleteSubgroup = ({ showModal, setShowModal, subgroupName, onConfirm }) =>
             <div className="p-4 bg-green-50 rounded-lg text-center mb-6">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
               <p className="text-lg font-medium text-gray-800 break-words">
-                Subgroup "{subgroupName}" deleted successfully
+                {wasBulk ? `${deletedCount} subgroups deleted successfully` : `Subgroup "${subgroupName}" deleted successfully`}
               </p>
               <button
                 onClick={handleClose}
@@ -165,7 +161,7 @@ const DeleteSubgroup = ({ showModal, setShowModal, subgroupName, onConfirm }) =>
               <div className="p-4 bg-red-50 rounded-lg text-center mb-6">
                 <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-2" />
                 <p className="text-lg font-medium text-gray-800 break-words">
-                  You are about to delete the subgroup "{subgroupName}"
+                  {isBulk ? `You are about to delete ${selectedSubgroups.length} subgroups` : `You are about to delete the subgroup "${subgroupName}"`}
                 </p>
                 
                 {/* Policy Count Warning */}
