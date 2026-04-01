@@ -56,6 +56,7 @@ export function SourceNode({ id, data, selected }) {
   useEffect(() => {
     if (selectedConnection && selectedSchema && ID) {
       const updatedNodeData = {
+        type: "source", 
         connection: selectedConnection,
         schema: selectedSchema,
         // mode: selectedMode,

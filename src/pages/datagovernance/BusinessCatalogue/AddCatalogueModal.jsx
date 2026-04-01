@@ -554,7 +554,8 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
                 description: data.desc || data.description || '',
                 status: data.status,
                 owner: ownerAsArray,
-                creator: creatorArray
+                creator: creatorArray,
+                requested_by: decodedToken?.preferred_username
             };
 
             const finalObject = {
