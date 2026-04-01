@@ -145,6 +145,26 @@ export function TargetNode({ id, data, selected }) {
         source_conn_id: data?.source?.source_conn_id,
         target_conn_id: data?.target?.target_conn_id,
         table_list: data?.target?.metadata_list,
+        ui_json: {
+          ...data,
+          define: {
+            ...data?.define,
+            baseName: data?.define?.autoName,
+            autoName: undefined,
+          },
+          source: {
+            type: "source",
+            ...data?.source,
+          },
+          target: {
+            ...data?.target,
+            transformedTables: data?.target?.metadata_list?.map((tableObj) => {
+              const [source, target] = Object.entries(tableObj)[0];
+              return { source, target };
+            }),
+            metadata_list: undefined,
+          },
+        },
       };
       const validationResponse = await validateDdlMigration(payload);
       if (validationResponse.success === true) {
@@ -288,11 +308,14 @@ export function TargetNode({ id, data, selected }) {
   useEffect(() => {
     if (selectedConnection && selectedSchema && ID) {
       const updatedNodeData = {
+        type: "target",
         connection: selectedConnection,
         schema: selectedSchema,
         metadata_list: filteredTables,
         target_conn_id: nodeData?.target_conn_id,
-        target_conn_type: nodeData?.target_conn_type,
+        connection_type: nodeData?.target_conn_type,
+        settings: settings,
+        settingsValue: settingsValue,
       };
 
       updateData(ID, isPipelineNode, "target", updatedNodeData);
@@ -404,9 +427,8 @@ export function TargetNode({ id, data, selected }) {
                     Object.keys(errorTables).map((table, index) => (
                       <tr
                         key={index}
-                        className={`${
-                          index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                        } hover:bg-gray-100 transition-colors`}
+                        className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                          } hover:bg-gray-100 transition-colors`}
                       >
                         <td className="p-3 text-gray-800">
                           <div className="flex items-center">
@@ -490,9 +512,8 @@ export function TargetNode({ id, data, selected }) {
   };
   return (
     <div
-      className={`bg-white rounded-lg p-3 pt-2 shadow-md border-2 ${
-        selected ? "border-[#8E77BB]" : "border-gray-300"
-      } w-fit min-w-[14vw] max-w-[90vw] relative group grid grid-cols-[repeat(auto-fit,minmax(min-content,1fr))]`}
+      className={`bg-white rounded-lg p-3 pt-2 shadow-md border-2 ${selected ? "border-[#8E77BB]" : "border-gray-300"
+        } w-fit min-w-[14vw] max-w-[90vw] relative group grid grid-cols-[repeat(auto-fit,minmax(min-content,1fr))]`}
     >
       <div className="flex justify-between items-center mb-2">
         <div className="flex items-center gap-1">
@@ -504,14 +525,14 @@ export function TargetNode({ id, data, selected }) {
           ></iconify-icon>
           <h3 className="text-black font-medium">Target</h3>
         </div>
- <div className="flex space-x-2">
-        <button className="p-1">
-          <Minus className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-        </button>
-        <button onClick={() => isPipelineNode ? deletePipeline(pipelineId) : window.deleteNode?.(id)} className="p-1">
-          <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-        </button>
-      </div>
+        <div className="flex space-x-2">
+          <button className="p-1">
+            <Minus className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+          </button>
+          <button onClick={() => isPipelineNode ? deletePipeline(pipelineId) : window.deleteNode?.(id)} className="p-1">
+            <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+          </button>
+        </div>
         {/* {!data?.pipelineId && (
           <div className="flex space-x-2">
             <button className="p-1">
@@ -734,9 +755,8 @@ export function TargetNode({ id, data, selected }) {
               <button
                 onClick={handleSave}
                 disabled={validationInProgress}
-                className={`bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded ${
-                  validationInProgress ? "opacity-50 cursor-not-allowed" : ""
-                }`}
+                className={`bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded ${validationInProgress ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
               >
                 {validationInProgress ? "Validating..." : "Save"}
               </button>
