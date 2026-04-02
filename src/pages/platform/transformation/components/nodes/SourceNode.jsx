@@ -112,7 +112,7 @@ export const SourceNode = ({ id, data }) => {
 
       const filteredConnections = connectionsData
         .filter(conn => conn.created_by === currentUser)
-        .filter(conn => conn.project === project)
+        .filter(conn => project === "default" || project === "none" || !project || conn.project === project)
         .filter(conn => conn.pool_type === "source" || conn.pool_type === "both");
 
       setConnections(filteredConnections);
@@ -1064,6 +1064,28 @@ export const SourceNode = ({ id, data }) => {
         });
         hasUpdated = true;
       }
+
+      // Restore customQuery for source-query mode
+      if (data.customQuery && !customQuery) {
+        setCustomQuery(data.customQuery);
+        hasUpdated = true;
+      }
+
+      // Restore fileColumns (used as column mapping in source-query mode)
+      if (
+        data.objectType === "source-query" &&
+        data.fileColumns &&
+        Array.isArray(data.fileColumns) &&
+        fileColumns.length === 1 &&
+        !fileColumns[0].name
+      ) {
+        const restoredColumns = data.fileColumns.map(col => ({
+          ...col,
+          customDatatype: col.customDatatype || ""
+        }));
+        setFileColumns(restoredColumns);
+        hasUpdated = true;
+      }
     }
 
     if (data.alias && !alias) {
@@ -1093,6 +1115,7 @@ export const SourceNode = ({ id, data }) => {
     data.table,
     data.alias,
     data.objectType,
+    data.customQuery,
     data.enableCountLogging
   ]);
 
