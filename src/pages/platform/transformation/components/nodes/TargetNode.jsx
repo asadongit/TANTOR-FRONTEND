@@ -109,7 +109,7 @@ export const TargetNode = ({ id, data }) => {
 
       const filteredConnections = connectionsData
         .filter(conn => conn.created_by === currentUser)
-        .filter(conn => conn.project === project)
+        .filter(conn => project === "default" || project === "none" || !project || conn.project === project)
         .filter(conn => conn.pool_type === "target" || conn.pool_type === "both");
 
       setConnections(filteredConnections);
