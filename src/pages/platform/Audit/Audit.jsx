@@ -464,6 +464,111 @@ function Audit() {
         }
     };
 
+    // Fields to exclude from Change Summary (internal/technical IDs and sensitive fields)
+    const SKIP_FIELDS = new Set([
+        'id', 'created_at', 'updated_at', 'event_id', 'report_id',
+        'password', 'aws_access_key_password', 'aws_secret_key_password',
+        'is_deleted', 'transfomation_id', 'migration_id', 'cdc_id',
+        'purge_id', 'connection_id', 'project_id', 'transformation_id',
+        'ui_json',  // internal UI config object stored in Migration model — not meaningful for end users
+    ]);
+
+    // Priority list to detect entity display name from a state object
+    const NAME_FIELDS_LIST = [
+        'name', 'workflow_name', 'connection_name', 'transformation_name',
+        'migration_name', 'cdc_name', 'purge_name', 'report_name',
+        'metadata_name', 'connector_name', 'title', 'project_name',
+    ];
+
+    const detectEntityName = (state) => {
+        if (!state || typeof state !== 'object') return null;
+        for (const f of NAME_FIELDS_LIST) {
+            if (state[f]) return String(state[f]);
+        }
+        return null;
+    };
+
+    const toLabel = (key) =>
+        key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+    // Safely converts any value to a display string.
+    // Objects/arrays are JSON-stringified (with truncation) to avoid "[object Object]".
+    const toDisplayValue = (val) => {
+        if (val === null || val === undefined) return 'null';
+        if (typeof val === 'object') {
+            const str = JSON.stringify(val);
+            return str.length > 100 ? str.substring(0, 100) + '...' : str;
+        }
+        return String(val);
+    };
+
+    // Builds a multiline key-value string for the Change Summary cell.
+    // Each changed/relevant field gets its own line inside the cell (\n separated).
+    const buildChangeSummary = (action, prevState, newState) => {
+        const act = (action || '').toUpperCase();
+
+        if (act === 'UPDATE') {
+            if (!newState) return '—';
+            const diff = getDiffData(prevState || {}, newState);
+            const lines = Object.entries(diff || {})
+                .filter(([k]) => !SKIP_FIELDS.has(k))
+                .map(([k, newVal]) => {
+                    const oldVal = (prevState || {})[k];
+                    return oldVal !== undefined
+                        ? `${toLabel(k)}: "${toDisplayValue(oldVal)}" → "${toDisplayValue(newVal)}"`
+                        : `${toLabel(k)}: set to "${toDisplayValue(newVal)}"`;
+                });
+            if (!lines.length) {
+                const name = detectEntityName(newState) || detectEntityName(prevState);
+                return name ? `"${name}" — no tracked field changes` : 'No tracked field changes';
+            }
+            return lines.join('\n');
+        }
+
+        if (act === 'CREATE') {
+            if (!newState) return '—';
+            const name = detectEntityName(newState);
+            const lines = Object.entries(newState)
+                .filter(([k, v]) => !SKIP_FIELDS.has(k) && v !== null && v !== undefined && v !== '')
+                .slice(0, 7)
+                .map(([k, v]) => `${toLabel(k)}: "${toDisplayValue(v)}"`);
+            return name
+                ? [`Created: "${name}"`, ...lines].join('\n')
+                : lines.join('\n');
+        }
+
+        if (act === 'DELETE') {
+            if (!prevState) return 'Deleted record';
+            const name = detectEntityName(prevState);
+            const lines = Object.entries(prevState)
+                .filter(([k, v]) => !SKIP_FIELDS.has(k) && v !== null && v !== undefined && v !== '')
+                .slice(0, 7)
+                .map(([k, v]) => `${toLabel(k)}: "${toDisplayValue(v)}"`);
+            return name
+                ? [`Deleted: "${name}"`, ...lines].join('\n')
+                : lines.join('\n') || 'Deleted record';
+        }
+
+        if (act === 'TRIGGER') {
+            const name = detectEntityName(newState) || detectEntityName(prevState);
+            return name ? `Triggered: "${name}"` : 'Workflow triggered';
+        }
+
+        return '—';
+    };
+
+    // Formats a full state object as multiline key-value pairs for the Previous State / New State columns.
+    // Each field gets its own line: "Field Name: value"
+    // Nested objects/arrays are JSON-stringified for readability.
+    const formatStateAsKeyValue = (state) => {
+        if (!state || typeof state !== 'object') return String(state || '');
+        return Object.entries(state)
+            .filter(([, v]) => v !== null && v !== undefined)
+            .map(([k, v]) => `${toLabel(k)}: ${toDisplayValue(v)}`)
+            .join('\n');
+    };
+
+    // Keeps ALL original fields + appends computed change_summary
     const prepareDataForExport = () => {
         return auditData.map(row => {
             const exportRow = { ...row };
@@ -472,21 +577,16 @@ function Audit() {
                 exportRow.performed_at = new Date(exportRow.performed_at).toLocaleString();
             }
 
-            if (row.previous_state && row.new_state) {
-                const diff = getDiffData(row.previous_state, row.new_state);
-                exportRow.changes = JSON.stringify(diff);
-            } else if (row.new_state) {
-                exportRow.changes = JSON.stringify(row.new_state);
-            } else {
-                exportRow.changes = "—";
-            }
+
+            // Build change_summary BEFORE stringifying the state objects
+            exportRow.change_summary = buildChangeSummary(row.action, row.previous_state, row.new_state);
 
             if (exportRow.previous_state) {
-                exportRow.previous_state = JSON.stringify(exportRow.previous_state);
+                exportRow.previous_state = formatStateAsKeyValue(exportRow.previous_state);
             }
 
             if (exportRow.new_state) {
-                exportRow.new_state = JSON.stringify(exportRow.new_state);
+                exportRow.new_state = formatStateAsKeyValue(exportRow.new_state);
             }
 
             return exportRow;
@@ -495,18 +595,21 @@ function Audit() {
 
     const downloadCSV = () => {
         const data = prepareDataForExport();
-        const visibleColumns = columns.map(col => col.key);
-        const headerRow = columns.map(col => col.label).join(',');
-        const csvRows = data.map(row => {
-            return visibleColumns.map(key => {
-                let cellData = row[key] === null || row[key] === undefined ? '' : String(row[key]);
+        // Original UI table columns + Change Summary appended at the end
+        const exportColumns = [
+            ...columns.map(col => ({ key: col.key, label: col.label })),
+            { key: 'change_summary', label: 'Change Summary' },
+        ];
+        const headerRow = exportColumns.map(col => col.label).join(',');
+        const csvRows = data.map(row =>
+            exportColumns.map(col => {
+                let cellData = row[col.key] === null || row[col.key] === undefined ? '' : String(row[col.key]);
                 cellData = cellData.replace(/"/g, '""');
                 return `"${cellData}"`;
-            }).join(',');
-        });
+            }).join(',')
+        );
 
         const csvString = [headerRow, ...csvRows].join('\n');
-
         const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -515,9 +618,11 @@ function Audit() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(url);
 
         setShowDownloadOptions(false);
         triggerDownloadAudit('csv');
+        toast.success('Preparing to download...');
     };
 
     const downloadExcel = () => {
@@ -525,12 +630,26 @@ function Audit() {
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.json_to_sheet(data);
 
-        XLSX.utils.book_append_sheet(wb, ws, "Audit Data");
+        // Column widths: original fields + change_summary at the end
+        ws['!cols'] = [
+            { wch: 36 }, // event_id (UUID)
+            { wch: 16 }, // user_id
+            { wch: 16 }, // module
+            { wch: 10 }, // action
+            { wch: 22 }, // performed_at
+            { wch: 16 }, // ip_address
+            { wch: 42 }, // description
+            { wch: 50 }, // previous_state (JSON)
+            { wch: 50 }, // new_state (JSON)
+            { wch: 60 }, // change_summary (multiline key-value — widest)
+        ];
 
+        XLSX.utils.book_append_sheet(wb, ws, "Audit Data");
         XLSX.writeFile(wb, `audit_data_${new Date().toISOString().split('T')[0]}.xlsx`);
 
         setShowDownloadOptions(false);
         triggerDownloadAudit('excel');
+        toast.success('Preparing to download...');
     };
 
     useEffect(() => {
