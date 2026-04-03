@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { ChevronDown, RefreshCcw } from "lucide-react";
+import toast from "react-hot-toast";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { ChevronDown, RefreshCcw } from "lucide-react";
+import toast from "react-hot-toast";
 import ReportDownloader from "./ReportDownloader";
 import { useAuth } from "../../../context/AuthContext";
 import DataTable from "../../../components/DataTable";
@@ -22,7 +26,8 @@ const GenerateReport = () => {
     setEndDate("");
   };
 
-  const fetchReports = useCallback(async () => {
+  const fetchReports = useCallback(async (showToast = false) => {
+  const fetchReports = useCallback(async (showToast = false) => {
     try {
       setIsRefreshing(true);
       const reportsResponse = await fetch(`${hostname}/reports`, {
@@ -36,12 +41,17 @@ const GenerateReport = () => {
 
       let reportsData = await reportsResponse.json();
       setReports(reportsData);
+      if (showToast) toast.success("Reports refreshed successfully");
+      if (showToast) toast.success("Reports refreshed successfully");
     } catch (error) {
       console.error("Error fetching reports:", error);
+      if (showToast) toast.error("Failed to refresh reports");
+      if (showToast) toast.error("Failed to refresh reports");
     } finally {
       setIsRefreshing(false);
     }
   }, [hostname, token, project]);
+
 
 
 
@@ -134,7 +144,17 @@ const GenerateReport = () => {
         <div className="flex items-center gap-2">
           <button
             className="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-300 hover:bg-gray-50"
-            onClick={fetchReports}
+            onClick={() => fetchReports(true)}
+            title="Refresh Data"
+            disabled={isRefreshing}
+          >
+            <RefreshCcw
+              className={`h-5 w-5 text-gray-500 ${isRefreshing ? "animate-spin" : ""}`}
+            />
+          </button>
+          <button
+            className="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-300 hover:bg-gray-50"
+            onClick={() => fetchReports(true)}
             title="Refresh Data"
             disabled={isRefreshing}
           >

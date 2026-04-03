@@ -3,8 +3,7 @@ import * as XLSX from 'xlsx';
 import { ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-// Curated column map: only business-relevant fields with friendly labels.
-// Technical/internal fields (condition, report_id, created_at, updated_at, etc.) are excluded.
+
 const REPORT_COLUMNS = [
   { key: 'workflow_name',              label: 'Name'                        },
   { key: 'workflow_type',              label: 'Report For'                  },
@@ -21,7 +20,7 @@ const REPORT_COLUMNS = [
   { key: 'remarks',                    label: 'Remark'                      },
 ];
 
-// Format a cell value: date fields are trimmed to YYYY-MM-DD, nulls become empty string.
+
 const formatValue = (key, val) => {
   if (val === null || val === undefined) return '';
   if (key === 'start_time' || key === 'end_time') {
@@ -30,7 +29,7 @@ const formatValue = (key, val) => {
   return val;
 };
 
-// Transform raw API data into clean, labelled rows for export.
+
 const buildExportRows = (rawData) =>
   rawData.map((row) => {
     const cleanRow = {};
