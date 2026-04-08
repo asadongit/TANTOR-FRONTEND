@@ -4,9 +4,9 @@ import { useAuth } from '../../../../../context/AuthContext.jsx';
 import MDMDataTable from '../../../../../components/MDMDataTable.jsx';
 import { toast } from 'react-hot-toast';
 import Breadcrumb from '../../../../../components/Breadcrumb.jsx';
-import AddDomainModal from './modals/AddDomain.jsx';
+import AddDomainModal from './modals/AddDomainModal.jsx';
 import CaptivePortalIcon from '../../../../../assets/mdm/captive_portal.svg';
-import CDCIcon from '../../../../../assets/mdm/CDC 1.svg';
+import CDCIcon from '../../../../../assets/mdm/CDC.svg';
 import ComplianceIcon from '../../../../../assets/mdm/Compliance.svg';
 import LinkedServicesIcon from '../../../../../assets/mdm/linked_services.svg';
 import EditIcon from '../../../../../assets/mdm/edit.svg';
@@ -14,7 +14,7 @@ import DeleteIcon from '../../../../../assets/mdm/delete.svg';
 import EditDomainModal from './modals/EditDomainModal.jsx';
 import DomainDetailsSidebar from './DomainDetailsSidebar.jsx';
 import RulesIcon from '../../../../../assets/mdm/fact_check.svg';
-import DomainRulesModal from './DomainRules.jsx';
+import DomainRulesModal from './DomainRulesModal.jsx';
 import {
     useDomainManagementHomepage,
     useDeleteDomain,

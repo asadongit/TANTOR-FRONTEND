@@ -3,7 +3,7 @@ import { Plus, ChevronDown, Trash2 } from 'lucide-react';
 import EditIcon from '../../../../../assets/mdm/edit.svg';
 import DeleteIcon from '../../../../../assets/mdm/delete.svg';
 import CaptivePortalIcon from '../../../../../assets/mdm/captive_portal.svg';
-import CDCIcon from '../../../../../assets/mdm/CDC 1.svg';
+import CDCIcon from '../../../../../assets/mdm/CDC.svg';
 import ComplianceIcon from '../../../../../assets/mdm/Compliance.svg';
 import DataTable from '../../../../../components/DataTable';
 import SearchableDropdown from '../../components/SearchableDropdown';
