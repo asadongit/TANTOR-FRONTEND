@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import InfoIcon from '../../../../../../assets/mdm/Info.svg';
+import InfoIcon from '../../../../../../assets/mdm/info.svg';
 import { useAuth } from '../../../../../../context/AuthContext';
 import SearchableDropdown from '../../../components/SearchableDropdown';
 import { useDomains, useCreateRelationshipType } from '../../../../../../hooks/mdm/crossDomainLink';
