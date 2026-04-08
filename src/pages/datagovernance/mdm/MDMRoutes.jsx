@@ -1,6 +1,6 @@
 import { Route } from 'react-router-dom';
 import DomainManagement from './Overview/DomainManagement/Homepage';
-import MatchConfiguration from './MatchandMerge/MatchConfiguration/homePage';
+import MatchConfiguration from './MatchandMerge/MatchConfiguration/MatchConfiguration';
 import SurvivorshipRules from './MatchandMerge/SurvivorshipRules/SurvivorshipRules';
 import CrossDomainLinkHomepage from './Overview/CrossDomainLinks/CrossDomainLinkHomepage';
 import ReviewQueue from './MatchandMerge/ReviewQueue/ReviewQueue';
