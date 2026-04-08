@@ -8,6 +8,7 @@ import { DataShieldRoutes } from '../pages/datagovernance/DataShield/DataShieldR
 import {DataAssuranceRoutes} from '../pages/datagovernance/DataAssurance/DataAssuranceRoutes';
 import { BusinessCatalogueRoutes } from '../pages/datagovernance/BusinessCatalogue/BusinessCatalogueRoutes';
 import Reports from '../pages/datagovernance/Reports/Reports';
+import { MDMRoutes } from '../pages/datagovernance/mdm/MDMRoutes';
 
 
 export const DataGovernanceRoutes = (
@@ -17,6 +18,7 @@ export const DataGovernanceRoutes = (
     {DataShieldRoutes}
     {DataAssuranceRoutes}
     {BusinessCatalogueRoutes}
+    {MDMRoutes}
     <Route path="/datagovernance/databot" element={<Databot />} />
     <Route path="/datagovernance/reports" element={<Reports />} />
     <Route path="/datagovernance/import" element={<Import />} />
