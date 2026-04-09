@@ -40,9 +40,7 @@ export const AuthProvider = ({ children }) => {
 
   const [project, setProject] = useState(() => "default");
 
-  // Stores the Keycloak session ID (sid claim) of THIS tab's current session.
-  // Used by the FORCE_LOGOUT WebSocket handler to distinguish PC1 (old session,
-  // should log out) from PC2 (new session, should ignore the message).
+  
   const currentSessionIdRef = useRef(null);
 
   const setSelectedProject = (projectId) => {
@@ -87,14 +85,7 @@ export const AuthProvider = ({ children }) => {
     const init = async () => {
       const kc = getKeycloak();
 
-      // Register ALL handlers BEFORE calling initKeycloak().
-      // keycloak-js fires onAuthSuccess INSIDE kc.init() for fresh logins
-      // (when Keycloak redirects back with an auth code in the URL).
-      // Registering after await initKeycloak() means the event has already fired
-      // and triggerSessionCleanup() is never called — this caused the bug where
-      // re-logging in on Chrome did not kick Firefox out.
-
-      kc.onAuthSuccess = async () => {
+      kc.onAuthSuccess = () => {
         const t = kcGetToken();
         setToken(t);
         try {
@@ -102,8 +93,8 @@ export const AuthProvider = ({ children }) => {
           setDecodedToken(dt);
           currentSessionIdRef.current = dt.sid;
         } catch {}
-        // Kill all other Keycloak sessions + push FORCE_LOGOUT via WebSocket
-        await triggerSessionCleanup(t);
+        
+        triggerSessionCleanup(t);
       };
 
       kc.onAuthLogout = () => {
