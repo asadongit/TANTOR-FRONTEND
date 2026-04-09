@@ -41,7 +41,8 @@ export const AuthProvider = ({ children }) => {
   const [project, setProject] = useState(() => "default");
 
   // Stores the Keycloak session ID (sid claim) of THIS tab's current session.
- 
+  // Used by the FORCE_LOGOUT WebSocket handler to distinguish PC1 (old session,
+  // should log out) from PC2 (new session, should ignore the message).
   const currentSessionIdRef = useRef(null);
 
   const setSelectedProject = (projectId) => {
@@ -63,7 +64,7 @@ export const AuthProvider = ({ children }) => {
     kc.login({ redirectUri: `${window.location.origin}/dashboard` });
   };
 
-  
+  // ─── Calls backend to kill old sessions and push FORCE_LOGOUT via WebSocket ─
   const triggerSessionCleanup = async (accessToken) => {
     try {
       const res = await fetch(`${hostnameV1}/api/v1/auth/session/cleanup`, {
@@ -84,27 +85,15 @@ export const AuthProvider = ({ children }) => {
   // ─── INIT: wire up Keycloak and its event callbacks ────────────────────────
   useEffect(() => {
     const init = async () => {
-      const authenticated = await initKeycloak();
       const kc = getKeycloak();
 
-      if (authenticated) {
-        const t = kcGetToken();
-        setToken(t);
-        try {
-          const dt = jwtDecode(t);
-          setDecodedToken(dt);
-          // Store the session ID of THIS existing session
-          currentSessionIdRef.current = dt.sid;
-          const savedProject = localStorage.getItem(
-            `project_${dt.preferred_username}`
-          );
-          if (savedProject) setProject(savedProject);
-        } catch (e) {
-          console.error("Invalid token:", e);
-        }
-      }
+      // Register ALL handlers BEFORE calling initKeycloak().
+      // keycloak-js fires onAuthSuccess INSIDE kc.init() for fresh logins
+      // (when Keycloak redirects back with an auth code in the URL).
+      // Registering after await initKeycloak() means the event has already fired
+      // and triggerSessionCleanup() is never called — this caused the bug where
+      // re-logging in on Chrome did not kick Firefox out.
 
-      
       kc.onAuthSuccess = async () => {
         const t = kcGetToken();
         setToken(t);
@@ -113,12 +102,10 @@ export const AuthProvider = ({ children }) => {
           setDecodedToken(dt);
           currentSessionIdRef.current = dt.sid;
         } catch {}
-
-        
+        // Kill all other Keycloak sessions + push FORCE_LOGOUT via WebSocket
         await triggerSessionCleanup(t);
       };
 
-      
       kc.onAuthLogout = () => {
         setToken(null);
         setDecodedToken(null);
@@ -126,7 +113,6 @@ export const AuthProvider = ({ children }) => {
         currentSessionIdRef.current = null;
       };
 
-    
       kc.onTokenExpired = async () => {
         try {
           const refreshed = await kc.updateToken(30);
@@ -138,10 +124,36 @@ export const AuthProvider = ({ children }) => {
             } catch {}
           }
         } catch {
-          
+          // Refresh failed — session was killed. Redirect to login.
           handleSessionDead();
         }
       };
+
+      // NOW call init — handlers are already in place
+      const authenticated = await initKeycloak();
+
+      if (authenticated) {
+        // onAuthSuccess handles state + cleanup for FRESH logins.
+        // This block handles check-sso with an EXISTING session (page refresh),
+        // where onAuthSuccess may not fire.
+        // We set state here but do NOT call triggerSessionCleanup because
+        // this is not a new login — no other sessions need to be kicked.
+        if (!currentSessionIdRef.current) {
+          const t = kcGetToken();
+          setToken(t);
+          try {
+            const dt = jwtDecode(t);
+            setDecodedToken(dt);
+            currentSessionIdRef.current = dt.sid;
+            const savedProject = localStorage.getItem(
+              `project_${dt.preferred_username}`
+            );
+            if (savedProject) setProject(savedProject);
+          } catch (e) {
+            console.error("Invalid token:", e);
+          }
+        }
+      }
 
       setIsInitializing(false);
     };
@@ -149,7 +161,18 @@ export const AuthProvider = ({ children }) => {
     init();
   }, []);
 
- 
+  // ─── LAYER 1 (PRIMARY): Global WebSocket listening for FORCE_LOGOUT ─────────
+  // Opens ONE WebSocket connection per authenticated user at the AuthContext level.
+  // Stays open regardless of which page the user is on (unlike page-level hooks).
+  //
+  // When PC2 logs in and calls /session/cleanup, the backend:
+  //   1. Deletes PC1's Keycloak session
+  //   2. Sends { type: "FORCE_LOGOUT", active_session_id: "<PC2's sid>" }
+  //      to ALL WebSocket connections for this username
+  //
+  // Both PC1 and PC2 receive the message. The frontend checks:
+  //   - If active_session_id === my session ID → I am PC2 (new login) → ignore
+  //   - If active_session_id !== my session ID → I am PC1 (old login) → logout
   useEffect(() => {
     if (!decodedToken?.preferred_username || !hostnameV2) return;
 
@@ -174,7 +197,9 @@ export const AuthProvider = ({ children }) => {
             const incomingActiveSessionId = data.active_session_id;
             const mySessionId = currentSessionIdRef.current;
 
-            
+            // If the active_session_id in the message matches MY session ID,
+            // I am the new session (PC2) that just triggered the cleanup.
+            // Ignore the message — I should NOT log myself out.
             if (
               incomingActiveSessionId &&
               mySessionId &&
@@ -186,19 +211,21 @@ export const AuthProvider = ({ children }) => {
               return;
             }
 
-          
+            // My session ID does NOT match → I am an old session (PC1).
+            // Log out immediately.
             console.warn(
               "[Auth] FORCE_LOGOUT received — a new session took over. Logging out."
             );
             handleSessionDead();
           }
 
-          
+          // All other message types (table update events etc.) are ignored here.
+          // Component-level useRealtimeUpdate() handles those.
         } catch {}
       };
 
       ws.onclose = (event) => {
-        
+        // Reconnect on unexpected disconnect (1000 = clean intentional close)
         if (isMounted && event.code !== 1000) {
           reconnectTimer = setTimeout(connect, 5000);
         }
@@ -219,7 +246,10 @@ export const AuthProvider = ({ children }) => {
     };
   }, [decodedToken, hostnameV2]);
 
-  
+  // ─── LAYER 2 (SAFETY NET): Tab visibility check ──────────────────────────────
+  // NOT polling — fires only when the user switches BACK to this browser tab.
+  // Handles the edge case where the tab was sleeping and the WebSocket missed
+  // the FORCE_LOGOUT message. Makes ONE network call to verify session validity.
   useEffect(() => {
     const handleVisibilityChange = async () => {
       if (document.visibilityState !== "visible") return;
@@ -227,7 +257,7 @@ export const AuthProvider = ({ children }) => {
       if (!kc.authenticated) return;
 
       try {
-        
+        // -1 = force a refresh regardless of token expiry time
         await kc.updateToken(-1);
         const t = kcGetToken();
         setToken(t);
@@ -235,7 +265,7 @@ export const AuthProvider = ({ children }) => {
           setDecodedToken(jwtDecode(t));
         } catch {}
       } catch {
-        
+        // Refresh failed → session is dead → redirect to login
         handleSessionDead();
       }
     };
