@@ -65,7 +65,7 @@ export const AuthProvider = ({ children }) => {
   // ─── Calls backend to kill old sessions and push FORCE_LOGOUT via WebSocket ─
   const triggerSessionCleanup = async (accessToken) => {
     try {
-      const res = await fetch(`${hostnameV1}/api/v1/auth/session/cleanup`, {
+      const res = await fetch(`${hostnameV1}/auth/session/cleanup`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,
