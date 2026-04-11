@@ -87,14 +87,23 @@ export const AuthProvider = ({ children }) => {
 
       kc.onAuthSuccess = () => {
         const t = kcGetToken();
+        const dt = jwtDecode(t);
+        const newSid = dt?.sid;
+
         setToken(t);
         try {
-          const dt = jwtDecode(t);
           setDecodedToken(dt);
-          currentSessionIdRef.current = dt.sid;
         } catch {}
-        
-        triggerSessionCleanup(t);
+
+
+        // Guard: only trigger cleanup when this is a FRESH login (new session ID).
+        // kc.onAuthSuccess can fire on token refreshes in some Keycloak JS versions.
+        // Without this guard, cleanup (and FORCE_LOGOUT) would fire repeatedly for
+        // the same session, causing WebSocket thrash and redundant notifications.
+        if (newSid !== currentSessionIdRef.current) {
+          currentSessionIdRef.current = newSid;
+          triggerSessionCleanup(t);
+        }
       };
 
       kc.onAuthLogout = () => {
@@ -164,12 +173,19 @@ export const AuthProvider = ({ children }) => {
   // Both PC1 and PC2 receive the message. The frontend checks:
   //   - If active_session_id === my session ID → I am PC2 (new login) → ignore
   //   - If active_session_id !== my session ID → I am PC1 (old login) → logout
-  useEffect(() => {
-    if (!decodedToken?.preferred_username || !hostnameV2) return;
+  // Stable string deps: the WebSocket reconnects only when the username changes
+  // (actual login/logout), NOT on every token refresh. Previously, decodedToken
+  // was an object dep — every setDecodedToken() created a new reference, tearing
+  // down and recreating the WebSocket on every token refresh cycle.
+  const forceLogoutWsUsername = decodedToken?.preferred_username;
+  const forceLogoutWsUrl = hostnameV2;
 
-    const username = decodedToken.preferred_username;
-    const protocol = hostnameV2.startsWith("https") ? "wss" : "ws";
-    const wsUrl = `${hostnameV2.replace(/^https?:\/\//, `${protocol}://`)}/ws/${username}`;
+  useEffect(() => {
+    if (!forceLogoutWsUsername || !forceLogoutWsUrl) return;
+
+    const username = forceLogoutWsUsername;
+    const protocol = forceLogoutWsUrl.startsWith("https") ? "wss" : "ws";
+    const wsUrl = `${forceLogoutWsUrl.replace(/^https?:\/\//, `${protocol}://`)}/ws/${username}`;
 
     let ws;
     let reconnectTimer;
@@ -202,8 +218,7 @@ export const AuthProvider = ({ children }) => {
               return;
             }
 
-            // My session ID does NOT match → I am an old session (PC1).
-            // Log out immediately.
+            // My session ID does NOT match → I am an old session (PC1). Log out silently.
             console.warn(
               "[Auth] FORCE_LOGOUT received — a new session took over. Logging out."
             );
@@ -235,7 +250,7 @@ export const AuthProvider = ({ children }) => {
         ws.close(1000);
       }
     };
-  }, [decodedToken, hostnameV2]);
+  }, [forceLogoutWsUsername, forceLogoutWsUrl]);
 
   // ─── LAYER 2 (SAFETY NET): Tab visibility check ──────────────────────────────
   // NOT polling — fires only when the user switches BACK to this browser tab.
