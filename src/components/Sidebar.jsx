@@ -266,6 +266,69 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     { name: 'Reports', icon: DocumentTextIcon, path: `${DATAGOVERNANCE_PREFIX}/reports`, requiresDataAuditor: true },
     //{ name: 'Import', icon: ArrowsPointingInIcon, path: `${DATAGOVERNANCE_PREFIX}/import` },
     //{ name: 'Custom Addition', icon: ArrowsPointingOutIcon, path: `${DATAGOVERNANCE_PREFIX}/custom-addition` },
+
+    {
+    name: 'MDM',
+    icon: ServerStackIcon,
+    expandOnly: true,
+    path: `${DATAGOVERNANCE_PREFIX}/mdm`,
+    subItems: [
+        {
+            name: 'Overview',
+            subItems: [
+                { name: 'Domain Management', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/domain-management` },
+                { name: 'Golden Records', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/golden-records` },
+                { name: '360° Entity View', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/entity-view` },
+                { name: 'Cross-Domain Links', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/cross-domain-links` },
+            ]
+        },
+        {
+            name: 'Match & Merge',
+            subItems: [
+                { name: 'Match Configuration', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/match-configuration` },
+                { name: 'Survivorship Rules', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/survivorship-rules` },
+                { name: 'Match Jobs', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/match-jobs` },
+                { name: 'Review Queue', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/review-queue` },
+            ]
+        },
+        {
+            name: 'Hierarchy Manager',
+            subItems: [
+                { name: 'Hierarchy Definition', path: `${DATAGOVERNANCE_PREFIX}/mdm/hierarchy-manager/hierarchy-definition` },
+                { name: 'Visual Hierarchy', path: `${DATAGOVERNANCE_PREFIX}/mdm/hierarchy-manager/visual-hierarchy` },
+                { name: 'Node Management', path: `${DATAGOVERNANCE_PREFIX}/mdm/hierarchy-manager/node-management` },
+            ]
+        },
+        {
+            name: 'Stewardship Console',
+            subItems: [
+                { name: 'My Tasks', path: `${DATAGOVERNANCE_PREFIX}/mdm/stewardship-console/my-tasks` },
+                { name: 'Task Queue', path: `${DATAGOVERNANCE_PREFIX}/mdm/stewardship-console/task-queue` },
+                { name: 'Review History', path: `${DATAGOVERNANCE_PREFIX}/mdm/stewardship-console/review-history` },
+                { name: 'SLA Dashboard', path: `${DATAGOVERNANCE_PREFIX}/mdm/stewardship-console/sla-dashboard` },
+            ]
+        },
+        {
+            name: 'Data Sync',
+            subItems: [
+                { name: 'Sync Configuration', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/sync-configuration` },
+                { name: 'Sync Monitor', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/sync-monitor` },
+                { name: 'Conflict Resolution', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/conflict-resolution` },
+                { name: 'API Gateway', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/api-gateway` },
+            ]
+        },
+        { name: 'Agent Mesh',
+        subItems: [
+                { name: 'Agent Dashboard', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/agent-dashboard` },
+                { name: 'Agent Chat (NLQ)', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/agent-chat` },
+                { name: 'Agent Catalog', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/agent-catalog` },
+                { name: 'Workflow Templates', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/workflow-templates` },
+                { name: 'Workflow Designer', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/workflow-designer` },
+                { name: 'Active Workflows', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/active-workflows` },
+            ]
+        },
+    ]
+},
   ];
 
   const dataGovernanceRoutes = allDataGovernanceRoutes
@@ -390,7 +453,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
 
         {hasSubItems && !isCollapsed && (
           <div
-            className={`ml-9 overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}
+            className={`ml-9 overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}
           >
             <div className="space-y-1 py-1">
               {route.subItems.map((subItem) => {
@@ -430,7 +493,10 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
                         )}
                       </NavLink>
                     ) : (
-                      <div className="flex items-center justify-between px-3 py-2">
+                      <div
+                        className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-gray-100 rounded-lg"
+                        onClick={(e) => toggleSubExpand(e, subItem.name)}
+                      >
                         <span
                           className="text-sm font-medium"
                           style={{ color: INACTIVE_TEXT_COLOR }}
@@ -438,22 +504,19 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
                           {subItem.name}
                         </span>
                         {hasNestedSubItems && (
-                          <button
-                            onClick={(e) => toggleSubExpand(e, subItem.name)}
-                            className="p-1 hover:bg-gray-200 rounded-full transition-transform duration-300"
+                          <span
+                            className="text-base font-light leading-none select-none"
+                            style={{ color: INACTIVE_ICON_COLOR }}
                           >
-                            <ChevronRightIcon
-                              className={`h-3 w-3 transition-transform duration-300 ${isSubExpanded ? 'rotate-90' : 'rotate-0'}`}
-                              style={{ color: INACTIVE_ICON_COLOR }}
-                            />
-                          </button>
+                            {isSubExpanded ? '—' : '+'}
+                          </span>
                         )}
                       </div>
                     )}
 
                     {hasNestedSubItems && (
                       <div
-                        className={`ml-4 overflow-hidden transition-all duration-300 ease-in-out ${isSubExpanded ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'}`}
+                        className={`ml-4 overflow-hidden transition-all duration-300 ease-in-out ${isSubExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}
                       >
                         <div className="space-y-1 py-1">
                           {subItem.subItems.map((nestedItem) => (

@@ -470,7 +470,7 @@ function Audit() {
         'password', 'aws_access_key_password', 'aws_secret_key_password',
         'is_deleted', 'transfomation_id', 'migration_id', 'cdc_id',
         'purge_id', 'connection_id', 'project_id', 'transformation_id',
-        'ui_json',  // internal UI config object stored in Migration model — not meaningful for end users
+        'ui_json',
     ]);
 
     // Priority list to detect entity display name from a state object
@@ -491,8 +491,7 @@ function Audit() {
     const toLabel = (key) =>
         key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
-    // Safely converts any value to a display string.
-    // Objects/arrays are JSON-stringified (with truncation) to avoid "[object Object]".
+
     const toDisplayValue = (val) => {
         if (val === null || val === undefined) return 'null';
         if (typeof val === 'object') {
@@ -502,8 +501,7 @@ function Audit() {
         return String(val);
     };
 
-    // Builds a multiline key-value string for the Change Summary cell.
-    // Each changed/relevant field gets its own line inside the cell (\n separated).
+
     const buildChangeSummary = (action, prevState, newState) => {
         const act = (action || '').toUpperCase();
 
@@ -557,9 +555,7 @@ function Audit() {
         return '—';
     };
 
-    // Formats a full state object as multiline key-value pairs for the Previous State / New State columns.
-    // Each field gets its own line: "Field Name: value"
-    // Nested objects/arrays are JSON-stringified for readability.
+
     const formatStateAsKeyValue = (state) => {
         if (!state || typeof state !== 'object') return String(state || '');
         return Object.entries(state)
@@ -581,11 +577,16 @@ function Audit() {
             // Build change_summary BEFORE stringifying the state objects
             exportRow.change_summary = buildChangeSummary(row.action, row.previous_state, row.new_state);
 
+            // Build change_summary BEFORE stringifying the state objects
+            exportRow.change_summary = buildChangeSummary(row.action, row.previous_state, row.new_state);
+
             if (exportRow.previous_state) {
+                exportRow.previous_state = formatStateAsKeyValue(exportRow.previous_state);
                 exportRow.previous_state = formatStateAsKeyValue(exportRow.previous_state);
             }
 
             if (exportRow.new_state) {
+                exportRow.new_state = formatStateAsKeyValue(exportRow.new_state);
                 exportRow.new_state = formatStateAsKeyValue(exportRow.new_state);
             }
 
@@ -604,8 +605,19 @@ function Audit() {
         const csvRows = data.map(row =>
             exportColumns.map(col => {
                 let cellData = row[col.key] === null || row[col.key] === undefined ? '' : String(row[col.key]);
+        // Original UI table columns + Change Summary appended at the end
+        const exportColumns = [
+            ...columns.map(col => ({ key: col.key, label: col.label })),
+            { key: 'change_summary', label: 'Change Summary' },
+        ];
+        const headerRow = exportColumns.map(col => col.label).join(',');
+        const csvRows = data.map(row =>
+            exportColumns.map(col => {
+                let cellData = row[col.key] === null || row[col.key] === undefined ? '' : String(row[col.key]);
                 cellData = cellData.replace(/"/g, '""');
                 return `"${cellData}"`;
+            }).join(',')
+        );
             }).join(',')
         );
 
@@ -619,9 +631,11 @@ function Audit() {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
+        URL.revokeObjectURL(url);
 
         setShowDownloadOptions(false);
         triggerDownloadAudit('csv');
+        toast.success('Preparing to download...');
         toast.success('Preparing to download...');
     };
 
@@ -632,16 +646,16 @@ function Audit() {
 
         // Column widths: original fields + change_summary at the end
         ws['!cols'] = [
-            { wch: 36 }, // event_id (UUID)
-            { wch: 16 }, // user_id
-            { wch: 16 }, // module
-            { wch: 10 }, // action
-            { wch: 22 }, // performed_at
-            { wch: 16 }, // ip_address
-            { wch: 42 }, // description
-            { wch: 50 }, // previous_state (JSON)
-            { wch: 50 }, // new_state (JSON)
-            { wch: 60 }, // change_summary (multiline key-value — widest)
+            { wch: 36 },
+            { wch: 16 },
+            { wch: 16 },
+            { wch: 10 },
+            { wch: 22 },
+            { wch: 16 },
+            { wch: 42 },
+            { wch: 50 },
+            { wch: 50 },
+            { wch: 60 },
         ];
 
         XLSX.utils.book_append_sheet(wb, ws, "Audit Data");
@@ -649,6 +663,7 @@ function Audit() {
 
         setShowDownloadOptions(false);
         triggerDownloadAudit('excel');
+        toast.success('Preparing to download...');
         toast.success('Preparing to download...');
     };
 

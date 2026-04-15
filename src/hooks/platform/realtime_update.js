@@ -15,9 +15,14 @@ export const useRealtimeUpdate = (tableName, onUpdate) => {
         onUpdateRef.current = onUpdate;
     }, [onUpdate]);
 
+    // Extract stable primitive values. Using the full decodedToken object as a
+    // dependency would cause the WebSocket to disconnect and reconnect on every
+    // token refresh (new object reference = React re-runs the effect). Using the
+    // username string means: reconnect only when the user actually changes.
+    const username = decodedToken?.preferred_username;
+
     useEffect(() => {
-        if (decodedToken?.preferred_username && hostnameV2) {
-            const username = decodedToken.preferred_username;
+        if (username && hostnameV2) {
             const protocol = hostnameV2.startsWith('https') ? 'wss' : 'ws';
             const wsUrl = `${hostnameV2.replace(/^https?:\/\//, `${protocol}://`)}/ws/${username}`;
 
@@ -86,5 +91,6 @@ export const useRealtimeUpdate = (tableName, onUpdate) => {
                 }
             };
         }
-    }, [decodedToken, hostnameV2, tableName]);
+    }, [username, hostnameV2, tableName]);
 };
+

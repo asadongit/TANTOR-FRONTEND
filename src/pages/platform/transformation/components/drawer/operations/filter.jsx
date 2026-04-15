@@ -10,8 +10,8 @@ export const FILTER_OPERATORS = [
   { id: "<", name: "Less Than (<)", value: "<" },
   { id: "==", name: "Equal (==)", value: "==" },
   { id: "!=", name: "Not Equal (!=)", value: "!=" },
-
-
+  { id: "is_null", name: "Null", value: "is_null" },
+  { id: "is_not_null", name: "Not Null", value: "is_not_null" },
 ];
 
 function getAvailableFilterColumns(sourceCols, allTransformations) {
@@ -36,12 +36,26 @@ function getAvailableFilterColumns(sourceCols, allTransformations) {
   return cols;
 }
 
-export const FilterParameters = ({ params, onChange, selectedColType, filterType, columnOptions, sourceColumn, sourceColDatatype }) => (
+export const FilterParameters = ({ params, onChange, selectedColType, filterType, columnOptions, sourceColumn, sourceColDatatype, isNullOperator }) => (
   <div>
     <label className="block text-xs text-gray-700 mb-1">
-      {filterType === "column" ? "Compare With Column" : "Value"}
+      {!isNullOperator && filterType === "column" ? "Compare With Column" : "Value"}
     </label>
-    {filterType === "column" ? (
+    {isNullOperator ? (
+      <div
+        title="Not required — Null / Not Null checks don't compare to a value"
+        className="cursor-not-allowed"
+      >
+        <input
+          type="text"
+          className="w-full p-2 text-sm bg-gray-100 border border-gray-200 rounded text-gray-400 cursor-not-allowed"
+          placeholder="Not required for Null / Not Null"
+          disabled
+          readOnly
+          value=""
+        />
+      </div>
+    ) : filterType === "column" ? (
       <Select
         options={
           columnOptions.filter(opt =>
@@ -259,6 +273,7 @@ export const FilterOperationFields = ({
   };
 
   const selectedOperator = transformation_operator || transformation.transformation_operator || operatorOptions[0]?.id;
+  const isNullOperator = selectedOperator === "is_null" || selectedOperator === "is_not_null";
 
   let operatorOptionsFiltered = operatorOptions;
   if (selectedColType && selectedColDatatype) {
@@ -382,7 +397,15 @@ export const FilterOperationFields = ({
           <select
             className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
             value={selectedOperator}
-            onChange={(e) => handleOperatorChange(transformation.id, e.target.value)}
+            onChange={(e) => {
+              const newOp = e.target.value;
+              if (newOp === "is_null" || newOp === "is_not_null") {
+                if (typeof transformation.updateFilterParam === 'function') {
+                  transformation.updateFilterParam(transformation.id, "value", "");
+                }
+              }
+              handleOperatorChange(transformation.id, newOp);
+            }}
             disabled={!filterType}
           >
             <option value="">
@@ -405,6 +428,7 @@ export const FilterOperationFields = ({
               columnOptions={columnOptions}
               sourceColumn={transformation.source_column && transformation.source_column[0]}
               sourceColDatatype={selectedColDatatype}
+              isNullOperator={isNullOperator}
             />
           </div>
         </div>
