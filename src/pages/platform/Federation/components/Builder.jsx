@@ -1,8 +1,6 @@
 import CircularProgress from "@mui/material/CircularProgress";
 import Switch from "@mui/material/Switch";
 import {
-    TextField,
-    Autocomplete,
     Typography
 } from "@mui/material";
 import Accordion from '@mui/material/Accordion';
@@ -12,6 +10,103 @@ import { ChevronDown, X, Download, ArrowUpDown, GripVertical } from 'lucide-reac
 import { Icon } from "@iconify/react";
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "../../../../context/AuthContext";
+
+function CustomSelect({ options, value, onChange, placeholder = "Select View" }) {
+    const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState("");
+    const ref = useRef(null);
+
+    useEffect(() => {
+        const handler = (e) => {
+            if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, []);
+
+    const filtered = options.filter((o) =>
+        o.toLowerCase().includes(search.toLowerCase())
+    );
+
+    const handleSelect = (val) => {
+        onChange(null, val);
+        setOpen(false);
+        setSearch("");
+    };
+
+    return (
+        <div ref={ref} className="relative w-52">
+            {/* Trigger */}
+            <div
+                onClick={() => setOpen((p) => !p)}
+                title={value || ""}
+                className="flex items-center justify-between px-4 py-2.5 bg-white border border-gray-300 rounded-lg cursor-pointer select-none text-sm hover:border-gray-400 transition-colors min-h-[42px]"
+            >
+                <span className={`truncate max-w-[160px] ${value ? "text-gray-800" : "text-gray-400"}`}>
+                    {value || placeholder}
+                </span>
+                <svg
+                    width="16" height="16" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" strokeWidth="2"
+                    className={`flex-shrink-0 text-gray-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+                >
+                    <polyline points="6 9 12 15 18 9" />
+                </svg>
+            </div>
+
+            {/* Dropdown */}
+            {open && (
+                <div className="absolute top-[calc(100%+2px)] left-0 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-[9999] overflow-hidden">
+
+                    {/* Search */}
+                    <div className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-100">
+                        <svg
+                            width="15" height="15" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" strokeWidth="2"
+                            className="flex-shrink-0 text-gray-400"
+                        >
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <input
+                            autoFocus
+                            type="text"
+                            placeholder="Search view..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full text-sm text-gray-600 placeholder-gray-400 outline-none bg-transparent"
+                        />
+                    </div>
+
+                    {/* Options */}
+                    <div className="max-h-52 overflow-y-auto">
+                        {filtered.length === 0 ? (
+                            <div className="px-4 py-3 text-sm text-gray-400 text-center">
+                                No results found
+                            </div>
+                        ) : (
+                            filtered.map((opt) => (
+                                <div
+                                    key={opt}
+                                    title={opt}
+                                    onClick={() => handleSelect(opt)}
+                                    className={`px-4 py-3 text-sm cursor-pointer truncate transition-colors
+                    ${opt === value
+                                            ? "text-[#8e78b7] font-medium bg-purple-50"
+                                            : "text-gray-700 hover:bg-gray-50"
+                                        }`}
+                                >
+                                    {opt}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
 
 export default function Builder({ handleSwitch, checked }) {
     const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
@@ -359,14 +454,11 @@ export default function Builder({ handleSwitch, checked }) {
                 {/* ── Top bar ─────────────────────────────────────────────── */}
                 <div className="w-full flex justify-between flex-none items-center py-2" style={{ minHeight: "60px" }}>
                     <div className="flex items-center ml-4">
-                        <Autocomplete
-                            disablePortal
+                        <CustomSelect
                             options={shownViews}
                             value={selectedView}
                             onChange={handleViewChange}
-                            sx={{ width: 175, backgroundColor: "#F0F0F0", borderRadius: "8px", border: "none" }}
-                            size="small"
-                            renderInput={(params) => <TextField {...params} label="Select View" />}
+                            placeholder="Select View"
                         />
                         <button
                             type="button"
