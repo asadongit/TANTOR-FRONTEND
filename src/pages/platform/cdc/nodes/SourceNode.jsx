@@ -396,7 +396,7 @@ export function SourceNode({ id, data, selected }) {
         </div>
       </div>
 
-      {(selectedMode === "bulk") && (
+      {selectedMode === "bulk" && (
         <div className="mt-3">
           <label className="block text-sm font-semibold text-gray-700 mb-1">
             Search Tables
@@ -411,7 +411,7 @@ export function SourceNode({ id, data, selected }) {
         </div>
       )}
 
-      {filteredTables?.length > 0 && selectedMode === "subset" && (
+      {selectedMode === "subset" && (
         <div className="mt-3">
           <label className="block text-sm font-semibold text-gray-700 mb-1">
             Table
