@@ -78,7 +78,7 @@ const AIPlayground = () => {
   const navigate = useNavigate();
   const hostnameAI = window._env_?.VITE_AI_API;
 
-  const { projectState, setProjectState, datasetState, setDatasetState, setWorkflowState, setModelState, setMode, mode, setIsAIPlaygroundActive, isAIPlaygroundActive, resetAllStates } = useAIPlayground();
+  const { projectState, setProjectState, datasetState, setDatasetState, setModelState, setMode, mode, setIsAIPlaygroundActive, isAIPlaygroundActive, resetAllStates } = useAIPlayground();
   const { token, decodedToken } = useAuth();
 
   const [selectedProject, setSelectedProject] = useState('');
@@ -130,10 +130,10 @@ const AIPlayground = () => {
   const handleConfirmCancel = async () => {
     setIsCancelLoading(true);
     try {
-      await fetch(`${hostnameAI}/model/cleanup`, {
+      await fetch(`${hostnameAI}/cleanup/cleanup`, {
         method: 'POST',
         headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: datasetState.sessionId, training_flag: false })
+        body: JSON.stringify({ ensemble_id: datasetState.ensembleId, training_flag: false })
       });
     } catch (error) {
       console.error('Cleanup API error:', error);
@@ -153,6 +153,9 @@ const AIPlayground = () => {
 
   useEffect(() => {
     fetchProjects();
+    // Ensure context is always empty at dashboard stage
+    resetAllStates();
+    setMode('write');
   }, []);
 
   useEffect(() => {
@@ -179,7 +182,7 @@ const AIPlayground = () => {
       setModelState({ selectedModel: '' })
       setDatasetState({
         tableName: '',
-        sessionId: '',
+        ensembleId: '',
         columnNames: [],
         profileReportHtml: ''
       });
@@ -187,26 +190,6 @@ const AIPlayground = () => {
       setUploadedFile(null);
       setMode('write')
     }
-
-    setWorkflowState({
-      modelGenesis: {
-        config: null,
-        apiResponse: null
-      },
-      dataPreprocessing: {
-        step1: { config: null, apiResponse: null },
-        step2: { config: null, apiResponse: null },
-        step3: { config: null, apiResponse: null },
-        step4: { config: null, apiResponse: null },
-        step5: { config: null, apiResponse: null },
-        step6: { config: null, apiResponse: null },
-        step7: { config: null, apiResponse: null }
-      },
-      modelSelection: { config: null, apiResponse: null },
-      modelInferencing: { config: null, apiResponse: null },
-      xai: { config: null, apiResponse: null },
-      modelDeployment: { config: null, apiResponse: null }
-    });
   }, [mode]);
 
   useEffect(() => {
@@ -286,6 +269,8 @@ const AIPlayground = () => {
   const isDisabled = !selectedProject;
 
   const handleSelectExperiment = (value) => {
+    // Just select the project - NO workflow creation at this stage
+    // Workflows will be created in deeper pages (model-genesis, etc.) with actual workflow_id from backend
     setSelectedProject(value);
     setProjectState(prev => ({ ...prev, selectedProject: value }));
     setIsDropdownOpen(false);
@@ -335,12 +320,18 @@ const AIPlayground = () => {
       const userId = userData.user_id;
 
       const checkResponse = await fetch(
-        `${hostnameAI}/data/check_dataset_exists?project_name=${encodeURIComponent(selectedProject)}&owner_id=${encodeURIComponent(userId)}&file_name=${encodeURIComponent(tableData.value)}`,
+        `${hostnameAI}/ingestion/check_dataset_exists`,
         {
           method: 'POST',
           headers: {
-            'accept': 'application/json'
-          }
+            'accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            project_name: selectedProject,
+            owner_id: userId,
+            file_name: tableData.value
+          })
         }
       );
 
@@ -379,16 +370,8 @@ const AIPlayground = () => {
   const handleConfirmReset = () => {
     setUploadedFile(null);
     setSelectedProject('');
-    setProjectState(prev => ({ ...prev, selectedProject: '' }));
-    setDatasetState({
-      tableName: '',
-      sessionId: '',
-      columnNames: [],
-      profileReportHtml: ''
-    });
-    setIsAIPlaygroundActive(false);
+    resetAllStates();
     toggleModal('resetProject', false);
-    setMode('write')
     toast.success('Project has been reset successfully', {
       duration: 3000,
       position: 'top-right',

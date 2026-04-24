@@ -67,8 +67,12 @@ const FeatureSection = ({
 
 function ScalingTransformation({ onApiCall, onValidationChange }) {
     const hostnameAI = window._env_?.VITE_AI_API;
-    const { workflowState, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
+    const { workflowsState, activeWorkflowId, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
     const readonly = mode === 'view';
+    const workflowState = activeWorkflowId
+    ? workflowsState[activeWorkflowId]
+    : null;  
+    const currentWorkflowId = workflowState?.workflow_id || activeWorkflowId;
 
     const advancedTransformationRef = useRef(null);
 
@@ -173,7 +177,8 @@ function ScalingTransformation({ onApiCall, onValidationChange }) {
 
         try {
             const requestBody = {
-                session_id: datasetState?.sessionId,
+                ensemble_id: datasetState?.ensembleId,
+                workflow_id: currentWorkflowId,
                 advanced_transformation: toggles.advancedTransformation,
                 columns_to_transform: toggles.advancedTransformation ? selectedColumns : [],
                 transformation_method: transformationMethod,
@@ -181,6 +186,10 @@ function ScalingTransformation({ onApiCall, onValidationChange }) {
                 feature_scaler: toggles.featureScaler,
                 feature_scaler_method: scalerMethod
             };
+
+            if (!requestBody.ensemble_id || !requestBody.workflow_id) {
+                throw new Error('Missing required identifiers: ensemble_id or workflow_id');
+            }
 
             const response = await fetch(`${hostnameAI}/data/preprocess/advanced_transformation`, {
                 method: 'POST',
@@ -197,7 +206,8 @@ function ScalingTransformation({ onApiCall, onValidationChange }) {
 
             updatePreprocessingStep('step4', {
                 config: {
-                    session_id: datasetState?.sessionId,
+                    ensemble_id: datasetState?.ensembleId,
+                    workflow_id: currentWorkflowId,
                     advanced_transformation: toggles.advancedTransformation,
                     columns_to_transform: toggles.advancedTransformation ? selectedColumns : [],
                     transformation_method: transformationMethod,
@@ -218,7 +228,7 @@ function ScalingTransformation({ onApiCall, onValidationChange }) {
 
     useEffect(() => {
         if (onApiCall) onApiCall(handleApiCall);
-    }, [toggles, transformationMethod, scalerMethod, selectedColumns, onApiCall]);
+    }, [toggles, transformationMethod, scalerMethod, selectedColumns, datasetState?.ensembleId, currentWorkflowId, onApiCall]);
 
     const toggleSwitch = (key) => {
         if (readonly) return;

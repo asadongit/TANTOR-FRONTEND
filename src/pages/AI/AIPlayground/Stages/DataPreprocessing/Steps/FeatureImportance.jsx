@@ -68,55 +68,55 @@ const FEATURE_IMPORTANCE_OPTIONS_CONFIG = {
             value: 'random',
             label: 'Random Forest',
             description: 'Random Forest feature importance assigns importance scores without using data relationships or model learning. It is mainly used as a baseline to compare against meaningful feature selection methods.',
-            availability: { binary: 'yes', multiclass: 'yes' },
+            availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' },
             subMethods: []
         },
         {
             value: 'filter',
             label: 'Filter',
             description: 'Filter methods evaluate feature importance using statistical measures independent of any machine learning model. They are fast, scalable, and help remove irrelevant features before model training.',
-            availability: { binary: 'yes', multiclass: 'yes' },
+            availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' },
             subMethods: [
-                { value: 'mutual_info', label: 'Mutual Information', description: 'Measures how much information a feature provides about the target variable. Higher values indicate a stronger dependency, even when the relationship is non-linear.', availability: { binary: 'yes', multiclass: 'yes' } },
-                { value: 'relief', label: 'Relief', description: 'Estimates feature relevance by distinguishing between nearby instances of different classes. Features that help distinguish similar records with different outcomes are ranked higher.', availability: { binary: 'yes', multiclass: 'yes' } },
-                { value: 'variance', label: 'Variance', description: 'Variance measures how much a feature\'s values spread across records. Features with very low variance provide little information and can be removed.', availability: { binary: 'yes', multiclass: 'yes' } },
-                { value: 'pca_loading', label: 'PCA Loading', description: 'PCA Loading represents how much each original feature contributes to a principal component. Features with higher loadings are considered more influential in explaining data variation.', availability: { binary: 'yes', multiclass: 'yes' } },
-                { value: 'correlation', label: 'Correlation', description: 'Measures the strength and direction of relationship between a feature and target. Strongly correlated features are considered more important.', availability: { binary: 'yes', multiclass: 'yes' } },
-                { value: 'selectkbest_f', label: 'SelectKBest F (F-test)', description: 'Measures linear dependency between feature and target using variance ratio. This method selects the top K features based on the F-statistic.', availability: { binary: 'yes', multiclass: 'yes' } }
+                { value: 'mutual_info', label: 'Mutual Information', description: 'Measures how much information a feature provides about the target variable. Higher values indicate a stronger dependency, even when the relationship is non-linear.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
+                { value: 'relief', label: 'Relief', description: 'Estimates feature relevance by distinguishing between nearby instances of different classes. Features that help distinguish similar records with different outcomes are ranked higher.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
+                { value: 'variance', label: 'Variance', description: 'Variance measures how much a feature\'s values spread across records. Features with very low variance provide little information and can be removed.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
+                { value: 'pca_loading', label: 'PCA Loading', description: 'PCA Loading represents how much each original feature contributes to a principal component. Features with higher loadings are considered more influential in explaining data variation.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
+                { value: 'correlation', label: 'Correlation', description: 'Measures the strength and direction of relationship between a feature and target. Strongly correlated features are considered more important.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
+                { value: 'selectkbest_f', label: 'SelectKBest F (F-test)', description: 'Measures linear dependency between feature and target using variance ratio. This method selects the top K features based on the F-statistic.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } }
             ]
         },
         {
             value: 'embedded',
             label: 'Embedded',
             description: 'Embedded methods determine feature importance during model training. The model automatically learns which features contribute most to predictions.',
-            availability: { binary: 'yes', multiclass: 'yes' },
+            availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' },
             subMethods: [
-                { value: 'tree', label: 'Tree-Based', description: 'Tree-based models compute feature importance based on impurity reduction or information gain during splits.', availability: { binary: 'yes', multiclass: 'yes' } },
-                { value: 'permutation', label: 'Permutation', description: 'Permutation importance measures feature importance by randomly shuffling a feature and observing the drop in model performance.', availability: { binary: 'yes', multiclass: 'yes' } },
-                { value: 'selectfrommodel', label: 'Select From Model', description: 'SelectFromModel selects features based on importance or coefficients from a pre-trained model.', availability: { binary: 'yes', multiclass: 'yes' } },
-                { value: 'boruta', label: 'Boruta', description: 'Boruta is an all-relevant feature selection algorithm built on top of Random Forest. Ensures no important feature is missed.', availability: { binary: 'yes', multiclass: 'yes' } }
+                { value: 'tree', label: 'Tree-Based', description: 'Tree-based models compute feature importance based on impurity reduction or information gain during splits.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
+                { value: 'permutation', label: 'Permutation', description: 'Permutation importance measures feature importance by randomly shuffling a feature and observing the drop in model performance.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
+                { value: 'selectfrommodel', label: 'Select From Model', description: 'SelectFromModel selects features based on importance or coefficients from a pre-trained model.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
+                { value: 'boruta', label: 'Boruta', description: 'Boruta is an all-relevant feature selection algorithm built on top of Random Forest. Ensures no important feature is missed.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } }
             ]
         },
         {
             value: 'wrapper',
             label: 'Wrapper',
             description: 'Wrapper methods evaluate feature importance by training models on different feature subsets. They provide high accuracy but are computationally expensive.',
-            availability: { binary: 'yes', multiclass: 'yes' },
+            availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' },
             subMethods: [
-                { value: 'rfe', label: 'RFE (Recursive Feature Elimination)', description: 'RFE is a wrapper feature selection method that recursively removes the least important features based on a model\'s feature importance or coefficients.', availability: { binary: 'yes', multiclass: 'yes' } },
-                { value: 'sfs', label: 'SFS (Sequential Feature Selection)', description: 'SFS is a wrapper method that iteratively adds or removes features based on model performance.', availability: { binary: 'yes', multiclass: 'yes' } },
-                { value: 'rfecv', label: 'RFECV (RFE with Cross-Validation)', description: 'RFECV extends RFE by using cross-validation to automatically determine the optimal number of features.', availability: { binary: 'yes', multiclass: 'yes' } }
+                { value: 'rfe', label: 'RFE (Recursive Feature Elimination)', description: 'RFE is a wrapper feature selection method that recursively removes the least important features based on a model\'s feature importance or coefficients.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
+                { value: 'sfs', label: 'SFS (Sequential Feature Selection)', description: 'SFS is a wrapper method that iteratively adds or removes features based on model performance.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
+                { value: 'rfecv', label: 'RFECV (RFE with Cross-Validation)', description: 'RFECV extends RFE by using cross-validation to automatically determine the optimal number of features.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } }
             ]
         },
         {
             value: 'unsupervised',
             label: 'Unsupervised',
             description: 'Unsupervised feature importance identifies important features without using a target variable. It relies on data structure, variance, or clustering patterns.',
-            availability: { binary: 'yes', multiclass: 'yes' },
+            availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' },
             subMethods: [
-                { value: 'variance', label: 'Variance', description: 'Variance Threshold removes features whose variance falls below a specified threshold.', availability: { binary: 'yes', multiclass: 'yes' } },
-                { value: 'pca_loading', label: 'PCA Loading', description: 'PCA loadings represent the contribution of each original feature to the principal components.', availability: { binary: 'yes', multiclass: 'yes' } },
-                { value: 'cluster_mi', label: 'Cluster MI (Mutual Information)', description: 'Cluster Mutual Information measures how much information a feature shares with cluster assignments instead of target labels.', availability: { binary: 'yes', multiclass: 'yes' } }
+                { value: 'variance', label: 'Variance', description: 'Variance Threshold removes features whose variance falls below a specified threshold.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
+                { value: 'pca_loading', label: 'PCA Loading', description: 'PCA loadings represent the contribution of each original feature to the principal components.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } },
+                { value: 'cluster_mi', label: 'Cluster MI (Mutual Information)', description: 'Cluster Mutual Information measures how much information a feature shares with cluster assignments instead of target labels.', availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' } }
             ]
         }
     ]
@@ -249,19 +249,19 @@ const SearchableDropdown = ({
     );
 };
 
-const getAvailableFeatureImportanceMethods = (classificationType) => {
+const getAvailableFeatureImportanceMethods = (modellingType) => {
     return FEATURE_IMPORTANCE_OPTIONS_CONFIG.methods
-        .filter(method => method.availability[classificationType] === 'yes')
+        .filter(method => method.availability[modellingType] === 'yes')
         .map(method => ({
             ...method,
-            subMethods: method.subMethods.filter(sm => sm.availability[classificationType] === 'yes')
+            subMethods: method.subMethods.filter(sm => sm.availability[modellingType] === 'yes')
         }));
 };
 
-const getAvailableSubMethods = (methodValue, classificationType) => {
+const getAvailableSubMethods = (methodValue, modellingType) => {
     const method = FEATURE_IMPORTANCE_OPTIONS_CONFIG.methods.find(m => m.value === methodValue);
     if (!method || !method.subMethods) return [];
-    return method.subMethods.filter(sm => sm.availability[classificationType] === 'yes');
+    return method.subMethods.filter(sm => sm.availability[modellingType] === 'yes');
 };
 
 // MethodOption — selected = purple bg + border, unselected = white + gray border
@@ -298,12 +298,15 @@ const MethodOption = ({ option, name, checked, onChange, readonly }) => (
 
 function FeatureImportance({ onApiCall }) {
     const hostnameAI = window._env_?.VITE_AI_API;
-    const { workflowState, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
+    const { workflowsState, activeWorkflowId, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
+    const workflowState = activeWorkflowId
+    ? workflowsState[activeWorkflowId]
+    : null;  
     const readonly = mode === 'view';
+    const currentWorkflowId = workflowState?.workflow_id || activeWorkflowId;
 
     const maxFeatures = workflowState?.dataPreprocessing?.step4?.apiResponse?.column_count || 0;
     const step5Response = workflowState?.dataPreprocessing?.step5?.apiResponse;
-    const sessionId = datasetState?.sessionId;
 
     const [toggles, setToggles] = useState({ featureImportance: false, dimensionalityReduction: false });
     const [expandedSections, setExpandedSections] = useState({ featureImportance: false, dimensionalityReduction: false });
@@ -316,10 +319,11 @@ function FeatureImportance({ onApiCall }) {
     const [searchValue, setSearchValue] = useState('');
     const [showDropdown, setShowDropdown] = useState(false);
 
-    const classificationType = workflowState?.modelGenesis?.config?.modelling_type || 'binary';
+    const modellingType = workflowState?.modelGenesis?.config?.modelling_type || 'binary';
 
     const reductionMethodsConfig = step5Response?.dimensionality_reduction?.dimentionality_reduction_n_components || [];
-    const availableReductionMethods = Object.keys(DIMENSIONALITY_REDUCTION_DESCRIPTIONS);
+    const availableReductionMethods = Object.keys(DIMENSIONALITY_REDUCTION_DESCRIPTIONS)
+    .filter(method => !(modellingType === 'regression' && method === 'lda'));
 
     const getNComponentsRange = (method) => {
         const config = reductionMethodsConfig.find(c => c.methods.includes(method));
@@ -327,8 +331,8 @@ function FeatureImportance({ onApiCall }) {
     };
 
     const currentRange = getNComponentsRange(reductionMethod);
-    const availableMethods = getAvailableFeatureImportanceMethods(classificationType);
-    const availableSubMethods = getAvailableSubMethods(methodCategory, classificationType);
+    const availableMethods = getAvailableFeatureImportanceMethods(modellingType);
+    const availableSubMethods = getAvailableSubMethods(methodCategory, modellingType);
 
     useEffect(() => {
         if ((mode === 'view' || mode === 'edit') && workflowState?.dataPreprocessing?.step6?.config) {
@@ -351,19 +355,20 @@ function FeatureImportance({ onApiCall }) {
     }, [reductionMethod]);
 
     useEffect(() => {
-        const availableSubs = getAvailableSubMethods(methodCategory, classificationType);
+        const availableSubs = getAvailableSubMethods(methodCategory, modellingType);
         if (availableSubs.length > 0) {
             setSubMethod(availableSubs[0].value);
         } else {
             setSubMethod('');
         }
-    }, [methodCategory, classificationType]);
+    }, [methodCategory, modellingType]);
 
     const handleApiCall = async () => {
         if (readonly) return true;
         try {
             const requestBody = {
-                session_id: sessionId,
+                ensemble_id: datasetState?.ensembleId,
+                workflow_id: currentWorkflowId,
                 feature_importance_selection: toggles.featureImportance,
                 method: methodCategory,
                 sub_method: subMethod || 'random',
@@ -372,6 +377,10 @@ function FeatureImportance({ onApiCall }) {
                 dimensionality_reduction_method: reductionMethod,
                 n_components: nComponents
             };
+
+            if (!requestBody.ensemble_id || !requestBody.workflow_id) {
+                throw new Error('Missing required identifiers: ensemble_id or workflow_id');
+            }
 
             const response = await fetch(`${hostnameAI}/data/preprocess/feature_importance`, {
                 method: 'POST',
@@ -388,6 +397,8 @@ function FeatureImportance({ onApiCall }) {
 
             updatePreprocessingStep('step6', {
                 config: {
+                    ensemble_id: datasetState?.ensembleId,
+                    workflow_id: currentWorkflowId,
                     feature_importance_selection: toggles.featureImportance,
                     method: methodCategory,
                     sub_method: subMethod,
@@ -410,7 +421,7 @@ function FeatureImportance({ onApiCall }) {
 
     useEffect(() => {
         if (onApiCall) onApiCall(handleApiCall);
-    }, [onApiCall, sessionId, toggles, methodCategory, subMethod, numFeatures, reductionMethod, nComponents]);
+    }, [onApiCall, datasetState?.ensembleId, currentWorkflowId, toggles, methodCategory, subMethod, numFeatures, reductionMethod, nComponents]);
 
     const toggleSwitch = (key) => {
         if (readonly) return;

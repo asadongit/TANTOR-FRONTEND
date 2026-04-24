@@ -5,34 +5,186 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 
-export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, modelsList = [], sessionId, modelsLoading, isInitializing, jobLoading }) {
-  const isLoading = modelsLoading || isInitializing || jobLoading;
+export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, modelsList = [], modelsLoading, isInitializing, jobLoading, workflows = [] }) {
+  const baseLoading = modelsLoading || isInitializing || jobLoading;
   const hostnameAI = window._env_?.VITE_AI_API;
-  const [selectedModels, setSelectedModels] = useState({});
-  const [descriptions, setDescriptions] = useState({});
+  const [selectedModelsByWorkflow, setSelectedModelsByWorkflow] = useState({});
+  const [descriptionsByWorkflow, setDescriptionsByWorkflow] = useState({});
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [downloadingReports, setDownloadingReports] = useState(false);
   const [currentReportData, setCurrentReportData] = useState(null);
   const [currentModelName, setCurrentModelName] = useState('');
   const [alreadyStartedCount, setAlreadyStartedCount] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [ensembleName, setEnsembleName] = useState('');
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState('');
+  const [workflowModels, setWorkflowModels] = useState([]);
+  const [workflowModelsCache, setWorkflowModelsCache] = useState({});
+  const [isWorkflowModelsLoading, setIsWorkflowModelsLoading] = useState(false);
+  const [isAllWorkflowModelsLoading, setIsAllWorkflowModelsLoading] = useState(false);
+  const [isValidatingEnsembleName, setIsValidatingEnsembleName] = useState(false);
   const reportRef = useRef(null);
   const searchInputRef = useRef(null);
-  const { workflowState } = useAIPlayground();
+  const { workflowState, activeWorkflowId, datasetState, projectState } = useAIPlayground();
+
+  const isEnsembleMode = workflows.length > 0;
+  const isMultiWorkflowEnsemble = workflows.length > 1;
+  const effectiveModelsList = isEnsembleMode ? workflowModels : modelsList;
+  const isLoading = baseLoading || (isEnsembleMode && (isWorkflowModelsLoading || isAllWorkflowModelsLoading));
+  const currentSelectedModels = selectedModelsByWorkflow[selectedWorkflowId] || {};
+  const currentDescriptions = descriptionsByWorkflow[selectedWorkflowId] || {};
 
   useEffect(() => {
     if (!isOpen) {
-      setSelectedModels({});
-      setDescriptions({});
+      setSelectedModelsByWorkflow({});
+      setDescriptionsByWorkflow({});
       setShowConfirmation(false);
       setCurrentReportData(null);
       setCurrentModelName('');
       setAlreadyStartedCount(null);
       setSearchQuery('');
+      setEnsembleName('');
+      setSelectedWorkflowId('');
+      setWorkflowModels([]);
+      setWorkflowModelsCache({});
+    } else {
+      // Set default selected workflow to current active workflow
+      if (activeWorkflowId && !selectedWorkflowId) {
+        setSelectedWorkflowId(activeWorkflowId);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, activeWorkflowId]);
 
-  const filteredModelsList = modelsList.filter(model =>
+  useEffect(() => {
+    if (!isOpen || !isEnsembleMode || !selectedWorkflowId || !datasetState?.ensembleId) {
+      return;
+    }
+
+    const fetchWorkflowModels = async () => {
+      setIsWorkflowModelsLoading(true);
+      try {
+        if (workflowModelsCache[selectedWorkflowId]) {
+          setWorkflowModels(workflowModelsCache[selectedWorkflowId]);
+        } else {
+          setWorkflowModels([]);
+        }
+
+        const response = await fetch(
+          `${hostnameAI}/model_lifecycle/logged_models`,
+          {
+            method: 'POST',
+            headers: {
+              accept: 'application/json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              ensemble_id: datasetState.ensembleId,
+              workflow_id: selectedWorkflowId
+            })
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Logged models error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const fetchedModels = data.logged_models || [];
+        setWorkflowModels(fetchedModels);
+        setWorkflowModelsCache(prev => ({
+          ...prev,
+          [selectedWorkflowId]: fetchedModels
+        }));
+      } catch (error) {
+        console.error('Error fetching workflow models:', error);
+        setWorkflowModels([]);
+        toast.error(error.message || 'Failed to fetch models for selected workflow.', {
+          duration: 4000,
+          position: 'top-right',
+        });
+      } finally {
+        setIsWorkflowModelsLoading(false);
+      }
+    };
+
+    fetchWorkflowModels();
+  }, [isOpen, isEnsembleMode, selectedWorkflowId, datasetState?.ensembleId]);
+
+  useEffect(() => {
+    if (!isOpen || !isMultiWorkflowEnsemble || !datasetState?.ensembleId) {
+      return;
+    }
+
+    const missingWorkflowIds = workflows
+      .map(workflow => workflow.id)
+      .filter(workflowId => !workflowModelsCache[workflowId]);
+
+    if (missingWorkflowIds.length === 0) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const fetchAllWorkflowModels = async () => {
+      setIsAllWorkflowModelsLoading(true);
+      try {
+        const results = await Promise.all(
+          missingWorkflowIds.map(async (workflowId) => {
+            try {
+              const response = await fetch(
+                `${hostnameAI}/model_lifecycle/logged_models`,
+                {
+                  method: 'POST',
+                  headers: {
+                    accept: 'application/json',
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    ensemble_id: datasetState.ensembleId,
+                    workflow_id: workflowId
+                  })
+                }
+              );
+
+              if (!response.ok) {
+                return [workflowId, []];
+              }
+
+              const data = await response.json();
+              return [workflowId, data.logged_models || []];
+            } catch (error) {
+              console.error(`Error fetching workflow models for ${workflowId}:`, error);
+              return [workflowId, []];
+            }
+          })
+        );
+
+        if (isCancelled) {
+          return;
+        }
+
+        setWorkflowModelsCache(prev => {
+          const next = { ...prev };
+          results.forEach(([workflowId, models]) => {
+            next[workflowId] = models;
+          });
+          return next;
+        });
+      } finally {
+        if (!isCancelled) {
+          setIsAllWorkflowModelsLoading(false);
+        }
+      }
+    };
+
+    fetchAllWorkflowModels();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isOpen, isMultiWorkflowEnsemble, workflows, workflowModelsCache, datasetState?.ensembleId, hostnameAI]);
+
+  const filteredModelsList = effectiveModelsList.filter(model =>
     model.run_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -64,38 +216,160 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
   if (!isOpen) return null;
 
   const handleCheckboxChange = (modelRunName) => {
-    if (readonly) return;
-    setSelectedModels(prev => ({
+    if (readonly || !selectedWorkflowId) return;
+    setSelectedModelsByWorkflow(prev => ({
       ...prev,
-      [modelRunName]: !prev[modelRunName]
+      [selectedWorkflowId]: {
+        ...(prev[selectedWorkflowId] || {}),
+        [modelRunName]: !(prev[selectedWorkflowId] || {})[modelRunName]
+      }
     }));
   };
 
   const handleDescriptionChange = (modelRunName, value) => {
-    if (readonly) return;
-    setDescriptions(prev => ({
+    if (readonly || !selectedWorkflowId) return;
+    setDescriptionsByWorkflow(prev => ({
       ...prev,
-      [modelRunName]: value
+      [selectedWorkflowId]: {
+        ...(prev[selectedWorkflowId] || {}),
+        [modelRunName]: value
+      }
     }));
   };
 
-  const handleSaveClick = () => {
-    const selectedCount = Object.values(selectedModels).filter(Boolean).length;
+  const validateEnsembleNameUniqueness = async (name) => {
+    const projectName = projectState?.selectedProject || projectState?.projectName || '';
+
+    if (!projectName) {
+      throw new Error('Project name not found. Please select a project and try again.');
+    }
+
+    const response = await fetch(
+      `${hostnameAI}/schemas/ensemble-names?project_name=${encodeURIComponent(projectName)}`,
+      {
+        method: 'GET',
+        headers: {
+          accept: 'application/json'
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to validate ensemble name: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const existingNamesRaw = Array.isArray(data)
+      ? data
+      : data.ensemble_names || data.names || [];
+
+    const existingNames = existingNamesRaw
+      .map(nameItem => String(nameItem).trim().toLowerCase())
+      .filter(Boolean);
+
+    return !existingNames.includes(name.trim().toLowerCase());
+  };
+
+  const handleSaveClick = async () => {
+    const selectedCount = Object.values(selectedModelsByWorkflow).reduce(
+      (acc, workflowSelections) => acc + Object.values(workflowSelections || {}).filter(Boolean).length,
+      0
+    );
     if (selectedCount === 0) return;
+    // if it is a multiworkflow ensemble, validate that at least one model is selected from each workflow and that the ensemble name is unique before showing confirmation
+    if (isMultiWorkflowEnsemble) {
+      const workflowsWithoutSelection = workflows.filter((workflow) => {
+        const workflowSelections = selectedModelsByWorkflow[workflow.id] || {};
+        const selectedForWorkflow = Object.values(workflowSelections).filter(Boolean).length;
+        return selectedForWorkflow === 0;
+      });
+
+      if (workflowsWithoutSelection.length > 0) {
+        const missingWorkflowNames = workflowsWithoutSelection
+          .map((workflow) => workflow.name || `Workflow ${workflow.id.slice(0, 8)}`)
+          .join(', ');
+
+        toast.error(`Select at least one model from each workflow before saving. Missing: ${missingWorkflowNames}`, {
+          duration: 5000,
+          position: 'top-right',
+        });
+        return;
+      }
+
+      const normalizedEnsembleName = ensembleName.trim();
+
+      if (!normalizedEnsembleName) {
+        toast.error('Ensemble name is required.', {
+          duration: 3000,
+          position: 'top-right',
+        });
+        return;
+      }
+
+      setIsValidatingEnsembleName(true);
+      try {
+        const isUnique = await validateEnsembleNameUniqueness(normalizedEnsembleName);
+        if (!isUnique) {
+          toast.error('The same ensemble name already exists. Please provide a different name.', {
+            duration: 4000,
+            position: 'top-right',
+          });
+          return;
+        }
+      } catch (error) {
+        toast.error(error.message || 'Failed to validate ensemble name. Please try again.', {
+          duration: 4000,
+          position: 'top-right',
+        });
+        return;
+      } finally {
+        setIsValidatingEnsembleName(false);
+      }
+    }
+
     setShowConfirmation(true);
     cancelJob();
   };
 
   const handleConfirmSave = () => {
-    const modelsToSave = modelsList
-      .filter(model => selectedModels[model.run_name])
-      .map(model => ({
-        run_name: model.run_name,
-        run_id: model.run_id,
-        description: descriptions[model.run_name] || ''
-      }));
+    const workflowsData = Object.entries(selectedModelsByWorkflow)
+      .map(([workflowId, selectionMap]) => {
+        const selectedRunNames = Object.entries(selectionMap || {})
+          .filter(([, isSelected]) => isSelected)
+          .map(([runName]) => runName);
 
-    onSave(modelsToSave);
+        const modelsForWorkflow = workflowModelsCache[workflowId] || [];
+        const runs = selectedRunNames.map(runName => {
+          const modelMeta = modelsForWorkflow.find(m => m.run_name === runName);
+          return {
+            run_name: runName,
+            run_id: modelMeta?.run_id,
+            description: descriptionsByWorkflow[workflowId]?.[runName] || ''
+          };
+        });
+
+        return {
+          workflow_id: workflowId,
+          runs
+        };
+      })
+      .filter(workflow => workflow.runs.length > 0);
+
+    const modelsToSave = workflowsData.flatMap(workflow => workflow.runs);
+
+    if (workflowsData.length === 0) {
+      toast.error('Please select at least one model to save.', {
+        duration: 3000,
+        position: 'top-right',
+      });
+      return;
+    }
+
+    onSave({
+      modelsToSave,
+      ensembleName: ensembleName.trim(),
+      workflows: workflowsData
+    });
     setShowConfirmation(false);
   };
 
@@ -104,8 +378,8 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
   };
 
   const handleClose = () => {
-    setSelectedModels({});
-    setDescriptions({});
+    setSelectedModelsByWorkflow({});
+    setDescriptionsByWorkflow({});
     setShowConfirmation(false);
     setCurrentReportData(null);
     setCurrentModelName('');
@@ -119,18 +393,33 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
   };
 
   const handleDownloadGovernanceReports = async () => {
-    const selectedModelNames = Object.keys(selectedModels).filter(name => selectedModels[name]);
+    const workflowsPayload = Object.entries(selectedModelsByWorkflow)
+      .map(([workflowId, selectionMap]) => {
+        const model_names = Object.entries(selectionMap || {})
+          .filter(([, isSelected]) => isSelected)
+          .map(([runName]) => runName);
 
-    if (selectedModelNames.length === 0) {
+        return {
+          workflow_id: workflowId,
+          model_names
+        };
+      })
+      .filter(workflow => workflow.model_names.length > 0);
+
+    const selectedWorkflowModels = workflowsPayload.flatMap(workflow =>
+      workflow.model_names.map(modelName => ({ workflowId: workflow.workflow_id, modelName }))
+    );
+
+    if (selectedWorkflowModels.length === 0) {
       toast.error('Please select at least one model to download reports', {
         duration: 3000,
         position: 'top-right',
-      });
+      })
       return;
     }
 
-    if (!sessionId) {
-      toast.error('Session ID not found. Please try again.', {
+    if (!datasetState?.ensembleId || !(selectedWorkflowId || activeWorkflowId)) {
+      toast.error('Ensemble ID or Workflow ID not found. Please try again.', {
         duration: 4000,
         position: 'top-right',
       });
@@ -141,7 +430,7 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
 
     try {
       const response = await fetch(
-        `${hostnameAI}/model/download-governance-report`,
+        `${hostnameAI}/governance/download-governance-report`,
         {
           method: 'POST',
           headers: {
@@ -149,8 +438,8 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            session_id: sessionId,
-            model_names: selectedModelNames
+            ensemble_id: datasetState?.ensembleId,
+            workflows: workflowsPayload
           })
         }
       );
@@ -163,12 +452,12 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
 
       const reportData = await response.json();
 
-      for (const modelName of selectedModelNames) {
-        await generatePDFForModel(modelName, reportData);
+      for (const { workflowId, modelName } of selectedWorkflowModels) {
+        await generatePDFForModel(workflowId, modelName, reportData);
         await new Promise(resolve => setTimeout(resolve, 800));
       }
 
-      toast.success(`${selectedModelNames.length} report${selectedModelNames.length > 1 ? 's' : ''} downloaded successfully`, {
+      toast.success(`${selectedWorkflowModels.length} report${selectedWorkflowModels.length > 1 ? 's' : ''} downloaded successfully`, {
         duration: 3000,
         position: 'top-right',
       });
@@ -185,13 +474,14 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
     }
   };
 
-  const generatePDFForModel = async (modelName, reportData) => {
-    const modelData = reportData?.models?.[modelName];
+  const generatePDFForModel = async (workflowId, modelName, reportData) => {
+    const workflowData = reportData?.workflows?.[workflowId];
+    const modelData = workflowData?.models?.[modelName];
     const projectData = reportData?.project;
-    const datasetData = reportData?.dataset;
+    const datasetData = reportData?.dataset || reportData?.workflows?.dataset;
 
     if (!modelData) {
-      console.error(`No data found for model: ${modelName}`);
+      console.error(`No data found for model: ${modelName} in workflow: ${workflowId}`);
       return;
     }
 
@@ -238,15 +528,23 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
         heightLeft -= pageHeight;
       }
 
-      pdf.save(`governance-report-${modelName}.pdf`);
+      pdf.save(`governance-report-${workflowId}-${modelName}.pdf`);
     } catch (error) {
-      console.error(`PDF Generation Error for ${modelName}:`, error);
+      console.error(`PDF Generation Error for ${modelName} in workflow ${workflowId}:`, error);
       throw error;
     }
   };
 
-  const selectedCount = Object.values(selectedModels).filter(Boolean).length;
-  const discardedCount = modelsList.length - selectedCount;
+  const selectedCount = Object.values(selectedModelsByWorkflow).reduce(
+    (acc, workflowSelections) => acc + Object.values(workflowSelections || {}).filter(Boolean).length,
+    0
+  );
+  // In ensemble mode, total models count is the sum of models in all workflows. In single workflow mode, it's just the length of the effective models list.
+  const totalModelsCount = isMultiWorkflowEnsemble
+    ? workflows.reduce((acc, workflow) => acc + (workflowModelsCache[workflow.id]?.length || 0), 0)
+    : effectiveModelsList.length;
+  const currentSelectedCount = Object.values(currentSelectedModels).filter(Boolean).length;
+  const discardedCount = Math.max(totalModelsCount - selectedCount, 0);
 
   return (
     <>
@@ -289,7 +587,52 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
           )}
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {/* Ensemble Name Input */}
+            {workflows.length > 1 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Ensemble Name
+                </label>
+                <input
+                  type="text"
+                  value={ensembleName}
+                  onChange={(e) => setEnsembleName(e.target.value)}
+                  disabled={readonly}
+                  placeholder="Enter ensemble name..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+                />
+              </div>
+            )}
+
+            {/* Workflow Selection Buttons */}
+            {workflows.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-3">
+                  Select Workflow
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {workflows.map((workflow) => (
+                    <button
+                      key={workflow.id}
+                      onClick={() => {
+                        setSelectedWorkflowId(workflow.id);
+                        setSearchQuery('');
+                      }}
+                      disabled={readonly}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        selectedWorkflowId === workflow.id
+                          ? 'bg-[#8e78b7] text-white border border-[#8e78b7]'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:border-[#8e78b7]'
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {workflow.name || `Workflow ${workflow.id.slice(0, 8)}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {isLoading ? (
               <div className="py-16 flex flex-col items-center justify-center gap-3">
                 <div className="w-8 h-8 border-2 border-[#8e78b7] border-t-transparent rounded-full animate-spin" />
@@ -297,13 +640,13 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
               </div>
             ) : (
               <>
-                <p className="text-sm text-gray-600 mb-4">
+                <p className="text-sm text-gray-600">
                   Select the models you want to save and provide descriptions for each selected model.
                 </p>
 
                 {/* Search Bar */}
-                {modelsList.length > 0 && (
-                  <div className="relative mb-4">
+                {effectiveModelsList.length > 0 && (
+                  <div className="relative">
                     <Search
                       size={15}
                       className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
@@ -327,7 +670,7 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
                   </div>
                 )}
 
-                {modelsList.length === 0 ? (
+                {effectiveModelsList.length === 0 ? (
                   <div className="py-8 text-center">
                     <p className="text-sm text-gray-500">No models available to save.</p>
                   </div>
@@ -347,7 +690,7 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
                       <div
                         key={model.run_id}
                         className={`border rounded-lg p-4 transition-all ${
-                          selectedModels[model.run_name]
+                          currentSelectedModels[model.run_name]
                             ? 'border-[#8e78b7] bg-purple-50'
                             : 'border-gray-200 bg-white'
                         }`}
@@ -356,7 +699,7 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
                           <input
                             type="checkbox"
                             id={`model-${model.run_id}`}
-                            checked={selectedModels[model.run_name] || false}
+                            checked={currentSelectedModels[model.run_name] || false}
                             onChange={() => handleCheckboxChange(model.run_name)}
                             disabled={readonly}
                             className="mt-1 w-4 h-4 border-gray-300 rounded cursor-pointer"
@@ -388,13 +731,13 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
                               </span>
                             </label>
 
-                            {selectedModels[model.run_name] && (
+                            {currentSelectedModels[model.run_name] && (
                               <div className="mt-3">
                                 <label className="block text-xs font-medium text-gray-700 mb-1">
                                   Description
                                 </label>
                                 <textarea
-                                  value={descriptions[model.run_name] || ''}
+                                  value={currentDescriptions[model.run_name] || ''}
                                   onChange={(e) => handleDescriptionChange(model.run_name, e.target.value)}
                                   disabled={readonly}
                                   placeholder="Enter model description..."
@@ -424,10 +767,10 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
               </button>
               <button
                 onClick={handleSaveClick}
-                disabled={readonly || selectedCount === 0 || isLoading}
+                disabled={readonly || selectedCount === 0 || isLoading || isValidatingEnsembleName}
                 className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium hover:bg-[#7d67a6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Save Model{selectedCount > 1 ? 's' : ''}
+                {isValidatingEnsembleName ? 'Validating...' : `Save Model${selectedCount > 1 ? 's' : ''}`}
               </button>
             </div>
           </div>

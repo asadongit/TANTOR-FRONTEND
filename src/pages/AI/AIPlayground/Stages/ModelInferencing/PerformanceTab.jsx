@@ -1,14 +1,25 @@
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, Search, X } from 'lucide-react';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { tw } from '../../../../../components/themeContext';
 
-const METRIC_KEYS = [
-  { key: 'Accuracy',  label: 'Accuracy',  testKey: 'testAccuracy',  trainKey: 'trainAccuracy',  isLogLoss: false },
-  { key: 'Precision', label: 'Precision', testKey: 'testPrecision', trainKey: 'trainPrecision', isLogLoss: false },
-  { key: 'Recall',    label: 'Recall',    testKey: 'testRecall',    trainKey: 'trainRecall',    isLogLoss: false },
-  { key: 'F1',        label: 'F1',        testKey: 'testF1',        trainKey: 'trainF1',        isLogLoss: false },
-  { key: 'LogLoss',   label: 'Log Loss',  testKey: 'testLogLoss',   trainKey: 'trainLogLoss',   isLogLoss: true  },
+const CLASSIFICATION_METRICS = [
+  { key: 'Accuracy', label: 'Accuracy', testKey: 'testAccuracy', trainKey: 'trainAccuracy', isLowerBetter: false },
+  { key: 'Precision', label: 'Precision', testKey: 'testPrecision', trainKey: 'trainPrecision', isLowerBetter: false },
+  { key: 'Recall', label: 'Recall', testKey: 'testRecall', trainKey: 'trainRecall', isLowerBetter: false },
+  { key: 'F1', label: 'F1', testKey: 'testF1', trainKey: 'trainF1', isLowerBetter: false },
+  { key: 'LogLoss', label: 'Log Loss', testKey: 'testLogLoss', trainKey: 'trainLogLoss', isLowerBetter: true },
 ];
+
+const REGRESSION_METRICS = [
+  { key: 'MAE', label: 'MAE', testKey: 'testMAE', trainKey: 'trainMAE', isLowerBetter: true },
+  
+  { key: 'RMSE', label: 'RMSE', testKey: 'testRMSE', trainKey: 'trainRMSE', isLowerBetter: true },
+  { key: 'R2', label: 'R²', testKey: 'testR2', trainKey: 'trainR2', isLowerBetter: false },
+  { key: 'MAPE', label: 'MAPE', testKey: 'testMAPE', trainKey: 'trainMAPE', isLowerBetter: true },
+  { key: 'QuantileLoss', label: 'Quantile Loss', testKey: 'testQuantileLoss', trainKey: 'trainQuantileLoss', isLowerBetter: true },
+  { key: 'HuberLoss', label: 'Huber Loss', testKey: 'testHuberLoss', trainKey: 'trainHuberLoss', isLowerBetter: true },
+];
+
 
 const SortIcon = ({ active, direction }) => {
   if (!active) return <ChevronsUpDown className="w-3 h-3 ml-1 text-gray-400 inline-block" />;
@@ -62,26 +73,33 @@ const Pagination = ({ currentPage, totalPages, onPrev, onNext, startIndex, endIn
   </div>
 );
 
-const formatVal = (val, isLogLoss = false) =>
-  val !== 'N/A' && val !== undefined && val !== null
-    ? (isLogLoss ? val : `${val}%`)
-    : 'N/A';
+const formatVal = (val, isLowerBetter = false, isRegression = false) => {
+  if (val === 'N/A' || val === undefined || val === null) return 'N/A';
+
+  if (isRegression) return val; // no %
+
+  return isLowerBetter ? val : `${val}%`;
+};
 
 const UnifiedMetricsTable = ({ allData, searchQuery, rowsPerPage = 10 }) => {
+  const isRegression = allData.some(algo => algo.testMAE !== undefined);
+  const metricConfig = isRegression ? REGRESSION_METRICS : CLASSIFICATION_METRICS;
   const [sortConfig, setSortConfig] = useState({ key: null, prefix: null, direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
 
-  useMemo(() => { setCurrentPage(1); }, [searchQuery]);
+  useEffect(() => {
+  setCurrentPage(1);
+}, [searchQuery]);
 
   // Determine which metric columns have at least one non-N/A value across test OR train
-  const visibleMetrics = useMemo(() => {
-    return METRIC_KEYS.filter(m => {
-      return allData.some(algo =>
-        (algo[m.testKey] !== 'N/A' && algo[m.testKey] !== undefined && algo[m.testKey] !== null) ||
-        (algo[m.trainKey] !== 'N/A' && algo[m.trainKey] !== undefined && algo[m.trainKey] !== null)
-      );
-    });
-  }, [allData]);
+ const visibleMetrics = useMemo(() => {
+  return metricConfig.filter(m => {
+    return allData.some(algo =>
+      (algo[m.testKey] !== 'N/A' && algo[m.testKey] !== undefined && algo[m.testKey] !== null) ||
+      (algo[m.trainKey] !== 'N/A' && algo[m.trainKey] !== undefined && algo[m.trainKey] !== null)
+    );
+  });
+}, [allData, metricConfig]);
 
   // For each visible metric, check if test side has any data and train side has any data
   const testVisible = useMemo(() => {
@@ -112,7 +130,7 @@ const UnifiedMetricsTable = ({ allData, searchQuery, rowsPerPage = 10 }) => {
     });
 
     if (sortConfig.key && sortConfig.prefix) {
-      const metric = METRIC_KEYS.find(m => m.key === sortConfig.key);
+      const metric = metricConfig.find(m => m.key === sortConfig.key);
       if (metric) {
         const dataKey = sortConfig.prefix === 'test' ? metric.testKey : metric.trainKey;
         filtered.sort((a, b) => {
@@ -130,7 +148,7 @@ const UnifiedMetricsTable = ({ allData, searchQuery, rowsPerPage = 10 }) => {
       }
     }
     return filtered;
-  }, [allData, sortConfig, searchQuery]);
+  }, [allData, sortConfig, searchQuery, metricConfig]);
 
   const totalPages = Math.ceil(processedData.length / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
@@ -243,7 +261,7 @@ const UnifiedMetricsTable = ({ allData, searchQuery, rowsPerPage = 10 }) => {
                         key={`test-${m.key}`}
                         className={`py-1.5 px-4 text-gray-700 ${isLast ? 'border-r border-gray-200' : ''}`}
                       >
-                        {formatVal(algo[m.testKey], m.isLogLoss)}
+                        {formatVal(algo[m.testKey], m.isLowerBetter, isRegression)}
                       </td>
                     );
                   })}
@@ -251,7 +269,7 @@ const UnifiedMetricsTable = ({ allData, searchQuery, rowsPerPage = 10 }) => {
                   {/* Train metric cells */}
                   {visibleMetrics.filter(m => trainVisible[m.key]).map((m) => (
                     <td key={`train-${m.key}`} className="py-1.5 px-4 text-gray-700">
-                      {formatVal(algo[m.trainKey], m.isLogLoss)}
+                      {formatVal(algo[m.trainKey], m.isLowerBetter, isRegression)}
                     </td>
                   ))}
                 </tr>

@@ -10,17 +10,27 @@ import DataTable from '../../../../components/DataTable';
 import { useAIPlayground } from '../../../../context/AIPlaygroundContext';
 import toast from 'react-hot-toast';
 import RefreshIcon from '../../../../assets/ai/replay.svg';
+import { data } from 'autoprefixer';
 
 function XAI() {
   const hostnameAI = window._env_?.VITE_AI_API;
   const location = useLocation();
   const navigate = useNavigate();
-  const { projectState, workflowState, datasetState, setProjectState, modelState, mode } = useAIPlayground();
-  const sessionId = datasetState?.sessionId;
+  const { projectState, workflowsState, datasetState, setProjectState, modelState, mode, activeWorkflowId} = useAIPlayground();
+  const workflowState = activeWorkflowId
+    ? workflowsState[activeWorkflowId]
+    : null; 
+  const ensembleId = datasetState?.ensembleId;
   const readonly = mode === 'view';
 
+  // Get all workflows in the session
+  const workflows = Object.keys(workflowsState || {}).map(workflowId => ({
+    id: workflowId,
+    name: workflowsState[workflowId]?.workflow_name || `Workflow ${workflowId.slice(0, 8)}`
+  }));
+
   useEffect(() => {
-    if (datasetState.sessionId == '') {
+    if (datasetState.ensembleId == '') {
       navigate('/ai/playground')
     }
   }, []);
@@ -56,6 +66,12 @@ function XAI() {
     model.run_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const formatToThreeDecimals = (value) => {
+    return typeof value === 'number' ? value.toFixed(3) : value;
+  };
+
+  const isRegression = xaiConfig?.modeling_type === 'regression';
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuDropdownRef.current && !menuDropdownRef.current.contains(event.target)) {
@@ -87,26 +103,36 @@ function XAI() {
   }, [readonly, modelState?.selectedModel]);
 
   useEffect(() => {
-    if (!readonly) {
-      const initializeData = async () => {
-        setInitializing(true);
-        setIsFetching(true);
-        try {
-          const jobSuccess = await fetchJobStatus();
-          if (!jobSuccess) return;
-          const runsSuccess = await fetchRunsLogged();
-          if (!runsSuccess) return;
-          const modelsSuccess = await fetchLoggedModels();
-          if (!modelsSuccess) return;
-        } finally {
-          setInitializing(false);
-          setIsFetching(false);
-        }
-      };
+    if (readonly || !activeWorkflowId) return;
 
-      initializeData();
-    }
-  }, []);
+    const initializeData = async () => {
+      setInitializing(true);
+      setIsFetching(true);
+
+      // Reset workflow-scoped state when moving across ensemble workflows.
+      setSelectedModel('');
+      setConfiguredModel('');
+      setXaiConfig(null);
+      setReportData(null);
+      setReportGenerated(false);
+      setSearchQuery('');
+      setIsDropdownOpen(false);
+
+      try {
+        const jobSuccess = await fetchJobStatus();
+        if (!jobSuccess) return;
+        const runsSuccess = await fetchRunsLogged();
+        if (!runsSuccess) return;
+        const modelsSuccess = await fetchLoggedModels();
+        if (!modelsSuccess) return;
+      } finally {
+        setInitializing(false);
+        setIsFetching(false);
+      }
+    };
+
+    initializeData();
+  }, [readonly, activeWorkflowId]);
 
   const fetchXAIReport = async (runName) => {
     if (!runName) return;
@@ -145,10 +171,17 @@ function XAI() {
   const fetchLoggedModels = async () => {
     try {
       const response = await fetch(
-        `${hostnameAI}/model/logged_models/${sessionId}`,
+        `${hostnameAI}/model_lifecycle/logged_models`,
         {
-          method: 'GET',
-          headers: { accept: 'application/json' }
+          method: 'POST',
+          headers: {
+            accept: 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            ensemble_id: datasetState?.ensembleId,
+            workflow_id: activeWorkflowId
+          })
         }
       );
 
@@ -171,9 +204,16 @@ function XAI() {
 
   const fetchRunsLogged = async () => {
     try {
-      const res = await fetch(`${hostnameAI}/model/runs_logged/${sessionId}`, {
-        method: 'GET',
-        headers: { accept: 'application/json' },
+      const res = await fetch(`${hostnameAI}/model_lifecycle/runs_logged`, {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ensemble_id: datasetState?.ensembleId,
+          workflow_id: activeWorkflowId
+        })
       });
 
       if (!res.ok) {
@@ -257,7 +297,7 @@ function XAI() {
   };
 
   const handleConfigureReport = async () => {
-    if (selectedModel && sessionId) {
+    if (selectedModel && datasetState?.ensembleId && activeWorkflowId) {
       if (configuredModel === selectedModel && xaiConfig) {
         setShowConfigModal(true);
         return;
@@ -266,10 +306,18 @@ function XAI() {
       setLoadingConfig(true);
       try {
         const response = await fetch(
-          `${hostnameAI}/model/XAI_config?session_id=${sessionId}&model_name=${encodeURIComponent(selectedModel)}`,
+          `${hostnameAI}/model/XAI_config`,
           {
-            method: 'GET',
-            headers: { 'accept': 'application/json' }
+            method: 'POST',
+            headers: {
+              'accept': 'application/json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              ensemble_id: datasetState?.ensembleId,
+              workflow_id: activeWorkflowId,
+              model_name: selectedModel
+            })
           }
         );
 
@@ -295,23 +343,61 @@ function XAI() {
       setShowConfigModal(false);
       return;
     }
+   if (isRegression) {
+  if (
+    configData.pdpTargetValue === '' ||
+    isNaN(configData.pdpTargetValue)
+  ) {
+    toast.error("Enter valid PDP target value");
+    return;
+  }
+  if (!isRegression) {
+  if (!configData.pdpTargetClass) {
+    toast.error("Select PDP target class");
+    return;
+  }
 
+  if (!configData.cfDesiredClass) {
+    toast.error("Select counterfactual class");
+    return;
+  }
+}
+
+  if (
+    configData.cfDesiredValue === '' ||
+    isNaN(configData.cfDesiredValue)
+  ) {
+    toast.error("Enter valid counterfactual value");
+    return;
+  }
+}
     setGeneratingReport(true);
     try {
       const payload = {
-        session_id: sessionId,
-        run_name: selectedModel,
-        run_shap: true,
-        run_pdp: true,
-        run_feature_flip: true,
-        run_counterfactuals: true,
-        run_lime: true,
-        pdp_features: configData.pdpFeatures,
+  ensemble_id : datasetState?.ensembleId,
+        workflow_id: activeWorkflowId,
+  run_name: selectedModel,
+  run_shap: true,
+  run_pdp: true,
+  run_feature_flip: true,
+  run_counterfactuals: true,
+  run_lime: true,
+  pdp_features: configData.pdpFeatures,
+  lime_instance_index: configData.limeInstanceIndex,
+  cf_instance_index: configData.cfInstanceIndex,
+
+  ...(isRegression
+    ? {
+        pdp_target_value: Number(configData.pdpTargetValue ?? 0),
+cf_desired_value: Number(configData.cfDesiredValue ?? 0),
+      }
+    : {
         pdp_target_class: configData.pdpTargetClass,
-        lime_instance_index: configData.limeInstanceIndex,
-        cf_instance_index: configData.cfInstanceIndex,
-        cf_desired_class: configData.cfDesiredClass
-      };
+        cf_desired_class: configData.cfDesiredClass,
+      })
+};
+
+
 
       const response = await fetch(
         `${hostnameAI}/model/explain`,
@@ -342,21 +428,42 @@ function XAI() {
 
   const handleSaveModelFromLayout = () => setShowSaveModal(true);
 
-  const handleSaveModel = async (modelsToSave) => {
-    if (!sessionId) {
+  const handleSaveModel = async (saveData) => {
+    // Handle both old format (array) and new format (object with modelsToSave, ensembleName, workflows)
+    const modelsToSave = Array.isArray(saveData) ? saveData : saveData.modelsToSave;
+    const ensembleName = !Array.isArray(saveData) ? saveData.ensembleName : datasetState?.ensembleName || '';
+    const workflowsData = !Array.isArray(saveData) ? saveData.workflows : null;
+
+    if (!datasetState?.ensembleId || !activeWorkflowId) {
       toast.error('Session ID not found. Please try again.', { duration: 4000, position: 'top-right' });
       return;
     }
 
     try {
-      const payload = {
-        session_id: sessionId,
-        run_names: modelsToSave.map(model => model.run_name),
-        descriptions: modelsToSave.reduce((acc, model) => {
-          acc[model.run_name] = model.description || '';
-          return acc;
-        }, {})
-      };
+      // Build payload with workflows structure if provided
+      let payload;
+      if (workflowsData) {
+        payload = {
+          ensemble_id: datasetState?.ensembleId,
+          ensemble_name: ensembleName || '',
+          workflows: workflowsData
+        };
+      } else {
+        // Fallback to old structure
+        payload = {
+          ensemble_id: datasetState?.ensembleId,
+          ensemble_name: ensembleName || '',
+          workflows: [
+            {
+              workflow_id: activeWorkflowId,
+              runs: modelsToSave.map(model => ({
+                run_name: model.run_name,
+                description: model.description || ''
+              }))
+            }
+          ]
+        };
+      }
 
       const response = await fetch(
         `${hostnameAI}/model/save-models`,
@@ -460,13 +567,18 @@ function XAI() {
   };
 
   const getLimeData = () => {
-    if (!reportData?.lime_report?.explanation_for_class) return [];
-    return reportData.lime_report.explanation_for_class.map((item, index) => ({
-      id: index + 1,
-      rule: item[0],
-      contribution: item[1].toFixed(4)
-    }));
-  };
+  const explanation =
+    reportData?.lime_report?.explanation_for_class ||
+    reportData?.lime_report?.explanation_for_prediction;
+
+  if (!explanation) return [];
+
+  return explanation.map((item, index) => ({
+    id: index + 1,
+    rule: item[0],
+    contribution: formatToThreeDecimals(item[1])
+  }));
+};
 
   useEffect(() => {
     console.log("loadingModels changed:", loadingModels);
@@ -856,17 +968,25 @@ function XAI() {
             </div>
           )}
 
-          {reportData.lime_report?.explanation_for_class?.length > 0 && (
+          {(
+            reportData?.lime_report?.explanation_for_class?.length > 0 ||
+            reportData?.lime_report?.explanation_for_prediction?.length > 0 ||
+            reportData?.lime_report?.predicted_value != null ||
+            !!reportData?.lime_report?.predicted_class_name
+          ) && (
             <div className="bg-white rounded-lg p-6 border border-gray-200">
               <h3 className="text-base font-semibold text-gray-900 mb-4">LIME Report</h3>
               <div className="mb-4 space-y-1">
                 <p className="text-sm text-gray-700">
-                  <strong>Predicted Class:</strong> {reportData.lime_report.predicted_class_name || 'N/A'}
+                  <strong>{reportData?.lime_report?.predicted_value != null ? 'Predicted Value:' : 'Predicted Class:'}</strong>{' '}
+                  {reportData?.lime_report?.predicted_value != null
+                    ? formatToThreeDecimals(reportData.lime_report.predicted_value)
+                    : (reportData?.lime_report?.predicted_class_name ?? 'N/A')}
                 </p>
                 <p className="text-sm text-gray-700">
                   <strong>Intercept:</strong>{' '}
                   {reportData.lime_report.intercept != null
-                    ? reportData.lime_report.intercept.toFixed(10)
+                    ? formatToThreeDecimals(reportData.lime_report.intercept)
                     : 'N/A'}
                 </p>
               </div>
@@ -899,15 +1019,15 @@ function XAI() {
         </div>
       )}
 
-      {/* Modals */}
       <ConfigurationModal
-        isOpen={showConfigModal}
-        onClose={() => setShowConfigModal(false)}
-        onGenerate={handleGenerateReport}
-        xaiConfig={xaiConfig}
-        readonly={readonly}
-        isGenerating={generatingReport}
-      />
+  isOpen={showConfigModal}
+  onClose={() => setShowConfigModal(false)}
+  onGenerate={handleGenerateReport}
+  xaiConfig={xaiConfig}
+  isRegression={isRegression}   
+  readonly={readonly}
+  isGenerating={generatingReport}
+/>
 
       <SaveModelSelectionModal
         isOpen={showSaveModal}
@@ -916,15 +1036,14 @@ function XAI() {
         readonly={readonly}
         modelsList={modelsList}
         modelsLoading={loadingModels}
-        sessionId={sessionId}
         isFetching={isFetching}
+        workflows={workflows}
       />
 
       <GovernanceReportModal
         isOpen={showGovernanceModal}
         onClose={() => setShowGovernanceModal(false)}
         selectedModel={selectedModel}
-        sessionId={sessionId}
       />
     </AIPlaygroundLayout>
   );

@@ -284,8 +284,12 @@ const SelectedColumnsList = ({ columns, onRemove, readonly }) => {
 
 function DataCleaning({ onValidationChange, onApiCall }) {
   const hostnameAI = window._env_?.VITE_AI_API;
-  const { workflowState, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
+  const { workflowsState, activeWorkflowId, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
   const readonly = mode === 'view';
+  const workflowState = activeWorkflowId
+    ? workflowsState[activeWorkflowId]
+    : null;  
+  const currentWorkflowId = workflowState?.workflow_id || activeWorkflowId;
 
   const changeDataTypeSectionRef = useRef(null);
   const missingValueSectionRef = useRef(null);
@@ -387,7 +391,8 @@ function DataCleaning({ onValidationChange, onApiCall }) {
 
   const buildApiPayload = () => {
     const payload = {
-      session_id: datasetState.sessionId,
+      ensemble_id: datasetState?.ensembleId,
+      workflow_id: currentWorkflowId,
       modify_data_types: toggles.changeDataType,
       modify_data_types_map: {},
       drop_duplicates_rows: toggles.dropDuplicates,
@@ -444,6 +449,9 @@ function DataCleaning({ onValidationChange, onApiCall }) {
 
     try {
       const payload = buildApiPayload();
+      if (!payload.ensemble_id || !payload.workflow_id) {
+        throw new Error('Missing required identifiers: ensemble_id or workflow_id');
+      }
       const response = await fetch(`${hostnameAI}/data/preprocess/initial_clean`, {
         method: 'POST',
         headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
@@ -466,7 +474,7 @@ function DataCleaning({ onValidationChange, onApiCall }) {
 
   useEffect(() => {
     if (onApiCall) onApiCall(callInitialCleanApi);
-  }, [toggles, dataTypeColumns, missingValueColumns, datasetState.sessionId]);
+  }, [toggles, dataTypeColumns, missingValueColumns, datasetState?.ensembleId, currentWorkflowId]);
 
   const toggleSection = (section) => {
     setExpandedSections(prev => ({

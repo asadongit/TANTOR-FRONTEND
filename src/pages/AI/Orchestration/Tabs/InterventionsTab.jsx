@@ -163,6 +163,10 @@ const InterventionsTab = ({ }) => {
         }
     };
 
+    const isRegressionModel = (intervention) => {
+        return intervention.modeling_type === 'regression';
+    };
+
     const getScoreMetrics = (intervention) => {
         const interventionType = intervention.intervention_type?.[0];
         const metrics = [];
@@ -186,27 +190,49 @@ const InterventionsTab = ({ }) => {
         } else if (interventionType === 'MODEL_DRIFT') {
             const modelDrift = intervention.monitoring_data?.model_drift_score;
             const thresholds = intervention.model_drift_threshold;
+            const isRegression = isRegressionModel(intervention);
 
             if (modelDrift && thresholds) {
                 // Phase 1 metrics
                 if (modelDrift.phase_1) {
-                    metrics.push(
-                        { label: 'Entropy Shift', value: modelDrift.phase_1.entropy_shift, threshold: thresholds.prediction_drift_threshold },
-                        { label: 'Confidence PSI', value: modelDrift.phase_1.confidence_psi, threshold: thresholds.prediction_drift_threshold },
-                        { label: 'Entropy Mean Ref', value: modelDrift.phase_1.entropy_mean_ref, threshold: thresholds.prediction_drift_threshold },
-                        { label: 'Predicted Label JSD', value: modelDrift.phase_1.predicted_label_jsd, threshold: thresholds.prediction_drift_threshold },
-                        { label: 'Mean Probability PSI', value: modelDrift.phase_1.mean_probability_psi, threshold: thresholds.prediction_drift_threshold }
-                    );
+                    if (isRegression) {
+                        metrics.push(
+                            { label: 'Prediction PSI', value: modelDrift.phase_1.prediction_psi, threshold: thresholds.prediction_drift_threshold },
+                            { label: 'Residual MAE PSI', value: modelDrift.phase_1.residual_mae_psi, threshold: thresholds.prediction_drift_threshold },
+                            { label: 'Residual Std Shift', value: modelDrift.phase_1.residual_std_shift, threshold: thresholds.prediction_drift_threshold },
+                            { label: 'Predicted Value JSD', value: modelDrift.phase_1.predicted_value_jsd, threshold: thresholds.prediction_drift_threshold },
+                            { label: 'Residual Mean Shift', value: modelDrift.phase_1.residual_mean_shift, threshold: thresholds.prediction_drift_threshold },
+                            { label: 'Prediction Std Shift', value: modelDrift.phase_1.prediction_std_shift, threshold: thresholds.prediction_drift_threshold },
+                            { label: 'Prediction Mean Shift', value: modelDrift.phase_1.prediction_mean_shift, threshold: thresholds.prediction_drift_threshold },
+                            { label: 'Prediction Range Shift', value: modelDrift.phase_1.prediction_range_shift, threshold: thresholds.prediction_drift_threshold }
+                        );
+                    } else {
+                        metrics.push(
+                            { label: 'Entropy Shift', value: modelDrift.phase_1.entropy_shift, threshold: thresholds.prediction_drift_threshold },
+                            { label: 'Confidence PSI', value: modelDrift.phase_1.confidence_psi, threshold: thresholds.prediction_drift_threshold },
+                            { label: 'Entropy Mean Ref', value: modelDrift.phase_1.entropy_mean_ref, threshold: thresholds.prediction_drift_threshold },
+                            { label: 'Predicted Label JSD', value: modelDrift.phase_1.predicted_label_jsd, threshold: thresholds.prediction_drift_threshold },
+                            { label: 'Mean Probability PSI', value: modelDrift.phase_1.mean_probability_psi, threshold: thresholds.prediction_drift_threshold }
+                        );
+                    }
                 }
 
                 // Phase 2 metrics
                 if (modelDrift.phase_2?.metric_shifts) {
-                    metrics.push(
-                        { label: 'ROC AUC', value: modelDrift.phase_2.metric_shifts.roc_auc, threshold: thresholds.performance_drift_threshold },
-                        { label: 'Accuracy', value: modelDrift.phase_2.metric_shifts.accuracy, threshold: thresholds.performance_drift_threshold },
-                        { label: 'Log Loss', value: modelDrift.phase_2.metric_shifts.log_loss, threshold: thresholds.performance_drift_threshold },
-                        { label: 'Macro F1', value: modelDrift.phase_2.metric_shifts.macro_f1, threshold: thresholds.performance_drift_threshold }
-                    );
+                    if (isRegression) {
+                        metrics.push(
+                            { label: 'R² Shift', value: modelDrift.phase_2.metric_shifts.r2, threshold: thresholds.performance_drift_threshold },
+                            { label: 'MAE Shift', value: modelDrift.phase_2.metric_shifts.mae, threshold: thresholds.performance_drift_threshold },
+                            { label: 'RMSE Shift', value: modelDrift.phase_2.metric_shifts.rmse, threshold: thresholds.performance_drift_threshold }
+                        );
+                    } else {
+                        metrics.push(
+                            { label: 'ROC AUC', value: modelDrift.phase_2.metric_shifts.roc_auc, threshold: thresholds.performance_drift_threshold },
+                            { label: 'Accuracy', value: modelDrift.phase_2.metric_shifts.accuracy, threshold: thresholds.performance_drift_threshold },
+                            { label: 'Log Loss', value: modelDrift.phase_2.metric_shifts.log_loss, threshold: thresholds.performance_drift_threshold },
+                            { label: 'Macro F1', value: modelDrift.phase_2.metric_shifts.macro_f1, threshold: thresholds.performance_drift_threshold }
+                        );
+                    }
                 }
             }
         }
@@ -528,7 +554,239 @@ const InterventionsTab = ({ }) => {
                                         </>
                                     ) : selectedIntervention.intervention_type?.[0] === 'MODEL_DRIFT' &&
                                         selectedIntervention.monitoring_data?.model_drift_score ? (
-                                        <ModelDriftDetails selectedIntervention={selectedIntervention} />
+                                        isRegressionModel(selectedIntervention) ? (
+                                            // Regression Model Drift Details
+                                            <div className="space-y-6">
+                                                {/* Performance Metrics */}
+                                                {selectedIntervention.monitoring_data.model_drift_score.phase_2 && (
+                                                    <div>
+                                                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                                                            Performance Metrics
+                                                        </h3>
+                                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                                                <p className="text-sm text-gray-600 mb-2">R² Score</p>
+                                                                <div className="flex justify-between items-end gap-4">
+                                                                    <div>
+                                                                        <p className="text-xs text-gray-500 mb-1">Reference</p>
+                                                                        <p className="text-lg font-bold text-gray-900">
+                                                                            {typeof selectedIntervention.monitoring_data.model_drift_score.phase_2.reference_metrics?.r2 === 'number'
+                                                                                ? selectedIntervention.monitoring_data.model_drift_score.phase_2.reference_metrics.r2.toFixed(4)
+                                                                                : 'N/A'}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-xs text-gray-500 mb-1">Current</p>
+                                                                        <p className="text-lg font-bold text-gray-900">
+                                                                            {typeof selectedIntervention.monitoring_data.model_drift_score.phase_2.current_metrics?.r2 === 'number'
+                                                                                ? selectedIntervention.monitoring_data.model_drift_score.phase_2.current_metrics.r2.toFixed(4)
+                                                                                : 'N/A'}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                                                <p className="text-sm text-gray-600 mb-2">MAE</p>
+                                                                <div className="flex justify-between items-end gap-4">
+                                                                    <div>
+                                                                        <p className="text-xs text-gray-500 mb-1">Reference</p>
+                                                                        <p className="text-lg font-bold text-gray-900">
+                                                                            {typeof selectedIntervention.monitoring_data.model_drift_score.phase_2.reference_metrics?.mae === 'number'
+                                                                                ? selectedIntervention.monitoring_data.model_drift_score.phase_2.reference_metrics.mae.toFixed(2)
+                                                                                : 'N/A'}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-xs text-gray-500 mb-1">Current</p>
+                                                                        <p className="text-lg font-bold text-gray-900">
+                                                                            {typeof selectedIntervention.monitoring_data.model_drift_score.phase_2.current_metrics?.mae === 'number'
+                                                                                ? selectedIntervention.monitoring_data.model_drift_score.phase_2.current_metrics.mae.toFixed(2)
+                                                                                : 'N/A'}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                                                <p className="text-sm text-gray-600 mb-2">RMSE</p>
+                                                                <div className="flex justify-between items-end gap-4">
+                                                                    <div>
+                                                                        <p className="text-xs text-gray-500 mb-1">Reference</p>
+                                                                        <p className="text-lg font-bold text-gray-900">
+                                                                            {typeof selectedIntervention.monitoring_data.model_drift_score.phase_2.reference_metrics?.rmse === 'number'
+                                                                                ? selectedIntervention.monitoring_data.model_drift_score.phase_2.reference_metrics.rmse.toFixed(2)
+                                                                                : 'N/A'}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-xs text-gray-500 mb-1">Current</p>
+                                                                        <p className="text-lg font-bold text-gray-900">
+                                                                            {typeof selectedIntervention.monitoring_data.model_drift_score.phase_2.current_metrics?.rmse === 'number'
+                                                                                ? selectedIntervention.monitoring_data.model_drift_score.phase_2.current_metrics.rmse.toFixed(2)
+                                                                                : 'N/A'}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Residual Profile */}
+                                                {selectedIntervention.monitoring_data.model_drift_score.class_wise?.residual_profile && (
+                                                    <div>
+                                                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                                                            Residual Profile Analysis
+                                                        </h3>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                                                <p className="text-sm font-semibold text-gray-800 mb-3">Reference Dataset</p>
+                                                                <div className="space-y-2 text-sm">
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-600">Mean Residual:</span>
+                                                                        <span className="font-medium text-gray-900">
+                                                                            {typeof selectedIntervention.monitoring_data.model_drift_score.class_wise.residual_profile.reference?.mean_residual === 'number'
+                                                                                ? selectedIntervention.monitoring_data.model_drift_score.class_wise.residual_profile.reference.mean_residual.toFixed(4)
+                                                                                : 'N/A'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-600">Median Residual:</span>
+                                                                        <span className="font-medium text-gray-900">
+                                                                            {typeof selectedIntervention.monitoring_data.model_drift_score.class_wise.residual_profile.reference?.median_residual === 'number'
+                                                                                ? selectedIntervention.monitoring_data.model_drift_score.class_wise.residual_profile.reference.median_residual.toFixed(4)
+                                                                                : 'N/A'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-600">Std Residual:</span>
+                                                                        <span className="font-medium text-gray-900">
+                                                                            {typeof selectedIntervention.monitoring_data.model_drift_score.class_wise.residual_profile.reference?.std_residual === 'number'
+                                                                                ? selectedIntervention.monitoring_data.model_drift_score.class_wise.residual_profile.reference.std_residual.toFixed(2)
+                                                                                : 'N/A'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-600">Mean Absolute Residual:</span>
+                                                                        <span className="font-medium text-gray-900">
+                                                                            {typeof selectedIntervention.monitoring_data.model_drift_score.class_wise.residual_profile.reference?.mean_absolute_residual === 'number'
+                                                                                ? selectedIntervention.monitoring_data.model_drift_score.class_wise.residual_profile.reference.mean_absolute_residual.toFixed(2)
+                                                                                : 'N/A'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-600">P95 Absolute Residual:</span>
+                                                                        <span className="font-medium text-gray-900">
+                                                                            {typeof selectedIntervention.monitoring_data.model_drift_score.class_wise.residual_profile.reference?.p95_absolute_residual === 'number'
+                                                                                ? selectedIntervention.monitoring_data.model_drift_score.class_wise.residual_profile.reference.p95_absolute_residual.toFixed(2)
+                                                                                : 'N/A'}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                                                <p className="text-sm font-semibold text-gray-800 mb-3">Current Dataset</p>
+                                                                <div className="space-y-2 text-sm">
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-600">Mean Residual:</span>
+                                                                        <span className="font-medium text-gray-900">
+                                                                            {typeof selectedIntervention.monitoring_data.model_drift_score.class_wise.residual_profile.current?.mean_residual === 'number'
+                                                                                ? selectedIntervention.monitoring_data.model_drift_score.class_wise.residual_profile.current.mean_residual.toFixed(4)
+                                                                                : 'N/A'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-600">Median Residual:</span>
+                                                                        <span className="font-medium text-gray-900">
+                                                                            {typeof selectedIntervention.monitoring_data.model_drift_score.class_wise.residual_profile.current?.median_residual === 'number'
+                                                                                ? selectedIntervention.monitoring_data.model_drift_score.class_wise.residual_profile.current.median_residual.toFixed(4)
+                                                                                : 'N/A'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-600">Std Residual:</span>
+                                                                        <span className="font-medium text-gray-900">
+                                                                            {typeof selectedIntervention.monitoring_data.model_drift_score.class_wise.residual_profile.current?.std_residual === 'number'
+                                                                                ? selectedIntervention.monitoring_data.model_drift_score.class_wise.residual_profile.current.std_residual.toFixed(2)
+                                                                                : 'N/A'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-600">Mean Absolute Residual:</span>
+                                                                        <span className="font-medium text-gray-900">
+                                                                            {typeof selectedIntervention.monitoring_data.model_drift_score.class_wise.residual_profile.current?.mean_absolute_residual === 'number'
+                                                                                ? selectedIntervention.monitoring_data.model_drift_score.class_wise.residual_profile.current.mean_absolute_residual.toFixed(2)
+                                                                                : 'N/A'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-600">P95 Absolute Residual:</span>
+                                                                        <span className="font-medium text-gray-900">
+                                                                            {typeof selectedIntervention.monitoring_data.model_drift_score.class_wise.residual_profile.current?.p95_absolute_residual === 'number'
+                                                                                ? selectedIntervention.monitoring_data.model_drift_score.class_wise.residual_profile.current.p95_absolute_residual.toFixed(2)
+                                                                                : 'N/A'}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Target Quantile Error Analysis */}
+                                                {selectedIntervention.monitoring_data.model_drift_score.class_wise?.target_quantile_error && (
+                                                    <div>
+                                                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                                                            Target Quantile Error Analysis
+                                                        </h3>
+                                                        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                                            <table className="min-w-full divide-y divide-gray-200">
+                                                                <thead className="bg-gray-50">
+                                                                    <tr>
+                                                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                                            Quarter
+                                                                        </th>
+                                                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                                            MAE Shift
+                                                                        </th>
+                                                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                                            Bias Shift
+                                                                        </th>
+                                                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                                            RMSE Shift
+                                                                        </th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="bg-white divide-y divide-gray-200">
+                                                                    {selectedIntervention.monitoring_data.model_drift_score.class_wise.target_quantile_error.shift && 
+                                                                        selectedIntervention.monitoring_data.model_drift_score.class_wise.target_quantile_error.shift.map((quantile, idx) => (
+                                                                            <tr key={idx} className="hover:bg-gray-50">
+                                                                                <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                                                                    {quantile.bucket}
+                                                                                </td>
+                                                                                <td className="px-4 py-3 text-sm text-gray-700">
+                                                                                    {typeof quantile.mae_shift === 'number' ? quantile.mae_shift.toFixed(4) : 'N/A'}
+                                                                                </td>
+                                                                                <td className="px-4 py-3 text-sm text-gray-700">
+                                                                                    {typeof quantile.bias_shift === 'number' ? quantile.bias_shift.toFixed(4) : 'N/A'}
+                                                                                </td>
+                                                                                <td className="px-4 py-3 text-sm text-gray-700">
+                                                                                    {typeof quantile.rmse_shift === 'number' ? quantile.rmse_shift.toFixed(4) : 'N/A'}
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            // Classification Model Drift Details
+                                            <ModelDriftDetails selectedIntervention={selectedIntervention} />
+                                        )
                                     ) : (
                                         <div className="text-center py-8 text-gray-500">
                                             No details available for this intervention type

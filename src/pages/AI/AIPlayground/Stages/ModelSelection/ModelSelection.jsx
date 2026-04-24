@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AIPlaygroundLayout } from '../../AIPlaygroundLayout';
 import { Search } from 'lucide-react';
-import algorithmsData from '../../../../../components/classification_models_hyperparameters.json';
+import classificationAlgorithmsData from '../../../../../components/classification_models_hyperparameters.json';
+import regressionAlgorithmsData from '../../../../../components/regression_models_hyperparameters.json';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 import AlgorithmCard from './AlgorithmCard';
@@ -10,7 +11,8 @@ import { validateAlgorithm } from './validationUtils';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { tw } from '../../../../../components/themeContext';
 
-const METRIC_NAME_MAPPING = {
+// Classification metrics
+const CLASSIFICATION_METRIC_NAME_MAPPING = {
     "Accuracy": "accuracy",
     "Precision": "precision",
     "Recall": "recall",
@@ -18,26 +20,66 @@ const METRIC_NAME_MAPPING = {
     "Log Loss": "log_loss"
 };
 
-const REVERSE_METRIC_MAPPING = {
+const CLASSIFICATION_REVERSE_METRIC_MAPPING = {
     "accuracy": "Accuracy",
     "precision": "Precision",
     "recall": "Recall",
     "f1": "F1 Score",
     "log_loss": "Log Loss"
 };
+const REGRESSION_METRIC_FULL_FORM = {
+    "MAE": "Mean Absolute Error",
+    "MSE": "Mean Squared Error",
+    "RMSE": "Root Mean Squared Error",
+    "R²": "Coefficient of Determination",
+    "MAPE": "Mean Absolute Percentage Error",
+    "Quantile Loss": "Quantile Loss (used for asymmetric error penalties)",
+    "Huber Loss": "Huber Loss (robust to outliers, combines MAE & MSE)"
+};
+
+// Regression metrics
+const REGRESSION_METRIC_NAME_MAPPING = {
+    "MAE": "mae",
+    "MSE": "mse",
+    "RMSE": "rmse",
+    "R²": "r2",
+    "MAPE": "mape",
+    "Quantile Loss": "quantile_loss",
+    "Huber Loss": "huber_loss"
+};
+
+const REGRESSION_REVERSE_METRIC_MAPPING = {
+    "mae": "MAE",
+    "mse": "MSE",
+    "rmse": "RMSE",
+    "r2": "R²",
+    "mape": "MAPE",
+    "quantile_loss": "Quantile Loss",
+    "huber_loss": "Huber Loss"
+};
 
 function ModelSelection() {
     const hostnameAI = window._env_?.VITE_AI_API;
     const location = useLocation();
-    const { workflowState, datasetState, updateWorkflowStage, mode } = useAIPlayground();
+    const { workflowsState, activeWorkflowId, datasetState, updateWorkflowStage, mode } = useAIPlayground();
+    const workflowState = activeWorkflowId
+    ? workflowsState[activeWorkflowId]
+    : null;  
     const readonly = mode === 'view';
     const navigate = useNavigate();
+    const currentWorkflowId = workflowState?.workflow_id || activeWorkflowId;
     const modelGenesisConfig = workflowState?.modelGenesis?.config;
     const modelSelectionMode = readonly
         ? modelGenesisConfig?.model_mode
         : modelGenesisConfig?.modelSelection;
     const isModelSelectionAuto = modelSelectionMode &&
         ['Swift', 'Standard', 'Comprehensive'].includes(modelSelectionMode);
+
+    // Determine if this is a regression or classification problem
+    const isRegression = modelGenesisConfig?.classification === 'Regression';
+    const algorithmData = isRegression ? regressionAlgorithmsData : classificationAlgorithmsData;
+    const METRIC_NAME_MAPPING = isRegression ? REGRESSION_METRIC_NAME_MAPPING : CLASSIFICATION_METRIC_NAME_MAPPING;
+    const REVERSE_METRIC_MAPPING = isRegression ? REGRESSION_REVERSE_METRIC_MAPPING : CLASSIFICATION_REVERSE_METRIC_MAPPING;
 
     // Tracks whether user has attempted to proceed (triggers inline validation)
     const [showValidation, setShowValidation] = useState(false);
@@ -46,7 +88,7 @@ function ModelSelection() {
     const cardRefs = useRef({});
 
     useEffect(() => {
-        if (datasetState.sessionId == '') {
+        if (datasetState.ensembleId == '') {
             navigate('/ai/playground')
         }
     }, []);
@@ -54,7 +96,7 @@ function ModelSelection() {
     const categorizeAlgorithms = () => {
         const categories = {};
 
-        Object.entries(algorithmsData).forEach(([name, data]) => {
+        Object.entries(algorithmData).forEach(([name, data]) => {
             const algo = {
                 name,
                 category: data.category,
@@ -112,13 +154,29 @@ function ModelSelection() {
     const [normalizeData, setNormalizeData] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const [metrics, setMetrics] = useState([
-        { name: 'Accuracy', enabled: false },
-        { name: 'Precision', enabled: false },
-        { name: 'Recall', enabled: false },
-        { name: 'F1 Score', enabled: false },
-        { name: 'Log Loss', enabled: false }
-    ]);
+    // Initialize metrics based on problem type
+    const getInitialMetrics = () => {
+        if (isRegression) {
+            return [
+                { name: 'MAE', enabled: false },
+                { name: 'MAPE', enabled: false },
+                { name: 'RMSE', enabled: false },
+                { name: 'R²', enabled: false },
+                { name: 'Quantile Loss', enabled: false },
+                { name: 'Huber Loss', enabled: false }
+            ];
+        } else {
+            return [
+                { name: 'Accuracy', enabled: false },
+                { name: 'Precision', enabled: false },
+                { name: 'Recall', enabled: false },
+                { name: 'F1 Score', enabled: false },
+                { name: 'Log Loss', enabled: false }
+            ];
+        }
+    };
+
+    const [metrics, setMetrics] = useState(getInitialMetrics());
 
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -265,6 +323,11 @@ function ModelSelection() {
         }
     }, [searchQuery, filteredCategories, selectedTab]);
 
+    // Reset metrics when problem type changes (regression vs classification)
+    useEffect(() => {
+        setMetrics(getInitialMetrics());
+    }, [isRegression]);
+
     const updateAlgorithmState = (algoId, updates) => {
         setAllAlgorithmsState(prevState => ({
             ...prevState,
@@ -394,19 +457,27 @@ function ModelSelection() {
             "additionalProp3": { "additionalProp1": {} }
         };
 
+        const defaultScoringMetric = isRegression ? 'r2' : 'accuracy';
+        const defaultPerformanceMetrics = isRegression ? ['r2'] : ['accuracy'];
+
         const payload = {
-            session_id: datasetState?.sessionId,
+            ensemble_id: datasetState?.ensembleId,
+            workflow_id: currentWorkflowId,
             algorithms: algorithmNames,
             hyperparameter_modes: hyperparameterMode,
             param_grid: finalParamGrid,
             normalize: normalizeData,
             return_metrics: true,
-            scoring: 'accuracy',
-            performance_metrics: performanceMetrics.length > 0 ? performanceMetrics : ['accuracy'],
+            scoring: defaultScoringMetric,
+            performance_metrics: performanceMetrics.length > 0 ? performanceMetrics : defaultPerformanceMetrics,
             test_size: 0.2,
             random_state: 42,
             shuffle: true
         };
+
+        if (!payload.ensemble_id || !payload.workflow_id) {
+            throw new Error('Missing required identifiers: ensemble_id or workflow_id');
+        }
 
         return payload;
     };
@@ -488,6 +559,8 @@ function ModelSelection() {
 
             updateWorkflowStage('modelSelection', {
                 config: {
+                    ensemble_id: payload.ensemble_id,
+                    workflow_id: payload.workflow_id,
                     algorithms: payload.algorithms,
                     normalize: normalizeData,
                     performance_metrics: payload.performance_metrics,
@@ -645,14 +718,15 @@ function ModelSelection() {
                 </div>
 
                 <SidePanel
-                    normalizeData={normalizeData}
-                    setNormalizeData={setNormalizeData}
-                    metrics={metrics}
-                    setMetrics={setMetrics}
-                    readonly={readonly}
-                    hasEnabledMetrics={hasEnabledMetrics}
-                    showValidation={showValidation}
-                />
+    normalizeData={normalizeData}
+    setNormalizeData={setNormalizeData}
+    metrics={metrics}
+    setMetrics={setMetrics}
+    readonly={readonly}
+    hasEnabledMetrics={hasEnabledMetrics}
+    showValidation={showValidation}
+    metricFullFormMap={isRegression ? REGRESSION_METRIC_FULL_FORM : {}}
+/>
             </div>
         </AIPlaygroundLayout>
     );

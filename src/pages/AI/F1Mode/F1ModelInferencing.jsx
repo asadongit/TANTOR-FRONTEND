@@ -13,6 +13,7 @@ const UNIQUE_COLORS = [
 ];
 const getUniqueColor = (i) => UNIQUE_COLORS[i % UNIQUE_COLORS.length];
 
+
 const formatMetricLabel = (key) =>
     key.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
@@ -20,10 +21,25 @@ const isLogLossMetric = (key) =>
     typeof key === 'string' && key.toLowerCase().replace(' ', '_') === 'log_loss';
 
 function BestModelCard({ bestAlgorithm, bestScore, metricName }) {
-    const isLogLoss = metricName?.toLowerCase() === 'log_loss';
+    const metricKey = metricName?.toLowerCase();
+
+const lowerIsBetterMetrics = [
+  'mae',
+  'rmse',
+  'mape',
+  'log_loss',
+  'quantile_loss',
+  'huber_loss'
+];
+
+const isLowerBetter = lowerIsBetterMetrics.includes(metricKey);
+
+const isPercentageMetric = ['accuracy', 'precision', 'recall', 'f1'].includes(metricKey);
     const displayValue =
         bestScore !== null && bestScore !== undefined
-            ? isLogLoss ? bestScore.toFixed(4) : (bestScore * 100).toFixed(2) + '%'
+            ? isPercentageMetric
+    ? (bestScore * 100).toFixed(2) + '%'
+    : bestScore.toFixed(4)
             : '-';
     const displayMetric = formatMetricLabel(metricName || 'accuracy');
 
@@ -45,7 +61,7 @@ function BestModelCard({ bestAlgorithm, bestScore, metricName }) {
                 <div className="min-w-0">
                     <p className="text-sm font-semibold text-[#E08E40]">Best Model</p>
                     <p className="text-xs text-gray-500 mt-0.5">
-                        Based on {isLogLoss ? 'lowest' : 'highest'} train {displayMetric.toLowerCase()}
+                        Based on {isLowerBetter ? 'lowest' : 'highest'} train {displayMetric.toLowerCase()}
                     </p>
                 </div>
             </div>
@@ -375,6 +391,9 @@ function PerformanceTable({ allResults }) {
 
 function F1MetricsChart({ allResults }) {
     const MODELS_PER_PAGE = 10;
+    
+    const { F1Mode: F1ModeCtx } = useAIPlayground();
+    const isRegression = F1ModeCtx?.launch?.task === 'regression';
 
     const TRAIN_METRICS = useMemo(() => {
         const metricSet = new Set();
@@ -398,9 +417,10 @@ function F1MetricsChart({ allResults }) {
             allResults.forEach((result, idx) => {
                 const val = result.metrics?.train?.[metricKey];
                 if (val !== undefined && val !== null) {
-                    row[`${result.algorithm}_${idx}`] = isLogLossMetric(metricKey)
-                        ? parseFloat(val.toFixed(4))
-                        : parseFloat((val * 100).toFixed(2));
+                    row[`${result.algorithm}_${idx}`] =
+  isRegression || isLogLossMetric(metricKey)
+    ? parseFloat(val.toFixed(4))
+    : parseFloat((val * 100).toFixed(2));   
                 } else {
                     row[`${result.algorithm}_${idx}`] = null;
                 }
@@ -494,7 +514,9 @@ function F1MetricsChart({ allResults }) {
 
     const formatTooltipValue = (metricLabel, value) => {
         if (value === null || value === undefined) return '-';
-        return isLogLossMetric(metricLabel) ? String(value.toFixed(4)) : `${value}%`;
+        return (isRegression || isLogLossMetric(metricLabel))
+  ? String(value.toFixed(4))
+  : `${value}%`;
     };
 
     const PortalTooltip = () => {

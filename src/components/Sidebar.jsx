@@ -364,6 +364,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     },
     { name: 'AI Playground', icon: AIPlaygroundIcon, path: `${AI_PREFIX}/playground` },
     { name: 'F1 Mode', icon: Flag, path: `${AI_PREFIX}/f1mode` },
+    { name: 'Prescriptive Analysis', icon: Sparkles, path: `${AI_PREFIX}/prescriptive` },
     { name: 'Orchestration', icon: AccountTreeIcon, path: `${AI_PREFIX}/orchestration` },
     { name: 'Agent Mesh', icon: AgentMeshIcon, path: `${AI_PREFIX}/agent-mesh` },
     { name: 'Marketplace', icon: MarketplaceIcon, path: `${AI_PREFIX}/marketplace` },
