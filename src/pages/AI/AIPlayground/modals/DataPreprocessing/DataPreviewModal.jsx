@@ -3,7 +3,7 @@ import { X, ChevronLeft, ChevronRight, Download, Eye } from 'lucide-react';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 
 const DataPreviewModal = ({ isOpen, onClose, currentStep }) => {
-    const { datasetState } = useAIPlayground();
+    const { datasetState, activeWorkflowId } = useAIPlayground();
     const [previewData, setPreviewData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -38,8 +38,15 @@ const DataPreviewModal = ({ isOpen, onClose, currentStep }) => {
         setCurrentPage(1);
 
         try {
+            const query = new URLSearchParams({
+                ensemble_id: datasetState?.ensembleId || '',
+                workflow_id: activeWorkflowId || '',
+                prefix,
+                split: 'train'
+            }).toString();
+
             const response = await fetch(
-                `${hostnameAI}/data/view_processed_file?session_id=${datasetState.sessionId}&prefix=${prefix}&split=train`,
+                `${hostnameAI}/data/view_processed_file?${query}`,
                 {
                     method: 'GET',
                     headers: {

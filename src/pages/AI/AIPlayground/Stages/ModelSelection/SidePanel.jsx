@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
 import { tw } from '../../../../../components/themeContext';
 
-function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, readonly, hasEnabledMetrics, showValidation }) {
+function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, readonly, hasEnabledMetrics, showValidation,metricFullFormMap }) {
     const [metricsExpanded, setMetricsExpanded] = useState(true);
     const [draggedItem, setDraggedItem] = useState(null);
 
@@ -102,8 +102,25 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
                                         } bg-white transition-colors ${draggedItem === index ? 'opacity-50' : ''}`}
                                 >
                                     <span className="text-md font-medium text-[#8e78b7] w-8">P{index + 1}</span>
-                                    <GripVertical className="w-5 h-5 text-gray-400" />
-                                    <span className={`flex-1 ${tw.sectionHeading}`}>{metric.name}</span>
+                                    <GripVertical className="w-5 h-5 text-gray-400" /><div className="relative group flex-1">
+    <span className={`${tw.sectionHeading} cursor-pointer`}>
+        {metric.name}
+    </span>
+
+    {metricFullFormMap?.[metric.name] && (
+        <div className="
+            absolute right-0 top-full mt-1
+            bg-gray-800 text-white text-xs px-2 py-1 rounded
+            opacity-0 group-hover:opacity-100
+            transition duration-200
+            whitespace-nowrap
+            z-[9999]
+            pointer-events-none
+        ">
+            {metricFullFormMap[metric.name]}
+        </div>
+    )}
+</div>
                                     <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                                         <input
                                             type="checkbox"

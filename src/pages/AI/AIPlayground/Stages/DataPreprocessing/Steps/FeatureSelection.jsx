@@ -205,8 +205,13 @@ const StrategySearchableDropdown = ({
 
 function FeatureSelection({ onValidationChange, onApiCall }) {
   const hostnameAI = window._env_?.VITE_AI_API;
-  const { workflowState, updatePreprocessingStep, datasetState, mode } = useAIPlayground();
+  const { workflowsState, activeWorkflowId, updatePreprocessingStep, datasetState, mode } = useAIPlayground();
+  
   const readonly = mode === 'view';
+  const workflowState = activeWorkflowId
+    ? workflowsState[activeWorkflowId]
+    : null;
+  const currentWorkflowId = workflowState?.workflow_id || activeWorkflowId;
 
   const dropLowValueRef = useRef(null);
   const handleMissingRef = useRef(null);
@@ -434,7 +439,8 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
         col1: f.column1, col2: f.column2, new_col: f.newColumnName
       }));
       const requestBody = {
-        session_id: datasetState.sessionId,
+        ensemble_id: datasetState?.ensembleId,
+        workflow_id: currentWorkflowId,
         drop_high_uniqueness_active: toggles.dropLowValue,
         columns_to_drop_manually: columnsToDropManually,
         drop_high_null_active: toggles.handleMissing,
@@ -446,6 +452,9 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
         outlier_detection_active: toggles.detectOutliers,
         outlier_detection_method: outlierMethod
       };
+      if (!requestBody.ensemble_id || !requestBody.workflow_id) {
+        throw new Error('Missing required identifiers: ensemble_id or workflow_id');
+      }
       const response = await fetch(`${hostnameAI}/data/preprocess/feature_selection`, {
         method: 'POST',
         headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
@@ -468,7 +477,7 @@ function FeatureSelection({ onValidationChange, onApiCall }) {
 
   useEffect(() => {
     if (onApiCall) onApiCall(makeApiCall);
-  }, [toggles, selectedColumns, dropColumnsEnabled, imputationEnabled, threshold, numericalImputation, categoricalImputation, timeSeriesImputation, columnOverrides, basicFeatures, outlierMethod, datasetState.sessionId]);
+  }, [toggles, selectedColumns, dropColumnsEnabled, imputationEnabled, threshold, numericalImputation, categoricalImputation, timeSeriesImputation, columnOverrides, basicFeatures, outlierMethod, datasetState?.ensembleId, currentWorkflowId]);
 
   const toggleSection = (section) => {
     setExpandedSections({ dropLowValue: false, handleMissing: false, createBasic: false, detectOutliers: false, [section]: !expandedSections[section] });

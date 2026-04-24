@@ -6,8 +6,12 @@ import InfoButton from '../../../components/InfoButton';
 
 function StatisticalAnalysis({ onValidationChange, onApiCall }) {
     const hostnameAI = window._env_?.VITE_AI_API;
-    const { workflowState, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
+    const { workflowsState, activeWorkflowId, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
     const readonly = mode === 'view';
+    const workflowState = activeWorkflowId
+    ? workflowsState[activeWorkflowId]
+    : null;  
+    const currentWorkflowId = workflowState?.workflow_id || activeWorkflowId;
 
     const step4Response = workflowState?.dataPreprocessing?.step4?.apiResponse;
     const correlationPlot = step4Response?.correlation_plot;
@@ -122,10 +126,15 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
 
         try {
             const requestBody = {
-                session_id: datasetState.sessionId,
+                ensemble_id: datasetState?.ensembleId,
+                workflow_id: currentWorkflowId,
                 vif_column_dropper: vifDropperEnabled,
                 vif_columns_to_drop: vifDropperEnabled ? selectedFeatures : []
             };
+
+            if (!requestBody.ensemble_id || !requestBody.workflow_id) {
+                throw new Error('Missing required identifiers: ensemble_id or workflow_id');
+            }
 
             const response = await fetch(`${hostnameAI}/data/preprocess/statistical_analysis`, {
                 method: 'POST',
@@ -143,6 +152,8 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
             const data = await response.json();
             updatePreprocessingStep('step5', {
                 config: {
+                    ensemble_id: datasetState?.ensembleId,
+                    workflow_id: currentWorkflowId,
                     vif_column_dropper: vifDropperEnabled,
                     vif_columns_to_drop: vifDropperEnabled ? selectedFeatures : [],
                     toggles: toggles,
@@ -165,7 +176,7 @@ function StatisticalAnalysis({ onValidationChange, onApiCall }) {
             });
             return false;
         }
-    }, [vifDropperEnabled, selectedFeatures, toggles, expandedSections, datasetState.sessionId, hostnameAI, updatePreprocessingStep]);
+    }, [vifDropperEnabled, selectedFeatures, toggles, expandedSections, datasetState?.ensembleId, currentWorkflowId, hostnameAI, updatePreprocessingStep]);
 
     useEffect(() => {
         if (onApiCall) {

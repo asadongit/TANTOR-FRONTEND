@@ -1,186 +1,13 @@
-import { useState, useEffect, useRef } from "react";
-import { Search } from "lucide-react";
+import { useState, useEffect } from "react";
 
-const SearchableDropdown = ({
-  selectedValue,
-  onSelect,
-  options,
-  placeholder = "Select",
-  disabled = false,
-  hasError = false,
-  dropDirection = "down",
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const dropdownRef = useRef(null);
-  const searchInputRef = useRef(null);
-
-  const filteredOptions = options.filter(opt =>
-    String(opt).toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setIsOpen(false);
-        setSearchTerm('');
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    if (isOpen && searchInputRef.current) searchInputRef.current.focus();
-  }, [isOpen]);
-
-  const handleSelect = (opt) => {
-    if (!disabled) {
-      onSelect(String(opt));
-      setIsOpen(false);
-      setSearchTerm('');
-    }
-  };
-
-  return (
-    <div className="relative w-full" ref={dropdownRef}>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => !disabled && setIsOpen(o => !o)}
-        className="w-full px-3 py-2 border rounded-lg text-sm text-left flex items-center justify-between transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        style={{
-          background: hasError ? '#FFF7F8' : '#fff',
-          borderColor: hasError ? '#EF4D5F' : isOpen ? '#8D1718' : '#d1d5db',
-          boxShadow: isOpen ? '0 0 0 2px rgba(141,23,24,0.15)' : 'none',
-          outline: 'none',
-        }}
-      >
-        <span style={{ color: selectedValue ? '#111827' : hasError ? '#EF4D5F' : '#9ca3af' }}>
-          {selectedValue || placeholder}
-        </span>
-        <svg
-          className="w-4 h-4 flex-shrink-0 transition-transform duration-200"
-          style={{ color: '#9ca3af', transform: isOpen ? 'rotate(180deg)' : 'none' }}
-          fill="none" stroke="currentColor" viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-
-      {isOpen && !disabled && (
-        <div
-          className="absolute z-50 w-full bg-white rounded-lg shadow-lg overflow-hidden"
-          style={{
-            border: '1px solid rgba(141,23,24,0.25)',
-            boxShadow: '0 8px 24px rgba(141,23,24,0.12)',
-            ...(dropDirection === 'up' ? { bottom: '100%', marginBottom: 4 } : { top: '100%', marginTop: 4 }),
-          }}
-        >
-          <div className="p-2" style={{ borderBottom: '1px solid #fde8e8' }}>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: '#8D1718' }} />
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                placeholder="Search..."
-                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md border"
-                style={{
-                  background: '#fdf2f2',
-                  borderColor: '#f0c0c0',
-                  outline: 'none',
-                  color: '#5a0e0e',
-                }}
-              />
-            </div>
-          </div>
-          <div className="overflow-y-auto" style={{ maxHeight: 180 }}>
-            {filteredOptions.length > 0 ? (
-              filteredOptions.map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => handleSelect(opt)}
-                  className="w-full px-3 py-2 text-sm text-left transition-colors"
-                  style={{
-                    background: selectedValue === String(opt) ? 'rgba(141,23,24,0.08)' : 'transparent',
-                    color: selectedValue === String(opt) ? '#8D1718' : '#374151',
-                    fontWeight: selectedValue === String(opt) ? 600 : 400,
-                  }}
-                  onMouseEnter={e => { if (selectedValue !== String(opt)) e.currentTarget.style.background = '#fdf2f2'; }}
-                  onMouseLeave={e => { if (selectedValue !== String(opt)) e.currentTarget.style.background = 'transparent'; }}
-                >
-                  Class {opt}
-                </button>
-              ))
-            ) : (
-              <div className="px-3 py-2 text-xs text-gray-400 text-center">No results found</div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ── Field Tooltip ─────────────────────────────────────────────────────────────
-const FieldTooltip = ({ lines, position = "right" }) => {
-  const [visible, setVisible] = useState(false);
-
-  const bubbleStyle = position === "left"
-    ? { right: 0, top: '1.5rem' }
-    : { left: 0, top: '1.5rem' };
-
-  const arrowStyle = position === "left"
-    ? { right: '0.375rem', top: '-0.375rem' }
-    : { left: '0.75rem', top: '-0.375rem' };
-
-  return (
-    <div className="relative inline-flex items-center">
-      <button
-        type="button"
-        className="ml-1.5 flex-shrink-0 focus:outline-none"
-        onMouseEnter={() => setVisible(true)}
-        onMouseLeave={() => setVisible(false)}
-        tabIndex={-1}
-      >
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="10" stroke="#9CA3AF" strokeWidth="2" />
-          <path d="M12 8v4M12 16h.01" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" />
-        </svg>
-      </button>
-
-      {visible && (
-        <div
-          className="absolute w-72 text-white text-xs p-3 rounded-lg shadow-xl z-[9999] space-y-1.5"
-          style={{
-            ...bubbleStyle,
-            background: '#1f0a0a',
-            border: '1px solid rgba(141,23,24,0.4)',
-            pointerEvents: 'none',
-          }}
-        >
-          {lines.map((line, i) =>
-            line.bold
-              ? <p key={i}><strong style={{ color: '#f87171' }}>{line.bold}</strong>{line.rest}</p>
-              : <p key={i}>{line}</p>
-          )}
-          <div
-            className="absolute w-3 h-3 rotate-45 rounded-sm"
-            style={{ ...arrowStyle, background: '#1f0a0a', border: '1px solid rgba(141,23,24,0.4)' }}
-          />
-        </div>
-      )}
-    </div>
-  );
-};
-function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGenerating = false }) {
+function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGenerating = false ,isRegression}) {
+  const hostnameAI = window._env_?.VITE_AI_API;
   const [showInfoTooltip, setShowInfoTooltip] = useState(false);
   const [configData, setConfigData] = useState({
-    pdpTargetClass: '',
-    cfDesiredClass: '',
+  pdpTargetClass: '',
+  cfDesiredClass: '',
+  pdpTargetValue: '',
+  cfDesiredValue: '',
     cfInstanceIndex: 0,
     limeInstanceIndex: 0,
     pdpFeatures: [],
@@ -192,15 +19,22 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
 
   useEffect(() => {
     if (isOpen) {
-      setConfigData({
+      setConfigData(prev => ({
+        ...prev,
         pdpTargetClass: '',
         cfDesiredClass: '',
+        pdpTargetValue: '',
+        cfDesiredValue: '',
+        // Only reset the relevant fields for the selected mode
+        ...(isRegression
+          ? { pdpTargetClass: '', cfDesiredClass: '' }
+          : { pdpTargetValue: '', cfDesiredValue: '' }),
         cfInstanceIndex: 0,
         limeInstanceIndex: 0,
         pdpFeatures: [],
-      });
+      }));
     }
-  }, [isOpen]);
+  }, [isOpen, isRegression]);
 
   const toggleFeature = (feature) => {
     if (isGenerating) return;
@@ -237,33 +71,13 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
 
   const isSubmitDisabled =
     isGenerating ||
-    !configData.pdpTargetClass ||
-    !configData.cfDesiredClass ||
+    (isRegression
+      ? configData.pdpTargetValue === '' || isNaN(Number(configData.pdpTargetValue)) || configData.cfDesiredValue === '' || isNaN(Number(configData.cfDesiredValue))
+      : !configData.pdpTargetClass || !configData.cfDesiredClass
+    ) ||
     !cfIndexValid ||
     !limeIndexValid;
-
-  const pdpTargetTooltip = [
-    { bold: "Partial Dependence Plot (PDP): ", rest: "Shows the average effect of a feature on a model's prediction by marginalizing over other features. Helps understand global feature influence across the dataset." },
-  ];
-
-  const pdpFeaturesTooltip = [
-    { bold: "PDP Features: ", rest: "A graphical visualization of the partial dependence function. Displays how predicted outcomes change as one feature varies." }
-  ];
-
-  const cfDesiredTooltip = [
-    { bold: "Counterfactual Explanation: ", rest: "An explanation that shows the minimal changes needed in input features to alter a model's prediction. Answers the question: “What needs to change to get a different outcome?”" },
-    { bold: "Desired Class: ", rest: "The target outcome you want the model to predict instead." }
-  ];
-
-  const cfInstanceTooltip = [
-    { bold: "Counterfactual Explanation: ", rest: "An explanation that shows the minimal changes needed in input features to alter a model's prediction. Answers the question: “What needs to change to get a different outcome?”" },
-    { bold: "Instance index: ", rest: "The specific data point (row) for which the counterfactual explanation is generated." }
-  ];
-
-  const limeInstanceTooltip = [
-    { bold: "LIME (Local Interpretable Model-agnostic Explanations): ", rest: "A technique that explains individual predictions by approximating the model locally with a simple interpretable model. It highlights which features contributed most to a specific prediction." }
-  ];
-
+   
   if (!isOpen) return null;
 
   return (
@@ -321,36 +135,87 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
         {/* ── Body ── */}
         <div className="p-6 flex flex-col gap-5">
 
-          {/* PDP Target Class + CF Desired Class */}
+          {/* PDP/CF fields: regression = value, else class */}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="flex items-center text-sm font-medium text-gray-900 mb-1.5">
-                PDP Target Class <span className="text-red-500 ml-0.5">*</span>
-                <FieldTooltip lines={pdpTargetTooltip} position="right" />
-              </label>
-              <SearchableDropdown
-                selectedValue={configData.pdpTargetClass}
-                onSelect={(val) => setConfigData({ ...configData, pdpTargetClass: val })}
-                options={targetClasses}
-                placeholder="Select class"
-                disabled={isGenerating}
-                dropDirection="down"
-              />
-            </div>
-            <div>
-              <label className="flex items-center text-sm font-medium text-gray-900 mb-1.5">
-                CF Desired Class <span className="text-red-500 ml-0.5">*</span>
-                <FieldTooltip lines={cfDesiredTooltip} position="left" />
-              </label>
-              <SearchableDropdown
-                selectedValue={configData.cfDesiredClass}
-                onSelect={(val) => setConfigData({ ...configData, cfDesiredClass: val })}
-                options={targetClasses}
-                placeholder="Select class"
-                disabled={isGenerating}
-                dropDirection="down"
-              />
-            </div>
+            {isRegression ? (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-1.5">
+                    PDP Target Value <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={configData.pdpTargetValue}
+                    onChange={e =>
+                      !isGenerating &&
+                      setConfigData({ ...configData, pdpTargetValue: e.target.value, pdpTargetClass: '' })
+                    }
+                    disabled={isGenerating}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-1.5">
+                    CF Desired Value <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={configData.cfDesiredValue}
+                    onChange={e =>
+                      !isGenerating &&
+                      setConfigData({ ...configData, cfDesiredValue: e.target.value, cfDesiredClass: '' })
+                    }
+                    disabled={isGenerating}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-1.5">
+                    PDP Target Class <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={configData.pdpTargetClass}
+                    onChange={e =>
+                      !isGenerating &&
+                      setConfigData({ ...configData, pdpTargetClass: e.target.value, pdpTargetValue: '' })
+                    }
+                    disabled={isGenerating}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                  >
+                    <option value="">Select class</option>
+                    {targetClasses.map(cls => (
+                      <option key={cls} value={cls.toString()}>
+                        Class {cls}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-1.5">
+                    CF Desired Class <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={configData.cfDesiredClass}
+                    onChange={e =>
+                      !isGenerating &&
+                      setConfigData({ ...configData, cfDesiredClass: e.target.value, cfDesiredValue: '' })
+                    }
+                    disabled={isGenerating}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                  >
+                    <option value="">Select class</option>
+                    {targetClasses.map(cls => (
+                      <option key={cls} value={cls.toString()}>
+                        Class {cls}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
           </div>
 
           {/* CF Instance Index + LIME Instance Index */}

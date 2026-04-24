@@ -528,7 +528,7 @@ const ModeSelection = ({ config, setConfig, readonly }) => {
   );
 };
 
-const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, columnNames, hasError, errorMessage, sectionRef }) => {
+const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, columnNames, hasError, errorMessage, sectionRef, activeWorkflowId }) => {
   const hostnameAI = window._env_?.VITE_AI_API;
   const { datasetState } = useAIPlayground();
   const [isValidating, setIsValidating] = useState(false);
@@ -552,14 +552,21 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
       };
 
       const modellingType = modellingTypeMap[config.classification];
-      const sessionId = datasetState.sessionId;
+      const ensembleId = datasetState.ensembleId;
       const targetColumn = config.targetFeature;
 
-      const apiUrl = `${hostnameAI}/data/validate-targetcolumn-modellingtype?session_id=${sessionId}&target_column=${encodeURIComponent(targetColumn)}&modelling_type=${modellingType}`;
-
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: { 'accept': 'application/json' }
+      const response = await fetch(`${hostnameAI}/data/validate-target-column`, {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ensemble_id: ensembleId,
+          workflow_id: activeWorkflowId,
+          target_column: targetColumn,
+          modelling_type: modellingType
+        })
       });
 
       if (response.ok) {
@@ -1125,13 +1132,13 @@ function ModelGenesis() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { datasetState, updateWorkflowStage, workflowState, mode } = useAIPlayground();
+  const { datasetState, updateWorkflowStage, workflowState, mode, activeWorkflowId } = useAIPlayground();
   const [validationErrors, setValidationErrors] = useState({});
   const predictionTypeRef = useRef(null);
   const dropColumnsRef = useRef(null);
 
   useEffect(() => {
-    if (datasetState.sessionId == '') {
+    if (datasetState.ensembleId == '') {
       navigate('/ai/playground')
     }
   }, []);
@@ -1220,16 +1227,21 @@ function ModelGenesis() {
     try {
 
       const modellingType = modellingTypeMap[config.classification];
-      const sessionId = datasetState.sessionId;
+      const ensembleId = datasetState.ensembleId;
       const targetColumn = config.targetFeature;
 
-      const apiUrl = `${hostnameAI}/data/validate-targetcolumn-modellingtype?session_id=${sessionId}&target_column=${encodeURIComponent(targetColumn)}&modelling_type=${modellingType}`;
-
-      const response = await fetch(apiUrl, {
-        method: 'GET',
+      const response = await fetch(`${hostnameAI}/api/v1/data/validate-target-column`, {
+        method: 'POST',
         headers: {
-          'accept': 'application/json'
-        }
+          'accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ensemble_id: ensembleId,
+          workflow_id: activeWorkflowId,
+          target_column: targetColumn,
+          modelling_type: modellingType
+        })
       });
 
       if (response.ok) {
@@ -1314,17 +1326,18 @@ function ModelGenesis() {
       }
 
       const payload = {
-        session_id: datasetState.sessionId,
+        ensemble_id: datasetState.ensembleId,
+        workflow_id: activeWorkflowId,
         test_size: testSize,
         train_size: trainSize,
         random_state: 42,
+        target_column: config.targetFeature,
+        modelling_type: modellingTypeMap[config.classification],
         fairness_columns: config.fairness_columns,
-        drop_columns_active: config.drop_columns_active || false,
-        drop_columns: config.drop_columns || [],
         data_preprocessing_mode: config.dataPreprocessing,
         model_mode: config.modelSelection,
-        target_column: config.targetFeature,
-        modelling_type: modellingTypeMap[config.classification]
+        drop_columns_active: config.drop_columns_active || false,
+        drop_columns: config.drop_columns || []
       };
 
       const response = await fetch(`${hostnameAI}/data/genesis`, {
@@ -1347,6 +1360,16 @@ function ModelGenesis() {
           },
           apiResponse: data
         });
+        
+        // Store job_id in completedJobs if it exists in the response
+        if (data.job_id) {
+          updateWorkflowStage('completedJobs', {
+            config: {
+              job_id: data.job_id
+            }
+          });
+        }
+        
         toast.success('Model genesis completed successfully!', {
           duration: 3000,
           position: 'top-right',
@@ -1378,7 +1401,21 @@ function ModelGenesis() {
       onNextClick={handleNextClick}
     >
       <div className="space-y-6">
-        <ModeSelection config={config} setConfig={setConfig} readonly={readonly} />
+        <ModeSelection
+          config={config}
+          setConfig={(newConfig) => {
+            setConfig(newConfig);
+            updateWorkflowStage('modelGenesis', {
+              config: {
+                dataPreprocessing: newConfig.dataPreprocessing,
+                modelSelection: newConfig.modelSelection,
+                data_preprocessing_mode: newConfig.dataPreprocessing,
+                model_mode: newConfig.modelSelection,
+              }
+            });
+          }}
+          readonly={readonly}
+        />
 
         <DropColumns
           config={config}
@@ -1411,6 +1448,7 @@ function ModelGenesis() {
           columnNames={datasetState.columnNames}
           hasError={!!validationErrors.predictionType}
           errorMessage={validationErrors.predictionType}
+          activeWorkflowId={activeWorkflowId}
         />
 
         <SplitSetting config={config} setConfig={setConfig} readonly={readonly} />

@@ -1,0 +1,406 @@
+{
+  "Linear Regression": {
+    "category": "Linear",
+    "backend_key": "LinearRegression",
+    "info": "Predicts a continuous target by fitting a linear equation to observed data, assuming a straight-line relationship between features and the outcome.",
+    "hyperparameters": {
+      "fit_intercept": "true, false",
+      "copy_X": "true, false",
+      "positive": "true, false"
+    }
+  },
+  "Ridge Regression": {
+    "category": "Linear",
+    "backend_key": "RidgeRegression",
+    "info": "A linear model that uses L2 regularization to prevent overfitting by penalizing the magnitude of coefficients.",
+    "hyperparameters": {
+      "alpha": { "low": "0.0001", "high": "100" },
+      "solver": "auto, svd, cholesky, lsqr, sparse_cg, sag, saga",
+      "max_iter": { "low": "100", "high": "5000" },
+      "tol": { "low": "1e-6", "high": "1e-2" }
+    }
+  },
+  "Lasso Regression": {
+    "category": "Linear",
+    "backend_key": "LassoRegression",
+    "info": "Uses L1 regularization to penalize coefficients, which can shrink some to zero, effectively performing feature selection.",
+    "hyperparameters": {
+      "alpha": { "low": "0.0001", "high": "10" },
+      "selection": "cyclic, random",
+      "max_iter": { "low": "500", "high": "5000" },
+      "tol": { "low": "1e-6", "high": "1e-2" }
+    }
+  },
+  "Elastic Net Regression": {
+    "category": "Linear",
+    "backend_key": "ElasticNet",
+    "info": "Combines L1 and L2 regularization, making it effective when there are multiple correlated features.",
+    "hyperparameters": {
+      "alpha": { "low": "0.0001", "high": "10" },
+      "l1_ratio": { "low": "0.0", "high": "1.0" },
+      "max_iter": { "low": "500", "high": "5000" }
+    }
+  },
+  "Polynomial Regression": {
+    "category": "Linear",
+    "backend_key": "PolynomialRegression",
+    "info": "Extends linear models by generating non-linear features through polynomial combinations of existing variables.",
+    "hyperparameters": {
+      "degree": { "low": "2", "high": "5" },
+      "interaction_only": "true, false",
+      "include_bias": "true, false"
+    }
+  },
+  "OMP Regression": {
+    "category": "Linear",
+    "backend_key": "OMP",
+    "info": "A greedy algorithm that finds a sparse solution by iteratively selecting the feature most correlated with the residual.",
+    "hyperparameters": {
+      "n_nonzero_coefs": { "low": "1", "high": "100", "special": ["None"] },
+      "tol": { "low": "1e-6", "high": "1e-2", "special": ["None"] },
+      "fit_intercept": "true, false"
+    }
+  },
+  "LARS Regression": {
+    "category": "Linear",
+    "backend_key": "LARS",
+    "info": "Least Angle Regression is an efficient algorithm for high-dimensional data, providing the entire path of coefficients.",
+    "hyperparameters": {
+      "n_nonzero_coefs": { "low": "1", "high": "500", "special": ["None"] },
+      "eps": { "low": "1e-16", "high": "1e-4" },
+      "fit_intercept": "true, false"
+    }
+  },
+  "Lasso LARS Regression": {
+    "category": "Linear",
+    "backend_key": "LARSLasso",
+    "info": "A Lasso model implemented using the LARS algorithm, useful for high-dimensional datasets.",
+    "hyperparameters": {
+      "alpha": { "low": "0.0001", "high": "10" },
+      "max_iter": { "low": "100", "high": "1000" },
+      "fit_intercept": "true, false"
+    }
+  },
+  "Bayesian Ridge Regression": {
+    "category": "Probabilistic",
+    "backend_key": "BayesianRidge",
+    "info": "Estimates a probabilistic model of regression, incorporating regularization directly into the estimation.",
+    "hyperparameters": {
+      "alpha_1": { "low": "1e-8", "high": "1e-4" },
+      "lambda_1": { "low": "1e-8", "high": "1e-4" },
+      "n_iter": { "low": "100", "high": "1000" }
+    }
+  },
+  "ARD Regression": {
+    "category": "Probabilistic",
+    "backend_key": "ARDRegression",
+    "info": "Automatic Relevance Determination regression, which leads to sparse weights by using a Bayesian approach.",
+    "hyperparameters": {
+      "alpha_1": { "low": "1e-8", "high": "1e-4" },
+      "threshold_lambda": { "low": "1e3", "high": "1e6" },
+      "n_iter": { "low": "100", "high": "1000" }
+    }
+  },
+  "Huber Regression": {
+    "category": "Linear",
+    "backend_key": "HuberRegressor",
+    "info": "Linear regression model that is robust to outliers by using the Huber loss function.",
+    "hyperparameters": {
+      "epsilon": { "low": "1.1", "high": "2.0" },
+      "alpha": { "low": "0.0001", "high": "0.1" },
+      "max_iter": { "low": "100", "high": "1000" }
+    }
+  },
+  "RANSAC Regression": {
+    "category": "Linear",
+    "backend_key": "RANSACRegressor",
+    "info": "Robust regression algorithm that iteratively fits a model to a subset of data points identified as inliers.",
+    "hyperparameters": {
+      "min_samples": { "low": "0.1", "high": "0.9", "special": ["None"] },
+      "max_trials": { "low": "50", "high": "1000" },
+      "residual_threshold": { "low": "1.0", "high": "10.0", "special": ["None"] }
+    }
+  },
+  "Theil Sen Regression": {
+    "category": "Linear",
+    "backend_key": "TheilSenRegressor",
+    "info": "Robust estimator for linear regression that uses generalization of the median to handle outliers.",
+    "hyperparameters": {
+      "max_subpopulation": { "low": "1000", "high": "100000" },
+      "n_subsamples": { "low": "10", "high": "500", "special": ["None"] },
+      "max_iter": { "low": "100", "high": "1000" }
+    }
+  },
+  "Quantile Regression": {
+    "category": "Linear",
+    "backend_key": "QuantileRegressor",
+    "info": "Predicts conditional quantiles of the target variable instead of the mean, useful for modeling specific percentiles.",
+    "hyperparameters": {
+      "quantile": { "low": "0.1", "high": "0.9" },
+      "alpha": { "low": "0.0", "high": "10.0" },
+      "solver": "highs, highs-ds, highs-ipm"
+    }
+  },
+  "Passive Aggressive Regression": {
+    "category": "Linear",
+    "backend_key": "PassiveAggressiveRegressor",
+    "info": "Online learning algorithm that remains passive when error is small but updates aggressively for large errors.",
+    "hyperparameters": {
+      "C": { "low": "0.001", "high": "10.0" },
+      "epsilon": { "low": "0.01", "high": "0.5" },
+      "loss": "epsilon_insensitive, squared_epsilon_insensitive"
+    }
+  },
+  "SGD Regression": {
+    "category": "Linear",
+    "backend_key": "SGDRegressor",
+    "info": "Linear model fitted by minimizing a regularized empirical loss with stochastic gradient descent.",
+    "hyperparameters": {
+      "loss": "squared_error, huber, epsilon_insensitive",
+      "penalty": "l1, l2, elasticnet",
+      "alpha": { "low": "1e-6", "high": "1e-1" },
+      "learning_rate": "constant, optimal, invscaling, adaptive"
+    }
+  },
+  "Kernel Ridge Regression": {
+    "category": "Kernel",
+    "backend_key": "KernelRidgeRegressor",
+    "info": "Combines Ridge regression with the kernel trick to model non-linear relationships.",
+    "hyperparameters": {
+      "alpha": { "low": "0.01", "high": "10.0" },
+      "kernel": "linear, rbf, poly, sigmoid",
+      "gamma": { "low": "0.001", "high": "1.0", "special": ["None"] }
+    }
+  },
+  "SVR Regression": {
+    "category": "Kernel",
+    "backend_key": "SVR",
+    "info": "Support Vector Regression finds a hyperplane in a high-dimensional space that fits the data within a specified margin.",
+    "hyperparameters": {
+      "C": { "low": "0.01", "high": "100" },
+      "kernel": "linear, poly, rbf, sigmoid",
+      "epsilon": { "low": "0.01", "high": "0.5" },
+      "gamma": "scale, auto"
+    }
+  },
+  "Nu SVR Regression": {
+    "category": "Kernel",
+    "backend_key": "NuSVR",
+    "info": "Variation of SVR that uses a parameter 'nu' to control the number of support vectors and training error.",
+    "hyperparameters": {
+      "nu": { "low": "0.1", "high": "0.9" },
+      "C": { "low": "0.1", "high": "100" },
+      "kernel": "linear, poly, rbf, sigmoid"
+    }
+  },
+  "Decision Tree Regression": {
+    "category": "Tree-based",
+    "backend_key": "DecisionTreeRegressor",
+    "info": "Non-linear model that maps observations to target values by branching through feature rules.",
+    "hyperparameters": {
+      "criterion": "squared_error, friedman_mse, absolute_error",
+      "max_depth": { "low": "3", "high": "50", "special": ["None"] },
+      "min_samples_split": { "low": "2", "high": "20" }
+    }
+  },
+  "Extra Tree Regression": {
+    "category": "Tree-based",
+    "backend_key": "ExtraTreeRegressor",
+    "info": "A decision tree regressor where split thresholds are chosen randomly for each feature.",
+    "hyperparameters": {
+      "criterion": "squared_error, absolute_error",
+      "max_depth": { "low": "3", "high": "50", "special": ["None"] },
+      "max_features": "sqrt, log2, auto"
+    }
+  },
+  "Random Forest Regression": {
+    "category": "Tree-based",
+    "backend_key": "RandomForestRegressor",
+    "info": "Ensemble of decision trees that improves predictive accuracy by averaging multiple results.",
+    "hyperparameters": {
+      "n_estimators": { "low": "50", "high": "1000" },
+      "max_depth": { "low": "3", "high": "50", "special": ["None"] },
+      "bootstrap": "true, false"
+    }
+  },
+  "Extra Trees Regression": {
+    "category": "Tree-based",
+    "backend_key": "ExtraTreesRegressor",
+    "info": "Ensemble of randomized trees that reduces variance by averaging predictions from multiple trees with random splits.",
+    "hyperparameters": {
+      "n_estimators": { "low": "50", "high": "1000" },
+      "max_depth": { "low": "3", "high": "50", "special": ["None"] },
+      "min_samples_split": { "low": "2", "high": "10" }
+    }
+  },
+  "Gradient Boosting Regression": {
+    "category": "Tree-based",
+    "backend_key": "GradientBoostingRegressor",
+    "info": "Sequentially builds trees where each new tree corrects the residual errors of the previous ones.",
+    "hyperparameters": {
+      "n_estimators": { "low": "50", "high": "500" },
+      "learning_rate": { "low": "0.01", "high": "0.3" },
+      "max_depth": { "low": "3", "high": "10" },
+      "loss": "squared_error, absolute_error, huber, quantile"
+    }
+  },
+  "Hist Gradient Boosting Regression": {
+    "category": "Tree-based",
+    "backend_key": "HistGradientBoostingRegressor",
+    "info": "Optimized version of gradient boosting that bins input samples into histograms to speed up training.",
+    "hyperparameters": {
+      "max_iter": { "low": "50", "high": "500" },
+      "learning_rate": { "low": "0.01", "high": "0.3" },
+      "max_depth": { "low": "3", "high": "30", "special": ["None"] },
+      "l2_regularization": { "low": "0.0", "high": "10.0" }
+    }
+  },
+  "XGBoost Regression": {
+    "category": "Tree-based",
+    "backend_key": "XGBRegressor",
+    "info": "Optimized distributed gradient boosting library designed to be highly efficient and flexible.",
+    "hyperparameters": {
+      "n_estimators": { "low": "50", "high": "1000" },
+      "max_depth": { "low": "3", "high": "15" },
+      "learning_rate": { "low": "0.01", "high": "0.3" },
+      "gamma": { "low": "0", "high": "5" }
+    }
+  },
+  "LightGBM Regression": {
+    "category": "Tree-based",
+    "backend_key": "LightGBMRegressor",
+    "info": "Fast, distributed gradient boosting framework that uses tree-based learning algorithms with leaf-wise growth.",
+    "hyperparameters": {
+      "n_estimators": { "low": "50", "high": "1000" },
+      "num_leaves": { "low": "15", "high": "100" },
+      "learning_rate": { "low": "0.01", "high": "0.3" },
+      "boosting_type": "gbdt, dart, goss"
+    }
+  },
+  "CatBoost Regression": {
+    "category": "Tree-based",
+    "backend_key": "CatBoostRegressor",
+    "info": "Gradient boosting on decision trees with native support for categorical features.",
+    "hyperparameters": {
+      "iterations": { "low": "100", "high": "1000" },
+      "depth": { "low": "4", "high": "10" },
+      "learning_rate": { "low": "0.01", "high": "0.3" },
+      "l2_leaf_reg": { "low": "1", "high": "10" }
+    }
+  },
+  "AdaBoost Regression": {
+    "category": "Tree-based",
+    "backend_key": "AdaBoostRegressor",
+    "info": "Combines multiple weak learners to create a strong ensemble by adjusting weights of samples.",
+    "hyperparameters": {
+      "n_estimators": { "low": "50", "high": "300" },
+      "learning_rate": { "low": "0.01", "high": "2.0" },
+      "loss": "linear, square, exponential"
+    }
+  },
+  "Bagging Regression": {
+    "category": "Tree-based",
+    "backend_key": "BaggingRegressor",
+    "info": "Fits base regressors on random subsets of the original dataset and aggregates their individual predictions.",
+    "hyperparameters": {
+      "n_estimators": { "low": "10", "high": "200" },
+      "max_samples": { "low": "0.3", "high": "1.0" },
+      "max_features": { "low": "0.3", "high": "1.0" }
+    }
+  },
+  "Voting Regression": {
+    "category": "Ensemble",
+    "backend_key": "VotingRegressor",
+    "info": "Ensemble method that trains several different regressors and averages their individual predictions.",
+    "hyperparameters": {
+      "weights": "None, custom_list"
+    }
+  },
+  "Stacking Regression": {
+    "category": "Ensemble",
+    "backend_key": "StackingRegressor",
+    "info": "Stack of estimators with a final meta-regressor that combines individual predictions.",
+    "hyperparameters": {
+      "cv": { "low": "3", "high": "10" },
+      "passthrough": "true, false"
+    }
+  },
+  "KNN Regression": {
+    "category": "Distance-based",
+    "backend_key": "KNeighborsRegressor",
+    "info": "Predicts target values based on the average value of the nearest data points in the feature space.",
+    "hyperparameters": {
+      "n_neighbors": { "low": "2", "high": "30" },
+      "weights": "uniform, distance",
+      "metric": "minkowski, euclidean, manhattan"
+    }
+  },
+  "Radius Neighbors Regression": {
+    "category": "Distance-based",
+    "backend_key": "RadiusNeighborsRegressor",
+    "info": "Predicts labels based on neighbors within a fixed radius of the query point.",
+    "hyperparameters": {
+      "radius": { "low": "0.5", "high": "10.0" },
+      "weights": "uniform, distance",
+      "p": { "low": "1", "high": "2" }
+    }
+  },
+  "Gaussian Process Regression": {
+    "category": "Probabilistic",
+    "backend_key": "GaussianProcessRegressor",
+    "info": "Generic supervised learning method designed to solve regression problems using Gaussian process priors.",
+    "hyperparameters": {
+      "alpha": { "low": "1e-10", "high": "1e-2" },
+      "n_restarts_optimizer": { "low": "0", "high": "10" },
+      "normalize_y": "true, false"
+    }
+  },
+  "MLP Regression": {
+    "category": "Neural Network",
+    "backend_key": "MLPRegressor",
+    "info": "Multi-layer Perceptron regressor that optimizes the squared loss using stochastic gradient descent.",
+    "hyperparameters": {
+      "hidden_layer_sizes": "50, 100, (100, 50)",
+      "activation": "relu, tanh, logistic",
+      "solver": "adam, sgd, lbfgs",
+      "alpha": { "low": "0.0001", "high": "0.01" }
+    }
+  },
+  "Tweedie Regression": {
+    "category": "Linear",
+    "backend_key": "TweedieRegressor",
+    "info": "Generalized Linear Model with a Tweedie distribution, allowing for modeling of power-law distributions.",
+    "hyperparameters": {
+      "power": { "low": "0", "high": "3" },
+      "alpha": { "low": "0.0", "high": "1.0" },
+      "link": "auto, log, identity"
+    }
+  },
+  "Poisson Regression": {
+    "category": "Linear",
+    "backend_key": "PoissonRegressor",
+    "info": "Generalized Linear Model with a Poisson distribution, often used for count data.",
+    "hyperparameters": {
+      "alpha": { "low": "0.0", "high": "10.0" },
+      "max_iter": { "low": "100", "high": "500" }
+    }
+  },
+  "Gamma Regression": {
+    "category": "Linear",
+    "backend_key": "GammaRegressor",
+    "info": "Generalized Linear Model with a Gamma distribution, suitable for continuous, positive-valued target data.",
+    "hyperparameters": {
+      "alpha": { "low": "0.0", "high": "10.0" },
+      "max_iter": { "low": "100", "high": "1000" }
+    }
+  },
+  "Isotonic Regression": {
+    "category": "Linear",
+    "backend_key": "IsotonicRegression",
+    "info": "Fits a non-decreasing free-form line to data, useful when the relationship is monotonic but not linear.",
+    "hyperparameters": {
+      "increasing": "true, false, auto",
+      "out_of_bounds": "clip, nan, raise"
+    }
+  }
+}

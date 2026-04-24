@@ -345,6 +345,8 @@ const Orchestration = () => {
         setSchedulerState({
             owner_id: '',
             project: '',
+            is_ensemble: false,
+            ensemble_name: '',
             model: '',
             model_id: '',
             project_id: '',
@@ -419,6 +421,8 @@ const Orchestration = () => {
             setSchedulerState({
                 owner_id: data.owner_id || '',
                 project: data.project || '',
+                is_ensemble: data.is_ensemble || false,
+                ensemble_name: data.ensemble_name || '',
                 model: data.model || '',
                 model_id: data.model_id || '',
                 project_id: data.project_id || '',
