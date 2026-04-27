@@ -58,6 +58,13 @@ const REGRESSION_REVERSE_METRIC_MAPPING = {
     "huber_loss": "Huber Loss"
 };
 
+const toMetricBackendKey = (metric) => {
+    const normalized = String(metric || '').trim().toLowerCase();
+    if (normalized.startsWith('train_')) return normalized.slice(6);
+    if (normalized.startsWith('test_')) return normalized.slice(5);
+    return normalized;
+};
+
 function ModelSelection() {
     const hostnameAI = window._env_?.VITE_AI_API;
     const location = useLocation();
@@ -69,14 +76,14 @@ function ModelSelection() {
     const navigate = useNavigate();
     const currentWorkflowId = workflowState?.workflow_id || activeWorkflowId;
     const modelGenesisConfig = workflowState?.modelGenesis?.config;
-    const modelSelectionMode = readonly
-        ? modelGenesisConfig?.model_mode
-        : modelGenesisConfig?.modelSelection;
+    const modelSelectionMode = modelGenesisConfig?.model_mode || modelGenesisConfig?.modelSelection;
     const isModelSelectionAuto = modelSelectionMode &&
         ['Swift', 'Standard', 'Comprehensive'].includes(modelSelectionMode);
 
-    // Determine if this is a regression or classification problem
-    const isRegression = modelGenesisConfig?.classification === 'Regression';
+    // Determine if this is a regression or classification problem.
+    // In view mode, saved config typically stores `modelling_type`.
+    const classificationType = modelGenesisConfig?.modelling_type || modelGenesisConfig?.classification;
+    const isRegression = String(classificationType || '').trim().toLowerCase() === 'regression';
     const algorithmData = isRegression ? regressionAlgorithmsData : classificationAlgorithmsData;
     const METRIC_NAME_MAPPING = isRegression ? REGRESSION_METRIC_NAME_MAPPING : CLASSIFICATION_METRIC_NAME_MAPPING;
     const REVERSE_METRIC_MAPPING = isRegression ? REGRESSION_REVERSE_METRIC_MAPPING : CLASSIFICATION_REVERSE_METRIC_MAPPING;
@@ -122,10 +129,7 @@ function ModelSelection() {
         return categories;
     };
 
-    const allCategories = Object.keys(categorizeAlgorithms());
-    const [selectedTab, setSelectedTab] = useState(allCategories[0] || 'Linear');
-
-    const [allAlgorithmsState, setAllAlgorithmsState] = useState(() => {
+    const buildAllAlgorithmsState = () => {
         const categorized = categorizeAlgorithms();
         const allAlgos = {};
 
@@ -141,7 +145,12 @@ function ModelSelection() {
         });
 
         return allAlgos;
-    });
+    };
+
+    const allCategories = Object.keys(categorizeAlgorithms());
+    const [selectedTab, setSelectedTab] = useState(allCategories[0] || 'Linear');
+
+    const [allAlgorithmsState, setAllAlgorithmsState] = useState(() => buildAllAlgorithmsState());
 
     const algorithms = Object.values(allAlgorithmsState).filter(algo => {
         const matchesCategory = algo.category === selectedTab;
@@ -202,6 +211,14 @@ function ModelSelection() {
     });
 
     useEffect(() => {
+        const rebuiltState = buildAllAlgorithmsState();
+        setAllAlgorithmsState(rebuiltState);
+
+        const categories = Object.keys(categorizeAlgorithms());
+        setSelectedTab(prevTab => (categories.includes(prevTab) ? prevTab : (categories[0] || 'Linear')));
+    }, [isRegression]);
+
+    useEffect(() => {
         const savedConfig = workflowState?.modelSelection?.config;
 
         if (!savedConfig) return;
@@ -211,26 +228,40 @@ function ModelSelection() {
         }
 
         if (savedConfig.performance_metrics && Array.isArray(savedConfig.performance_metrics)) {
-            const backendToDisplay = savedConfig.performance_metrics.map(
-                backendName => REVERSE_METRIC_MAPPING[backendName]
-            ).filter(Boolean);
+            const reverseMap = isRegression ? REGRESSION_REVERSE_METRIC_MAPPING : CLASSIFICATION_REVERSE_METRIC_MAPPING;
+            const nameMap = isRegression ? REGRESSION_METRIC_NAME_MAPPING : CLASSIFICATION_METRIC_NAME_MAPPING;
+            const initialMetrics = getInitialMetrics();
+            const byName = new Map(initialMetrics.map(metric => [metric.name, metric]));
+
+            const backendToDisplay = savedConfig.performance_metrics
+                .map((backendName) => {
+                    const key = toMetricBackendKey(backendName);
+                    if (reverseMap[key]) return reverseMap[key];
+
+                    const matchedDisplay = Object.keys(nameMap).find(
+                        (displayName) => displayName.toLowerCase() === String(backendName || '').trim().toLowerCase()
+                    );
+                    return matchedDisplay || null;
+                })
+                .filter(Boolean);
 
             const orderedMetrics = [];
+            const seen = new Set();
 
-            backendToDisplay.forEach(displayName => {
-                const metric = metrics.find(m => m.name === displayName);
-                if (metric) {
-                    orderedMetrics.push({ ...metric, enabled: true });
+            backendToDisplay.forEach((displayName) => {
+                if (!seen.has(displayName) && byName.has(displayName)) {
+                    orderedMetrics.push({ ...byName.get(displayName), enabled: true });
+                    seen.add(displayName);
                 }
             });
 
-            metrics.forEach(metric => {
-                if (!backendToDisplay.includes(metric.name)) {
+            initialMetrics.forEach((metric) => {
+                if (!seen.has(metric.name)) {
                     orderedMetrics.push({ ...metric, enabled: false });
                 }
             });
 
-            setMetrics(orderedMetrics);
+            setMetrics(orderedMetrics.length ? orderedMetrics : initialMetrics);
         }
 
         if (savedConfig.algorithms && Array.isArray(savedConfig.algorithms)) {
@@ -301,19 +332,19 @@ function ModelSelection() {
                     }
                 });
 
+                if (readonly && savedConfig.algorithms.length > 0) {
+                    const firstEnabledAlgo = Object.values(updatedState).find(algo =>
+                        savedConfig.algorithms.includes(algo.backend_key)
+                    );
+                    if (firstEnabledAlgo) {
+                        setSelectedTab(firstEnabledAlgo.category);
+                    }
+                }
+
                 return updatedState;
             });
-
-            if (readonly && savedConfig.algorithms.length > 0) {
-                const firstEnabledAlgo = Object.values(allAlgorithmsState).find(algo =>
-                    savedConfig.algorithms.includes(algo.backend_key)
-                );
-                if (firstEnabledAlgo) {
-                    setSelectedTab(firstEnabledAlgo.category);
-                }
-            }
         }
-    }, [workflowState?.modelSelection?.config, readonly]);
+    }, [workflowState?.modelSelection?.config, readonly, isRegression]);
 
     useEffect(() => {
         if (searchQuery && filteredCategories.length > 0) {
@@ -325,8 +356,12 @@ function ModelSelection() {
 
     // Reset metrics when problem type changes (regression vs classification)
     useEffect(() => {
+        const savedMetrics = workflowState?.modelSelection?.config?.performance_metrics;
+        if (readonly && Array.isArray(savedMetrics) && savedMetrics.length > 0) {
+            return;
+        }
         setMetrics(getInitialMetrics());
-    }, [isRegression]);
+    }, [isRegression, readonly, workflowState?.modelSelection?.config?.performance_metrics]);
 
     const updateAlgorithmState = (algoId, updates) => {
         setAllAlgorithmsState(prevState => ({

@@ -13,7 +13,7 @@ const AUTO_MODES = ['Swift', 'Standard', 'Comprehensive']
 
 function Parameters({ modelData }) {
   const { token } = useAuth()
-  const { setWorkflowState, setMode } = useAIPlayground()
+  const { setWorkflowsState, setActiveWorkflowId, setMode } = useAIPlayground()
   const [details, setDetails] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -57,7 +57,16 @@ function Parameters({ modelData }) {
 
         // Set workflow state if prefill data exists
         if (fetchedModel?.prefill) {
+          const resolvedWorkflowId = fetchedModel?.workflow_id ?? fetchedModel?.model_id
+          if (resolvedWorkflowId === null || resolvedWorkflowId === undefined) {
+            console.warn('Cannot hydrate workflow state: workflowId is null or undefined')
+            setMode('view')
+            return
+          }
+
           const newWorkflowState = {
+            workflow_id: resolvedWorkflowId,
+            workflow_name: fetchedModel?.workflow_name || null,
             modelGenesis: {
               config: fetchedModel.prefill?.data_preprocessing?.request?.genesis || null,
               apiResponse: fetchedModel.prefill?.data_preprocessing?.response?.genesis || null
@@ -101,7 +110,14 @@ function Parameters({ modelData }) {
             modelDeployment: { config: null, apiResponse: null }
           }
 
-          setWorkflowState(newWorkflowState)
+          setWorkflowsState(prev => ({
+            ...prev,
+            [resolvedWorkflowId]: {
+              ...(prev?.[resolvedWorkflowId] || {}),
+              ...newWorkflowState
+            }
+          }))
+          setActiveWorkflowId(resolvedWorkflowId)
           setMode('view')
         }
       } catch (e) {
@@ -120,7 +136,7 @@ function Parameters({ modelData }) {
       alive = false
       controller.abort()
     }
-  }, [runName, token, setWorkflowState, setMode])
+  }, [runName, token, setWorkflowsState, setActiveWorkflowId, setMode])
 
   // --- UI helpers (professional, consistent rendering) ---
   const cx = (...a) => a.filter(Boolean).join(' ')

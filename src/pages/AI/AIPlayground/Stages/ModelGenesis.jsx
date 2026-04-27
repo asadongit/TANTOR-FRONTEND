@@ -871,8 +871,6 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [], hasError, 
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
 
-  const { workflowState } = useAIPlayground();
-
   const getAvailableColumns = () => {
     const selectedDropColumns = config.drop_columns || [];
     const fairnessColumns = config.fairness_columns || [];
@@ -1132,7 +1130,8 @@ function ModelGenesis() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { datasetState, updateWorkflowStage, workflowState, mode, activeWorkflowId } = useAIPlayground();
+  const { datasetState, updateWorkflowStage, workflowsState, mode, activeWorkflowId } = useAIPlayground();
+  const workflowState = activeWorkflowId ? workflowsState?.[activeWorkflowId] : null;
   const [validationErrors, setValidationErrors] = useState({});
   const predictionTypeRef = useRef(null);
   const dropColumnsRef = useRef(null);
@@ -1144,10 +1143,11 @@ function ModelGenesis() {
   }, []);
 
   const readonly = mode === 'view';
-
+  // if in view or edit mode and with workflow state config , then prefill the form with saved config
   const getInitialConfig = () => {
-    if ((mode === 'view' || mode === 'edit') && workflowState.modelGenesis?.config) {
-      const savedConfig = workflowState.modelGenesis.config;
+    const savedConfig = workflowState?.modelGenesis?.config;
+
+    if ((mode === 'view' || mode === 'edit') && savedConfig) {
       return {
         dataPreprocessing: savedConfig.data_preprocessing_mode || 'Manual',
         modelSelection: savedConfig.model_mode || 'Manual',
@@ -1188,8 +1188,15 @@ function ModelGenesis() {
 
 
   const [config, setConfig] = useState(getInitialConfig);
-  const [isValidated, setIsValidated] = useState(mode === 'view' && workflowState.modelGenesis?.config);
+  const [isValidated, setIsValidated] = useState(mode === 'view' && !!workflowState?.modelGenesis?.config);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if ((mode === 'view' || mode === 'edit') && workflowState?.modelGenesis?.config) {
+      setConfig(getInitialConfig());
+      setIsValidated(mode === 'view');
+    }
+  }, [mode, workflowState?.modelGenesis?.config]);
 
   useEffect(() => {
     if (mode === 'edit') {
@@ -1230,7 +1237,7 @@ function ModelGenesis() {
       const ensembleId = datasetState.ensembleId;
       const targetColumn = config.targetFeature;
 
-      const response = await fetch(`${hostnameAI}/api/v1/data/validate-target-column`, {
+      const response = await fetch(`${hostnameAI}/data/validate-target-column`, {
         method: 'POST',
         headers: {
           'accept': 'application/json',
