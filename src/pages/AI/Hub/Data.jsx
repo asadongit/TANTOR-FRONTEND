@@ -81,7 +81,16 @@ const Data = () => {
 
   const [f1ModalOpen, setF1ModalOpen] = useState(false);
 
-  const { setProjectState, setDatasetState, setMode, setF1Mode } = useAIPlayground();
+  const {
+    setProjectState,
+    setDatasetState,
+    setMode,
+    setF1Mode,
+    setWorkflowsState,
+    setActiveWorkflowId,
+    createWorkflow,
+    setIsAIPlaygroundActive,
+  } = useAIPlayground();
 
   const navigate = useNavigate();
   const { token, decodedToken } = useAuth();
@@ -472,7 +481,9 @@ const Data = () => {
         tableName: dataset_name,
         sessionId: '',
         columnNames: [],
-        profileReportHtml: profiling_data?.profile_report_html || ''
+        profileReportHtml: profiling_data?.profile_report_html || '',
+        isEnsemble: false,
+        WorkflowCount: 1,
       });
 
       const username = decodedToken?.preferred_username || "admin";
@@ -505,7 +516,7 @@ const Data = () => {
       };
 
       const ingestionResponse = await fetch(
-        `${hostnameAI}/data/ingestion`,
+        `${hostnameAI}/ingestion/ingestion`,
         {
           method: 'POST',
           headers: {
@@ -527,12 +538,51 @@ const Data = () => {
 
       setDatasetState(prev => ({
         ...prev,
+        ensembleId: ingestionData.ensemble_id || prev.ensembleId || '',
         sessionId: ingestionData.session_id || '',
         columnNames: ingestionData.column_names || []
       }));
 
-      setMode('dataset');
-      navigate('/ai/playground');
+      const createWorkflowResponse = await fetch(`${hostnameAI}/ingestion/create-workflow`, {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ensemble_id: ingestionData.ensemble_id || row?.id || '',
+          no_of_workflows: 1,
+          workflow_names: ['workflow 01']
+        })
+      });
+
+      if (!createWorkflowResponse.ok) {
+        throw new Error(`Failed to create workflow: ${createWorkflowResponse.status}`);
+      }
+
+      const createWorkflowData = await createWorkflowResponse.json();
+      const workflowEntries = Object.entries(createWorkflowData?.workflows || {});
+      const [workflowIdFromMap, workflowNameFromMap] = workflowEntries[0] || [];
+      const workflowId = workflowIdFromMap || createWorkflowData?.workflow_ids?.[0];
+      const workflowName = workflowNameFromMap || 'workflow 01';
+
+      if (!workflowId) {
+        throw new Error('No workflow ID returned from create-workflow API');
+      }
+
+      setWorkflowsState({});
+      setActiveWorkflowId(null);
+      createWorkflow(workflowId, workflowName);
+      setActiveWorkflowId(workflowId);
+      setIsAIPlaygroundActive(true);
+
+      setMode('write');
+      navigate('/ai/playground/model-genesis', {
+        state: {
+          isEnsemble: false,
+          ensembleCount: 1,
+        }
+      });
       await updateRecentAccess({
         row,
         entityType: 'data',

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { AIPlaygroundLayout } from '../../AIPlaygroundLayout';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
@@ -71,7 +71,7 @@ const ModelInferencing = () => {
   };
 
   useEffect(() => {
-    if (datasetState.ensembleId == '') {
+    if (!datasetState?.ensembleId) {
       navigate('/ai/playground');
       return;
     }
@@ -88,20 +88,22 @@ const ModelInferencing = () => {
     return () => stopPolling();
   }, [readonly, datasetState?.ensembleId, activeWorkflowId, workflowState?.completedJobs?.config?.job_id]);
 
-  const truncateName = (name, maxLength = 30) => {
-    if (!maxLength || maxLength === Infinity || name.length <= maxLength) return name;
-    return '...' + name.substring(name.length - maxLength);
-  };
+  const truncateName = useCallback((name, maxLength = 30) => {
+    const safeName = typeof name === 'string' ? name : '';
+    if (!maxLength || maxLength === Infinity || safeName.length <= maxLength) return safeName;
+    return '...' + safeName.substring(safeName.length - maxLength);
+  }, []);
 
   const modelGenesisConfig = workflowState?.modelGenesis?.config;
-  const dataPreprocessingMode = readonly ? modelGenesisConfig?.data_preprocessing_mode : modelGenesisConfig?.dataPreprocessing;
-  const modelSelectionMode = readonly ? modelGenesisConfig?.model_mode : modelGenesisConfig?.modelSelection;
+  const dataPreprocessingMode = modelGenesisConfig?.data_preprocessing_mode || modelGenesisConfig?.dataPreprocessing;
+  const modelSelectionMode = modelGenesisConfig?.model_mode || modelGenesisConfig?.modelSelection;
   const isDataPreprocessingAuto = dataPreprocessingMode && ['Swift', 'Standard', 'Comprehensive'].includes(dataPreprocessingMode);
   const isModelSelectionAuto = modelSelectionMode && ['Swift', 'Standard', 'Comprehensive'].includes(modelSelectionMode);
   
   // Get the classification type to determine which metrics to show
-  const classificationType = readonly ? modelGenesisConfig?.modelling_type : modelGenesisConfig?.classification;
-  const isRegressionModel = classificationType === 'Regression' || classificationType === 'regression';
+  const rawClassificationType = modelGenesisConfig?.modelling_type ?? modelGenesisConfig?.classification;
+  const classificationType = typeof rawClassificationType === 'string' ? rawClassificationType.trim() : '';
+  const isRegressionModel = classificationType !== '' && classificationType.toLowerCase() === 'regression';
 
   const completedJobsResponse = workflowState?.completedJobs?.apiResponse;
 
@@ -133,14 +135,56 @@ const ModelInferencing = () => {
     if (!readonly) {
       return completedJobsApiResults;
     }
+
+    const modelGenesisTrainingResultsRaw = workflowState?.modelGenesis?.apiResponse?.training_results;
+    const step7TrainingResultsRaw = workflowState?.dataPreprocessing?.step7?.apiResponse?.training_results;
+    const modelSelectionResultsRaw = workflowState?.modelSelection?.apiResponse?.results;
+    const modelSelectionTrainingResultsRaw = workflowState?.modelSelection?.apiResponse?.training_results;
+
+    const modelGenesisTrainingResults = Array.isArray(modelGenesisTrainingResultsRaw)
+      ? modelGenesisTrainingResultsRaw
+      : [];
+    const step7TrainingResults = Array.isArray(step7TrainingResultsRaw)
+      ? step7TrainingResultsRaw
+      : [];
+    const modelSelectionResults = Array.isArray(modelSelectionResultsRaw)
+      ? modelSelectionResultsRaw
+      : [];
+    const modelSelectionTrainingResults = Array.isArray(modelSelectionTrainingResultsRaw)
+      ? modelSelectionTrainingResultsRaw
+      : [];
+
+    const modelSelectionFallback = modelSelectionResults.length
+      ? modelSelectionResults
+      : modelSelectionTrainingResults;
+
     if (isDataPreprocessingAuto && isModelSelectionAuto) {
-      return workflowState?.modelGenesis?.apiResponse?.training_results || [];
+      return modelGenesisTrainingResults.length
+        ? modelGenesisTrainingResults
+        : modelSelectionFallback;
     }
+
     if (!isDataPreprocessingAuto && isModelSelectionAuto) {
-      return workflowState?.dataPreprocessing?.step7?.apiResponse?.training_results || [];
+      return step7TrainingResults.length
+        ? step7TrainingResults
+        : modelSelectionFallback;
     }
-    return workflowState?.modelSelection?.apiResponse?.results || [];
-  }, [readonly, completedJobsApiResults, isDataPreprocessingAuto, isModelSelectionAuto, workflowState]);
+
+    if (modelSelectionFallback.length) {
+      return modelSelectionFallback;
+    }
+
+    return modelGenesisTrainingResults.length ? modelGenesisTrainingResults : step7TrainingResults;
+  }, [
+    readonly,
+    completedJobsApiResults,
+    isDataPreprocessingAuto,
+    isModelSelectionAuto,
+    workflowState?.modelGenesis?.apiResponse?.training_results,
+    workflowState?.dataPreprocessing?.step7?.apiResponse?.training_results,
+    workflowState?.modelSelection?.apiResponse?.results,
+    workflowState?.modelSelection?.apiResponse?.training_results,
+  ]);
 
   const legendTruncateLength = useMemo(() => {
     const modelCount = apiResults.length;
@@ -316,7 +360,7 @@ trainHuberLoss: metrics.train_huber_loss?.toFixed(3) ?? 'N/A',
           }),
     };
   });
-}, [apiResults, legendTruncateLength, isRegressionModel]);
+}, [apiResults, legendTruncateLength, isRegressionModel, truncateName]);
 
   const availableMetrics = useMemo(() => {
     if (apiResults.length === 0) return [];
@@ -361,7 +405,7 @@ trainHuberLoss: metrics.train_huber_loss?.toFixed(3) ?? 'N/A',
       });
       return dataPoint;
     });
-  }, [apiResults, availableMetrics, legendTruncateLength, isRegressionModel]);
+  }, [apiResults, availableMetrics, legendTruncateLength, isRegressionModel, truncateName]);
 
   const selectedModelFairnessData = useMemo(() => {
     const selectedModel = apiResults.find(r => r.run_name === selectedFairnessModel);

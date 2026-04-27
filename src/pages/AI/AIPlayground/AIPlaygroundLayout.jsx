@@ -114,6 +114,8 @@ export function AIPlaygroundLayout({
     const [newWorkflowName, setNewWorkflowName] = useState('');
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [showFinishModal, setShowFinishModal] = useState(false);
+    const [showDeleteWorkflowModal, setShowDeleteWorkflowModal] = useState(false);
+    const [deleteTargetModelIndex, setDeleteTargetModelIndex] = useState(null);
 
     useEffect(() => {
         if (isEnsemble && Object.keys(workflowsState).length > 0) {
@@ -182,14 +184,14 @@ export function AIPlaygroundLayout({
         }
 
         if (isGenesisPage && isDataPreprocessingAuto && isModelSelectionAuto) {
-            const nextStage = workflowStages.find(stage => stage.id === 'model-inferencing');
-            
+            const nextStage = workflowStages.find(stage => stage.id === 'data-preprocessing');
+
             return nextStage;
         }
 
         if (isPreprocessingPage && isDataPreprocessingAuto && isModelSelectionAuto) {
             const nextStage = workflowStages.find(stage => stage.id === 'model-inferencing');
-            
+            return nextStage;
         }
 
         
@@ -492,16 +494,60 @@ export function AIPlaygroundLayout({
             return;
         }
 
+        setDeleteTargetModelIndex(index);
+        setShowDeleteWorkflowModal(true);
+    };
+
+    const handleCloseDeleteWorkflowModal = () => {
+        setShowDeleteWorkflowModal(false);
+        setDeleteTargetModelIndex(null);
+    };
+
+    const handleConfirmDeleteWorkflow = () => {
+        if (deleteTargetModelIndex === null) {
+            handleCloseDeleteWorkflowModal();
+            return;
+        }
+
+        const workflowToDelete = models[deleteTargetModelIndex];
+        if (!workflowToDelete?.id) {
+            handleCloseDeleteWorkflowModal();
+            return;
+        }
+
+        const isDeletingActiveWorkflow = workflowToDelete.id === activeWorkflowId;
+
+        const remainingModels = models.filter((_, index) => index !== deleteTargetModelIndex);
+        const previousModelIndex = deleteTargetModelIndex > 0 ? deleteTargetModelIndex - 1 : 0;
+
         deleteWorkflow(workflowToDelete.id);
 
-        const updatedCount = models.length - 1;
-        const nextActiveIndex = Math.max(0, Math.min(activeModelIndex, updatedCount - 1));
-        setActiveModelIndex(nextActiveIndex);
+        if (!isDeletingActiveWorkflow) {
+            handleCloseDeleteWorkflowModal();
+            return;
+        }
 
-        navigate(location.pathname, {
-            state: { ...location.state, isEnsemble, ensembleCount: updatedCount, activeModelIndex: nextActiveIndex },
+        const nextActiveModel = remainingModels[previousModelIndex] || remainingModels[0] || null;
+        const shouldNavigateToGenesis = deleteTargetModelIndex === 0 && remainingModels.length > 0;
+
+        const updatedCount = remainingModels.length;
+        const nextActiveIndex = nextActiveModel
+            ? remainingModels.findIndex(model => model.id === nextActiveModel.id)
+            : 0;
+        if (nextActiveIndex >= 0) {
+            setActiveModelIndex(nextActiveIndex);
+        }
+
+        if (nextActiveModel?.id) {
+            switchWorkflow(nextActiveModel.id);
+        }
+
+        navigate(shouldNavigateToGenesis ? '/ai/playground/model-genesis' : '/ai/playground/xai', {
+            state: { ...location.state, isEnsemble, ensembleCount: updatedCount, activeModelIndex: Math.max(0, nextActiveIndex) },
             replace: true
         });
+
+        handleCloseDeleteWorkflowModal();
     };
 
     const getNextButtonLabel = () => {
@@ -626,6 +672,45 @@ export function AIPlaygroundLayout({
                                     className="px-8 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors"
                                 >
                                     Finish
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Workflow Warning Modal */}
+            {showDeleteWorkflowModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+                        <div className="p-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                                    <AlertTriangle className="text-[#EF4D5F]" size={24} />
+                                </div>
+                                <h2 className="text-xl font-semibold text-gray-900">Delete Workflow</h2>
+                            </div>
+
+                            <p className="text-gray-600 mb-6">
+                                Are you sure you want to delete{' '}
+                                <span className="font-medium text-gray-800">
+                                    {deleteTargetModelIndex !== null ? models[deleteTargetModelIndex]?.label : 'this workflow'}
+                                </span>
+                                ? This action cannot be undone.
+                            </p>
+
+                            <div className="flex gap-3 justify-end">
+                                <button
+                                    onClick={handleCloseDeleteWorkflowModal}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleConfirmDeleteWorkflow}
+                                    className="px-4 py-2 bg-[#EF4D5F] text-white rounded-lg text-sm font-medium hover:bg-red-500 transition-colors"
+                                >
+                                    Delete
                                 </button>
                             </div>
                         </div>

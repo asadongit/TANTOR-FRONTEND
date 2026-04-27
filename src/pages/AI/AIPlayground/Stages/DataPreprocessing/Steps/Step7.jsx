@@ -333,6 +333,12 @@ function Step7({ onShowPreview, showPreview, onApiCall }) {
     // ── Main config view ──
     return (
         <div className="space-y-4">
+            {isRegression && (
+                <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+                    Imbalanced data handling cannot be done for regression models.
+                </div>
+            )}
+
             <FeatureSection
                 title="Imbalanced Data Handling"
                 isToggled={toggles.imbalancedData}
@@ -351,11 +357,6 @@ function Step7({ onShowPreview, showPreview, onApiCall }) {
                         </span>
                     </div>
                     <div className="grid grid-cols-3 gap-3">
-                        {isRegression && (
-    <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-sm text-yellow-700">
-        Imbalanced data handling is not applicable for regression models.
-    </div>
-)}
                         {samplingMethods.map(method => (
                             <RadioOption
                                 key={method.value}

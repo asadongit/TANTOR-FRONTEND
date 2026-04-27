@@ -26,13 +26,13 @@ function DataPreprocessing() {
   const hostnameAI = window._env_?.VITE_AI_API;
   const { workflowsState, activeWorkflowId, mode, datasetState, updateWorkflowStage } = useAIPlayground();
   const workflowState = activeWorkflowId
-    ? workflowsState[activeWorkflowId]
+    ? workflowsState?.[activeWorkflowId]
     : null;  
   const readonly = mode === 'view';
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (datasetState.sessionId == '') {
+    if (!datasetState?.sessionId) {
       navigate('/ai/playground')
     }
   }, []);
@@ -67,25 +67,20 @@ function DataPreprocessing() {
   const step7ApiCallRef = useRef(null);
   // if the data preprocessing is manual and model selection is auto , jobID api gets called 
   const handleNextClick = async () => {
-    console.log('=== handleNextClick called ===');
-    console.log('currentStep:', currentStep);
-    console.log('isStep7Preview:', isStep7Preview);
-    console.log('isModelSelectionAuto:', isModelSelectionAuto);
-    console.log('Condition check - step7 && preview && modelAuto:', currentStep === 7 && isStep7Preview && isModelSelectionAuto);
+   
     
     if (currentStep === 7 && isStep7Preview && isModelSelectionAuto) {
-      console.log('>>> ENTERING completedJobs update block <<<');
+
       try {
+        const autoModeJobId = workflowState?.modelGenesis?.apiResponse?.job_id ?? null;
+
         const jobId = isDataPreprocessingAuto
-          ? workflowState?.modelGenesis?.apiResponse?.job_id
+          ? autoModeJobId
           : workflowState?.dataPreprocessing?.step7?.apiResponse?.job_id;
         
-        console.log('Fetching job details for jobId:', jobId);
-        console.log('isDataPreprocessingAuto:', isDataPreprocessingAuto);
-        console.log('isModelSelectionAuto:', isModelSelectionAuto);
-        console.log('workflowState.dataPreprocessing:', workflowState?.dataPreprocessing);
+      
         
-        if (jobId) {
+        if (jobId && hostnameAI) {
           const response = await fetch(`${hostnameAI}/jobs/${jobId}`, {
             method: 'GET',
             headers: { 'accept': 'application/json' }
@@ -93,19 +88,17 @@ function DataPreprocessing() {
 
           if (response.ok) {
             const data = await response.json();
-            console.log('Successfully fetched job data:', data);
-            updateWorkflowStage('completedJobs', {
+           
+            updateWorkflowStage?.('completedJobs', {
               config: { job_id: jobId },
               apiResponse: data
             });
-            console.log('Updated workflow stage with completedJobs');
+
           } else {
-            console.error('API response not ok. Status:', response.status);
+         
           }
         } else {
-          console.warn('No jobId found at expected paths');
-          console.log('modelGenesis path:', workflowState?.modelGenesis?.apiResponse?.job_id);
-          console.log('dataPreprocessing path:', workflowState?.dataPreprocessing?.step7?.apiResponse?.job_id);
+         
         }
       } catch (error) {
         console.error('Error fetching job details:', error);
@@ -113,27 +106,23 @@ function DataPreprocessing() {
       return true;
     }
 
-    if (currentStep === 7 && isStep7Preview && isDataPreprocessingAuto) return true;
     if (currentStep === 7 && isStep7Preview) return true;
 
-    let apiCallFn = null;
-    switch (currentStep) {
-      case 1: apiCallFn = step1ApiCallRef.current; break;
-      case 2: apiCallFn = step2ApiCallRef.current; break;
-      case 3: apiCallFn = step3ApiCallRef.current; break;
-      case 4: apiCallFn = step4ApiCallRef.current; break;
-      case 5: apiCallFn = step5ApiCallRef.current; break;
-      case 6: apiCallFn = step6ApiCallRef.current; break;
-      case 7: apiCallFn = step7ApiCallRef.current; break;
-      default: break;
-    }
+    const stepApiRefs = [
+      null,
+      step1ApiCallRef.current,
+      step2ApiCallRef.current,
+      step3ApiCallRef.current,
+      step4ApiCallRef.current,
+      step5ApiCallRef.current,
+      step6ApiCallRef.current,
+      step7ApiCallRef.current,
+    ];
 
-    if (apiCallFn) {
-      const success = await apiCallFn();
-      return success;
-    }
+    const apiCallFn = stepApiRefs[currentStep] ?? null;
+    if (typeof apiCallFn !== 'function') return true;
 
-    return true;
+    return await apiCallFn();
   };
 
   const handlePreviewClick = () => {
