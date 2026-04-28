@@ -139,7 +139,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
         method: 'POST',
         headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          session_id: datasetState.sessionId,
+          session_id: datasetState.ensembleId,
           training_flag: workflowState.modelSelection.apiResponse !== null
         })
       });
