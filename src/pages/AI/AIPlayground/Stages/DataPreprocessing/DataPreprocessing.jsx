@@ -32,7 +32,7 @@ function DataPreprocessing() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!datasetState?.sessionId) {
+    if (!datasetState?.ensembleId) {
       navigate('/ai/playground')
     }
   }, []);
