@@ -71,8 +71,11 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const [isCancelLoading, setIsCancelLoading] = useState(false);
 
   const { decodedToken } = useAuth();
-  const { isAIPlaygroundActive, resetAllStates, datasetState, workflowState, F1Mode: F1ModeCtx, setF1Mode } = useAIPlayground();
+  const { isAIPlaygroundActive, resetAllStates, datasetState, workflowsState, F1Mode: F1ModeCtx, setF1Mode ,activeWorkflowId} = useAIPlayground();
   const navigate = useNavigate();
+  const workflowState = activeWorkflowId
+  ? (workflowsState[activeWorkflowId] ?? null)
+  : null; 
 
   const isF1ModeActive = !!F1ModeCtx?.session_id;
   const f1SessionId = F1ModeCtx?.session_id ?? null;
@@ -135,12 +138,12 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const handleConfirmCancel = async () => {
     setIsCancelLoading(true);
     try {
-      await fetch(`${hostnameAI}/model/cleanup`, {
+      await fetch(`${hostnameAI}/cleanup/cleanup`, {
         method: 'POST',
         headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          session_id: datasetState.ensembleId,
-          training_flag: workflowState.modelSelection.apiResponse !== null
+          ensemble_id: datasetState.ensembleId,
+          training_flag: workflowState?.modelSelection?.apiResponse !== null
         })
       });
     } catch (error) {
