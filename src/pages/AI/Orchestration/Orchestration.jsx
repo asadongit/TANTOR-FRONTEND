@@ -418,13 +418,56 @@ const Orchestration = () => {
 
             const data = await response.json();
 
+            // Helper function to extract thresholds based on mode
+            const getDataDriftThresholds = () => {
+                if (data.ensemble_flag && data.model_ids?.length > 0) {
+                    // For ensemble mode, use the first model's thresholds
+                    const firstModelId = data.model_ids[0];
+                    const thresholds = data.data_drift_threshold?.[firstModelId];
+                    return {
+                        distribution_drift_threshold: thresholds?.distribution_drift_threshold || 0,
+                        statistical_significance_level: thresholds?.statistical_significance_level || 0,
+                        information_stability_threshold: thresholds?.information_stability_threshold || 0,
+                        target_stability_threshold: thresholds?.target_stability_threshold || 0
+                    };
+                } else {
+                    // For single model mode, use flat structure
+                    return {
+                        distribution_drift_threshold: data.data_drift_threshold?.distribution_drift_threshold || 0,
+                        statistical_significance_level: data.data_drift_threshold?.statistical_significance_level || 0,
+                        information_stability_threshold: data.data_drift_threshold?.information_stability_threshold || 0,
+                        target_stability_threshold: data.data_drift_threshold?.target_stability_threshold || 0
+                    };
+                }
+            };
+
+            const getModelDriftThresholds = () => {
+                if (data.ensemble_flag && data.model_ids?.length > 0) {
+                    // For ensemble mode, use the first model's thresholds
+                    const firstModelId = data.model_ids[0];
+                    const thresholds = data.model_drift_threshold?.[firstModelId];
+                    return {
+                        prediction_drift_threshold: thresholds?.prediction_drift_threshold || 0,
+                        performance_drift_threshold: thresholds?.performance_drift_threshold || -1
+                    };
+                } else {
+                    // For single model mode, use flat structure
+                    return {
+                        prediction_drift_threshold: data.model_drift_threshold?.prediction_drift_threshold || 0,
+                        performance_drift_threshold: data.model_drift_threshold?.performance_drift_threshold || -1
+                    };
+                }
+            };
+
             setSchedulerState({
                 owner_id: data.owner_id || '',
                 project: data.project || '',
-                is_ensemble: data.is_ensemble || false,
+                is_ensemble: data.ensemble_flag || false,
                 ensemble_name: data.ensemble_name || '',
-                model: data.model || '',
-                model_id: data.model_id || '',
+                model: data.ensemble_flag ? (data.models || []) : (data.models?.[0] || ''),
+                model_id: data.ensemble_flag ? (data.model_ids || []) : (data.model_ids?.[0] || ''),
+                models: data.models || [],
+                model_ids: data.model_ids || [],
                 project_id: data.project_id || '',
                 flow_type: data.flow_type || 'single_run',
                 scheduler: {
@@ -447,16 +490,8 @@ const Orchestration = () => {
                     destination_schema: data.target?.destination_schema || '',
                     destination_table: data.target?.destination_table || ''
                 },
-                data_drift_threshold: {
-                    distribution_drift_threshold: data.data_drift_threshold?.distribution_drift_threshold || 0,
-                    statistical_significance_level: data.data_drift_threshold?.statistical_significance_level || 0,
-                    information_stability_threshold: data.data_drift_threshold?.information_stability_threshold || 0,
-                    target_stability_threshold: data.data_drift_threshold?.target_stability_threshold || 0
-                },
-                model_drift_threshold: {
-                    prediction_drift_threshold: data.model_drift_threshold?.prediction_drift_threshold || 0,
-                    performance_drift_threshold: data.model_drift_threshold?.performance_drift_threshold || -1
-                },
+                data_drift_threshold: getDataDriftThresholds(),
+                model_drift_threshold: getModelDriftThresholds(),
                 data_drift_check: data.data_drift_check || 0,
                 model_drift_check: data.model_drift_check || 0,
                 recipients: data.recipients || [],

@@ -1,5 +1,44 @@
 import { useState, useEffect } from "react";
 
+const FieldTooltip = ({ lines, position = 'right' }) => {
+  const [visible, setVisible] = useState(false);
+
+  const bubbleStyle = position === 'left'
+    ? { right: 0, top: '1.5rem' }
+    : { left: 0, top: '1.5rem' };
+
+  return (
+    <div className="relative inline-flex items-center">
+      <button
+        type="button"
+        className="ml-1.5 text-gray-400 hover:text-gray-500 focus:outline-none flex-shrink-0"
+        onMouseEnter={() => setVisible(true)}
+        onMouseLeave={() => setVisible(false)}
+        tabIndex={-1}
+        aria-label="Field information"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+          <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      </button>
+
+      {visible && (
+        <div
+          className="absolute w-72 bg-[#332849] text-white text-xs p-3 rounded-lg shadow-xl z-[9999] space-y-1.5"
+          style={{ ...bubbleStyle, pointerEvents: 'none' }}
+        >
+          {lines.map((line, i) =>
+            line.bold
+              ? <p key={i}><strong>{line.bold}</strong>{line.rest}</p>
+              : <p key={i}>{line}</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGenerating = false ,isRegression}) {
   const hostnameAI = window._env_?.VITE_AI_API;
   const [showInfoTooltip, setShowInfoTooltip] = useState(false);
@@ -16,6 +55,27 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
   const targetClasses = launchData?.target_classes ?? [];
   const rowCount = launchData?.test_data_shape?.[0] ?? 0;
   const featuresList = launchData?.processed_feature_columns ?? [];
+  const pdpTargetTooltip = [
+    { bold: 'Partial Dependence Plot (PDP): ', rest: "Shows the average effect of a feature on a model's prediction by marginalizing over other features. Helps understand global feature influence across the dataset." },
+  ];
+
+  const pdpFeaturesTooltip = [
+    { bold: 'PDP Features: ', rest: 'A graphical visualization of the partial dependence function. Displays how predicted outcomes change as one feature varies.' }
+  ];
+
+  const cfDesiredTooltip = [
+    { bold: 'Counterfactual Explanation: ', rest: 'An explanation that shows the minimal changes needed in input features to alter a model\'s prediction. Answers the question: “What needs to change to get a different outcome?”' },
+    { bold: 'Desired Class: ', rest: 'The target outcome you want the model to predict instead.' }
+  ];
+
+  const cfInstanceTooltip = [
+    { bold: 'Counterfactual Explanation: ', rest: 'An explanation that shows the minimal changes needed in input features to alter a model\'s prediction. Answers the question: “What needs to change to get a different outcome?”' },
+    { bold: 'Instance index: ', rest: 'The specific data point (row) for which the counterfactual explanation is generated.' }
+  ];
+
+  const limeInstanceTooltip = [
+    { bold: 'LIME (Local Interpretable Model-agnostic Explanations): ', rest: 'A technique that explains individual predictions by approximating the model locally with a simple interpretable model. It highlights which features contributed most to a specific prediction.' }
+  ];
 
   useEffect(() => {
     if (isOpen) {

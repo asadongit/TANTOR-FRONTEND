@@ -20,6 +20,24 @@ const formatMetricLabel = (key) =>
 const isLogLossMetric = (key) =>
     typeof key === 'string' && key.toLowerCase().replace(' ', '_') === 'log_loss';
 
+const METRIC_KEYS_BY_TASK = {
+    classification: [
+        { key: 'accuracy', label: 'Accuracy', isLogLoss: false },
+        { key: 'precision', label: 'Precision', isLogLoss: false },
+        { key: 'recall', label: 'Recall', isLogLoss: false },
+        { key: 'f1', label: 'F1', isLogLoss: false },
+        { key: 'log_loss', label: 'Log Loss', isLogLoss: true },
+    ],
+    regression: [
+        { key: 'mae', label: 'MAE', isLogLoss: false },
+        { key: 'mape', label: 'MAPE', isLogLoss: false },
+        { key: 'r2', label: 'R2', isLogLoss: false },
+        { key: 'rmse', label: 'RMSE', isLogLoss: false },
+        { key: 'quantile_loss', label: 'Quantile Loss', isLogLoss: false },
+        { key: 'huber_loss', label: 'Huber Loss', isLogLoss: false },
+    ],
+};
+
 function BestModelCard({ bestAlgorithm, bestScore, metricName }) {
     const metricKey = metricName?.toLowerCase();
 
@@ -85,14 +103,6 @@ const isPercentageMetric = ['accuracy', 'precision', 'recall', 'f1'].includes(me
     );
 }
 
-const ALL_METRIC_KEYS = [
-    { key: 'accuracy',  label: 'Accuracy',  isLogLoss: false },
-    { key: 'precision', label: 'Precision', isLogLoss: false },
-    { key: 'recall',    label: 'Recall',    isLogLoss: false },
-    { key: 'f1',        label: 'F1',        isLogLoss: false },
-    { key: 'log_loss',  label: 'Log Loss',  isLogLoss: true  },
-];
-
 const SortIcon = ({ active, direction }) => {
     if (!active) return <ChevronsUpDown className="w-3 h-3 ml-1 text-gray-400 inline-block" />;
     return direction === 'asc'
@@ -138,39 +148,44 @@ const TablePagination = ({ currentPage, totalPages, onPrev, onNext, startIndex, 
     </div>
 );
 
-const formatTableVal = (val, isLogLoss = false) => {
+const formatTableVal = (val, { isLogLoss = false, task = 'classification' } = {}) => {
     if (val === null || val === undefined || val === 'N/A') return 'N/A';
     const num = parseFloat(val);
     if (isNaN(num)) return 'N/A';
-    return isLogLoss ? num.toFixed(4) : `${(num * 100).toFixed(2)}%`;
+    if (task === 'regression' || task === 'timeseries' || isLogLoss) {
+        return num.toFixed(4);
+    }
+    return `${(num * 100).toFixed(2)}%`;
 };
 
-function PerformanceTable({ allResults }) {
+function PerformanceTable({ allResults, task }) {
     const ROWS_PER_PAGE = 10;
     const [sortConfig, setSortConfig] = useState({ key: null, prefix: null, direction: 'asc' });
     const [currentPage, setCurrentPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState('');
+    
+    const metricKeys = METRIC_KEYS_BY_TASK[task] || METRIC_KEYS_BY_TASK.classification;
 
     const tableData = useMemo(() => {
         return allResults.map((result) => {
             const row = { fullName: result.algorithm };
-            ALL_METRIC_KEYS.forEach(({ key }) => {
+            metricKeys.forEach(({ key }) => {
                 row[`test_${key}`] = result.metrics?.test?.[key] ?? null;
                 row[`train_${key}`] = result.metrics?.train?.[key] ?? null;
             });
             return row;
         });
-    }, [allResults]);
+    }, [allResults, metricKeys]);
 
     const visibleMetrics = useMemo(() => {
-        return ALL_METRIC_KEYS.filter((m) =>
+        return metricKeys.filter((m) =>
             tableData.some(
                 (row) =>
                     (row[`test_${m.key}`] !== null && row[`test_${m.key}`] !== undefined) ||
                     (row[`train_${m.key}`] !== null && row[`train_${m.key}`] !== undefined)
             )
         );
-    }, [tableData]);
+    }, [tableData, metricKeys]);
 
     const testVisible = useMemo(() => {
         const map = {};
@@ -229,6 +244,10 @@ function PerformanceTable({ allResults }) {
         });
         setCurrentPage(1);
     };
+
+    if (task && !METRIC_KEYS_BY_TASK[task]) {
+        console.error(`[PerformanceTable] Unsupported task type: "${task}". Only 'classification' and 'regression' are supported.`);
+    }
 
     return (
         <div className="bg-white rounded-lg p-4 sm:p-6 border border-gray-200 shadow-sm mt-4">
@@ -347,13 +366,13 @@ function PerformanceTable({ allResults }) {
                                                 key={`test-${m.key}`}
                                                 className={`py-2 px-4 text-gray-700 ${i === arr.length - 1 ? 'border-r border-gray-200' : ''}`}
                                             >
-                                                {formatTableVal(row[`test_${m.key}`], m.isLogLoss)}
+                                                {formatTableVal(row[`test_${m.key}`], { isLogLoss: m.isLogLoss, task })}
                                             </td>
                                         ))}
 
                                         {visibleMetrics.filter((m) => trainVisible[m.key]).map((m) => (
                                             <td key={`train-${m.key}`} className="py-2 px-4 text-gray-700">
-                                                {formatTableVal(row[`train_${m.key}`], m.isLogLoss)}
+                                                {formatTableVal(row[`train_${m.key}`], { isLogLoss: m.isLogLoss, task })}
                                             </td>
                                         ))}
                                     </tr>
@@ -714,7 +733,7 @@ function F1MetricsChart({ allResults }) {
                 )}
             </div>
 
-            <PerformanceTable allResults={allResults} />
+            <PerformanceTable allResults={allResults} task={F1ModeCtx?.launch?.task} />
 
             <PortalTooltip />
         </div>
