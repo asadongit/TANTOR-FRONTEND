@@ -374,6 +374,8 @@ trainHuberLoss: metrics.train_huber_loss?.toFixed(3) ?? 'N/A',
         { name: 'MAE', key: 'mae' },
         { name: 'R²', key: 'r2' },
         { name: 'MAPE', key: 'mape' },
+        { name: 'Huber Loss', key: 'huber_loss' },
+        { name: 'Quantile Loss', key: 'quantile_loss' },
       ].filter(m => metrics.hasOwnProperty(`train_${m.key}`) || metrics.hasOwnProperty(`test_${m.key}`));
     } else {
       // For classification models, show classification metrics
@@ -546,6 +548,7 @@ trainHuberLoss: metrics.train_huber_loss?.toFixed(3) ?? 'N/A',
             legendTruncateLength={legendTruncateLength}
             truncateName={truncateName}
             chartColors={chartColors}
+            metricsDescription={isRegressionModel ? 'MSE, RMSE, MAE, R², MAPE, Huber Loss & Quantile Loss' : 'Accuracy, precision, recall & F1 score'}
           />
 
           {/* Tabs */}

@@ -342,9 +342,16 @@ const ConfigurationTab = ({ onValidationErrors }) => {
 
     const validateScheduleName = (name) => {
         if (!name.trim()) return null;
-        if (!/^[A-Za-z]/.test(name.trim())) return 'Schedule name must start with an alphabet character';
+        
+        if (name.length > 100) return 'Schedule name must be 100 characters or less';
+        
+        if (!/^[A-Za-z]/.test(name.trim())) return 'Schedule name must start with an alphabet';
+        
         if (/^\d+$/.test(name.trim())) return 'Schedule name cannot contain only digits';
-        if (!/^[A-Za-z0-9_@#&]+$/.test(name)) return 'Only letters, numbers, underscore, @, #, and & are allowed.';
+        
+        const validCharPattern = /^[A-Za-z0-9_\-@#& ]+$/;
+        if (!validCharPattern.test(name)) return 'Only letters, numbers, underscore, hyphen, space, @, #, and & are allowed';
+        
         if (existingSchedules.some(s => s.name.toLowerCase() === name.toLowerCase()))
             return 'A schedule with this name already exists. Please choose a different name.';
         return null;
@@ -884,6 +891,10 @@ const ConfigurationTab = ({ onValidationErrors }) => {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="max-w-md flex-1">
                         <label className="block text-base font-medium text-[#332849] mb-1.5">Schedule Name</label>
+                        <div className="flex items-center justify-between mb-1">
+                            <span></span>
+                            <span className="text-xs text-slate-400">{scheduleName.length}/100</span>
+                        </div>
                         <input
                             type="text"
                             value={scheduleName}
@@ -901,6 +912,7 @@ const ConfigurationTab = ({ onValidationErrors }) => {
                                     setSchedulerState(prev => ({ ...prev, workflow_name: value }));
                                 }
                             }}
+                            maxLength={100}
                             disabled={schedulerState?.mode === 'edit'}
                             placeholder="Enter a unique name for this schedule"
                             className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 ${schedulerState.mode === 'edit'

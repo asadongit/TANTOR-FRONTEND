@@ -116,9 +116,7 @@ function Models() {
           sno: index + 1,
           run_name: item.run_name,
           description: item.description || "",
-          created_date: item.created_at
-            ? new Date(item.created_at).toLocaleDateString("en-GB")
-            : "",
+          created_date: item.created_at || "",
           project_name:
             item.project_name ??
             item.project ??
@@ -209,6 +207,27 @@ function Models() {
     if (!Number.isFinite(num)) return "0 ms";
     if (num >= 1000) return `${Math.round((num / 1000) * 10) / 10}s`;
     return `${Math.round(num)}ms`;
+  };
+
+  const formatCreatedDate = (value) => {
+    if (!value) return "-";
+
+    const raw = String(value).trim();
+    const datePart = raw.includes("T") ? raw.split("T")[0] : raw;
+
+    const match = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return "-";
+
+    const [, year, month, day] = match;
+    const parsedDate = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+    const isValidDate =
+      parsedDate.getUTCFullYear() === Number(year) &&
+      parsedDate.getUTCMonth() === Number(month) - 1 &&
+      parsedDate.getUTCDate() === Number(day);
+
+    if (!isValidDate) return "-";
+
+    return `${day}/${month}/${year}`;
   };
 
   const metricsData = useMemo(() => {
@@ -376,22 +395,27 @@ function Models() {
       sortable: true,
       width: '250px',
       render: (row) => (
-          <span
-            className="hover:underline cursor-pointer whitespace-normal break-words break-all"
-            onClick={() => openModelLibrary(row)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => e.key === "Enter" && openModelLibrary(row)}
-            title={row?.run_name ?? ""}
-            style={{ overflowWrap: "anywhere", color: aithemestyle.iconColor }}
-          >
-            {row.run_name}
-          </span>
+        <span
+          className="hover:underline cursor-pointer whitespace-normal break-words break-all"
+          onClick={() => openModelLibrary(row)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === "Enter" && openModelLibrary(row)}
+          title={row?.run_name ?? ""}
+          style={{ overflowWrap: "anywhere", color: aithemestyle.iconColor }}
+        >
+          {row.run_name}
+        </span>
       ),
-    }
-    ,
+    },
     { key: "description", width: '150px', label: "Description", sortable: false },
-    { key: "created_date", width: '150px', label: "Created Date", sortable: true },
+    {
+      key: "created_date",
+      width: '150px',
+      label: "Created Date",
+      sortable: true,
+      render: (row) => formatCreatedDate(row.created_date),
+    },
     { key: 'project_name', width: '150px', label: 'Project', sortable: true },
     { key: 'user_name', width: '120px', label: 'Created By', sortable: true },
     { key: "type", width: '120px', label: "Type", sortable: true },
@@ -1037,7 +1061,7 @@ function Models() {
       <div className="bg-white rounded-xl px-4 py-4 flex flex-col justify-between min-h-[110px]">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <IconCmp className="w-[18px] h-[18px] text-[#8e78b7] shrink-0 flex-shrink-0" />
+            <IconCmp className="w-[18px] h-[18px] text-[#8e78b7] shrink-0" />
             <span className="satoshi-medium-md m-0 truncate">{label}</span>
           </div>
         </div>

@@ -16,7 +16,33 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [selectedMethod, setSelectedMethod] = useState(null);
     const [workflowNames, setWorkflowNames] = useState(['']);
+    const [workflowNameErrors, setWorkflowNameErrors] = useState({});
     const { setMode, datasetState, workflowsState, createWorkflow, setEnsembleMode } = useAIPlayground();
+
+    const validateWorkflowName = (name) => {
+        if (!name.trim()) {
+            return 'Workflow name is required';
+        }
+
+        if (name.length > 100) {
+            return 'Workflow name must be 100 characters or less';
+        }
+
+        if (!/^[A-Za-z]/.test(name.trim())) {
+            return 'Workflow name must start with an alphabet';
+        }
+
+        if (/^\d+$/.test(name.trim())) {
+            return 'Workflow name cannot contain only digits';
+        }
+
+        const validCharPattern = /^[A-Za-z0-9_\-@#& ]+$/;
+        if (!validCharPattern.test(name.trim())) {
+            return 'Only letters, numbers, underscore, hyphen, space, @, #, and & are allowed';
+        }
+
+        return null;
+    };
 
     if (!isOpen) return null;
 
@@ -46,6 +72,7 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
 
     const handleCreateWorkflow = async () => {
         setIsLoading(true);
+        const errors = {};
         try {
             const method = selectedMethod;
             const workflowCount = method === 'ensemble' ? ensembleCount : 1;
@@ -53,8 +80,17 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
                 .slice(0, workflowCount)
                 .map(name => name.trim());
 
-            if (preparedWorkflowNames.some(name => !name)) {
-                throw new Error('Please provide a workflow name for each workflow.');
+            // Validate each workflow name
+            preparedWorkflowNames.forEach((name, index) => {
+                const error = validateWorkflowName(name);
+                if (error) {
+                    errors[index] = error;
+                }
+            });
+
+            if (Object.keys(errors).length > 0) {
+                setWorkflowNameErrors(errors);
+                throw new Error('Please fix the workflow name errors');
             }
 
             const normalizedEnteredNames = preparedWorkflowNames.map(name => name.toLowerCase());
@@ -138,12 +174,24 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
         }
     };
 
+    const handleWorkflowNameChangeWithValidation = (index, value) => {
+        handleWorkflowNameChange(index, value);
+        // Clear error for this field if user is typing
+        if (value.trim()) {
+            setWorkflowNameErrors(prev => {
+                const updated = { ...prev };
+                delete updated[index];
+                return updated;
+            });
+        }
+    };
+
     const decrementCount = () => {
         if (ensembleCount > 2) setEnsembleCount(ensembleCount - 1);
     };
 
     const incrementCount = () => {
-        if (ensembleCount < 10) setEnsembleCount(ensembleCount + 1);
+        if (ensembleCount < 8) setEnsembleCount(ensembleCount + 1);
     };
 
     const workflowCount = selectedMethod === 'ensemble' ? ensembleCount : 1;
@@ -240,7 +288,7 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
                                         </div>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); incrementCount(); }}
-                                            disabled={ensembleCount >= 10 || isLoading}
+                                            disabled={ensembleCount >= 8 || isLoading}
                                             className="w-10 h-10 rounded-lg bg-[#FAFAFA] flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                         >
                                             <span className={`${headingCls} text-[#332849]`}>+</span>
@@ -258,17 +306,28 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
                             <div className="space-y-3">
                                 {Array.from({ length: workflowCount }).map((_, index) => (
                                     <div key={`workflow-name-${index}`}>
-                                        <label className={`${bodyCls} block mb-2 text-[#282F49]`}>
-                                            Workflow Name {index + 1}
-                                        </label>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className={`${bodyCls} block text-[#282F49]`}>
+                                                Workflow Name {index + 1}
+                                            </label>
+                                            <span className="text-xs text-slate-400">
+                                                {(workflowNames[index] || '').length}/100
+                                            </span>
+                                        </div>
                                         <input
                                             type="text"
                                             value={workflowNames[index] || ''}
-                                            onChange={(e) => handleWorkflowNameChange(index, e.target.value)}
+                                            onChange={(e) => handleWorkflowNameChangeWithValidation(index, e.target.value)}
+                                            maxLength={100}
                                             placeholder={`Enter workflow ${index + 1} name`}
                                             disabled={isLoading}
-                                            className="w-full rounded-lg border border-[#D7D3E5] px-4 py-3 text-[#282F49] focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
+                                            className={`w-full rounded-lg border px-4 py-3 text-[#282F49] focus:outline-none focus:ring-2 focus:ring-[#8e78b7] ${
+                                                workflowNameErrors[index] ? 'border-red-500' : 'border-[#D7D3E5]'
+                                            }`}
                                         />
+                                        {workflowNameErrors[index] && (
+                                            <p className="text-xs text-red-500 mt-1">{workflowNameErrors[index]}</p>
+                                        )}
                                     </div>
                                 ))}
                             </div>
