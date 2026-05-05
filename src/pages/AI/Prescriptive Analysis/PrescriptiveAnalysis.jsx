@@ -570,7 +570,7 @@ function Predictive() {
       try {
         // Same API used in New Schedule > Configuration tab
         const response = await fetch(
-          `${hostnameAI}/model/projects/${encodeURIComponent(projectName)}/models`,
+          `${hostnameAI}/model/projects/${encodeURIComponent(projectName)}/prescriptive_analysis_models`,
           {
             method: 'GET',
             headers: { accept: 'application/json' },
@@ -813,7 +813,7 @@ function Predictive() {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
     const buttonRef = useRef(null);
-    const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0, width: 0 });
+    const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0, width: 0, placeAbove: false });
 
     useEffect(() => {
       const handleClickOutside = (event) => {
@@ -834,11 +834,10 @@ function Predictive() {
         const positionAbove = spaceBelow < DROPDOWN_EST_HEIGHT;
 
         setPopupPosition({
-          top: positionAbove
-            ? rect.top - DROPDOWN_EST_HEIGHT - 4
-            : rect.bottom + 4,
+          top: positionAbove ? rect.top - 4 : rect.bottom + 4,
           left: rect.left,
           width: rect.width,
+          placeAbove: positionAbove,
         });
       }
     }, [isOpen]);
@@ -871,6 +870,7 @@ function Predictive() {
               top: `${popupPosition.top}px`,
               left: `${popupPosition.left}px`,
               width: `${popupPosition.width}px`,
+              transform: popupPosition.placeAbove ? 'translateY(-100%)' : 'none',
             }}
           >
             <div className="max-h-48 overflow-y-auto">
@@ -1167,7 +1167,7 @@ function Predictive() {
     );
   };
 
-  const CalendarDropdownField = ({ label, value, onChange, minDate }) => {
+  const CalendarDropdownField = ({ label, value, onChange, minDate, isDisabled = false }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [displayMonth, setDisplayMonth] = useState(() => {
       const base = value ? new Date(`${value}T00:00:00`) : new Date();
@@ -1188,6 +1188,12 @@ function Predictive() {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    useEffect(() => {
+      if (isDisabled) {
+        setIsOpen(false);
+      }
+    }, [isDisabled]);
 
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -1280,15 +1286,20 @@ function Predictive() {
 
         <button
           type="button"
-          onClick={() => setIsOpen((prev) => !prev)}
-          className="w-full px-3 py-2 border rounded-md text-sm bg-white text-[#332849] focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] border-[#CCCCCC] flex items-center justify-between"
+          onClick={() => {
+            if (!isDisabled) {
+              setIsOpen((prev) => !prev);
+            }
+          }}
+          disabled={isDisabled}
+          className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] border-[#CCCCCC] flex items-center justify-between ${isDisabled ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : 'bg-white text-[#332849]'}`}
           style={{ fontFamily: 'Satoshi, sans-serif' }}
         >
-          <span className={`${value ? 'text-[#332849]' : 'text-gray-500'}`}>{formatDisplayDate(value)}</span>
+          <span className={`${isDisabled ? 'text-gray-400' : value ? 'text-[#332849]' : 'text-gray-500'}`}>{formatDisplayDate(value)}</span>
           <Calendar className="h-4 w-4 text-gray-400" />
         </button>
 
-        {isOpen && (
+        {isOpen && !isDisabled && (
           <div className="absolute z-50 w-full mt-1 bg-white border border-[#CCCCCC] rounded-md shadow-lg p-3">
             <div className="flex items-center justify-between mb-3">
               <button type="button" onClick={handlePreviousMonth} className="text-gray-600 hover:text-gray-900 px-1">
@@ -1396,11 +1407,11 @@ function Predictive() {
                       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                         <div className="rounded-md bg-white p-3">
                           <p className="text-xs text-gray-500">{desiredValueLabel}</p>
-                          <p className="font-medium">{formatToFourDecimals(desiredClass) || '-'}</p>
+                          <p className="font-medium">{isRegression ? formatToFourDecimals(desiredClass) : desiredClass || '-'}</p>
                         </div>
                         <div className="rounded-md bg-white p-3">
                           <p className="text-xs text-gray-500">{predictedValueLabel}</p>
-                          <p className="font-medium">{formatToFourDecimals(limeReport[predictedValueKey]) ?? '-'}</p>
+                          <p className="font-medium">{isRegression ? formatToFourDecimals(limeReport[predictedValueKey]) : limeReport[predictedValueKey] ?? '-'}</p>
                         </div>
                       </div>
 
@@ -1560,6 +1571,7 @@ function Predictive() {
                 value={formData.toDate}
                 onChange={(value) => handleFieldChange('toDate', value)}
                 minDate={formData.fromDate || undefined}
+                isDisabled={!formData.fromDate}
               />
             </div>
 

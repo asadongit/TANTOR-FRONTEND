@@ -147,14 +147,45 @@ export function AIPlaygroundLayout({
             }
         };
 
-        window.history.pushState(null, '', location.pathname);
-
-        window.addEventListener('popstate', handlePopState);
+        try {
+            window.history.pushState(null, '', location.pathname);
+            window.addEventListener('popstate', handlePopState);
+        } catch (error) {
+            console.error('Error setting up popstate listener:', error);
+        }
 
         return () => {
-            window.removeEventListener('popstate', handlePopState);
+            try {
+                window.removeEventListener('popstate', handlePopState);
+            } catch (error) {
+                console.error('Error removing popstate listener:', error);
+            }
         };
-    }, [location.pathname]);
+    }, [location.pathname, isAIPlaygroundActive]);
+
+    useEffect(() => {
+        const handleBeforeUnload = (event) => {
+            const currentPath = window.location.pathname;
+            if (currentPath.startsWith('/ai/playground') && isAIPlaygroundActive) {
+                event.preventDefault();
+                event.returnValue = '';
+            }
+        };
+
+        try {
+            window.addEventListener('beforeunload', handleBeforeUnload);
+        } catch (error) {
+            console.error('Error setting up beforeunload listener:', error);
+        }
+
+        return () => {
+            try {
+                window.removeEventListener('beforeunload', handleBeforeUnload);
+            } catch (error) {
+                console.error('Error removing beforeunload listener:', error);
+            }
+        };
+    }, [location.pathname, isAIPlaygroundActive]);
 
     const currentStageIndex = workflowStages.findIndex(
         stage => stage.path === location.pathname
