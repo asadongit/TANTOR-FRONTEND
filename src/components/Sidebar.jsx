@@ -281,7 +281,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
             subItems: [
                 { name: 'Domain Management', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/domain-management` },
                 { name: 'Golden Records', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/golden-records` },
-                { name: '360° Entity View', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/entity-view` },
+                // { name: '360° Entity View', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/entity-view` },
                 { name: 'Cross-Domain Links', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/cross-domain-links` },
             ]
         },
