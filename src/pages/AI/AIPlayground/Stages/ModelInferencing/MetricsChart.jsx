@@ -35,7 +35,7 @@ const SortPill = ({ metric, priority, direction, onRemove, onToggle }) => (
   </div>
 );
 
-const MetricsChart = ({ metricsData, apiResults, truncateName, legendTruncateLength, chartColors }) => {
+const MetricsChart = ({ metricsData, apiResults, truncateName, legendTruncateLength, chartColors, metricsDescription = 'Accuracy, precision, recall & F1 score' }) => {
   const MODELS_PER_PAGE = 10;
   const [currentPage, setCurrentPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState(0);
@@ -272,7 +272,7 @@ const MetricsChart = ({ metricsData, apiResults, truncateName, legendTruncateLen
           )}
         </div>
 
-        <p className="text-xs text-gray-500 mb-3">Accuracy, precision, recall & F1 score</p>
+        <p className="text-xs text-gray-500 mb-3">{metricsDescription}</p>
 
         {/* Search */}
         <div className="relative mb-3">

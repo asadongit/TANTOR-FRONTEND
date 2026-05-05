@@ -112,6 +112,7 @@ export function AIPlaygroundLayout({
     const [isAddingWorkflow, setIsAddingWorkflow] = useState(false);
     const [showAddWorkflowModal, setShowAddWorkflowModal] = useState(false);
     const [newWorkflowName, setNewWorkflowName] = useState('');
+    const [addWorkflowNameError, setAddWorkflowNameError] = useState('');
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [showFinishModal, setShowFinishModal] = useState(false);
     const [showDeleteWorkflowModal, setShowDeleteWorkflowModal] = useState(false);
@@ -396,9 +397,45 @@ export function AIPlaygroundLayout({
         setShowCancelModal(false);
     };
 
+    const validateWorkflowName = (name) => {
+        if (!name.trim()) {
+            return 'Workflow name is required';
+        }
+
+        if (name.length > 100) {
+            return 'Workflow name must be 100 characters or less';
+        }
+
+        if (!/^[A-Za-z]/.test(name.trim())) {
+            return 'Workflow name must start with an alphabet';
+        }
+
+        if (/^\d+$/.test(name.trim())) {
+            return 'Workflow name cannot contain only digits';
+        }
+
+        const validCharPattern = /^[A-Za-z0-9_\-@#& ]+$/;
+        if (!validCharPattern.test(name.trim())) {
+            return 'Only letters, numbers, underscore, hyphen, space, @, #, and & are allowed';
+        }
+
+        return null;
+    };
+
     const openAddWorkflowModal = () => {
         if (readonly || isAddingWorkflow) return;
+        
+        // Check if max workflows (8) already reached
+        if (Object.keys(workflowsState || {}).length >= 8) {
+            toast.error('Maximum of 8 workflows allowed. Cannot add more workflows.', {
+                duration: 3000,
+                position: 'top-right'
+            });
+            return;
+        }
+        
         setNewWorkflowName('');
+        setAddWorkflowNameError('');
         setShowAddWorkflowModal(true);
     };
 
@@ -406,15 +443,27 @@ export function AIPlaygroundLayout({
         if (isAddingWorkflow) return;
         setShowAddWorkflowModal(false);
         setNewWorkflowName('');
+        setAddWorkflowNameError('');
     };
 
     const handleAddWorkflow = async () => {
         if (readonly || isAddingWorkflow) return;
 
         const workflowName = newWorkflowName.trim();
-        if (!workflowName) {
-            toast.error('Please enter a workflow name.', {
+        const validationError = validateWorkflowName(workflowName);
+        if (validationError) {
+            setAddWorkflowNameError(validationError);
+            toast.error(validationError, {
                 duration: 2500,
+                position: 'top-right'
+            });
+            return;
+        }
+
+        // Check if max workflows (8) reached
+        if (Object.keys(workflowsState || {}).length >= 8) {
+            toast.error('Maximum of 8 workflows allowed. Cannot add more workflows.', {
+                duration: 3000,
                 position: 'top-right'
             });
             return;
@@ -426,6 +475,7 @@ export function AIPlaygroundLayout({
             .filter(Boolean);
 
         if (existingWorkflowNames.includes(normalizedName)) {
+            setAddWorkflowNameError('A workflow with this name already exists. Please choose a different name.');
             toast.error('Workflow name already exists. Please provide a different name.', {
                 duration: 3000,
                 position: 'top-right'
@@ -734,18 +784,40 @@ export function AIPlaygroundLayout({
                                 </button>
                             </div>
 
-                            <p className="text-sm text-[#818181] mb-3">
-                                Enter a name for the new workflow.
-                            </p>
-
-                            <input
-                                type="text"
-                                value={newWorkflowName}
-                                onChange={(e) => setNewWorkflowName(e.target.value)}
-                                placeholder="Enter workflow name"
-                                disabled={isAddingWorkflow}
-                                className="w-full rounded-lg border border-[#D7D3E5] px-4 py-3 text-[#282F49] focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
-                            />
+                            <div className="mb-3">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-sm text-[#818181]">
+                                        Enter a name for the new workflow.
+                                    </p>
+                                    <span className="text-xs text-slate-400">{newWorkflowName.length}/100</span>
+                                </div>
+                                <input
+                                    type="text"
+                                    value={newWorkflowName}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        setNewWorkflowName(value);
+                                        // Validate in real-time and clear error if valid
+                                        if (value.trim()) {
+                                            const error = validateWorkflowName(value);
+                                            setAddWorkflowNameError(error || '');
+                                        } else {
+                                            setAddWorkflowNameError('');
+                                        }
+                                    }}
+                                    placeholder="Enter workflow name"
+                                    disabled={isAddingWorkflow}
+                                    maxLength={100}
+                                    className={`w-full rounded-lg border px-4 py-3 text-[#282F49] focus:outline-none focus:ring-2 ${
+                                        addWorkflowNameError
+                                            ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                                            : 'border-[#D7D3E5] focus:ring-[#8e78b7]'
+                                    }`}
+                                />
+                                {addWorkflowNameError && (
+                                    <p className="text-xs text-red-500 mt-1">{addWorkflowNameError}</p>
+                                )}
+                            </div>
 
                             <div className="flex gap-3 justify-end mt-6">
                                 <button
@@ -864,7 +936,8 @@ export function AIPlaygroundLayout({
                             {!readonly && (
                                 <button
                                     onClick={openAddWorkflowModal}
-                                    disabled={isAddingWorkflow}
+                                    disabled={isAddingWorkflow || Object.keys(workflowsState || {}).length >= 8}
+                                    title={Object.keys(workflowsState || {}).length >= 8 ? 'Maximum 8 workflows allowed' : ''}
                                     className="flex items-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg text-sm font-medium border-[#8e78b7] text-[#8e78b7] bg-purple-50 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                                 >
                                     <Plus size={16} />

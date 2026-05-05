@@ -270,6 +270,30 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
     return !existingNames.includes(name.trim().toLowerCase());
   };
 
+  const validateEnsembleNameRules = (name) => {
+    const normalizedName = name.trim();
+
+    if (!normalizedName) {
+      return 'Ensemble name is required.';
+    }
+
+    if (normalizedName.length > 100) {
+      return 'Ensemble name must be 100 characters or fewer.';
+    }
+
+    if (!/^[A-Za-z][A-Za-z0-9_@#&\- ]*$/.test(normalizedName)) {
+      return 'Ensemble name must start with a letter and can only include letters, numbers, underscores, hyphens, spaces, @, #, and &.';
+    }
+
+    const projectName = (projectState?.selectedProject || projectState?.projectName || '').trim();
+
+    if (projectName && normalizedName.toLowerCase() === projectName.toLowerCase()) {
+      return 'Ensemble name cannot match an existing project name.';
+    }
+
+    return null;
+  };
+
   const handleSaveClick = async () => {
     const selectedCount = Object.values(selectedModelsByWorkflow).reduce(
       (acc, workflowSelections) => acc + Object.values(workflowSelections || {}).filter(Boolean).length,
@@ -298,9 +322,11 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
 
       const normalizedEnsembleName = ensembleName.trim();
 
-      if (!normalizedEnsembleName) {
-        toast.error('Ensemble name is required.', {
-          duration: 3000,
+      const ensembleNameError = validateEnsembleNameRules(normalizedEnsembleName);
+
+      if (ensembleNameError) {
+        toast.error(ensembleNameError, {
+          duration: 4000,
           position: 'top-right',
         });
         return;
@@ -600,8 +626,10 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
                   onChange={(e) => setEnsembleName(e.target.value)}
                   disabled={readonly}
                   placeholder="Enter ensemble name..."
+                  maxLength={100}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
                 />
+                
               </div>
             )}
 
