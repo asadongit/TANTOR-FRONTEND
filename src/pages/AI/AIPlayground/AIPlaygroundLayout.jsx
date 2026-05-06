@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
     Boxes,
     SlidersHorizontal,
@@ -80,11 +81,15 @@ export function AIPlaygroundLayout({
     const isEnsemble = location.state?.isEnsemble;
     const initialEnsembleCount = ensembleCount;
     const hostnameAI = window._env_?.VITE_AI_API;
-    const [isCancelLoading, setIsCancelLoading] = useState(false);
     const workflowState = activeWorkflowId
     ? workflowsState[activeWorkflowId]
     : null;  
     const modelGenesisConfig = workflowState?.modelGenesis?.config;
+
+    const truncateLabel = (label, max = 20) => {
+        if (!label) return '';
+        return String(label).length > max ? `${String(label).slice(0, max)}..` : String(label);
+    };
 
     
     
@@ -109,7 +114,6 @@ export function AIPlaygroundLayout({
     const [activeModelIndex, setActiveModelIndex] = useState(0);
     const [hoveredModelIndex, setHoveredModelIndex] = useState(null);
     const [isNavigating, setIsNavigating] = useState(false);
-    const [isAddingWorkflow, setIsAddingWorkflow] = useState(false);
     const [showAddWorkflowModal, setShowAddWorkflowModal] = useState(false);
     const [newWorkflowName, setNewWorkflowName] = useState('');
     const [addWorkflowNameError, setAddWorkflowNameError] = useState('');
@@ -117,6 +121,69 @@ export function AIPlaygroundLayout({
     const [showFinishModal, setShowFinishModal] = useState(false);
     const [showDeleteWorkflowModal, setShowDeleteWorkflowModal] = useState(false);
     const [deleteTargetModelIndex, setDeleteTargetModelIndex] = useState(null);
+
+    const cleanupMutation = useMutation({
+        mutationFn: async () => {
+            try {
+                if (!datasetState?.ensembleId) {
+                    return null;
+                }
+
+                const response = await fetch(`${hostnameAI}/cleanup/cleanup`, {
+                    method: 'POST',
+                    headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ensemble_id: datasetState.ensembleId,
+                        training_flag: workflowState?.modelSelection?.apiResponse !== null
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to cleanup workflow: ${response.status}`);
+                }
+
+                return response.json();
+            } catch (error) {
+                console.error('Cleanup API error:', error);
+                throw error;
+            }
+        }
+    });
+
+    const createWorkflowMutation = useMutation({
+        mutationFn: async (workflowName) => {
+            try {
+                const response = await fetch(`${hostnameAI}/ingestion/create-workflow`, {
+                    method: 'POST',
+                    headers: {
+                        accept: 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        ensemble_id: datasetState.ensembleId,
+                        no_of_workflows: 1,
+                        workflow_names: [workflowName]
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to create workflow: ${response.status}`);
+                }
+
+                return response.json();
+            } catch (error) {
+                console.error('Error creating workflow:', error);
+                toast.error(error?.message || 'Failed to add workflow. Please try again.', {
+                    duration: 4000,
+                    position: 'top-right'
+                });
+                throw error;
+            }
+        }
+    });
+
+    const isCancelLoading = cleanupMutation.isPending;
+    const isAddingWorkflow = createWorkflowMutation.isPending;
 
     useEffect(() => {
         if (isEnsemble && Object.keys(workflowsState).length > 0) {
@@ -403,23 +470,13 @@ export function AIPlaygroundLayout({
     };
 
     const handleConfirmCancel = async () => {
-        setIsCancelLoading(true);
         try {
-            if (datasetState?.ensembleId) {
-                await fetch(`${hostnameAI}/cleanup/cleanup`, {
-                    method: 'POST',
-                    headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        ensemble_id: datasetState.ensembleId,
-                        training_flag: workflowState?.modelSelection?.apiResponse !== null
-                    })
-                });
-            }
+            await cleanupMutation.mutateAsync();
         } catch (error) {
             console.error('Cleanup API error:', error);
+            return;
         }
         resetAllStates();
-        setIsCancelLoading(false);
         setShowCancelModal(false);
         navigate('/ai/playground');
     };
@@ -514,28 +571,10 @@ export function AIPlaygroundLayout({
             return;
         }
 
-        setIsAddingWorkflow(true);
         try {
-            const response = await fetch(`${hostnameAI}/ingestion/create-workflow`, {
-                method: 'POST',
-                headers: {
-                    accept: 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    ensemble_id: datasetState.ensembleId,
-                    no_of_workflows: 1,
-                    workflow_names: [workflowName]
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Failed to create workflow: ${response.status}`);
-            }
-
-            const data = await response.json();
+            const data = await createWorkflowMutation.mutateAsync(workflowName);
             const workflows = data?.workflows || {};
-            const [newWorkflowId, newWorkflowName] = Object.entries(workflows)[0] || [];
+            const [newWorkflowId] = Object.entries(workflows)[0] || [];
             const fallbackWorkflowId = data?.workflow_ids?.[0];
             const resolvedWorkflowId = newWorkflowId || fallbackWorkflowId;
 
@@ -562,8 +601,6 @@ export function AIPlaygroundLayout({
                 duration: 4000,
                 position: 'top-right'
             });
-        } finally {
-            setIsAddingWorkflow(false);
         }
     };
 
@@ -636,7 +673,7 @@ export function AIPlaygroundLayout({
 
         if (isXAIPage) {
             if (isEnsemble && activeModelIndex < models.length - 1) {
-                return `Continue to ${models[activeModelIndex + 1].label}`;
+                return `Continue to ${truncateLabel(models[activeModelIndex + 1]?.label)}`;
             }
             return `Continue to ${nextStage?.label || 'Next Stage'}`;
         }
@@ -644,7 +681,7 @@ export function AIPlaygroundLayout({
         if (isOnStep7 && !isStep7Preview) return 'Preview Data';
         if (isOnStep7 && isStep7Preview) return `Continue to ${nextStage?.label || 'Next Stage'}`;
         if (isDeploymentStage && isEnsemble && activeModelIndex < models.length - 1) {
-            return `Continue to ${models[activeModelIndex + 1].label}`;
+            return `Continue to ${truncateLabel(models[activeModelIndex + 1]?.label)}`;
         }
         if (isPreprocessingPage && currentPreprocessingStep < totalPreprocessingSteps) return 'Process Data';
         return `Continue to ${nextStage?.label || 'Next Stage'}`;
@@ -775,7 +812,7 @@ export function AIPlaygroundLayout({
                             <p className="text-gray-600 mb-6">
                                 Are you sure you want to delete{' '}
                                 <span className="font-medium text-gray-800">
-                                    {deleteTargetModelIndex !== null ? models[deleteTargetModelIndex]?.label : 'this workflow'}
+                                    {deleteTargetModelIndex !== null ? truncateLabel(models[deleteTargetModelIndex]?.label) : 'this workflow'}
                                 </span>
                                 ? This action cannot be undone.
                             </p>
@@ -923,15 +960,16 @@ export function AIPlaygroundLayout({
                 {isEnsemble && models.length > 0 && (
                     <div className="bg-white rounded-md px-6 py-1">
                         <div className="w-full flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 overflow-x-auto flex-nowrap" style={{ WebkitOverflowScrolling: 'touch' }}>
                                 {models.map((model, index) => (
                                     <div
                                         key={model.id}
-                                        className="relative group"
+                                        className="relative group flex-shrink-0"
                                         onMouseEnter={() => setHoveredModelIndex(index)}
                                         onMouseLeave={() => setHoveredModelIndex(null)}
                                     >
                                         <div
+                                            title={model.label}
                                             className={`flex items-center gap-3 px-6 py-2 rounded-lg text-sm font-medium transition-all ${activeModelIndex === index
                                                 ? 'bg-[#8e78b7] text-white'
                                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -943,7 +981,7 @@ export function AIPlaygroundLayout({
                                                 }`}>
                                                 {index + 1}
                                             </span>
-                                            <span>{model.label}</span>
+                                            <span>{truncateLabel(model.label)}</span>
 
                                             {!readonly && models.length > 1 && hoveredModelIndex === index && (
                                                 <button
@@ -1096,7 +1134,7 @@ export function AIPlaygroundLayout({
                                         disabled={isNextDisabled()}
                                         className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#7d67a6] disabled:hover:bg-[#8e78b7]"
                                     >
-                                        Continue to {models[activeModelIndex + 1]?.label || 'Next Workflow'}
+                                        Continue to {truncateLabel(models[activeModelIndex + 1]?.label) || 'Next Workflow'}
                                         {isNavigating ? (
                                             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                                         ) : (
