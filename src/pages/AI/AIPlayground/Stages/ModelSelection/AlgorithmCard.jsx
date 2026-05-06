@@ -4,7 +4,7 @@ import { validateHyperparameterValue } from './validationUtils';
 import { tw } from '../../../../../components/themeContext';
 
 // Single-select dropdown for Hyper Parameter mode (mirrors GridSearchDropdown style)
-function HyperparameterDropdown({ algo, paramName, options, readonly, onUpdate, isEmpty }) {
+function HyperparameterDropdown({ algo, paramName, options, readonly, disabled, onUpdate, isEmpty }) {
     const ref = useRef(null);
     const dropdownKey = `hp-${algo.id}-${paramName}`;
     const isOpen = algo._openDropdown === dropdownKey;
@@ -22,12 +22,12 @@ function HyperparameterDropdown({ algo, paramName, options, readonly, onUpdate, 
     }, [isOpen]);
 
     const toggleDropdown = () => {
-        if (readonly) return;
+        if (readonly || disabled) return;
         onUpdate(algo.id, { _openDropdown: isOpen ? null : dropdownKey });
     };
 
     const selectOption = (opt) => {
-        if (readonly) return;
+        if (readonly || disabled) return;
         const newErrors = { ...algo.errors };
         delete newErrors[paramName];
         onUpdate(algo.id, {
@@ -44,7 +44,7 @@ function HyperparameterDropdown({ algo, paramName, options, readonly, onUpdate, 
             <button
                 type="button"
                 onClick={toggleDropdown}
-                disabled={readonly}
+                disabled={readonly || disabled}
                 className={`w-full h-10 px-3 rounded-md border text-sm text-left flex items-center justify-between transition-all focus:outline-none font-satoshi font-normal leading-none tracking-normal ${isOpen
                     ? 'border-[#8e78b7] bg-[#F5F0FF] text-[#332849]'
                     : isEmpty
@@ -94,7 +94,7 @@ function HyperparameterDropdown({ algo, paramName, options, readonly, onUpdate, 
 }
 
 // Extracted dropdown as its own component so we can use hooks (useEffect, useRef)
-function GridSearchDropdown({ algo, paramName, options, readonly, onUpdate, isEmpty }) {
+function GridSearchDropdown({ algo, paramName, options, readonly, disabled, onUpdate, isEmpty }) {
     const ref = useRef(null);
     const dropdownKey = `${algo.id}-${paramName}`;
     const isOpen = algo._openDropdown === dropdownKey;
@@ -114,12 +114,12 @@ function GridSearchDropdown({ algo, paramName, options, readonly, onUpdate, isEm
     }, [isOpen]);
 
     const toggleDropdown = () => {
-        if (readonly) return;
+        if (readonly || disabled) return;
         onUpdate(algo.id, { _openDropdown: isOpen ? null : dropdownKey });
     };
 
     const toggleOption = (opt) => {
-        if (readonly) return;
+        if (readonly || disabled) return;
         const newSelected = selectedValues.includes(opt)
             ? selectedValues.filter(v => v !== opt)
             : [...selectedValues, opt];
@@ -130,7 +130,7 @@ function GridSearchDropdown({ algo, paramName, options, readonly, onUpdate, isEm
     };
 
     const toggleAll = () => {
-        if (readonly) return;
+        if (readonly || disabled) return;
         onUpdate(algo.id, {
             gridSearchValues: { ...algo.gridSearchValues, [paramName]: allSelected ? [] : [...options] },
             gridSearchErrors: { ...algo.gridSearchErrors, [paramName]: [] }
@@ -150,7 +150,7 @@ function GridSearchDropdown({ algo, paramName, options, readonly, onUpdate, isEm
             <button
                 type="button"
                 onClick={toggleDropdown}
-                disabled={readonly}
+                disabled={readonly || disabled}
                 className={`w-full h-10 px-3 rounded-md border text-sm text-left flex items-center justify-between transition-all focus:outline-none font-satoshi font-normal leading-none tracking-normal ${isOpen
                     ? 'border-[#8e78b7] bg-[#F5F0FF] text-[#332849]'
                     : isEmpty
@@ -224,9 +224,9 @@ function GridSearchDropdown({ algo, paramName, options, readonly, onUpdate, isEm
     );
 }
 
-function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate, showValidation, onResetValidation, cardRef }) {
+function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate, showValidation, onResetValidation, cardRef }) {
     const handleConfigModeChange = (mode) => {
-        if (readonly) return;
+        if (readonly || disabled) return;
         onUpdate(algo.id, { configMode: mode, errors: {}, hyperparameterValues: {}, gridSearchValues: {}, gridSearchErrors: {} });
         if (onResetValidation) onResetValidation();
     };
@@ -369,6 +369,7 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate, showValid
                         paramName={paramName}
                         options={options}
                         readonly={readonly}
+                        disabled={disabled}
                         onUpdate={onUpdate}
                         isEmpty={isEmpty}
                     />
@@ -392,7 +393,7 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate, showValid
                     </label>
                     <input
                         type="text"
-                        disabled={readonly}
+                        disabled={readonly || disabled}
                         value={algo.hyperparameterValues[paramName] || ''}
                         onChange={(e) => handleHyperparameterChange(paramName, paramValue, e.target.value)}
                         onBlur={(e) => handleHyperparameterBlur(paramName, paramValue, e.target.value)}
@@ -443,6 +444,7 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate, showValid
                         paramValue={paramValue}
                         options={options}
                         readonly={readonly}
+                        disabled={disabled}
                         onUpdate={onUpdate}
                         isEmpty={isEmpty}
                     />
@@ -474,8 +476,8 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate, showValid
                                 <div className="flex items-center gap-2">
                                     <input
                                         type="text"
-                                        disabled={readonly}
                                         value={value}
+                                        disabled={readonly || disabled}
                                         onChange={(e) => updateGridSearchValue(paramName, index, e.target.value)}
                                         onBlur={(e) => validateGridSearchValue(paramName, paramValue, index, e.target.value)}
                                         placeholder={`${paramValue.low} - ${paramValue.high}${specialText ? ` or ${specialText}` : ''}`}
@@ -489,7 +491,7 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate, showValid
                                     {values.length > 1 && (
                                         <button
                                             onClick={() => removeGridSearchValue(paramName, index)}
-                                            disabled={readonly}
+                                            disabled={readonly || disabled}
                                             className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
                                         >
                                             <X className="w-4 h-4" />
@@ -507,10 +509,10 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate, showValid
                         <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">Please enter at least one value</p>
                     )}
 
-                    {!readonly && (
+                    {!(readonly || disabled) && (
                         <button
                             onClick={() => addGridSearchValue(paramName)}
-                            disabled={readonly || !allPreviousFieldsFilled || hasAnyErrors}
+                            disabled={readonly || disabled || !allPreviousFieldsFilled || hasAnyErrors}
                             className={`mt-3 w-full px-3 py-2 border-2 border-dashed rounded-lg text-sm flex items-center justify-center gap-2 font-medium transition-colors ${!allPreviousFieldsFilled || hasAnyErrors
                                 ? 'border-gray-200 text-gray-400 cursor-not-allowed'
                                 : 'border-gray-300 text-gray-600 hover:border-[#8e78b7] hover:text-[#8e78b7] hover:bg-gray-100'
@@ -591,7 +593,7 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate, showValid
                             type="checkbox"
                             checked={algo.enabled}
                             onChange={() => onToggle(algo.id)}
-                            disabled={readonly}
+                                disabled={readonly || disabled}
                             className="sr-only peer"
                         />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
@@ -599,6 +601,7 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate, showValid
                     {algo.enabled && (
                         <button
                             onClick={() => onExpand(algo.id)}
+                            disabled={readonly || disabled}
                             className="text-gray-400 hover:text-gray-600 transition-colors"
                             title={algo.expanded ? "Collapse" : "Expand"}
                         >
@@ -623,7 +626,7 @@ function AlgorithmCard({ algo, readonly, onToggle, onExpand, onUpdate, showValid
                                     <button
                                         key={mode}
                                         onClick={() => handleConfigModeChange(mode)}
-                                        disabled={readonly}
+                                        disabled={readonly || disabled}
                                         className={`px-8 py-2 text-sm font-medium transition-colors relative focus:outline-none ${algo.configMode === mode
                                             ? 'text-[#8e78b7] bg-[#FAF8FF] rounded-t'
                                             : 'text-gray-500 hover:text-gray-700'

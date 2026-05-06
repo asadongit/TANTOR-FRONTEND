@@ -296,13 +296,13 @@ const MethodOption = ({ option, name, checked, onChange, readonly }) => (
     </label>
 );
 
-function FeatureImportance({ onApiCall }) {
+function FeatureImportance({ readonly: readonlyProp, onApiCall }) {
     const hostnameAI = window._env_?.VITE_AI_API;
     const { workflowsState, activeWorkflowId, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
     const workflowState = activeWorkflowId
     ? workflowsState[activeWorkflowId]
     : null;  
-    const readonly = mode === 'view';
+    const readonly = readonlyProp || mode === 'view';
     const currentWorkflowId = workflowState?.workflow_id || activeWorkflowId;
 
     const maxFeatures = workflowState?.dataPreprocessing?.step4?.apiResponse?.column_count || 0;

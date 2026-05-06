@@ -65,10 +65,10 @@ const FeatureSection = ({
 };
 
 
-function ScalingTransformation({ onApiCall, onValidationChange }) {
+function ScalingTransformation({ readonly: readonlyProp, onApiCall, onValidationChange }) {
     const hostnameAI = window._env_?.VITE_AI_API;
     const { workflowsState, activeWorkflowId, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
-    const readonly = mode === 'view';
+    const readonly = readonlyProp || mode === 'view';
     const workflowState = activeWorkflowId
     ? workflowsState[activeWorkflowId]
     : null;  

@@ -140,13 +140,13 @@ const VariantDataTable = ({ variantKey, displayData }) => {
     );
 };
 
-function Step7({ onShowPreview, showPreview, onApiCall }) {
+function Step7({ readonly: readonlyProp, onShowPreview, showPreview, onApiCall }) {
     const hostnameAI = window._env_?.VITE_AI_API;
     const { workflowsState, activeWorkflowId, datasetState, updatePreprocessingStep, updateWorkflowStage, mode } = useAIPlayground();
     const workflowState = activeWorkflowId
     ? workflowsState[activeWorkflowId]
     : null;  
-    const readonly = mode === 'view';
+    const readonly = readonlyProp || mode === 'view';
     const currentWorkflowId = workflowState?.workflow_id || activeWorkflowId;
 
     const [toggles, setToggles] = useState({ imbalancedData: false });
