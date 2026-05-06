@@ -210,10 +210,10 @@ const FeatureSection = ({
     );
 };
 
-function FeatureEngineering({ onApiCall }) {
+function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
     const hostnameAI = window._env_?.VITE_AI_API;
     const { workflowsState, activeWorkflowId, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
-    const readonly = mode === 'view';
+    const readonly = readonlyProp || mode === 'view';
     const workflowState = activeWorkflowId
     ? workflowsState[activeWorkflowId]
     : null;  

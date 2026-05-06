@@ -203,11 +203,11 @@ const StrategySearchableDropdown = ({
   );
 };
 
-function FeatureSelection({ onValidationChange, onApiCall }) {
+function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCall }) {
   const hostnameAI = window._env_?.VITE_AI_API;
   const { workflowsState, activeWorkflowId, updatePreprocessingStep, datasetState, mode } = useAIPlayground();
   
-  const readonly = mode === 'view';
+  const readonly = readonlyProp || mode === 'view';
   const workflowState = activeWorkflowId
     ? workflowsState[activeWorkflowId]
     : null;

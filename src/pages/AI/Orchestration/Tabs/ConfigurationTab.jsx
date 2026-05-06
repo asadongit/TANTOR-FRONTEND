@@ -826,6 +826,51 @@ const ConfigurationTab = ({ onValidationErrors }) => {
         return acc;
     }, {});
 
+    const createBlankSchedulerState = (isEnsemble = false) => ({
+        owner_id: '',
+        project: '',
+        is_ensemble: isEnsemble,
+        ensemble_name: '',
+        model: isEnsemble ? [] : '',
+        model_id: isEnsemble ? [] : '',
+        project_id: '',
+        flow_type: 'single_run',
+        scheduler: {
+            mode: 'auto',
+            frequency: '',
+            runningDays: [],
+            endDateTime: '',
+            intervalType: 'single_run',
+            intervalValue: '',
+            startDateTime: '',
+        },
+        source: {
+            source_conn_type: '',
+            source_schema: '',
+            source_table: ''
+        },
+        target: {
+            destination_conn_type: '',
+            destination_schema: '',
+            destination_table: ''
+        },
+        data_drift_threshold: {
+            distribution_drift_threshold: 0,
+            statistical_significance_level: 0,
+            information_stability_threshold: 0,
+            target_stability_threshold: 0
+        },
+        model_drift_threshold: {
+            prediction_drift_threshold: 0,
+            performance_drift_threshold: -1
+        },
+        data_drift_check: 0,
+        model_drift_check: 0,
+        recipients: [],
+        created_by: '',
+        workflow_name: ''
+    });
+
     const frequencyOptions = [
         { value: '', label: 'Select' },
         { value: 'hourly', label: 'Hourly' },
@@ -851,36 +896,18 @@ const ConfigurationTab = ({ onValidationErrors }) => {
 
     const handleEnsembleToggle = (enabled) => {
         setIsEnsembleEnabled(enabled);
-        setFieldErrors(prev => ({ ...prev, ensemble_name: undefined, model: undefined }));
+        setFieldErrors({});
         setValidationStatus(null);
         setSummary(null);
-
-        if (!enabled) {
-            setSelectedEnsemble('');
-            setEnsembleNames([]);
-            setWorkflowModelMap({});
-            setSchedulerState(prev => ({
-                ...prev,
-                is_ensemble: false,
-                ensemble_name: '',
-                model: '',
-                model_id: '',
-                data_drift_threshold: stripNestedThresholdEntries(prev.data_drift_threshold),
-                model_drift_threshold: stripNestedThresholdEntries(prev.model_drift_threshold)
-            }));
-            return;
-        }
-
-        setSchedulerState(prev => ({
-            ...prev,
-            is_ensemble: true,
-            ensemble_name: '',
-            model: [],
-            model_id: []
-        }));
+        setScheduleName('');
+        setSelectedEnsemble('');
+        setEnsembleNames([]);
         setModels([]);
         setWorkflowModelMap({});
-        setSelectedEnsemble('');
+        setScheduleType('Single Run');
+        setShowDateModal(false);
+
+        setSchedulerState(createBlankSchedulerState(enabled));
     };
 
     return (

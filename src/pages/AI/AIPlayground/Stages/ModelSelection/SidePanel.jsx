@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
 import { tw } from '../../../../../components/themeContext';
 
-function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, readonly, hasEnabledMetrics, showValidation,metricFullFormMap }) {
+function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, readonly, disabled, hasEnabledMetrics, showValidation,metricFullFormMap }) {
     const [metricsExpanded, setMetricsExpanded] = useState(true);
     const [draggedItem, setDraggedItem] = useState(null);
 
     const toggleMetric = (index) => {
-        if (readonly) return;
+        if (readonly || disabled) return;
         const newMetrics = metrics.map((metric, i) =>
             i === index ? { ...metric, enabled: !metric.enabled } : metric
         );
@@ -17,13 +17,13 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
     };
 
     const handleDragStart = (e, index) => {
-        if (readonly) return;
+        if (readonly || disabled) return;
         setDraggedItem(index);
         e.dataTransfer.effectAllowed = 'move';
     };
 
     const handleDragOver = (e, index) => {
-        if (readonly) return;
+        if (readonly || disabled) return;
         e.preventDefault();
         if (draggedItem === null || draggedItem === index) return;
         const newMetrics = [...metrics];
@@ -35,7 +35,7 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
     };
 
     const handleDragEnd = () => {
-        if (readonly) return;
+        if (readonly || disabled) return;
         setDraggedItem(null);
     };
 
@@ -50,8 +50,8 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
                         <input
                             type="checkbox"
                             checked={normalizeData}
-                            onChange={(e) => !readonly && setNormalizeData(e.target.checked)}
-                            disabled={readonly}
+                            onChange={(e) => !(readonly || disabled) && setNormalizeData(e.target.checked)}
+                            disabled={readonly || disabled}
                             className="sr-only peer"
                         />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
@@ -77,8 +77,8 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
                         )}
                     </div>
                     <button
-                        onClick={() => !readonly && setMetricsExpanded(!metricsExpanded)}
-                        disabled={readonly}
+                        onClick={() => !(readonly || disabled) && setMetricsExpanded(!metricsExpanded)}
+                        disabled={readonly || disabled}
                         className="text-gray-400 hover:text-gray-600 ml-4"
                     >
                         {metricsExpanded ? <ChevronUp className='w-5 h-5' /> : <ChevronDown className='w-5 h-5' />}
@@ -94,11 +94,11 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
                             {metrics.map((metric, index) => (
                                 <div
                                     key={index}
-                                    draggable={!readonly}
                                     onDragStart={(e) => handleDragStart(e, index)}
                                     onDragOver={(e) => handleDragOver(e, index)}
                                     onDragEnd={handleDragEnd}
-                                    className={`flex items-center gap-3 p-3 rounded-lg ${readonly ? 'cursor-not-allowed' : 'cursor-move'
+                                    draggable={!(readonly || disabled)}
+                                    className={`flex items-center gap-3 p-3 rounded-lg ${(readonly || disabled) ? 'cursor-not-allowed' : 'cursor-move'
                                         } bg-white transition-colors ${draggedItem === index ? 'opacity-50' : ''}`}
                                 >
                                     <span className="text-md font-medium text-[#8e78b7] w-8">P{index + 1}</span>
@@ -126,7 +126,7 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
                                             type="checkbox"
                                             checked={metric.enabled}
                                             onChange={() => toggleMetric(index)}
-                                            disabled={readonly}
+                                            disabled={readonly || disabled}
                                             className="sr-only peer"
                                         />
                                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>

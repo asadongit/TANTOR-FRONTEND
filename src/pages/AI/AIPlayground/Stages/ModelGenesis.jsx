@@ -528,10 +528,9 @@ const ModeSelection = ({ config, setConfig, readonly }) => {
   );
 };
 
-const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, columnNames, hasError, errorMessage, sectionRef, activeWorkflowId }) => {
+const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, columnNames, hasError, errorMessage, sectionRef, activeWorkflowId, isValidating, setIsValidating }) => {
   const hostnameAI = window._env_?.VITE_AI_API;
   const { datasetState } = useAIPlayground();
-  const [isValidating, setIsValidating] = useState(false);
   const tabs = ['Supervised', 'Unsupervised', 'Time Series', 'Anomaly Detection'];
 
   const getAvailableTargetColumns = () => {
@@ -1133,6 +1132,7 @@ function ModelGenesis() {
   const { datasetState, updateWorkflowStage, workflowsState, mode, activeWorkflowId } = useAIPlayground();
   const workflowState = activeWorkflowId ? workflowsState?.[activeWorkflowId] : null;
   const [validationErrors, setValidationErrors] = useState({});
+  const [isValidating, setIsValidating] = useState(false);
   const predictionTypeRef = useRef(null);
   const dropColumnsRef = useRef(null);
 
@@ -1216,6 +1216,8 @@ function ModelGenesis() {
     }
     return true;
   };
+
+  const isInteractionLocked = readonly || isSubmitting || isValidating;
 
   const handleValidate = () => {
     if (readonly) return;
@@ -1404,7 +1406,7 @@ function ModelGenesis() {
 
   return (
     <AIPlaygroundLayout
-      isNextDisabled={isSubmitting}
+      isNextDisabled={isSubmitting || isValidating}
       onNextClick={handleNextClick}
     >
       <div className="space-y-6">
@@ -1421,7 +1423,7 @@ function ModelGenesis() {
               }
             });
           }}
-          readonly={readonly}
+          readonly={isInteractionLocked}
         />
 
         <DropColumns
@@ -1437,7 +1439,7 @@ function ModelGenesis() {
               setValidationErrors(prev => ({ ...prev, dropColumns: undefined }));
             }
           }}
-          readonly={readonly}
+          readonly={isInteractionLocked}
           columnNames={datasetState.columnNames}
           hasError={!!validationErrors.dropColumns}
           errorMessage={validationErrors.dropColumns}
@@ -1451,19 +1453,21 @@ function ModelGenesis() {
             handleValidate();
             setValidationErrors(prev => ({ ...prev, predictionType: undefined }));
           }}
-          readonly={readonly}
+          readonly={isInteractionLocked}
           columnNames={datasetState.columnNames}
           hasError={!!validationErrors.predictionType}
           errorMessage={validationErrors.predictionType}
           activeWorkflowId={activeWorkflowId}
+          isValidating={isValidating}
+          setIsValidating={setIsValidating}
         />
 
-        <SplitSetting config={config} setConfig={setConfig} readonly={readonly} />
+        <SplitSetting config={config} setConfig={setConfig} readonly={isInteractionLocked} />
 
         <FairnessAttribute
           config={config}
           setConfig={setConfig}
-          readonly={readonly}
+          readonly={isInteractionLocked}
           columnNames={datasetState.columnNames}
         />
       </div>

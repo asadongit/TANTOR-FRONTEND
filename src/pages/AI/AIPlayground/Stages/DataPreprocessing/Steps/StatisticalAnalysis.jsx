@@ -4,10 +4,10 @@ import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 import InfoButton from '../../../components/InfoButton';
 
-function StatisticalAnalysis({ onValidationChange, onApiCall }) {
+function StatisticalAnalysis({ readonly: readonlyProp, onValidationChange, onApiCall }) {
     const hostnameAI = window._env_?.VITE_AI_API;
     const { workflowsState, activeWorkflowId, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
-    const readonly = mode === 'view';
+    const readonly = readonlyProp || mode === 'view';
     const workflowState = activeWorkflowId
     ? workflowsState[activeWorkflowId]
     : null;  

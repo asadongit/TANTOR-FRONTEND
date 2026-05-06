@@ -162,6 +162,7 @@ function ModelSelection() {
 
     const [normalizeData, setNormalizeData] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const isInteractionLocked = readonly || isSubmitting;
 
     // Initialize metrics based on problem type
     const getInitialMetrics = () => {
@@ -374,11 +375,12 @@ function ModelSelection() {
     };
 
     const handleTabChange = (tab) => {
+        if (isInteractionLocked) return;
         setSelectedTab(tab);
     };
 
     const toggleAlgorithm = (id) => {
-        if (readonly) return;
+        if (isInteractionLocked) return;
         const algo = allAlgorithmsState[id];
         const newEnabled = !algo.enabled;
 
@@ -420,6 +422,7 @@ function ModelSelection() {
     };
 
     const toggleExpanded = (id) => {
+        if (isInteractionLocked) return;
         const updates = {};
         Object.keys(allAlgorithmsState).forEach(key => {
             if (key === id) {
@@ -694,6 +697,7 @@ function ModelSelection() {
                                     placeholder="Search algorithms..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
+                                    disabled={isInteractionLocked}
                                     className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent text-sm"
                                 />
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -707,6 +711,7 @@ function ModelSelection() {
                                             <button
                                                 key={category}
                                                 onClick={() => handleTabChange(category)}
+                                                disabled={isInteractionLocked}
                                                 className={`px-8 py-2 ${tw.sectionHeading} whitespace-nowrap flex items-center gap-1.5 ${selectedTab === category
                                                     ? 'text-[#8e78b7] border-b-[3px] border-[#8e78b7] bg-[#FAF8FF] rounded-t'
                                                     : 'text-gray-600 hover:text-gray-900'
@@ -740,6 +745,7 @@ function ModelSelection() {
                                     key={algo.id}
                                     algo={algo}
                                     readonly={readonly}
+                                    disabled={isInteractionLocked}
                                     onToggle={toggleAlgorithm}
                                     onExpand={toggleExpanded}
                                     onUpdate={updateAlgorithmState}
@@ -758,6 +764,7 @@ function ModelSelection() {
     metrics={metrics}
     setMetrics={setMetrics}
     readonly={readonly}
+    disabled={isInteractionLocked}
     hasEnabledMetrics={hasEnabledMetrics}
     showValidation={showValidation}
     metricFullFormMap={isRegression ? REGRESSION_METRIC_FULL_FORM : {}}
