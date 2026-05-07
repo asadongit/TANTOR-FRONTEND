@@ -29,7 +29,14 @@ const getBarColor = (score) => {
 };
 
 const TASK_OPTIONS = ['binary', 'multiclass', 'regression', 'timeseries'];
-const METRIC_OPTIONS = ['accuracy', 'log_loss', 'precision', 'recall', 'f1'];
+const getMetricOptions = (task) => {
+  if (task === 'binary' || task === 'multiclass') {
+    return ['accuracy', 'log_loss', 'precision', 'recall', 'f1'];
+  }
+
+  // regression + timeseries
+  return ['mae', 'mape', 'r2', 'rmse'  ,'quantile_loss', 'huber_loss'];
+};
 
 const formatLabel = (value) => {
   if (!value) return '';
@@ -70,6 +77,7 @@ function Dropdown({ label, options, value, onChange, disabled, multiple, searcha
     if (isAllSelected) onChange([]);
     else onChange(options);
   };
+  
 
   const displayValue = multiple
     ? (value.length ? `${value.length} selected` : 'Select')
@@ -389,6 +397,9 @@ function F1Mode() {
   const [ingestedTable, setIngestedTable] = useState(null);
   const [task, setTask] = useState('');
   const [metric, setMetric] = useState([]);
+  useEffect(() => {
+  setMetric([]);
+}, [task]);
   const [target, setTarget] = useState('');
   const [elapsed, setElapsed] = useState(0);
   const [rowsSampled, setRowsSampled] = useState(null);
@@ -679,7 +690,14 @@ function F1Mode() {
                     {/* Dropdowns */}
                     <div className="grid grid-cols-3 gap-3">
                       <Dropdown label="Task" options={TASK_OPTIONS} value={task} onChange={setTask} disabled={isRaceRunning} />
-                      <Dropdown label="Metric" options={METRIC_OPTIONS} value={metric} onChange={setMetric} disabled={isRaceRunning} multiple />
+                      <Dropdown
+  label="Metric"
+  options={getMetricOptions(task)}
+  value={metric}
+  onChange={setMetric}
+  disabled={isRaceRunning}
+  multiple
+/>
                       <Dropdown label="Target" options={columnNames} value={target} onChange={setTarget} disabled={isRaceRunning} searchable />
                     </div>
 

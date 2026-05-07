@@ -11,6 +11,7 @@ const ToggleSwitch = ({ checked, onChange, readonly }) => (
     </label>
 );
 
+
 const RadioOption = ({ name, value, checked, onChange, label, description, readonly }) => (
     <label className={`px-4 py-3 rounded-lg transition-colors group relative ${checked ? 'bg-purple-100 border border-[#8e78b7]' : 'bg-white'} ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
         <div className="flex items-center gap-2">
@@ -139,16 +140,23 @@ const VariantDataTable = ({ variantKey, displayData }) => {
     );
 };
 
-function Step7({ onShowPreview, showPreview, onApiCall }) {
+function Step7({ readonly: readonlyProp, onShowPreview, showPreview, onApiCall }) {
     const hostnameAI = window._env_?.VITE_AI_API;
-    const { workflowState, datasetState, updatePreprocessingStep, updateWorkflowStage, mode } = useAIPlayground();
-    const readonly = mode === 'view';
+    const { workflowsState, activeWorkflowId, datasetState, updatePreprocessingStep, updateWorkflowStage, mode } = useAIPlayground();
+    const workflowState = activeWorkflowId
+    ? workflowsState[activeWorkflowId]
+    : null;  
+    const readonly = readonlyProp || mode === 'view';
+    const currentWorkflowId = workflowState?.workflow_id || activeWorkflowId;
 
     const [toggles, setToggles] = useState({ imbalancedData: false });
     const [expandedSections, setExpandedSections] = useState({ imbalancedData: false });
     const [samplingMethod, setSamplingMethod] = useState('smote');
     const [isProcessing, setIsProcessing] = useState(false);
     const [previewData, setPreviewData] = useState(null);
+    const modelGenesisConfig = workflowState?.modelGenesis?.config;
+    const modellingType = modelGenesisConfig?.modelling_type || 'binary';
+    const isRegression = modellingType === 'regression';
 
     const IMBALANCE_HANDLING_CONFIG = {
         methods: [
@@ -165,12 +173,15 @@ function Step7({ onShowPreview, showPreview, onApiCall }) {
         ]
     };
 
-    const classificationType = workflowState?.modelGenesis?.config?.modelling_type || 'binary';
-    const samplingMethods = IMBALANCE_HANDLING_CONFIG.methods.filter(m => m.availability[classificationType] === 'yes');
-
-    const modelGenesisConfig = workflowState?.modelGenesis?.config;
+    const samplingMethods = IMBALANCE_HANDLING_CONFIG.methods.filter(m => m.availability[modellingType] === 'yes');
     const dataPreprocessingMode = readonly ? modelGenesisConfig?.data_preprocessing_mode : modelGenesisConfig?.dataPreprocessing;
     const isDataPreprocessingAuto = dataPreprocessingMode && ['Swift', 'Standard', 'Comprehensive'].includes(dataPreprocessingMode);
+
+    useEffect(() => {
+        if (isRegression) {
+            setToggles({ imbalancedData: false });
+        }
+    }, [isRegression]);
 
     useEffect(() => {
         if ((mode === 'view' || mode === 'edit') && workflowState?.dataPreprocessing?.step7?.config) {
@@ -182,21 +193,24 @@ function Step7({ onShowPreview, showPreview, onApiCall }) {
             }
         }
     }, [mode, workflowState]);
-
+    
     const handleImbalanceHandling = async () => {
+        
         if (readonly) return true;
         setIsProcessing(true);
         try {
-            const sessionId = datasetState?.sessionId;
-            if (!sessionId) throw new Error('Session ID not found');
-
             const requestBody = {
-                session_id: sessionId,
+                ensemble_id: datasetState?.ensembleId,
+                workflow_id: currentWorkflowId,
                 imbalance_handling: toggles.imbalancedData,
                 imbalance_handling_method: samplingMethod,
                 use_class_weights: false,
                 sampling_strategy: "auto"
             };
+
+            if (!requestBody.ensemble_id || !requestBody.workflow_id) {
+                throw new Error('Missing required identifiers: ensemble_id or workflow_id');
+            }
 
             const response = await fetch(`${hostnameAI}/data/preprocess/imbalance_handling`, {
                 method: 'POST',
@@ -211,7 +225,12 @@ function Step7({ onShowPreview, showPreview, onApiCall }) {
 
             const data = await response.json();
             updatePreprocessingStep('step7', {
-                config: { imbalance_handling: toggles.imbalancedData, imbalance_handling_method: samplingMethod },
+                config: {
+                    ensemble_id: datasetState?.ensembleId,
+                    workflow_id: currentWorkflowId,
+                    imbalance_handling: toggles.imbalancedData,
+                    imbalance_handling_method: samplingMethod
+                },
                 apiResponse: data
             });
             setPreviewData(data);
@@ -227,10 +246,10 @@ function Step7({ onShowPreview, showPreview, onApiCall }) {
 
     useEffect(() => {
         if (onApiCall) onApiCall(handleImbalanceHandling);
-    }, [onApiCall, toggles.imbalancedData, samplingMethod]);
+    }, [onApiCall, toggles.imbalancedData, samplingMethod, datasetState?.ensembleId, currentWorkflowId]);
 
     const toggleSwitch = (key) => {
-        if (readonly) return;
+        if (readonly || isRegression) return;
         const newToggleState = !toggles[key];
         setToggles(prev => ({ ...prev, [key]: newToggleState }));
         setExpandedSections(prev => ({ ...prev, [key]: newToggleState }));
@@ -314,6 +333,12 @@ function Step7({ onShowPreview, showPreview, onApiCall }) {
     // ── Main config view ──
     return (
         <div className="space-y-4">
+            {isRegression && (
+                <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+                    Imbalanced data handling cannot be done for regression models.
+                </div>
+            )}
+
             <FeatureSection
                 title="Imbalanced Data Handling"
                 isToggled={toggles.imbalancedData}
@@ -321,7 +346,7 @@ function Step7({ onShowPreview, showPreview, onApiCall }) {
                 onToggle={() => toggleSwitch('imbalancedData')}
                 onExpand={() => toggleSection('imbalancedData')}
                 icon={Scale}
-                readonly={readonly}
+               readonly={readonly || isRegression}
                 sectionKey="imbalancedData"
             >
                 <div className="space-y-4">
@@ -341,7 +366,7 @@ function Step7({ onShowPreview, showPreview, onApiCall }) {
                                 onChange={(e) => !readonly && setSamplingMethod(e.target.value)}
                                 label={method.label}
                                 description={method.description}
-                                readonly={readonly}
+                                readonly={readonly || isRegression}
                             />
                         ))}
                     </div>

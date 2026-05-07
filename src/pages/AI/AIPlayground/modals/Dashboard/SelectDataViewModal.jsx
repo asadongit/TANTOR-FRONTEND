@@ -121,7 +121,7 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
         policy_id: policyIds,
       };
 
-      const response = await fetch(`${hostnameAI}/data/ingestion`, {
+      const response = await fetch(`${hostnameAI}/ingestion/ingestion`, {
         method: 'POST',
         headers: { accept: 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -130,7 +130,7 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
       const data = await response.json();
 
       setDatasetState({
-        tableName: selectedTable, sessionId: data.session_id,
+        tableName: selectedTable, ensembleId: data.ensemble_id,
         columnNames: data.column_names || [], profileReportHtml: data.profile_report_html || '',
       });
 

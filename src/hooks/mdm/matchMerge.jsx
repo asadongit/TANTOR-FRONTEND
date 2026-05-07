@@ -82,7 +82,7 @@ export const useEditMatchRule = () => {
     const editMatchRule = useCallback(async (payload) => {
         setIsSubmitting(true);
         try {
-            const { data } = await api.put('/mdm/match_config/edit_match_rule', payload);
+            const { data } = await api.patch('/mdm/match_config/edit_match_rule', payload);
             return { ok: true, data };
         } catch (err) {
             const message =
@@ -249,7 +249,7 @@ export const useEditRuleSet = (onSuccess) => {
     const update = useCallback(async (payload) => {
         setIsSubmitting(true);
         try {
-            const { data } = await api.put('/mdm/match_config/edit_match_ruleset', payload);
+            const { data } = await api.patch('/mdm/match_config/edit_match_ruleset', payload);
             onSuccess?.(data);
             return { ok: true, data };
         } catch (err) {
@@ -343,4 +343,26 @@ export const useRulesByDomain = () => {
     }, []);
 
     return { rules, rulesLoading, apiError, setApiError, fetchByDomain, fetchByRuleId };
+};
+
+export const useAttributesByLevel = (domainId, enabled) => {
+    const [data, setData] = useState({ staging: [], golden: [] });
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (!enabled || !domainId) return;
+        const fetch = async () => {
+            setLoading(true);
+            try {
+                const { data: res } = await api.get(`/mdm/attributes_by_level/${domainId}`);
+                setData(res);
+            } catch {
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetch();
+    }, [domainId, enabled]);
+
+    return { staging: data.staging ?? [], golden: data.golden ?? [], loading };
 };

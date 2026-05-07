@@ -28,6 +28,7 @@ export default function ModelFlow() {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const viewportRef = useRef(null);
   const svgRef = useRef(null);
 
   useEffect(() => {
@@ -96,7 +97,7 @@ export default function ModelFlow() {
         document.removeEventListener("mouseup", handleMouseUp);
       };
     }
-  }, [isDragging, dragStart, pan]);
+  }, [isDragging, dragStart]);
 
   if (loading || !metrics) {
     return (
@@ -364,9 +365,10 @@ export default function ModelFlow() {
       </div>
 
       <div
+        ref={viewportRef}
         className="flex-1 overflow-x-auto overflow-y-hidden rounded-lg bg-gradient-to-br from-gray-50 to-white relative border border-gray-100"
-        onWheel={handleWheel}
         onMouseDown={handleMouseDown}
+        onWheel={handleWheel}
         style={{ cursor: isDragging ? "grabbing" : "grab" }}
       >
         <svg

@@ -20,14 +20,18 @@ const defaultModelState = {
 
 const defaultDatasetState = {
     tableName: '',
-    sessionId: '',
+    ensembleId: '',
     columnNames: [],
-    profileReportHtml: ''
+    profileReportHtml: '',
+    isEnsemble: false,
+    WorkflowCount: 1
 };
 
 const defaultSchedulerState = {
     owner_id: '',
     project: '',
+    is_ensemble: false,
+    ensemble_name: '',
     model: '',
     model_id: '',
     project_id: '',
@@ -69,6 +73,8 @@ const defaultSchedulerState = {
 };
 
 const defaultWorkflowState = {
+    workflow_id: null,
+    workflow_name: null,
     modelGenesis: {
         config: null,
         apiResponse: null
@@ -130,40 +136,128 @@ export const AIPlaygroundProvider = ({ children }) => {
     const [modelState, setModelState] = useState(defaultModelState);
     const [datasetState, setDatasetState] = useState(defaultDatasetState);
     const [schedulerState, setSchedulerState] = useState(defaultSchedulerState);
-    const [workflowState, setWorkflowState] = useState(defaultWorkflowState);
+    
+    // Store multiple workflows indexed by workflowId
+    const [workflowsState, setWorkflowsState] = useState({});
+    // Track which workflow is currently active
+    const [activeWorkflowId, setActiveWorkflowId] = useState(null);
+    
     const [mode, setMode] = useState('write');
     const [isAIPlaygroundActive, setIsAIPlaygroundActive] = useState(false);
     const [F1Mode, setF1Mode] = useState({});
 
-    const updateWorkflowStage = (stage, data) => {
-        setWorkflowState(prev => ({
-            ...prev,
-            [stage]: {
-                ...prev[stage],
-                ...data
+    // Create a new workflow with the given ID
+    const createWorkflow = (workflowId, workflowName = null) => {
+        setWorkflowsState(prev => {
+            if (prev[workflowId]) {
+                console.warn(`Workflow ${workflowId} already exists`);
+                return prev;
             }
-        }));
+            // Calculate workflow number based on existing workflows
+            const workflowNumber = Object.keys(prev).length + 1;
+            const resolvedWorkflowName = workflowName || `workflow ${String(workflowNumber).padStart(2, '0')}`;
+            
+            return {
+                ...prev,
+                [workflowId]: {
+                    ...defaultWorkflowState,
+                    workflow_id: workflowId,
+                    workflow_name: resolvedWorkflowName
+                }
+            };
+        });
+        // Keep the first created workflow as active during batched creations.
+        setActiveWorkflowId(prevId => prevId ?? workflowId);
     };
 
-    const updatePreprocessingStep = (stepKey, data) => {
-        setWorkflowState(prev => ({
+    // Switch active workflow
+    const switchWorkflow = (workflowId) => {
+        if (workflowsState[workflowId]) {
+            setActiveWorkflowId(workflowId);
+        } else {
+            console.warn(`Workflow ${workflowId} does not exist`);
+        }
+    };
+
+    // Delete a workflow
+    const deleteWorkflow = (workflowId) => {
+        setWorkflowsState(prev => {
+            const updated = { ...prev };
+            delete updated[workflowId];
+
+            // Keep existing workflow names as-is after deletion.
+            return updated;
+        });
+        // If deleted workflow was active, switch to another one
+        if (activeWorkflowId === workflowId) {
+            const remainingIds = Object.keys(workflowsState).filter(id => id !== workflowId);
+            setActiveWorkflowId(remainingIds.length > 0 ? remainingIds[0] : null);
+        }
+    };
+
+    // Get current active workflow
+    const getCurrentWorkflow = () => {
+        return activeWorkflowId ? workflowsState[activeWorkflowId] : null;
+    };
+
+    // Update a specific workflow stage
+    const updateWorkflowStage = (stage, data, workflowId = activeWorkflowId) => {
+        if (!workflowId) {
+            console.error('No active workflow selected');
+            return;
+        }
+        
+        setWorkflowsState(prev => ({
             ...prev,
-            dataPreprocessing: {
-                ...prev.dataPreprocessing,
-                [stepKey]: {
-                    ...prev.dataPreprocessing[stepKey],
+            [workflowId]: {
+                ...prev[workflowId],
+                [stage]: {
+                    ...prev[workflowId][stage],
                     ...data
                 }
             }
         }));
     };
 
+    // Update preprocessing step in a specific workflow
+    const updatePreprocessingStep = (stepKey, data, workflowId = activeWorkflowId) => {
+        if (!workflowId) {
+            console.error('No active workflow selected');
+            return;
+        }
+        
+        setWorkflowsState(prev => ({
+            ...prev,
+            [workflowId]: {
+                ...prev[workflowId],
+                dataPreprocessing: {
+                    ...prev[workflowId].dataPreprocessing,
+                    [stepKey]: {
+                        ...prev[workflowId].dataPreprocessing[stepKey],
+                        ...data
+                    }
+                }
+            }
+        }));
+    };
+
+    // Set ensemble mode with workflow count
+    const setEnsembleMode = (ensembleCount = 1) => {
+        setDatasetState(prev => ({
+            ...prev,
+            isEnsemble: ensembleCount > 1,
+            WorkflowCount: ensembleCount
+        }));
+    };
+
+    // Reset all states
     const resetAllStates = () => {
         setProjectState(defaultProjectState);
         setModelState(defaultModelState);
         setDatasetState(defaultDatasetState);
         setSchedulerState(defaultSchedulerState);
-        setWorkflowState(defaultWorkflowState);
+        setWorkflowsState({});
+        setActiveWorkflowId(null);
         setMode('write');
         setIsAIPlaygroundActive(false);
     };
@@ -171,20 +265,28 @@ export const AIPlaygroundProvider = ({ children }) => {
     const value = {
         projectState,
         datasetState,
-        workflowState,
+        workflowsState,
+        activeWorkflowId,
         schedulerState,
         mode,
         modelState,
         isAIPlaygroundActive,
         setProjectState,
         setDatasetState,
-        setWorkflowState,
+        setWorkflowsState,
+        setActiveWorkflowId,
         setSchedulerState,
         setMode,
         setModelState,
         setIsAIPlaygroundActive,
+        // Workflow management functions
+        createWorkflow,
+        switchWorkflow,
+        deleteWorkflow,
+        getCurrentWorkflow,
         updateWorkflowStage,
         updatePreprocessingStep,
+        setEnsembleMode,
         resetAllStates,
         F1Mode,
         setF1Mode

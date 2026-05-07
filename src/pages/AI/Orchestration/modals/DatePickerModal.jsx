@@ -6,10 +6,17 @@ const DatePickerModal = ({
     onAdd
 }) => {
     if (!isOpen) return null;
+    const getISTDate = () => {
+    const now = new Date(); 
+
+    return new Date(
+        now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+    );
+};
 
     const [selectedDate, setSelectedDate] = useState(null);
-    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [selectedMonth, setSelectedMonth] = useState(getISTDate().getMonth());
+    const [selectedYear, setSelectedYear] = useState(getISTDate().getFullYear());
     const [selectedHour, setSelectedHour] = useState('');
     const [selectedMinute, setSelectedMinute] = useState('');
 
@@ -17,7 +24,7 @@ const DatePickerModal = ({
         'July', 'August', 'September', 'October', 'November', 'December'];
 
     const generateYears = () => {
-        const currentYear = new Date().getFullYear();
+        const currentYear = getISTDate().getFullYear();
         const years = [];
         for (let year = currentYear; year <= currentYear + 10; year++) {
             years.push(year);
@@ -50,7 +57,7 @@ const DatePickerModal = ({
     };
 
     const isToday = () => {
-        const today = new Date();
+        const today = getISTDate();
         return selectedDate === today.getDate() &&
             selectedMonth === today.getMonth() &&
             selectedYear === today.getFullYear();
@@ -63,7 +70,7 @@ const DatePickerModal = ({
             return allHours;
         }
 
-        const now = new Date();
+        const now = getISTDate();
         const currentHour = now.getHours();
 
         return allHours.filter(hour => parseInt(hour) >= currentHour);
@@ -76,7 +83,7 @@ const DatePickerModal = ({
             return allMinutes;
         }
 
-        const now = new Date();
+        const now = getISTDate();
         const currentHour = now.getHours();
         const currentMinute = now.getMinutes();
         const selectedHourNum = parseInt(selectedHour);
@@ -158,7 +165,7 @@ const DatePickerModal = ({
         const daysInMonth = getDaysInMonth(selectedMonth, selectedYear);
         const firstDay = getFirstDayOfMonth(selectedMonth, selectedYear);
         const days = [];
-        const today = new Date();
+        const today = getISTDate();
         const currentDay = today.getDate();
         const currentMonth = today.getMonth();
         const currentYear = today.getFullYear();

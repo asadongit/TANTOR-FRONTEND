@@ -65,10 +65,19 @@ export const AddDomainModal = ({ isOpen, onClose, onComplete }) => {
             created_by:        decodedToken?.preferred_username,
             attributes:        attributes.map(toApiAttribute),
         });
+
         if (result.ok) {
             handleClose();
         } else {
-            setError(result.message);
+            // detail can be a string OR { field, message }
+            const detail = result.detail ?? result.message;
+            const errorMessage =
+                typeof detail === 'object' && detail?.message
+                    ? detail.message
+                    : typeof detail === 'string'
+                    ? detail
+                    : 'Something went wrong. Please try again.';
+            setError(errorMessage);
         }
     };
 

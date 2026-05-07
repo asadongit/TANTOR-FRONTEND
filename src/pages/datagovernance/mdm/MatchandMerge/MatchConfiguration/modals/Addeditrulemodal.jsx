@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { X, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useAttributes, useAddMatchRule, useEditMatchRule } from '../../../../../../hooks/mdm/matchMerge';
-
+import { useAttributesByLevel, useAddMatchRule, useEditMatchRule } from '../../../../../../hooks/mdm/matchMerge';
 // ─── Style tokens ─────────────────────────────────────────────────────────────
 
 const inputCls =
@@ -172,12 +171,14 @@ const NULL_HANDLING_OPTIONS = [
 const INIT_FORM = {
     rule_name: '',
     rule_description: '',
-    attribute: null,
+    source_attribute: null,   // was: attribute
+    target_attribute: null,   // new
     algorithm: '',
     weight: '',
     threshold: '',
     null_handling: '',
     is_blocking_key: false,
+    is_mandatory: false,      // new
 };
 
 // ─── Shared sub-components ────────────────────────────────────────────────────
@@ -212,7 +213,7 @@ const ModalShell = ({ onClose, header, children, footer }) => (
     </div>
 );
 
-const RuleFormFields = ({ form, set, attributes, attrsLoading }) => (
+const RuleFormFields = ({ form, set, stagingAttributes, goldenAttributes, attrsLoading }) => (
     <>
         <div className="col-span-2 flex flex-col gap-1.5">
             <label className={labelCls}>Rule Name <span className="text-[#E05252]">*</span></label>
@@ -237,11 +238,21 @@ const RuleFormFields = ({ form, set, attributes, attrsLoading }) => (
         </div>
 
         <div className="flex flex-col gap-1.5">
-            <label className={labelCls}>Attribute <span className="text-[#E05252]">*</span></label>
+            <label className={labelCls}>Source Attribute <span className="text-[#E05252]">*</span></label>
             <AttributeDropdown
-                attributes={attributes}
-                selected={form.attribute}
-                onSelect={set('attribute')}
+                attributes={stagingAttributes}
+                selected={form.source_attribute}
+                onSelect={set('source_attribute')}
+                disabled={attrsLoading}
+            />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+            <label className={labelCls}>Target Attribute <span className="text-[#E05252]">*</span></label>
+            <AttributeDropdown
+                attributes={goldenAttributes}
+                selected={form.target_attribute}
+                onSelect={set('target_attribute')}
                 disabled={attrsLoading}
             />
         </div>
@@ -279,6 +290,18 @@ const RuleFormFields = ({ form, set, attributes, attrsLoading }) => (
                 placeholder="e.g. 100"
                 value={form.threshold}
                 onChange={e => set('threshold')(e.target.value)}
+            />
+        </div>
+        <div className="flex flex-col gap-1.5">
+            <label className={labelCls}>Mandatory <span className="text-[#E05252]">*</span></label>
+            <CustomSelect
+                options={[
+                    { value: true, label: 'Yes' },
+                    { value: false, label: 'No' },
+                ]}
+                value={form.is_mandatory}
+                onChange={set('is_mandatory')}
+                placeholder="Select"
             />
         </div>
 
@@ -339,7 +362,7 @@ const SubmitButton = ({ onClick, disabled, isSubmitting, idleLabel, loadingLabel
 // ─── AddRuleModal ─────────────────────────────────────────────────────────────
 
 export const AddRuleModal = ({ isOpen, onClose, onSuccess, ruleSet, domainId }) => {
-    const { attributes, loading: attrsLoading } = useAttributes(domainId, isOpen);
+    const { staging, golden, loading: attrsLoading } = useAttributesByLevel(domainId, isOpen);
     const { isSubmitting, addMatchRule } = useAddMatchRule();
 
     const [form, setForm] = useState(INIT_FORM);
@@ -347,7 +370,8 @@ export const AddRuleModal = ({ isOpen, onClose, onSuccess, ruleSet, domainId }) 
 
     const isValid =
         form.rule_name.trim() &&
-        form.attribute &&
+        form.source_attribute &&
+        form.target_attribute &&
         form.algorithm &&
         form.weight !== '' &&
         form.threshold !== '' &&
@@ -361,12 +385,14 @@ export const AddRuleModal = ({ isOpen, onClose, onSuccess, ruleSet, domainId }) 
             rule_set_id: ruleSet?.id,
             rule_name: form.rule_name.trim(),
             rule_description: form.rule_description.trim(),
-            attribute: form.attribute.attribute_name,
+            source_attribute: form.source_attribute.attribute_name,
+            target_attribute: form.target_attribute.attribute_name,
             algorithm: form.algorithm,
             threshold: Number(form.threshold),
             weight: Number(form.weight),
             null_handling: form.null_handling,
             is_blocking_key: form.is_blocking_key,
+            is_mandatory: form.is_mandatory,
         });
         if (ok) {
             toast.success(data?.message || 'Rule created successfully');
@@ -400,15 +426,20 @@ export const AddRuleModal = ({ isOpen, onClose, onSuccess, ruleSet, domainId }) 
                 </>
             }
         >
-            <RuleFormFields form={form} set={set} attributes={attributes} attrsLoading={attrsLoading} />
-        </ModalShell>
+        <RuleFormFields
+            form={form}
+            set={set}
+            stagingAttributes={staging}
+            goldenAttributes={golden}
+            attrsLoading={attrsLoading}
+        />        </ModalShell>
     );
 };
 
 // ─── EditRuleModal ────────────────────────────────────────────────────────────
 
 export const EditRuleModal = ({ isOpen, onClose, onSuccess, ruleData, domainId }) => {
-    const { attributes, loading: attrsLoading } = useAttributes(domainId, isOpen);
+    const { staging, golden, loading: attrsLoading } = useAttributesByLevel(domainId, isOpen);
     const { isSubmitting, editMatchRule } = useEditMatchRule();
 
     const [form, setForm] = useState(INIT_FORM);
@@ -419,27 +450,34 @@ export const EditRuleModal = ({ isOpen, onClose, onSuccess, ruleData, domainId }
         setForm({
             rule_name: ruleData.rule_name ?? '',
             rule_description: ruleData.rule_description ?? '',
-            attribute: ruleData.attribute ?? null,
+            source_attribute: null,
+            target_attribute: null,
             algorithm: ruleData.algorithm ?? '',
             weight: ruleData.weight ?? '',
             threshold: ruleData.threshold ?? '',
             null_handling: ruleData.null_handling ?? '',
             is_blocking_key: ruleData.blocking === 'Yes' || ruleData.is_blocking_key || false,
+            is_mandatory: ruleData.is_mandatory ?? false,
         });
     }, [isOpen, ruleData]);
 
+    // second useEffect — replace entirely
+    // fix second useEffect — replace stagingAttributes/goldenAttributes with staging/golden:
     useEffect(() => {
-        if (!attributes.length || !ruleData) return;
-        const match = attributes.find(a =>
-            a.attribute_name === (ruleData.attribute ?? ruleData.rule_name) ||
-            a.display_name === (ruleData.attribute ?? ruleData.rule_name)
-        );
-        if (match) setForm(f => ({ ...f, attribute: match }));
-    }, [attributes, ruleData]);
+        if ((!staging.length && !golden.length) || !ruleData) return;
+        const findIn = (list, name) =>
+            list.find(a => a.attribute_name === name || a.display_name === name) ?? null;
+        setForm(f => ({
+            ...f,
+            source_attribute: findIn(staging, ruleData.source_attribute),
+            target_attribute: findIn(golden, ruleData.target_attribute),
+        }));
+    }, [staging, golden, ruleData]);
 
     const isValid =
         form.rule_name.trim() &&
-        form.attribute &&
+        form.source_attribute &&
+        form.target_attribute &&
         form.algorithm &&
         form.weight !== '' &&
         form.threshold !== '' &&
@@ -453,12 +491,14 @@ export const EditRuleModal = ({ isOpen, onClose, onSuccess, ruleData, domainId }
             rule_id: ruleData?.rule_id,
             rule_name: form.rule_name.trim(),
             rule_description: form.rule_description.trim(),
-            attribute: form.attribute.attribute_name,
+            source_attribute: form.source_attribute.attribute_name,
+            target_attribute: form.target_attribute.attribute_name,
             algorithm: form.algorithm,
             threshold: Number(form.threshold),
             weight: Number(form.weight),
             null_handling: form.null_handling,
             is_blocking_key: form.is_blocking_key,
+            is_mandatory: form.is_mandatory,
         });
         if (ok) {
             toast.success(data?.message || 'Rule updated successfully');
@@ -495,7 +535,13 @@ export const EditRuleModal = ({ isOpen, onClose, onSuccess, ruleData, domainId }
                 </>
             }
         >
-            <RuleFormFields form={form} set={set} attributes={attributes} attrsLoading={attrsLoading} />
+            <RuleFormFields
+                form={form}
+                set={set}
+                stagingAttributes={staging}
+                goldenAttributes={golden}
+                attrsLoading={attrsLoading}
+            />
         </ModalShell>
     );
 };

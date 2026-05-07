@@ -89,10 +89,13 @@ export const useAddDomain = (onSuccess) => {
             onSuccess?.(data);
             return { ok: true, data };
         } catch (err) {
+            const detail = err?.response?.data?.detail;
             const msg =
-                err?.response?.data?.detail ||
-                err?.response?.data?.message ||
-                'Failed to create domain.';
+                typeof detail === 'object' && detail?.message
+                    ? detail.message
+                    : typeof detail === 'string'
+                    ? detail
+                    : err?.response?.data?.message || 'Failed to create domain.';
             return { ok: false, message: msg };
         } finally {
             setIsSubmitting(false);
@@ -377,4 +380,67 @@ export const useAttributesByDomain = (domainId, isOpen) => {
     }, [isOpen, domainId]);
 
     return { attributes, isLoading };
+};
+export const useDeleteRule = (onSuccess) => {
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const deleteRule = useCallback(async (ruleId) => {
+        setIsDeleting(true);
+        try {
+            const { data } = await api.delete(
+                `/mdm/overview/domain_management/delete_rule/${ruleId}`
+            );
+            onSuccess?.(data);
+            return { ok: true, data };
+        } catch (err) {
+            const msg =
+                err?.response?.data?.detail ||
+                err?.response?.data?.message ||
+                'Failed to delete rule.';
+            return { ok: false, message: msg };
+        } finally {
+            setIsDeleting(false);
+        }
+    }, [onSuccess]);
+
+    return { isDeleting, deleteRule };
+};
+
+export const useDQDimensions = () => {
+    const [dimensions, setDimensions] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        setIsLoading(true);
+        api.get('/mdm/list_dq_dimensions')
+            .then(({ data }) => setDimensions(data.data || []))
+            .catch((err) => console.error('Failed to fetch DQ dimensions:', err))
+            .finally(() => setIsLoading(false));
+    }, []);
+
+    return { dimensions, isLoading };
+};
+
+export const useRulesByDimensions = () => {
+    const [rules, setRules] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const fetchRules = useCallback(async (selectedDimensions) => {
+        if (!selectedDimensions || selectedDimensions.length === 0) {
+            setRules([]);
+            return;
+        }
+        setIsLoading(true);
+        try {
+            const { data } = await api.post('/mdm/rules_by_dimension', selectedDimensions);
+            setRules(data.data || []);
+        } catch (err) {
+            console.error('Failed to fetch rules by dimension:', err);
+            setRules([]);
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    return { rules, isLoading, fetchRules };
 };

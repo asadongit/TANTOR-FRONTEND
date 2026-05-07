@@ -31,6 +31,7 @@ function F1XAI() {
     const [reportData, setReportData] = useState(null);
     const [reportGenerated, setReportGenerated] = useState(false);
     const [error, setError] = useState(null);
+    const isRegression = launchData?.task === 'regression';
 
     const filteredModels = modelsList.filter(m =>
         m.toLowerCase().includes(searchQuery.toLowerCase())
@@ -57,21 +58,31 @@ function F1XAI() {
 
         try {
             const payload = {
-                session_id: sessionId,
-                algorithm_name: selectedModel,
-                run_shap: true,
-                run_pdp: true,
-                run_feature_flip: true,
-                run_counterfactuals: true,
-                run_lime: true,
-                pdp_features: configData.pdpFeatures.length > 0
-                    ? configData.pdpFeatures
-                    : (launchData?.processed_feature_columns ?? []),
-                pdp_target_class: configData.pdpTargetClass,
-                lime_instance_index: configData.limeInstanceIndex,
-                cf_instance_index: configData.cfInstanceIndex,
-                cf_desired_class: parseInt(configData.cfDesiredClass),
-            };
+    session_id: sessionId,
+    algorithm_name: selectedModel,
+    run_shap: true,
+    run_pdp: true,
+    run_feature_flip: true,
+    run_counterfactuals: true,
+    run_lime: true,
+
+    pdp_features: configData.pdpFeatures.length > 0
+        ? configData.pdpFeatures
+        : (launchData?.processed_feature_columns ?? []),
+
+    ...(isRegression
+        ? {
+            pdp_target_value: Number(configData.pdpTargetValue),
+            cf_desired_value: Number(configData.cfDesiredValue),
+        }
+        : {
+            pdp_target_class: configData.pdpTargetClass,
+            cf_desired_class: parseInt(configData.cfDesiredClass),
+        }),
+
+    lime_instance_index: configData.limeInstanceIndex,
+    cf_instance_index: configData.cfInstanceIndex,
+};
 
             const res = await fetch(`${hostnameAI}/data/f1/explain`, {
                 method: 'POST',
@@ -438,6 +449,7 @@ function F1XAI() {
                 onGenerate={handleGenerateReport}
                 launchData={launchData}
                 isGenerating={isGenerating}
+                isRegression={isRegression} 
             />
         </div>
     );

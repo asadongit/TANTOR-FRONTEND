@@ -345,6 +345,8 @@ const Orchestration = () => {
         setSchedulerState({
             owner_id: '',
             project: '',
+            is_ensemble: false,
+            ensemble_name: '',
             model: '',
             model_id: '',
             project_id: '',
@@ -416,11 +418,64 @@ const Orchestration = () => {
 
             const data = await response.json();
 
+            const normalizeThresholdMap = (thresholdPayload, modelIds, fieldDefaults) => {
+                const ids = (Array.isArray(modelIds) ? modelIds : []).filter(Boolean);
+                const payload = thresholdPayload && typeof thresholdPayload === 'object' ? thresholdPayload : {};
+
+                const extractFields = (source) => Object.keys(fieldDefaults).reduce((acc, key) => {
+                    acc[key] = typeof source?.[key] === 'number' ? source[key] : fieldDefaults[key];
+                    return acc;
+                }, {});
+
+                const keyedEntries = ids.reduce((acc, modelId) => {
+                    const modelThresholds = payload?.[modelId];
+                    if (modelThresholds && typeof modelThresholds === 'object' && !Array.isArray(modelThresholds)) {
+                        acc[modelId] = extractFields(modelThresholds);
+                    }
+                    return acc;
+                }, {});
+
+                if (Object.keys(keyedEntries).length > 0) {
+                    return keyedEntries;
+                }
+
+                if (ids.length === 1) {
+                    return {
+                        [ids[0]]: extractFields(payload),
+                    };
+                }
+
+                return ids.reduce((acc, modelId) => {
+                    acc[modelId] = extractFields(payload);
+                    return acc;
+                }, {});
+            };
+
+            const modelIds = Array.isArray(data.model_ids) && data.model_ids.length > 0
+                ? data.model_ids
+                : (data.model_id ? [data.model_id] : []);
+
+            const dataDriftThresholds = normalizeThresholdMap(data.data_drift_threshold, modelIds, {
+                distribution_drift_threshold: 0,
+                statistical_significance_level: 0,
+                information_stability_threshold: 0,
+                target_stability_threshold: 0,
+            });
+
+            const modelDriftThresholds = normalizeThresholdMap(data.model_drift_threshold, modelIds, {
+                prediction_drift_threshold: 0,
+                performance_drift_threshold: -1,
+            });
+
             setSchedulerState({
                 owner_id: data.owner_id || '',
                 project: data.project || '',
-                model: data.model || '',
-                model_id: data.model_id || '',
+                is_ensemble: data.ensemble_flag || false,
+                ensemble_name: data.ensemble_name || '',
+                model: data.ensemble_flag ? (data.models || []) : (data.models?.[0] || ''),
+                model_id: data.ensemble_flag ? (data.model_ids || []) : (data.model_ids?.[0] || ''),
+                models: data.models || [],
+                model_ids: data.model_ids || [],
                 project_id: data.project_id || '',
                 flow_type: data.flow_type || 'single_run',
                 scheduler: {
@@ -443,16 +498,8 @@ const Orchestration = () => {
                     destination_schema: data.target?.destination_schema || '',
                     destination_table: data.target?.destination_table || ''
                 },
-                data_drift_threshold: {
-                    distribution_drift_threshold: data.data_drift_threshold?.distribution_drift_threshold || 0,
-                    statistical_significance_level: data.data_drift_threshold?.statistical_significance_level || 0,
-                    information_stability_threshold: data.data_drift_threshold?.information_stability_threshold || 0,
-                    target_stability_threshold: data.data_drift_threshold?.target_stability_threshold || 0
-                },
-                model_drift_threshold: {
-                    prediction_drift_threshold: data.model_drift_threshold?.prediction_drift_threshold || 0,
-                    performance_drift_threshold: data.model_drift_threshold?.performance_drift_threshold || -1
-                },
+                data_drift_threshold: dataDriftThresholds,
+                model_drift_threshold: modelDriftThresholds,
                 data_drift_check: data.data_drift_check || 0,
                 model_drift_check: data.model_drift_check || 0,
                 recipients: data.recipients || [],

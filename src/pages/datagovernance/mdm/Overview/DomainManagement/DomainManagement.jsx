@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Search, RefreshCcw, Plus, X, MoreVertical } from 'lucide-react';
 import { useAuth } from '../../../../../context/AuthContext.jsx';
-import MDMDataTable from '../../../../../components/MDMDataTable.jsx';
+import DataTable from '../../../../../components/DataTable.jsx';
 import { toast } from 'react-hot-toast';
 import Breadcrumb from '../../../../../components/Breadcrumb.jsx';
 import AddDomainModal from './modals/AddDomainModal.jsx';
@@ -19,10 +19,8 @@ import {
     useDomainManagementHomepage,
     useDeleteDomain,
 } from '../../../../../hooks/mdm/domainManagement.jsx';
+import { useNavigate } from 'react-router-dom';
 
-/* ─────────────────────────────────────────────
-   Action Menu
-───────────────────────────────────────────── */
 const ActionMenu = ({ row, onEdit, onRules, onDelete }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
@@ -99,8 +97,8 @@ const StatusBadge = ({ status }) => {
         lower === 'active'
             ? 'text-[#069B68] bg-[#2AC79240]'
             : lower === 'draft'
-            ? 'text-[#EF4D5F] bg-[#F276A74D]'
-            : 'text-[#6B7280] bg-[#F3F4F6]';
+                ? 'text-[#EF4D5F] bg-[#F276A74D]'
+                : 'text-[#6B7280] bg-[#F3F4F6]';
     return (
         <span className={`${classes} px-2 py-1.5 text-xs font-normal rounded-md`}>
             {status}
@@ -112,10 +110,10 @@ const StatusBadge = ({ status }) => {
    Metric cards config
 ───────────────────────────────────────────── */
 const metrics = [
-    { title: 'Active Domains',    key: 'active_domains',    icon: CaptivePortalIcon, bgcolor: 'bg-[#C5EAF0]' },
-    { title: 'Total Attributes',  key: 'total_attributes',  icon: CDCIcon,           bgcolor: 'bg-[#FFC93F40]' },
-    { title: 'Validation Rules',  key: 'validation_rules',  icon: ComplianceIcon,    bgcolor: 'bg-[#FEE4FF]' },
-    { title: 'Cross-Domain Links',key: 'cross_domain_links',icon: LinkedServicesIcon, bgcolor: 'bg-[#DBE0FC]' },
+    { title: 'Active Domains', key: 'active_domains', icon: CaptivePortalIcon, bgcolor: 'bg-[#C5EAF0]' },
+    { title: 'Total Attributes', key: 'total_attributes', icon: CDCIcon, bgcolor: 'bg-[#FFC93F40]' },
+    { title: 'Validation Rules', key: 'validation_rules', icon: ComplianceIcon, bgcolor: 'bg-[#FEE4FF]' },
+    { title: 'Cross-Domain Links', key: 'cross_domain_links', icon: LinkedServicesIcon, bgcolor: 'bg-[#DBE0FC]' },
 ];
 
 /* ─────────────────────────────────────────────
@@ -123,11 +121,12 @@ const metrics = [
 ───────────────────────────────────────────── */
 const DomainManagement = () => {
     const { decodedToken } = useAuth();
-    const [searchTerm, setSearchTerm]     = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [editingDomain, setEditingDomain]   = useState(null);
+    const [editingDomain, setEditingDomain] = useState(null);
     const [selectedDomain, setSelectedDomain] = useState(null);
-    const [rulesModal, setRulesModal]         = useState(null);
+    const [rulesModal, setRulesModal] = useState(null);
+    const navigate = useNavigate();
 
     /* ── Hooks ── */
     const { isLoading, metricCounts, domains, fetchData } = useDomainManagementHomepage();
@@ -135,8 +134,8 @@ const DomainManagement = () => {
     const { deleteDomain } = useDeleteDomain(fetchData);
 
     /* ── Handlers ── */
-    const handleEdit   = (row) => setEditingDomain(row);
-    const handleRules  = (row) => setRulesModal({ id: row.id, domainName: row.domainName });
+    const handleEdit = (row) => setEditingDomain(row);
+    const handleRules = (row) => setRulesModal({ id: row.id, domainName: row.domainName });
 
     const handleDelete = async (row) => {
         const result = await deleteDomain(row.id, decodedToken?.preferred_username);
@@ -154,6 +153,10 @@ const DomainManagement = () => {
         else toast.error('Failed to refresh data.');
     };
 
+    const handleAddDomain = async () => {
+        navigate('add-domain');
+    }
+
     /* ── Derived state ── */
     const filteredData = React.useMemo(
         () =>
@@ -166,7 +169,7 @@ const DomainManagement = () => {
     );
 
     const counts = {
-        active_domains:   metricCounts?.active_domains   ?? 0,
+        active_domains: metricCounts?.active_domains ?? 0,
         total_attributes: metricCounts?.total_attributes ?? 0,
         validation_rules: metricCounts?.validation_rules ?? 0,
         cross_domain_links: metricCounts?.cross_domain_links ?? 0,
@@ -187,8 +190,8 @@ const DomainManagement = () => {
             ),
         },
         { key: 'domainCode', label: 'Domain Code' },
-        { key: 'tableName',  label: 'Table Name' },
-        { key: 'type',       label: 'Type' },
+        { key: 'tableName', label: 'Table Name' },
+        { key: 'type', label: 'Type' },
         {
             key: 'attributes',
             label: 'Attributes',
@@ -212,7 +215,7 @@ const DomainManagement = () => {
             render: (row) => <StatusBadge status={row.status} />,
         },
         {
-            label: 'Action',
+            label: 'Actions',
             sortable: false,
             render: (row) => (
                 <ActionMenu
@@ -247,7 +250,7 @@ const DomainManagement = () => {
                         <RefreshCcw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
                     </button>
                     <button
-                        onClick={() => setIsAddModalOpen(true)}
+                        onClick={handleAddDomain}
                         className="flex items-center gap-2 px-4 py-2 bg-[#8E77BB] text-white rounded-lg hover:bg-[#7a67a0] transition-colors text-sm font-medium"
                     >
                         <Plus className="h-4 w-4" />
@@ -315,7 +318,7 @@ const DomainManagement = () => {
                     </div>
                 </div>
 
-                <MDMDataTable
+                <DataTable
                     columns={columns}
                     data={filteredData}
                     isLoading={isLoading}

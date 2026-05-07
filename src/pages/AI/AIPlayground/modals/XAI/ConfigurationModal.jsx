@@ -18,6 +18,8 @@ const SearchableDropdown = ({
   const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
+  const [pdpTargetValue, setPdpTargetValue] = useState('');
+const [cfDesiredValue, setCfDesiredValue] = useState('');
 
   const filteredOptions = availableOptions.filter(option =>
     option.toLowerCase().includes(searchTerm.toLowerCase())
@@ -159,13 +161,15 @@ const FieldTooltip = ({ lines, position = "right" }) => {
 };
 
 // ── Configuration Modal ──────────────────────────────────────────────────────
-function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly = false, isGenerating = false }) {
+function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, isRegression, readonly = false, isGenerating = false }) {
   const [showInfoTooltip, setShowInfoTooltip] = useState(false);
   const [showModelNameTooltip, setShowModelNameTooltip] = useState(false);
   const [showFieldErrors, setShowFieldErrors] = useState(false);
   const [configData, setConfigData] = useState({
     pdpTargetClass: '',
-    cfDesiredClass: '',
+cfDesiredClass: '',
+pdpTargetValue: '',
+cfDesiredValue: '',
     cfInstanceIndex: 0,
     limeInstanceIndex: 0,
     pdpFeatures: []
@@ -174,27 +178,47 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
   useEffect(() => {
     if (xaiConfig) {
       setConfigData({
-        pdpTargetClass: '',
-        cfDesiredClass: '',
-        cfInstanceIndex: 0,
-        limeInstanceIndex: 0,
-        pdpFeatures: []
-      });
+  pdpTargetClass: '',
+  cfDesiredClass: '',
+  pdpTargetValue: '',
+  cfDesiredValue: '',
+  cfInstanceIndex: 0,
+  limeInstanceIndex: 0,
+  pdpFeatures: []
+});
       setShowFieldErrors(false);
     }
   }, [xaiConfig]);
 
   // Clear errors once all required fields become valid
   useEffect(() => {
-    if (!showFieldErrors) return;
-    const max = xaiConfig?.indices?.max_index || 0;
-    const allValid =
-      configData.pdpTargetClass &&
-      configData.cfDesiredClass &&
-      configData.cfInstanceIndex >= 0 && configData.cfInstanceIndex <= max &&
-      configData.limeInstanceIndex >= 0 && configData.limeInstanceIndex <= max;
-    if (allValid) setShowFieldErrors(false);
-  }, [configData, showFieldErrors]);
+  if (!showFieldErrors) return;
+
+  const max = xaiConfig?.indices?.max_index || 0;
+
+  const allValid = isRegression
+    ? (
+        configData.pdpTargetValue !== '' &&
+        !isNaN(configData.pdpTargetValue) &&
+        configData.cfDesiredValue !== '' &&
+        !isNaN(configData.cfDesiredValue) &&
+        configData.cfInstanceIndex >= 0 &&
+        configData.cfInstanceIndex <= max &&
+        configData.limeInstanceIndex >= 0 &&
+        configData.limeInstanceIndex <= max
+      )
+    : (
+        configData.pdpTargetClass &&
+        configData.cfDesiredClass &&
+        configData.cfInstanceIndex >= 0 &&
+        configData.cfInstanceIndex <= max &&
+        configData.limeInstanceIndex >= 0 &&
+        configData.limeInstanceIndex <= max
+      );
+
+  if (allValid) setShowFieldErrors(false);
+
+}, [configData, showFieldErrors, isRegression]);
 
   const toggleFeature = (feature) => {
     if (readonly || isGenerating) return;
@@ -226,17 +250,40 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
   const modelName = xaiConfig.model_name || '';
 
   // Per-field error flags — only shown after the first failed submit attempt
-  const pdpTargetError = showFieldErrors && !configData.pdpTargetClass;
-  const cfDesiredError = showFieldErrors && !configData.cfDesiredClass;
+  const pdpTargetError = showFieldErrors && (
+  isRegression
+    ? (configData.pdpTargetValue === '' || isNaN(configData.pdpTargetValue))
+    : !configData.pdpTargetClass
+);
+
+const cfDesiredError = showFieldErrors && (
+  isRegression
+    ? (configData.cfDesiredValue === '' || isNaN(configData.cfDesiredValue))
+    : !configData.cfDesiredClass
+);
   const cfIndexError = showFieldErrors && !(configData.cfInstanceIndex >= 0 && configData.cfInstanceIndex <= maxIndex);
   const limeIndexError = showFieldErrors && !(configData.limeInstanceIndex >= 0 && configData.limeInstanceIndex <= maxIndex);
 
   const handleGenerate = () => {
-    const isValid =
+    const isValid = isRegression
+  ? (
+      configData.pdpTargetValue !== '' &&
+      !isNaN(configData.pdpTargetValue) &&
+      configData.cfDesiredValue !== '' &&
+      !isNaN(configData.cfDesiredValue) &&
+      configData.cfInstanceIndex >= 0 &&
+      configData.cfInstanceIndex <= maxIndex &&
+      configData.limeInstanceIndex >= 0 &&
+      configData.limeInstanceIndex <= maxIndex
+    )
+  : (
       configData.pdpTargetClass &&
       configData.cfDesiredClass &&
-      configData.cfInstanceIndex >= 0 && configData.cfInstanceIndex <= maxIndex &&
-      configData.limeInstanceIndex >= 0 && configData.limeInstanceIndex <= maxIndex;
+      configData.cfInstanceIndex >= 0 &&
+      configData.cfInstanceIndex <= maxIndex &&
+      configData.limeInstanceIndex >= 0 &&
+      configData.limeInstanceIndex <= maxIndex
+    );
 
     if (!isValid) {
       setShowFieldErrors(true);
@@ -336,46 +383,70 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, readonly =
 
           {/* ── PDP Target Class & CF Desired Class ── */}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={`flex items-center text-sm font-medium mb-2 text-gray-900`}>
-                PDP Target Class <span className="text-red-500 ml-0.5">*</span>
-                <FieldTooltip lines={pdpTargetTooltip} position="right" />
-              </label>
-              <SearchableDropdown
-                selectedColumn={configData.pdpTargetClass}
-                onSelect={(val) => setConfigData({ ...configData, pdpTargetClass: val })}
-                availableOptions={pdpTargetClasses}
-                placeholder="Select"
-                readonly={readonly}
-                disabled={isGenerating}
-                dropDirection="down"
-                hasError={pdpTargetError}
-              />
-              {pdpTargetError && (
-                <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">Please select a PDP Target Class</p>
-              )}
-            </div>
 
-            <div>
-              <label className={`flex items-center text-sm font-medium mb-2 text-gray-900`}>
-                CF Desired Class <span className="text-red-500 ml-0.5">*</span>
-                <FieldTooltip lines={cfDesiredTooltip} position="left" />
-              </label>
-              <SearchableDropdown
-                selectedColumn={configData.cfDesiredClass}
-                onSelect={(val) => setConfigData({ ...configData, cfDesiredClass: val })}
-                availableOptions={cfDesiredClasses}
-                placeholder="Select"
-                readonly={readonly}
-                disabled={isGenerating}
-                dropDirection="down"
-                hasError={cfDesiredError}
-              />
-              {cfDesiredError && (
-                <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">Please select a CF Desired Class</p>
-              )}
-            </div>
-          </div>
+  {/* PDP FIELD */}
+  <div>
+    <label className="flex items-center text-sm font-medium mb-2 text-gray-900">
+      {isRegression ? "PDP Target Value" : "PDP Target Class"} *
+      <FieldTooltip lines={pdpTargetTooltip} position="right" />
+    </label>
+
+    {isRegression ? (
+      <input
+        type="number"
+        value={configData.pdpTargetValue}
+        onChange={(e) =>
+          setConfigData({ ...configData, pdpTargetValue: e.target.value })
+        }
+        className="w-full px-3 py-2 border rounded-lg text-sm"
+      />
+    ) : (
+      <SearchableDropdown
+        selectedColumn={configData.pdpTargetClass}
+        onSelect={(val) =>
+          setConfigData({ ...configData, pdpTargetClass: val })
+        }
+        availableOptions={pdpTargetClasses}
+        placeholder="Select"
+        readonly={readonly}
+        disabled={isGenerating}
+        hasError={showFieldErrors && !configData.pdpTargetClass}
+      />
+    )}
+  </div>
+
+  {/* CF FIELD */}
+  <div>
+    <label className="flex items-center text-sm font-medium mb-2 text-gray-900">
+      {isRegression ? "CF Desired Value" : "CF Desired Class"} *
+      <FieldTooltip lines={cfDesiredTooltip} position="left" />
+    </label>
+
+    {isRegression ? (
+      <input
+        type="number"
+        value={configData.cfDesiredValue}
+        onChange={(e) =>
+          setConfigData({ ...configData, cfDesiredValue: e.target.value })
+        }
+        className="w-full px-3 py-2 border rounded-lg text-sm"
+      />
+    ) : (
+      <SearchableDropdown
+        selectedColumn={configData.cfDesiredClass}
+        onSelect={(val) =>
+          setConfigData({ ...configData, cfDesiredClass: val })
+        }
+        availableOptions={cfDesiredClasses}
+        placeholder="Select"
+        readonly={readonly}
+        disabled={isGenerating}
+        hasError={showFieldErrors && !configData.cfDesiredClass}
+      />
+    )}
+  </div>
+
+</div>
 
           {/* ── CF Instance Index & LIME Instance Index ── */}
           <div className="grid grid-cols-2 gap-4">
