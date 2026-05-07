@@ -81,7 +81,7 @@ const NewSchedule = () => {
         setAlertFormData(prev => ({ ...prev, [field]: value }));
 
     const hasUnsavedChanges = () =>
-        schedulerState.project || schedulerState.model || schedulerState.source.source_table ||
+        schedulerState.project || schedulerState.is_ensemble || schedulerState.ensemble_name || schedulerState.model || schedulerState.source.source_table ||
         schedulerState.target.destination_table || schedulerState.scheduler.timeZone ||
         schedulerState.scheduler.startDateTime || schedulerState.scheduler.frequency;
 
@@ -117,6 +117,49 @@ const NewSchedule = () => {
         return `${year}-${month}-${day}T${hours}:${minutes}`;
     };
 
+    const DATA_DRIFT_KEYS = [
+        'distribution_drift_threshold',
+        'statistical_significance_level',
+        'information_stability_threshold',
+        'target_stability_threshold',
+    ];
+
+    const MODEL_DRIFT_KEYS = [
+        'prediction_drift_threshold',
+        'performance_drift_threshold',
+    ];
+
+    const DATA_DRIFT_DEFAULTS = {
+        distribution_drift_threshold: 0,
+        statistical_significance_level: 0,
+        information_stability_threshold: 0,
+        target_stability_threshold: 0,
+    };
+
+    const MODEL_DRIFT_DEFAULTS = {
+        prediction_drift_threshold: 0,
+        performance_drift_threshold: -1,
+    };
+
+    const isThresholdEntry = (value) => value && typeof value === 'object' && !Array.isArray(value);
+
+    const getFlatThresholdValues = (thresholdState, thresholdKeys, defaults) => thresholdKeys.reduce((acc, key) => {
+        acc[key] = typeof thresholdState?.[key] === 'number' ? thresholdState[key] : defaults[key];
+        return acc;
+    }, {});
+
+    const getEnsembleThresholdValues = (thresholdState, modelKeys, thresholdKeys, defaults) => {
+        const baseValues = getFlatThresholdValues(thresholdState, thresholdKeys, defaults);
+
+        return modelKeys.reduce((acc, modelKey) => {
+            const modelValues = isThresholdEntry(thresholdState?.[modelKey]) ? thresholdState[modelKey] : null;
+            acc[modelKey] = modelValues ? { ...baseValues, ...modelValues } : { ...baseValues };
+            return acc;
+        }, {});
+    };
+
+    const normalizeToArray = (value) => (Array.isArray(value) ? value : value ? [value] : []);
+
     const handleCreateSchedule = async () => {
         setIsCreating(true);
         try {
@@ -131,6 +174,27 @@ const NewSchedule = () => {
             if (!secureQueryResponse.ok) throw new Error("Failed to fetch policy IDs");
             const secureQueryData = await secureQueryResponse.json();
             const policyIds = secureQueryData.matched_policy_ids;
+            const selectedModelKeys = normalizeToArray(schedulerState.model_id).length > 0
+                ? normalizeToArray(schedulerState.model_id)
+                : normalizeToArray(schedulerState.model);
+            const isEnsembleSchedule = Boolean(schedulerState.is_ensemble);
+
+            const dataDriftThreshold = selectedModelKeys.reduce((acc, modelId) => {
+                acc[modelId] = isThresholdEntry(schedulerState.data_drift_threshold?.[modelId])
+                    ? { ...getFlatThresholdValues(schedulerState.data_drift_threshold?.[modelId], DATA_DRIFT_KEYS, DATA_DRIFT_DEFAULTS) }
+                    : getFlatThresholdValues(schedulerState.data_drift_threshold, DATA_DRIFT_KEYS, DATA_DRIFT_DEFAULTS);
+                return acc;
+            }, {});
+
+            const modelDriftThreshold = selectedModelKeys.reduce((acc, modelId) => {
+                acc[modelId] = isThresholdEntry(schedulerState.model_drift_threshold?.[modelId])
+                    ? { ...getFlatThresholdValues(schedulerState.model_drift_threshold?.[modelId], MODEL_DRIFT_KEYS, MODEL_DRIFT_DEFAULTS) }
+                    : getFlatThresholdValues(schedulerState.model_drift_threshold, MODEL_DRIFT_KEYS, MODEL_DRIFT_DEFAULTS);
+                return acc;
+            }, {});
+
+            const payloadModel = normalizeToArray(schedulerState.model);
+            const payloadModelId = normalizeToArray(schedulerState.model_id);
 
             const dagConfig = {
                 dag_config: {
@@ -138,8 +202,8 @@ const NewSchedule = () => {
                     created_by: decodedToken?.preferred_username,
                     workflow_name: schedulerState.workflow_name,
                     project: schedulerState.project,
-                    model: schedulerState.model,
-                    model_id: schedulerState.model_id,
+                    model: payloadModel,
+                    model_id: payloadModelId,
                     project_id: schedulerState.project_id,
                     flow_type: schedulerState.flow_type || "",
                     scheduler: {
@@ -162,8 +226,8 @@ const NewSchedule = () => {
                         destination_schema: schedulerState.target.destination_schema,
                         destination_table: schedulerState.target.destination_table
                     },
-                    data_drift_threshold: schedulerState.data_drift_threshold,
-                    model_drift_threshold: schedulerState.model_drift_threshold,
+                    data_drift_threshold: dataDriftThreshold,
+                    model_drift_threshold: modelDriftThreshold,
                     data_drift_check: schedulerState.data_drift_check,
                     model_drift_check: schedulerState.model_drift_check,
                     recipients: schedulerState.recipients || [],
@@ -199,7 +263,7 @@ const NewSchedule = () => {
 
     const handleConfirmDiscard = () => {
         setSchedulerState({
-            owner_id: '', project: '', model: '', model_id: '', project_id: '',
+            owner_id: '', project: '', is_ensemble: false, ensemble_name: '', model: '', model_id: '', project_id: '',
             flow_type: 'single_run',
             scheduler: { mode: 'auto', frequency: '', runningDays: [], endDateTime: '', intervalType: 'single_run', intervalValue: '', startDateTime: '' },
             source: { source_conn_type: '', source_schema: '', source_table: '' },

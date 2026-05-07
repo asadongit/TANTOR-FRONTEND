@@ -43,9 +43,11 @@ const STRATEGIES = [
 ];
 
 const FALLBACK_STRATEGIES = [
+    { value: 'LONGEST_VALUE', label: 'LONGEST_VALUE' },
+    { value: 'MOST_TRUSTED', label: 'MOST_TRUSTED' },
+    { value: 'MOST_COMPLETE', label: 'MOST_COMPLETE' },
     { value: 'MOST_RECENT', label: 'MOST_RECENT' },
     { value: 'SOURCE_PRIORITY', label: 'SOURCE_PRIORITY' },
-    { value: 'LONGEST_VALUE', label: 'LONGEST_VALUE' },
     { value: 'MAX_VALUE', label: 'MAX_VALUE' },
 ];
 

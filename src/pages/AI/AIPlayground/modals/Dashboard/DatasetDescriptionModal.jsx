@@ -28,8 +28,8 @@ export const DatasetDescriptionModal = ({ isOpen, onClose, onSave, onSkip }) => 
       return;
     }
 
-    if (!datasetState.sessionId) {
-      toast.error('Session ID not found', {
+    if (!datasetState.ensembleId) {
+      toast.error('Ensemble ID not found', {
         duration: 4000,
         position: 'top-right',
       });
@@ -40,12 +40,17 @@ export const DatasetDescriptionModal = ({ isOpen, onClose, onSave, onSkip }) => 
 
     try {
       const response = await fetch(
-        `${hostnameAI}/data/description?session_id=${datasetState.sessionId}&data_description=${encodeURIComponent(description)}`,
+        `${hostnameAI}/ingestion/description`,
         {
           method: 'POST',
           headers: {
-            'accept': 'application/json'
-          }
+            'accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            ensemble_id: datasetState.ensembleId,
+            message: description
+          })
         }
       );
 

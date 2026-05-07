@@ -5,8 +5,9 @@ import AddRuleModal from './modals/AddRuleModal.jsx';
 import EditRuleModal from './modals/EditRuleModal.jsx';
 import EditIcon from '../../../../../assets/mdm/edit.svg';
 import DeleteIcon from '../../../../../assets/mdm/delete.svg';
-import { useDomainRules } from '../../../../../hooks/mdm/domainManagement.jsx';
-
+import { useDomainRules, useDeleteRule } from '../../../../../hooks/mdm/domainManagement.jsx';
+import DeleteConfirmModal from '../../components/DeleteConfirmModal.jsx';
+import { createPortal } from 'react-dom';
 /* ─────────────────────────────────────────────
    Badges
 ───────────────────────────────────────────── */
@@ -39,15 +40,13 @@ const StatusBadge = ({ status }) => (
     </span>
 );
 
-/* ─────────────────────────────────────────────
-   Row Actions
-───────────────────────────────────────────── */
 const RowActions = ({ row, onEdit, onDelete }) => {
     const [open, setOpen] = useState(false);
     const [pos, setPos]   = useState({ top: 0, left: 0 });
 
     const handleOpen = (e) => {
         e.stopPropagation();
+        e.preventDefault();
         const rect = e.currentTarget.getBoundingClientRect();
         setPos({ top: rect.bottom + 4, left: rect.right - 160 });
         setOpen((p) => !p);
@@ -56,21 +55,25 @@ const RowActions = ({ row, onEdit, onDelete }) => {
     return (
         <div className="relative inline-block">
             <button
+                onMouseDown={(e) => e.stopPropagation()}
                 onClick={handleOpen}
                 className="bg-transparent border-none cursor-pointer p-1 rounded-full flex items-center"
             >
                 <MoreVertical size={18} className="text-[#818181]" />
             </button>
 
-            {open && (
+            {open && createPortal(
                 <>
                     <div
-                        className="fixed inset-0 z-[1002]"
+                        className="fixed inset-0 z-[9998]"
+                        onMouseDown={(e) => e.stopPropagation()}
                         onClick={() => setOpen(false)}
                     />
                     <div
-                        className="fixed z-[1003] bg-white rounded-2xl shadow-[0px_10px_30px_rgba(0,0,0,0.15)] p-2 min-w-[160px] flex flex-col gap-1"
+                        className="fixed z-[9999] bg-white rounded-2xl shadow-[0px_10px_30px_rgba(0,0,0,0.15)] p-2 min-w-[160px] flex flex-col gap-1"
                         style={{ top: pos.top, left: pos.left }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
                     >
                         <button
                             onClick={() => { onEdit?.(row); setOpen(false); }}
@@ -87,7 +90,8 @@ const RowActions = ({ row, onEdit, onDelete }) => {
                             <span className="text-[#E05252] text-sm font-medium">Delete</span>
                         </button>
                     </div>
-                </>
+                </>,
+                document.body
             )}
         </div>
     );
@@ -101,14 +105,16 @@ const DomainRulesModal = ({ isOpen, onClose, domainId, domainName }) => {
     const [editRuleData, setEditRuleData] = useState(null);
 
     const { rules, isLoading, fetchRules } = useDomainRules(domainId, isOpen);
+    const { isDeleting, deleteRule } = useDeleteRule(fetchRules);
+    const [deleteTarget, setDeleteTarget] = useState(null);
 
     const handleEdit   = useCallback((row) => setEditRuleData(row), []);
-    const handleDelete = useCallback((row) => {
-        // TODO: wire delete API
-        console.log('Delete rule:', row);
-    }, []);
+    const handleDelete = useCallback((row) => setDeleteTarget(row), []);
 
-    if (!isOpen) return null;
+    const confirmDelete = useCallback(async () => {
+        const result = await deleteRule(deleteTarget.rule_id);
+        if (result.ok) setDeleteTarget(null);
+    }, [deleteTarget, deleteRule]);
 
     const columns = [
         {
@@ -139,6 +145,7 @@ const DomainRulesModal = ({ isOpen, onClose, domainId, domainName }) => {
             ),
         },
     ];
+    if (!isOpen) return null;
 
     return (
         <>
@@ -200,6 +207,15 @@ const DomainRulesModal = ({ isOpen, onClose, domainId, domainName }) => {
                 domainId={domainId}
                 ruleData={editRuleData}
                 onComplete={() => { setEditRuleData(null); fetchRules(); }}
+            />
+
+            <DeleteConfirmModal
+                isOpen={!!deleteTarget}
+                onClose={() => setDeleteTarget(null)}
+                onConfirm={confirmDelete}
+                isDeleting={isDeleting}
+                title="Delete Rule"
+                message={`Are you sure you want to delete "${deleteTarget?.rule_name}"? This action cannot be undone.`}
             />
         </>
     );

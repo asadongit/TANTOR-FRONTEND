@@ -108,7 +108,7 @@ const Connections = () => {
   const columns = columnConfigurations['connections']
 
   const handleRefresh = (id) => {
-    fetch(`${hostnameV1}/refresh/${id}`, {
+    fetch(`${hostnameV2}/refresh/${id}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',

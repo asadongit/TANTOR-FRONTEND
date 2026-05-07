@@ -24,12 +24,15 @@ const preprocessingSteps = [
 
 function DataPreprocessing() {
   const hostnameAI = window._env_?.VITE_AI_API;
-  const { workflowState, mode, datasetState, updateWorkflowStage } = useAIPlayground();
+  const { workflowsState, activeWorkflowId, mode, datasetState, updateWorkflowStage } = useAIPlayground();
+  const workflowState = activeWorkflowId
+    ? workflowsState?.[activeWorkflowId]
+    : null;  
   const readonly = mode === 'view';
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (datasetState.sessionId == '') {
+    if (!datasetState?.ensembleId) {
       navigate('/ai/playground')
     }
   }, []);
@@ -54,6 +57,9 @@ function DataPreprocessing() {
   const [isStep4Valid, setIsStep4Valid] = useState(true);
   const [isStep5Valid, setIsStep5Valid] = useState(true);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [isApiCallInProgress, setIsApiCallInProgress] = useState(false);
+
+  const isInteractionLocked = readonly || isApiCallInProgress;
 
   const step1ApiCallRef = useRef(null);
   const step2ApiCallRef = useRef(null);
@@ -62,55 +68,68 @@ function DataPreprocessing() {
   const step5ApiCallRef = useRef(null);
   const step6ApiCallRef = useRef(null);
   const step7ApiCallRef = useRef(null);
-
+  // if the data preprocessing is manual and model selection is auto , jobID api gets called 
   const handleNextClick = async () => {
-    if (currentStep === 7 && isStep7Preview && isModelSelectionAuto) {
-      try {
-        const jobId = isDataPreprocessingAuto
-          ? workflowState?.modelGenesis?.apiResponse?.job_id
-          : workflowState?.dataPreprocessing?.step7?.apiResponse?.job_id;
+    setIsApiCallInProgress(true);
 
-        if (jobId) {
-          const response = await fetch(`${hostnameAI}/jobs/${jobId}`, {
-            method: 'GET',
-            headers: { 'accept': 'application/json' }
-          });
+    try {
+      if (currentStep === 7 && isStep7Preview && isModelSelectionAuto) {
 
-          if (response.ok) {
-            const data = await response.json();
-            updateWorkflowStage('completedJobs', {
-              config: { job_id: jobId },
-              apiResponse: data
+        try {
+          const autoModeJobId = workflowState?.modelGenesis?.apiResponse?.job_id ?? null;
+
+          const jobId = isDataPreprocessingAuto
+            ? autoModeJobId
+            : workflowState?.dataPreprocessing?.step7?.apiResponse?.job_id;
+          
+        
+          
+          if (jobId && hostnameAI) {
+            const response = await fetch(`${hostnameAI}/jobs/${jobId}`, {
+              method: 'GET',
+              headers: { 'accept': 'application/json' }
             });
+
+            if (response.ok) {
+              const data = await response.json();
+             
+              updateWorkflowStage?.('completedJobs', {
+                config: { job_id: jobId },
+                apiResponse: data
+              });
+
+            } else {
+           
+            }
+          } else {
+           
           }
+        } catch (error) {
+          console.error('Error fetching job details:', error);
         }
-      } catch (error) {
-        console.error('Error fetching job details:', error);
+        return true;
       }
-      return true;
+
+      if (currentStep === 7 && isStep7Preview) return true;
+
+      const stepApiRefs = [
+        null,
+        step1ApiCallRef.current,
+        step2ApiCallRef.current,
+        step3ApiCallRef.current,
+        step4ApiCallRef.current,
+        step5ApiCallRef.current,
+        step6ApiCallRef.current,
+        step7ApiCallRef.current,
+      ];
+
+      const apiCallFn = stepApiRefs[currentStep] ?? null;
+      if (typeof apiCallFn !== 'function') return true;
+
+      return await apiCallFn();
+    } finally {
+      setIsApiCallInProgress(false);
     }
-
-    if (currentStep === 7 && isStep7Preview && isDataPreprocessingAuto) return true;
-    if (currentStep === 7 && isStep7Preview) return true;
-
-    let apiCallFn = null;
-    switch (currentStep) {
-      case 1: apiCallFn = step1ApiCallRef.current; break;
-      case 2: apiCallFn = step2ApiCallRef.current; break;
-      case 3: apiCallFn = step3ApiCallRef.current; break;
-      case 4: apiCallFn = step4ApiCallRef.current; break;
-      case 5: apiCallFn = step5ApiCallRef.current; break;
-      case 6: apiCallFn = step6ApiCallRef.current; break;
-      case 7: apiCallFn = step7ApiCallRef.current; break;
-      default: break;
-    }
-
-    if (apiCallFn) {
-      const success = await apiCallFn();
-      return success;
-    }
-
-    return true;
   };
 
   const handlePreviewClick = () => {
@@ -120,25 +139,26 @@ function DataPreprocessing() {
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
-        return <DataCleaning onValidationChange={setIsStep1Valid} onApiCall={(fn) => step1ApiCallRef.current = fn} />;
+        return <DataCleaning readonly={isInteractionLocked} onValidationChange={setIsStep1Valid} onApiCall={(fn) => step1ApiCallRef.current = fn} />;
       case 2:
-        return <FeatureSelection onValidationChange={setIsStep2Valid} onApiCall={(fn) => step2ApiCallRef.current = fn} />;
+        return <FeatureSelection readonly={isInteractionLocked} onValidationChange={setIsStep2Valid} onApiCall={(fn) => step2ApiCallRef.current = fn} />;
       case 3:
-        return <FeatureEngineering onApiCall={(fn) => step3ApiCallRef.current = fn} />;
+        return <FeatureEngineering readonly={isInteractionLocked} onApiCall={(fn) => step3ApiCallRef.current = fn} />;
       case 4:
-        return <ScalingTransformation onValidationChange={setIsStep4Valid} onApiCall={(fn) => step4ApiCallRef.current = fn} />;
+        return <ScalingTransformation readonly={isInteractionLocked} onValidationChange={setIsStep4Valid} onApiCall={(fn) => step4ApiCallRef.current = fn} />;
       case 5:
-        return <StatisticalAnalysis onValidationChange={setIsStep5Valid} onApiCall={(fn) => step5ApiCallRef.current = fn} />;
+        return <StatisticalAnalysis readonly={isInteractionLocked} onValidationChange={setIsStep5Valid} onApiCall={(fn) => step5ApiCallRef.current = fn} />;
       case 6:
-        return <FeatureImportance onApiCall={(fn) => step6ApiCallRef.current = fn} />;
+        return <FeatureImportance readonly={isInteractionLocked} onApiCall={(fn) => step6ApiCallRef.current = fn} />;
       case 7:
-        return <Step7 showPreview={isStep7Preview} onApiCall={(fn) => step7ApiCallRef.current = fn} />;
+        return <Step7 readonly={isInteractionLocked} showPreview={isStep7Preview} onApiCall={(fn) => step7ApiCallRef.current = fn} />;
       default:
-        return <DataCleaning onValidationChange={setIsStep1Valid} onApiCall={(fn) => step1ApiCallRef.current = fn} />;
+        return <DataCleaning readonly={isInteractionLocked} onValidationChange={setIsStep1Valid} onApiCall={(fn) => step1ApiCallRef.current = fn} />;
     }
   };
 
   const getIsNextDisabled = () => {
+    if (isApiCallInProgress) return true;
     if (currentStep === 1 && !isStep1Valid) return true;
     if (currentStep === 2 && !isStep2Valid) return true;
     if (currentStep === 4 && !isStep4Valid) return true;
@@ -185,7 +205,9 @@ function DataPreprocessing() {
                         <React.Fragment key={step.id}>
                           {/* Step row — flex-shrink-0 so it never compresses */}
                           <button
-                            className={`flex items-center gap-3 w-full text-left transition-colors flex-shrink-0 ${currentStep === step.id ? 'text-[#8e78b7]' : 'text-gray-500'
+                            onClick={() => !isApiCallInProgress && setCurrentStep(step.id)}
+                            disabled={isApiCallInProgress}
+                            className={`flex items-center gap-3 w-full text-left transition-colors flex-shrink-0 ${isApiCallInProgress ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${currentStep === step.id ? 'text-[#8e78b7]' : 'text-gray-500'
                               }`}
                           >
                             <div
@@ -227,7 +249,8 @@ function DataPreprocessing() {
                 <div className="flex justify-end mb-4">
                   <button
                     onClick={handlePreviewClick}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a6ba0] transition-all shadow-md hover:shadow-lg"
+                    disabled={isApiCallInProgress}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all shadow-md ${isApiCallInProgress ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-[#8e78b7] text-white hover:bg-[#7a6ba0] hover:shadow-lg'}`}
                   >
                     <Eye className="w-4 h-4" />
                     <span className="font-medium">Preview Processed Data</span>

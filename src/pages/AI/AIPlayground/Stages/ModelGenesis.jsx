@@ -528,10 +528,9 @@ const ModeSelection = ({ config, setConfig, readonly }) => {
   );
 };
 
-const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, columnNames, hasError, errorMessage, sectionRef }) => {
+const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, columnNames, hasError, errorMessage, sectionRef, activeWorkflowId, isValidating, setIsValidating }) => {
   const hostnameAI = window._env_?.VITE_AI_API;
   const { datasetState } = useAIPlayground();
-  const [isValidating, setIsValidating] = useState(false);
   const tabs = ['Supervised', 'Unsupervised', 'Time Series', 'Anomaly Detection'];
 
   const getAvailableTargetColumns = () => {
@@ -552,14 +551,21 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
       };
 
       const modellingType = modellingTypeMap[config.classification];
-      const sessionId = datasetState.sessionId;
+      const ensembleId = datasetState.ensembleId;
       const targetColumn = config.targetFeature;
 
-      const apiUrl = `${hostnameAI}/data/validate-targetcolumn-modellingtype?session_id=${sessionId}&target_column=${encodeURIComponent(targetColumn)}&modelling_type=${modellingType}`;
-
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: { 'accept': 'application/json' }
+      const response = await fetch(`${hostnameAI}/data/validate-target-column`, {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ensemble_id: ensembleId,
+          workflow_id: activeWorkflowId,
+          target_column: targetColumn,
+          modelling_type: modellingType
+        })
       });
 
       if (response.ok) {
@@ -864,8 +870,6 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [], hasError, 
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
 
-  const { workflowState } = useAIPlayground();
-
   const getAvailableColumns = () => {
     const selectedDropColumns = config.drop_columns || [];
     const fairnessColumns = config.fairness_columns || [];
@@ -1125,22 +1129,25 @@ function ModelGenesis() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { datasetState, updateWorkflowStage, workflowState, mode } = useAIPlayground();
+  const { datasetState, updateWorkflowStage, workflowsState, mode, activeWorkflowId } = useAIPlayground();
+  const workflowState = activeWorkflowId ? workflowsState?.[activeWorkflowId] : null;
   const [validationErrors, setValidationErrors] = useState({});
+  const [isValidating, setIsValidating] = useState(false);
   const predictionTypeRef = useRef(null);
   const dropColumnsRef = useRef(null);
 
   useEffect(() => {
-    if (datasetState.sessionId == '') {
+    if (datasetState.ensembleId == '') {
       navigate('/ai/playground')
     }
   }, []);
 
   const readonly = mode === 'view';
-
+  // if in view or edit mode and with workflow state config , then prefill the form with saved config
   const getInitialConfig = () => {
-    if ((mode === 'view' || mode === 'edit') && workflowState.modelGenesis?.config) {
-      const savedConfig = workflowState.modelGenesis.config;
+    const savedConfig = workflowState?.modelGenesis?.config;
+
+    if ((mode === 'view' || mode === 'edit') && savedConfig) {
       return {
         dataPreprocessing: savedConfig.data_preprocessing_mode || 'Manual',
         modelSelection: savedConfig.model_mode || 'Manual',
@@ -1181,8 +1188,15 @@ function ModelGenesis() {
 
 
   const [config, setConfig] = useState(getInitialConfig);
-  const [isValidated, setIsValidated] = useState(mode === 'view' && workflowState.modelGenesis?.config);
+  const [isValidated, setIsValidated] = useState(mode === 'view' && !!workflowState?.modelGenesis?.config);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if ((mode === 'view' || mode === 'edit') && workflowState?.modelGenesis?.config) {
+      setConfig(getInitialConfig());
+      setIsValidated(mode === 'view');
+    }
+  }, [mode, workflowState?.modelGenesis?.config]);
 
   useEffect(() => {
     if (mode === 'edit') {
@@ -1203,6 +1217,8 @@ function ModelGenesis() {
     return true;
   };
 
+  const isInteractionLocked = readonly || isSubmitting || isValidating;
+
   const handleValidate = () => {
     if (readonly) return;
     setIsValidated(!isValidated);
@@ -1220,16 +1236,21 @@ function ModelGenesis() {
     try {
 
       const modellingType = modellingTypeMap[config.classification];
-      const sessionId = datasetState.sessionId;
+      const ensembleId = datasetState.ensembleId;
       const targetColumn = config.targetFeature;
 
-      const apiUrl = `${hostnameAI}/data/validate-targetcolumn-modellingtype?session_id=${sessionId}&target_column=${encodeURIComponent(targetColumn)}&modelling_type=${modellingType}`;
-
-      const response = await fetch(apiUrl, {
-        method: 'GET',
+      const response = await fetch(`${hostnameAI}/data/validate-target-column`, {
+        method: 'POST',
         headers: {
-          'accept': 'application/json'
-        }
+          'accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ensemble_id: ensembleId,
+          workflow_id: activeWorkflowId,
+          target_column: targetColumn,
+          modelling_type: modellingType
+        })
       });
 
       if (response.ok) {
@@ -1314,17 +1335,18 @@ function ModelGenesis() {
       }
 
       const payload = {
-        session_id: datasetState.sessionId,
+        ensemble_id: datasetState.ensembleId,
+        workflow_id: activeWorkflowId,
         test_size: testSize,
         train_size: trainSize,
         random_state: 42,
+        target_column: config.targetFeature,
+        modelling_type: modellingTypeMap[config.classification],
         fairness_columns: config.fairness_columns,
-        drop_columns_active: config.drop_columns_active || false,
-        drop_columns: config.drop_columns || [],
         data_preprocessing_mode: config.dataPreprocessing,
         model_mode: config.modelSelection,
-        target_column: config.targetFeature,
-        modelling_type: modellingTypeMap[config.classification]
+        drop_columns_active: config.drop_columns_active || false,
+        drop_columns: config.drop_columns || []
       };
 
       const response = await fetch(`${hostnameAI}/data/genesis`, {
@@ -1347,6 +1369,16 @@ function ModelGenesis() {
           },
           apiResponse: data
         });
+        
+        // Store job_id in completedJobs if it exists in the response
+        if (data.job_id) {
+          updateWorkflowStage('completedJobs', {
+            config: {
+              job_id: data.job_id
+            }
+          });
+        }
+        
         toast.success('Model genesis completed successfully!', {
           duration: 3000,
           position: 'top-right',
@@ -1374,11 +1406,25 @@ function ModelGenesis() {
 
   return (
     <AIPlaygroundLayout
-      isNextDisabled={isSubmitting}
+      isNextDisabled={isSubmitting || isValidating}
       onNextClick={handleNextClick}
     >
       <div className="space-y-6">
-        <ModeSelection config={config} setConfig={setConfig} readonly={readonly} />
+        <ModeSelection
+          config={config}
+          setConfig={(newConfig) => {
+            setConfig(newConfig);
+            updateWorkflowStage('modelGenesis', {
+              config: {
+                dataPreprocessing: newConfig.dataPreprocessing,
+                modelSelection: newConfig.modelSelection,
+                data_preprocessing_mode: newConfig.dataPreprocessing,
+                model_mode: newConfig.modelSelection,
+              }
+            });
+          }}
+          readonly={isInteractionLocked}
+        />
 
         <DropColumns
           config={config}
@@ -1393,7 +1439,7 @@ function ModelGenesis() {
               setValidationErrors(prev => ({ ...prev, dropColumns: undefined }));
             }
           }}
-          readonly={readonly}
+          readonly={isInteractionLocked}
           columnNames={datasetState.columnNames}
           hasError={!!validationErrors.dropColumns}
           errorMessage={validationErrors.dropColumns}
@@ -1407,18 +1453,21 @@ function ModelGenesis() {
             handleValidate();
             setValidationErrors(prev => ({ ...prev, predictionType: undefined }));
           }}
-          readonly={readonly}
+          readonly={isInteractionLocked}
           columnNames={datasetState.columnNames}
           hasError={!!validationErrors.predictionType}
           errorMessage={validationErrors.predictionType}
+          activeWorkflowId={activeWorkflowId}
+          isValidating={isValidating}
+          setIsValidating={setIsValidating}
         />
 
-        <SplitSetting config={config} setConfig={setConfig} readonly={readonly} />
+        <SplitSetting config={config} setConfig={setConfig} readonly={isInteractionLocked} />
 
         <FairnessAttribute
           config={config}
           setConfig={setConfig}
-          readonly={readonly}
+          readonly={isInteractionLocked}
           columnNames={datasetState.columnNames}
         />
       </div>

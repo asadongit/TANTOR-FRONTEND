@@ -78,11 +78,14 @@ function Observability({ modelData }) {
     const dataDrift = dataDriftRaw !== null
         ? Number(dataDriftRaw.toExponential(2).split('e')[0])
         : null;
-        console.log("data frift", dataDrift);
+    console.log("data frift", dataDrift);
     const modelDrift = data.data?.model_drift?.avg_metrics_shift ?? null;
     const predictionsCount = data.data?.predictions?.predictions_count ?? 0;
     const avgLatency = data.data?.latency?.average_latency_interval ?? 0;
     const avgLatencyMin = avgLatency ? (Number(avgLatency) / 60000).toFixed(2) : '0.00';
+    
+    // Check if model is regression
+    const isRegressionModel = modelData.modeling_type === 'regression' || (avgPerf.r2 !== undefined && avgPerf.rmse !== undefined);
 
     const dataDriftData = Object.entries(data.data?.data_drift_over_time || {}).map(([date, val]) => ({
         date,
@@ -190,26 +193,53 @@ function Observability({ modelData }) {
 
             <div className={`${aithemestyle.statsCardGradient270} rounded-xl p-4`}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <StatsCard
-                        label="Accuracy"
-                        value={avgPerf.accuracy ? `${(avgPerf.accuracy * 100).toFixed(1)}%` : 'N/A'}
-                        icon={Target}
-                    />
-                    <StatsCard
-                        label="Precision"
-                        value={avgPerf.precision ? `${(avgPerf.precision * 100).toFixed(1)}%` : 'N/A'}
-                        icon={TrendingUp}
-                    />
-                    <StatsCard
-                        label="Recall"
-                        value={avgPerf.recall ? `${(avgPerf.recall * 100).toFixed(1)}%` : 'N/A'}
-                        icon={Activity}
-                    />
-                    <StatsCard
-                        label="F1 Score"
-                        value={avgPerf.f1 ? `${(avgPerf.f1 * 100).toFixed(1)}%` : 'N/A'}
-                        icon={Zap}
-                    />
+                    {isRegressionModel ? (
+                        <>
+                            <StatsCard
+                                label="R² Score"
+                                value={avgPerf.r2 !== undefined ? `${(avgPerf.r2).toFixed(3)}` : 'N/A'}
+                                icon={Target}
+                            />
+                            <StatsCard
+                                label="MAE"
+                                value={avgPerf.mae !== undefined ? `${(avgPerf.mae).toFixed(2)}` : 'N/A'}
+                                icon={TrendingUp}
+                            />
+                            <StatsCard
+                                label="RMSE"
+                                value={avgPerf.rmse !== undefined ? `${(avgPerf.rmse).toFixed(2)}` : 'N/A'}
+                                icon={Activity}
+                            />
+                            <StatsCard
+                                label="MAPE"
+                                value={avgPerf.mape !== undefined ? `${(avgPerf.mape * 100).toFixed(2)}%` : 'N/A'}
+                                icon={Zap}
+                            />
+                        </>
+                    ) : (
+                        <>
+                            <StatsCard
+                                label="Accuracy"
+                                value={avgPerf.accuracy ? `${(avgPerf.accuracy * 100).toFixed(1)}%` : 'N/A'}
+                                icon={Target}
+                            />
+                            <StatsCard
+                                label="Precision"
+                                value={avgPerf.precision ? `${(avgPerf.precision * 100).toFixed(1)}%` : 'N/A'}
+                                icon={TrendingUp}
+                            />
+                            <StatsCard
+                                label="Recall"
+                                value={avgPerf.recall ? `${(avgPerf.recall * 100).toFixed(1)}%` : 'N/A'}
+                                icon={Activity}
+                            />
+                            <StatsCard
+                                label="F1 Score"
+                                value={avgPerf.f1 ? `${(avgPerf.f1 * 100).toFixed(1)}%` : 'N/A'}
+                                icon={Zap}
+                            />
+                        </>
+                    )}
                     <StatsCard
                         label="Model Drift"
                         value={modelDrift != null ? `${(modelDrift * 100).toFixed(1)}%` : 'N/A'}

@@ -71,8 +71,11 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const [isCancelLoading, setIsCancelLoading] = useState(false);
 
   const { decodedToken } = useAuth();
-  const { isAIPlaygroundActive, resetAllStates, datasetState, workflowState, F1Mode: F1ModeCtx, setF1Mode } = useAIPlayground();
+  const { isAIPlaygroundActive, resetAllStates, datasetState, workflowsState, F1Mode: F1ModeCtx, setF1Mode ,activeWorkflowId} = useAIPlayground();
   const navigate = useNavigate();
+  const workflowState = activeWorkflowId
+  ? (workflowsState[activeWorkflowId] ?? null)
+  : null; 
 
   const isF1ModeActive = !!F1ModeCtx?.session_id;
   const f1SessionId = F1ModeCtx?.session_id ?? null;
@@ -135,12 +138,12 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const handleConfirmCancel = async () => {
     setIsCancelLoading(true);
     try {
-      await fetch(`${hostnameAI}/model/cleanup`, {
+      await fetch(`${hostnameAI}/cleanup/cleanup`, {
         method: 'POST',
         headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          session_id: datasetState.sessionId,
-          training_flag: workflowState.modelSelection.apiResponse !== null
+          ensemble_id: datasetState.ensembleId,
+          training_flag: workflowState?.modelSelection?.apiResponse !== null
         })
       });
     } catch (error) {
@@ -278,7 +281,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
             subItems: [
                 { name: 'Domain Management', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/domain-management` },
                 { name: 'Golden Records', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/golden-records` },
-                { name: '360° Entity View', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/entity-view` },
+                // { name: '360° Entity View', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/entity-view` },
                 { name: 'Cross-Domain Links', path: `${DATAGOVERNANCE_PREFIX}/mdm/overview/cross-domain-links` },
             ]
         },
@@ -364,6 +367,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     },
     { name: 'AI Playground', icon: AIPlaygroundIcon, path: `${AI_PREFIX}/playground` },
     { name: 'F1 Mode', icon: Flag, path: `${AI_PREFIX}/f1mode` },
+    { name: 'Prescriptive Analysis', icon: Sparkles, path: `${AI_PREFIX}/prescriptive` },
     { name: 'Orchestration', icon: AccountTreeIcon, path: `${AI_PREFIX}/orchestration` },
     { name: 'Agent Mesh', icon: AgentMeshIcon, path: `${AI_PREFIX}/agent-mesh` },
     { name: 'Marketplace', icon: MarketplaceIcon, path: `${AI_PREFIX}/marketplace` },

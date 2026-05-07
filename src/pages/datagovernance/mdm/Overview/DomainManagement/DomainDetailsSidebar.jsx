@@ -82,6 +82,7 @@ const AttributeActionMenu = ({ row, onEdit, onDelete, isMultiSelected, selectedC
                             onClick={() => { onDelete?.(row); setIsOpen(false); }}
                             className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-[10px] border-none cursor-pointer bg-white w-full"
                         >
+                            <img src={DeleteIcon} alt="Delete" className="w-3.5 h-3.5" />
                             <span className="text-[#E05252] text-sm font-medium">
                                 {isMultiSelected ? `Delete (${selectedCount})` : 'Delete'}
                             </span>

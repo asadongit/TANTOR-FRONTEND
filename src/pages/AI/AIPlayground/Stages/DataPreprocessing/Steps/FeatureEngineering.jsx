@@ -9,31 +9,31 @@ const OUTLIER_OPTIONS_CONFIG = [
         value: 'cap_95',
         label: 'Cap 95%',
         description: 'Cap 95% is an outlier treatment technique that limits extreme values to the 95th percentile of the data. Any value above this threshold is replaced with the 95th percentile value, reducing the impact of extreme observations while keeping all records.',
-        availability: { binary: 'yes', multiclass: 'yes' },
+        availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' }
     },
     {
         value: 'cap_99',
         label: 'Cap 99%',
         description: 'Cap 99% is an outlier treatment method that limits extreme values to the 99th percentile. It preserves most data variability while preventing very rare extreme values from dominating the analysis.',
-        availability: { binary: 'yes', multiclass: 'yes' },
+        availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' }
     },
     {
         value: 'log',
         label: 'Log Transform',
         description: 'Log Transform is a mathematical transformation that reduces the effect of large values by applying a logarithmic scale. It compresses extreme values and helps normalize skewed data, making patterns easier for models to learn.',
-        availability: { binary: 'yes', multiclass: 'yes' },
+        availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' }
     },
     {
         value: 'bin',
         label: 'Bin',
         description: 'Binning groups continuous values into discrete intervals or bins, reducing the impact of outliers by treating them as part of boundary bins.',
-        availability: { binary: 'yes', multiclass: 'yes' },
+        availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' }
     },
     {
         value: 'remove',
         label: 'Remove',
         description: 'Remove is an outlier handling approach that completely deletes records identified as outliers. This method is used when extreme values are invalid, erroneous, or likely to distort model performance.',
-        availability: { binary: 'yes', multiclass: 'yes' },
+        availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' }
     }
 ];
 
@@ -42,103 +42,103 @@ const ENCODING_OPTIONS_CONFIG = [
         value: 'onehot',
         label: 'One Hot',
         description: 'One-Hot Encoding converts each category into a separate binary column. Each column indicates the presence or absence of a category, making the data usable for most machine learning models.',
-        availability: { binary: 'yes', multiclass: 'yes' },
+        availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' }
     },
     {
         value: 'label',
         label: 'Label',
         description: 'Label Encoding assigns a unique numeric label to each category. It is simple and works best for ordered or ordinal categorical features.',
-        availability: { binary: 'yes', multiclass: 'yes' },
+        availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' }
     },
     {
         value: 'target',
         label: 'Target',
         description: 'Target Encoding replaces each category with the average target value for that category. It captures the relationship between the category and the prediction outcome.',
-        availability: { binary: 'yes', multiclass: 'warning' },
+        availability: { binary: 'yes', multiclass: 'warning', regression: 'warning' },
     },
     {
         value: 'woe',
         label: 'WOE',
         description: 'WOE encoding replaces categories with a value based on their predictive power relative to the target. It is widely used in credit risk and banking models for interpretability.',
-        availability: { binary: 'yes', multiclass: 'no' },
+        availability: { binary: 'yes', multiclass: 'no' ,regression: 'no'},
     },
     {
         value: 'frequency',
         label: 'Frequency',
         description: 'Frequency Encoding replaces categories with their occurrence frequency in the dataset. It preserves information about how common each category is.',
-        availability: { binary: 'yes', multiclass: 'yes' },
+        availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' }
     },
     {
         value: 'binary',
         label: 'binary',
         description: 'binary Encoding converts categories into binary digits and splits them across multiple columns. It reduces dimensionality compared to one-hot encoding.',
-        availability: { binary: 'yes', multiclass: 'yes' },
+        availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' }
     },
     {
         value: 'leave_one_out',
         label: 'Leave One Out',
         description: 'Leave-One-Out Encoding replaces a category using the target mean excluding the current row. This helps reduce overfitting compared to standard target encoding.',
-        availability: { binary: 'yes', multiclass: 'warning' },
+        availability: { binary: 'yes', multiclass: 'warning' ,regression: 'warning'},
     },
     {
         value: 'james_stein',
         label: 'James Stein',
         description: 'James-Stein Encoding is a shrinkage-based target encoding method. It pulls category means toward the global mean to reduce overfitting.',
-        availability: { binary: 'yes', multiclass: 'warning' },
+        availability: { binary: 'yes', multiclass: 'warning',regression: 'warning' },
     },
     {
         value: 'm_estimate',
         label: 'M-Estimate',
         description: 'M-Estimate Encoding smooths target encoding by combining category statistics with global averages. It improves stability for categories with few samples.',
-        availability: { binary: 'yes', multiclass: 'warning' },
+        availability: { binary: 'yes', multiclass: 'warning' ,regression: 'warning'},
     },
     {
         value: 'catboost',
         label: 'CatBoost',
         description: 'CatBoost Encoding is a target-based method that uses ordered statistics to avoid data leakage. It is optimized for gradient-boosting models like CatBoost.',
-        availability: { binary: 'yes', multiclass: 'yes' },
+        availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' }
     },
     {
         value: 'count',
         label: 'Count',
         description: 'Count Encoding replaces each category with the number of times it appears in the data. It is simple and effective for high-cardinality features.',
-        availability: { binary: 'yes', multiclass: 'yes' },
+        availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' }
     },
     {
         value: 'basen',
         label: 'BaseN',
         description: 'Base-N Encoding represents categories as digits in a base-N numeral system. It is a generalized form of binary encoding that balances feature size and information.',
-        availability: { binary: 'yes', multiclass: 'yes' },
+        availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' }
     },
     {
         value: 'hashing',
         label: 'Hashing',
         description: 'Hashing Encoding converts categories into numeric features using a hash function. It is memory-efficient and suitable for large-scale datasets.',
-        availability: { binary: 'yes', multiclass: 'yes' },
+        availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' }
     },
     {
         value: 'helmert',
         label: 'Helmert',
         description: 'Helmert Encoding compares each category with the mean of subsequent categories. It is commonly used in statistical modeling and hypothesis testing.',
-        availability: { binary: 'yes', multiclass: 'yes' },
+        availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' }
     },
     {
         value: 'sum',
         label: 'Sum',
         description: 'Sum Encoding represents categories using deviation from the overall mean. It is mainly used in regression and statistical analysis.',
-        availability: { binary: 'yes', multiclass: 'yes' },
+        availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' }
     },
     {
         value: 'backward_difference',
         label: 'Backward Difference',
         description: 'Backward Difference Encoding compares each category with the previous category in order. It is useful for ordered categorical features.',
-        availability: { binary: 'yes', multiclass: 'yes' },
+        availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' }
     },
     {
         value: 'polynomial',
         label: 'Polynomial',
         description: 'Polynomial Encoding creates contrast-based numeric representations for categorical variables. It is mainly used in statistical and regression-based models.',
-        availability: { binary: 'yes', multiclass: 'yes' },
+        availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' }
     }
 ];
 
@@ -210,10 +210,14 @@ const FeatureSection = ({
     );
 };
 
-function FeatureEngineering({ onApiCall }) {
+function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
     const hostnameAI = window._env_?.VITE_AI_API;
-    const { workflowState, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
-    const readonly = mode === 'view';
+    const { workflowsState, activeWorkflowId, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
+    const readonly = readonlyProp || mode === 'view';
+    const workflowState = activeWorkflowId
+    ? workflowsState[activeWorkflowId]
+    : null;  
+    const currentWorkflowId = workflowState?.workflow_id || activeWorkflowId;
 
     const [toggles, setToggles] = useState({
         outlierTreatment: false,
@@ -238,12 +242,12 @@ function FeatureEngineering({ onApiCall }) {
     const outlierCount = workflowState?.dataPreprocessing?.step2?.apiResponse?.outlier_count || 0;
     const hasOutliers = detectOutliersEnabled && outlierCount > 0;
 
-    const classificationType = workflowState?.modelGenesis?.config?.modelling_type || 'binary';
+    const modellingType = workflowState?.modelGenesis?.config?.modelling_type || 'binary';
     const isOutlierTreatmentDisabled = !hasOutliers;
 
-    const getAvailableOptions = (optionsConfig, classificationType) => {
-        return optionsConfig.filter(option => option.availability[classificationType] === 'yes');
-    };
+    const getAvailableOptions = (optionsConfig, modellingType) => {
+    return optionsConfig.filter(option => option.availability[modellingType] === 'yes');
+};
 
     useEffect(() => {
         const step3Config = workflowState?.dataPreprocessing?.step3?.config;
@@ -292,7 +296,8 @@ function FeatureEngineering({ onApiCall }) {
         try {
             setIsLoading(true);
             const requestBody = {
-                session_id: datasetState.sessionId,
+                ensemble_id: datasetState?.ensembleId,
+                workflow_id: currentWorkflowId,
                 outlier_treatment: toggles.outlierTreatment,
                 outlier_treatment_strategy: toggles.outlierTreatment ? outlierStrategy : "",
                 outlier_threshold: 3,
@@ -300,6 +305,10 @@ function FeatureEngineering({ onApiCall }) {
                 categorical_encoding_method: toggles.categoricalEncoding ? encodingStrategy : "",
                 categorical_encoding_base: 2
             };
+
+            if (!requestBody.ensemble_id || !requestBody.workflow_id) {
+                throw new Error('Missing required identifiers: ensemble_id or workflow_id');
+            }
 
             const response = await fetch(`${hostnameAI}/data/preprocess/feature_engineering`, {
                 method: 'POST',
@@ -332,10 +341,10 @@ function FeatureEngineering({ onApiCall }) {
 
     useEffect(() => {
         if (onApiCall) onApiCall(handleApiCall);
-    }, [toggles, outlierStrategy, encodingStrategy, datasetState.sessionId]);
+    }, [toggles, outlierStrategy, encodingStrategy, datasetState?.ensembleId, currentWorkflowId]);
 
-    const availableOutlierOptions = getAvailableOptions(OUTLIER_OPTIONS_CONFIG, classificationType);
-    const availableEncodingOptions = getAvailableOptions(ENCODING_OPTIONS_CONFIG, classificationType);
+    const availableOutlierOptions = getAvailableOptions(OUTLIER_OPTIONS_CONFIG, modellingType);
+    const availableEncodingOptions = getAvailableOptions(ENCODING_OPTIONS_CONFIG, modellingType);
 
     const optionDescriptions = {};
     [...OUTLIER_OPTIONS_CONFIG, ...ENCODING_OPTIONS_CONFIG].forEach(option => {

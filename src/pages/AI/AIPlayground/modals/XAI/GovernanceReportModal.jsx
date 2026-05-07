@@ -3,26 +3,29 @@ import { useState, useEffect, useRef } from "react";
 import toast from 'react-hot-toast';
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 
 function GovernanceReportModal({ isOpen, onClose, selectedModel, sessionId }) {
   const hostnameAI = window._env_?.VITE_AI_API;
+  const { datasetState, activeWorkflowId } = useAIPlayground();
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
   const reportRef = useRef(null);
+  const ensembleId = datasetState?.ensembleId;
 
   useEffect(() => {
-    if (isOpen && selectedModel && sessionId) {
+    if (isOpen && selectedModel && ensembleId && activeWorkflowId) {
       fetchGovernanceReport();
     }
-  }, [isOpen, selectedModel, sessionId]);
+  }, [isOpen, selectedModel, ensembleId, activeWorkflowId]);
 
   const fetchGovernanceReport = async () => {
     setLoading(true);
     try {
       const response = await fetch(
-        `${hostnameAI}/model/download-governance-report`,
+        `${hostnameAI}/governance/download-governance-report`,
         {
           method: 'POST',
           headers: {
@@ -30,15 +33,27 @@ function GovernanceReportModal({ isOpen, onClose, selectedModel, sessionId }) {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            session_id: sessionId,
-            model_names: [selectedModel]
+            ensemble_id: ensembleId,
+            workflows: [
+              {
+                workflow_id: activeWorkflowId,
+                model_names: [selectedModel]
+              }
+            ]
           })
         }
       );
 
       if (response.ok) {
         const data = await response.json();
-        setReportData(data);
+        const workflowData = data?.workflows?.[activeWorkflowId] || data;
+        const modelData = workflowData?.models?.[selectedModel];
+
+        setReportData({
+          models: { [selectedModel]: modelData },
+          project: data?.project,
+          dataset: data?.dataset || data?.workflows?.dataset
+        });
       } else {
         toast.error('Failed to fetch governance reports', {
           duration: 3000,

@@ -76,7 +76,19 @@ function Models() {
   const hostnameAI = window._env_?.VITE_AI_API;
   const { token, decodedToken } = useAuth();
   const [isCanvasLoading, setIsCanvasLoading] = useState(false);
-  const { setWorkflowState, setDatasetState, setMode, setModelState, setProjectState, setSchedulerState, setIsAIPlaygroundActive } = useAIPlayground();
+  const {
+    setDatasetState,
+    setMode,
+    setModelState,
+    setProjectState,
+    setSchedulerState,
+    setIsAIPlaygroundActive,
+    setWorkflowsState,
+    setActiveWorkflowId,
+    createWorkflow,
+    updateWorkflowStage,
+    updatePreprocessingStep,
+  } = useAIPlayground();
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [recentAccessed, setRecentAccessed] = useState([]);
   const [recentAccessedLoading, setRecentAccessedLoading] = useState(false);
@@ -104,9 +116,7 @@ function Models() {
           sno: index + 1,
           run_name: item.run_name,
           description: item.description || "",
-          created_date: item.created_at
-            ? new Date(item.created_at).toLocaleDateString("en-GB")
-            : "",
+          created_date: item.created_at || "",
           project_name:
             item.project_name ??
             item.project ??
@@ -197,6 +207,27 @@ function Models() {
     if (!Number.isFinite(num)) return "0 ms";
     if (num >= 1000) return `${Math.round((num / 1000) * 10) / 10}s`;
     return `${Math.round(num)}ms`;
+  };
+
+  const formatCreatedDate = (value) => {
+    if (!value) return "-";
+
+    const raw = String(value).trim();
+    const datePart = raw.includes("T") ? raw.split("T")[0] : raw;
+
+    const match = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return "-";
+
+    const [, year, month, day] = match;
+    const parsedDate = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+    const isValidDate =
+      parsedDate.getUTCFullYear() === Number(year) &&
+      parsedDate.getUTCMonth() === Number(month) - 1 &&
+      parsedDate.getUTCDate() === Number(day);
+
+    if (!isValidDate) return "-";
+
+    return `${day}/${month}/${year}`;
   };
 
   const metricsData = useMemo(() => {
@@ -364,22 +395,27 @@ function Models() {
       sortable: true,
       width: '250px',
       render: (row) => (
-          <span
-            className="hover:underline cursor-pointer whitespace-normal break-words break-all"
-            onClick={() => openModelLibrary(row)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => e.key === "Enter" && openModelLibrary(row)}
-            title={row?.run_name ?? ""}
-            style={{ overflowWrap: "anywhere", color: aithemestyle.iconColor }}
-          >
-            {row.run_name}
-          </span>
+        <span
+          className="hover:underline cursor-pointer whitespace-normal break-words break-all"
+          onClick={() => openModelLibrary(row)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === "Enter" && openModelLibrary(row)}
+          title={row?.run_name ?? ""}
+          style={{ overflowWrap: "anywhere", color: aithemestyle.iconColor }}
+        >
+          {row.run_name}
+        </span>
       ),
-    }
-    ,
+    },
     { key: "description", width: '150px', label: "Description", sortable: false },
-    { key: "created_date", width: '150px', label: "Created Date", sortable: true },
+    {
+      key: "created_date",
+      width: '150px',
+      label: "Created Date",
+      sortable: true,
+      render: (row) => formatCreatedDate(row.created_date),
+    },
     { key: 'project_name', width: '150px', label: 'Project', sortable: true },
     { key: 'user_name', width: '120px', label: 'Created By', sortable: true },
     { key: "type", width: '120px', label: "Type", sortable: true },
@@ -616,7 +652,7 @@ function Models() {
           if (!modelName) {
             throw new Error("Model name not found");
           }
-
+          // fetch the parameters needed for AI Playground from the model details endpoint
           const modelResponse = await fetch(`${hostnameAI}/canvas/model/${modelName}`, {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -636,7 +672,7 @@ function Models() {
 
           const projectName = modelData.project_name;
           const username = decodedToken?.preferred_username || "admin";
-
+           // fetches the policy IDs using the secure query endpoint to send along with the ingestion request
           const secureQueryResponse = await fetch(
             `${window._env_?.VITE_FAST_API}/secure-query`,
             {
@@ -665,7 +701,7 @@ function Models() {
           };
 
           const ingestionResponse = await fetch(
-            `${hostnameAI}/data/ingestion`,
+            `${hostnameAI}/ingestion/ingestion`,
             {
               method: 'POST',
               headers: {
@@ -678,7 +714,7 @@ function Models() {
           );
 
           if (!ingestionResponse.ok) {
-            toast.error('Failed to open AI Playground', {
+            toast.error('Failed to open AI Playground ', {
               duration: 4000,
               position: 'top-right',
             });
@@ -686,6 +722,11 @@ function Models() {
           }
 
           const ingestionData = await ingestionResponse.json();
+          const ensembleId = ingestionData.ensemble_id || '';
+
+          if (!ensembleId) {
+            throw new Error('Ensemble ID not found in ingestion response');
+          }
 
           setModelState({ selectedModel: modelData.model_name });
 
@@ -693,68 +734,132 @@ function Models() {
 
           setDatasetState({
             tableName: modelData.dataset_name,
-            sessionId: ingestionData.session_id || '',
+            ensembleId,
             columnNames: ingestionData.column_names || [],
-            profileReportHtml: ingestionData.profile_report_html || ''
+            profileReportHtml: ingestionData.profile_report_html || '',
+            isEnsemble: false,
+            WorkflowCount: 1
           });
 
-          if (modelData?.prefill) {
-            const newWorkflowState = {
-              modelGenesis: {
-                config: modelData.prefill?.data_preprocessing?.request?.genesis || null,
-                apiResponse: modelData.prefill?.data_preprocessing?.response?.genesis || null
-              },
-              dataPreprocessing: {
-                step1: {
-                  config: modelData.prefill?.data_preprocessing?.request?.initial_clean || null,
-                  apiResponse: modelData.prefill?.data_preprocessing?.response?.initial_clean || null
-                },
-                step2: {
-                  config: modelData.prefill?.data_preprocessing?.request?.feature_selection || null,
-                  apiResponse: modelData.prefill?.data_preprocessing?.response?.feature_selection || null
-                },
-                step3: {
-                  config: modelData.prefill?.data_preprocessing?.request?.feature_engineering || null,
-                  apiResponse: modelData.prefill?.data_preprocessing?.response?.feature_engineering || null
-                },
-                step4: {
-                  config: modelData.prefill?.data_preprocessing?.request?.advanced_transformation || null,
-                  apiResponse: modelData.prefill?.data_preprocessing?.response?.advanced_transformation || null
-                },
-                step5: {
-                  config: modelData.prefill?.data_preprocessing?.request?.statistical_analysis || null,
-                  apiResponse: modelData.prefill?.data_preprocessing?.response?.statistical_analysis || null
-                },
-                step6: {
-                  config: modelData.prefill?.data_preprocessing?.request?.feature_importance || null,
-                  apiResponse: modelData.prefill?.data_preprocessing?.response?.feature_importance || null
-                },
-                step7: {
-                  config: modelData.prefill?.data_preprocessing?.request?.imbalance_handling || null,
-                  apiResponse: modelData.prefill?.data_preprocessing?.response?.imbalance_handling || null
-                }
-              },
-              modelSelection: {
-                config: modelData.prefill?.training?.request || null,
-                apiResponse: modelData.prefill?.training?.response || null
-              },
-              modelInferencing: {
-                config: null,
-                apiResponse: null
-              },
-              xai: {
-                config: null,
-                apiResponse: null
-              },
-              modelDeployment: {
-                config: null,
-                apiResponse: null
-              }
-            };
+          const createWorkflowResponse = await fetch(`${hostnameAI}/ingestion/create-workflow`, {
+            method: 'POST',
+            headers: {
+              accept: 'application/json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              ensemble_id: ensembleId,
+              no_of_workflows: 1,
+              workflow_names: ['workflow 01']
+            })
+          });
 
-            setWorkflowState(newWorkflowState);
+          if (!createWorkflowResponse.ok) {
+            throw new Error(`Failed to create workflow: ${createWorkflowResponse.status}`);
+          }
+
+          const createWorkflowData = await createWorkflowResponse.json();
+          const workflowEntries = Object.entries(createWorkflowData?.workflows || {});
+          const [workflowIdFromMap, workflowNameFromMap] = workflowEntries[0] || [];
+          const workflowId = workflowIdFromMap || createWorkflowData?.workflow_ids?.[0];
+          const workflowName = workflowNameFromMap || 'workflow 01';
+
+          if (!workflowId) {
+            throw new Error('No workflow ID returned from create-workflow API');
+          }
+
+          setWorkflowsState({});
+          setActiveWorkflowId(null);
+          createWorkflow(workflowId, workflowName);
+
+          // creates a prefill for the AI Playground workflow based on the model details so that the user can directly go to the modeling stage in view mode
+          if (modelData?.prefill) {
+            const preprocessingRequest = modelData.prefill?.data_preprocessing?.request || {};
+            const preprocessingResponse = modelData.prefill?.data_preprocessing?.response || {};
+
+            const modelSelectionRequest =
+              modelData.prefill?.training?.request ||
+              preprocessingRequest?.training ||
+              null;
+
+            const modelSelectionResponse =
+              modelData.prefill?.training?.response ||
+              modelData.prefill?.training ||
+              preprocessingResponse?.training ||
+              null;
+
+            const step1Request =
+              preprocessingRequest?.initial_clean ||
+              preprocessingRequest?.feature_selection ||
+              null;
+
+            const step1Response =
+              preprocessingResponse?.initial_clean ||
+              preprocessingResponse?.feature_selection ||
+              null;
+
+            updateWorkflowStage('modelGenesis', {
+              config: preprocessingRequest?.genesis || null,
+              apiResponse: preprocessingResponse?.genesis || null
+            }, workflowId);
+
+            updatePreprocessingStep('step1', {
+              config: step1Request,
+              apiResponse: step1Response
+            }, workflowId);
+
+            updatePreprocessingStep('step2', {
+              config: preprocessingRequest?.feature_selection || null,
+              apiResponse: preprocessingResponse?.feature_selection || null
+            }, workflowId);
+
+            updatePreprocessingStep('step3', {
+              config: preprocessingRequest?.feature_engineering || null,
+              apiResponse: preprocessingResponse?.feature_engineering || null
+            }, workflowId);
+
+            updatePreprocessingStep('step4', {
+              config: preprocessingRequest?.advanced_transformation || null,
+              apiResponse: preprocessingResponse?.advanced_transformation || null
+            }, workflowId);
+
+            updatePreprocessingStep('step5', {
+              config: preprocessingRequest?.statistical_analysis || null,
+              apiResponse: preprocessingResponse?.statistical_analysis || null
+            }, workflowId);
+
+            updatePreprocessingStep('step6', {
+              config: preprocessingRequest?.feature_importance || null,
+              apiResponse: preprocessingResponse?.feature_importance || null
+            }, workflowId);
+
+            updatePreprocessingStep('step7', {
+              config: preprocessingRequest?.imbalance_handling || null,
+              apiResponse: preprocessingResponse?.imbalance_handling || null
+            }, workflowId);
+
+            updateWorkflowStage('modelSelection', {
+              config: modelSelectionRequest,
+              apiResponse: modelSelectionResponse
+            }, workflowId);
+
+            updateWorkflowStage('modelInferencing', {
+              config: null,
+              apiResponse: null
+            }, workflowId);
+
+            updateWorkflowStage('xai', {
+              config: null,
+              apiResponse: null
+            }, workflowId);
+
+            updateWorkflowStage('modelDeployment', {
+              config: null,
+              apiResponse: null
+            }, workflowId);
+
             setMode('view');
-            setIsAIPlaygroundActive(true)
+            setIsAIPlaygroundActive(true);
           }
 
           navigate("/ai/playground/model-genesis", {
@@ -956,7 +1061,7 @@ function Models() {
       <div className="bg-white rounded-xl px-4 py-4 flex flex-col justify-between min-h-[110px]">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <IconCmp className="w-[18px] h-[18px] text-[#8e78b7] shrink-0 flex-shrink-0" />
+            <IconCmp className="w-[18px] h-[18px] text-[#8e78b7] shrink-0" />
             <span className="satoshi-medium-md m-0 truncate">{label}</span>
           </div>
         </div>
