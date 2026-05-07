@@ -418,46 +418,54 @@ const Orchestration = () => {
 
             const data = await response.json();
 
-            // Helper function to extract thresholds based on mode
-            const getDataDriftThresholds = () => {
-                if (data.ensemble_flag && data.model_ids?.length > 0) {
-                    // For ensemble mode, use the first model's thresholds
-                    const firstModelId = data.model_ids[0];
-                    const thresholds = data.data_drift_threshold?.[firstModelId];
+            const normalizeThresholdMap = (thresholdPayload, modelIds, fieldDefaults) => {
+                const ids = (Array.isArray(modelIds) ? modelIds : []).filter(Boolean);
+                const payload = thresholdPayload && typeof thresholdPayload === 'object' ? thresholdPayload : {};
+
+                const extractFields = (source) => Object.keys(fieldDefaults).reduce((acc, key) => {
+                    acc[key] = typeof source?.[key] === 'number' ? source[key] : fieldDefaults[key];
+                    return acc;
+                }, {});
+
+                const keyedEntries = ids.reduce((acc, modelId) => {
+                    const modelThresholds = payload?.[modelId];
+                    if (modelThresholds && typeof modelThresholds === 'object' && !Array.isArray(modelThresholds)) {
+                        acc[modelId] = extractFields(modelThresholds);
+                    }
+                    return acc;
+                }, {});
+
+                if (Object.keys(keyedEntries).length > 0) {
+                    return keyedEntries;
+                }
+
+                if (ids.length === 1) {
                     return {
-                        distribution_drift_threshold: thresholds?.distribution_drift_threshold || 0,
-                        statistical_significance_level: thresholds?.statistical_significance_level || 0,
-                        information_stability_threshold: thresholds?.information_stability_threshold || 0,
-                        target_stability_threshold: thresholds?.target_stability_threshold || 0
-                    };
-                } else {
-                    // For single model mode, use flat structure
-                    return {
-                        distribution_drift_threshold: data.data_drift_threshold?.distribution_drift_threshold || 0,
-                        statistical_significance_level: data.data_drift_threshold?.statistical_significance_level || 0,
-                        information_stability_threshold: data.data_drift_threshold?.information_stability_threshold || 0,
-                        target_stability_threshold: data.data_drift_threshold?.target_stability_threshold || 0
+                        [ids[0]]: extractFields(payload),
                     };
                 }
+
+                return ids.reduce((acc, modelId) => {
+                    acc[modelId] = extractFields(payload);
+                    return acc;
+                }, {});
             };
 
-            const getModelDriftThresholds = () => {
-                if (data.ensemble_flag && data.model_ids?.length > 0) {
-                    // For ensemble mode, use the first model's thresholds
-                    const firstModelId = data.model_ids[0];
-                    const thresholds = data.model_drift_threshold?.[firstModelId];
-                    return {
-                        prediction_drift_threshold: thresholds?.prediction_drift_threshold || 0,
-                        performance_drift_threshold: thresholds?.performance_drift_threshold || -1
-                    };
-                } else {
-                    // For single model mode, use flat structure
-                    return {
-                        prediction_drift_threshold: data.model_drift_threshold?.prediction_drift_threshold || 0,
-                        performance_drift_threshold: data.model_drift_threshold?.performance_drift_threshold || -1
-                    };
-                }
-            };
+            const modelIds = Array.isArray(data.model_ids) && data.model_ids.length > 0
+                ? data.model_ids
+                : (data.model_id ? [data.model_id] : []);
+
+            const dataDriftThresholds = normalizeThresholdMap(data.data_drift_threshold, modelIds, {
+                distribution_drift_threshold: 0,
+                statistical_significance_level: 0,
+                information_stability_threshold: 0,
+                target_stability_threshold: 0,
+            });
+
+            const modelDriftThresholds = normalizeThresholdMap(data.model_drift_threshold, modelIds, {
+                prediction_drift_threshold: 0,
+                performance_drift_threshold: -1,
+            });
 
             setSchedulerState({
                 owner_id: data.owner_id || '',
@@ -490,8 +498,8 @@ const Orchestration = () => {
                     destination_schema: data.target?.destination_schema || '',
                     destination_table: data.target?.destination_table || ''
                 },
-                data_drift_threshold: getDataDriftThresholds(),
-                model_drift_threshold: getModelDriftThresholds(),
+                data_drift_threshold: dataDriftThresholds,
+                model_drift_threshold: modelDriftThresholds,
                 data_drift_check: data.data_drift_check || 0,
                 model_drift_check: data.model_drift_check || 0,
                 recipients: data.recipients || [],
