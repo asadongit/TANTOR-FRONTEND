@@ -826,6 +826,8 @@ const ConfigurationTab = ({ onValidationErrors }) => {
         return acc;
     }, {});
 
+
+
     const createBlankSchedulerState = (isEnsemble = false) => ({
         owner_id: '',
         project: '',
@@ -907,7 +909,12 @@ const ConfigurationTab = ({ onValidationErrors }) => {
         setScheduleType('Single Run');
         setShowDateModal(false);
 
-        setSchedulerState(createBlankSchedulerState(enabled));
+        // Preserve owner and project context when toggling ensemble on/off
+        setSchedulerState(prev => ({
+            ...createBlankSchedulerState(enabled),
+            owner_id: prev?.owner_id || '',
+           
+        }));
     };
 
     return (
@@ -956,14 +963,15 @@ const ConfigurationTab = ({ onValidationErrors }) => {
 
                     <div className="flex items-center gap-3 sm:mt-8 sm:flex-shrink-0">
                         <span className="text-sm font-medium text-[#332849]">Ensemble</span>
-                        <label className="relative inline-flex items-center cursor-pointer">
+                        <label className={`relative inline-flex items-center ${schedulerState?.mode === 'edit' ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                             <input
                                 type="checkbox"
                                 checked={isEnsembleEnabled}
-                                onChange={(e) => handleEnsembleToggle(e.target.checked)}
+                                onChange={(e) => { if (schedulerState?.mode !== 'edit') handleEnsembleToggle(e.target.checked); }}
+                                disabled={schedulerState?.mode === 'edit'}
                                 className="sr-only peer"
                             />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#8e78b7] rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7]"></div>
+                            <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#8e78b7] rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8e78b7] ${schedulerState?.mode === 'edit' ? 'opacity-60' : ''}`}></div>
                         </label>
                     </div>
                 </div>

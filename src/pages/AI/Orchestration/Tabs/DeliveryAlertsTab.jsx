@@ -21,19 +21,18 @@ const getThresholdValues = (thresholdState, modelKey, defaults) => {
     return acc;
   }, {});
 
-  if (!modelKey) {
+  const modelValues = modelKey && thresholdState?.[modelKey] && typeof thresholdState[modelKey] === 'object' && !Array.isArray(thresholdState[modelKey])
+    ? thresholdState[modelKey]
+    : null;
+
+  if (!modelValues) {
     return baseValues;
   }
 
-  const modelValues = thresholdState?.[modelKey];
-  if (modelValues && typeof modelValues === 'object' && !Array.isArray(modelValues)) {
-    return Object.keys(defaults).reduce((acc, key) => {
-      acc[key] = typeof modelValues[key] === 'number' ? modelValues[key] : baseValues[key];
-      return acc;
-    }, { ...baseValues });
-  }
-
-  return baseValues;
+  return Object.keys(defaults).reduce((acc, key) => {
+    acc[key] = typeof modelValues[key] === 'number' ? modelValues[key] : baseValues[key];
+    return acc;
+  }, { ...baseValues });
 };
 
 const updateThresholdValue = (thresholdState, modelKey, field, value, defaults) => {
@@ -60,6 +59,12 @@ const DeliveryAlertsTab = () => {
   const [isModelDriftExpanded, setIsModelDriftExpanded] = useState(true);
 
   const isEnsembleMode = Boolean(schedulerState.is_ensemble && Array.isArray(schedulerState.model) && schedulerState.model.length > 0);
+  const selectedModelIds = Array.isArray(schedulerState.model_id)
+    ? schedulerState.model_id.filter(Boolean)
+    : schedulerState.model_id
+      ? [schedulerState.model_id]
+      : [];
+  const primaryModelId = selectedModelIds[0] || null;
   const ensembleModels = isEnsembleMode
     ? schedulerState.model.map((modelName, index) => ({
       modelName,
@@ -97,10 +102,18 @@ const DeliveryAlertsTab = () => {
   const handleDataDriftChange = (field, value) => {
     setSchedulerState(prev => ({
       ...prev,
-      data_drift_threshold: {
-        ...prev.data_drift_threshold,
-        [field]: value
-      }
+      data_drift_threshold: primaryModelId
+        ? {
+            ...prev.data_drift_threshold,
+            [primaryModelId]: {
+              ...getThresholdValues(prev.data_drift_threshold, primaryModelId, DATA_DRIFT_DEFAULTS),
+              [field]: value
+            }
+          }
+        : {
+            ...prev.data_drift_threshold,
+            [field]: value
+          }
     }));
   };
 
@@ -114,10 +127,18 @@ const DeliveryAlertsTab = () => {
   const handleModelDriftChange = (field, value) => {
     setSchedulerState(prev => ({
       ...prev,
-      model_drift_threshold: {
-        ...prev.model_drift_threshold,
-        [field]: value
-      }
+      model_drift_threshold: primaryModelId
+        ? {
+            ...prev.model_drift_threshold,
+            [primaryModelId]: {
+              ...getThresholdValues(prev.model_drift_threshold, primaryModelId, MODEL_DRIFT_DEFAULTS),
+              [field]: value
+            }
+          }
+        : {
+            ...prev.model_drift_threshold,
+            [field]: value
+          }
     }));
   };
 
@@ -298,12 +319,12 @@ const DeliveryAlertsTab = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {renderSlider(
                     'Distribution Drift Threshold',
-                    getThresholdValues(schedulerState.data_drift_threshold, null, DATA_DRIFT_DEFAULTS).distribution_drift_threshold,
+                    getThresholdValues(schedulerState.data_drift_threshold, primaryModelId, DATA_DRIFT_DEFAULTS).distribution_drift_threshold,
                     (e) => handleDataDriftChange('distribution_drift_threshold', parseFloat(e.target.value))
                   )}
                   {renderSlider(
                     'Statistical Significance Level',
-                    getThresholdValues(schedulerState.data_drift_threshold, null, DATA_DRIFT_DEFAULTS).statistical_significance_level,
+                    getThresholdValues(schedulerState.data_drift_threshold, primaryModelId, DATA_DRIFT_DEFAULTS).statistical_significance_level,
                     (e) => handleDataDriftChange('statistical_significance_level', parseFloat(e.target.value)),
                     0, 1, 0.01, true
                   )}
@@ -311,12 +332,12 @@ const DeliveryAlertsTab = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {renderSlider(
                     'Information Stability Threshold',
-                    getThresholdValues(schedulerState.data_drift_threshold, null, DATA_DRIFT_DEFAULTS).information_stability_threshold,
+                    getThresholdValues(schedulerState.data_drift_threshold, primaryModelId, DATA_DRIFT_DEFAULTS).information_stability_threshold,
                     (e) => handleDataDriftChange('information_stability_threshold', parseFloat(e.target.value))
                   )}
                   {renderSlider(
                     'Target Stability Threshold',
-                    getThresholdValues(schedulerState.data_drift_threshold, null, DATA_DRIFT_DEFAULTS).target_stability_threshold,
+                    getThresholdValues(schedulerState.data_drift_threshold, primaryModelId, DATA_DRIFT_DEFAULTS).target_stability_threshold,
                     (e) => handleDataDriftChange('target_stability_threshold', parseFloat(e.target.value))
                   )}
                 </div>
@@ -396,12 +417,12 @@ const DeliveryAlertsTab = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {renderSlider(
                   'Prediction Drift Threshold',
-                  getThresholdValues(schedulerState.model_drift_threshold, null, MODEL_DRIFT_DEFAULTS).prediction_drift_threshold,
+                  getThresholdValues(schedulerState.model_drift_threshold, primaryModelId, MODEL_DRIFT_DEFAULTS).prediction_drift_threshold,
                   (e) => handleModelDriftChange('prediction_drift_threshold', parseFloat(e.target.value))
                 )}
                 {renderSlider(
                   'Performance Drift Threshold',
-                  getThresholdValues(schedulerState.model_drift_threshold, null, MODEL_DRIFT_DEFAULTS).performance_drift_threshold,
+                  getThresholdValues(schedulerState.model_drift_threshold, primaryModelId, MODEL_DRIFT_DEFAULTS).performance_drift_threshold,
                   (e) => handleModelDriftChange('performance_drift_threshold', parseFloat(e.target.value)),
                   -1, 0, 0.01, true
                 )}
