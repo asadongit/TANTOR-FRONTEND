@@ -21,6 +21,8 @@ export const DefineNode = ({ id, data }) => {
   const [localDescription, setLocalDescription] = useState(
     data.description || ""
   ); //for editing description
+  const [mdmCheck, setMdmCheck] = useState(data.mdm_check || false);
+
 
   const [isChecking, setIsChecking] = useState(false);
   const [nameError, setNameError] = useState("");
@@ -192,6 +194,14 @@ export const DefineNode = ({ id, data }) => {
     }
   };
 
+  const handleMdmCheckChange = (e) => {
+    const checked = e.target.checked;
+    setMdmCheck(checked);
+    if (typeof data.onDataChange === "function") {
+      data.onDataChange({ mdm_check: checked });
+    }
+  };
+
   useEffect(() => {
     setLocalName(data.name || "");
   }, [data.name]);
@@ -199,6 +209,8 @@ export const DefineNode = ({ id, data }) => {
   useEffect(() => {
     setLocalDescription(data.description || "");
   }, [data.description]);
+
+  useEffect(() => { setMdmCheck(data.mdm_check || false); }, [data.mdm_check]);
 
   useEffect(() => {
     const isEditMode = sessionStorage.getItem("editMode") === "true";
@@ -311,6 +323,23 @@ export const DefineNode = ({ id, data }) => {
           {attemptedSave && descriptionError && (
             <p className="text-[9px] text-red-500 mt-1">{descriptionError}</p>
           )}
+        </div>
+
+        {/* NEW: mdm_check checkbox */}
+        <div className="flex items-center space-x-2 pt-1 border-t border-gray-100">
+          <input
+            type="checkbox"
+            id={`mdm_check_${id}`}
+            checked={mdmCheck}
+            onChange={handleMdmCheckChange}
+            className="w-3 h-3 accent-[#8E77BB] cursor-pointer"
+          />
+          <label
+            htmlFor={`mdm_check_${id}`}
+            className="text-xs font-semibold text-black cursor-pointer select-none"
+          >
+            mdm_check
+          </label>
         </div>
       </div>
     </div>

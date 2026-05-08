@@ -666,6 +666,7 @@ function TransformationCanvasContent() {
         payload: {
           name: defineNode.data.name,
           description: defineNode.data.description || "",
+          mdm_check: defineNode.data.mdm_check || false,
         },
       });
 
@@ -704,6 +705,8 @@ function TransformationCanvasContent() {
         name: defineNode.data.name,
         description: defineNode.data.description || "",
       }, workflowType);
+      transformationData.mdm_check = defineNode.data.mdm_check || false;
+
 
       if (workflowType === "schedule") {
         transformationData.flow_type = flow_type;
