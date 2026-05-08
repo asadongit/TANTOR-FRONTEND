@@ -923,6 +923,16 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [], hasError, 
     let newDropColumns;
     if (checked) {
       newDropColumns = [...selectedDropColumns, columnName];
+      
+      // Validate: ensure at least 2 columns remain
+      const columnsRemaining = columnNames.length - newDropColumns.length;
+      if (columnsRemaining < 2) {
+        toast.error('Cannot drop all columns. At least 2 columns must remain.', {
+          duration: 3000,
+          position: 'top-right',
+        });
+        return;
+      }
     } else {
       newDropColumns = selectedDropColumns.filter(col => col !== columnName);
     }
@@ -949,6 +959,16 @@ const DropColumns = ({ config, setConfig, readonly, columnNames = [], hasError, 
     } else {
       const toAdd = filteredOptions.filter(opt => !selectedDropColumns.includes(opt));
       newDropColumns = [...selectedDropColumns, ...toAdd];
+      
+      // Validate: ensure at least 2 columns remain
+      const columnsRemaining = columnNames.length - newDropColumns.length;
+      if (columnsRemaining < 2) {
+        toast.error('Cannot drop all columns. At least 2 columns must remain.', {
+          duration: 3000,
+          position: 'top-right',
+        });
+        return;
+      }
     }
 
     const newFairnessColumns = config.fairness_columns.filter(col => !newDropColumns.includes(col));
