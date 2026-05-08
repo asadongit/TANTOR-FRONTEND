@@ -81,6 +81,10 @@ export const SourceNode = ({ id, data }) => {
   const { token, decodedToken, project } = useAuth();
   const { dispatch, ACTION_TYPES } = useTransformation();
 
+  const [sourceQueryTable, setSourceQueryTable] = useState(data.sourceQueryTable || "");
+  const [sourceQueryTableDropdownOpen, setSourceQueryTableDropdownOpen] = useState(false);
+  const [sourceQueryTableSearch, setSourceQueryTableSearch] = useState("");
+
   const connectionDropdownRef = useRef(null);
   const schemaDropdownRef = useRef(null);
   const tableDropdownRef = useRef(null);
@@ -477,6 +481,33 @@ export const SourceNode = ({ id, data }) => {
   };
 
   useEffect(() => {
+    if (
+      sourceType === "database" &&
+      selectedConnection.name &&
+      selectedSchema &&
+      tables.length === 0 &&
+      dataFetchStatus.tables !== "loading"
+    ) {
+      fetchTablesAndColumns(selectedConnection.name, selectedSchema);
+    }
+  }, [sourceType, selectedConnection.name, selectedSchema]);
+
+  useEffect(() => {
+    if (
+      sourceType === "database" &&
+      selectedTable &&
+      tables.length > 0 &&
+      columns.length === 0 &&
+      selectedConnection.name &&
+      selectedSchema
+    ) {
+      fetchColumns(selectedConnection.name, selectedSchema, selectedTable).then(cols => {
+        if (cols.length > 0) setColumns(cols);
+      });
+    }
+  }, [tables, selectedTable, sourceType]);
+
+  useEffect(() => {
     fetchConnections();
   }, [fetchConnections]);
 
@@ -670,7 +701,7 @@ export const SourceNode = ({ id, data }) => {
           table: currentTable,
           columns: currentColumns.map(col => ({
             name: col.name,
-            datatype: col.datatype
+            datatype: "string"
           })),
           alias: alias,
           objectType: selectedObjectType,
@@ -1071,6 +1102,11 @@ export const SourceNode = ({ id, data }) => {
         hasUpdated = true;
       }
 
+      if (data.objectType === "source-query" && data.table && !sourceQueryTable) {
+        setSourceQueryTable(data.table);
+        hasUpdated = true;
+      }
+
       // Restore fileColumns (used as column mapping in source-query mode)
       if (
         data.objectType === "source-query" &&
@@ -1418,6 +1454,30 @@ export const SourceNode = ({ id, data }) => {
     setCurrentEditingColumn(null);
   };
 
+
+  useEffect(() => {
+    if (
+      selectedObjectType === "source-query" &&
+      selectedConnection.name &&
+      selectedSchema &&
+      sourceQueryTable
+    ) {
+      fetchColumns(selectedConnection.name, selectedSchema, sourceQueryTable).then((cols) => {
+        if (cols.length > 0) {
+          const mapped = cols.map((col, idx) => ({
+            id: idx + 1,
+            name: col.column_name,
+            datatype: "string",
+            customDatatype: "",
+            format: "",
+          }));
+          setFileColumns(mapped);   // fileColumns already drives Column Mapping UI
+        }
+      });
+    }
+  }, [sourceQueryTable]);
+
+
   return (
     <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[320px] max-w-[320px] relative group">
       <button
@@ -1608,7 +1668,10 @@ export const SourceNode = ({ id, data }) => {
             setLoading={setLoading}
             setDataFetchStatus={setDataFetchStatus}
             setProcedures={setProcedures}
-
+            sourceQueryTable={sourceQueryTable}
+            setSourceQueryTable={setSourceQueryTable}
+            sourceQueryTableDropdownOpen={sourceQueryTableDropdownOpen}
+            setSourceQueryTableDropdownOpen={setSourceQueryTableDropdownOpen}
           />
         )}
 
