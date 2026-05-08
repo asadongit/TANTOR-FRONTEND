@@ -166,6 +166,51 @@ function Predictive() {
     return normalizedText;
   };
 
+  const sanitizeNumericInput = (input) => {
+    const raw = String(input ?? '');
+    const s = raw.trim();
+    if (s === '') return '';
+
+    // Preserve simple edge cases while typing
+    if (s === '-') return '-';
+    if (s === '.') return '0.';
+    if (s === '-.') return '-0.';
+
+    // If user typed a trailing dot, preserve it while typing (e.g. "123.")
+    const hasTrailingDot = /\.$/.test(s);
+
+    // Keep only digits, dot and minus
+    let cleaned = s.replace(/[^0-9.\-]/g, '');
+
+    // Handle leading minus
+    let leadingMinus = false;
+    if (cleaned.startsWith('-')) {
+      leadingMinus = true;
+      cleaned = cleaned.slice(1);
+    }
+    // Remove any other minus signs
+    cleaned = cleaned.replace(/-/g, '');
+
+    // Keep only the first dot
+    const parts = cleaned.split('.');
+    const intPart = parts.shift() || '';
+    const fracPart = parts.join('');
+
+    let result = intPart;
+    if (fracPart !== '') {
+      result = (intPart === '' ? '0' : intPart) + '.' + fracPart;
+    } else if (hasTrailingDot) {
+      result = (intPart === '' ? '0' : intPart) + '.';
+    }
+
+    if (result === '' && fracPart === '') {
+      return hasTrailingDot ? '0.' : '';
+    }
+
+    if (leadingMinus) result = '-' + result;
+    return result;
+  };
+
   const extractDesiredClassRawValue = (value) => {
     if (value === null || value === undefined) {
       return '';
@@ -357,10 +402,24 @@ function Predictive() {
           return (
             <input
               type="text"
+              inputMode="decimal"
               placeholder="Enter value"
               value={selectedValue}
+              onPaste={(e) => {
+                const paste = (e.clipboardData || window.clipboardData).getData('text');
+                if (!/^[-0-9.]+$/.test(paste)) {
+                  e.preventDefault();
+                }
+              }}
+              onPaste={(e) => {
+                const paste = (e.clipboardData || window.clipboardData).getData('text');
+                if (!/^[-0-9.]+$/.test(paste)) {
+                  e.preventDefault();
+                }
+              }}
               onChange={(e) => {
-                setSelectedDesiredClassByRow((prev) => ({ ...prev, [rowKey]: e.target.value }));
+                const cleaned = sanitizeNumericInput(e.target.value);
+                setSelectedDesiredClassByRow((prev) => ({ ...prev, [rowKey]: cleaned }));
               }}
               className="h-8 px-3 py-1 border rounded-md border-[#CCCCCC] bg-white text-[#332849] text-xs focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
               style={{ fontFamily: 'Satoshi, sans-serif', width: '120px' }}
