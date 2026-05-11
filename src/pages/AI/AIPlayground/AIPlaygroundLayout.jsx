@@ -230,29 +230,29 @@ export function AIPlaygroundLayout({
         };
     }, [location.pathname, isAIPlaygroundActive]);
 
-    useEffect(() => {
-        const handleBeforeUnload = (event) => {
-            const currentPath = window.location.pathname;
-            if (currentPath.startsWith('/ai/playground') && isAIPlaygroundActive) {
-                event.preventDefault();
-                event.returnValue = '';
-            }
-        };
+    // useEffect(() => {
+    //     const handleBeforeUnload = (event) => {
+    //         const currentPath = window.location.pathname;
+    //         if (currentPath.startsWith('/ai/playground') && isAIPlaygroundActive) {
+    //             event.preventDefault();
+    //             event.returnValue = '';
+    //         }
+    //     };
 
-        try {
-            window.addEventListener('beforeunload', handleBeforeUnload);
-        } catch (error) {
-            console.error('Error setting up beforeunload listener:', error);
-        }
+    //     try {
+    //         window.addEventListener('beforeunload', handleBeforeUnload);
+    //     } catch (error) {
+    //         console.error('Error setting up beforeunload listener:', error);
+    //     }
 
-        return () => {
-            try {
-                window.removeEventListener('beforeunload', handleBeforeUnload);
-            } catch (error) {
-                console.error('Error removing beforeunload listener:', error);
-            }
-        };
-    }, [location.pathname, isAIPlaygroundActive]);
+    //     return () => {
+    //         try {
+    //             window.removeEventListener('beforeunload', handleBeforeUnload);
+    //         } catch (error) {
+    //             console.error('Error removing beforeunload listener:', error);
+    //         }
+    //     };
+    // }, [location.pathname, isAIPlaygroundActive]);
 
     const currentStageIndex = workflowStages.findIndex(
         stage => stage.path === location.pathname
