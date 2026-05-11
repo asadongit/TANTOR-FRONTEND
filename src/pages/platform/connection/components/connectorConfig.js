@@ -147,12 +147,28 @@ export const connectorConfig = {
     },
     kafka: {
       fields: [
-        { name: "url", label: "Bootstrap Servers", required: true },
-        { name: "pool_type", label: "Group ID", required: true },
-        { name: "security_protocol", label: "Security Protocol" },
-        { name: "sasl_mechanism", label: "SASL Mechanism" },
-        { name: "username", label: "SASL Username" },
-        { name: "password", label: "SASL Password", type: "password" },
+        {
+          name: "host_address",
+          label: "Host",
+          required: true,
+        },
+        {
+          name: "port_number",
+          label: "Port",
+          type: "number",
+          required: true,
+        },
+        {
+          name: "extra_info.schema_registery_host",
+          label: "Schema Registry Host",
+          required: true,
+        },
+        {
+          name: "extra_info.schema_registery_port",
+          label: "Schema Registry Port",
+          type: "number",
+          required: true,
+        },
       ],
       icon: kafka
     },
