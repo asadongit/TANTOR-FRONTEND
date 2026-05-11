@@ -145,33 +145,58 @@ export const connectorConfig = {
       ],
       icon: snowflake
     },
-    kafka: {
-      fields: [
-        {
-          name: "host_address",
-          label: "Host",
-          required: true,
-        },
-        {
-          name: "port_number",
-          label: "Port",
-          type: "number",
-          required: true,
-        },
-        {
-          name: "extra_info.schema_registery_host",
-          label: "Schema Registry Host",
-          required: true,
-        },
-        {
-          name: "extra_info.schema_registery_port",
-          label: "Schema Registry Port",
-          type: "number",
-          required: true,
-        },
-      ],
-      icon: kafka
-    },
+   kafka: {
+    fields: [
+      {
+        name: "host_address",
+        label: "Host",
+        required: true,
+      },
+      {
+        name: "port_number",
+        label: "Port",
+        type: "number",
+        required: true,
+      },
+      {
+        name: "extra_info.schema_registery_host",
+        label: "Schema Registry Host",
+        required: true,
+      },
+      {
+        name: "extra_info.schema_registery_port",
+        label: "Schema Registry Port",
+        type: "number",
+        required: true,
+      },
+      {
+        name: "extra_info.security_protocol",
+        label: "Security Protocol",
+        type: "select",
+        options: ["PLAINTEXT", "SSL", "SASL_PLAINTEXT", "SASL_SSL"],
+        required: true,
+      },
+      {
+        name: "extra_info.sasl_mechanism",
+        label: "SASL Mechanism",
+        type: "select",
+        options: ["PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512", "GSSAPI"],
+        required: false,
+      },
+      {
+        name: "username",
+        label: "SASL Username",
+        required: false,
+      },
+      {
+        name: "password",
+        label: "SASL Password",
+        type: "password",
+        required: false,
+      },
+    ],
+    icon: kafka
+  },
     mongodb: {
       fields: [
         { name: "url", label: "Connection String", required: true },
