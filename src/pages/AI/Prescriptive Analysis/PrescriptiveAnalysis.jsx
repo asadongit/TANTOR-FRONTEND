@@ -411,12 +411,6 @@ function Predictive() {
                   e.preventDefault();
                 }
               }}
-              onPaste={(e) => {
-                const paste = (e.clipboardData || window.clipboardData).getData('text');
-                if (!/^[-0-9.]+$/.test(paste)) {
-                  e.preventDefault();
-                }
-              }}
               onChange={(e) => {
                 const cleaned = sanitizeNumericInput(e.target.value);
                 setSelectedDesiredClassByRow((prev) => ({ ...prev, [rowKey]: cleaned }));

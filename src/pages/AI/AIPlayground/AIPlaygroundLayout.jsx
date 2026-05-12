@@ -230,29 +230,7 @@ export function AIPlaygroundLayout({
         };
     }, [location.pathname, isAIPlaygroundActive]);
 
-    // useEffect(() => {
-    //     const handleBeforeUnload = (event) => {
-    //         const currentPath = window.location.pathname;
-    //         if (currentPath.startsWith('/ai/playground') && isAIPlaygroundActive) {
-    //             event.preventDefault();
-    //             event.returnValue = '';
-    //         }
-    //     };
-
-    //     try {
-    //         window.addEventListener('beforeunload', handleBeforeUnload);
-    //     } catch (error) {
-    //         console.error('Error setting up beforeunload listener:', error);
-    //     }
-
-    //     return () => {
-    //         try {
-    //             window.removeEventListener('beforeunload', handleBeforeUnload);
-    //         } catch (error) {
-    //             console.error('Error removing beforeunload listener:', error);
-    //         }
-    //     };
-    // }, [location.pathname, isAIPlaygroundActive]);
+    
 
     const currentStageIndex = workflowStages.findIndex(
         stage => stage.path === location.pathname
@@ -265,16 +243,7 @@ export function AIPlaygroundLayout({
         
         const fallbackStage = workflowStages[Math.min(currentStageIndex + 1, workflowStages.length - 1)];
 
-        // console.log('[AIPlaygroundLayout] getNextStage', {
-        //     pathname: location.pathname,
-        //     currentStageIndex,
-        //     isGenesisPage,
-        //     isPreprocessingPage,
-        //     isModelSelectionPage,
-        //     isDataPreprocessingAuto,
-        //     isModelSelectionAuto,
-        //     fallbackStage: fallbackStage?.id,
-        // });
+        
 
         if (isPreprocessingPage && !isDataPreprocessingAuto && isModelSelectionAuto) {
             const nextStage = workflowStages.find(stage => stage.id === 'model-inferencing');
