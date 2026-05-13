@@ -81,9 +81,38 @@ export const SourceNode = ({ id, data }) => {
   const { token, decodedToken, project } = useAuth();
   const { dispatch, ACTION_TYPES } = useTransformation();
 
-  const [sourceQueryTable, setSourceQueryTable] = useState(data.sourceQueryTable || "");
+  // const [sourceQueryTable, setSourceQueryTable] = useState(data.sourceQueryTable || "");
+  const [sourceQueryTable, setSourceQueryTable] = useState(
+    data.sourceQueryTable || 
+    (data.objectType === "source-query" ? (data.table || "") : "")
+  );
+
+
   const [sourceQueryTableDropdownOpen, setSourceQueryTableDropdownOpen] = useState(false);
-  const [sourceQueryTableSearch, setSourceQueryTableSearch] = useState("");
+
+  // const [sourceQueryTableSearch, setSourceQueryTableSearch] = useState("");
+  const [sourceQueryTableSearch, setSourceQueryTableSearch] = useState(
+    data.sourceQueryTable || 
+    (data.objectType === "source-query" ? (data.table || "") : "")
+  );
+
+  const restoredTableRef = useRef(
+    data.objectType === "source-query" ? (data.sourceQueryTable || data.table || "") : ""
+  );
+
+  const isRestoredSourceQuery = useRef(
+    !!(
+      data.objectType === "source-query" &&
+      data.fileColumns &&
+      Array.isArray(data.fileColumns) &&
+      data.fileColumns.length > 0 &&
+      data.fileColumns[0].name &&
+      (data.sourceQueryTable || data.table)
+    )
+  );
+  
+  const hasAutoFetchedOnRestore = useRef(false);
+
 
   const connectionDropdownRef = useRef(null);
   const schemaDropdownRef = useRef(null);
@@ -585,19 +614,33 @@ export const SourceNode = ({ id, data }) => {
             datatype: col.datatype === 'custom' ? (col.customDatatype || 'custom') : col.datatype
           }));
 
+
+        const columnFormat = {};
+          fileColumns
+            .filter(col => 
+              col.name.trim() !== "" && 
+              ['date', 'datetime', 'timestamp'].includes(col.datatype) &&
+              col.format && col.format.trim() !== ""
+            )
+            .forEach(col => {
+              columnFormat[col.name] = col.format;
+            });
+
         data.onDataChange({
           sourceType: "database",
           connection: selectedConnection.name,
           connectionId: selectedConnection.id,
           connectionType: selectedConnection.type,
           schema: selectedSchema,
-          table: selectedTable,
+          table: sourceQueryTable,
+          sourceQueryTable: sourceQueryTable,
           columns: fileColumnsFormatted,
           alias: alias,
           objectType: selectedObjectType,
           customQuery: customQuery,
           fileColumns: fileColumns,
           enableCountLogging: enableCountLogging,
+          column_format: Object.keys(columnFormat).length > 0 ? [columnFormat] : undefined,
         });
 
 
@@ -1112,12 +1155,17 @@ export const SourceNode = ({ id, data }) => {
         data.objectType === "source-query" &&
         data.fileColumns &&
         Array.isArray(data.fileColumns) &&
+        data.fileColumns.length > 0 &&
+        data.fileColumns[0].name &&
         fileColumns.length === 1 &&
         !fileColumns[0].name
       ) {
         const restoredColumns = data.fileColumns.map(col => ({
-          ...col,
-          customDatatype: col.customDatatype || ""
+          id: col.id,
+          name: col.name,
+          datatype: col.datatype || "string",
+          customDatatype: col.customDatatype || "",
+          format: col.format || "",
         }));
         setFileColumns(restoredColumns);
         hasUpdated = true;
@@ -1462,6 +1510,53 @@ export const SourceNode = ({ id, data }) => {
       selectedSchema &&
       sourceQueryTable
     ) {
+
+      const isRestoredTable = sourceQueryTable === (data.sourceQueryTable || data.table);
+      const hasSavedColumns =
+        Array.isArray(data.fileColumns) &&
+        data.fileColumns.length > 0 &&
+        data.fileColumns[0].name !== "";
+
+      // CASE 1: Edit/restore mode — table matches saved table, and we haven't fetched yet
+      if (hasSavedColumns && isRestoredTable && !hasAutoFetchedOnRestore.current) {
+        hasAutoFetchedOnRestore.current = true;
+
+        fetchColumns(selectedConnection.name, selectedSchema, sourceQueryTable).then((cols) => {
+          if (cols.length > 0) {
+            // Build lookup from saved fileColumns to preserve user-modified datatypes
+            const savedColMap = {};
+            data.fileColumns.forEach((savedCol) => {
+              if (savedCol.name) {
+                savedColMap[savedCol.name] = savedCol;
+              }
+            });
+
+            const merged = cols.map((col, idx) => {
+              const savedCol = savedColMap[col.column_name];
+              return {
+                id: idx + 1,
+                name: col.column_name,
+                datatype: savedCol?.datatype ?? "string",
+                customDatatype: savedCol?.customDatatype ?? "",
+                format: savedCol?.format ?? "",
+              };
+            });
+
+            setFileColumns(merged);
+          }
+        });
+        return;
+      }
+
+      // CASE 2: Edit mode fetch already done for the restored table — skip re-fetch on re-renders
+      if (hasAutoFetchedOnRestore.current && isRestoredTable) {
+        return;
+      }
+
+      // CASE 3: User changed the table (different from restored/saved table), OR fresh creation flow
+      // Re-fetch fresh columns, reset datatypes to string (no saved mapping to preserve)
+      setFileColumns([{ id: 1, name: "", datatype: "string", customDatatype: "", format: "" }]);
+
       fetchColumns(selectedConnection.name, selectedSchema, sourceQueryTable).then((cols) => {
         if (cols.length > 0) {
           const mapped = cols.map((col, idx) => ({
@@ -1471,11 +1566,12 @@ export const SourceNode = ({ id, data }) => {
             customDatatype: "",
             format: "",
           }));
-          setFileColumns(mapped);   // fileColumns already drives Column Mapping UI
+          setFileColumns(mapped);
         }
       });
     }
-  }, [sourceQueryTable]);
+  }, [selectedObjectType, selectedConnection.name, selectedSchema, sourceQueryTable, fetchColumns, data.fileColumns]);
+
 
 
   return (
