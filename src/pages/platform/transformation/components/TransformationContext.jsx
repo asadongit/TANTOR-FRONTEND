@@ -682,6 +682,21 @@ export function TransformationProvider({ children }) {
                       : col.datatype;
                 });
 
+              // Build column_format for date/datetime/timestamp columns
+              const queryColumnFormat = {};
+              queryColumns
+                .filter(
+                  (col) =>
+                    col.name &&
+                    col.name.trim() !== "" &&
+                    ["date", "datetime", "timestamp"].includes(col.datatype) &&
+                    col.format &&
+                    col.format.trim() !== ""
+                )
+                .forEach((col) => {
+                  queryColumnFormat[col.name] = col.format;
+                });
+
               result.source[sourceKey] = {
                 sourceType: sourceData.connectionType || "unknown",
                 sourceConnName: sourceData.connection || "unknown",
@@ -689,6 +704,9 @@ export function TransformationProvider({ children }) {
                 sourceQualifier: sourceData.customQuery,
                 objectType: "source-query",
                 column: [columnMapping],
+                  ...(Object.keys(queryColumnFormat).length > 0 && {
+                  column_format: [queryColumnFormat],
+                }),
                 ConnectionParameters: {
                   sourceSchema: sourceData.schema || "",
                   sourceTable: sourceData.table || "",

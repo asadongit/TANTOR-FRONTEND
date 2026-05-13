@@ -639,6 +639,7 @@ function TransformationCanvasContent() {
                 enableCountLogging: node.data.enableCountLogging,
                 customQuery: node.data.customQuery,
                 fileColumns: node.data.fileColumns,
+                column_format: node.data.column_format,
               },
             },
           });
