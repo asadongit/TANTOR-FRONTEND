@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Bot } from "lucide-react";
 import {
   ChartBarIcon,
@@ -50,6 +50,7 @@ import MarketplaceIcon from '../assets/ai/margetplace.svg';
 import NeoModeIcon from '../assets/ai/neomode.svg';
 import ObservabilityIcon from '../assets/ai/observability.svg';
 import AccountTreeIcon from '../assets/ai/account_tree.svg';
+import { usePersonaStatuses } from '../hooks/dataGovernance/Users/auth';
 
 const ACTIVE_COLOR = '#8E77BB';
 const INACTIVE_ICON_COLOR = '#818181';
@@ -72,6 +73,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
 
   const { decodedToken } = useAuth();
   const { isAIPlaygroundActive, resetAllStates, datasetState, workflowsState, F1Mode: F1ModeCtx, setF1Mode ,activeWorkflowId} = useAIPlayground();
+  const { personaStatuses, isLoading: personasLoading } = usePersonaStatuses();
   const navigate = useNavigate();
   const workflowState = activeWorkflowId
   ? (workflowsState[activeWorkflowId] ?? null)
@@ -89,10 +91,19 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     }
   }, [activeSection]);
 
-  const isGlobalAdmin = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'global-admin');
-  const isPolicyManager = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'persona:policy manager');
-  const isUserManager = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'persona:user manager');
-  const isDataAuditor = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'persona:data auditor');
+  const { isGlobalAdmin, isPolicyManager, isUserManager, isDataAuditor } = useMemo(() => {
+  const hasRoleInToken = (roleKey) =>
+    decodedToken?.resource_access?.darch?.roles?.some(
+      role => role.toLowerCase() === roleKey
+    );
+
+  return {
+    isGlobalAdmin:   hasRoleInToken('global-admin'),
+    isPolicyManager: hasRoleInToken('persona:policy manager') && personaStatuses['persona:policy manager'] === true,
+    isUserManager:   hasRoleInToken('persona:user manager')   && personaStatuses['persona:user manager']   === true,
+    isDataAuditor:   hasRoleInToken('persona:data auditor')   && personaStatuses['persona:data auditor']   === true,
+  };
+}, [decodedToken, personaStatuses]);
 
   const toggleExpand = (e, routeName) => {
     e.preventDefault();
@@ -561,7 +572,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
         className={`bg-white border-r border-gray-200 h-[calc(100vh-64px)] transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} fixed flex flex-col`}
       >
         <nav className="px-2 py-2 flex-1 overflow-y-auto">
-          {currentRoutes.map(renderNavItem)}
+          {personasLoading ? null : currentRoutes.map(renderNavItem)}
         </nav>
 
         <div

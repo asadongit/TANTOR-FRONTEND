@@ -184,7 +184,6 @@ const CreateCrossDomainLinkModal = ({ isOpen, onClose, onSuccess, relTypes = [] 
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-            onClick={handleClose}
         >
             <div
                 className="w-[690px] max-h-[90vh] bg-white rounded-2xl border border-[#CCCCCC] flex flex-col overflow-hidden"

@@ -3,6 +3,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import AddCatalogueModal from '../BusinessCatalogue/AddCatalogueModal';
 import toast from "react-hot-toast";
+import { usePersonaStatuses } from '../../../hooks/dataGovernance/Users/auth';
 
 const API_BASE_URL = `${window._env_?.VITE_FAST_API}/business_catalogue/add`;
 const OWNER_OPTIONS = ['Admin'];
@@ -152,6 +153,7 @@ const MultiSelectDropdown = ({ options, selectedValues, onChange, placeholder, d
 const Edit = ({ onClose, editDetails, type }) => {
 
   const { decodedToken } = useAuth();
+  const { personaStatuses } = usePersonaStatuses();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // States for dropdown options
@@ -183,10 +185,14 @@ const Edit = ({ onClose, editDetails, type }) => {
   const [saveError, setSaveError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
-    ['persona:data steward', 'persona:data owner'].includes(role.toLowerCase())
-  );
+  const hasRoleInToken = (roleKey) =>
+      decodedToken?.resource_access?.darch?.roles?.some(
+          role => role.toLowerCase() === roleKey
+      );
 
+  const isUserAuthorized = 
+      (hasRoleInToken('persona:data steward') && personaStatuses['persona:data steward'] === true) ||
+      (hasRoleInToken('persona:data owner')   && personaStatuses['persona:data owner']   === true);
   useEffect(() => {
     const fetchTopUsers = async () => {
       if (type !== 'table' || !editDetails?.connection_set?.[0]) {

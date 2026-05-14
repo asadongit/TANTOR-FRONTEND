@@ -186,7 +186,6 @@ const INIT_FORM = {
 const ModalShell = ({ onClose, header, children, footer }) => (
     <div
         className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40"
-        onClick={onClose}
     >
         <div
             className="w-[560px] bg-white rounded-2xl border border-[#CCCCCC] mx-4"

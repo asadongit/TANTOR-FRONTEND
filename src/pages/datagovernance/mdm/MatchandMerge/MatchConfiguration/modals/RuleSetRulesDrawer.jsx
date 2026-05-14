@@ -131,7 +131,7 @@ const RuleSetRulesDrawer = ({ isOpen, onClose, ruleSet, selectedDomain }) => {
         {
             key: 'attribute',
             label: 'Attribute',
-            render: (row) => <span className="text-sm font-normal text-[#23252D]">{row.attribute}</span>,
+            render: (row) => <span className="text-sm font-normal text-[#23252D]">{row.target_attribute}</span>,
         },
         { key: 'algorithm', label: 'Algorithm', render: (row) => <AlgoBadge algo={row.algorithm} /> },
         { key: 'weight', label: 'Weight', render: (row) => <span className="text-sm font-normal text-gray-600">{row.weight}</span> },
