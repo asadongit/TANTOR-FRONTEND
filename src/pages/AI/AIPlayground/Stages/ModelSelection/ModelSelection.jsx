@@ -532,10 +532,10 @@ function ModelSelection() {
         if (readonly) return true;
         if (isSubmitting) return false;
 
-        // Trigger inline validation display
-        setShowValidation(true);
-
         if (!isFormValid()) {
+            // Trigger inline validation display only on failure
+            setShowValidation(true);
+
             const enabledAlgos = Object.values(allAlgorithmsState).filter(algo => algo.enabled);
             const invalidAlgo = enabledAlgos.find(algo => !validateAlgorithm(algo));
 
