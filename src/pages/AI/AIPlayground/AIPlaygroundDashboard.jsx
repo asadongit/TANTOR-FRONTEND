@@ -525,7 +525,7 @@ const AIPlayground = () => {
               {/* INNER CONTENT: #FAFAFA gray background section */}
               <div className="rounded-lg p-5 mb-6" style={{ backgroundColor: '#FAFAFA' }}>
                 <div className="mb-6">
-                  <h2 className={tw.sectionHeading + " mb-3"}>Inject Your Data to Get Started</h2>
+                  <h2 className={tw.sectionHeading + " mb-3"}>Ingest Your Data to Get Started</h2>
                   <p className={tw.body}>
                     Select a project and fetch data from tables — to begin machine learning, GenAI, analytics, and observability workflows.
                   </p>

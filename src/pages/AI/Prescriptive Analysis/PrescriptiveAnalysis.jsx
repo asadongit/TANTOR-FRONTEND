@@ -48,6 +48,8 @@ function Predictive() {
     toDate: '',
   });
 
+  const isAnyQuickPredictRunning = Boolean(quickPredictLoadingByRow && Object.values(quickPredictLoadingByRow).some(v => v));
+
   const isSearchEnabled = Boolean(
     formData.project &&
     formData.model &&
@@ -55,7 +57,8 @@ function Predictive() {
     formData.column &&
     formData.name &&
     formData.fromDate &&
-    formData.toDate
+    formData.toDate &&
+    !isAnyQuickPredictRunning
   );
 
   const projectSelectOptions = [
@@ -80,6 +83,11 @@ function Predictive() {
   const handleFieldChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
+
+  const prevProjectRef = useRef(null);
+  const prevModelRef = useRef(null);
+  const prevDestinationTableRef = useRef(null);
+  const prevColumnRef = useRef(null);
 
   const getRowKey = (row, rowIndex) => row.row_ref_id || `${row.customer_id || 'row'}-${rowIndex}`;
 
@@ -442,7 +450,8 @@ function Predictive() {
         const rowKey = getRowKey(row, rowIndex);
         const desiredClass = selectedDesiredClassByRow[rowKey];
         const isLoading = Boolean(quickPredictLoadingByRow[rowKey]);
-        const isDisabled = !hasDesiredClassSelection(desiredClass, isRegression) || !row?.row_ref_id || !prescriptiveSessionId || isLoading;
+        const isAnyRowLoading = Object.values(quickPredictLoadingByRow).some(v => v);
+        const isDisabled = isAnyRowLoading || !hasDesiredClassSelection(desiredClass, isRegression) || !row?.row_ref_id || !prescriptiveSessionId;
 
         return (
           <button
@@ -643,6 +652,27 @@ function Predictive() {
       }
     };
 
+    // Check if project actually changed
+    const projectChanged = prevProjectRef.current !== null && prevProjectRef.current !== formData.project;
+    prevProjectRef.current = formData.project;
+
+    // Clear all downstream fields when project changes
+    if (projectChanged) {
+      setModelOptions([]);
+      setDestinationTableOptions([]);
+      setColumnOptions([]);
+      setNameOptions([]);
+      setPrescriptiveSessionId('');
+      setFormData((prev) => ({ ...prev, model: '', destinationTable: '', column: '', name: '', fromDate: '', toDate: '' }));
+      setHasSearched(false);
+      setSearchError('');
+      setResultRows([]);
+      setResultColumns([]);
+      setDesiredClassOptions([]);
+      setSelectedDesiredClassByRow({});
+      setQuickPredictLoadingByRow({});
+    }
+
     if (formData.project) {
       fetchModels(formData.project);
     } else {
@@ -707,10 +737,16 @@ function Predictive() {
       }
     };
 
-    setColumnOptions([]);
-    setNameOptions([]);
-    setPrescriptiveSessionId('');
-    setFormData((prev) => ({ ...prev, destinationTable: '', column: '', name: '' }));
+    // Only trigger when model actually changes (skip on first initialization)
+    const modelChanged = prevModelRef.current !== null && prevModelRef.current !== formData.model;
+    prevModelRef.current = formData.model;
+
+    if (modelChanged) {
+      setColumnOptions([]);
+      setNameOptions([]);
+      setPrescriptiveSessionId('');
+      setFormData((prev) => ({ ...prev, destinationTable: '', column: '', name: '', fromDate: '', toDate: '' }));
+    }
 
     if (hostnameAI && hostnameV1 && token && formData.model) {
       fetchDestinationTables(formData.model);
@@ -765,11 +801,17 @@ function Predictive() {
       }
     };
 
-    setNameOptions([]);
-    setPrescriptiveSessionId('');
-    setColumnsLoadError('');
-    setNameLoadError('');
-    setFormData((prev) => ({ ...prev, column: '', name: '' }));
+    // Only trigger when destination table actually changes (skip on first initialization)
+    const destinationTableChanged = prevDestinationTableRef.current !== null && prevDestinationTableRef.current !== formData.destinationTable;
+    prevDestinationTableRef.current = formData.destinationTable;
+
+    if (destinationTableChanged) {
+      setNameOptions([]);
+      setPrescriptiveSessionId('');
+      setColumnsLoadError('');
+      setNameLoadError('');
+      setFormData((prev) => ({ ...prev, column: '', name: '', fromDate: '', toDate: '' }));
+    }
 
     if (hostnameAI && formData.destinationTable && formData.model) {
       fetchColumns({ destinationTable: formData.destinationTable, runName: formData.model });
@@ -851,8 +893,14 @@ function Predictive() {
       }
     };
 
-    setFormData((prev) => ({ ...prev, name: '' }));
-    setNameLoadError('');
+    // Only trigger when column actually changes (skip on first initialization)
+    const columnChanged = prevColumnRef.current !== null && prevColumnRef.current !== formData.column;
+    prevColumnRef.current = formData.column;
+
+    if (columnChanged) {
+      setFormData((prev) => ({ ...prev, name: '', fromDate: '', toDate: '' }));
+      setNameLoadError('');
+    }
 
     if (hostnameAI && prescriptiveSessionId && formData.column) {
       fetchColumnValues({ sessionId: prescriptiveSessionId, columnName: formData.column });
@@ -963,7 +1011,7 @@ function Predictive() {
     );
   };
 
-  const SearchableSelect = ({ label, value, options, field, onChange, isLoading = false, isDisabled = false, error }) => {
+  const SearchableSelect = ({ label, value, options, field, onChange, isLoading = false, isDisabled = false, error, disabledReason }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const dropdownRef = useRef(null);
@@ -1005,7 +1053,7 @@ function Predictive() {
           style={{ fontFamily: 'Satoshi, sans-serif' }}
         >
           <span className={`${!value ? 'text-gray-500' : ''} truncate pr-2`}>
-            {isLoading ? 'Loading...' : !hasRealOptions ? 'No values available' : (selectedOption?.label || 'Select')}
+            {isLoading ? 'Loading...' : isDisabled && disabledReason ? disabledReason : !options.length ? 'Select' : (selectedOption?.label || 'Select')}
           </span>
           <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -1078,6 +1126,7 @@ function Predictive() {
     isLoading = false,
     isDisabled = false,
     error,
+    disabledReason,
   }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -1127,15 +1176,15 @@ function Predictive() {
               setIsOpen((prev) => !prev);
             }
           }}
-          className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] border-[#CCCCCC] flex items-center justify-between ${
+          className={`w-full px-3 py-2 border rounded-md text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] cursor-pointer flex items-center justify-between ${
             isLoading || isDisabled || !hasRealOptions
-              ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
-              : 'bg-white text-[#332849] cursor-pointer'
-          }`}
+              ? 'text-gray-400 cursor-not-allowed bg-gray-50'
+              : 'text-[#332849]'
+          } border-[#CCCCCC]`}
           style={{ fontFamily: 'Satoshi, sans-serif' }}
         >
           <span className={`${!value ? 'text-gray-500' : 'text-[#332849]'} truncate pr-2`}>
-            {isLoading ? 'Loading...' : !hasRealOptions ? 'No values available' : (selectedOption?.label || 'Select')}
+            {isLoading ? 'Loading...' : isDisabled && disabledReason ? disabledReason : !hasRealOptions ? 'Select' : (selectedOption?.label || 'Select')}
           </span>
           <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -1220,7 +1269,7 @@ function Predictive() {
     );
   };
 
-  const CalendarDropdownField = ({ label, value, onChange, minDate, isDisabled = false }) => {
+  const CalendarDropdownField = ({ label, value, onChange, minDate, isDisabled = false, enforceMinDate = false, disabledReason }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [displayMonth, setDisplayMonth] = useState(() => {
       const base = value ? new Date(`${value}T00:00:00`) : new Date();
@@ -1294,7 +1343,9 @@ function Predictive() {
         const current = new Date(displayYear, displayMonth, day);
         current.setHours(0, 0, 0, 0);
 
-        const isDisabled = minDateObj ? current < minDateObj : false;
+        // For enforceMinDate (To date), disable dates that are not strictly after minDate
+        // For regular minDate, allow the same date
+        const isDisabled = minDateObj ? (enforceMinDate ? current <= minDateObj : current < minDateObj) : false;
         const isSelected = selectedDateObj
           ? current.getTime() === selectedDateObj.getTime()
           : false;
@@ -1344,11 +1395,10 @@ function Predictive() {
               setIsOpen((prev) => !prev);
             }
           }}
-          disabled={isDisabled}
-          className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] border-[#CCCCCC] flex items-center justify-between ${isDisabled ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : 'bg-white text-[#332849]'}`}
+          className={`w-full px-3 py-2 border rounded-md text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] cursor-pointer flex items-center justify-between ${isDisabled ? 'text-gray-400 cursor-not-allowed bg-gray-50' : 'text-[#332849]'} border-[#CCCCCC]`}
           style={{ fontFamily: 'Satoshi, sans-serif' }}
         >
-          <span className={`${isDisabled ? 'text-gray-400' : value ? 'text-[#332849]' : 'text-gray-500'}`}>{formatDisplayDate(value)}</span>
+          <span className={`${isDisabled ? 'text-gray-400' : value ? 'text-[#332849]' : 'text-gray-500'}`}>{isDisabled && disabledReason ? disabledReason : formatDisplayDate(value)}</span>
           <Calendar className="h-4 w-4 text-gray-400" />
         </button>
 
@@ -1568,6 +1618,7 @@ function Predictive() {
                 field="project"
                 onChange={handleFieldChange}
                 isLoading={isLoadingProjects}
+                isDisabled={isAnyQuickPredictRunning}
               />
 
               <SearchableSelect
@@ -1577,7 +1628,8 @@ function Predictive() {
                 field="model"
                 onChange={handleFieldChange}
                 isLoading={isLoadingModels}
-                isDisabled={!formData.project}
+                isDisabled={isAnyQuickPredictRunning || !formData.project || (formData.project && modelOptions.length === 0 && !isLoadingModels)}
+                disabledReason={!formData.project ? 'Select project first' : modelOptions.length === 0 && !isLoadingModels ? 'No models available' : undefined}
               />
 
               <SearchableSelect
@@ -1587,7 +1639,8 @@ function Predictive() {
                 field="destinationTable"
                 onChange={handleFieldChange}
                 isLoading={isLoadingDestinations}
-                isDisabled={!formData.model}
+                isDisabled={isAnyQuickPredictRunning || !formData.model || (formData.model && destinationTableOptions.length === 0 && !isLoadingDestinations)}
+                disabledReason={!formData.model ? 'Select model first' : destinationTableOptions.length === 0 && !isLoadingDestinations ? 'No destination tables available' : undefined}
               />
 
               <SearchableSelect
@@ -1597,7 +1650,8 @@ function Predictive() {
                 field="column"
                 onChange={handleFieldChange}
                 isLoading={isLoadingColumns}
-                isDisabled={!formData.destinationTable}
+                isDisabled={isAnyQuickPredictRunning || !formData.destinationTable || (formData.destinationTable && columnOptions.length === 0 && !isLoadingColumns)}
+                disabledReason={!formData.destinationTable ? 'Select destination table first' : columnOptions.length === 0 && !isLoadingColumns ? 'No columns available' : undefined}
                 error={columnsLoadError}
               />
 
@@ -1609,7 +1663,8 @@ function Predictive() {
                 onChange={handleFieldChange}
                 pageSize={10}
                 isLoading={isLoadingNameValues}
-                isDisabled={!formData.column || !prescriptiveSessionId}
+                isDisabled={isAnyQuickPredictRunning || !formData.column || !prescriptiveSessionId || (formData.column && nameOptions.length === 0 && !isLoadingNameValues)}
+                disabledReason={!formData.column ? 'Select column first' : nameOptions.length === 0 && !isLoadingNameValues ? 'No values available' : undefined}
                 error={nameLoadError}
               />
 
@@ -1617,6 +1672,7 @@ function Predictive() {
                 label="Prediction From"
                 value={formData.fromDate}
                 onChange={(value) => handleFieldChange('fromDate', value)}
+                isDisabled={isAnyQuickPredictRunning}
               />
 
               <CalendarDropdownField
@@ -1624,16 +1680,18 @@ function Predictive() {
                 value={formData.toDate}
                 onChange={(value) => handleFieldChange('toDate', value)}
                 minDate={formData.fromDate || undefined}
-                isDisabled={!formData.fromDate}
+                isDisabled={isAnyQuickPredictRunning || !formData.fromDate}
+                enforceMinDate={true}
+                disabledReason={!formData.fromDate ? 'Select Prediction From first' : undefined}
               />
             </div>
 
             <div>
               <button
                 type="button"
-                disabled={!isSearchEnabled}
+                disabled={!isSearchEnabled || isAnyQuickPredictRunning}
                 onClick={handleSearch}
-                className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors ${isSearchEnabled
+                className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors ${(isSearchEnabled && !isAnyQuickPredictRunning)
                   ? 'bg-[#8e78b7] text-white hover:bg-[#7d67a6] cursor-pointer'
                   : 'bg-[#8e78b7] text-white cursor-not-allowed opacity-40'
                 }`}

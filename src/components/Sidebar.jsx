@@ -154,7 +154,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
         headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ensemble_id: datasetState.ensembleId,
-          training_flag: workflowState?.modelSelection?.apiResponse !== null
+          training_flag: workflowState?.completedJobs?.apiResponse !== null
         })
       });
     } catch (error) {

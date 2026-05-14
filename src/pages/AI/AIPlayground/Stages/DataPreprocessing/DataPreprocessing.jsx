@@ -44,11 +44,11 @@ function DataPreprocessing() {
     : modelGenesisConfig?.dataPreprocessing;
   const modelSelectionMode = modelGenesisConfig?.modelSelection;
 
-  const isDataPreprocessingAuto = dataPreprocessingMode &&
-    ['Swift', 'Standard', 'Comprehensive'].includes(dataPreprocessingMode);
+  const isDataPreprocessingAuto = !!(dataPreprocessingMode &&
+    ['Swift', 'Standard', 'Comprehensive'].includes(dataPreprocessingMode));
 
-  const isModelSelectionAuto = modelSelectionMode &&
-    ['Swift', 'Standard', 'Comprehensive'].includes(modelSelectionMode);
+  const isModelSelectionAuto = !!(modelSelectionMode &&
+    ['Swift', 'Standard', 'Comprehensive'].includes(modelSelectionMode));
 
   const [currentStep, setCurrentStep] = useState(isDataPreprocessingAuto ? 7 : 1);
   const [isStep7Preview, setIsStep7Preview] = useState(isDataPreprocessingAuto);
@@ -151,7 +151,7 @@ function DataPreprocessing() {
       case 6:
         return <FeatureImportance readonly={isInteractionLocked} onApiCall={(fn) => step6ApiCallRef.current = fn} />;
       case 7:
-        return <Step7 readonly={isInteractionLocked} showPreview={isStep7Preview} onApiCall={(fn) => step7ApiCallRef.current = fn} />;
+        return <Step7 readonly={isInteractionLocked} showPreview={isStep7Preview} isDataPreprocessingAuto={isDataPreprocessingAuto} onApiCall={(fn) => step7ApiCallRef.current = fn} />;
       default:
         return <DataCleaning readonly={isInteractionLocked} onValidationChange={setIsStep1Valid} onApiCall={(fn) => step1ApiCallRef.current = fn} />;
     }
