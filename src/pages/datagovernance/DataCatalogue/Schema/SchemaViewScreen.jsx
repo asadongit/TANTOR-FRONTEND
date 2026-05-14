@@ -20,6 +20,7 @@ import { useAuth } from "../../../../context/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import Breadcrumb from "../../../../components/Breadcrumb";
 import { fetchConnectionDetails, secureQuery } from '../Components/function';
+import { usePersonaStatuses } from '../../../../hooks/dataGovernance/Users/auth';
 
 const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPerPage }) => {
   if (!totalItems || totalPages <= 1) {
@@ -63,6 +64,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPe
 const SchemaViewScreen = () => {
   const hostnameV1 = window._env_?.VITE_FAST_API;
   const { token, decodedToken } = useAuth();
+  const { personaStatuses } = usePersonaStatuses();
   const navigate = useNavigate();
 
   const location = useLocation();
@@ -277,9 +279,14 @@ const SchemaViewScreen = () => {
     }
   }, [activeTab]);
 
-  const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(
-    (role) => ["persona:data steward", "persona:data owner"].includes(role.toLowerCase())
-  );
+  const hasRoleInToken = (roleKey) =>
+    decodedToken?.resource_access?.darch?.roles?.some(
+        role => role.toLowerCase() === roleKey
+    );
+
+  const isUserAuthorized = 
+      (hasRoleInToken('persona:data steward') && personaStatuses['persona:data steward'] === true) ||
+      (hasRoleInToken('persona:data owner')   && personaStatuses['persona:data owner']   === true);
 
   const handleSaveDescription = async () => {
     if (summaryText.trim() === '') {

@@ -86,7 +86,6 @@ const CreateRelationshipTypeModal = ({ isOpen, onClose, onSuccess }) => {
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-            onClick={handleClose}
         >
             <div
                 className="w-[690px] bg-white rounded-2xl border border-[#CCCCCC] mx-4"

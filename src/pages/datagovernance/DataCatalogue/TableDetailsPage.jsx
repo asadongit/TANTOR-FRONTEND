@@ -5,6 +5,7 @@ import Breadcrumb from '../../../components/Breadcrumb';
 import { useAuth } from "../../../context/AuthContext.jsx";
 import { toast } from 'react-hot-toast';
 import { fetchConnectionDetails, secureQuery } from './Components/function.js';
+import { usePersonaStatuses } from '../../../hooks/dataGovernance/Users/auth';
 
 const Tab = ({ label, activeTab, setActiveTab }) => (
     <button
@@ -69,6 +70,7 @@ function TableDetailsPage() {
     const { tableName } = useParams();
     const { tableData, columns } = location.state || {};
     const { token, decodedToken } = useAuth();
+    const { personaStatuses } = usePersonaStatuses();
     const hostnameV1 = window._env_?.VITE_FAST_API;
 
     // Component State
@@ -116,9 +118,14 @@ function TableDetailsPage() {
     const [businessCurrentPage, setBusinessCurrentPage] = useState(1);
     const [sampleDataCurrentPage, setSampleDataCurrentPage] = useState(1);
 
-    const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
-        ['persona:data steward', 'persona:data owner'].includes(role.toLowerCase())
-    );
+    const hasRoleInToken = (roleKey) =>
+        decodedToken?.resource_access?.darch?.roles?.some(
+            role => role.toLowerCase() === roleKey
+        );
+
+    const isUserAuthorized = 
+        (hasRoleInToken('persona:data steward') && personaStatuses['persona:data steward'] === true) ||
+        (hasRoleInToken('persona:data owner')   && personaStatuses['persona:data owner']   === true);
 
     const fetchAllData = async () => {
         if (!tableData) return;

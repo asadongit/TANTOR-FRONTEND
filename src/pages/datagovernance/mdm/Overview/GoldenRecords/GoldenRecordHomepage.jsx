@@ -9,6 +9,7 @@ import EditIcon from '../../../../../assets/mdm/edit.svg';
 import ReplayIcon from '../../../../../assets/mdm/replay.svg';
 import { useNavigate } from 'react-router-dom';
 import SearchableDropdown from '../../components/SearchableDropdown.jsx';
+import * as XLSX from 'xlsx';
 
 const HIDDEN_COLUMNS = [
     'created_by', 'updated_by', 'created_date', 'updated_date', 'version',
@@ -212,6 +213,29 @@ const GoldenRecordsHomepage = () => {
         });
     }, [records, globalSearch, selectedStatus]);
 
+    const handleExport = useCallback(() => {
+        const exportData = filteredRecords.map((row) => {
+            const cleaned = {};
+            Object.keys(row)
+                .filter((k) => !HIDDEN_COLUMNS.includes(k))
+                .forEach((k) => {
+                    cleaned[formatColumnLabel(k)] = row[k] ?? '';
+                });
+            return cleaned;
+        });
+
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Golden Records');
+
+        const colWidths = Object.keys(exportData[0] || {}).map((key) => ({
+            wch: Math.max(key.length, ...exportData.map((r) => String(r[key] ?? '').length)) + 2,
+        }));
+        worksheet['!cols'] = colWidths;
+
+        XLSX.writeFile(workbook, `golden_records_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    }, [filteredRecords]);
+
     return (
         <div className="p-4 m-4 bg-white min-h-screen satoshi-regular">
             <Breadcrumb />
@@ -224,7 +248,11 @@ const GoldenRecordsHomepage = () => {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#CCCCCC] text-sm font-medium text-[#332849] bg-white hover:bg-gray-50 transition-colors">
+                    <button
+                        onClick={handleExport}
+                        disabled={!filteredRecords.length}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#CCCCCC] text-sm font-medium text-[#332849] bg-white hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
                         <Download size={15} />
                         Export
                     </button>

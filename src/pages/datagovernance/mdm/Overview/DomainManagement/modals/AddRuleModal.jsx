@@ -139,7 +139,7 @@ export const AddRuleModal = ({ isOpen, onClose, domainId, onComplete }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[1002] flex items-center justify-center bg-black/40" onClick={handleClose}>
+        <div className="fixed inset-0 z-[1002] flex items-center justify-center bg-black/40">
             <div className="w-[690px] bg-white rounded-2xl border border-[#CCCCCC] mx-4" onClick={(e) => e.stopPropagation()}>
 
                 {/* Header */}
@@ -159,7 +159,7 @@ export const AddRuleModal = ({ isOpen, onClose, domainId, onComplete }) => {
                         <AttrSearchDropdown attributes={attributes} selectedAttrs={selectedAttrs} onToggle={handleAttrToggle} />
                     </div>
                     <div className="flex flex-col gap-1.5">
-                        <label className={`${labelClass} mb-0`}>Data Type <span className="text-[#E05252]">*</span></label>
+                        <label className={`${labelClass} mb-0`}>Rule Type <span className="text-[#E05252]">*</span></label>
                         <SelectField value={form.rule_type} onChange={(e) => handleChange('rule_type', e.target.value)} placeholder="Select">
                             {validationTypes.map((t) => (
                                 <option key={t} value={t}>{t.charAt(0) + t.slice(1).toLowerCase().replace(/_/g, ' ')}</option>

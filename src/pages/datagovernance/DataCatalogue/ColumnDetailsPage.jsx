@@ -5,6 +5,7 @@ import Breadcrumb from '../../../components/Breadcrumb';
 import { useAuth } from "../../../context/AuthContext.jsx";
 import toast from 'react-hot-toast';
 import { fetchConnectionDetails, secureQuery } from './Components/function.js';
+import { usePersonaStatuses } from '../../../hooks/dataGovernance/Users/auth';
 
 const Tab = ({ label, activeTab, setActiveTab }) => (
     <button
@@ -67,12 +68,18 @@ function ColumnDetailsPage() {
     const navigate = useNavigate();
     const { columnName } = useParams();
     const { token, decodedToken } = useAuth();
+    const { personaStatuses } = usePersonaStatuses();
     const { columnDetails } = location.state || {};
     const hostnameV1 = window._env_?.VITE_FAST_API;
 
-    const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
-        ['persona:data steward', 'persona:data owner'].includes(role.toLowerCase())
-    );
+    const hasRoleInToken = (roleKey) =>
+        decodedToken?.resource_access?.darch?.roles?.some(
+            role => role.toLowerCase() === roleKey
+        );
+
+    const isUserAuthorized = 
+        (hasRoleInToken('persona:data steward') && personaStatuses['persona:data steward'] === true) ||
+        (hasRoleInToken('persona:data owner')   && personaStatuses['persona:data owner']   === true);
 
     const [activeTab, setActiveTab] = useState('Summary');
     const [complianceTags, setComplianceTags] = useState([]);
