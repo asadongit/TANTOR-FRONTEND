@@ -77,7 +77,7 @@ function F1XAI() {
         }
         : {
             pdp_target_class: configData.pdpTargetClass,
-            cf_desired_class: parseInt(configData.cfDesiredClass),
+            cf_desired_class: configData.cfDesiredClass,
         }),
 
     lime_instance_index: configData.limeInstanceIndex,
@@ -127,14 +127,16 @@ function F1XAI() {
         { key: 'changeType', label: 'Change Type', sortable: true },
     ];
 
-    const counterfactualData = (reportData?.counterfactual_report ?? []).map((item, i) => ({
-        sno: i + 1,
-        feature: item.Feature,
-        original: typeof item.Original === 'number' ? item.Original.toFixed(6) : item.Original,
-        counterfactual: typeof item.Counterfactual === 'number' ? item.Counterfactual.toFixed(6) : item.Counterfactual,
-        change: typeof item.Change === 'number' ? item.Change.toFixed(6) : item.Change,
-        changeType: item.Change_Type,
-    }));
+    const counterfactualData = (reportData?.counterfactual_report ?? [])
+        .filter(item => item.Feature)
+        .map((item, i) => ({
+            sno: i + 1,
+            feature: item.Feature,
+            original: typeof item.Original === 'number' ? item.Original.toFixed(6) : item.Original,
+            counterfactual: typeof item.Counterfactual === 'number' ? item.Counterfactual.toFixed(6) : item.Counterfactual,
+            change: typeof item.Change === 'number' ? item.Change.toFixed(6) : item.Change,
+            changeType: item.Change_Type,
+        }));
 
     const limeColumns = [
         { key: 'sno', label: 'Sno', sortable: true, width: '80px' },
@@ -390,14 +392,20 @@ function F1XAI() {
                             </ReportSection>
                         )}
 
-                        {counterfactualData.length > 0 && (
+                        {(counterfactualData.length > 0 || reportData?.counterfactual_report?.[0]?.status === 'skipped') && (
                             <ReportSection title="Counterfactual Report">
-                                <DataTable
-                                    columns={counterfactualColumns}
-                                    data={counterfactualData}
-                                    isLoading={false}
-                                    isError={false}
-                                />
+                                {counterfactualData.length > 0 ? (
+                                    <DataTable
+                                        columns={counterfactualColumns}
+                                        data={counterfactualData}
+                                        isLoading={false}
+                                        isError={false}
+                                    />
+                                ) : (
+                                    <div className="px-4 py-3 rounded-lg" style={{ background: '#FEF3F2', border: '1px solid #FECACA' }}>
+                                        <p className="text-[13px] text-gray-700">{reportData?.counterfactual_report?.[0]?.reason || 'No counterfactual report available.'}</p>
+                                    </div>
+                                )}
                             </ReportSection>
                         )}
 

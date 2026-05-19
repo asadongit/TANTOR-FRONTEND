@@ -452,7 +452,7 @@ function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall })
       if (!payload.ensemble_id || !payload.workflow_id) {
         throw new Error('Missing required identifiers: ensemble_id or workflow_id');
       }
-      const response = await fetch(`${hostnameAI}/data/preprocess/initial_clean`, {
+      const response = await fetch(`${hostnameAI}/data/preprocess_supervised/initial_clean`, {
         method: 'POST',
         headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

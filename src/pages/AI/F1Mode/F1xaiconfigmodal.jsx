@@ -39,9 +39,18 @@ const FieldTooltip = ({ lines, position = 'right' }) => {
   );
 };
 
+// Format class values for display (handles boolean, integer, string)
+const formatClassDisplay = (cls) => {
+  if (typeof cls === 'boolean') {
+    return cls ? 'True' : 'False';
+  }
+  return String(cls);
+};
+
 function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGenerating = false ,isRegression}) {
   const hostnameAI = window._env_?.VITE_AI_API;
   const [showInfoTooltip, setShowInfoTooltip] = useState(false);
+  const [showFieldErrors, setShowFieldErrors] = useState(false);
   const [configData, setConfigData] = useState({
   pdpTargetClass: '',
   cfDesiredClass: '',
@@ -52,9 +61,43 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
     pdpFeatures: [],
   });
 
+  // Clear configuration when model changes
+  useEffect(() => {
+    setConfigData({
+      pdpTargetClass: '',
+      cfDesiredClass: '',
+      pdpTargetValue: '',
+      cfDesiredValue: '',
+      cfInstanceIndex: 0,
+      limeInstanceIndex: 0,
+      pdpFeatures: [],
+    });
+  }, [launchData]);
+
+  // Extract ranges for regression models
+  const pdpValueRange = launchData?.pdp_target_value_range;
+  const cfValueRange = launchData?.cf_target_value_range;
+
   const targetClasses = launchData?.target_classes ?? [];
   const rowCount = launchData?.test_data_shape?.[0] ?? 0;
   const featuresList = launchData?.processed_feature_columns ?? [];
+
+  // Per-field error flags
+  const pdpTargetError = showFieldErrors && (
+    isRegression
+      ? (configData.pdpTargetValue === '' || 
+         isNaN(configData.pdpTargetValue) ||
+         (pdpValueRange && (Number(configData.pdpTargetValue) < pdpValueRange.min || Number(configData.pdpTargetValue) > pdpValueRange.max)))
+      : !configData.pdpTargetClass
+  );
+
+  const cfDesiredError = showFieldErrors && (
+    isRegression
+      ? (configData.cfDesiredValue === '' || 
+         isNaN(configData.cfDesiredValue) ||
+         (cfValueRange && (Number(configData.cfDesiredValue) < cfValueRange.min || Number(configData.cfDesiredValue) > cfValueRange.max)))
+      : !configData.cfDesiredClass
+  );
   const pdpTargetTooltip = [
     { bold: 'Partial Dependence Plot (PDP): ', rest: "Shows the average effect of a feature on a model's prediction by marginalizing over other features. Helps understand global feature influence across the dataset." },
   ];
@@ -76,25 +119,6 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
   const limeInstanceTooltip = [
     { bold: 'LIME (Local Interpretable Model-agnostic Explanations): ', rest: 'A technique that explains individual predictions by approximating the model locally with a simple interpretable model. It highlights which features contributed most to a specific prediction.' }
   ];
-
-  useEffect(() => {
-    if (isOpen) {
-      setConfigData(prev => ({
-        ...prev,
-        pdpTargetClass: '',
-        cfDesiredClass: '',
-        pdpTargetValue: '',
-        cfDesiredValue: '',
-        // Only reset the relevant fields for the selected mode
-        ...(isRegression
-          ? { pdpTargetClass: '', cfDesiredClass: '' }
-          : { pdpTargetValue: '', cfDesiredValue: '' }),
-        cfInstanceIndex: 0,
-        limeInstanceIndex: 0,
-        pdpFeatures: [],
-      }));
-    }
-  }, [isOpen, isRegression]);
 
   const toggleFeature = (feature) => {
     if (isGenerating) return;
@@ -129,12 +153,22 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
     Number(configData.limeInstanceIndex) >= 0 &&
     Number(configData.limeInstanceIndex) <= rowCount;
 
+  const pdpValueValid = isRegression
+    ? (configData.pdpTargetValue !== '' && 
+       !isNaN(Number(configData.pdpTargetValue)) &&
+       (!pdpValueRange || (Number(configData.pdpTargetValue) >= pdpValueRange.min && Number(configData.pdpTargetValue) <= pdpValueRange.max)))
+    : !!configData.pdpTargetClass;
+
+  const cfValueValid = isRegression
+    ? (configData.cfDesiredValue !== '' && 
+       !isNaN(Number(configData.cfDesiredValue)) &&
+       (!cfValueRange || (Number(configData.cfDesiredValue) >= cfValueRange.min && Number(configData.cfDesiredValue) <= cfValueRange.max)))
+    : !!configData.cfDesiredClass;
+
   const isSubmitDisabled =
     isGenerating ||
-    (isRegression
-      ? configData.pdpTargetValue === '' || isNaN(Number(configData.pdpTargetValue)) || configData.cfDesiredValue === '' || isNaN(Number(configData.cfDesiredValue))
-      : !configData.pdpTargetClass || !configData.cfDesiredClass
-    ) ||
+    !pdpValueValid ||
+    !cfValueValid ||
     !cfIndexValid ||
     !limeIndexValid;
    
@@ -180,7 +214,19 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
 
             {/* Close */}
             <button
-              onClick={onClose}
+              onClick={() => {
+                setConfigData({
+                  pdpTargetClass: '',
+                  cfDesiredClass: '',
+                  pdpTargetValue: '',
+                  cfDesiredValue: '',
+                  cfInstanceIndex: 0,
+                  limeInstanceIndex: 0,
+                  pdpFeatures: []
+                });
+                setShowFieldErrors(false);
+                onClose();
+              }}
               disabled={isGenerating}
               className={`flex items-center justify-center ${isGenerating ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:opacity-70'}`}
               style={{ background: 'none', border: 'none', padding: 0 }}
@@ -211,8 +257,20 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
                       setConfigData({ ...configData, pdpTargetValue: e.target.value, pdpTargetClass: '' })
                     }
                     disabled={isGenerating}
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                    placeholder={pdpValueRange ? ` ${pdpValueRange.min.toFixed(2)} - ${pdpValueRange.max.toFixed(2)}` : 'Enter value'}
+                    className={`w-full px-3 py-2 rounded-lg border text-sm transition-colors ${
+                      pdpTargetError
+                        ? 'border-[#EF4D5F] bg-[#FFF7F8]'
+                        : 'border-gray-300'
+                    } ${isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                   />
+                  {pdpTargetError && (
+                    <p className="text-xs text-[#EF4D5F] mt-1">
+                      {pdpValueRange
+                        ? `Enter a value between ${pdpValueRange.min.toFixed(2)} and ${pdpValueRange.max.toFixed(2)}`
+                        : 'Please enter a valid number'}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-900 mb-1.5">
@@ -226,8 +284,20 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
                       setConfigData({ ...configData, cfDesiredValue: e.target.value, cfDesiredClass: '' })
                     }
                     disabled={isGenerating}
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                    placeholder={cfValueRange ? ` ${cfValueRange.min.toFixed(2)} - ${cfValueRange.max.toFixed(2)}` : 'Enter value'}
+                    className={`w-full px-3 py-2 rounded-lg border text-sm transition-colors ${
+                      cfDesiredError
+                        ? 'border-[#EF4D5F] bg-[#FFF7F8]'
+                        : 'border-gray-300'
+                    } ${isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                   />
+                  {cfDesiredError && (
+                    <p className="text-xs text-[#EF4D5F] mt-1">
+                      {cfValueRange
+                        ? `Enter a value between ${cfValueRange.min.toFixed(2)} and ${cfValueRange.max.toFixed(2)}`
+                        : 'Please enter a valid number'}
+                    </p>
+                  )}
                 </div>
               </>
             ) : (
@@ -246,9 +316,9 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
                     className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
                   >
                     <option value="">Select class</option>
-                    {targetClasses.map(cls => (
-                      <option key={cls} value={cls.toString()}>
-                        Class {cls}
+                    {targetClasses.map((cls, idx) => (
+                      <option key={`pdp-class-${idx}`} value={String(cls)}>
+                        {formatClassDisplay(cls)}
                       </option>
                     ))}
                   </select>
@@ -267,9 +337,9 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
                     className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
                   >
                     <option value="">Select class</option>
-                    {targetClasses.map(cls => (
-                      <option key={cls} value={cls.toString()}>
-                        Class {cls}
+                    {targetClasses.map((cls, idx) => (
+                      <option key={`cf-class-${idx}`} value={String(cls)}>
+                        {formatClassDisplay(cls)}
                       </option>
                     ))}
                   </select>
@@ -394,7 +464,19 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
         {/* ── Footer ── */}
         <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-3.5 flex justify-end gap-2.5 rounded-b-xl">
           <button
-            onClick={onClose}
+            onClick={() => {
+              setConfigData({
+                pdpTargetClass: '',
+                cfDesiredClass: '',
+                pdpTargetValue: '',
+                cfDesiredValue: '',
+                cfInstanceIndex: 0,
+                limeInstanceIndex: 0,
+                pdpFeatures: []
+              });
+              setShowFieldErrors(false);
+              onClose();
+            }}
             disabled={isGenerating}
             className="px-5 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium transition-colors"
             style={{
@@ -406,15 +488,21 @@ function F1XAIConfigModal({ isOpen, onClose, onGenerate, launchData, isGeneratin
             Cancel
           </button>
           <button
-            onClick={() => !isSubmitDisabled && onGenerate(configData)}
-            disabled={isSubmitDisabled}
+            onClick={() => {
+              if (!pdpValueValid || !cfValueValid || !cfIndexValid || !limeIndexValid) {
+                setShowFieldErrors(true);
+                return;
+              }
+              onGenerate(configData);
+            }}
+            disabled={isGenerating}
             className="px-6 py-2 rounded-lg border-none text-white text-sm font-semibold flex items-center gap-2 transition-all duration-150"
             style={{
               fontFamily: 'Satoshi, sans-serif',
-              background: isSubmitDisabled
+              background: isGenerating
                 ? 'rgba(141,23,24,0.30)'
                 : 'linear-gradient(270deg, #D30101 0%, #6D0101 117.78%)',
-              cursor: isSubmitDisabled ? 'not-allowed' : 'pointer',
+              cursor: isGenerating ? 'not-allowed' : 'pointer',
             }}
           >
             {isGenerating && (

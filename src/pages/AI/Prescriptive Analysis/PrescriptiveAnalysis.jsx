@@ -1,10 +1,26 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { Calendar, Search, X } from 'lucide-react';
 import Breadcrumb from '../../../components/Breadcrumb';
-import DataTable from '../../../components/DataTable';
 import { useAuth } from '../../../context/AuthContext';
-import InfoIcons from '../../../assets/ai/infoIcon.svg';
+import FieldTooltip from './components/FieldTooltip';
+import DesiredClassDropdown from './components/DesiredClassDropdown';
+import SearchableSelect from './components/SearchableSelect';
+import NamePaginatedSelect from './components/NamePaginatedSelect';
+import CalendarDropdownField from './components/CalendarDropdownField';
+import QuickPredictResultModal from './components/QuickPredictResultModal';
+import PredictiveTable from './components/PredictiveTable';
+import {
+  extractDesiredClassOptionsFromRows,
+  extractDesiredClassRawValue,
+  formatToFourDecimals,
+  getDesiredValueError,
+  getDesiredValueRange,
+  hasDesiredClassSelection,
+  isDesiredValueInRange,
+  normalizeDesiredClassValue,
+  sanitizeNumericInput,
+  toApiDateTime,
+  toColumnLabel,
+} from './utils/Predictiveutils';
 
 function Predictive() {
   const hostnameAI = window._env_?.VITE_AI_API;
@@ -29,6 +45,7 @@ function Predictive() {
   const [resultColumns, setResultColumns] = useState([]);
   const [desiredClassOptions, setDesiredClassOptions] = useState([]);
   const [selectedDesiredClassByRow, setSelectedDesiredClassByRow] = useState({});
+  const [desiredClassErrorByRow, setDesiredClassErrorByRow] = useState({});
   const [quickPredictLoadingByRow, setQuickPredictLoadingByRow] = useState({});
   const [quickPredictResult, setQuickPredictResult] = useState(null);
   const [isQuickPredictModalOpen, setIsQuickPredictModalOpen] = useState(false);
@@ -49,6 +66,8 @@ function Predictive() {
   });
 
   const isAnyQuickPredictRunning = Boolean(quickPredictLoadingByRow && Object.values(quickPredictLoadingByRow).some(v => v));
+
+
 
   const isSearchEnabled = Boolean(
     formData.project &&
@@ -108,6 +127,14 @@ function Predictive() {
       return;
     }
 
+    if (modelingType === 'regression' && !isDesiredValueInRange(desiredClass)) {
+      setDesiredClassErrorByRow((prev) => ({
+        ...prev,
+        [rowKey]: getDesiredValueError(desiredClass),
+      }));
+      return;
+    }
+
     setQuickPredictLoadingByRow((prev) => ({ ...prev, [rowKey]: true }));
 
     try {
@@ -147,215 +174,12 @@ function Predictive() {
     }
   };
 
-  const toColumnLabel = (key) =>
-    String(key || '')
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, (ch) => ch.toUpperCase());
+  const desiredValueRange = useMemo(
+    () => getDesiredValueRange(desiredClassOptions, modelingType),
+    [desiredClassOptions, modelingType]
+  );
 
-  const normalizeDesiredClassValue = (value) => {
-    const normalizedText = String(value ?? '').trim().replace(/^['\"](.*)['\"]$/, '$1');
-
-    if (normalizedText === '') {
-      return '';
-    }
-
-    if (/^-?\d+(\.\d+)?$/.test(normalizedText)) {
-      return Number(normalizedText);
-    }
-
-    if (normalizedText.toLowerCase() === 'true') {
-      return true;
-    }
-
-    if (normalizedText.toLowerCase() === 'false') {
-      return false;
-    }
-
-    return normalizedText;
-  };
-
-  const sanitizeNumericInput = (input) => {
-    const raw = String(input ?? '');
-    const s = raw.trim();
-    if (s === '') return '';
-
-    // Preserve simple edge cases while typing
-    if (s === '-') return '-';
-    if (s === '.') return '0.';
-    if (s === '-.') return '-0.';
-
-    // If user typed a trailing dot, preserve it while typing (e.g. "123.")
-    const hasTrailingDot = /\.$/.test(s);
-
-    // Keep only digits, dot and minus
-    let cleaned = s.replace(/[^0-9.\-]/g, '');
-
-    // Handle leading minus
-    let leadingMinus = false;
-    if (cleaned.startsWith('-')) {
-      leadingMinus = true;
-      cleaned = cleaned.slice(1);
-    }
-    // Remove any other minus signs
-    cleaned = cleaned.replace(/-/g, '');
-
-    // Keep only the first dot
-    const parts = cleaned.split('.');
-    const intPart = parts.shift() || '';
-    const fracPart = parts.join('');
-
-    let result = intPart;
-    if (fracPart !== '') {
-      result = (intPart === '' ? '0' : intPart) + '.' + fracPart;
-    } else if (hasTrailingDot) {
-      result = (intPart === '' ? '0' : intPart) + '.';
-    }
-
-    if (result === '' && fracPart === '') {
-      return hasTrailingDot ? '0.' : '';
-    }
-
-    if (leadingMinus) result = '-' + result;
-    return result;
-  };
-
-  const extractDesiredClassRawValue = (value) => {
-    if (value === null || value === undefined) {
-      return '';
-    }
-
-    if (typeof value === 'object') {
-      return value.value
-        ?? value.desired_class
-        ?? value.predicted_class
-        ?? value.predicted_class_name
-        ?? value.predicted_label
-        ?? value.class
-        ?? value.label
-        ?? value.name
-        ?? '';
-    }
-
-    return value;
-  };
-
-  const extractDesiredClassOptionsFromRows = (rows) => {
-    if (!Array.isArray(rows) || rows.length === 0) {
-      return [];
-    }
-
-    const preferredKeys = [
-      'predictions',
-      'prediction',
-      'predicted_label',
-      'predicted_class',
-      'predicted_class_name',
-      'target',
-      'class',
-      'label',
-      'npa_flag',
-      'status',
-    ];
-
-    const firstRow = rows[0] || {};
-    const keyMap = Object.keys(firstRow).reduce((acc, key) => {
-      acc[String(key).trim().toLowerCase()] = key;
-      return acc;
-    }, {});
-
-    const matchedKey = preferredKeys
-      .map((key) => keyMap[key])
-      .find(Boolean);
-
-    if (!matchedKey) {
-      return [];
-    }
-
-    return [
-      ...new Set(
-        rows
-          .map((row) => normalizeDesiredClassValue(extractDesiredClassRawValue(row?.[matchedKey])))
-          .filter((item) => item !== '')
-      ),
-    ];
-  };
-
-  const hasDesiredClassSelection = (value, isRegression = false) => {
-    if (isRegression) {
-      // For regression: just check if the input is not empty
-      return String(value ?? '').trim() !== '';
-    }
-    // For classification: normalize and check
-    return normalizeDesiredClassValue(value) !== '';
-  };
-
-  const FieldTooltip = ({ lines, position = 'right' }) => {
-    const [visible, setVisible] = useState(false);
-    const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
-    const buttonRef = useRef(null);
-
-    const TOOLTIP_WIDTH = 288;
-
-    const showTooltip = () => {
-      if (buttonRef.current) {
-        const rect = buttonRef.current.getBoundingClientRect();
-        const rawLeft = position === 'left' ? rect.right - TOOLTIP_WIDTH : rect.left;
-        const maxLeft = Math.max(8, window.innerWidth - TOOLTIP_WIDTH - 8);
-        const clampedLeft = Math.min(Math.max(8, rawLeft), maxLeft);
-
-        setTooltipPos({
-          top: rect.bottom + 8,
-          left: clampedLeft,
-        });
-      }
-      setVisible(true);
-    };
-
-    const arrowStyle = position === 'left'
-      ? { right: '0.375rem', top: '-0.375rem' }
-      : { left: '0.75rem', top: '-0.375rem' };
-
-    return (
-      <div className="relative inline-flex items-center">
-        <button
-          ref={buttonRef}
-          type="button"
-          className="ml-1.5 text-gray-400 hover:text-gray-500 focus:outline-none flex-shrink-0"
-          onMouseEnter={showTooltip}
-          onMouseLeave={() => setVisible(false)}
-          tabIndex={-1}
-          aria-label="Field information"
-        >
-          <img
-            src={InfoIcons}
-            alt="info"
-            style={{
-              width: 12,
-              height: 12,
-              filter: 'brightness(0) saturate(100%) invert(54%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(95%) contrast(88%)'
-            }}
-          />
-        </button>
-
-        {visible && (
-          <div
-            className="fixed w-72 bg-[#332849] text-white text-xs p-3 rounded-lg shadow-xl z-[10000] space-y-1.5"
-            style={{ top: `${tooltipPos.top}px`, left: `${tooltipPos.left}px`, pointerEvents: 'none' }}
-          >
-            {lines.map((line, i) =>
-              line.bold
-                ? <p key={i}><strong>{line.bold}</strong>{line.rest}</p>
-                : <p key={i}>{line}</p>
-            )}
-            <div
-              className="absolute w-3 h-3 bg-[#332849] rotate-45 rounded-sm"
-              style={arrowStyle}
-            />
-          </div>
-        )}
-      </div>
-    );
-  };
+  // Shared helpers moved to utils/Predictiveutils.jsx
 
   const counterfactualTooltip = [
     { bold: 'Counterfactual Explanation: ', rest: 'An explanation that shows the minimal changes needed in input features to alter a model\'s prediction. Answers the question: “What needs to change to get a different outcome?”' },
@@ -405,27 +229,55 @@ function Predictive() {
       render: (row, rowIndex) => {
         const rowKey = getRowKey(row, rowIndex);
         const selectedValue = selectedDesiredClassByRow[rowKey] ?? '';
+        const desiredValueError = desiredClassErrorByRow[rowKey];
 
         if (isRegression) {
           return (
-            <input
-              type="text"
-              inputMode="decimal"
-              placeholder="Enter value"
-              value={selectedValue}
-              onPaste={(e) => {
-                const paste = (e.clipboardData || window.clipboardData).getData('text');
-                if (!/^[-0-9.]+$/.test(paste)) {
-                  e.preventDefault();
+            <div className="flex flex-col">
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder={desiredValueRange ? ` ${desiredValueRange.min.toFixed(2)} - ${desiredValueRange.max.toFixed(2)}` : 'Enter value'}
+                value={selectedValue}
+                onPaste={(e) => {
+                  const paste = (e.clipboardData || window.clipboardData).getData('text');
+                  if (!/^[-0-9.]+$/.test(paste)) {
+                    e.preventDefault();
+                  }
+                }}
+                onChange={(e) => {
+                  const cleaned = sanitizeNumericInput(e.target.value);
+                  setSelectedDesiredClassByRow((prev) => ({ ...prev, [rowKey]: cleaned }));
+                  // Immediate validation: set or clear per-row error
+                  if (cleaned === '' || !isDesiredValueInRange(cleaned)) {
+                    setDesiredClassErrorByRow((prev) => ({ ...prev, [rowKey]: getDesiredValueError(cleaned) }));
+                  } else {
+                    setDesiredClassErrorByRow((prev) => {
+                      const next = { ...prev };
+                      delete next[rowKey];
+                      return next;
+                    });
+                  }
                 }
-              }}
-              onChange={(e) => {
-                const cleaned = sanitizeNumericInput(e.target.value);
-                setSelectedDesiredClassByRow((prev) => ({ ...prev, [rowKey]: cleaned }));
-              }}
-              className="h-8 px-3 py-1 border rounded-md border-[#CCCCCC] bg-white text-[#332849] text-xs focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-              style={{ fontFamily: 'Satoshi, sans-serif', width: '120px' }}
-            />
+                }
+                onBlur={() => {
+                  // When user moves to next field, clear the inline error message for this row
+                  setDesiredClassErrorByRow((prev) => {
+                    const next = { ...prev };
+                    delete next[rowKey];
+                    return next;
+                  });
+                }
+                }
+                className={`h-8 px-3 py-1 border rounded-md bg-white text-[#332849] text-xs focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] ${desiredValueError ? 'border-red-500 bg-red-50' : 'border-[#CCCCCC]'}`}
+                style={{ fontFamily: 'Satoshi, sans-serif', width: '120px' }}
+              />
+              {desiredValueError && (
+                <p className="mt-1 text-[11px] text-red-500 leading-tight" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                  {desiredValueError}
+                </p>
+              )}
+            </div>
           );
         }
 
@@ -451,7 +303,7 @@ function Predictive() {
         const desiredClass = selectedDesiredClassByRow[rowKey];
         const isLoading = Boolean(quickPredictLoadingByRow[rowKey]);
         const isAnyRowLoading = Object.values(quickPredictLoadingByRow).some(v => v);
-        const isDisabled = isAnyRowLoading || !hasDesiredClassSelection(desiredClass, isRegression) || !row?.row_ref_id || !prescriptiveSessionId;
+        const isDisabled = isAnyRowLoading || !hasDesiredClassSelection(desiredClass, isRegression) || (isRegression && !isDesiredValueInRange(desiredClass)) || !row?.row_ref_id || !prescriptiveSessionId;
 
         return (
           <button
@@ -509,12 +361,6 @@ function Predictive() {
     ],
     []
   );
-
-  const toApiDateTime = (dateValue, endOfDay = false) => {
-    if (!dateValue) return '';
-    const timePart = endOfDay ? '23:59:59.999' : '00:00:00.000';
-    return `${dateValue} ${timePart}`;
-  };
 
   const handleSearch = async () => {
     if (!isSearchEnabled || isSearching) {
@@ -585,6 +431,7 @@ function Predictive() {
       setModelingType(respModelingType);
       setTargetColumn(respTargetColumn);
       setDesiredClassOptions(classOptions);
+      setDesiredClassErrorByRow({});
       setResultColumns(buildColumnsFromRows(rows, classOptions, respModelingType === 'regression'));
       setResultRows(rows);
     } catch (error) {
@@ -593,6 +440,7 @@ function Predictive() {
       setResultRows([]);
       setModelingType('classification');
       setTargetColumn('');
+      setDesiredClassErrorByRow({});
     } finally {
       setIsSearching(false);
     }
@@ -670,6 +518,7 @@ function Predictive() {
       setResultColumns([]);
       setDesiredClassOptions([]);
       setSelectedDesiredClassByRow({});
+      setDesiredClassErrorByRow({});
       setQuickPredictLoadingByRow({});
     }
 
@@ -909,700 +758,6 @@ function Predictive() {
       setIsLoadingNameValues(false);
     }
   }, [formData.column, hostnameAI, prescriptiveSessionId]);
-
-  const DesiredClassDropdown = ({ value, options, onChange }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const dropdownRef = useRef(null);
-    const buttonRef = useRef(null);
-    const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0, width: 0, placeAbove: false });
-
-    useEffect(() => {
-      const handleClickOutside = (event) => {
-        if (dropdownRef.current && !dropdownRef.current.contains(event.target) && !buttonRef.current?.contains(event.target)) {
-          setIsOpen(false);
-        }
-      };
-
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    useEffect(() => {
-      if (isOpen && buttonRef.current) {
-        const rect = buttonRef.current.getBoundingClientRect();
-        const DROPDOWN_EST_HEIGHT = 210;
-        const spaceBelow = window.innerHeight - rect.bottom;
-        const positionAbove = spaceBelow < DROPDOWN_EST_HEIGHT;
-
-        setPopupPosition({
-          top: positionAbove ? rect.top - 4 : rect.bottom + 4,
-          left: rect.left,
-          width: rect.width,
-          placeAbove: positionAbove,
-        });
-      }
-    }, [isOpen]);
-
-    const selectedOption = options.find((opt) => opt === value);
-    const isEmptyValue = value === '' || value === null || value === undefined;
-    const selectedLabel = selectedOption === undefined ? 'Select' : String(selectedOption);
-
-    return (
-      <div ref={dropdownRef} className="relative">
-        <button
-          ref={buttonRef}
-          type="button"
-          onClick={() => setIsOpen((prev) => !prev)}
-          className="h-8 min-w-[90px] px-3 py-1 border rounded-md border-[#CCCCCC] bg-white text-[#332849] text-xs focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] flex items-center justify-between whitespace-nowrap"
-          style={{ fontFamily: 'Satoshi, sans-serif' }}
-        >
-          <span className={`${isEmptyValue ? 'text-gray-500' : 'text-[#332849]'}`}>
-            {selectedLabel}
-          </span>
-          <svg className="w-3 h-3 text-gray-400 flex-shrink-0 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-
-        {isOpen && (
-          <div 
-            className="fixed z-[9999] bg-white border border-[#CCCCCC] rounded-md shadow-lg overflow-hidden"
-            style={{
-              top: `${popupPosition.top}px`,
-              left: `${popupPosition.left}px`,
-              width: `${popupPosition.width}px`,
-              transform: popupPosition.placeAbove ? 'translateY(-100%)' : 'none',
-            }}
-          >
-            <div className="max-h-48 overflow-y-auto">
-              <button
-                type="button"
-                onClick={() => {
-                  onChange('');
-                  setIsOpen(false);
-                }}
-                className={`w-full px-3 py-2 text-xs text-left transition-colors ${
-                  value === '' ? 'bg-[#F2ECFF] text-[#8e78b7] font-medium' : 'text-[#332849] hover:bg-[#F7F3FF]'
-                }`}
-                style={{ fontFamily: 'Satoshi, sans-serif' }}
-              >
-                Select
-              </button>
-              {options.map((option, index) => (
-                <button
-                  key={`${String(option)}-${index}`}
-                  type="button"
-                  onClick={() => {
-                    onChange(option);
-                    setIsOpen(false);
-                  }}
-                  className={`w-full px-3 py-2 text-xs text-left transition-colors ${
-                    value === option ? 'bg-[#F2ECFF] text-[#8e78b7] font-medium' : 'text-[#332849] hover:bg-[#F7F3FF]'
-                  }`}
-                  style={{ fontFamily: 'Satoshi, sans-serif' }}
-                >
-                  {String(option)}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const SearchableSelect = ({ label, value, options, field, onChange, isLoading = false, isDisabled = false, error, disabledReason }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
-    const dropdownRef = useRef(null);
-
-    useEffect(() => {
-      const handleClickOutside = (event) => {
-        if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-          setIsOpen(false);
-          setSearchTerm('');
-        }
-      };
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    const filteredOptions = options.filter((opt) =>
-      opt.label.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const selectedOption = options.find((opt) => opt.value === value);
-    const hasRealOptions = options.length > 1 || (options.length === 1 && options[0].value !== '');
-
-    return (
-      <div ref={dropdownRef} className={`relative ${isOpen ? 'z-[80]' : 'z-40'}`}>
-        <label
-          className="block text-sm font-medium text-[#332849] mb-1.5"
-          style={{ fontFamily: 'Satoshi, sans-serif' }}
-        >
-          {label}
-        </label>
-
-        <div
-          onClick={() => {
-            if (!isLoading && !isDisabled && hasRealOptions) {
-              setIsOpen((prev) => !prev);
-            }
-          }}
-          className={`w-full px-3 py-2 border rounded-md text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] cursor-pointer flex items-center justify-between ${error ? 'border-red-500' : 'border-[#CCCCCC]'} ${(isLoading || isDisabled || !hasRealOptions) ? 'text-gray-400 cursor-not-allowed bg-gray-50' : 'text-[#332849]'}`}
-          style={{ fontFamily: 'Satoshi, sans-serif' }}
-        >
-          <span className={`${!value ? 'text-gray-500' : ''} truncate pr-2`}>
-            {isLoading ? 'Loading...' : isDisabled && disabledReason ? disabledReason : !options.length ? 'Select' : (selectedOption?.label || 'Select')}
-          </span>
-          <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
-
-        {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-
-        {isOpen && !isLoading && !isDisabled && hasRealOptions && (
-          <div className="absolute z-50 w-full mt-1 bg-white border border-[#CCCCCC] rounded-md shadow-lg max-h-60 overflow-hidden">
-            <div className="p-2 border-b border-gray-200">
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search..."
-                  className="w-full pl-8 pr-8 py-1.5 border border-[#CCCCCC] rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                  style={{ fontFamily: 'Satoshi, sans-serif' }}
-                  onClick={(e) => e.stopPropagation()}
-                />
-                {searchTerm && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSearchTerm('');
-                    }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2"
-                  >
-                    <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="max-h-48 overflow-y-auto">
-              {filteredOptions.length === 0 ? (
-                <div className="px-3 py-2 text-sm text-gray-500 text-center">No results found</div>
-              ) : (
-                filteredOptions.map((opt) => (
-                  <div
-                    key={opt.value}
-                    onClick={() => {
-                      onChange(field, opt.value);
-                      setIsOpen(false);
-                      setSearchTerm('');
-                    }}
-                    className={`px-3 py-2 text-sm cursor-pointer hover:bg-purple-50 ${value === opt.value ? 'bg-purple-100 text-[#8e78b7] font-medium' : 'text-[#332849]'}`}
-                    style={{ fontFamily: 'Satoshi, sans-serif' }}
-                  >
-                    {opt.label}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const NamePaginatedSelect = ({
-    label,
-    value,
-    options,
-    field,
-    onChange,
-    pageSize = 10,
-    isLoading = false,
-    isDisabled = false,
-    error,
-    disabledReason,
-  }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [currentPage, setCurrentPage] = useState(1);
-    const dropdownRef = useRef(null);
-
-    useEffect(() => {
-      const handleClickOutside = (event) => {
-        if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-          setIsOpen(false);
-        }
-      };
-
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    useEffect(() => {
-      setCurrentPage(1);
-    }, [searchTerm]);
-
-    const filteredOptions = useMemo(
-      () => options.filter((opt) => opt.label.toLowerCase().includes(searchTerm.toLowerCase())),
-      [options, searchTerm]
-    );
-
-    const totalPages = Math.max(1, Math.ceil(filteredOptions.length / pageSize));
-    const safePage = Math.min(currentPage, totalPages);
-    const start = (safePage - 1) * pageSize;
-    const paginatedOptions = filteredOptions.slice(start, start + pageSize);
-    const selectedOption = options.find((opt) => opt.value === value);
-    const hasRealOptions = options.length > 0;
-
-    return (
-      <div ref={dropdownRef} className={`relative ${isOpen ? 'z-[80]' : 'z-40'}`}>
-        <label
-          className="block text-sm font-medium text-[#332849] mb-1.5"
-          style={{ fontFamily: 'Satoshi, sans-serif' }}
-        >
-          {label}
-        </label>
-
-        <button
-          type="button"
-          onClick={() => {
-            if (!isLoading && !isDisabled && hasRealOptions) {
-              setIsOpen((prev) => !prev);
-            }
-          }}
-          className={`w-full px-3 py-2 border rounded-md text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] cursor-pointer flex items-center justify-between ${
-            isLoading || isDisabled || !hasRealOptions
-              ? 'text-gray-400 cursor-not-allowed bg-gray-50'
-              : 'text-[#332849]'
-          } border-[#CCCCCC]`}
-          style={{ fontFamily: 'Satoshi, sans-serif' }}
-        >
-          <span className={`${!value ? 'text-gray-500' : 'text-[#332849]'} truncate pr-2`}>
-            {isLoading ? 'Loading...' : isDisabled && disabledReason ? disabledReason : !hasRealOptions ? 'Select' : (selectedOption?.label || 'Select')}
-          </span>
-          <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-
-        {isOpen && !isLoading && !isDisabled && hasRealOptions && (
-          <div className="absolute z-50 w-full mt-1 bg-white border border-[#CCCCCC] rounded-md shadow-lg overflow-hidden">
-            <div className="p-2 border-b border-gray-200">
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search value..."
-                  className="w-full pl-8 pr-8 py-1.5 border border-[#CCCCCC] rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                  style={{ fontFamily: 'Satoshi, sans-serif' }}
-                />
-                {searchTerm && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchTerm('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2"
-                  >
-                    <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="max-h-48 overflow-y-auto">
-              {paginatedOptions.length === 0 ? (
-                <div className="px-3 py-3 text-sm text-gray-500 text-center">No values found</div>
-              ) : (
-                paginatedOptions.map((opt) => (
-                  <div
-                    key={opt.value}
-                    onClick={() => {
-                      onChange(field, opt.value);
-                      setIsOpen(false);
-                    }}
-                    className={`px-3 py-2 text-sm cursor-pointer hover:bg-purple-50 ${value === opt.value ? 'bg-purple-100 text-[#8e78b7] font-medium' : 'text-[#332849]'}`}
-                    style={{ fontFamily: 'Satoshi, sans-serif' }}
-                  >
-                    {opt.label}
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="px-3 py-2 border-t border-gray-200 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                disabled={safePage === 1}
-                className={`text-xs px-2 py-1 rounded ${safePage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-[#8e78b7] hover:bg-purple-50'}`}
-                style={{ fontFamily: 'Satoshi, sans-serif' }}
-              >
-                Prev
-              </button>
-
-              <span className="text-xs text-gray-500" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                Page {safePage} of {totalPages}
-              </span>
-
-              <button
-                type="button"
-                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                disabled={safePage === totalPages}
-                className={`text-xs px-2 py-1 rounded ${safePage === totalPages ? 'text-gray-400 cursor-not-allowed' : 'text-[#8e78b7] hover:bg-purple-50'}`}
-                style={{ fontFamily: 'Satoshi, sans-serif' }}
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
-
-        {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-      </div>
-    );
-  };
-
-  const CalendarDropdownField = ({ label, value, onChange, minDate, isDisabled = false, enforceMinDate = false, disabledReason }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [displayMonth, setDisplayMonth] = useState(() => {
-      const base = value ? new Date(`${value}T00:00:00`) : new Date();
-      return base.getMonth();
-    });
-    const [displayYear, setDisplayYear] = useState(() => {
-      const base = value ? new Date(`${value}T00:00:00`) : new Date();
-      return base.getFullYear();
-    });
-    const containerRef = useRef(null);
-
-    useEffect(() => {
-      const handleClickOutside = (event) => {
-        if (containerRef.current && !containerRef.current.contains(event.target)) {
-          setIsOpen(false);
-        }
-      };
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    useEffect(() => {
-      if (isDisabled) {
-        setIsOpen(false);
-      }
-    }, [isDisabled]);
-
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-    const formatDisplayDate = (isoDate) => {
-      if (!isoDate) return 'dd-mm-yyyy';
-      const [year, month, day] = isoDate.split('-');
-      return `${day}-${month}-${year}`;
-    };
-
-    const getDaysInMonth = (month, year) => new Date(year, month + 1, 0).getDate();
-    const getFirstDay = (month, year) => new Date(year, month, 1).getDay();
-
-    const minDateObj = minDate ? new Date(`${minDate}T00:00:00`) : null;
-    const selectedDateObj = value ? new Date(`${value}T00:00:00`) : null;
-
-    const handlePreviousMonth = () => {
-      if (displayMonth === 0) {
-        setDisplayMonth(11);
-        setDisplayYear((prev) => prev - 1);
-      } else {
-        setDisplayMonth((prev) => prev - 1);
-      }
-    };
-
-    const handleNextMonth = () => {
-      if (displayMonth === 11) {
-        setDisplayMonth(0);
-        setDisplayYear((prev) => prev + 1);
-      } else {
-        setDisplayMonth((prev) => prev + 1);
-      }
-    };
-
-    const renderDayCells = () => {
-      const cells = [];
-      const firstDay = getFirstDay(displayMonth, displayYear);
-      const daysCount = getDaysInMonth(displayMonth, displayYear);
-
-      for (let i = 0; i < firstDay; i += 1) {
-        cells.push(<div key={`empty-${i}`} className="h-9" />);
-      }
-
-      for (let day = 1; day <= daysCount; day += 1) {
-        const current = new Date(displayYear, displayMonth, day);
-        current.setHours(0, 0, 0, 0);
-
-        // For enforceMinDate (To date), disable dates that are not strictly after minDate
-        // For regular minDate, allow the same date
-        const isDisabled = minDateObj ? (enforceMinDate ? current <= minDateObj : current < minDateObj) : false;
-        const isSelected = selectedDateObj
-          ? current.getTime() === selectedDateObj.getTime()
-          : false;
-
-        cells.push(
-          <button
-            key={day}
-            type="button"
-            disabled={isDisabled}
-            onClick={() => {
-              const yyyy = String(displayYear);
-              const mm = String(displayMonth + 1).padStart(2, '0');
-              const dd = String(day).padStart(2, '0');
-              onChange(`${yyyy}-${mm}-${dd}`);
-              setIsOpen(false);
-            }}
-            className={`h-9 rounded-md text-sm transition-colors ${isDisabled
-              ? 'text-gray-300 cursor-not-allowed'
-              : isSelected
-                ? 'bg-[#8e78b7] text-white font-semibold'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            {day}
-          </button>
-        );
-      }
-
-      return cells;
-    };
-
-    const yearOptions = Array.from({ length: 11 }, (_, i) => new Date().getFullYear() - 1 + i);
-
-    return (
-      <div ref={containerRef} className={`relative ${isOpen ? 'z-[80]' : 'z-40'}`}>
-        <label
-          className="block text-sm font-medium text-[#332849] mb-1.5"
-          style={{ fontFamily: 'Satoshi, sans-serif' }}
-        >
-          {label}
-        </label>
-
-        <button
-          type="button"
-          onClick={() => {
-            if (!isDisabled) {
-              setIsOpen((prev) => !prev);
-            }
-          }}
-          className={`w-full px-3 py-2 border rounded-md text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7] cursor-pointer flex items-center justify-between ${isDisabled ? 'text-gray-400 cursor-not-allowed bg-gray-50' : 'text-[#332849]'} border-[#CCCCCC]`}
-          style={{ fontFamily: 'Satoshi, sans-serif' }}
-        >
-          <span className={`${isDisabled ? 'text-gray-400' : value ? 'text-[#332849]' : 'text-gray-500'}`}>{isDisabled && disabledReason ? disabledReason : formatDisplayDate(value)}</span>
-          <Calendar className="h-4 w-4 text-gray-400" />
-        </button>
-
-        {isOpen && !isDisabled && (
-          <div className="absolute z-50 w-full mt-1 bg-white border border-[#CCCCCC] rounded-md shadow-lg p-3">
-            <div className="flex items-center justify-between mb-3">
-              <button type="button" onClick={handlePreviousMonth} className="text-gray-600 hover:text-gray-900 px-1">
-                {'<'}
-              </button>
-
-              <div className="flex items-center gap-2">
-                <select
-                  value={displayMonth}
-                  onChange={(e) => setDisplayMonth(Number(e.target.value))}
-                  className="px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7]"
-                >
-                  {monthNames.map((month, idx) => (
-                    <option key={month} value={idx}>{month}</option>
-                  ))}
-                </select>
-
-                <select
-                  value={displayYear}
-                  onChange={(e) => setDisplayYear(Number(e.target.value))}
-                  className="px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7]"
-                >
-                  {yearOptions.map((year) => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-              </div>
-
-              <button type="button" onClick={handleNextMonth} className="text-gray-600 hover:text-gray-900 px-1">
-                {'>'}
-              </button>
-            </div>
-
-            <div className="grid grid-cols-7 gap-1 mb-1">
-              {dayNames.map((day) => (
-                <div key={day} className="text-[11px] text-gray-500 text-center font-medium">{day}</div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-7 gap-1">
-              {renderDayCells()}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const QuickPredictResultModal = ({ isOpen, onClose, result, errorMessage, desiredClass, isRegression: isRegressionModel = false }) => {
-    if (!isOpen) {
-      return null;
-    }
-
-    const limeReport = result?.lime_report || null;
-    const counterfactualRows = Array.isArray(result?.counterfactual_report)
-      ? result.counterfactual_report
-      : [];
-    
-    const modelType = limeReport?.model_type || '';
-    const isRegression = isRegressionModel || modelType?.toLowerCase().includes('regression');
-    const predictedValueKey = isRegression ? 'predicted_value' : 'predicted_class_name';
-    const predictedValueLabel = isRegression ? 'Predicted Value' : 'Predicted Class';
-    const desiredValueLabel = isRegression ? 'Desired Value' : 'Desired Class';
-
-    const formatToFourDecimals = (value) => {
-      if (value === null || value === undefined || value === '-') return value;
-      const num = parseFloat(value);
-      if (isNaN(num)) return value;
-      return num.toFixed(4);
-    };
-
-    return createPortal(
-      <div className="fixed inset-0 z-[15000] flex items-center justify-center bg-[#00000099] p-4">
-        <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-lg bg-white shadow-xl">
-          <div className="sticky top-0 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
-            <h3 className="text-lg font-semibold text-gray-900" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-              Predictive Analysis Report
-            </h3>
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-gray-400 transition-colors hover:text-gray-600"
-              aria-label="Close quick predict report"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M18 6L6 18M6 6L18 18" stroke="#818181" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          </div>
-
-          <div className="space-y-6 p-6">
-            {errorMessage ? (
-              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                {errorMessage}
-              </div>
-            ) : (
-              <>
-                <div className="rounded-lg border border-gray-200 bg-[#FAFAFA] p-4">
-                  <h4 className="mb-3 text-sm font-semibold text-gray-900 flex items-center" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                    LIME
-                    <FieldTooltip lines={limeTooltip} position="right" />
-                  </h4>
-                  {limeReport ? (
-                    <div className="space-y-3 text-sm text-gray-700" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                        <div className="rounded-md bg-white p-3">
-                          <p className="text-xs text-gray-500">{desiredValueLabel}</p>
-                          <p className="font-medium">{isRegression ? formatToFourDecimals(desiredClass) : desiredClass || '-'}</p>
-                        </div>
-                        <div className="rounded-md bg-white p-3">
-                          <p className="text-xs text-gray-500">{predictedValueLabel}</p>
-                          <p className="font-medium">{isRegression ? formatToFourDecimals(limeReport[predictedValueKey]) : limeReport[predictedValueKey] ?? '-'}</p>
-                        </div>
-                      </div>
-
-                      <div className="overflow-x-auto rounded-md border border-gray-200 bg-white">
-                        <table className="w-full text-left text-sm">
-                          <thead>
-                            <tr className="bg-gray-50 text-gray-600">
-                              <th className="px-4 py-2 font-medium">S.No</th>
-                              <th className="px-4 py-2 font-medium">Feature Condition</th>
-                              <th className="px-4 py-2 font-medium">Contribution</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {(limeReport.explanation_for_class || []).length > 0 ? (
-                              limeReport.explanation_for_class.map((item, idx) => (
-                                <tr key={`${item?.[0] || 'lime'}-${idx}`} className="border-t border-gray-100">
-                                  <td className="px-4 py-2">{idx + 1}</td>
-                                  <td className="px-4 py-2">{item?.[0] ?? '-'}</td>
-                                  <td className="px-4 py-2">{item?.[1] ?? '-'}</td>
-                                </tr>
-                              ))
-                            ) : (
-                              <tr>
-                                <td colSpan={3} className="px-4 py-3 text-center text-gray-500">
-                                  No LIME explanation available
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                      No LIME report available.
-                    </p>
-                  )}
-                </div>
-
-                <div className="rounded-lg border border-gray-200 bg-[#FAFAFA] p-4">
-                  <h4 className="mb-3 text-sm font-semibold text-gray-900 flex items-center" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                    Counterfactual
-                    <FieldTooltip lines={counterfactualTooltip} position="right" />
-                  </h4>
-                  <div className="space-y-3 text-sm text-gray-700" style={{ fontFamily: 'Satoshi, sans-serif' }}>
-                    <div className="overflow-x-auto rounded-md border border-gray-200 bg-white">
-                      <table className="w-full text-left text-sm">
-                        <thead>
-                          <tr className="bg-gray-50 text-gray-600">
-                            <th className="px-4 py-2 font-medium">S.No</th>
-                            <th className="px-4 py-2 font-medium">Feature</th>
-                            <th className="px-4 py-2 font-medium">Original</th>
-                            <th className="px-4 py-2 font-medium">Counterfactual</th>
-                            <th className="px-4 py-2 font-medium">Change</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {counterfactualRows.length > 0 ? (
-                            counterfactualRows.map((item, idx) => (
-                              <tr key={`${item?.Feature || 'cf'}-${idx}`} className="border-t border-gray-100">
-                                <td className="px-4 py-2">{idx + 1}</td>
-                                <td className="px-4 py-2">{item?.Feature ?? '-'}</td>
-                                <td className="px-4 py-2">{item?.Original ?? '-'}</td>
-                                <td className="px-4 py-2">{item?.Counterfactual ?? '-'}</td>
-                                <td className="px-4 py-2">{item?.Change ?? '-'}</td>
-                              </tr>
-                            ))
-                          ) : (
-                            <tr>
-                              <td colSpan={5} className="px-4 py-3 text-center text-gray-500">
-                                No counterfactual report available
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>,
-      document.body
-    );
-  };
-
   return (
     <div className="min-h-screen w-full p-6 bg-gray-50 flex flex-col">
       <Breadcrumb />
@@ -1714,7 +869,7 @@ function Predictive() {
                         <span className="text-gray-900">{targetColumn}</span>
                       </div>
                     )}
-                    <DataTable
+                    <PredictiveTable
                       columns={resultColumns.length > 0 ? resultColumns : defaultResultColumns}
                       data={resultRows}
                       isLoading={isSearching}
@@ -1732,6 +887,8 @@ function Predictive() {
               errorMessage={quickPredictError}
               desiredClass={quickPredictDesiredClass}
               isRegression={modelingType === 'regression'}
+              limeTooltip={limeTooltip}
+              counterfactualTooltip={counterfactualTooltip}
             />
         </div>
       </div>

@@ -335,6 +335,7 @@ function StandingsPage({ onBack, sessionId }) {
           padding: '12px 24px',
           display: 'flex',
           justifyContent: 'flex-end',
+          zIndex: 40,
         }}
       >
         <button

@@ -58,6 +58,8 @@ const REGRESSION_REVERSE_METRIC_MAPPING = {
     "huber_loss": "Huber Loss"
 };
 
+const CLASSIFICATION_MANDATORY_METRICS = ['confusion_matrix'];
+
 const toMetricBackendKey = (metric) => {
     const normalized = String(metric || '').trim().toLowerCase();
     if (normalized.startsWith('train_')) return normalized.slice(6);
@@ -489,6 +491,10 @@ function ModelSelection() {
             .filter(m => m.enabled)
             .map(m => METRIC_NAME_MAPPING[m.name] || m.name.toLowerCase());
 
+        const finalPerformanceMetrics = isRegression
+            ? performanceMetrics
+            : Array.from(new Set([...performanceMetrics, ...CLASSIFICATION_MANDATORY_METRICS]));
+
         const finalParamGrid = Object.keys(paramGrid).length > 0 ? paramGrid : {
             "additionalProp1": { "additionalProp1": {} },
             "additionalProp2": { "additionalProp1": {} },
@@ -496,7 +502,7 @@ function ModelSelection() {
         };
 
         const defaultScoringMetric = isRegression ? 'r2' : 'accuracy';
-        const defaultPerformanceMetrics = isRegression ? ['r2'] : ['accuracy'];
+        const defaultPerformanceMetrics = isRegression ? ['r2'] : ['accuracy', ...CLASSIFICATION_MANDATORY_METRICS];
 
         const payload = {
             ensemble_id: datasetState?.ensembleId,
@@ -507,7 +513,7 @@ function ModelSelection() {
             normalize: normalizeData,
             return_metrics: true,
             scoring: defaultScoringMetric,
-            performance_metrics: performanceMetrics.length > 0 ? performanceMetrics : defaultPerformanceMetrics,
+            performance_metrics: finalPerformanceMetrics.length > 0 ? finalPerformanceMetrics : defaultPerformanceMetrics,
             test_size: 0.2,
             random_state: 42,
             shuffle: true

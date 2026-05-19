@@ -455,7 +455,7 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
       if (!requestBody.ensemble_id || !requestBody.workflow_id) {
         throw new Error('Missing required identifiers: ensemble_id or workflow_id');
       }
-      const response = await fetch(`${hostnameAI}/data/preprocess/feature_selection`, {
+      const response = await fetch(`${hostnameAI}/data/preprocess_supervised/feature_selection`, {
         method: 'POST',
         headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)

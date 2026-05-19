@@ -343,34 +343,47 @@ function XAI() {
       setShowConfigModal(false);
       return;
     }
-   if (isRegression) {
-  if (
-    configData.pdpTargetValue === '' ||
-    isNaN(configData.pdpTargetValue)
-  ) {
-    toast.error("Enter valid PDP target value");
-    return;
-  }
-  if (!isRegression) {
-  if (!configData.pdpTargetClass) {
-    toast.error("Select PDP target class");
-    return;
-  }
+    
+    if (isRegression) {
+      const pdpRange = xaiConfig?.pdp_target_value_range;
+      const cfRange = xaiConfig?.cf_target_value_range;
 
-  if (!configData.cfDesiredClass) {
-    toast.error("Select counterfactual class");
-    return;
-  }
-}
+      if (configData.pdpTargetValue === '' || isNaN(configData.pdpTargetValue)) {
+        toast.error("Enter valid PDP target value");
+        return;
+      }
+      
+      if (pdpRange) {
+        const pdpValue = Number(configData.pdpTargetValue);
+        if (pdpValue < pdpRange.min || pdpValue > pdpRange.max) {
+          toast.error(`PDP target value must be between ${pdpRange.min.toFixed(2)} and ${pdpRange.max.toFixed(2)}`);
+          return;
+        }
+      }
 
-  if (
-    configData.cfDesiredValue === '' ||
-    isNaN(configData.cfDesiredValue)
-  ) {
-    toast.error("Enter valid counterfactual value");
-    return;
-  }
-}
+      if (configData.cfDesiredValue === '' || isNaN(configData.cfDesiredValue)) {
+        toast.error("Enter valid counterfactual value");
+        return;
+      }
+      
+      if (cfRange) {
+        const cfValue = Number(configData.cfDesiredValue);
+        if (cfValue < cfRange.min || cfValue > cfRange.max) {
+          toast.error(`Counterfactual value must be between ${cfRange.min.toFixed(2)} and ${cfRange.max.toFixed(2)}`);
+          return;
+        }
+      }
+    } else {
+      if (!configData.pdpTargetClass) {
+        toast.error("Select PDP target class");
+        return;
+      }
+
+      if (!configData.cfDesiredClass) {
+        toast.error("Select counterfactual class");
+        return;
+      }
+    }
     setGeneratingReport(true);
     try {
       const payload = {

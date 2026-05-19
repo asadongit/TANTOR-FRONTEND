@@ -7,6 +7,7 @@ import BestModelCard from './BestModelCard';
 import MetricsChart from './MetricsChart';
 import PerformanceTab from './PerformanceTab';
 import { FairnessTab, ChartsTab } from './Fairnesschartstab';
+import { ConfusionMatrixTab } from './ConfusionMatrixTab';
 import BatchIcon from '../../../../../assets/ai/workspace_premium.svg';
 import { tw, aithemestyle } from '../../../../../components/themeContext';
 
@@ -18,6 +19,7 @@ const ModelInferencing = () => {
   const [selectedFairnessModel, setSelectedFairnessModel] = useState('');
   const [selectedChartsModel, setSelectedChartsModel] = useState('');
   const [selectedChartDemographic, setSelectedChartDemographic] = useState('');
+  const [selectedConfusionModel, setSelectedConfusionModel] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showAllPending, setShowAllPending] = useState(false);
   const navigate = useNavigate();
@@ -198,6 +200,7 @@ const ModelInferencing = () => {
     if (apiResults.length === 0) {
       setSelectedFairnessModel('');
       setSelectedChartsModel('');
+      setSelectedConfusionModel('');
       return;
     }
 
@@ -208,7 +211,11 @@ const ModelInferencing = () => {
     if (!apiResults.some(r => r.run_name === selectedChartsModel)) {
       setSelectedChartsModel(apiResults[0].run_name);
     }
-  }, [apiResults, selectedFairnessModel, selectedChartsModel]);
+
+    if (!apiResults.some(r => r.run_name === selectedConfusionModel)) {
+      setSelectedConfusionModel(apiResults[0].run_name);
+    }
+  }, [apiResults, selectedFairnessModel, selectedChartsModel, selectedConfusionModel]);
 
   const bestModel = useMemo(() => {
     if (apiResults.length === 0) {
@@ -461,6 +468,17 @@ trainHuberLoss: metrics.train_huber_loss?.toFixed(3) ?? 'N/A',
     };
   }, [apiResults, selectedChartsModel]);
 
+  const selectedConfusionData = useMemo(() => {
+    const selectedModel = apiResults.find(r => r.run_name === selectedConfusionModel);
+    if (!selectedModel) return null;
+    const metrics = selectedModel.metrics || {};
+    return {
+      modelName: selectedModel.run_name,
+      train: metrics.train_confusion_matrix || null,
+      test: metrics.test_confusion_matrix || null,
+    };
+  }, [apiResults, selectedConfusionModel]);
+
   useEffect(() => {
     // Ensure workflow-specific UI state does not bleed across model tabs.
     setActiveTab('performance');
@@ -554,18 +572,44 @@ trainHuberLoss: metrics.train_huber_loss?.toFixed(3) ?? 'N/A',
           {/* Tabs */}
           <div className="border-b border-gray-200 mb-6">
             <nav className="flex gap-8">
-              {['performance', 'fairness', 'charts'].map(tab => (
+              <button
+                onClick={() => setActiveTab('performance')}
+                className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'performance'
+                  ? 'border-[#8e78b7] text-[#8e78b7]'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+              >
+                Performance
+              </button>
+              <button
+                onClick={() => setActiveTab('fairness')}
+                className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'fairness'
+                  ? 'border-[#8e78b7] text-[#8e78b7]'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+              >
+                Fairness
+              </button>
+              <button
+                onClick={() => setActiveTab('charts')}
+                className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'charts'
+                  ? 'border-[#8e78b7] text-[#8e78b7]'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+              >
+                Charts
+              </button>
+              {!isRegressionModel && (
                 <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors capitalize ${activeTab === tab
+                  onClick={() => setActiveTab('confusion_matrix')}
+                  className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'confusion_matrix'
                     ? 'border-[#8e78b7] text-[#8e78b7]'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     }`}
                 >
-                  {tab}
+                  Confusion Matrix
                 </button>
-              ))}
+              )}
             </nav>
           </div>
 
@@ -589,6 +633,20 @@ trainHuberLoss: metrics.train_huber_loss?.toFixed(3) ?? 'N/A',
               setSelectedChartDemographic={setSelectedChartDemographic}
               selectedModelChartData={selectedModelChartData}
             />
+          )}
+          {activeTab === 'confusion_matrix' && (
+            !isRegressionModel ? (
+              <ConfusionMatrixTab
+                apiResults={apiResults}
+                selectedConfusionModel={selectedConfusionModel}
+                setSelectedConfusionModel={setSelectedConfusionModel}
+                selectedConfusionData={selectedConfusionData}
+              />
+            ) : (
+              <div className="py-12 text-center bg-gray-50 rounded-lg">
+                <p className="text-sm font-medium text-gray-500">Confusion matrix is only available for classification models</p>
+              </div>
+            )
           )}
         </div>
       </div>
