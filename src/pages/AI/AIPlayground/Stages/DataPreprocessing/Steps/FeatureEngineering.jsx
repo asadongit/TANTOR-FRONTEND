@@ -310,7 +310,7 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
                 throw new Error('Missing required identifiers: ensemble_id or workflow_id');
             }
 
-            const response = await fetch(`${hostnameAI}/data/preprocess/feature_engineering`, {
+            const response = await fetch(`${hostnameAI}/data/preprocess_supervised/feature_engineering`, {
                 method: 'POST',
                 headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestBody)

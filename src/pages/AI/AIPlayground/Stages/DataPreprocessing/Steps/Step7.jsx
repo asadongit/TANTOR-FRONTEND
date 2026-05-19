@@ -213,7 +213,7 @@ function Step7({ readonly: readonlyProp, onShowPreview, showPreview, onApiCall, 
                 throw new Error('Missing required identifiers: ensemble_id or workflow_id');
             }
 
-            const response = await fetch(`${hostnameAI}/data/preprocess/imbalance_handling`, {
+            const response = await fetch(`${hostnameAI}/data/preprocess_supervised/imbalance_handling`, {
                 method: 'POST',
                 headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestBody)

@@ -50,7 +50,7 @@ const MEMBER_OPTIONS = [
 const CAPABILITIES = [
   {
     title: 'Build Machine Learning',
-    desc: 'Design, train, and deploy machine learning models using your injected dataset.',
+    desc: 'Design, train, and deploy machine learning models using your ingested dataset.',
     icon: <img src={SchemaIcon} alt="schema" className="w-5 h-5" style={{ filter: 'invert(55%) sepia(80%) saturate(500%) hue-rotate(155deg) brightness(95%) contrast(95%)' }} />,
     iconColor: '#16ABC2',
     bgColor: '#C5EAF0',
@@ -701,7 +701,7 @@ const AIPlayground = () => {
                 <div>
                   <h2 className={tw.sectionHeading + " mb-1"}>Data Ingestion</h2>
                   <p className={tw.body}>
-                    Your dataset has been successfully injected and will be used across all selected workflows.
+                    Your dataset has been successfully ingested and will be used across all selected workflows.
                   </p>
                 </div>
                 <button

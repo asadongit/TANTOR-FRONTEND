@@ -191,7 +191,7 @@ function ScalingTransformation({ readonly: readonlyProp, onApiCall, onValidation
                 throw new Error('Missing required identifiers: ensemble_id or workflow_id');
             }
 
-            const response = await fetch(`${hostnameAI}/data/preprocess/advanced_transformation`, {
+            const response = await fetch(`${hostnameAI}/data/preprocess_supervised/advanced_transformation`, {
                 method: 'POST',
                 headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestBody),

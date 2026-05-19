@@ -346,7 +346,7 @@ const SearchableMultiSelect = ({ selectedOptions, onChange, options, maxSelectio
 };
 
 
-const ModeSelection = ({ config, setConfig, readonly }) => {
+const ModeSelection = ({ config, setConfig, readonly, onNotebookModeSelect }) => {
   const [showModal, setShowModal] = useState(false);
   const [pendingNotebookState, setPendingNotebookState] = useState(false);
 
@@ -365,6 +365,9 @@ const ModeSelection = ({ config, setConfig, readonly }) => {
     if (readonly) return;
     setConfig({ ...config, notebookMode: pendingNotebookState });
     setShowModal(false);
+    if (onNotebookModeSelect) {
+      onNotebookModeSelect();
+    }
   };
 
   const handleModalCancel = () => {
@@ -554,7 +557,7 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
       const ensembleId = datasetState.ensembleId;
       const targetColumn = config.targetFeature;
 
-      const response = await fetch(`${hostnameAI}/data/validate-target-column`, {
+      const response = await fetch(`${hostnameAI}/genesis/genesis/validate-target-column`, {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -1244,6 +1247,10 @@ function ModelGenesis() {
     setIsValidated(!isValidated);
   };
 
+  const handleNotebookModeSelect = () => {
+    navigate('/ai/playground/notebook');
+  };
+
   const runValidation = async () => {
     if (!config.classification || !config.targetFeature) {
       toast.error('Please select classification type and target feature.', {
@@ -1259,7 +1266,7 @@ function ModelGenesis() {
       const ensembleId = datasetState.ensembleId;
       const targetColumn = config.targetFeature;
 
-      const response = await fetch(`${hostnameAI}/data/validate-target-column`, {
+      const response = await fetch(`${hostnameAI}genesis/genesis/validate-target-column`, {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -1369,7 +1376,7 @@ function ModelGenesis() {
         drop_columns: config.drop_columns || []
       };
 
-      const response = await fetch(`${hostnameAI}/data/genesis`, {
+      const response = await fetch(`${hostnameAI}/genesis/genesis/genesis`, {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -1425,74 +1432,78 @@ function ModelGenesis() {
   };
 
   return (
-    <AIPlaygroundLayout
-      isNextDisabled={isSubmitting || isValidating}
-      onNextClick={handleNextClick}
-    >
-      <div className="space-y-6">
-        <ModeSelection
-          config={config}
-          setConfig={(newConfig) => {
-            setConfig(newConfig);
-            updateWorkflowStage('modelGenesis', {
-              config: {
-                dataPreprocessing: newConfig.dataPreprocessing,
-                modelSelection: newConfig.modelSelection,
-                data_preprocessing_mode: newConfig.dataPreprocessing,
-                model_mode: newConfig.modelSelection,
+    <>
+      <AIPlaygroundLayout
+        isNextDisabled={isSubmitting || isValidating}
+        onNextClick={handleNextClick}
+      >
+        <div className="space-y-6">
+          <ModeSelection
+            config={config}
+            setConfig={(newConfig) => {
+              setConfig(newConfig);
+              updateWorkflowStage('modelGenesis', {
+                config: {
+                  dataPreprocessing: newConfig.dataPreprocessing,
+                  modelSelection: newConfig.modelSelection,
+                  data_preprocessing_mode: newConfig.dataPreprocessing,
+                  model_mode: newConfig.modelSelection,
+                }
+              });
+            }}
+            readonly={isInteractionLocked}
+            onNotebookModeSelect={handleNotebookModeSelect}
+          />
+
+          <DropColumns
+            config={config}
+            setConfig={(newConfig) => {
+              setConfig(newConfig);
+
+              if (validationErrors.dropColumns && newConfig.drop_columns?.length > 0) {
+                setValidationErrors(prev => ({ ...prev, dropColumns: undefined }));
               }
-            });
-          }}
-          readonly={isInteractionLocked}
-        />
 
-        <DropColumns
-          config={config}
-          setConfig={(newConfig) => {
-            setConfig(newConfig);
+              if (!newConfig.drop_columns_active) {
+                setValidationErrors(prev => ({ ...prev, dropColumns: undefined }));
+              }
+            }}
+            readonly={isInteractionLocked}
+            columnNames={datasetState.columnNames}
+            hasError={!!validationErrors.dropColumns}
+            errorMessage={validationErrors.dropColumns}
+            sectionRef={dropColumnsRef}
+          />
 
-            if (validationErrors.dropColumns && newConfig.drop_columns?.length > 0) {
-              setValidationErrors(prev => ({ ...prev, dropColumns: undefined }));
-            }
+          <PredictionType
+            config={config}
+            setConfig={setConfig}
+            isValidated={isValidated}
+            onValidate={() => {
+              handleValidate();
+              setValidationErrors(prev => ({ ...prev, predictionType: undefined }));
+            }}
+            readonly={isInteractionLocked}
+            columnNames={datasetState.columnNames}
+            hasError={!!validationErrors.predictionType}
+            errorMessage={validationErrors.predictionType}
+            sectionRef={predictionTypeRef}
+            activeWorkflowId={activeWorkflowId}
+            isValidating={isValidating}
+            setIsValidating={setIsValidating}
+          />
 
-            if (!newConfig.drop_columns_active) {
-              setValidationErrors(prev => ({ ...prev, dropColumns: undefined }));
-            }
-          }}
-          readonly={isInteractionLocked}
-          columnNames={datasetState.columnNames}
-          hasError={!!validationErrors.dropColumns}
-          errorMessage={validationErrors.dropColumns}
-        />
+          <SplitSetting config={config} setConfig={setConfig} readonly={isInteractionLocked} />
 
-        <PredictionType
-          config={config}
-          setConfig={setConfig}
-          isValidated={isValidated}
-          onValidate={() => {
-            handleValidate();
-            setValidationErrors(prev => ({ ...prev, predictionType: undefined }));
-          }}
-          readonly={isInteractionLocked}
-          columnNames={datasetState.columnNames}
-          hasError={!!validationErrors.predictionType}
-          errorMessage={validationErrors.predictionType}
-          activeWorkflowId={activeWorkflowId}
-          isValidating={isValidating}
-          setIsValidating={setIsValidating}
-        />
+          <FairnessAttribute
+            config={config}
+            setConfig={setConfig}
+            readonly={isInteractionLocked}
+            columnNames={datasetState.columnNames}
+          />
+        </div>
 
-        <SplitSetting config={config} setConfig={setConfig} readonly={isInteractionLocked} />
-
-        <FairnessAttribute
-          config={config}
-          setConfig={setConfig}
-          readonly={isInteractionLocked}
-          columnNames={datasetState.columnNames}
-        />
-      </div>
-
-      <style>{`
+        <style>{`
   input[type="range"].slider-train::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
@@ -1531,7 +1542,8 @@ function ModelGenesis() {
     border: none;
   }
 `}</style>
-    </AIPlaygroundLayout>
+      </AIPlaygroundLayout>
+    </>
   );
 }
 

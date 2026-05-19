@@ -6,6 +6,7 @@ import ModelSelection from './Stages/ModelSelection/ModelSelection';
 import ModelInferencing from './Stages/ModelInferencing/ModelInferencing';
 import XAI from './Stages/XAI';
 import ModelDeployment from './Stages/ModelDeployment';
+import NotebookMode from './Stages/NotebookMode';
 
 const PREFIX = '/ai/playground';
 
@@ -18,5 +19,6 @@ export const AIPlaygroundRoutes = (
     <Route path={`${PREFIX}/model-inferencing`} element={<ModelInferencing />} />
     <Route path={`${PREFIX}/xai`} element={<XAI />} />
     <Route path={`${PREFIX}/model-deployment`} element={<ModelDeployment />} />
+    <Route path={`${PREFIX}/notebook`} element={<NotebookMode />} />
   </>
 );

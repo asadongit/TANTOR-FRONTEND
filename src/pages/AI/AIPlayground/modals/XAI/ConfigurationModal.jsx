@@ -190,6 +190,10 @@ cfDesiredValue: '',
     }
   }, [xaiConfig]);
 
+  // Extract ranges for regression models (moved before useEffect)
+  const pdpValueRange = xaiConfig?.pdp_target_value_range;
+  const cfValueRange = xaiConfig?.cf_target_value_range;
+
   // Clear errors once all required fields become valid
   useEffect(() => {
   if (!showFieldErrors) return;
@@ -200,8 +204,10 @@ cfDesiredValue: '',
     ? (
         configData.pdpTargetValue !== '' &&
         !isNaN(configData.pdpTargetValue) &&
+        (!pdpValueRange || (Number(configData.pdpTargetValue) >= pdpValueRange.min && Number(configData.pdpTargetValue) <= pdpValueRange.max)) &&
         configData.cfDesiredValue !== '' &&
         !isNaN(configData.cfDesiredValue) &&
+        (!cfValueRange || (Number(configData.cfDesiredValue) >= cfValueRange.min && Number(configData.cfDesiredValue) <= cfValueRange.max)) &&
         configData.cfInstanceIndex >= 0 &&
         configData.cfInstanceIndex <= max &&
         configData.limeInstanceIndex >= 0 &&
@@ -218,7 +224,7 @@ cfDesiredValue: '',
 
   if (allValid) setShowFieldErrors(false);
 
-}, [configData, showFieldErrors, isRegression]);
+}, [configData, showFieldErrors, isRegression, pdpValueRange, cfValueRange]);
 
   const toggleFeature = (feature) => {
     if (readonly || isGenerating) return;
@@ -251,39 +257,49 @@ cfDesiredValue: '',
 
   // Per-field error flags — only shown after the first failed submit attempt
   const pdpTargetError = showFieldErrors && (
-  isRegression
-    ? (configData.pdpTargetValue === '' || isNaN(configData.pdpTargetValue))
-    : !configData.pdpTargetClass
-);
+    isRegression
+      ? (configData.pdpTargetValue === '' || 
+         isNaN(configData.pdpTargetValue) ||
+         (pdpValueRange && (Number(configData.pdpTargetValue) < pdpValueRange.min || Number(configData.pdpTargetValue) > pdpValueRange.max)))
+      : !configData.pdpTargetClass
+  );
 
-const cfDesiredError = showFieldErrors && (
-  isRegression
-    ? (configData.cfDesiredValue === '' || isNaN(configData.cfDesiredValue))
-    : !configData.cfDesiredClass
-);
+  const cfDesiredError = showFieldErrors && (
+    isRegression
+      ? (configData.cfDesiredValue === '' || 
+         isNaN(configData.cfDesiredValue) ||
+         (cfValueRange && (Number(configData.cfDesiredValue) < cfValueRange.min || Number(configData.cfDesiredValue) > cfValueRange.max)))
+      : !configData.cfDesiredClass
+  );
   const cfIndexError = showFieldErrors && !(configData.cfInstanceIndex >= 0 && configData.cfInstanceIndex <= maxIndex);
   const limeIndexError = showFieldErrors && !(configData.limeInstanceIndex >= 0 && configData.limeInstanceIndex <= maxIndex);
 
   const handleGenerate = () => {
+    const pdpValueValid = configData.pdpTargetValue !== '' && 
+                         !isNaN(configData.pdpTargetValue) &&
+                         (!pdpValueRange || (Number(configData.pdpTargetValue) >= pdpValueRange.min && Number(configData.pdpTargetValue) <= pdpValueRange.max));
+    
+    const cfValueValid = configData.cfDesiredValue !== '' && 
+                        !isNaN(configData.cfDesiredValue) &&
+                        (!cfValueRange || (Number(configData.cfDesiredValue) >= cfValueRange.min && Number(configData.cfDesiredValue) <= cfValueRange.max));
+
     const isValid = isRegression
-  ? (
-      configData.pdpTargetValue !== '' &&
-      !isNaN(configData.pdpTargetValue) &&
-      configData.cfDesiredValue !== '' &&
-      !isNaN(configData.cfDesiredValue) &&
-      configData.cfInstanceIndex >= 0 &&
-      configData.cfInstanceIndex <= maxIndex &&
-      configData.limeInstanceIndex >= 0 &&
-      configData.limeInstanceIndex <= maxIndex
-    )
-  : (
-      configData.pdpTargetClass &&
-      configData.cfDesiredClass &&
-      configData.cfInstanceIndex >= 0 &&
-      configData.cfInstanceIndex <= maxIndex &&
-      configData.limeInstanceIndex >= 0 &&
-      configData.limeInstanceIndex <= maxIndex
-    );
+      ? (
+          pdpValueValid &&
+          cfValueValid &&
+          configData.cfInstanceIndex >= 0 &&
+          configData.cfInstanceIndex <= maxIndex &&
+          configData.limeInstanceIndex >= 0 &&
+          configData.limeInstanceIndex <= maxIndex
+        )
+      : (
+          configData.pdpTargetClass &&
+          configData.cfDesiredClass &&
+          configData.cfInstanceIndex >= 0 &&
+          configData.cfInstanceIndex <= maxIndex &&
+          configData.limeInstanceIndex >= 0 &&
+          configData.limeInstanceIndex <= maxIndex
+        );
 
     if (!isValid) {
       setShowFieldErrors(true);
@@ -343,7 +359,19 @@ const cfDesiredError = showFieldErrors && (
               )}
             </div>
             <button
-              onClick={onClose}
+              onClick={() => {
+                setConfigData({
+                  pdpTargetClass: '',
+                  cfDesiredClass: '',
+                  pdpTargetValue: '',
+                  cfDesiredValue: '',
+                  cfInstanceIndex: 0,
+                  limeInstanceIndex: 0,
+                  pdpFeatures: []
+                });
+                setShowFieldErrors(false);
+                onClose();
+              }}
               className="text-gray-400 hover:text-gray-600"
               disabled={isGenerating}
             >
@@ -392,14 +420,29 @@ const cfDesiredError = showFieldErrors && (
     </label>
 
     {isRegression ? (
-      <input
-        type="number"
-        value={configData.pdpTargetValue}
-        onChange={(e) =>
-          setConfigData({ ...configData, pdpTargetValue: e.target.value })
-        }
-        className="w-full px-3 py-2 border rounded-lg text-sm"
-      />
+      <div>
+        <input
+          type="number"
+          value={configData.pdpTargetValue}
+          onChange={(e) =>
+            setConfigData({ ...configData, pdpTargetValue: e.target.value })
+          }
+          className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors ${
+            pdpTargetError
+              ? 'border-[#EF4D5F] bg-[#FFF7F8]'
+              : 'border-gray-300'
+          } ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+          disabled={readonly || isGenerating}
+          placeholder={pdpValueRange ? ` ${pdpValueRange.min.toFixed(2)} - ${pdpValueRange.max.toFixed(2)}` : 'Enter value'}
+        />
+        {pdpTargetError && (
+          <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">
+            {pdpValueRange
+              ? `Enter a value between ${pdpValueRange.min.toFixed(2)} and ${pdpValueRange.max.toFixed(2)}`
+              : 'Please enter a valid number'}
+          </p>
+        )}
+      </div>
     ) : (
       <SearchableDropdown
         selectedColumn={configData.pdpTargetClass}
@@ -423,14 +466,29 @@ const cfDesiredError = showFieldErrors && (
     </label>
 
     {isRegression ? (
-      <input
-        type="number"
-        value={configData.cfDesiredValue}
-        onChange={(e) =>
-          setConfigData({ ...configData, cfDesiredValue: e.target.value })
-        }
-        className="w-full px-3 py-2 border rounded-lg text-sm"
-      />
+      <div>
+        <input
+          type="number"
+          value={configData.cfDesiredValue}
+          onChange={(e) =>
+            setConfigData({ ...configData, cfDesiredValue: e.target.value })
+          }
+          className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors ${
+            cfDesiredError
+              ? 'border-[#EF4D5F] bg-[#FFF7F8]'
+              : 'border-gray-300'
+          } ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+          disabled={readonly || isGenerating}
+          placeholder={cfValueRange ? ` ${cfValueRange.min.toFixed(2)} - ${cfValueRange.max.toFixed(2)}` : 'Enter value'}
+        />
+        {cfDesiredError && (
+          <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">
+            {cfValueRange
+              ? `Enter a value between ${cfValueRange.min.toFixed(2)} and ${cfValueRange.max.toFixed(2)}`
+              : 'Please enter a valid number'}
+          </p>
+        )}
+      </div>
     ) : (
       <SearchableDropdown
         selectedColumn={configData.cfDesiredClass}
@@ -548,7 +606,19 @@ const cfDesiredError = showFieldErrors && (
         {/* ── Footer ── */}
         <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-3 flex justify-end gap-3 font-satoshi shadow-[0_-2px_10px_0px_rgba(0,0,0,0.07)]">
           <button
-            onClick={onClose}
+            onClick={() => {
+              setConfigData({
+                pdpTargetClass: '',
+                cfDesiredClass: '',
+                pdpTargetValue: '',
+                cfDesiredValue: '',
+                cfInstanceIndex: 0,
+                limeInstanceIndex: 0,
+                pdpFeatures: []
+              });
+              setShowFieldErrors(false);
+              onClose();
+            }}
             disabled={isGenerating}
             className={`px-6 py-2 rounded-lg ${tw.secondaryButton} disabled:opacity-50 disabled:cursor-not-allowed`}
           >
