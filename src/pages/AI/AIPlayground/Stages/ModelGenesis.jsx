@@ -557,7 +557,7 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
       const ensembleId = datasetState.ensembleId;
       const targetColumn = config.targetFeature;
 
-      const response = await fetch(`${hostnameAI}/genesis/genesis/validate-target-column`, {
+      const response = await fetch(`${hostnameAI}/genesis/validate-target-column`, {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -1376,7 +1376,7 @@ function ModelGenesis() {
         drop_columns: config.drop_columns || []
       };
 
-      const response = await fetch(`${hostnameAI}/genesis/genesis/genesis`, {
+      const response = await fetch(`${hostnameAI}/genesis/genesis`, {
         method: 'POST',
         headers: {
           'accept': 'application/json',
