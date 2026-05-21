@@ -387,7 +387,7 @@ export function ConnectionNode({ id, data }) {
         const policyIds = secureQueryResponse.matched_policy_ids || [];
         if (policyIds.length === 0) { setApiConnections([]); return; }
 
-        const response = await fetch(`${hostnameV1}/connections/list`, {
+        const response = await fetch(`${hostnameV1}/federation/connections/list`, {
           method: "POST",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
           body: JSON.stringify({ matched_policy_ids: policyIds }),
