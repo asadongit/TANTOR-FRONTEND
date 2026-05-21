@@ -1,27 +1,41 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Icon } from "@iconify/react";
 import { useAuth } from "../../../../context/AuthContext";
-import { X, ChevronDown, Search} from "lucide-react";
+import { X, ChevronDown, Search } from "lucide-react";
 import toast from "react-hot-toast";
 import { connectorConfig } from "./connectorConfig";
 import Modal from "../../cdc/components/Modal";
 import { useAllConnectionData } from "../../../../hooks/platform/connection";
 
-const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
-/*
- * Create or Edit a connection.
- */
+const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
+  /*
+   * Create or Edit a connection.
+   */
   const isEditMode = !!editConnectionData;
-  const { data: connections = [], isLoading: isConnectionsLoading, error: connectionsError, refetch: refetchConnections} = useAllConnectionData();
+  const {
+    data: connections = [],
+    isLoading: isConnectionsLoading,
+    error: connectionsError,
+    refetch: refetchConnections,
+  } = useAllConnectionData();
+
   const connectionNames = useMemo(() => {
-    return connections.map(connection => connection.connection_name.toLowerCase());
+    return connections.map((connection) =>
+      connection.connection_name.toLowerCase()
+    );
   }, [connections]);
-  const { token, hostnameV1, decodedToken, project } = useAuth();
-  const [activeModal, setActiveModal] = useState(isEditMode ? 'details' : 'selection');
-  const [selectedConnector, setSelectedConnector] = useState(isEditMode ? editConnectionData?.connection_type : null);
+
+  const { token, hostnameV1, decodedToken, project, hostnameV2 } = useAuth();
+  const [activeModal, setActiveModal] = useState(
+    isEditMode ? "details" : "selection"
+  );
+  const [selectedConnector, setSelectedConnector] = useState(
+    isEditMode ? editConnectionData?.connection_type : null
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [errors, setErrors] = useState({});
   const [touchedFields, setTouchedFields] = useState({});
+  const [fileObjects, setFileObjects] = useState({});
 
   const defaultFormData = {
     created_by: decodedToken.preferred_username,
@@ -49,67 +63,61 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
     extra_info: {
       role: "",
       warehouse: "",
-    }
+    },
   };
 
   const [formData, setFormData] = useState(defaultFormData);
+  const [isTestSuccessful, setIsTestSuccessful] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const regexValidName =
+    /^(?!_)(?!.*_$)[A-Za-z][A-Za-z0-9]*(_[A-Za-z0-9]+)*$/i;
 
   useEffect(() => {
     if (isEditMode && editConnectionData) {
       const extra_info = editConnectionData.extra_info || {};
-
       setFormData({
         ...defaultFormData,
         ...editConnectionData,
         extra_info: {
           ...defaultFormData.extra_info,
-          ...extra_info
-        }
+          ...extra_info,
+        },
       });
-
       setSelectedConnector(editConnectionData.connection_type);
     }
   }, [isEditMode, editConnectionData]);
 
-
-
-  const connectorCards = Object.keys(connectorConfig).map(connectorName => ({
+  const connectorCards = Object.keys(connectorConfig).map((connectorName) => ({
     title: connectorName,
-    icon: connectorConfig[connectorName].icon
+    icon: connectorConfig[connectorName].icon,
   }));
 
+  // ─── Helpers ────────────────────────────────────────────────────────────────
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-
-    setTouchedFields(prev => ({
-      ...prev,
-      [name]: true
-    }));
-
-    if (name.startsWith("extra_info.")) {
-      const key = name.split(".")[1];
-      setFormData(prev => ({
-        ...prev,
-        extra_info: {
-          ...prev.extra_info,
-          [key]: value,
-        }
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value,
-      }));
-    }
-
-    validateField(name, value);
+  const getConnectorFields = (connectorType) => {
+    if (!connectorType || !connectorConfig[connectorType]) return [];
+    return connectorConfig[connectorType].fields;
   };
 
-  const [isTestSuccessful, setIsTestSuccessful] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const regexValidName = /^(?!_)(?!.*_$)[A-Za-z][A-Za-z0-9]*(_[A-Za-z0-9]+)*$/i;
+  /**
+   * Returns true if a field should be shown based on its `conditionalOn` rule.
+   * Supports both single `value` and array `values`.
+   * Fields without a conditionalOn are always visible.
+   */
+  const isFieldVisible = (field) => {
+    if (!field.conditionalOn) return true;
+    const { field: condField, value: condValue, values: condValues } = field.conditionalOn;
+
+    const currentValue = condField.startsWith("extra_info.")
+      ? formData.extra_info?.[condField.split(".")[1]]
+      : formData[condField];
+
+    if (condValues) return condValues.includes(currentValue);
+    return currentValue === condValue;
+  };
+
+  // ─── Validation ─────────────────────────────────────────────────────────────
 
   const validateField = (name, value) => {
     let newErrors = { ...errors };
@@ -118,35 +126,40 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
       if (!value) {
         newErrors[name] = "Connection name is required";
       } else if (!regexValidName.test(value)) {
-        newErrors.connection_name = 'Connection names must start with a letter, end with a letter or digit, and contain only letters, numbers, and underscores. No leading or trailing underscores allowed.';
-      } else if (!isEditMode && connectionNames.includes(value.toLowerCase())) {
+        newErrors.connection_name =
+          "Connection names must start with a letter, end with a letter or digit, and contain only letters, numbers, and underscores. No leading or trailing underscores allowed.";
+      } else if (
+        !isEditMode &&
+        connectionNames.includes(value.toLowerCase())
+      ) {
         newErrors[name] = "Connection name already exists";
-      } else if (isEditMode &&
-                value.toLowerCase() !== editConnectionData.connection_name.toLowerCase() &&
-                connectionNames.includes(value.toLowerCase())) {
+      } else if (
+        isEditMode &&
+        value.toLowerCase() !==
+          editConnectionData.connection_name.toLowerCase() &&
+        connectionNames.includes(value.toLowerCase())
+      ) {
         newErrors[name] = "Connection name already exists";
       } else {
         delete newErrors[name];
       }
-    }
-    else if (name.startsWith("extra_info.")) {
-      const key = name.split(".")[1];
-      const field = getConnectorFields(selectedConnector).find(f => f.name === name);
-
-      if (field && field.required && !value) {
+    } else if (name.startsWith("extra_info.")) {
+      const field = getConnectorFields(selectedConnector).find(
+        (f) => f.name === name
+      );
+      if (field && field.required && isFieldVisible(field) && !value) {
         newErrors[name] = `${field.label} is required`;
       } else {
         delete newErrors[name];
       }
-    }
-    else if (name === "description" && !value) {
+    } else if (name === "description" && !value) {
       newErrors[name] = "Description is required";
     } else if (name === "pool_type" && !value) {
       newErrors[name] = "Behaviour is required";
-    }
-    else {
-      const field = getConnectorFields(selectedConnector).find(f => f.name === name);
-
+    } else {
+      const field = getConnectorFields(selectedConnector).find(
+        (f) => f.name === name
+      );
       if (field && field.required && !value) {
         newErrors[name] = `${field.label} is required`;
       } else {
@@ -162,18 +175,25 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
     let newErrors = {};
     let allTouched = {};
 
+    // connection_name
     if (!formData.connection_name) {
       newErrors.connection_name = "Connection name is required";
     } else if (!regexValidName.test(formData.connection_name)) {
-      newErrors.connection_name = 'Connection names must start with a letter, end with a letter or digit, and contain only letters, numbers, and underscores. No leading or trailing underscores allowed.';
-    } else if (!isEditMode && connectionNames.includes(formData.connection_name.toLowerCase())) {
+      newErrors.connection_name =
+        "Connection names must start with a letter, end with a letter or digit, and contain only letters, numbers, and underscores. No leading or trailing underscores allowed.";
+    } else if (
+      !isEditMode &&
+      connectionNames.includes(formData.connection_name.toLowerCase())
+    ) {
       newErrors.connection_name = "Connection name already exists";
-    } else if (isEditMode &&
-              formData.connection_name.toLowerCase() !== editConnectionData.connection_name.toLowerCase() &&
-              connectionNames.includes(formData.connection_name.toLowerCase())) {
+    } else if (
+      isEditMode &&
+      formData.connection_name.toLowerCase() !==
+        editConnectionData.connection_name.toLowerCase() &&
+      connectionNames.includes(formData.connection_name.toLowerCase())
+    ) {
       newErrors.connection_name = "Connection name already exists";
     }
-
     allTouched.connection_name = true;
 
     if (!formData.description) {
@@ -186,19 +206,20 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
       allTouched.pool_type = true;
     }
 
+    // Connector-specific fields — skip hidden conditional fields
     const connectorFields = getConnectorFields(selectedConnector);
+    connectorFields.forEach((field) => {
+      // Skip file fields in validation (they store filenames, not required for form submit)
+      if (field.type === "file") return;
 
-    connectorFields.forEach(field => {
-      if (field.required) {
+      if (field.required && isFieldVisible(field)) {
         let value;
-
         if (field.name.startsWith("extra_info.")) {
           const key = field.name.split(".")[1];
           value = formData.extra_info[key];
         } else {
           value = formData[field.name];
         }
-
         if (!value) {
           newErrors[field.name] = `${field.label} is required`;
           allTouched[field.name] = true;
@@ -207,26 +228,126 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
     });
 
     setErrors(newErrors);
-    setTouchedFields(prev => ({...prev, ...allTouched}));
-
+    setTouchedFields((prev) => ({ ...prev, ...allTouched }));
     return Object.keys(newErrors).length === 0;
   };
 
-  const filteredConnectors = connectorCards.filter(card =>
+  // ─── Input change handler ────────────────────────────────────────────────────
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+
+    setTouchedFields((prev) => ({ ...prev, [name]: true }));
+
+    if (name.startsWith("extra_info.")) {
+      const key = name.split(".")[1];
+
+      setFormData((prev) => {
+        const updatedExtraInfo = { ...prev.extra_info, [key]: value };
+
+        // When switching to "raw", remove schema registry URL & its errors/touched
+        if (key === "type" && value === "raw") {
+          delete updatedExtraInfo.schema_registery_url;
+
+          setErrors((prevErrors) => {
+            const {
+              "extra_info.schema_registery_url": _url,
+              ...rest
+            } = prevErrors;
+            return rest;
+          });
+          setTouchedFields((prevTouched) => {
+            const {
+              "extra_info.schema_registery_url": _url,
+              ...rest
+            } = prevTouched;
+            return rest;
+          });
+
+        }
+
+        // When switching security_protocol away from SSL/SASL_SSL, clear truststore fields
+        if (key === "security_protocol" && !["SSL", "SASL_SSL"].includes(value)) {
+          delete updatedExtraInfo.truststore_location;
+          delete updatedExtraInfo.truststore_password;
+          delete updatedExtraInfo.truststore_type;
+
+          setFileObjects((prev) => {
+            const { truststore_location, ...rest } = prev;
+            return rest;
+          });
+
+          setErrors((prevErrors) => {
+            const {
+              "extra_info.truststore_location": _l,
+              "extra_info.truststore_password": _tp,
+              "extra_info.truststore_type": _tt,
+              ...rest
+            } = prevErrors;
+            return rest;
+          });
+          setTouchedFields((prevTouched) => {
+            const {
+              "extra_info.truststore_location": _l,
+              "extra_info.truststore_password": _tp,
+              "extra_info.truststore_type": _tt,
+              ...rest
+            } = prevTouched;
+            return rest;
+          });
+        }
+
+        // When switching security_protocol to PLAINTEXT or SSL, clear SASL fields
+        if (key === "security_protocol" && ["PLAINTEXT", "SSL"].includes(value)) {
+          delete updatedExtraInfo.sasl_mechanism;
+
+          setErrors((prevErrors) => {
+            const {
+              "extra_info.sasl_mechanism": _m,
+              username: _u,
+              password: _p,
+              ...rest
+            } = prevErrors;
+            return rest;
+          });
+          setTouchedFields((prevTouched) => {
+            const {
+              "extra_info.sasl_mechanism": _m,
+              username: _u,
+              password: _p,
+              ...rest
+            } = prevTouched;
+            return rest;
+          });
+
+          return {
+            ...prev,
+            extra_info: updatedExtraInfo,
+            username: "",
+            password: "",
+          };
+        }
+
+        return { ...prev, extra_info: updatedExtraInfo };
+      });
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
+
+    validateField(name, value);
+  };
+
+  // ─── Modal navigation ────────────────────────────────────────────────────────
+
+  const filteredConnectors = connectorCards.filter((card) =>
     card.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const openModal = (modalName, data = null) => {
     setActiveModal(modalName);
-    if (data) {
-      setSelectedConnector(data);
-    }
-
+    if (data) setSelectedConnector(data);
     if (modalName === "details" && selectedConnector) {
-      setFormData(prev => ({
-        ...prev,
-        connection_type: selectedConnector
-      }));
+      setFormData((prev) => ({ ...prev, connection_type: selectedConnector }));
     }
   };
 
@@ -238,27 +359,16 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
 
   const handleCompleteClose = () => {
     closeInternalModal();
-
     if (closeLocalModal) {
       closeLocalModal("modal1");
-
-      if (isEditMode) {
-        closeLocalModal("modal2");
-      }
+      if (isEditMode) closeLocalModal("modal2");
     }
-
   };
 
-  const getConnectorFields = (connectorType) => {
-    if (!connectorType || !connectorConfig[connectorType]) {
-      return [];
-    }
+  // ─── API calls ───────────────────────────────────────────────────────────────
 
-    return connectorConfig[connectorType].fields;
-  };
   const testConnection = async () => {
     const isValid = validateForm();
-
     if (!isValid) {
       toast.error("Please fill all required fields correctly");
       return;
@@ -275,9 +385,7 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
       "table_count",
       "connection_id",
     ];
-    if (isEditMode) {
-      excludedKeysForTest.push("is_viewed");
-    }
+    if (isEditMode) excludedKeysForTest.push("is_viewed");
 
     const filteredFormData = Object.fromEntries(
       Object.entries(formData).filter(
@@ -304,7 +412,9 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
         toast.success("Connection test successful");
       } else {
         const errorData = await response.json();
-        toast.error(`Connection test failed: ${errorData.message || "Unknown error"}`);
+        toast.error(
+          `Connection test failed: ${errorData.message || "Unknown error"}`
+        );
       }
     } catch (error) {
       toast.error(`Test failed: ${error.message}`);
@@ -315,7 +425,6 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
 
   const saveConnection = async () => {
     const isValid = validateForm();
-
     if (!isValid) {
       toast.error("Please fill all required fields correctly");
       return;
@@ -326,48 +435,95 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
       return;
     }
 
-    const isDuplicate = !isEditMode && connectionNames.includes(formData.connection_name.toLowerCase());
-    const isNameChanged = isEditMode && formData.connection_name.toLowerCase() !== editConnectionData.connection_name.toLowerCase();
-    const isDuplicateOnEdit = isNameChanged && connectionNames.includes(formData.connection_name.toLowerCase());
+    const isDuplicate =
+      !isEditMode &&
+      connectionNames.includes(formData.connection_name.toLowerCase());
+    const isNameChanged =
+      isEditMode &&
+      formData.connection_name.toLowerCase() !==
+        editConnectionData.connection_name.toLowerCase();
+    const isDuplicateOnEdit =
+      isNameChanged &&
+      connectionNames.includes(formData.connection_name.toLowerCase());
 
     if (isDuplicate || isDuplicateOnEdit) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        connection_name: "Connection name already exists"
+        connection_name: "Connection name already exists",
       }));
-      setTouchedFields(prev => ({
-        ...prev,
-        connection_name: true
-      }));
+      setTouchedFields((prev) => ({ ...prev, connection_name: true }));
       toast.error("Connection name already exists");
       return;
     }
 
-    const excludedKeysForUpdate = [
-      "created_at", "updated_at", "is_deleted", "table_count", "connection_id",
+const excludedKeysForUpdate = [
+      "created_at",
+      "updated_at",
+      "is_deleted",
+      "table_count",
+      "connection_id",
     ];
-    if (isEditMode) {
-      excludedKeysForUpdate.push("is_viewed");
+    if (isEditMode) excludedKeysForUpdate.push("is_viewed");
+
+    let updatedFormData = { ...formData };
+
+    // ── Upload truststore file if present (Kafka SSL / SASL_SSL) ────────────
+    const truststoreFile = fileObjects["truststore_location"];
+    if (truststoreFile) {
+      const uploadPayload = new FormData();
+      uploadPayload.append("file", truststoreFile);
+      uploadPayload.append("connection_name", formData.connection_name);
+
+      setIsLoading(true);
+      try {
+        const uploadResponse = await fetch(`${hostnameV2}/upload-truststore`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: uploadPayload,
+        });
+
+        if (!uploadResponse.ok) {
+          const uploadError = await uploadResponse.json();
+          toast.error(
+            `Truststore upload failed: ${uploadError.message || "Unknown error"}`
+          );
+          setIsLoading(false);
+          return;
+        }
+
+        const { filename } = await uploadResponse.json();
+        // Overwrite the filename with the server-side path returned by the API
+        updatedFormData = {
+          ...updatedFormData,
+          extra_info: {
+            ...updatedFormData.extra_info,
+            truststore_location: filename,
+          },
+        };
+      } catch (uploadErr) {
+        toast.error(`Truststore upload failed: ${uploadErr.message}`);
+        setIsLoading(false);
+        return;
+      }
     }
 
     const filteredFormData = Object.fromEntries(
-      Object.entries(formData).filter(
-        ([key, value]) =>
-           !excludedKeysForUpdate.includes(key) && value !== null
+      Object.entries(updatedFormData).filter(
+        ([key, value]) => !excludedKeysForUpdate.includes(key) && value !== null
       )
     );
 
     setIsLoading(true);
-
     try {
       const endpoint = isEditMode
         ? `${hostnameV1}/connection-saves/${editConnectionData.connection_id}`
         : `${hostnameV1}/create-connection`;
-
       const method = isEditMode ? "PATCH" : "POST";
 
       const response = await fetch(endpoint, {
-        method: method,
+        method,
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -376,11 +532,11 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
       });
 
       if (response.ok) {
-        toast.success(isEditMode
-          ? "Connection updated successfully"
-          : "Connection created successfully"
+        toast.success(
+          isEditMode
+            ? "Connection updated successfully"
+            : "Connection created successfully"
         );
-
         if (!isEditMode) {
           setFormData(defaultFormData);
           setIsTestSuccessful(false);
@@ -391,17 +547,15 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
         refetchConnections();
       } else {
         const errorData = await response.json();
-
-        if (errorData.message?.toLowerCase().includes("already exists") ||
-            errorData.message?.toLowerCase().includes("duplicate")) {
-          setErrors(prev => ({
+        if (
+          errorData.message?.toLowerCase().includes("already exists") ||
+          errorData.message?.toLowerCase().includes("duplicate")
+        ) {
+          setErrors((prev) => ({
             ...prev,
-            connection_name: "Connection name already exists"
+            connection_name: "Connection name already exists",
           }));
-          setTouchedFields(prev => ({
-            ...prev,
-            connection_name: true
-          }));
+          setTouchedFields((prev) => ({ ...prev, connection_name: true }));
           toast.error("Connection name already exists");
         } else {
           toast.error(`Save failed: ${errorData.message || "Unknown error"}`);
@@ -414,9 +568,12 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
     }
   };
 
+  // ─── Render: Connector selection modal ──────────────────────────────────────
+
   const renderConnectorSelectionModal = () => (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl w-full max-w-5xl p-8">
+        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <Icon
@@ -439,6 +596,7 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
           Connect your data
         </label>
 
+        {/* Search */}
         <div className="relative max-w-md mb-4">
           <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
             <Search className="w-4 h-4 text-gray-500" />
@@ -457,6 +615,7 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
           {filteredConnectors.length !== 1 ? "s" : ""} Available
         </label>
 
+        {/* Grid */}
         <div
           className="overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#8e78b7] scrollbar-track-gray-100 p-2 mb-6"
           style={{ maxHeight: "calc(3 * (90px + 24px))" }}
@@ -466,10 +625,11 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
               <div
                 key={card.title}
                 className={`p-4 rounded-lg shadow-sm border flex items-center justify-center cursor-pointer transition-all duration-300 ease-in-out transform
-                    ${selectedConnector === card.title
+                  ${
+                    selectedConnector === card.title
                       ? "border-2 border-[#8e78b7] scale-105 bg-[#f3f0fa] shadow-md"
                       : "border-gray-200 hover:shadow-md hover:scale-105"
-                    }`}
+                  }`}
                 onClick={() => setSelectedConnector(card.title)}
               >
                 <img
@@ -482,27 +642,28 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
           </div>
         </div>
 
+        {/* Footer */}
         <div className="flex justify-end gap-3 mt-4">
           <button
-            onClick={()=>{
-                closeLocalModal('modal1');
-                isEditMode && closeLocalModal('modal2');
+            onClick={() => {
+              closeLocalModal("modal1");
+              isEditMode && closeLocalModal("modal2");
             }}
-           className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-[#8e78b7] hover:text-white transition-colors"
+            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-[#8e78b7] hover:text-white transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={() => {
               if (selectedConnector) {
-                setFormData(prev => ({
+                setFormData((prev) => ({
                   ...prev,
-                  connection_type: selectedConnector
+                  connection_type: selectedConnector,
                 }));
                 openModal("details");
               } else {
-                toast.error('Please select a connector first');
-                  }
+                toast.error("Please select a connector first");
+              }
             }}
             className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-gray-400 transition-colors"
           >
@@ -513,9 +674,117 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
     </div>
   );
 
+  // ─── Render: Field input ─────────────────────────────────────────────────────
+
+  const renderField = (field) => {
+    const fieldName = field.name;
+    const fieldValue = fieldName.startsWith("extra_info.")
+      ? formData.extra_info?.[fieldName.split(".")[1]] || ""
+      : formData[fieldName] || "";
+    const hasError = touchedFields[fieldName] && errors[fieldName];
+
+    const baseInputClass = `w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 ${
+      hasError
+        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+        : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
+    }`;
+
+    return (
+      <div key={fieldName}>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {field.label}
+          {field.required && <span className="text-red-500">*</span>}
+        </label>
+
+        {/* ── File field ── */}
+        {field.type === "file" ? (
+          <div>
+            <input
+              type="file"
+              name={fieldName}
+             // Replace the existing file field onChange handler
+            onChange={(e) => {
+              const file = e.target.files[0];
+              const fileName = file ? file.name : "";
+              const key = fieldName.split(".")[1];
+
+              // Store the actual File object separately
+              if (file) {
+                setFileObjects((prev) => ({ ...prev, [key]: file }));
+              } else {
+                setFileObjects((prev) => {
+                  const updated = { ...prev };
+                  delete updated[key];
+                  return updated;
+                });
+              }
+
+              setTouchedFields((prev) => ({ ...prev, [fieldName]: true }));
+              setFormData((prev) => ({
+                ...prev,
+                extra_info: { ...prev.extra_info, [key]: fileName },
+              }));
+              validateField(fieldName, fileName);
+            }}
+              className={`w-full p-2 border rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1
+                file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm
+                file:bg-[#f3f0fa] file:text-[#8e78b7] hover:file:bg-[#8e78b7] hover:file:text-white
+                file:cursor-pointer cursor-pointer transition-all
+                ${
+                  hasError
+                    ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                    : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
+                }`}
+            />
+          </div>
+        ) : field.type === "select" ? (
+          /* ── Select field ── */
+          <div className="relative">
+            <select
+              name={fieldName}
+              value={fieldValue}
+              onChange={handleInputChange}
+              className={`${baseInputClass} appearance-none bg-white`}
+            >
+              <option value="">Select {field.label}</option>
+              {field.options.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              className="absolute right-3 top-3 pointer-events-none text-gray-500"
+              size={18}
+            />
+          </div>
+        ) : (
+          /* ── Text / number / password field ── */
+          <input
+            type={field.type || "text"}
+            name={fieldName}
+            value={fieldValue}
+            onChange={handleInputChange}
+            placeholder={
+              field.placeholder || `Enter ${field.label.toLowerCase()}`
+            }
+            className={baseInputClass}
+          />
+        )}
+
+        {hasError && (
+          <p className="text-red-500 text-xs mt-1">{errors[fieldName]}</p>
+        )}
+      </div>
+    );
+  };
+
+  // ─── Render: Connection details modal ───────────────────────────────────────
+
   const renderConnectionDetailsModal = () => (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl w-full max-w-5xl p-8 max-h-[90vh] overflow-y-auto">
+        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <Icon
@@ -534,35 +803,42 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
           </button>
         </div>
 
+        {/* Connector icon */}
         <label className="block text-md text-[#8e78b7] mb-1.5 font-bold">
           Connector
         </label>
-
         <div
           onClick={() => !isEditMode && openModal("selection")}
-          title={isEditMode ? "Connector cannot be changed" : "Click to change"}
-          className={`bg-white rounded-lg shadow-sm border-gray-200 border
-              w-[196px] h-[46px] flex items-center overflow-hidden ${
-                isEditMode
-                  ? "cursor-not-allowed"
-                  : "hover:shadow-md transition-all cursor-pointer"
-              }`}
+          title={
+            isEditMode
+              ? "Connector cannot be changed"
+              : "Click to change"
+          }
+          className={`bg-white rounded-lg shadow-sm border-gray-200 border w-[196px] h-[46px] flex items-center overflow-hidden ${
+            isEditMode
+              ? "cursor-not-allowed"
+              : "hover:shadow-md transition-all cursor-pointer"
+          }`}
         >
           <img
-            src={connectorCards.find(card => card.title === selectedConnector)?.icon}
+            src={
+              connectorCards.find((card) => card.title === selectedConnector)
+                ?.icon
+            }
             className="w-[90%] h-[80%] object-contain mx-auto p-1"
             alt={`${selectedConnector} logo`}
           />
         </div>
 
+        {/* Details section */}
         <label className="block text-md text-[#8e78b7] mb-1.5 font-bold mt-5">
           Details
         </label>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+          {/* Connection Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Name
-              <span className="text-red-500">*</span>
+              Name <span className="text-red-500">*</span>
             </label>
             <input
               name="connection_name"
@@ -577,13 +853,16 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
               }`}
             />
             {touchedFields.connection_name && errors.connection_name && (
-              <p className="text-red-500 text-xs mt-1">{errors.connection_name}</p>
+              <p className="text-red-500 text-xs mt-1">
+                {errors.connection_name}
+              </p>
             )}
           </div>
+
+          {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
-              <span className="text-red-500">*</span>
+              Description <span className="text-red-500">*</span>
             </label>
             <input
               name="description"
@@ -601,11 +880,12 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
               <p className="text-red-500 text-xs mt-1">{errors.description}</p>
             )}
           </div>
+
+          {/* Behaviour */}
           <div>
             <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Behaviour
-                <span className="text-red-500">*</span>
+                Behaviour <span className="text-red-500">*</span>
               </label>
               <select
                 name="pool_type"
@@ -633,93 +913,77 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
           </div>
         </div>
 
+        {/* Credentials section */}
         <label className="block text-md text-[#8e78b7] mb-1.5 font-bold mt-5">
           Credentials
         </label>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-          {getConnectorFields(selectedConnector).map((field) => {
-            const fieldName = field.name;
-            const fieldValue = fieldName.includes("extra_info.")
-              ? formData.extra_info?.[fieldName.split(".")[1]] || ""
-              : formData[fieldName] || "";
-            const hasError = touchedFields[fieldName] && errors[fieldName];
-
-            return (
-              <div key={fieldName}>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {field.label}
-                  {field.required && <span className="text-red-500">*</span>}
-                </label>
-                <input
-                  type={field.type || "text"}
-                  name={fieldName}
-                  value={fieldValue}
-                  onChange={handleInputChange}
-                  placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
-                  className={`w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 ${
-                    hasError
-                      ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                      : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
-                  }`}
-                  required={field.required}
-                />
-                {hasError && (
-                  <p className="text-red-500 text-xs mt-1">{errors[fieldName]}</p>
-                )}
-              </div>
-            );
-          })}
+          {getConnectorFields(selectedConnector)
+            .filter((field) => isFieldVisible(field))
+            .map((field) => renderField(field))}
         </div>
 
+        {/* Action buttons */}
         <div className="flex justify-start gap-4 mt-8">
-            <button
-                onClick={testConnection}
-                disabled={isTesting}
-                className={`px-4 py-2 rounded-lg transition-colors flex items-center justify-center ${
-                  isTesting
-                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    : "bg-gray-100 hover:bg-[#8e78b7] hover:text-white text-gray-800"
-                }`}
-              >
-                {isTesting ? (
-                  <div className="flex items-center gap-2">
-                    <span className="h-4 w-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></span>
-                    Testing...
-                  </div>
-                ) : (
-                  "Test Connection"
-                )}
+          <button
+            onClick={testConnection}
+            disabled={isTesting}
+            className={`px-4 py-2 rounded-lg transition-colors flex items-center justify-center ${
+              isTesting
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-gray-100 hover:bg-[#8e78b7] hover:text-white text-gray-800"
+            }`}
+          >
+            {isTesting ? (
+              <div className="flex items-center gap-2">
+                <span className="h-4 w-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
+                Testing...
+              </div>
+            ) : (
+              "Test Connection"
+            )}
           </button>
 
           <button
-  onClick={saveConnection}
-  disabled={isLoading}
-  className={`px-4 py-2 rounded-lg transition-colors flex items-center justify-center ${
-    !isTestSuccessful
-      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-      : "bg-[#8e78b7] hover:bg-gray-400 text-white"
-  }`}
->
-  {isLoading ? (
-    <span className="flex items-center gap-2">
-      <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-      Saving...
-    </span>
-  ) : (
-    isEditMode ? "Update Connection" : "Create and Save"
-  )}
-</button>
-
+            onClick={saveConnection}
+            disabled={isLoading}
+            className={`px-4 py-2 rounded-lg transition-colors flex items-center justify-center ${
+              !isTestSuccessful
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-[#8e78b7] hover:bg-gray-400 text-white"
+            }`}
+          >
+            {isLoading ? (
+              <span className="flex items-center gap-2">
+                <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Saving...
+              </span>
+            ) : isEditMode ? (
+              "Update Connection"
+            ) : (
+              "Create and Save"
+            )}
+          </button>
         </div>
       </div>
     </div>
   );
 
-return (
+  // ─── Root render ─────────────────────────────────────────────────────────────
+
+  return (
     <>
       {activeModal === "selection" && renderConnectorSelectionModal()}
-      {activeModal === "details"  && renderConnectionDetailsModal()}
-       <Modal  isOpen={activeModal === "success"}  onClose={handleCompleteClose}  type={"success"} title={"Congratulations!"} message={"You have successfully created a connection."} confirmText={"Alright"} onConfirm={handleCompleteClose} />
+      {activeModal === "details" && renderConnectionDetailsModal()}
+      <Modal
+        isOpen={activeModal === "success"}
+        onClose={handleCompleteClose}
+        type={"success"}
+        title={"Congratulations!"}
+        message={"You have successfully created a connection."}
+        confirmText={"Alright"}
+        onConfirm={handleCompleteClose}
+      />
     </>
   );
 };

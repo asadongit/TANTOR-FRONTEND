@@ -148,7 +148,7 @@ export function ConnectionNode({ id, onSave }) {
         return;
       }
 
-      const response = await fetch(`${hostnameV1}/connections/list`, {
+      const response = await fetch(`${hostnameV1}/federation/connections/list`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

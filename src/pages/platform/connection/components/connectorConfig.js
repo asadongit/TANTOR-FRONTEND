@@ -145,58 +145,92 @@ export const connectorConfig = {
       ],
       icon: snowflake
     },
-   kafka: {
-    fields: [
-      {
-        name: "host_address",
-        label: "Host",
-        required: true,
+  kafka: {
+  fields: [
+    { name: "host_address", label: "Host", required: true },
+    { name: "port_number", label: "Port", type: "number", required: true },
+    {
+      name: "extra_info.security_protocol",
+      label: "Security Protocol",
+      type: "select",
+      options: ["PLAINTEXT", "SSL", "SASL_PLAINTEXT", "SASL_SSL"],
+      required: true,
+    },
+    {
+      name: "extra_info.truststore_location",
+      label: "Truststore Location",
+      type: "file",
+      required: true,
+      conditionalOn: {
+        field: "extra_info.security_protocol",
+        values: ["SSL", "SASL_SSL"],
       },
-      {
-        name: "port_number",
-        label: "Port",
-        type: "number",
-        required: true,
+    },
+    {
+      name: "extra_info.truststore_password",
+      label: "Truststore Password",
+      type: "password",
+      required: true,
+      conditionalOn: {
+        field: "extra_info.security_protocol",
+        values: ["SSL", "SASL_SSL"],
       },
-      {
-        name: "extra_info.schema_registery_host",
-        label: "Schema Registry Host",
-        required: true,
+    },
+    {
+      name: "extra_info.truststore_type",
+      label: "Truststore Type",
+      required: true,
+      conditionalOn: {
+        field: "extra_info.security_protocol",
+        values: ["SSL", "SASL_SSL"],
       },
-      {
-        name: "extra_info.schema_registery_port",
-        label: "Schema Registry Port",
-        type: "number",
-        required: true,
+    },
+    {
+      name: "extra_info.sasl_mechanism",
+      label: "SASL Mechanism",
+      type: "select",
+      options: ["PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512"],
+      required: true,
+      conditionalOn: {
+        field: "extra_info.security_protocol",
+        values: ["SASL_PLAINTEXT", "SASL_SSL"],
       },
-      {
-        name: "extra_info.security_protocol",
-        label: "Security Protocol",
-        type: "select",
-        options: ["PLAINTEXT", "SSL", "SASL_PLAINTEXT", "SASL_SSL"],
-        required: true,
+    },
+    {
+      name: "username",
+      label: "SASL Username",
+      required: true,
+      conditionalOn: {
+        field: "extra_info.security_protocol",
+        values: ["SASL_PLAINTEXT", "SASL_SSL"],
       },
-      {
-        name: "extra_info.sasl_mechanism",
-        label: "SASL Mechanism",
-        type: "select",
-        options: ["PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512", "GSSAPI"],
-        required: false,
+    },
+    {
+      name: "password",
+      label: "SASL Password",
+      type: "password",
+      required: true,
+      conditionalOn: {
+        field: "extra_info.security_protocol",
+        values: ["SASL_PLAINTEXT", "SASL_SSL"],
       },
-      {
-        name: "username",
-        label: "SASL Username",
-        required: false,
-      },
-      {
-        name: "password",
-        label: "SASL Password",
-        type: "password",
-        required: false,
-      },
-    ],
-    icon: kafka
-  },
+    },
+     {
+      name: "extra_info.type",
+      label: "Type",
+      type: "select",
+      options: ["avro", "raw"],
+      required: true,
+    },
+    {
+      name: "extra_info.schema_registery_url",
+      label: "Schema Registry URL",
+      required: true,
+      conditionalOn: { field: "extra_info.type", value: "avro" },
+    },
+  ],
+  icon: kafka
+},
     mongodb: {
       fields: [
         { name: "url", label: "Connection String", required: true },
