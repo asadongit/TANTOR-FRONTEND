@@ -93,18 +93,12 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     icon: connectorConfig[connectorName].icon,
   }));
 
-  // ─── Helpers ────────────────────────────────────────────────────────────────
-
   const getConnectorFields = (connectorType) => {
     if (!connectorType || !connectorConfig[connectorType]) return [];
     return connectorConfig[connectorType].fields;
   };
 
-  /**
-   * Returns true if a field should be shown based on its `conditionalOn` rule.
-   * Supports both single `value` and array `values`.
-   * Fields without a conditionalOn are always visible.
-   */
+
   const isFieldVisible = (field) => {
     if (!field.conditionalOn) return true;
     const { field: condField, value: condValue, values: condValues } = field.conditionalOn;
@@ -117,7 +111,82 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     return currentValue === condValue;
   };
 
-  // ─── Validation ─────────────────────────────────────────────────────────────
+  const getTruststoreFile = () => fileObjects["truststore_location"] || null;
+
+  const buildTestPayload = (data) => {
+    const excludedKeys = [
+      "created_by",
+      "pool_type",
+      "status",
+      "project",
+      "created_at",
+      "updated_at",
+      "is_deleted",
+      "table_count",
+      "connection_id",
+    ];
+    if (isEditMode) excludedKeys.push("is_viewed");
+
+    const filteredData = Object.fromEntries(
+      Object.entries(data).filter(
+        ([key, value]) =>
+          !excludedKeys.includes(key) &&
+          value !== null &&
+          value !== undefined
+      )
+    );
+
+    const truststoreFile = getTruststoreFile();
+    if (truststoreFile && filteredData.extra_info) {
+      filteredData.extra_info = {
+        ...filteredData.extra_info,
+        truststore_location: `${data.connection_name}_${truststoreFile.name}`,
+      };
+    }
+
+    const payload = new FormData();
+    payload.append("connection_info", JSON.stringify(filteredData));
+    if (truststoreFile) {
+      payload.append("truststore_file", truststoreFile);
+    }
+    return payload;
+  };
+
+  const buildSavePayload = (data) => {
+    const excludedKeys = [
+      "created_at",
+      "updated_at",
+      "is_deleted",
+      "table_count",
+      "connection_id",
+    ];
+    if (isEditMode) excludedKeys.push("is_viewed");
+
+    let filteredData = Object.fromEntries(
+      Object.entries(data).filter(
+        ([key, value]) => !excludedKeys.includes(key) && value !== null
+      )
+    );
+
+    const truststoreFile = getTruststoreFile();
+    if (truststoreFile && filteredData.extra_info) {
+      filteredData = {
+        ...filteredData,
+        extra_info: {
+          ...filteredData.extra_info,
+          truststore_location: `${data.connection_name}_${truststoreFile.name}`,
+        },
+      };
+    }
+
+    const payload = new FormData();
+    payload.append("connection_json", JSON.stringify(filteredData));
+    if (truststoreFile) {
+      payload.append("truststore_file", truststoreFile);
+    }
+    return payload;
+  };
+
 
   const validateField = (name, value) => {
     let newErrors = { ...errors };
@@ -136,7 +205,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       } else if (
         isEditMode &&
         value.toLowerCase() !==
-          editConnectionData.connection_name.toLowerCase() &&
+        editConnectionData.connection_name.toLowerCase() &&
         connectionNames.includes(value.toLowerCase())
       ) {
         newErrors[name] = "Connection name already exists";
@@ -189,7 +258,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     } else if (
       isEditMode &&
       formData.connection_name.toLowerCase() !==
-        editConnectionData.connection_name.toLowerCase() &&
+      editConnectionData.connection_name.toLowerCase() &&
       connectionNames.includes(formData.connection_name.toLowerCase())
     ) {
       newErrors.connection_name = "Connection name already exists";
@@ -209,7 +278,6 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     // Connector-specific fields — skip hidden conditional fields
     const connectorFields = getConnectorFields(selectedConnector);
     connectorFields.forEach((field) => {
-      // Skip file fields in validation (they store filenames, not required for form submit)
       if (field.type === "file") return;
 
       if (field.required && isFieldVisible(field)) {
@@ -232,11 +300,11 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // ─── Input change handler ────────────────────────────────────────────────────
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
+    setIsTestSuccessful(false);
     setTouchedFields((prev) => ({ ...prev, [name]: true }));
 
     if (name.startsWith("extra_info.")) {
@@ -245,28 +313,19 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       setFormData((prev) => {
         const updatedExtraInfo = { ...prev.extra_info, [key]: value };
 
-        // When switching to "raw", remove schema registry URL & its errors/touched
         if (key === "type" && value === "raw") {
           delete updatedExtraInfo.schema_registery_url;
 
           setErrors((prevErrors) => {
-            const {
-              "extra_info.schema_registery_url": _url,
-              ...rest
-            } = prevErrors;
+            const { "extra_info.schema_registery_url": _url, ...rest } = prevErrors;
             return rest;
           });
           setTouchedFields((prevTouched) => {
-            const {
-              "extra_info.schema_registery_url": _url,
-              ...rest
-            } = prevTouched;
+            const { "extra_info.schema_registery_url": _url, ...rest } = prevTouched;
             return rest;
           });
-
         }
 
-        // When switching security_protocol away from SSL/SASL_SSL, clear truststore fields
         if (key === "security_protocol" && !["SSL", "SASL_SSL"].includes(value)) {
           delete updatedExtraInfo.truststore_location;
           delete updatedExtraInfo.truststore_password;
@@ -297,7 +356,6 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
           });
         }
 
-        // When switching security_protocol to PLAINTEXT or SSL, clear SASL fields
         if (key === "security_protocol" && ["PLAINTEXT", "SSL"].includes(value)) {
           delete updatedExtraInfo.sasl_mechanism;
 
@@ -374,37 +432,16 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       return;
     }
 
-    const excludedKeysForTest = [
-      "created_by",
-      "pool_type",
-      "status",
-      "project",
-      "created_at",
-      "updated_at",
-      "is_deleted",
-      "table_count",
-      "connection_id",
-    ];
-    if (isEditMode) excludedKeysForTest.push("is_viewed");
-
-    const filteredFormData = Object.fromEntries(
-      Object.entries(formData).filter(
-        ([key, value]) =>
-          !excludedKeysForTest.includes(key) &&
-          value !== null &&
-          value !== undefined
-      )
-    );
+    const payload = buildTestPayload(formData);
 
     setIsTesting(true);
     try {
       const response = await fetch(`${hostnameV1}/test-connection`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(filteredFormData),
+        body: payload,
       });
 
       if (response.ok) {
@@ -412,9 +449,15 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
         toast.success("Connection test successful");
       } else {
         const errorData = await response.json();
-        toast.error(
-          `Connection test failed: ${errorData.message || "Unknown error"}`
-        );
+        const errorMsg = errorData.detail || errorData.message || "Unknown error";
+        toast.error(errorMsg, {
+          duration: 6000,
+          style: {
+            maxWidth: "480px",
+            wordBreak: "break-word",
+            whiteSpace: "pre-wrap",
+          },
+        });
       }
     } catch (error) {
       toast.error(`Test failed: ${error.message}`);
@@ -441,7 +484,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     const isNameChanged =
       isEditMode &&
       formData.connection_name.toLowerCase() !==
-        editConnectionData.connection_name.toLowerCase();
+      editConnectionData.connection_name.toLowerCase();
     const isDuplicateOnEdit =
       isNameChanged &&
       connectionNames.includes(formData.connection_name.toLowerCase());
@@ -456,64 +499,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       return;
     }
 
-const excludedKeysForUpdate = [
-      "created_at",
-      "updated_at",
-      "is_deleted",
-      "table_count",
-      "connection_id",
-    ];
-    if (isEditMode) excludedKeysForUpdate.push("is_viewed");
-
-    let updatedFormData = { ...formData };
-
-    // ── Upload truststore file if present (Kafka SSL / SASL_SSL) ────────────
-    const truststoreFile = fileObjects["truststore_location"];
-    if (truststoreFile) {
-      const uploadPayload = new FormData();
-      uploadPayload.append("file", truststoreFile);
-      uploadPayload.append("connection_name", formData.connection_name);
-
-      setIsLoading(true);
-      try {
-        const uploadResponse = await fetch(`${hostnameV2}/upload-truststore`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: uploadPayload,
-        });
-
-        if (!uploadResponse.ok) {
-          const uploadError = await uploadResponse.json();
-          toast.error(
-            `Truststore upload failed: ${uploadError.message || "Unknown error"}`
-          );
-          setIsLoading(false);
-          return;
-        }
-
-        const { filename } = await uploadResponse.json();
-        // Overwrite the filename with the server-side path returned by the API
-        updatedFormData = {
-          ...updatedFormData,
-          extra_info: {
-            ...updatedFormData.extra_info,
-            truststore_location: filename,
-          },
-        };
-      } catch (uploadErr) {
-        toast.error(`Truststore upload failed: ${uploadErr.message}`);
-        setIsLoading(false);
-        return;
-      }
-    }
-
-    const filteredFormData = Object.fromEntries(
-      Object.entries(updatedFormData).filter(
-        ([key, value]) => !excludedKeysForUpdate.includes(key) && value !== null
-      )
-    );
+    const payload = buildSavePayload(formData);
 
     setIsLoading(true);
     try {
@@ -525,10 +511,9 @@ const excludedKeysForUpdate = [
       const response = await fetch(endpoint, {
         method,
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(filteredFormData),
+        body: payload,
       });
 
       if (response.ok) {
@@ -539,6 +524,7 @@ const excludedKeysForUpdate = [
         );
         if (!isEditMode) {
           setFormData(defaultFormData);
+          setFileObjects({});
           setIsTestSuccessful(false);
           setErrors({});
           setTouchedFields({});
@@ -625,10 +611,9 @@ const excludedKeysForUpdate = [
               <div
                 key={card.title}
                 className={`p-4 rounded-lg shadow-sm border flex items-center justify-center cursor-pointer transition-all duration-300 ease-in-out transform
-                  ${
-                    selectedConnector === card.title
-                      ? "border-2 border-[#8e78b7] scale-105 bg-[#f3f0fa] shadow-md"
-                      : "border-gray-200 hover:shadow-md hover:scale-105"
+                  ${selectedConnector === card.title
+                    ? "border-2 border-[#8e78b7] scale-105 bg-[#f3f0fa] shadow-md"
+                    : "border-gray-200 hover:shadow-md hover:scale-105"
                   }`}
                 onClick={() => setSelectedConnector(card.title)}
               >
@@ -683,11 +668,10 @@ const excludedKeysForUpdate = [
       : formData[fieldName] || "";
     const hasError = touchedFields[fieldName] && errors[fieldName];
 
-    const baseInputClass = `w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 ${
-      hasError
-        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-        : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
-    }`;
+    const baseInputClass = `w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 ${hasError
+      ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+      : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
+      }`;
 
     return (
       <div key={fieldName}>
@@ -702,38 +686,74 @@ const excludedKeysForUpdate = [
             <input
               type="file"
               name={fieldName}
-             // Replace the existing file field onChange handler
-            onChange={(e) => {
-              const file = e.target.files[0];
-              const fileName = file ? file.name : "";
-              const key = fieldName.split(".")[1];
+              accept=".p12"
+              onChange={(e) => {
+                const file = e.target.files[0];
+                const key = fieldName.split(".")[1];
 
-              // Store the actual File object separately
-              if (file) {
-                setFileObjects((prev) => ({ ...prev, [key]: file }));
-              } else {
-                setFileObjects((prev) => {
-                  const updated = { ...prev };
-                  delete updated[key];
-                  return updated;
-                });
-              }
+                setIsTestSuccessful(false);
 
-              setTouchedFields((prev) => ({ ...prev, [fieldName]: true }));
-              setFormData((prev) => ({
-                ...prev,
-                extra_info: { ...prev.extra_info, [key]: fileName },
-              }));
-              validateField(fieldName, fileName);
-            }}
+                // Validate only .p12 files
+                if (file && !file.name.toLowerCase().endsWith(".p12")) {
+                  toast.error("Only .p12 format is allowed");
+
+                  // Reset input
+                  e.target.value = "";
+
+                  setFileObjects((prev) => {
+                    const updated = { ...prev };
+                    delete updated[key];
+                    return updated;
+                  });
+
+                  setFormData((prev) => ({
+                    ...prev,
+                    extra_info: {
+                      ...prev.extra_info,
+                      [key]: "",
+                    },
+                  }));
+
+                  return;
+                }
+
+                if (file) {
+                  setFileObjects((prev) => ({ ...prev, [key]: file }));
+
+                  const displayName = `${formData.connection_name}_${file.name}`;
+                  setFormData((prev) => ({
+                    ...prev,
+                    extra_info: {
+                      ...prev.extra_info,
+                      [key]: displayName,
+                    },
+                  }));
+                } else {
+                  setFileObjects((prev) => {
+                    const updated = { ...prev };
+                    delete updated[key];
+                    return updated;
+                  });
+
+                  setFormData((prev) => ({
+                    ...prev,
+                    extra_info: {
+                      ...prev.extra_info,
+                      [key]: "",
+                    },
+                  }));
+                }
+
+                setTouchedFields((prev) => ({ ...prev, [fieldName]: true }));
+                validateField(fieldName, file ? file.name : "");
+              }}
               className={`w-full p-2 border rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1
-                file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm
-                file:bg-[#f3f0fa] file:text-[#8e78b7] hover:file:bg-[#8e78b7] hover:file:text-white
-                file:cursor-pointer cursor-pointer transition-all
-                ${
-                  hasError
-                    ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                    : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
+    file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm
+    file:bg-[#f3f0fa] file:text-[#8e78b7] hover:file:bg-[#8e78b7] hover:file:text-white
+    file:cursor-pointer cursor-pointer transition-all
+    ${hasError
+                  ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
                 }`}
             />
           </div>
@@ -814,11 +834,10 @@ const excludedKeysForUpdate = [
               ? "Connector cannot be changed"
               : "Click to change"
           }
-          className={`bg-white rounded-lg shadow-sm border-gray-200 border w-[196px] h-[46px] flex items-center overflow-hidden ${
-            isEditMode
-              ? "cursor-not-allowed"
-              : "hover:shadow-md transition-all cursor-pointer"
-          }`}
+          className={`bg-white rounded-lg shadow-sm border-gray-200 border w-[196px] h-[46px] flex items-center overflow-hidden ${isEditMode
+            ? "cursor-not-allowed"
+            : "hover:shadow-md transition-all cursor-pointer"
+            }`}
         >
           <img
             src={
@@ -846,11 +865,10 @@ const excludedKeysForUpdate = [
               onChange={handleInputChange}
               type="text"
               placeholder="Connection name"
-              className={`w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 ${
-                touchedFields.connection_name && errors.connection_name
-                  ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                  : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
-              }`}
+              className={`w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 ${touchedFields.connection_name && errors.connection_name
+                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
+                }`}
             />
             {touchedFields.connection_name && errors.connection_name && (
               <p className="text-red-500 text-xs mt-1">
@@ -870,11 +888,10 @@ const excludedKeysForUpdate = [
               onChange={handleInputChange}
               type="text"
               placeholder="Short description"
-              className={`w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 ${
-                touchedFields.description && errors.description
-                  ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                  : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
-              }`}
+              className={`w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 ${touchedFields.description && errors.description
+                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
+                }`}
             />
             {touchedFields.description && errors.description && (
               <p className="text-red-500 text-xs mt-1">{errors.description}</p>
@@ -891,11 +908,10 @@ const excludedKeysForUpdate = [
                 name="pool_type"
                 value={formData.pool_type || ""}
                 onChange={handleInputChange}
-                className={`w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 appearance-none bg-white ${
-                  touchedFields.pool_type && errors.pool_type
-                    ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                    : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
-                }`}
+                className={`w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 appearance-none bg-white ${touchedFields.pool_type && errors.pool_type
+                  ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
+                  }`}
               >
                 <option value="">Select behaviour</option>
                 <option value="source">Source</option>
@@ -928,11 +944,10 @@ const excludedKeysForUpdate = [
           <button
             onClick={testConnection}
             disabled={isTesting}
-            className={`px-4 py-2 rounded-lg transition-colors flex items-center justify-center ${
-              isTesting
-                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : "bg-gray-100 hover:bg-[#8e78b7] hover:text-white text-gray-800"
-            }`}
+            className={`px-4 py-2 rounded-lg transition-colors flex items-center justify-center ${isTesting
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-gray-100 hover:bg-[#8e78b7] hover:text-white text-gray-800"
+              }`}
           >
             {isTesting ? (
               <div className="flex items-center gap-2">
@@ -947,11 +962,10 @@ const excludedKeysForUpdate = [
           <button
             onClick={saveConnection}
             disabled={isLoading}
-            className={`px-4 py-2 rounded-lg transition-colors flex items-center justify-center ${
-              !isTestSuccessful
-                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : "bg-[#8e78b7] hover:bg-gray-400 text-white"
-            }`}
+            className={`px-4 py-2 rounded-lg transition-colors flex items-center justify-center ${!isTestSuccessful
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-[#8e78b7] hover:bg-gray-400 text-white"
+              }`}
           >
             {isLoading ? (
               <span className="flex items-center gap-2">
