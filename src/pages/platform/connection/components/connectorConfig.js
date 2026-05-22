@@ -158,7 +158,7 @@ export const connectorConfig = {
     },
     {
       name: "extra_info.truststore_location",
-      label: "Truststore Location",
+      label: "Truststore File",
       type: "file",
       required: true,
       conditionalOn: {
@@ -179,6 +179,8 @@ export const connectorConfig = {
     {
       name: "extra_info.truststore_type",
       label: "Truststore Type",
+      type: "select",
+      options: ["PKCS12"],
       required: true,
       conditionalOn: {
         field: "extra_info.security_protocol",
