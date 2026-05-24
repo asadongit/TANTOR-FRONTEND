@@ -212,15 +212,6 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       } else {
         delete newErrors[name];
       }
-    } else if (name.startsWith("extra_info.")) {
-      const field = getConnectorFields(selectedConnector).find(
-        (f) => f.name === name
-      );
-      if (field && field.required && isFieldVisible(field) && !value) {
-        newErrors[name] = `${field.label} is required`;
-      } else {
-        delete newErrors[name];
-      }
     } else if (name === "description" && !value) {
       newErrors[name] = "Description is required";
     } else if (name === "pool_type" && !value) {
@@ -229,10 +220,19 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       const field = getConnectorFields(selectedConnector).find(
         (f) => f.name === name
       );
-      if (field && field.required && !value) {
-        newErrors[name] = `${field.label} is required`;
-      } else {
-        delete newErrors[name];
+      if (field) {
+        if (field.type === "file") {
+          const key = name.split(".")[1];
+          if (field.required && isFieldVisible(field) && !fileObjects[key] && !value) {
+            newErrors[name] = `${field.label} is required`;
+          } else {
+            delete newErrors[name];
+          }
+        } else if (field.required && isFieldVisible(field) && !value) {
+          newErrors[name] = `${field.label} is required`;
+        } else {
+          delete newErrors[name];
+        }
       }
     }
 
@@ -278,7 +278,16 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     // Connector-specific fields — skip hidden conditional fields
     const connectorFields = getConnectorFields(selectedConnector);
     connectorFields.forEach((field) => {
-      if (field.type === "file") return;
+      if (field.type === "file") {
+        if (field.required && isFieldVisible(field)) {
+          const key = field.name.split(".")[1];
+          if (!fileObjects[key]) {
+            newErrors[field.name] = `${field.label} is required`;
+            allTouched[field.name] = true;
+          }
+        }
+        return;
+      }
 
       if (field.required && isFieldVisible(field)) {
         let value;
@@ -299,7 +308,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     setTouchedFields((prev) => ({ ...prev, ...allTouched }));
     return Object.keys(newErrors).length === 0;
   };
-
+  
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -714,6 +723,12 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
                     },
                   }));
 
+                  setTouchedFields((prev) => ({ ...prev, [fieldName]: true }));
+                  setErrors((prev) => ({
+                    ...prev,
+                    [fieldName]: field.required ? `${field.label} is required` : undefined,
+                  }));
+
                   return;
                 }
 
@@ -728,6 +743,12 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
                       [key]: displayName,
                     },
                   }));
+
+                  setErrors((prev) => {
+                    const updated = { ...prev };
+                    delete updated[fieldName];
+                    return updated;
+                  });
                 } else {
                   setFileObjects((prev) => {
                     const updated = { ...prev };
@@ -742,6 +763,13 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
                       [key]: "",
                     },
                   }));
+
+                  if (field.required) {
+                    setErrors((prev) => ({
+                      ...prev,
+                      [fieldName]: `${field.label} is required`,
+                    }));
+                  }
                 }
 
                 setTouchedFields((prev) => ({ ...prev, [fieldName]: true }));
