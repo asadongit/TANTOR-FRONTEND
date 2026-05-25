@@ -85,6 +85,8 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
         },
       });
       setSelectedConnector(editConnectionData.connection_type);
+      setErrors({});
+      setTouchedFields({});
     }
   }, [isEditMode, editConnectionData]);
 
@@ -223,7 +225,8 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       if (field) {
         if (field.type === "file") {
           const key = name.split(".")[1];
-          if (field.required && isFieldVisible(field) && !fileObjects[key] && !value) {
+          const existingValue = formData.extra_info?.[key];
+          if (field.required && isFieldVisible(field) && !fileObjects[key] && !existingValue) {
             newErrors[name] = `${field.label} is required`;
           } else {
             delete newErrors[name];
@@ -281,7 +284,8 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       if (field.type === "file") {
         if (field.required && isFieldVisible(field)) {
           const key = field.name.split(".")[1];
-          if (!fileObjects[key]) {
+          const existingValue = formData.extra_info?.[key];
+          if (!fileObjects[key] && !existingValue) {
             newErrors[field.name] = `${field.label} is required`;
             allTouched[field.name] = true;
           }
@@ -692,98 +696,130 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
         {/* ── File field ── */}
         {field.type === "file" ? (
           <div>
-            <input
-              type="file"
-              name={fieldName}
-              accept=".p12"
-              onChange={(e) => {
-                const file = e.target.files[0];
-                const key = fieldName.split(".")[1];
+            {(() => {
+              const key = fieldName.split(".")[1];
+              const hasNewFile = !!fileObjects[key];
+              const existingValue = formData.extra_info?.[key];
+              const prefix = `${formData.connection_name}_`;
+              const displayName = existingValue?.startsWith(prefix)
+                ? existingValue.slice(prefix.length)
+                : existingValue;
 
-                setIsTestSuccessful(false);
+              const shownName = hasNewFile
+                ? fileObjects[key].name
+                : isEditMode && displayName
+                  ? displayName
+                  : "No file chosen";
 
-                // Validate only .p12 files
-                if (file && !file.name.toLowerCase().endsWith(".p12")) {
-                  toast.error("Only .p12 format is allowed");
-
-                  // Reset input
-                  e.target.value = "";
-
-                  setFileObjects((prev) => {
-                    const updated = { ...prev };
-                    delete updated[key];
-                    return updated;
-                  });
-
-                  setFormData((prev) => ({
-                    ...prev,
-                    extra_info: {
-                      ...prev.extra_info,
-                      [key]: "",
-                    },
-                  }));
-
-                  setTouchedFields((prev) => ({ ...prev, [fieldName]: true }));
-                  setErrors((prev) => ({
-                    ...prev,
-                    [fieldName]: field.required ? `${field.label} is required` : undefined,
-                  }));
-
-                  return;
-                }
-
-                if (file) {
-                  setFileObjects((prev) => ({ ...prev, [key]: file }));
-
-                  const displayName = `${formData.connection_name}_${file.name}`;
-                  setFormData((prev) => ({
-                    ...prev,
-                    extra_info: {
-                      ...prev.extra_info,
-                      [key]: displayName,
-                    },
-                  }));
-
-                  setErrors((prev) => {
-                    const updated = { ...prev };
-                    delete updated[fieldName];
-                    return updated;
-                  });
-                } else {
-                  setFileObjects((prev) => {
-                    const updated = { ...prev };
-                    delete updated[key];
-                    return updated;
-                  });
-
-                  setFormData((prev) => ({
-                    ...prev,
-                    extra_info: {
-                      ...prev.extra_info,
-                      [key]: "",
-                    },
-                  }));
-
-                  if (field.required) {
-                    setErrors((prev) => ({
-                      ...prev,
-                      [fieldName]: `${field.label} is required`,
-                    }));
-                  }
-                }
-
-                setTouchedFields((prev) => ({ ...prev, [fieldName]: true }));
-                validateField(fieldName, file ? file.name : "");
-              }}
-              className={`w-full p-2 border rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1
-    file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm
-    file:bg-[#f3f0fa] file:text-[#8e78b7] hover:file:bg-[#8e78b7] hover:file:text-white
-    file:cursor-pointer cursor-pointer transition-all
+              return (
+                <label
+                  className={`flex items-center w-full border rounded-lg overflow-hidden cursor-pointer h-[46px]
     ${hasError
-                  ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                  : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
-                }`}
-            />
+                      ? "border-red-500 focus-within:ring-1 focus-within:ring-red-500"
+                      : "border-gray-300 focus-within:ring-1 focus-within:ring-[#8e78b7] focus-within:border-[#8e78b7]"
+                    }`}
+                >
+                  <span className="h-full flex items-center px-3 bg-[#f3f0fa] text-[#8e78b7] text-sm font-medium border-r border-gray-300 whitespace-nowrap hover:bg-[#8e78b7] hover:text-white transition-colors">
+                    Choose File
+                  </span>
+                  <span
+                    className={`h-full flex items-center px-3 text-sm truncate ${shownName === "No file chosen"
+                      ? "text-gray-400"
+                      : "text-gray-700"
+                      }`}
+                  >
+                    {shownName}
+                  </span>
+                  <input
+                    type="file"
+                    name={fieldName}
+                    accept=".p12"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      const key = fieldName.split(".")[1];
+
+                      setIsTestSuccessful(false);
+
+                      if (file && !file.name.toLowerCase().endsWith(".p12")) {
+                        toast.error("Only .p12 format is allowed");
+
+                        e.target.value = "";
+
+                        setFileObjects((prev) => {
+                          const updated = { ...prev };
+                          delete updated[key];
+                          return updated;
+                        });
+
+                        setFormData((prev) => ({
+                          ...prev,
+                          extra_info: {
+                            ...prev.extra_info,
+                            [key]: "",
+                          },
+                        }));
+
+                        setTouchedFields((prev) => ({ ...prev, [fieldName]: true }));
+                        setErrors((prev) => ({
+                          ...prev,
+                          [fieldName]: field.required
+                            ? `${field.label} is required`
+                            : undefined,
+                        }));
+
+                        return;
+                      }
+
+                      if (file) {
+                        setFileObjects((prev) => ({ ...prev, [key]: file }));
+
+                        const displayName = `${formData.connection_name}_${file.name}`;
+                        setFormData((prev) => ({
+                          ...prev,
+                          extra_info: {
+                            ...prev.extra_info,
+                            [key]: displayName,
+                          },
+                        }));
+
+                        setErrors((prev) => {
+                          const updated = { ...prev };
+                          delete updated[fieldName];
+                          return updated;
+                        });
+                      } else {
+                        setFileObjects((prev) => {
+                          const updated = { ...prev };
+                          delete updated[key];
+                          return updated;
+                        });
+
+                        setFormData((prev) => ({
+                          ...prev,
+                          extra_info: {
+                            ...prev.extra_info,
+                            [key]: "",
+                          },
+                        }));
+
+                        if (field.required) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            [fieldName]: `${field.label} is required`,
+                          }));
+                        }
+                      }
+
+                      setTouchedFields((prev) => ({ ...prev, [fieldName]: true }));
+                      if (!file) {
+                        validateField(fieldName, "");
+                      }
+                    }}
+                  />
+                </label>
+              );
+            })()}
           </div>
         ) : field.type === "select" ? (
           /* ── Select field ── */
@@ -893,9 +929,13 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
               onChange={handleInputChange}
               type="text"
               placeholder="Connection name"
-              className={`w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 ${touchedFields.connection_name && errors.connection_name
-                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
+              readOnly={isEditMode}
+              title={isEditMode ? "Connection name cannot be changed" : undefined}
+              className={`w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 ${isEditMode
+                  ? "bg-gray-50 text-gray-500 cursor-not-allowed border-gray-200"
+                  : touchedFields.connection_name && errors.connection_name
+                    ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                    : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
                 }`}
             />
             {touchedFields.connection_name && errors.connection_name && (
