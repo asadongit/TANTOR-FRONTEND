@@ -64,6 +64,7 @@ export const AuthProvider = ({ children }) => {
 
   // ─── Calls backend to kill old sessions and push FORCE_LOGOUT via WebSocket ─
   const triggerSessionCleanup = async (accessToken) => {
+    console.log("[Auth] Triggering session cleanup...");
     try {
       const res = await fetch(`${hostnameV1}/auth/session/cleanup`, {
         method: "POST",
@@ -100,7 +101,8 @@ export const AuthProvider = ({ children }) => {
         // kc.onAuthSuccess can fire on token refreshes in some Keycloak JS versions.
         // Without this guard, cleanup (and FORCE_LOGOUT) would fire repeatedly for
         // the same session, causing WebSocket thrash and redundant notifications.
-        if (newSid !== currentSessionIdRef.current) {
+        
+        if (window._env_?.VITE_ENABLE_SESSION_CLEANUP === true && newSid !== currentSessionIdRef.current) {
           currentSessionIdRef.current = newSid;
           triggerSessionCleanup(t);
         }
