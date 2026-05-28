@@ -718,7 +718,7 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
             <div>
               <p className="text-sm text-[#8e78b7]">
                 <span className="font-medium">{highCardinalityDropped.map(item => item.column).join(', ')}</span>
-                {' '}column{highCardinalityDropped.length > 1 ? 's are' : ' is'} dropped since {highCardinalityDropped.length > 1 ? 'they have' : 'it has'} more than 30 unique values
+                {' '}column{highCardinalityDropped.length > 1 ? 's are' : ' is'} dropped since {highCardinalityDropped.length > 1 ? 'they have' : 'it has'} more than
               </p>
             </div>
           </div>
