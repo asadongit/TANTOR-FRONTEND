@@ -531,7 +531,7 @@ const ModeSelection = ({ config, setConfig, readonly, onNotebookModeSelect }) =>
   );
 };
 
-const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, columnNames, hasError, errorMessage, sectionRef, activeWorkflowId, isValidating, setIsValidating }) => {
+const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, columnNames, hasError, errorMessage, sectionRef, activeWorkflowId, isValidating, setIsValidating, isTimeSeriesValidated, setIsTimeSeriesValidated, validationError, supervisedTargetFeatureError, timeSeriesTargetFeatureError, timeSeriesTimeColumnError, setValidationErrors }) => {
   const hostnameAI = window._env_?.VITE_AI_API;
   const { datasetState } = useAIPlayground();
   const tabs = ['Supervised', 'Unsupervised', 'Time Series', 'Anomaly Detection'];
@@ -539,6 +539,11 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
   const getAvailableTargetColumns = () => {
     const dropColumns = config.drop_columns || [];
     return columnNames.filter(name => !dropColumns.includes(name));
+  };
+
+  const getAvailableTimeColumns = () => {
+    const dropColumns = config.drop_columns || [];
+    return (datasetState.datetimeConvertibleColumns || []).filter(name => !dropColumns.includes(name));
   };
 
   const handleValidate = async () => {
@@ -597,7 +602,65 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
     }
   };
 
+  const handleTimeSeriesValidate = async () => {
+    if (!config.timeSeriesType || !config.targetFeature || !config.timeColumn) return;
+
+    setIsValidating(true);
+
+    try {
+      const timeSeriesTypeMap = {
+        'Univariate': 'univariate_timeseries',
+        'Multivariate': 'multivariate_timeseries',
+        'Multiseries': 'multiseries_timeseries'
+      };
+
+      const modellingType = timeSeriesTypeMap[config.timeSeriesType];
+      const ensembleId = datasetState.ensembleId;
+      const targetColumn = config.targetFeature;
+      const timeColumn = config.timeColumn;
+
+      const response = await fetch(`${hostnameAI}/genesis/validate-target-column`, {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ensemble_id: ensembleId,
+          workflow_id: activeWorkflowId,
+          target_column: targetColumn,
+          modelling_type: modellingType,
+          time_column: timeColumn
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.status === 'success') {
+          toast.success('Time Series validation successful!', { duration: 3000, position: 'top-right' });
+          setIsTimeSeriesValidated(true);
+        } else {
+          toast.error('Time column or target column is not compatible with the selected modeling type.', { duration: 4000, position: 'top-right' });
+        }
+      } else {
+        toast.error('Time column or target column is not compatible with the selected modeling type.', { duration: 4000, position: 'top-right' });
+      }
+    } catch (error) {
+      console.error('Time Series validation error:', error);
+      toast.error('Time column or target column is not compatible with the selected modeling type.', { duration: 4000, position: 'top-right' });
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  useEffect(() => {
+    if (config.predictionType !== 'Time Series') {
+      setIsTimeSeriesValidated(false);
+    }
+  }, [config.predictionType]);
+
   const isValidateDisabled = !config.classification || !config.targetFeature || isValidating;
+  const isTimeSeriesValidateDisabled = !config.timeSeriesType || !config.targetFeature || !config.timeColumn || isValidating;
 
   return (
     <div ref={sectionRef} className="bg-[#FAFAFA] rounded-lg border border-gray-200">
@@ -610,7 +673,36 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
           {tabs.map((tab) => (
             <button
               key={tab}
-              onClick={() => !readonly && setConfig({ ...config, predictionType: tab })}
+              onClick={() => {
+                if (!readonly) {
+                  // Clear related fields when switching prediction types
+                  const newConfig = { ...config, predictionType: tab };
+                  if (tab === 'Supervised') {
+                    newConfig.classification = null;
+                    newConfig.targetFeature = '';
+                    newConfig.timeSeriesType = '';
+                    newConfig.timeColumn = '';
+                  } else if (tab === 'Time Series') {
+                    newConfig.classification = null;
+                    newConfig.targetFeature = '';
+                    newConfig.timeSeriesType = '';
+                    newConfig.timeColumn = '';
+                  } else if (tab === 'Unsupervised') {
+                    newConfig.classification = null;
+                    newConfig.targetFeature = '';
+                    newConfig.timeSeriesType = '';
+                    newConfig.timeColumn = '';
+                  } else if (tab === 'Anomaly Detection') {
+                    newConfig.classification = null;
+                    newConfig.targetFeature = '';
+                    newConfig.timeSeriesType = '';
+                    newConfig.timeColumn = '';
+                  }
+                  setConfig(newConfig);
+                  // Clear validation errors when switching prediction types
+                  setValidationErrors({});
+                }
+              }}
               className={`px-4 py-2 text-sm font-medium transition-colors relative ${config.predictionType === tab
                 ? 'text-[#8e78b7]'
                 : 'text-gray-500 hover:text-gray-700'
@@ -664,7 +756,7 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
                 <label className="block text-sm font-medium text-gray-700 mb-3">Target Feature</label>
                 {getAvailableTargetColumns().length > 0 ? (
                   <>
-                    <div className={`rounded-md ${hasError && !config.targetFeature ? 'border border-[#EF4D5F] bg-[#FFF7F8]' : ''}`}>
+                    <div className={`rounded-md ${supervisedTargetFeatureError ? 'border border-[#EF4D5F] bg-[#FFF7F8]' : ''}`}>
                       <SearchableSelect
                         value={config.targetFeature}
                         onChange={(newTargetFeature) => {
@@ -683,8 +775,8 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
                         readonly={readonly}
                       />
                     </div>
-                    {hasError && !config.targetFeature && (
-                      <p className="mt-1 text-sm text-[#EF4D5F]">Please select the target Feature to validate</p>
+                    {supervisedTargetFeatureError && (
+                      <p className="mt-1 text-sm text-[#EF4D5F]">{supervisedTargetFeatureError}</p>
                     )}
                   </>
                 ) : (
@@ -720,8 +812,146 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
                   'Validate'
                 )}
               </button>
+              {validationError && !isValidated && (
+                <p className="text-sm text-[#EF4D5F] mt-2">{validationError}</p>
+              )}
               {hasError && config.targetFeature && (
-                <p className="text-sm text-[#EF4D5F] mb-2">{errorMessage}</p>
+                <p className="text-sm text-[#EF4D5F] mt-2">{errorMessage}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Time Series Content */}
+      {config.predictionType === 'Time Series' && (
+        <div className="px-6 py-5 bg-[#FAFAFA] overflow-visible">
+          <p className="text-sm font-medium text-gray-800 mb-4">Time Series Configuration</p>
+
+          <div className="flex items-stretch gap-4">
+            <div className="flex items-stretch gap-4 flex-1">
+              {/* Time Series Type */}
+              <div className="bg-white rounded-lg p-4 min-w-[400px] h-full">
+                <label className="block text-sm font-medium text-gray-700 mb-3">Time Series Type</label>
+                <div className="space-y-2.5">
+                  <RadioButton
+                    label="Univariate"
+                    checked={config.timeSeriesType === 'Univariate'}
+                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Univariate' })}
+                    name="timeseries-type"
+                    readonly={readonly}
+                  />
+                  <RadioButton
+                    label="Multivariate"
+                    checked={config.timeSeriesType === 'Multivariate'}
+                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Multivariate' })}
+                    name="timeseries-type"
+                    readonly={readonly}
+                  />
+                  <RadioButton
+                    label="Multiseries"
+                    checked={config.timeSeriesType === 'Multiseries'}
+                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Multiseries' })}
+                    name="timeseries-type"
+                    readonly={readonly}
+                  />
+                </div>
+              </div>
+
+              {/* Dropdowns for Target and Time Column */}
+              <div className="flex flex-col gap-2" style={{ width: '340px' }}>
+                {/* Target Column */}
+                <div className="bg-white rounded-lg p-3">
+                  <label className="block text-xs font-medium text-gray-700 mb-2">Target Column</label>
+                  {getAvailableTargetColumns().length > 0 ? (
+                    <>
+                      <div className={`rounded-md ${timeSeriesTargetFeatureError ? 'border border-[#EF4D5F] bg-[#FFF7F8]' : ''}`}>
+                        <SearchableSelect
+                          value={config.targetFeature}
+                          onChange={(newTargetFeature) => {
+                            handleConfigChange({
+                              ...config,
+                              targetFeature: newTargetFeature
+                            });
+                          }}
+                          options={getAvailableTargetColumns()}
+                          placeholder="Select target column..."
+                          disabled={readonly}
+                          readonly={readonly}
+                        />
+                      </div>
+                      {timeSeriesTargetFeatureError && (
+                        <p className="mt-1 text-sm text-[#EF4D5F]">{timeSeriesTargetFeatureError}</p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-500 bg-[#FAFAFA]">
+                      No columns available
+                    </div>
+                  )}
+                </div>
+
+                {/* Time Column */}
+                <div className="bg-white rounded-lg p-3">
+                  <label className="block text-xs font-medium text-gray-700 mb-2">Time Column</label>
+                  {getAvailableTimeColumns().length > 0 ? (
+                    <>
+                      <div className={`rounded-md ${timeSeriesTimeColumnError ? 'border border-[#EF4D5F] bg-[#FFF7F8]' : ''}`}>
+                        <SearchableSelect
+                          value={config.timeColumn}
+                          onChange={(newTimeColumn) => {
+                            handleConfigChange({
+                              ...config,
+                              timeColumn: newTimeColumn
+                            });
+                          }}
+                          options={getAvailableTimeColumns()}
+                          placeholder="Select time column..."
+                          disabled={readonly}
+                          readonly={readonly}
+                        />
+                      </div>
+                      {timeSeriesTimeColumnError && (
+                        <p className="mt-1 text-sm text-[#EF4D5F]">{timeSeriesTimeColumnError}</p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-500 bg-[#FAFAFA]">
+                      No datetime columns available
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Validate button */}
+            <div className="flex flex-col items-end justify-end self-stretch pb-0 pt-6">
+              <button
+                onClick={handleTimeSeriesValidate}
+                disabled={readonly || isTimeSeriesValidateDisabled || isTimeSeriesValidated}
+                className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                  isTimeSeriesValidated
+                    ? 'bg-green-100 text-green-700 cursor-default border border-green-400'
+                    : readonly || isTimeSeriesValidateDisabled
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-[#8e78b7] text-white hover:bg-[#7d67a6]'
+                }`}
+              >
+                {isValidating ? (
+                  <>
+                    Validating...
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  </>
+                ) : isTimeSeriesValidated ? (
+                  <>
+                    Validated <CheckCircle className="w-5 h-5" />
+                  </>
+                ) : (
+                  'Validate'
+                )}
+              </button>
+              {validationError && !isTimeSeriesValidated && (
+                <p className="text-sm text-[#EF4D5F] mt-2">{validationError}</p>
               )}
             </div>
           </div>
@@ -1176,10 +1406,14 @@ function ModelGenesis() {
         modelSelection: savedConfig.model_mode || 'Manual',
         notebookMode: false,
 
-        predictionType: 'Supervised',
+        predictionType: savedConfig.predictionType || ' ',
         classification: savedConfig.modelling_type === 'binary' ? 'Binary' :
           savedConfig.modelling_type === 'multiclass' ? 'Multiclass' : 'Regression',
         targetFeature: savedConfig.target_column || '',
+        timeSeriesType: savedConfig.timeseries_type === 'univariate_timeseries' ? 'Univariate' :
+          savedConfig.timeseries_type === 'multivariate_timeseries' ? 'Multivariate' :
+          savedConfig.timeseries_type === 'multiseries_timeseries' ? 'Multiseries' : '',
+        timeColumn: savedConfig.time_column || '',
 
         trainSplit: Math.round((savedConfig.train_size || 0.7) * 100),
         testSplit: Math.round((savedConfig.test_size || 0.3) * 100),
@@ -1198,6 +1432,8 @@ function ModelGenesis() {
       predictionType: 'Supervised',
       classification: 'Multiclass',
       targetFeature: '',
+      timeSeriesType: '',
+      timeColumn: '',
 
       trainSplit: 90,
       testSplit: 10,
@@ -1212,6 +1448,7 @@ function ModelGenesis() {
 
   const [config, setConfig] = useState(getInitialConfig);
   const [isValidated, setIsValidated] = useState(mode === 'view' && !!workflowState?.modelGenesis?.config);
+  const [isTimeSeriesValidated, setIsTimeSeriesValidated] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -1312,8 +1549,31 @@ function ModelGenesis() {
     // Run client-side validation first
     const errors = {};
 
-    if (!isValidated) {
-      errors.predictionType = 'Please validate your configuration before proceeding.';
+    // Validation for Supervised learning
+    if (config.predictionType === 'Supervised') {
+      if (!config.targetFeature) {
+        errors.supervisedTargetFeature = 'Please select the target Feature to validate';
+      } else if (!isValidated) {
+        errors.predictionType = 'Please validate your configuration before proceeding.';
+      }
+    }
+
+    // Validation for Time Series
+    if (config.predictionType === 'Time Series') {
+      if (!config.targetFeature) {
+        errors.timeSeriesTargetFeature = 'Please select the target Feature to validate';
+      } else if (!config.timeColumn) {
+        errors.timeSeriesTimeColumn = 'Please select time Feature to validate';
+      } else if (!isTimeSeriesValidated) {
+        errors.predictionType = 'Please validate your configuration before proceeding.';
+      }
+    }
+
+    // Validation for other prediction types
+    if (config.predictionType !== 'Supervised' && config.predictionType !== 'Time Series') {
+      if (!isValidated && !(config.predictionType === 'Time Series' && isTimeSeriesValidated)) {
+        errors.predictionType = 'Please validate your configuration before proceeding.';
+      }
     }
 
     if (config.drop_columns_active && (!config.drop_columns || config.drop_columns.length === 0)) {
@@ -1368,7 +1628,14 @@ function ModelGenesis() {
         train_size: trainSize,
         random_state: 42,
         target_column: config.targetFeature,
-        modelling_type: modellingTypeMap[config.classification],
+        modelling_type: config.predictionType === 'Time Series' 
+          ? {
+              'Univariate': 'univariate_timeseries',
+              'Multivariate': 'multivariate_timeseries',
+              'Multiseries': 'multiseries_timeseries'
+            }[config.timeSeriesType]
+          : modellingTypeMap[config.classification],
+        time_column: config.predictionType === 'Time Series' ? config.timeColumn : null,
         fairness_columns: config.fairness_columns,
         data_preprocessing_mode: config.dataPreprocessing,
         model_mode: config.modelSelection,
@@ -1387,15 +1654,35 @@ function ModelGenesis() {
 
       if (response.ok) {
         const data = await response.json();
-        updateWorkflowStage('modelGenesis', {
-          config: {
-            ...config,
-            modelling_type: modellingTypeMap[config.classification],
-            trainSize,
-            testSize
-          },
-          apiResponse: data
+        
+        // Determine the modelling_type string for storage
+        let storedModellingType;
+        if (config.predictionType === 'Time Series') {
+          const timeSeriesTypeMap = {
+            'Univariate': 'univariate_timeseries',
+            'Multivariate': 'multivariate_timeseries',
+            'Multiseries': 'multiseries_timeseries'
+          };
+          storedModellingType = timeSeriesTypeMap[config.timeSeriesType];
+        } else {
+          storedModellingType = modellingTypeMap[config.classification];
+        }
+
+        // Store predictionType as a separate top-level key
+        updateWorkflowStage('predictionType', {
+          config: config.predictionType
         });
+        
+        updateWorkflowStage('modelGenesis', {
+  config: {
+    ...config,
+    classification: config.predictionType === 'Time Series' ? '' : config.classification,
+    modelling_type: storedModellingType,
+    trainSize,
+    testSize
+  },
+  apiResponse: data
+});
         
         // Store job_id in completedJobs if it exists in the response
         if (data.job_id) {
@@ -1487,10 +1774,17 @@ function ModelGenesis() {
             columnNames={datasetState.columnNames}
             hasError={!!validationErrors.predictionType}
             errorMessage={validationErrors.predictionType}
+            supervisedTargetFeatureError={validationErrors.supervisedTargetFeature}
+            timeSeriesTargetFeatureError={validationErrors.timeSeriesTargetFeature}
+            timeSeriesTimeColumnError={validationErrors.timeSeriesTimeColumn}
             sectionRef={predictionTypeRef}
             activeWorkflowId={activeWorkflowId}
             isValidating={isValidating}
             setIsValidating={setIsValidating}
+            isTimeSeriesValidated={isTimeSeriesValidated}
+            setIsTimeSeriesValidated={setIsTimeSeriesValidated}
+            validationError={validationErrors.predictionType}
+            setValidationErrors={setValidationErrors}
           />
 
           <SplitSetting config={config} setConfig={setConfig} readonly={isInteractionLocked} />
