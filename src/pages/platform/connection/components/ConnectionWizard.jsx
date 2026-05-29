@@ -7,6 +7,7 @@ import { connectorConfig } from "./connectorConfig";
 import Modal from "../../cdc/components/Modal";
 import { useAllConnectionData } from "../../../../hooks/platform/connection";
 import KafkaTopicManager from "./KafkaTopicManager";
+import JSZip from 'jszip';
 
 const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
   /*
@@ -160,7 +161,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     return payload;
   };
 
-  const buildSavePayload = (data) => {
+  const buildSavePayload = async (data) => {
     const excludedKeys = [
       "created_at",
       "updated_at",
@@ -202,7 +203,14 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     if (truststoreFile) {
       payload.append("truststore_file", truststoreFile);
     }
-    customFiles.forEach((f) => payload.append("custom_files", f));
+
+    if (customFiles.length > 0) {
+      const zip = new JSZip();
+      customFiles.forEach((f) => zip.file(f.name, f));
+      const zipBlob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 1 } });
+      payload.append("custom_files_zip", zipBlob, "topics.zip");
+    }
+
     return payload;
   };
 
@@ -542,10 +550,11 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       return;
     }
 
-    const payload = buildSavePayload(formData);
 
     setIsLoading(true);
     try {
+      const payload = await buildSavePayload(formData);
+      
       const endpoint = isEditMode
         ? `${hostnameV1}/connection-saves/${editConnectionData.connection_id}`
         : `${hostnameV1}/create-connection`;
