@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { connectorConfig } from "./connectorConfig";
 import Modal from "../../cdc/components/Modal";
 import { useAllConnectionData } from "../../../../hooks/platform/connection";
+import KafkaTopicManager from "./KafkaTopicManager";
 
 const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
   /*
@@ -36,6 +37,8 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
   const [errors, setErrors] = useState({});
   const [touchedFields, setTouchedFields] = useState({});
   const [fileObjects, setFileObjects] = useState({});
+  const [customFiles, setCustomFiles] = useState([]);
+  const [removedTopics, setRemovedTopics] = useState([]);
 
   const defaultFormData = {
     created_by: decodedToken.preferred_username,
@@ -113,6 +116,9 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     return currentValue === condValue;
   };
 
+  const isKafkaCustom =
+    selectedConnector === "kafka" && formData.extra_info?.type === "custom";
+
   const getTruststoreFile = () => fileObjects["truststore_location"] || null;
 
   const buildTestPayload = (data) => {
@@ -181,11 +187,22 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       };
     }
 
+    if (isEditMode && removedTopics.length > 0) {
+      filteredData = {
+        ...filteredData,
+        extra_info: {
+          ...filteredData.extra_info,
+          remove_files: removedTopics,
+        },
+      };
+    }
+
     const payload = new FormData();
     payload.append("connection_json", JSON.stringify(filteredData));
     if (truststoreFile) {
       payload.append("truststore_file", truststoreFile);
     }
+    customFiles.forEach((f) => payload.append("custom_files", f));
     return payload;
   };
 
@@ -308,6 +325,11 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       }
     });
 
+    if (!isEditMode && isKafkaCustom && customFiles.length === 0) {
+      newErrors["custom_files"] = "At least one custom file is required";
+      allTouched["custom_files"] = true;
+    }
+
     setErrors(newErrors);
     setTouchedFields((prev) => ({ ...prev, ...allTouched }));
     return Object.keys(newErrors).length === 0;
@@ -335,6 +357,14 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
           });
           setTouchedFields((prevTouched) => {
             const { "extra_info.schema_registery_url": _url, ...rest } = prevTouched;
+            return rest;
+          });
+        }
+
+        if (key === "type" && value !== "custom") {
+          setCustomFiles([]);
+          setErrors((prevErrors) => {
+            const { custom_files: _cf, ...rest } = prevErrors;
             return rest;
           });
         }
@@ -542,6 +572,8 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
           setErrors({});
           setTouchedFields({});
         }
+        setCustomFiles([]);
+        setRemovedTopics([]);
         openModal("success");
         refetchConnections();
       } else {
@@ -682,9 +714,9 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     const hasError = touchedFields[fieldName] && errors[fieldName];
 
     const baseInputClass = `w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 ${hasError
-      ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-      : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
-      }`;
+        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+        : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
+    }`;
 
     return (
       <div key={fieldName}>
@@ -708,13 +740,13 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
               const shownName = hasNewFile
                 ? fileObjects[key].name
                 : isEditMode && displayName
-                  ? displayName
-                  : "No file chosen";
+                ? displayName
+                : "No file chosen";
 
               return (
                 <label
                   className={`flex items-center w-full border rounded-lg overflow-hidden cursor-pointer h-[46px]
-    ${hasError
+                    ${hasError
                       ? "border-red-500 focus-within:ring-1 focus-within:ring-red-500"
                       : "border-gray-300 focus-within:ring-1 focus-within:ring-[#8e78b7] focus-within:border-[#8e78b7]"
                     }`}
@@ -901,7 +933,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
           className={`bg-white rounded-lg shadow-sm border-gray-200 border w-[196px] h-[46px] flex items-center overflow-hidden ${isEditMode
             ? "cursor-not-allowed"
             : "hover:shadow-md transition-all cursor-pointer"
-            }`}
+          }`}
         >
           <img
             src={
@@ -934,9 +966,9 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
               className={`w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 ${isEditMode
                   ? "bg-gray-50 text-gray-500 cursor-not-allowed border-gray-200"
                   : touchedFields.connection_name && errors.connection_name
-                    ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                    : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
-                }`}
+                  ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
+              }`}
             />
             {touchedFields.connection_name && errors.connection_name && (
               <p className="text-red-500 text-xs mt-1">
@@ -957,9 +989,9 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
               type="text"
               placeholder="Short description"
               className={`w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 ${touchedFields.description && errors.description
-                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
-                }`}
+                  ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
+              }`}
             />
             {touchedFields.description && errors.description && (
               <p className="text-red-500 text-xs mt-1">{errors.description}</p>
@@ -977,9 +1009,9 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
                 value={formData.pool_type || ""}
                 onChange={handleInputChange}
                 className={`w-full p-2.5 border rounded-lg focus:outline-none focus:ring-1 appearance-none bg-white ${touchedFields.pool_type && errors.pool_type
-                  ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                  : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
-                  }`}
+                    ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                    : "border-gray-300 focus:border-[#8e78b7] focus:ring-[#8e78b7]"
+                }`}
               >
                 <option value="">Select behaviour</option>
                 <option value="source">Source</option>
@@ -1005,7 +1037,35 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
           {getConnectorFields(selectedConnector)
             .filter((field) => isFieldVisible(field))
             .map((field) => renderField(field))}
+
+          {isKafkaCustom && !isEditMode && (
+            <KafkaTopicManager
+              isEditMode={false}
+              customFiles={customFiles}
+              onCustomFilesChange={(files) => {
+                setCustomFiles(files);
+                setIsTestSuccessful(false);
+                if (files.length > 0) {
+                  setErrors((prev) => { const { custom_files: _cf, ...rest } = prev; return rest; });
+                }
+              }}
+              customFilesError={touchedFields.custom_files && !!errors.custom_files}
+            />
+          )}
         </div>
+
+        {isKafkaCustom && isEditMode && (
+          <KafkaTopicManager
+            isEditMode={true}
+            connectionName={formData.connection_name}
+            hostnameV1={hostnameV1}
+            token={token}
+            customFiles={customFiles}
+            onCustomFilesChange={setCustomFiles}
+            removedTopics={removedTopics}
+            onRemovedTopicsChange={setRemovedTopics}
+          />
+        )}
 
         {/* Action buttons */}
         <div className="flex justify-start gap-4 mt-8">
@@ -1013,9 +1073,9 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
             onClick={testConnection}
             disabled={isTesting}
             className={`px-4 py-2 rounded-lg transition-colors flex items-center justify-center ${isTesting
-              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-              : "bg-gray-100 hover:bg-[#8e78b7] hover:text-white text-gray-800"
-              }`}
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-gray-100 hover:bg-[#8e78b7] hover:text-white text-gray-800"
+            }`}
           >
             {isTesting ? (
               <div className="flex items-center gap-2">
@@ -1031,9 +1091,9 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
             onClick={saveConnection}
             disabled={isLoading}
             className={`px-4 py-2 rounded-lg transition-colors flex items-center justify-center ${!isTestSuccessful
-              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-              : "bg-[#8e78b7] hover:bg-gray-400 text-white"
-              }`}
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-[#8e78b7] hover:bg-gray-400 text-white"
+            }`}
           >
             {isLoading ? (
               <span className="flex items-center gap-2">

@@ -221,7 +221,7 @@ export const connectorConfig = {
       name: "extra_info.type",
       label: "Type",
       type: "select",
-      options: ["avro", "raw"],
+      options: ["avro", "raw", "custom"],
       required: true,
     },
     {
