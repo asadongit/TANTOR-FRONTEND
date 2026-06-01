@@ -107,6 +107,10 @@ const defaultWorkflowState = {
         step7: {
             config: null,
             apiResponse: null
+        },
+        step8: {
+            config: null,
+            apiResponse: null
         }
     },
     modelSelection: {

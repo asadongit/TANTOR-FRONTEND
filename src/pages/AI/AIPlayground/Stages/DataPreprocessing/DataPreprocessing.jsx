@@ -4,6 +4,8 @@ import { Check, Eye } from 'lucide-react';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 
 //  supervised preprocessing steps
+
+//  supervised preprocessing steps
 import DataCleaning from './Steps/DataCleaning';
 import FeatureSelection from './Steps/FeatureSelection';
 import FeatureEngineering from './Steps/FeatureEngineering';
@@ -43,7 +45,7 @@ const getPreprocessingSteps = (predictionType) => {
       { id: 2, label: 'Handle Missing Values', isTimeSeries: true },
       { id: 3, label: 'Feature Integrity', isTimeSeries: true },
       { id: 4, label: 'Data Stabilization', isTimeSeries: true },
-      { id: 5, label: 'Seasonality Analysis', isTimeSeries: true },
+      { id: 5, label: 'Seasonality Treatment', isTimeSeries: true },
       { id: 6, label: 'Stationarity Treatment', isTimeSeries: true },
       { id: 7, label: 'Feature Dependency', isTimeSeries: true },
       {id: 8, label: 'Scaling  & Encoding', isTimeSeries: true },
@@ -143,6 +145,9 @@ function DataPreprocessing() {
     isDataPreprocessingAuto
   );
 
+  // Whether preview screen is open on step 8 (time series)
+  const [isStep8Preview, setIsStep8Preview] = useState(false);
+
   // Validation states for individual steps
   const [isStep1Valid, setIsStep1Valid] = useState(true);
   const [isStep2Valid, setIsStep2Valid] = useState(true);
@@ -156,6 +161,37 @@ function DataPreprocessing() {
   // Global API loading state
   const [isApiCallInProgress, setIsApiCallInProgress] =
     useState(false);
+
+  /**
+   * Auto-advance from step 6 if stationarity analysis was not enabled in step 5
+   */
+  useEffect(() => {
+    if (currentStep === 6) {
+      const step5Config = workflowState?.dataPreprocessing?.step5?.config;
+      const wasStationarityAnalysisEnabledInStep5 = step5Config?.stationarity_analysis_active ?? false;
+
+      if (!wasStationarityAnalysisEnabledInStep5) {
+        setCurrentStep(7);
+      }
+    }
+  }, [currentStep, workflowState?.dataPreprocessing?.step5?.config]);
+
+  /**
+   * Auto-advance to preview mode after step 8 for time series if auto-preprocessing is enabled
+   */
+  useEffect(() => {
+    const isTimeSeries =
+      predictionType &&
+      [
+        'univariate_timeseries',
+        'multivariate_timeseries',
+        'multiseries_timeseries',
+      ].includes(predictionType);
+
+    if (isTimeSeries && currentStep === 8 && isDataPreprocessingAuto) {
+      setIsStep8Preview(true);
+    }
+  }, [currentStep, isDataPreprocessingAuto, predictionType]);
 
   /**
    * Locks user interactions while
@@ -175,8 +211,9 @@ function DataPreprocessing() {
   const step5ApiCallRef = useRef(null);
   const step6ApiCallRef = useRef(null);
   const step7ApiCallRef = useRef(null);
+  const step8ApiCallRef = useRef(null);
 
- 
+
 
   /**
    * Handles next button click.
@@ -242,6 +279,17 @@ function DataPreprocessing() {
       if (currentStep === 7 && isStep7Preview) return true;
 
       /**
+       * Special handling for step 8 preview (time series):
+       * Exit preview mode and move to model selection.
+       */
+      if (currentStep === 8 && isStep8Preview) {
+        return true;
+      }
+
+      // Prevent duplicate execution in step 8 preview mode
+      if (currentStep === 8 && isStep8Preview) return true;
+
+      /**
        * Array mapping step number
        * to corresponding API function.
        */
@@ -254,6 +302,7 @@ function DataPreprocessing() {
         step5ApiCallRef.current,
         step6ApiCallRef.current,
         step7ApiCallRef.current,
+        step8ApiCallRef.current,
       ];
 
       // Get current step API function
@@ -308,6 +357,7 @@ function DataPreprocessing() {
               onApiCall={(fn) =>
                 (step1ApiCallRef.current = fn)
               }
+              predictionType={predictionType}
             />
           );
 
@@ -319,6 +369,7 @@ function DataPreprocessing() {
               onApiCall={(fn) =>
                 (step2ApiCallRef.current = fn)
               }
+              predictionType={predictionType}
             />
           );
 
@@ -329,6 +380,7 @@ function DataPreprocessing() {
               onApiCall={(fn) =>
                 (step3ApiCallRef.current = fn)
               }
+              predictionType={predictionType}
             />
           );
 
@@ -339,6 +391,7 @@ function DataPreprocessing() {
               onApiCall={(fn) =>
                 (step4ApiCallRef.current = fn)
               }
+              predictionType={predictionType}
             />
           );
 
@@ -349,19 +402,31 @@ function DataPreprocessing() {
               onApiCall={(fn) =>
                 (step5ApiCallRef.current = fn)
               }
+              predictionType={predictionType}
             />
           );
 
-        case 6:
+        case 6: {
+          /**
+           * Check if stationarity analysis was enabled in step 5
+           * If not, this step will be skipped by auto-advance useEffect
+           */
+          const step5Config = workflowState?.dataPreprocessing?.step5?.config;
+          const wasStationarityAnalysisEnabledInStep5 = step5Config?.stationarity_analysis_active ?? false;
+
+          if (!wasStationarityAnalysisEnabledInStep5) {
+            return null;
+          }
+
           return (
             <StationarityTreatment
               readonly={isInteractionLocked}
               onApiCall={(fn) =>
                 (step6ApiCallRef.current = fn)
               }
-            
             />
           );
+        }
 
         case 7:
           return (
@@ -378,8 +443,9 @@ function DataPreprocessing() {
             <ScalingandEncoding
               readonly={isInteractionLocked}
               onApiCall={(fn) =>
-                (step7ApiCallRef.current = fn)
+                (step8ApiCallRef.current = fn)
               }
+              showPreview={isStep8Preview}
             />
           );
 
@@ -503,7 +569,8 @@ function DataPreprocessing() {
    */
   const showPreviewButton =
     currentStep > 1 &&
-    !(currentStep === 7 && isStep7Preview);
+    !(currentStep === 7 && isStep7Preview) &&
+    !(currentStep === 8 && isStep8Preview);
 
   return (
     <>
@@ -514,7 +581,9 @@ function DataPreprocessing() {
         }
         onPreprocessingStepChange={setCurrentStep}
         isStep7Preview={isStep7Preview}
+        isStep8Preview={isStep8Preview}
         onPreviewData={setIsStep7Preview}
+        onPreviewData8={setIsStep8Preview}
         onNextClick={handleNextClick}
         isNextDisabled={getIsNextDisabled()}
       >
@@ -522,7 +591,7 @@ function DataPreprocessing() {
           <div className="flex flex-row h-full overflow-hidden">
             
             {/* Sidebar hidden during final preview */}
-            {!(currentStep === 7 && isStep7Preview) && (
+            {!(currentStep === 7 && isStep7Preview) && !(currentStep === 8 && isStep8Preview) && (
               <div className="w-72 flex-shrink-0 h-full overflow-hidden">
                 <div className="bg-white px-3 border-r border-[#CCCCCC] h-full flex flex-col">
 
@@ -638,6 +707,7 @@ function DataPreprocessing() {
         isOpen={isPreviewModalOpen}
         onClose={() => setIsPreviewModalOpen(false)}
         currentStep={currentStep}
+        predictionType={predictionType}
       />
     </>
   );

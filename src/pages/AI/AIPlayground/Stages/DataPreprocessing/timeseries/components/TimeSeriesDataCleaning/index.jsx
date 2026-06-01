@@ -48,7 +48,8 @@ import AggregateFeatures from './AggregateFeatures';
 function TimeSeriesDataCleaning({
   readonly,
   onValidationChange,
-  onApiCall
+  onApiCall,
+  predictionType
 }) {
 
   /**
@@ -63,6 +64,12 @@ function TimeSeriesDataCleaning({
     activeWorkflowId,
     updatePreprocessingStep
   } = useAIPlayground();
+
+  /**
+   * Check if univariate timeseries
+   */
+  const isUnivariateTimeseries =
+    predictionType === 'univariate_timeseries';
 
   /**
    * Get current workflow state
@@ -169,7 +176,7 @@ function TimeSeriesDataCleaning({
    * Aggregation toggle
    */
   const [aggregation, setAggregation] =
-    useState(true);
+  useState(hasDuplicateRows);
 
   /**
    * Aggregation method
@@ -209,6 +216,10 @@ function TimeSeriesDataCleaning({
    * =======================================================
    */
 
+  useEffect(() => {
+  setAggregation(hasDuplicateRows);
+}, [hasDuplicateRows]);
+
   const toggleSwitch = (key) => {
 
     if (readonly || isLoading) return;
@@ -220,6 +231,20 @@ function TimeSeriesDataCleaning({
      */
 
     if (key === 'changeDataType') {
+
+      /**
+       * Block feature for univariate timeseries
+       */
+      if (isUnivariateTimeseries) {
+        toast.error(
+          'Change Data Type is not available for univariate timeseries.',
+          {
+            duration: 3000,
+            position: 'top-right'
+          }
+        );
+        return;
+      }
 
       const newState = !modifyDataTypes;
 
@@ -668,7 +693,7 @@ function TimeSeriesDataCleaning({
       {/* ===================================================
           Change Data Type Section
       =================================================== */}
-
+  {!isUnivariateTimeseries && (
       <ChangeDataType
 
         modifyDataTypes={modifyDataTypes}
@@ -686,6 +711,7 @@ function TimeSeriesDataCleaning({
         isLoading={isLoading}
 
         dataTypeColumns={dataTypeColumns}
+        disabled={isUnivariateTimeseries}
 
         columnsDataTypes={columnsDataTypes}
 
@@ -717,6 +743,7 @@ function TimeSeriesDataCleaning({
           sectionDescriptions
         }
       />
+      )}
 
       {/* ===================================================
           Aggregate Features Section
@@ -733,6 +760,7 @@ function TimeSeriesDataCleaning({
         toggleSwitch={toggleSwitch}
 
         toggleSection={toggleSection}
+        aggregationDisabled={true}
 
         readonly={readonly}
 

@@ -48,7 +48,17 @@ function FeatureScaling({
     readonly,
     sectionDescriptions
 }) {
-    const [hoveredOption, setHoveredOption] = React.useState(null);
+    const optionDescriptions = {};
+    scalingMethods.forEach(option => {
+        optionDescriptions[option.value] = option.description;
+    });
+
+    const radioCardClass = (isSelected) =>
+        `px-4 py-3 rounded-lg transition-colors group relative ${
+            isSelected
+                ? 'bg-purple-100 border border-[#8e78b7]'
+                : 'bg-white'
+        } ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`;
 
     return (
         <div className="rounded-lg transition-all bg-gray-50">
@@ -71,33 +81,36 @@ function FeatureScaling({
 
             {isToggled && isExpanded && (
                 <div className="px-4 pb-4">
-                    <div className="mt-4 space-y-3">
+                    <div className="mt-4">
+                        <h5 className="text-sm font-medium text-gray-700 mb-3">Scaler Method</h5>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
                         {scalingMethods.map((option) => (
-                            <div
+                            <label
                                 key={option.value}
-                                onClick={() => !readonly && onScalingChange(option.value)}
-                                onMouseEnter={() => setHoveredOption(option.value)}
-                                onMouseLeave={() => setHoveredOption(null)}
-                                className={`px-4 py-3 rounded-lg transition-colors cursor-pointer ${
-                                    selectedScaling === option.value
-                                        ? 'bg-purple-100 border border-[#8e78b7]'
-                                        : 'bg-white border border-gray-200 hover:border-gray-300'
-                                }`}
+                                className={radioCardClass(selectedScaling === option.value)}
                             >
-                                <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                        <h5 className="text-sm font-medium text-gray-900">{option.label}</h5>
-                                        {hoveredOption === option.value && (
-                                            <p className="text-xs text-gray-600 mt-1">{option.description}</p>
-                                        )}
-                                    </div>
-                                    <div className={`w-4 h-4 rounded-full border-2 ml-3 mt-0.5 flex-shrink-0 ${
-                                        selectedScaling === option.value
-                                            ? 'bg-[#8e78b7] border-[#8e78b7]'
-                                            : 'border-gray-300'
-                                    }`} />
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="radio"
+                                        name="scalingMethod"
+                                        value={option.value}
+                                        checked={selectedScaling === option.value}
+                                        onChange={(e) => !readonly && onScalingChange(e.target.value)}
+                                        disabled={readonly}
+                                        className="w-4 h-4 accent-[#8e78b7]"
+                                    />
+                                    <span className={`text-sm font-medium ${selectedScaling === option.value ? 'text-[#8e78b7]' : 'text-gray-700'}`}>
+                                        {option.label}
+                                    </span>
                                 </div>
-                            </div>
+                                {/* Tooltip */}
+                                <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-[#332849] text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 pointer-events-none">
+                                    <p className="leading-relaxed">{optionDescriptions[option.value]}</p>
+                                    <div className="absolute -top-1 left-4 w-2 h-2 bg-[#332849] transform rotate-45"></div>
+                                </div>
+                            </label>
                         ))}
                     </div>
                 </div>

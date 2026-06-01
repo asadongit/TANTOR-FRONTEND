@@ -54,6 +54,7 @@ function ChangeDataType({
    * Expand/collapse handler
    */
   toggleSection,
+  disabled,
 
   /**
    * =======================================================
@@ -153,16 +154,21 @@ function ChangeDataType({
           <ToggleSwitch
             checked={modifyDataTypes}
             onChange={() => toggleSwitch('changeDataType')}
-            disabled={readonly || isLoading}
+            disabled={readonly || isLoading || disabled}
           />
 
           {/* Expand / Collapse Button */}
           {modifyDataTypes && (
 
-            <button
-              onClick={() => toggleSection('changeDataType')}
-              className="hover:opacity-70 transition-opacity"
-            >
+           <button
+  onClick={() => toggleSection('changeDataType')}
+  disabled={disabled}
+  className={`transition-opacity ${
+    disabled
+      ? 'opacity-50 cursor-not-allowed'
+      : 'hover:opacity-70 cursor-pointer'
+  }`}
+>
 
               {expanded ? (
                 <ChevronUp size={20} color="#818181" />

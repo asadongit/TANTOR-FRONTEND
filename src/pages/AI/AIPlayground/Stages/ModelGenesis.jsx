@@ -5,6 +5,7 @@ import { useAIPlayground } from '../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 import { Check, X, Search, ChevronDown, ChevronUp, AlertCircle, CheckCircle } from 'lucide-react';
 import { tw, backgrounds } from '../../../../components/themeContext';
+import { validateSupervisedLearning, validateTimeSeriesLearning, runTargetColumnValidation } from './genesis/validation';
 
 const RadioButton = ({ label, checked, onChange, name, readonly }) => (
   <label
@@ -547,55 +548,20 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
   };
 
   const handleValidate = async () => {
-    if (!config.classification || !config.targetFeature) return;
-
-    setIsValidating(true);
-
-    try {
-      const modellingTypeMap = {
-        'Binary': 'binary',
-        'Multiclass': 'multiclass',
-        'Regression': 'regression'
-      };
-
-      const modellingType = modellingTypeMap[config.classification];
-      const ensembleId = datasetState.ensembleId;
-      const targetColumn = config.targetFeature;
-
-      const response = await fetch(`${hostnameAI}/genesis/validate-target-column`, {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ensemble_id: ensembleId,
-          workflow_id: activeWorkflowId,
-          target_column: targetColumn,
-          modelling_type: modellingType
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.status === 'success') {
-          toast.success('Validation successful!', { duration: 3000, position: 'top-right' });
-          onValidate();
-        } else {
-          toast.error('Target column is not compatible with the selected modeling type.', { duration: 4000, position: 'top-right' });
-        }
-      } else {
-        toast.error('Target column is not compatible with the selected modeling type.', { duration: 4000, position: 'top-right' });
-      }
-    } catch (error) {
-      console.error('Validation error:', error);
-      toast.error('Target column is not compatible with the selected modeling type.', { duration: 4000, position: 'top-right' });
-    } finally {
-      setIsValidating(false);
-    }
+    await validateSupervisedLearning(config, datasetState, activeWorkflowId, hostnameAI, setIsValidating, onValidate);
   };
 
   const handleConfigChange = (newConfig) => {
+    // If timeSeriesType is changed, reset time series validation and clear related fields
+    if (newConfig.timeSeriesType !== config.timeSeriesType && isTimeSeriesValidated) {
+      newConfig = {
+        ...newConfig,
+        targetFeature: '',
+        timeColumn: ''
+      };
+      setIsTimeSeriesValidated(false);
+    }
+
     setConfig(newConfig);
     if (isValidated) {
       onValidate();
@@ -603,54 +569,7 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
   };
 
   const handleTimeSeriesValidate = async () => {
-    if (!config.timeSeriesType || !config.targetFeature || !config.timeColumn) return;
-
-    setIsValidating(true);
-
-    try {
-      const timeSeriesTypeMap = {
-        'Univariate': 'univariate_timeseries',
-        'Multivariate': 'multivariate_timeseries',
-        'Multiseries': 'multiseries_timeseries'
-      };
-
-      const modellingType = timeSeriesTypeMap[config.timeSeriesType];
-      const ensembleId = datasetState.ensembleId;
-      const targetColumn = config.targetFeature;
-      const timeColumn = config.timeColumn;
-
-      const response = await fetch(`${hostnameAI}/genesis/validate-target-column`, {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ensemble_id: ensembleId,
-          workflow_id: activeWorkflowId,
-          target_column: targetColumn,
-          modelling_type: modellingType,
-          time_column: timeColumn
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.status === 'success') {
-          toast.success('Time Series validation successful!', { duration: 3000, position: 'top-right' });
-          setIsTimeSeriesValidated(true);
-        } else {
-          toast.error('Time column or target column is not compatible with the selected modeling type.', { duration: 4000, position: 'top-right' });
-        }
-      } else {
-        toast.error('Time column or target column is not compatible with the selected modeling type.', { duration: 4000, position: 'top-right' });
-      }
-    } catch (error) {
-      console.error('Time Series validation error:', error);
-      toast.error('Time column or target column is not compatible with the selected modeling type.', { duration: 4000, position: 'top-right' });
-    } finally {
-      setIsValidating(false);
-    }
+    await validateTimeSeriesLearning(config, datasetState, activeWorkflowId, hostnameAI, setIsValidating, setIsTimeSeriesValidated);
   };
 
   useEffect(() => {
@@ -682,21 +601,25 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
                     newConfig.targetFeature = '';
                     newConfig.timeSeriesType = '';
                     newConfig.timeColumn = '';
+                    newConfig.multivariate_columns = [];
                   } else if (tab === 'Time Series') {
                     newConfig.classification = null;
                     newConfig.targetFeature = '';
                     newConfig.timeSeriesType = '';
                     newConfig.timeColumn = '';
+                    newConfig.multivariate_columns = [];
                   } else if (tab === 'Unsupervised') {
                     newConfig.classification = null;
                     newConfig.targetFeature = '';
                     newConfig.timeSeriesType = '';
                     newConfig.timeColumn = '';
+                    newConfig.multivariate_columns = [];
                   } else if (tab === 'Anomaly Detection') {
                     newConfig.classification = null;
                     newConfig.targetFeature = '';
                     newConfig.timeSeriesType = '';
                     newConfig.timeColumn = '';
+                    newConfig.multivariate_columns = [];
                   }
                   setConfig(newConfig);
                   // Clear validation errors when switching prediction types
@@ -837,7 +760,7 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
                   <RadioButton
                     label="Univariate"
                     checked={config.timeSeriesType === 'Univariate'}
-                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Univariate' })}
+                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Univariate', multivariate_columns: [] })}
                     name="timeseries-type"
                     readonly={readonly}
                   />
@@ -851,7 +774,7 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
                   <RadioButton
                     label="Multiseries"
                     checked={config.timeSeriesType === 'Multiseries'}
-                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Multiseries' })}
+                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Multiseries', multivariate_columns: [] })}
                     name="timeseries-type"
                     readonly={readonly}
                   />
@@ -961,6 +884,166 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
   );
 };
 
+const SelectColumnsMultivariate = ({ config, setConfig, readonly, columnNames = [] }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const dropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
+
+  const getAvailableColumns = () => {
+    const dropColumns = config.drop_columns || [];
+    const excludeColumns = [config.targetFeature, config.timeColumn, ...dropColumns];
+    return columnNames.filter(name => !excludeColumns.includes(name));
+  };
+
+  const availableColumns = getAvailableColumns();
+  const selectedColumns = config.multivariate_columns || [];
+
+  const filteredOptions = availableColumns.filter(option =>
+    option.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const allFilteredSelected = filteredOptions.length > 0 && filteredOptions.every(col => selectedColumns.includes(col));
+  const someFilteredSelected = filteredOptions.some(col => selectedColumns.includes(col));
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+        setSearchTerm('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isOpen]);
+
+  const handleSelect = (column) => {
+    if (!readonly && !selectedColumns.includes(column) && selectedColumns.length < 12) {
+      setConfig({ ...config, multivariate_columns: [...selectedColumns, column] });
+      setSearchTerm('');
+    }
+  };
+
+  const handleRemove = (column) => {
+    if (!readonly) {
+      setConfig({ ...config, multivariate_columns: selectedColumns.filter(col => col !== column) });
+    }
+  };
+
+  return (
+    <div className="rounded-lg bg-[#FAFAFA] border border-gray-200">
+      <div className="px-6 py-5">
+        <h3 className="text-base font-semibold text-gray-900 mb-2">Select Columns</h3>
+        <p className="text-xs text-gray-600 mb-4">Select additional columns to include in the multivariate time series analysis</p>
+
+        <div className="bg-white rounded-lg p-4 border border-gray-200">
+          <label className="block text-sm font-medium text-gray-700 mb-3">Columns</label>
+          <div className="relative" ref={dropdownRef}>
+            <button
+              type="button"
+              disabled={readonly}
+              onClick={() => !readonly && setIsOpen(!isOpen)}
+              className={`w-full px-3 py-2 border rounded-lg text-sm text-left focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent bg-white flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed ${readonly ? 'border-gray-300 bg-[#FAFAFA]' : 'border-gray-300 hover:border-gray-400'}`}
+            >
+              <span className="text-gray-600">
+                {availableColumns.length === 0
+                  ? 'No columns available'
+                  : selectedColumns.length >= 12
+                  ? 'Maximum 12 columns selected'
+                  : `${selectedColumns.length}/12 Columns Selected`}
+              </span>
+              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {isOpen && !readonly && availableColumns.length > 0 && (
+              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg overflow-hidden">
+                <div className="p-2 border-b border-gray-200">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Search..."
+                      className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+
+
+                <div className="overflow-y-auto" style={{ maxHeight: '220px' }}>
+                  {filteredOptions.length > 0 ? (
+                    filteredOptions.map((column) => (
+                      <label
+                        key={column}
+                        className="flex items-center gap-2 px-3 py-2.5 hover:bg-gray-50 cursor-pointer select-none border-b border-gray-50 last:border-b-0"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedColumns.includes(column)}
+                          disabled={selectedColumns.length >= 12 && !selectedColumns.includes(column)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              handleSelect(column);
+                            } else {
+                              handleRemove(column);
+                            }
+                          }}
+                          className="w-4 h-4 rounded border-gray-300 accent-[#8e78b7] cursor-pointer flex-shrink-0 disabled:cursor-not-allowed disabled:opacity-50"
+                        />
+                        <span className="text-sm text-gray-700">{column}</span>
+                      </label>
+                    ))
+                  ) : (
+                    <div className="px-3 py-3 text-sm text-gray-500 text-center">
+                      No results found
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {selectedColumns.length > 0 && (
+            <div className="mt-4">
+              <label className="text-xs font-medium text-gray-600 mb-2 block">Selected Columns</label>
+              <div className="flex flex-wrap gap-2">
+                {selectedColumns.map(column => (
+                  <span
+                    key={column}
+                    className="inline-flex items-center gap-1 px-3 py-1 bg-white border border-gray-300 text-gray-700 text-sm rounded-md"
+                  >
+                    {column}
+                    {!readonly && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemove(column)}
+                        className="ml-1 text-gray-500 hover:text-gray-700"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SplitSetting = ({ config, setConfig, readonly }) => {
   const handleSliderChange = (type, value) => {
     if (readonly) return;
@@ -979,6 +1062,59 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
     setConfig(newConfig);
   };
 
+  const handleTimeSeriesLookbackChange = (value) => {
+    if (readonly) return;
+    setConfig({ ...config, timeSeriesLookback: value });
+  };
+
+  // Time Series Split Setting
+  if (config.predictionType === 'Time Series') {
+    return (
+      <Section title="Split Setting" className="!bg-[#FAFAFA] p-6 rounded-lg">
+        <div className="space-y-6">
+          <div>
+            
+            <div className="bg-white rounded-lg p-4 border border-gray-200">
+              <div className="flex items-center gap-4">
+                <input
+                  type="range"
+                  min="3"
+                  max="18"
+                  value={config.timeSeriesLookback || 7}
+                  disabled={readonly}
+                  onChange={
+                    readonly
+                      ? undefined
+                      : (e) => handleTimeSeriesLookbackChange(parseInt(e.target.value))
+                  }
+                  className={`slider-train flex-1 rounded-lg appearance-none ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                  style={{
+  height: '10px',
+  background: `linear-gradient(to right, #8e78b7 0%, #8e78b7 ${(((config.timeSeriesLookback || 7) - 3) / (18 - 3)) * 100}%, #E5E5E5 ${(((config.timeSeriesLookback || 7) - 3) / (18 - 3)) * 100}%, #E5E5E5 100%)`
+}}
+                />
+                <div className="flex items-center justify-center bg-[#8e78b7] text-white rounded-md px-4 py-2 min-w-16">
+                  <span className="text-sm font-medium">{config.timeSeriesLookback || 7}</span>
+                </div>
+              </div>
+
+              <div className="flex justify-between mt-3 text-xs text-gray-500">
+                <span>3</span>
+                <span>18</span>
+              </div>
+            </div>
+            {/* <div className="bg-white border border-[#8e78b7] rounded-md p-2 mt-4">
+              <p className="text-sm">
+                <span className="font-medium text-[#8e78b7]">Note:</span> The lookback window determines how many previous time steps are used to predict the next value.
+              </p>
+            </div>*/}
+          </div>
+        </div>
+      </Section>
+    );
+  }
+
+  // Supervised Split Setting (original)
   return (
     <Section title="Split Setting" className="!bg-[#FAFAFA] p-6 rounded-lg">
       <div className="space-y-6">
@@ -1066,10 +1202,12 @@ const FairnessAttribute = ({ config, setConfig, readonly, columnNames = [] }) =>
   const getAvailableFairnessColumns = () => {
     const dropColumns = config.drop_columns || [];
     const targetFeature = config.targetFeature || '';
-
+    const timeColumn = config.timeColumn || '';
+    // Fairness columns cannot be the same as the target feature, time column, or any dropped columns
     return columnNames.filter(name =>
       !dropColumns.includes(name) &&
-      name !== targetFeature
+      name !== targetFeature &&
+      name !== timeColumn
     );
   };
 
@@ -1414,6 +1552,8 @@ function ModelGenesis() {
           savedConfig.timeseries_type === 'multivariate_timeseries' ? 'Multivariate' :
           savedConfig.timeseries_type === 'multiseries_timeseries' ? 'Multiseries' : '',
         timeColumn: savedConfig.time_column || '',
+        multivariate_columns: savedConfig.multivariate_columns || [],
+        timeSeriesLookback: savedConfig.timeSeriesLookback || 7,
 
         trainSplit: Math.round((savedConfig.train_size || 0.7) * 100),
         testSplit: Math.round((savedConfig.test_size || 0.3) * 100),
@@ -1434,6 +1574,8 @@ function ModelGenesis() {
       targetFeature: '',
       timeSeriesType: '',
       timeColumn: '',
+      multivariate_columns: [],
+      timeSeriesLookback: 7,
 
       trainSplit: 90,
       testSplit: 10,
@@ -1489,60 +1631,7 @@ function ModelGenesis() {
   };
 
   const runValidation = async () => {
-    if (!config.classification || !config.targetFeature) {
-      toast.error('Please select classification type and target feature.', {
-        duration: 4000,
-        position: 'top-right',
-      });
-      return false;
-    }
-
-    try {
-
-      const modellingType = modellingTypeMap[config.classification];
-      const ensembleId = datasetState.ensembleId;
-      const targetColumn = config.targetFeature;
-
-      const response = await fetch(`${hostnameAI}genesis/genesis/validate-target-column`, {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ensemble_id: ensembleId,
-          workflow_id: activeWorkflowId,
-          target_column: targetColumn,
-          modelling_type: modellingType
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-
-        if (data.status === 'success') {
-          return true;
-        } else {
-          toast.error('Target column is not compatible with the selected modeling type.', {
-            duration: 4000,
-            position: 'top-right',
-          });
-          return false;
-        }
-      } else {
-        toast.error('Target column is not compatible with the selected modeling type.', {
-          duration: 4000,
-          position: 'top-right',
-        });
-        return false;
-      }
-    } catch (error) {
-      toast.error('Target column is not compatible with the selected modeling type.', {
-        duration: 4000,
-        position: 'top-right',
-      });
-      return false;
-    }
+    return await runTargetColumnValidation(config, datasetState, activeWorkflowId, hostnameAI);
   };
 
   const handleNextClick = async () => {
@@ -1608,17 +1697,20 @@ function ModelGenesis() {
         return true;
       }
 
-      const trainSize = config.trainSplit / 100;
-      const testSize = config.testSplit / 100;
+      const trainSize = config.predictionType === 'Time Series' ? 0.7 : config.trainSplit / 100;
+      const testSize = config.predictionType === 'Time Series' ? 0.3 : config.testSplit / 100;
 
-      const sum = trainSize + testSize;
-      if (Math.abs(sum - 1.0) > 0.01) {
-        toast.error('Train and Test splits must equal 100%', {
-          duration: 4000,
-          position: 'top-right',
-        });
-        setIsSubmitting(false);
-        return false;
+      // Only validate train/test split for supervised learning
+      if (config.predictionType !== 'Time Series') {
+        const sum = trainSize + testSize;
+        if (Math.abs(sum - 1.0) > 0.01) {
+          toast.error('Train and Test splits must equal 100%', {
+            duration: 4000,
+            position: 'top-right',
+          });
+          setIsSubmitting(false);
+          return false;
+        }
       }
 
       const payload = {
@@ -1636,6 +1728,8 @@ function ModelGenesis() {
             }[config.timeSeriesType]
           : modellingTypeMap[config.classification],
         time_column: config.predictionType === 'Time Series' ? config.timeColumn : null,
+        timeseries_split: config.predictionType === 'Time Series' ? config.timeSeriesLookback : null,
+        selected_columns: config.predictionType === 'Time Series' && config.timeSeriesType === 'Multivariate' ? (config.multivariate_columns || []) : [],
         fairness_columns: config.fairness_columns,
         data_preprocessing_mode: config.dataPreprocessing,
         model_mode: config.modelSelection,
@@ -1787,14 +1881,25 @@ function ModelGenesis() {
             setValidationErrors={setValidationErrors}
           />
 
+          {config.predictionType === 'Time Series' && config.timeSeriesType === 'Multivariate' && isTimeSeriesValidated && (
+            <SelectColumnsMultivariate
+              config={config}
+              setConfig={setConfig}
+              readonly={isInteractionLocked}
+              columnNames={datasetState.columnNames}
+            />
+          )}
+
           <SplitSetting config={config} setConfig={setConfig} readonly={isInteractionLocked} />
 
-          <FairnessAttribute
-            config={config}
-            setConfig={setConfig}
-            readonly={isInteractionLocked}
-            columnNames={datasetState.columnNames}
-          />
+          {!(config.predictionType === 'Time Series' && ['Multivariate', 'Univariate'].includes(config.timeSeriesType)) && (
+            <FairnessAttribute
+              config={config}
+              setConfig={setConfig}
+              readonly={isInteractionLocked}
+              columnNames={datasetState.columnNames}
+            />
+          )}
         </div>
 
         <style>{`

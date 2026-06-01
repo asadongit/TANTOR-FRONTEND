@@ -9,7 +9,7 @@ import LowVarianceDroppedNotification from './LowVarianceDroppedNotification';
 import { featureSelectionDescriptions, outlierMethods as OUTLIER_METHODS } from '../../../../../../../../hooks/AI/datapreprocessing/descriptions';
 
 
-function FeatureIntegrity({ readonly: readonlyProp, onApiCall }) {
+function FeatureIntegrity({ readonly: readonlyProp, onApiCall ,predictionType,}) {
   const { workflowsState, activeWorkflowId, updatePreprocessingStep, datasetState, mode } = useAIPlayground();
 
   const readonly = readonlyProp || mode === 'view';
@@ -25,7 +25,7 @@ function FeatureIntegrity({ readonly: readonlyProp, onApiCall }) {
   const lowVarianceColumnsDropped =
     workflowState?.dataPreprocessing?.step2?.apiResponse
       ?.low_variance_columns_dropped || [];
-
+  const isUnivariateTimeseries = predictionType === 'univariate_timeseries';
   const [expandedSections, setExpandedSections] = useState({ dropLowValue: false });
   const [toggles, setToggles] = useState({ dropLowValue: false, detectOutliers: false });
   const [selectedColumns, setSelectedColumns] = useState({});
@@ -138,7 +138,7 @@ function FeatureIntegrity({ readonly: readonlyProp, onApiCall }) {
       <LowVarianceDroppedNotification
         droppedColumns={lowVarianceColumnsDropped}
       />
-
+      {!isUnivariateTimeseries && (
       <HighUniqunessDrop
         columns={columnAndUniqueness}
         toggles={toggles}
@@ -154,6 +154,7 @@ function FeatureIntegrity({ readonly: readonlyProp, onApiCall }) {
         totalFields={totalFields}
         selectedCount={selectedCount}
       />
+      )}
 
       <OutlierDetection
         toggles={toggles}

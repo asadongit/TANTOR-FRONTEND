@@ -11,6 +11,7 @@ function HandleMissingValues({
   readonly: readonlyProp,
   onValidationChange,
   onApiCall,
+  predictionType,
 }) {
 
   const {
@@ -20,6 +21,9 @@ function HandleMissingValues({
     datasetState,
     mode,
   } = useAIPlayground();
+
+  // Disable original missing values handling for univariate timeseries
+  const isUnivariateTimeseries = predictionType === 'univariate_timeseries';
 
   const readonly = readonlyProp || mode === 'view';
 
@@ -91,7 +95,7 @@ function HandleMissingValues({
   // Local UI state for the step cards and dropdown controls.
 
   const [toggles, setToggles] = useState({
-  handleOriginalMissing: hasAnyOriginalMissing,
+  handleOriginalMissing: isUnivariateTimeseries ? false : hasAnyOriginalMissing,
   handleGeneratedMissing: hasAnyGeneratedMissing,
 });
 
@@ -136,7 +140,7 @@ function HandleMissingValues({
     workflowState?.dataPreprocessing?.step3?.config;
   if (savedConfig) {
     setToggles({
-      handleOriginalMissing:savedConfig.original_missing_value_active || false,
+      handleOriginalMissing: isUnivariateTimeseries ? false : (savedConfig.original_missing_value_active || false),
       handleGeneratedMissing:savedConfig.generated_missing_value_active || false, });
 
     setOriginalMissingConfig({
@@ -154,7 +158,17 @@ function HandleMissingValues({
       datetime: savedConfig.generated_missing_value_datetime_method || '',
       rollingWindow: savedConfig.generated_missing_value_rolling_window ?? '',
       seasonalPeriod: savedConfig.generated_missing_value_seasonal_period ?? '', }); }
-}, [mode, workflowState?.dataPreprocessing?.step3?.config]);
+}, [mode, workflowState?.dataPreprocessing?.step3?.config, isUnivariateTimeseries]);
+
+  // Ensure original missing values toggle stays off for univariate timeseries
+  useEffect(() => {
+    if (isUnivariateTimeseries && toggles.handleOriginalMissing) {
+      setToggles(prev => ({
+        ...prev,
+        handleOriginalMissing: false,
+      }));
+    }
+  }, [isUnivariateTimeseries, toggles.handleOriginalMissing]);
 
   // Validation helpers for the step's original and generated missing-value selections.
 
@@ -343,44 +357,46 @@ function HandleMissingValues({
   return (
     <div className="space-y-4 p-4">
       {/* Original missing-values card. */}
-      <HandleOriginalMissingValues
-        readonly={readonly}
-        expanded={
-          expandedSections.handleOriginalMissing
-        }
-        toggleSection={() =>
-          toggleSection('handleOriginalMissing')
-        }
-        checked={hasAnyOriginalMissing}
-        hasNumericMissing={hasNumericMissing}
-        hasCategoricalMissing={
-          hasCategoricalMissing
-        }
-        hasDatetimeMissing={hasDatetimeMissing}
-        missingOriginalNumericColumns={
-          missingOriginalNumericColumns
-        }
-        missingOriginalCategoricalColumns={
-          missingOriginalCategoricalColumns
-        }
-        missingOriginalDatetimeColumns={
-          missingOriginalDatetimeColumns
-        }
-        originalMissingConfig={
-          originalMissingConfig
-        }
-        setOriginalMissingConfig={
-          setOriginalMissingConfig
-        }
-        searchValues={searchValues}
-        setSearchValues={setSearchValues}
-        showDropdowns={showDropdowns}
-        setShowDropdowns={setShowDropdowns}
-        showFieldErrors={showFieldErrors}
-        originalMissingError={
-          originalMissingError
-        }
+      {!isUnivariateTimeseries && (
+        <HandleOriginalMissingValues
+          readonly={readonly || isUnivariateTimeseries}
+          expanded={
+            expandedSections.handleOriginalMissing
+          }
+          toggleSection={() =>
+            toggleSection('handleOriginalMissing')
+          }
+          checked={hasAnyOriginalMissing}
+          hasNumericMissing={hasNumericMissing}
+          hasCategoricalMissing={
+            hasCategoricalMissing
+          }
+          hasDatetimeMissing={hasDatetimeMissing}
+          missingOriginalNumericColumns={
+            missingOriginalNumericColumns
+          }
+          missingOriginalCategoricalColumns={
+            missingOriginalCategoricalColumns
+          }
+          missingOriginalDatetimeColumns={
+            missingOriginalDatetimeColumns
+          }
+          originalMissingConfig={
+            originalMissingConfig
+          }
+          setOriginalMissingConfig={
+            setOriginalMissingConfig
+          }
+          searchValues={searchValues}
+          setSearchValues={setSearchValues}
+          showDropdowns={showDropdowns}
+          setShowDropdowns={setShowDropdowns}
+          showFieldErrors={showFieldErrors}
+          originalMissingError={
+            originalMissingError
+          }
       />
+      )}
       {/* Generated missing-values card. */}
       <HandleGeneratedMissingValues
         readonly={readonly}

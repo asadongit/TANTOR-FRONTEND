@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Download, Eye } from 'lucide-react';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 
-const DataPreviewModal = ({ isOpen, onClose, currentStep }) => {
+const DataPreviewModal = ({ isOpen, onClose, currentStep, predictionType }) => {
     const { datasetState, activeWorkflowId } = useAIPlayground();
     const [previewData, setPreviewData] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -12,7 +12,13 @@ const DataPreviewModal = ({ isOpen, onClose, currentStep }) => {
     const hostnameAI = window._env_?.VITE_AI_API;
 
     const getPrefix = (step) => {
-        const prefixMap = {
+        const isTimeSeries = predictionType && [
+            'univariate_timeseries',
+            'multivariate_timeseries',
+            'multiseries_timeseries'
+        ].includes(predictionType);
+
+        const supervisedPrefixMap = {
             2: 'initial_clean',
             3: 'feature_selection',
             4: 'feature_engineering',
@@ -20,6 +26,19 @@ const DataPreviewModal = ({ isOpen, onClose, currentStep }) => {
             6: 'statistical_analysis',
             7: 'feature_importance'
         };
+
+        const timeseriesPrefixMap = {
+            2: 'initial_clean',
+            3: 'handle_missing_values',
+            4: 'feature_integrity_validation',
+            5: 'data_stabalization',
+            6: 'data_seasonalization',
+            7: 'data_stationarity_treatment',
+            8: 'feature_dependency_analysis',
+            9: 'scaling_and_encoding'
+        };
+
+        const prefixMap = isTimeSeries ? timeseriesPrefixMap : supervisedPrefixMap;
         return prefixMap[step] || null;
     };
 

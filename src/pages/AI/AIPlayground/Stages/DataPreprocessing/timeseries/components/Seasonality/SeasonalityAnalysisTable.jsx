@@ -144,7 +144,7 @@ function SeasonalityAnalysisTable({
           <div className="flex items-center gap-2">
 
             <h4 className="text-sm font-medium text-gray-900">
-              Seasonality Analysis
+              Seasonality Treatment
             </h4>
 
             {/* Info Tooltip */}

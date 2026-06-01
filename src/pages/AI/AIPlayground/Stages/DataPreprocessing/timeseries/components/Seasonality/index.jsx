@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast';
 
 import { useAIPlayground } from '../../../../../../../../context/AIPlaygroundContext';
 
-import { seasonalizeData } from '../../../../../../../../hooks/AI/datapreprocessing/timeseries';
+import { seasonalizeData, stationarityTreatment } from '../../../../../../../../hooks/AI/datapreprocessing/timeseries';
 
 import { dataPreprocessingDescriptions } from '../../../../../../../../hooks/AI/datapreprocessing/descriptions';
 
@@ -46,7 +46,9 @@ import StationarityToggle from './StationarityToggle';
 function SeasonalityAnalysisComponent({
   readonly,
   onValidationChange,
-  onApiCall
+  onApiCall,
+  predictionType
+
 }) {
 
   /**
@@ -76,11 +78,19 @@ function SeasonalityAnalysisComponent({
    */
 
   /**
+   * Check if seasonality analysis was enabled in step 4
+   */
+  const step4Config = workflowState?.dataPreprocessing?.step4?.config;
+  const wasSeasonalityAnalysisEnabledInStep4 = step4Config?.seasonality_analysis_active ?? false;
+
+  /**
    * Seasonality analysis report from step 4 API response
    */
   const rawSeasonalityReport =
     workflowState?.dataPreprocessing?.step4?.apiResponse
       ?.seasonality_analysis_report || [];
+
+  const isUnivariateTimeseries = predictionType === 'univariate_timeseries';    
 
   /**
    * Filter report to only include required keys
@@ -173,6 +183,12 @@ function SeasonalityAnalysisComponent({
   const toggleSwitch = (key) => {
 
     if (readonly || isLoading) return;
+
+    /**
+     * Block seasonality treatment toggle if seasonality analysis
+     * was not enabled in step 4
+     */
+    if (key === 'seasonalityAnalysis' && !wasSeasonalityAnalysisEnabledInStep4) return;
 
     /**
      * -----------------------------------------------------
@@ -302,6 +318,38 @@ function SeasonalityAnalysisComponent({
 
       /**
        * ---------------------------------------------------
+       * If stationarity analysis is OFF, call stationarity
+       * treatment API with false in step 6
+       * ---------------------------------------------------
+       */
+
+      if (!stationarityAnalysisActive) {
+        try {
+          const stationarityConfig = {
+            stationarity_treatment_active: false
+          };
+
+          const stationarityResult =
+            await stationarityTreatment({
+              ensembleId: datasetState.ensembleId,
+              workflowId: activeWorkflowId,
+              stationarityTreatmentActive: false
+            });
+
+          updatePreprocessingStep(
+            'step6',
+            {
+              config: stationarityConfig,
+              apiResponse: stationarityResult
+            }
+          );
+        } catch (err) {
+          console.error('Error in stationarity treatment API call:', err);
+        }
+      }
+
+      /**
+       * ---------------------------------------------------
        * Notify Parent Component
        * ---------------------------------------------------
        */
@@ -385,9 +433,24 @@ function SeasonalityAnalysisComponent({
       )}
 
       {/* ===================================================
-          Seasonality Analysis Section
+          Blocked Notice (if seasonality not enabled in step 4)
       =================================================== */}
 
+      {/* {!wasSeasonalityAnalysisEnabledInStep4 && (
+
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+
+          <p className="text-sm text-blue-700">
+            <span className="font-medium">Note:</span> Seasonality treatment is blocked because seasonality analysis was not enabled in Step 4 (Data Stabilization)
+          </p>
+
+        </div>
+      )} */}
+
+      {/* ===================================================
+          Seasonality Analysis Section
+      =================================================== */}
+      {!isUnivariateTimeseries && (
       <SeasonalityAnalysisTable
 
         isToggled={seasonalityTreatmentActive}
@@ -398,7 +461,7 @@ function SeasonalityAnalysisComponent({
 
         onExpand={() => toggleSection('seasonalityAnalysis')}
 
-        readonly={readonly}
+        readonly={readonly || !wasSeasonalityAnalysisEnabledInStep4}
 
         isLoading={isLoading}
 
@@ -406,6 +469,7 @@ function SeasonalityAnalysisComponent({
 
         sectionDescriptions={sectionDescriptions}
       />
+      )}  
 
       {/* ===================================================
           Stationarity Analysis Section
