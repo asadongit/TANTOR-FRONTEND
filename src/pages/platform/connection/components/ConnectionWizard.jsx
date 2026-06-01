@@ -587,19 +587,15 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
         refetchConnections();
       } else {
         const errorData = await response.json();
-        if (
-          errorData.message?.toLowerCase().includes("already exists") ||
-          errorData.message?.toLowerCase().includes("duplicate")
-        ) {
-          setErrors((prev) => ({
-            ...prev,
-            connection_name: "Connection name already exists",
-          }));
-          setTouchedFields((prev) => ({ ...prev, connection_name: true }));
-          toast.error("Connection name already exists");
-        } else {
-          toast.error(`Save failed: ${errorData.message || "Unknown error"}`);
-        }
+        const errorMsg = errorData.detail || errorData.message || "Failed to create connection";
+        toast.error(`${errorMsg}`, {
+          duration: 6000,
+          style: {
+            maxWidth: "480px",
+            wordBreak: "break-word",
+            whiteSpace: "pre-wrap",
+          },
+        });
       }
     } catch (error) {
       toast.error(`Save failed: ${error.message}`);
