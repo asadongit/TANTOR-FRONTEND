@@ -51,6 +51,11 @@ function CategoricalEncoding({
 }) {
     const [hoveredOption, setHoveredOption] = React.useState(null);
 
+    const optionDescriptions = {};
+    encodingMethods.forEach(option => {
+        optionDescriptions[option.value] = option.description;
+    });
+
     return (
         <div className={`rounded-lg transition-all ${hasError ? 'bg-red-50 border border-red-400' : 'bg-gray-50'}`}>
             <div className="p-4 flex items-center justify-between">
@@ -76,32 +81,45 @@ function CategoricalEncoding({
 
             {isToggled && isExpanded && (
                 <div className="px-4 pb-4">
-                    <div className="mt-4 space-y-3">
+                    <div className="mt-4">
+                        <h5 className="text-sm font-medium text-gray-700 mb-3">Encoding Method</h5>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-3">
                         {encodingMethods.map((option) => (
                             <div
                                 key={option.value}
-                                onClick={() => !readonly && onEncodingChange(option.value)}
+                                className="relative"
                                 onMouseEnter={() => setHoveredOption(option.value)}
                                 onMouseLeave={() => setHoveredOption(null)}
-                                className={`px-4 py-3 rounded-lg transition-colors cursor-pointer ${
-                                    selectedEncoding === option.value
-                                        ? 'bg-purple-100 border border-[#8e78b7]'
-                                        : 'bg-white border border-gray-200 hover:border-gray-300'
-                                }`}
                             >
-                                <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                        <h5 className="text-sm font-medium text-gray-900">{option.label}</h5>
-                                        {hoveredOption === option.value && (
-                                            <p className="text-xs text-gray-600 mt-1">{option.description}</p>
-                                        )}
-                                    </div>
-                                    <div className={`w-4 h-4 rounded-full border-2 ml-3 mt-0.5 flex-shrink-0 ${
+                                <label
+                                    className={`flex items-center gap-3 p-3 rounded-lg transition-all ${
                                         selectedEncoding === option.value
-                                            ? 'bg-[#8e78b7] border-[#8e78b7]'
-                                            : 'border-gray-300'
-                                    }`} />
-                                </div>
+                                            ? 'bg-[#FAF8FF] border border-[#8e78b7]'
+                                            : 'bg-white'
+                                    } ${readonly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="encodingStrategy"
+                                        value={option.value}
+                                        checked={selectedEncoding === option.value}
+                                        onChange={(e) => !readonly && onEncodingChange(e.target.value)}
+                                        disabled={readonly}
+                                        className="w-4 h-4 accent-[#8e78b7]"
+                                    />
+                                    <span className={`text-sm font-medium ${selectedEncoding === option.value ? 'text-[#8e78b7]' : 'text-gray-700'}`}>
+                                        {option.label}
+                                    </span>
+                                </label>
+
+                                {hoveredOption === option.value && (
+                                    <div className="absolute left-0 top-full mt-2 z-50 w-80 p-3 bg-[#332849] text-white text-xs rounded-lg shadow-lg">
+                                        <div className="absolute -top-1 left-4 w-2 h-2 bg-[#332849] transform rotate-45"></div>
+                                        <p className="leading-relaxed">{optionDescriptions[option.value]}</p>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>

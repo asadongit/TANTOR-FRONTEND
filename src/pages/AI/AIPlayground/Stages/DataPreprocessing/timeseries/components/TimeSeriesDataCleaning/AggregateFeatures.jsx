@@ -185,14 +185,10 @@ function AggregateFeatures({
 
           {/* Toggle Switch */}
           <ToggleSwitch
-            checked={aggregation}
-            onChange={() => toggleSwitch('aggregation')}
-            disabled={
-              readonly ||
-              isLoading ||
-              !hasDuplicateRows
-            }
-          />
+  checked={aggregation}
+  onChange={() => {}}
+  disabled={true}
+/>
 
           {/* Expand / Collapse Button */}
           {aggregation && (

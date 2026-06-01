@@ -68,7 +68,9 @@ export function AIPlaygroundLayout({
     totalPreprocessingSteps,
     onPreprocessingStepChange,
     isStep7Preview,
+    isStep8Preview,
     onPreviewData,
+    onPreviewData8,
     isNextDisabled: isNextDisabledProp,
     onSaveModel,
     onNextClick
@@ -270,7 +272,8 @@ export function AIPlaygroundLayout({
     const previousStage = workflowStages[Math.max(currentStageIndex - 1, 0)];
 
     const isPreprocessingPage = location.pathname === '/ai/playground/data-preprocessing';
-    const isOnStep7 = isPreprocessingPage && currentPreprocessingStep === totalPreprocessingSteps;
+    const isOnStep7 = isPreprocessingPage && currentPreprocessingStep === totalPreprocessingSteps && totalPreprocessingSteps === 7;
+    const isOnStep8 = isPreprocessingPage && currentPreprocessingStep === totalPreprocessingSteps && totalPreprocessingSteps === 8;
 
     const shouldShowCancel = currentStageIndex >= 0 && currentStageIndex <= 3;
 
@@ -376,6 +379,25 @@ export function AIPlaygroundLayout({
         }
 
         if (isOnStep7 && isStep7Preview) {
+            if (nextStage) {
+                navigate(nextStage.path, {
+                    state: {
+                        mode: readonly ? 'view' : 'edit',
+                        isEnsemble,
+                        ensembleCount: models.length,
+                        activeModelIndex: activeModelIndex
+                    }
+                });
+            }
+            return;
+        }
+
+        if (isOnStep8 && !isStep8Preview) {
+            if (onPreviewData8) onPreviewData8(true);
+            return;
+        }
+
+        if (isOnStep8 && isStep8Preview) {
             if (nextStage) {
                 navigate(nextStage.path, {
                     state: {
@@ -649,6 +671,8 @@ export function AIPlaygroundLayout({
 
         if (isOnStep7 && !isStep7Preview) return 'Preview Data';
         if (isOnStep7 && isStep7Preview) return `Continue to ${nextStage?.label || 'Next Stage'}`;
+        if (isOnStep8 && !isStep8Preview) return 'Preview Data';
+        if (isOnStep8 && isStep8Preview) return `Continue to ${nextStage?.label || 'Next Stage'}`;
         if (isDeploymentStage && isEnsemble && activeModelIndex < models.length - 1) {
             return `Continue to ${truncateLabel(models[activeModelIndex + 1]?.label)}`;
         }
@@ -664,7 +688,7 @@ export function AIPlaygroundLayout({
         if (isDeploymentStage && isEnsemble && activeModelIndex < models.length - 1) {
             return false;
         }
-        return !isPreprocessingPage && currentStageIndex === workflowStages.length - 1 && !(isOnStep7 && !isStep7Preview);
+        return !isPreprocessingPage && currentStageIndex === workflowStages.length - 1 && !(isOnStep7 && !isStep7Preview) && !(isOnStep8 && !isStep8Preview);
     };
 
     const getVisibleStages = () => {
@@ -1055,7 +1079,7 @@ export function AIPlaygroundLayout({
 
                 <div className="bg-white border-t border-gray-200 px-6 py-2 flex-shrink-0" style={{ background: '#FFFFFF', boxShadow: '0px -4px 9px 0px #0000001A' }}>
                     <div className="w-full flex justify-between items-center">
-                        {!(isOnStep7 && isStep7Preview) && !isDeploymentStage ? (
+                        {!(isOnStep7 && isStep7Preview) && !(isOnStep8 && isStep8Preview) && !isDeploymentStage ? (
                             shouldShowCancel ? (
                                 <button
                                     onClick={handleCancel}

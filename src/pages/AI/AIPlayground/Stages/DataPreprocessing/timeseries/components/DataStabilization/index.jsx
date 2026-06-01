@@ -7,7 +7,7 @@ import { outlierTreatmentMethods } from '../../../../../../../../hooks/AI/datapr
 import OutlierTreatment from './OutlierTreatment';
 import SeasonalityAnalysis from './SeasonalityAnalysis';
 
-function DataStabilization({ readonly: readonlyProp, onApiCall }) {
+function DataStabilization({ readonly: readonlyProp, onApiCall, predictionType }) {
   const { workflowsState, activeWorkflowId, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
 
   const readonly = readonlyProp || mode === 'view';
@@ -26,7 +26,7 @@ function DataStabilization({ readonly: readonlyProp, onApiCall }) {
   const [hoveredOption, setHoveredOption] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showFieldErrors, setShowFieldErrors] = useState(false);
-
+  const isUnivariateTimeseries = predictionType === 'univariate_timeseries';
   const availableOutlierOptions = outlierTreatmentMethods;
   const optionDescriptions = availableOutlierOptions.reduce((accumulator, option) => {
     accumulator[option.value] = option.description;
@@ -39,12 +39,12 @@ function DataStabilization({ readonly: readonlyProp, onApiCall }) {
     if (step4Config && (mode === 'view' || mode === 'edit')) {
       setToggles({
         outlierTreatment: step4Config.outlier_treatment_active ?? false,
-        seasonalityAnalysis: step4Config.seasonality_analysis ?? false
+        seasonalityAnalysis: step4Config.seasonality_analysis_active ?? false
       });
       setOutlierStrategy(step4Config.outlier_treatment_strategy || 'cap_95');
       setExpandedSections({
         outlierTreatment: !!step4Config.outlier_treatment_active,
-        seasonalityAnalysis: !!step4Config.seasonality_analysis
+        seasonalityAnalysis: !!step4Config.seasonality_analysis_active
       });
     } else {
       setToggles({
@@ -156,7 +156,7 @@ function DataStabilization({ readonly: readonlyProp, onApiCall }) {
       updatePreprocessingStep('step4', {
         config: {
           outlier_treatment_active: params.outlierTreatmentActive,
-          seasonality_analysis: params.seasonalityAnalysis,
+          seasonality_analysis_active: params.seasonalityAnalysis,
           outlier_treatment_strategy: params.outlierTreatmentStrategy,
           outlier_thershold: params.outlierThreshold
         },
@@ -197,6 +197,7 @@ function DataStabilization({ readonly: readonlyProp, onApiCall }) {
         errorMessage={outlierStrategyError ? 'Please select an outlier treatment strategy' : ''}
       />
 
+      {!isUnivariateTimeseries && (
       <SeasonalityAnalysis
         isToggled={toggles.seasonalityAnalysis}
         isExpanded={expandedSections.seasonalityAnalysis}
@@ -204,6 +205,7 @@ function DataStabilization({ readonly: readonlyProp, onApiCall }) {
         onExpand={() => toggleSection('seasonalityAnalysis')}
         readonly={readonly}
       />
+      )}
     </div>
   );
 }
