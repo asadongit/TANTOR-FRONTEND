@@ -37,6 +37,7 @@ import Audit from '../pages/platform/Audit/Audit';
 
 //newmigration screens
 import Migration from '../pages/platform/migration/Migration';
+import Dedup from '../pages/platform/dedup/Dedup';
 
 
 export function PlatformRoutes() {
@@ -94,6 +95,9 @@ export function PlatformRoutes() {
           <MonitoringDashboard />
         </MonitoringProvider>
       } />
+
+      {/* Deduplication Routes */}
+      <Route path="/dedup" element={<Dedup />} />
     </Routes>
   );
 }
