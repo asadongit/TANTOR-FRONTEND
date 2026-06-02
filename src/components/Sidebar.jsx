@@ -218,7 +218,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     { name: 'Purge', icon: TrashIcon, path: '/purge' },
     { name: 'CDC', icon: ServerStackIcon, path: '/cdc' },
     { name: 'Federation', icon: ShareIcon, path: '/federation' },
-    ...(window._env_?.VITE_ENABLE_DEDUP_MODULE === 'true' || window._env_?.ENABLE_DEDUP_MODULE === true ? [{ name: 'Dedup', icon: Copy, path: '/dedup' }] : []),
+    ...(window._env_?.VITE_ENABLE_DEDUP_MODULE === 'true' || window._env_?.ENABLE_DEDUP_MODULE === true ? [{ name: 'MDM', icon: Copy, path: '/dedup-group', expandOnly: true, subItems: [{ name: 'Rules Canvas', path: '/dedup' }, { name: 'Data Review Queue', path: '/dedup-results' }] }] : []),
   ];
 
   const DATAGOVERNANCE_PREFIX = '/datagovernance';

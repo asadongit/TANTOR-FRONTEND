@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, RefreshCcw, Plus, X, Edit } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext.jsx';
 import DataTable from '../../../components/DataTable.jsx';
@@ -16,20 +17,45 @@ import LinkedServicesIcon from '../../../assets/mdm/linked_services.svg';
 /* ─────────────────────────────────────────────
    Badges
 ───────────────────────────────────────────── */
-const StatusBadge = ({ activeFlag, onClick, disabled }) => {
+const StatusBadge = ({ activeFlag }) => {
     const lower = activeFlag?.toLowerCase();
     const isY = lower === 'y' || lower === 'yes' || lower === 'active';
-    const classes = isY
-        ? 'text-[#069B68] bg-[#2AC79240] hover:bg-[#2AC79255]'
-        : 'text-[#EF4D5F] bg-[#F276A74D] hover:bg-[#F276A760]';
+    
+    return (
+        <span
+            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold transition-colors duration-200 ${
+                isY
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : 'bg-rose-50 text-rose-700 border border-rose-200'
+            }`}
+        >
+            {isY ? 'Active' : 'Inactive'}
+        </span>
+    );
+};
+
+const StatusToggle = ({ activeFlag, onClick, disabled }) => {
+    const lower = activeFlag?.toLowerCase();
+    const isY = lower === 'y' || lower === 'yes' || lower === 'active';
+    
     return (
         <button
             type="button"
             onClick={onClick}
             disabled={disabled}
-            className={`${classes} px-2.5 py-1 text-xs font-medium rounded-md border-none cursor-pointer transition-all focus:outline-none ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                isY ? 'bg-[#8E77BB]' : 'bg-gray-200'
+            } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            role="switch"
+            aria-checked={isY}
+            title={isY ? 'Deactivate Rule' : 'Activate Rule'}
         >
-            {isY ? 'Active' : 'Inactive'}
+            <span
+                aria-hidden="true"
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    isY ? 'translate-x-4' : 'translate-x-0'
+                }`}
+            />
         </button>
     );
 };
@@ -49,6 +75,7 @@ const metrics = [
 ───────────────────────────────────────────── */
 const Dedup = () => {
     const { token, project } = useAuth();
+    const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [editingRule, setEditingRule] = useState(null);
@@ -192,11 +219,14 @@ const Dedup = () => {
             key: 'active_flag',
             label: 'Status',
             render: (row) => (
-                <StatusBadge 
-                    activeFlag={row.active_flag} 
-                    onClick={() => handleToggle(row)}
-                    disabled={togglingId === row.rule_id}
-                />
+                <div className="flex items-center gap-3">
+                    <StatusToggle 
+                        activeFlag={row.active_flag} 
+                        onClick={() => handleToggle(row)}
+                        disabled={togglingId === row.rule_id}
+                    />
+                    <StatusBadge activeFlag={row.active_flag} />
+                </div>
             ),
         },
         {
@@ -219,28 +249,28 @@ const Dedup = () => {
 
     return (
         <div className="p-6 bg-gray-50 min-h-screen">
-            <Breadcrumb />
+            <Breadcrumb title={"MDM"} title2={"Rule Canvas"} title3={"Rule Management"}/>
 
             {/* Page header */}
             <div className="flex items-start justify-between mb-4 mt-2">
                 <div>
                     <h1 className="text-2xl font-bold text-[#282F49]">Rule Management</h1>
-                    <p className="text-sm text-[#818181] mt-0.5">
+                    {/* <p className="text-sm text-[#818181] mt-0.5">
                         Configure Deduplication Rules
-                    </p>
+                    </p> */}
                 </div>
                 <div className="flex justify-between gap-3 font-medium text-sm">
                     <button
                         title="Refresh"
                         onClick={handleRefresh}
                         disabled={isLoading}
-                        className="p-2.5 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-wait"
+                        className="p-2.5 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-wait cursor-pointer"
                     >
                         <RefreshCcw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
                     </button>
                     <button
                         onClick={handleAddRule}
-                        className="flex items-center gap-2 px-4 py-2 bg-[#8E77BB] text-white rounded-lg hover:bg-[#7a67a0] transition-colors text-sm font-medium"
+                        className="flex items-center gap-2 px-4 py-2 bg-[#8E77BB] text-white rounded-lg hover:bg-[#7a67a0] transition-colors text-sm font-medium cursor-pointer"
                     >
                         <Plus className="h-4 w-4" />
                         Add Rule
