@@ -9,7 +9,7 @@ import { cleanTimeSeriesData } from '../../../../../../../../hooks/AI/dataprepro
 import { dataPreprocessingDescriptions } from '../../../../../../../../hooks/AI/datapreprocessing/descriptions';
 
 import ChangeDataType from './ChangeDataType';
-import AggregateFeatures from './AggregateFeatures';
+// import AggregateFeatures from './AggregateFeatures';
 
 /**
  * =========================================================
@@ -749,7 +749,7 @@ function TimeSeriesDataCleaning({
           Aggregate Features Section
       =================================================== */}
 
-      <AggregateFeatures
+      {/* <AggregateFeatures
 
         aggregation={aggregation}
 
@@ -783,7 +783,7 @@ function TimeSeriesDataCleaning({
         sectionDescriptions={
           sectionDescriptions
         }
-      />
+      /> */}
     </div>
   );
 }

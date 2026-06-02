@@ -13,8 +13,7 @@ export const cleanTimeSeriesData = async (params) => {
         workflow_id: params.workflowId,
         modify_data_types: params.modifyDataTypes || false,
         modify_data_types_map: params.modifyDataTypesMap || {},
-        aggregation: params.aggregation || true,
-        aggregation_method: params.aggregationMethod || 'mean'
+      
       },
       {
         headers: {

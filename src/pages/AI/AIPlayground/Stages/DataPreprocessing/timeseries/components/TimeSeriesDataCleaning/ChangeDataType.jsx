@@ -7,9 +7,9 @@ import { SearchableDropdown } from '../Dropdowns';
 import InfoButton from '../../../../../components/InfoButton';
 
 /**
- * =========================================================
+ * ==========
  * ChangeDataType Component
- * =========================================================
+ * ==========
  *
  * Purpose:
  * Handles manual datatype conversion UI for
@@ -22,55 +22,32 @@ import InfoButton from '../../../../../components/InfoButton';
  * - Select new datatype
  * - Add/remove datatype rows
  * - Validation error display
- *
- * Parent Component:
- * index.jsx
- *
- * NOTE:
- * This component ONLY handles UI.
- * All state management, validation logic,
- * payload creation, and API calls remain
- * inside index.jsx.
- * =========================================================
+
+ * ==========
  */
 
 function ChangeDataType({
 
   /**
-   * =======================================================
-   * Toggle & Expand States
-   * =======================================================
-   */
 
+   * Toggle & Expand States
+
+   */
   modifyDataTypes,
   expanded,
-
-  /**
-   * Toggle switch handler
-   */
   toggleSwitch,
-
-  /**
-   * Expand/collapse handler
-   */
   toggleSection,
   disabled,
 
   /**
-   * =======================================================
    * General States
-   * =======================================================
    */
-
   readonly,
   isLoading,
 
   /**
-   * =======================================================
    * Datatype Rows State
-   * =======================================================
    */
-
   dataTypeColumns,
 
   /**
@@ -82,39 +59,14 @@ function ChangeDataType({
    * Available datatype options
    */
   dataTypeOptions,
-
-  /**
-   * =======================================================
-   * Validation
-   * =======================================================
-   */
-
   showFieldErrors,
-
-  /**
-   * =======================================================
-   * Helper Functions
-   * =======================================================
-   */
-
   getAvailableColumns,
-
   canAddNewRow,
-
   handleColumnChange,
-
   handleNewDataTypeChange,
-
   addColumn,
-
   removeDataTypeColumn,
-
-  /**
-   * =======================================================
-   * Info Tooltip Descriptions
-   * =======================================================
-   */
-
+   // Info Tooltip Descriptions
   sectionDescriptions
 
 }) {
@@ -123,9 +75,9 @@ function ChangeDataType({
 
     <div className="rounded-lg transition-all bg-[#FAFAFA]">
 
-      {/* ===================================================
+      {/* ====
           Section Header
-      =================================================== */}
+      ====*/}
 
       <div className="p-4 flex items-center justify-between">
 
@@ -181,9 +133,9 @@ function ChangeDataType({
         </div>
       </div>
 
-      {/* ===================================================
+      {/* ====
           Expanded Content
-      =================================================== */}
+      ====*/}
 
       {modifyDataTypes && expanded && (
 
@@ -191,9 +143,9 @@ function ChangeDataType({
 
           <div className="mt-4 space-y-2">
 
-            {/* ===============================================
+            {/* 
                 Table Header
-            =============================================== */}
+            */}
 
             <div className="grid grid-cols-[1fr_1fr_1fr_32px] gap-3">
 
@@ -213,16 +165,14 @@ function ChangeDataType({
 
             </div>
 
-            {/* ===============================================
+            {/* 
                 Dynamic Datatype Rows
-            =============================================== */}
-
+            */}
             {dataTypeColumns.map((column, index) => {
 
               /**
                * Field Validation Errors
                */
-
               const colMissingName =
                 showFieldErrors &&
                 !column.columnName;
@@ -238,92 +188,62 @@ function ChangeDataType({
                   key={index}
                   className="grid grid-cols-[1fr_1fr_1fr_32px] gap-3 items-start"
                 >
-
-                  {/* =========================================
-                      Column Selection Dropdown
-                  ========================================= */}
-
+                  {/* 
+                      Column Selection Dropdown */}
                   <div className="flex flex-col">
-
                     <SearchableDropdown
-
                       selectedColumn={column.columnName}
-
                       onSelect={(val) =>
                         handleColumnChange(index, val)
                       }
-
                       availableOptions={
                         getAvailableColumns(index)
                       }
-
                       placeholder="Select"
-
                       readonly={readonly || isLoading}
-
                       dropDirection="down"
-
                       hasError={colMissingName}
                     />
-
                     {/* Validation Error */}
                     {colMissingName && (
 
                       <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">
                         Please select a column
                       </p>
-
                     )}
                   </div>
-
                   {/* =========================================
                       Old Datatype Display
                   ========================================= */}
 
                   <div className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 bg-white">
-
                     {column.oldDataType || '-'}
-
                   </div>
-
                   {/* =========================================
-                      New Datatype Dropdown
+                     Datatype Dropdown
                   ========================================= */}
-
                   <div className="flex flex-col">
-
                     <SearchableDropdown
-
                       selectedColumn={column.newDataType}
-
                       onSelect={(val) =>
                         handleNewDataTypeChange(index, val)
                       }
-
                       availableOptions={dataTypeOptions}
-
                       placeholder="Select"
-
                       readonly={readonly || isLoading}
-
                       dropDirection="down"
-
                       hasError={!!colMissingType}
                     />
-
                     {/* Validation Error */}
                     {colMissingType && (
-
                       <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">
                         Please select a new data type
                       </p>
-
                     )}
                   </div>
 
-                  {/* =========================================
-                      Remove Row Button
-                  ========================================= */}
+                  {/* 
+                      Remove Row Button*/}
 
                   <div className="flex items-start justify-center pt-2">
 
@@ -364,9 +284,9 @@ function ChangeDataType({
               );
             })}
 
-            {/* ===============================================
+            {/* 
                 Add New Datatype Row Button
-            =============================================== */}
+            */}
 
             <div>
 
