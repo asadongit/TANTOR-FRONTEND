@@ -6,6 +6,8 @@ import { toast } from 'react-hot-toast';
 import { Check, X, Search, ChevronDown, ChevronUp, AlertCircle, CheckCircle } from 'lucide-react';
 import { tw, backgrounds } from '../../../../components/themeContext';
 import { validateSupervisedLearning, validateTimeSeriesLearning, runTargetColumnValidation } from './genesis/validation';
+import { cleanTimeSeriesData } from '../../../../hooks/AI/datapreprocessing/timeseries';
+import FrequencyAlignmentModal from './genesis/FrequencyAlignmentModal';
 
 const RadioButton = ({ label, checked, onChange, name, readonly }) => (
   <label
@@ -534,7 +536,10 @@ const ModeSelection = ({ config, setConfig, readonly, onNotebookModeSelect }) =>
 
 const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, columnNames, hasError, errorMessage, sectionRef, activeWorkflowId, isValidating, setIsValidating, isTimeSeriesValidated, setIsTimeSeriesValidated, validationError, supervisedTargetFeatureError, timeSeriesTargetFeatureError, timeSeriesTimeColumnError, setValidationErrors }) => {
   const hostnameAI = window._env_?.VITE_AI_API;
-  const { datasetState } = useAIPlayground();
+  const { datasetState , updatePreprocessingStep } = useAIPlayground();
+  // frequency modal state for validation in timeseries
+  const [showFrequencyModal, setShowFrequencyModal] = useState(false);
+const [frequencyValidationData, setFrequencyValidationData] = useState(null);
   const tabs = ['Supervised', 'Unsupervised', 'Time Series', 'Anomaly Detection'];
 
   const getAvailableTargetColumns = () => {
@@ -557,7 +562,8 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
       newConfig = {
         ...newConfig,
         targetFeature: '',
-        timeColumn: ''
+        timeColumn: '',
+
       };
       setIsTimeSeriesValidated(false);
     }
@@ -568,18 +574,48 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
     }
   };
 
-  const handleTimeSeriesValidate = async () => {
-    await validateTimeSeriesLearning(config, datasetState, activeWorkflowId, hostnameAI, setIsValidating, setIsTimeSeriesValidated);
-  };
+ const handleTimeSeriesValidate = async () => {
+  const result = await validateTimeSeriesLearning(
+    config,
+    datasetState,
+    activeWorkflowId,
+    hostnameAI,
+    setIsValidating,
+    setIsTimeSeriesValidated
+  );
+
+  if (result?.frequency_match === false) {
+    setFrequencyValidationData(result);
+    setShowFrequencyModal(true);
+  }
+};
 
   useEffect(() => {
     if (config.predictionType !== 'Time Series') {
       setIsTimeSeriesValidated(false);
     }
   }, [config.predictionType]);
+  useEffect(() => {
+  setShowFrequencyModal(false);
+  setFrequencyValidationData(null);
+
+  if (isTimeSeriesValidated) {
+    setIsTimeSeriesValidated(false);
+  }
+}, [
+  config.targetFeature,
+  config.timeColumn,
+  config.frequency,
+  config.timeSeriesType
+]);
 
   const isValidateDisabled = !config.classification || !config.targetFeature || isValidating;
-  const isTimeSeriesValidateDisabled = !config.timeSeriesType || !config.targetFeature || !config.timeColumn || isValidating;
+  const isTimeSeriesValidateDisabled =
+  !config.timeSeriesType ||
+  !config.targetFeature ||
+  !config.timeColumn ||
+  !config.frequency ||
+  isValidating;
 
   return (
     <div ref={sectionRef} className="bg-[#FAFAFA] rounded-lg border border-gray-200">
@@ -844,6 +880,28 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
                     </div>
                   )}
                 </div>
+
+                {['Univariate', 'Multivariate'].includes(config.timeSeriesType) && (
+  <div className="bg-white rounded-lg p-3">
+    <label className="block text-xs font-medium text-gray-700 mb-2">
+      Frequency
+    </label>
+
+    <SearchableSelect
+      value={config.frequency}
+      onChange={(newFrequency) => {
+        handleConfigChange({
+          ...config,
+          frequency: newFrequency
+        });
+      }}
+      options={['daily', 'weekly', 'monthly']}
+      placeholder="Select frequency."
+      disabled={readonly}
+      readonly={readonly}
+    />
+  </div>
+)}
               </div>
             </div>
 
@@ -880,6 +938,23 @@ const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, 
           </div>
         </div>
       )}
+      <FrequencyAlignmentModal
+  isOpen={showFrequencyModal}
+  validationData={frequencyValidationData}
+  config={config}
+  datasetState={datasetState}
+  activeWorkflowId={activeWorkflowId}
+  hostnameAI={hostnameAI}
+  onSuccess={() => {
+    setShowFrequencyModal(false);
+    setFrequencyValidationData(null);
+    setIsTimeSeriesValidated(true);
+  }}
+  onClose={() => {
+    setShowFrequencyModal(false);
+    setFrequencyValidationData(null);
+  }}
+/>
     </div>
   );
 };
@@ -1552,6 +1627,7 @@ function ModelGenesis() {
           savedConfig.timeseries_type === 'multivariate_timeseries' ? 'Multivariate' :
           savedConfig.timeseries_type === 'multiseries_timeseries' ? 'Multiseries' : '',
         timeColumn: savedConfig.time_column || '',
+        frequency: '',
         multivariate_columns: savedConfig.multivariate_columns || [],
         timeSeriesLookback: savedConfig.timeSeriesLookback || 7,
 
@@ -1574,6 +1650,7 @@ function ModelGenesis() {
       targetFeature: '',
       timeSeriesType: '',
       timeColumn: '',
+      frequency: savedConfig?.frequency || '',
       multivariate_columns: [],
       timeSeriesLookback: 7,
 
@@ -1777,6 +1854,31 @@ function ModelGenesis() {
   },
   apiResponse: data
 });
+
+
+// call the initial clean api for univariate for timeseries in this step 
+
+if (storedModellingType === 'univariate_timeseries') {
+  const cleanResponse = await cleanTimeSeriesData({
+    ensembleId: datasetState.ensembleId,
+    workflowId: activeWorkflowId,
+
+    modifyDataTypes: false,
+    modifyDataTypesMap: {},
+
+  
+  });
+
+  updatePreprocessingStep('step1', {
+    config: {
+      modify_data_types: false,
+      modify_data_types_map: {},
+      aggregation: false,
+      aggregation_method: 'mean',
+    },
+    apiResponse: cleanResponse,
+  });
+}
         
         // Store job_id in completedJobs if it exists in the response
         if (data.job_id) {

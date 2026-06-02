@@ -10,8 +10,6 @@ import DataTable from '../../../../../../../../components/DataTable';
  * SeasonalityAnalysisTable
  * =========================================================
  *
- * Child Component for Seasonality Analysis
- *
  * Responsibilities:
  * ---------------------------------------------------------
  * - Display seasonality toggle switch
@@ -28,49 +26,18 @@ import DataTable from '../../../../../../../../components/DataTable';
  * - isLoading: boolean - API loading state
  * - seasonalityReport: array - report data from API response
  * - sectionDescriptions: object - descriptions for info tooltip
- *
  * =========================================================
  */
 
 function SeasonalityAnalysisTable({
-  /**
-   * Toggle state for seasonality analysis
-   */
+
   isToggled,
-
-  /**
-   * Expanded/collapsed section state
-   */
   isExpanded,
-
-  /**
-   * Function to toggle seasonality analysis switch
-   */
   onToggle,
-
-  /**
-   * Function to expand/collapse section
-   */
   onExpand,
-
-  /**
-   * Readonly mode
-   */
   readonly,
-
-  /**
-   * Loading state during API call
-   */
   isLoading,
-
-  /**
-   * Seasonality analysis report data from backend
-   */
   seasonalityReport,
-
-  /**
-   * Section descriptions for info tooltip
-   */
   sectionDescriptions
 }) {
 
@@ -78,7 +45,6 @@ function SeasonalityAnalysisTable({
    * =========================================================
    * Define Table Columns
    * =========================================================
-   *
    * Display only the specific required columns
    */
 

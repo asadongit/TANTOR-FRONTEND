@@ -26,20 +26,7 @@ import StationarityToggle from './StationarityToggle';
  * - Performs API calls to seasonalizeData
  * - Controls section expand/collapse
  * - Displays seasonality analysis report
- *
- * Child Components:
- * ---------------------------------------------------------
- * - DataTable.jsx (for displaying report)
- *
- * Architecture:
- * ---------------------------------------------------------
- * Parent Component:
- *    - Business logic
- *    - API logic
- *    - State management
- *
- * Child Components:
- *    - UI rendering only
+
  * =========================================================
  */
 

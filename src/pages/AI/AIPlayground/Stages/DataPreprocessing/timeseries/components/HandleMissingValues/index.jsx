@@ -281,7 +281,7 @@ function HandleMissingValues({
     }
 
     try {
-      const payload = {
+      const payload= {
         ensembleId: datasetState?.ensembleId,
         workflowId: currentWorkflowId,
         originalMissingValueActive: hasAnyOriginalMissing,
