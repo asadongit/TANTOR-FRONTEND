@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
-import { Bot } from "lucide-react";
+import { Bot, Copy } from "lucide-react";
 import {
   ChartBarIcon,
   CubeIcon,
@@ -218,6 +218,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     { name: 'Purge', icon: TrashIcon, path: '/purge' },
     { name: 'CDC', icon: ServerStackIcon, path: '/cdc' },
     { name: 'Federation', icon: ShareIcon, path: '/federation' },
+    ...(window._env_?.VITE_ENABLE_DEDUP_MODULE === 'true' || window._env_?.ENABLE_DEDUP_MODULE === true ? [{ name: 'Dedup', icon: Copy, path: '/dedup' }] : []),
   ];
 
   const DATAGOVERNANCE_PREFIX = '/datagovernance';
