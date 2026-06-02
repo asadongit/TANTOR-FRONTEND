@@ -1,0 +1,885 @@
+import React, { useEffect, useState, useRef } from 'react';
+import { useWorkflowStore, useUIStore, useRunStore } from '../../../store';
+import { listWorkflows, getActiveRuns, listWorkflowCategories } from '../../../api/agentmesh';
+import { FiSearch, FiUser, FiMessageSquare, FiInfo, FiTag, FiGrid, FiList, FiFilter, FiX, FiZap } from 'react-icons/fi';
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
+import bannerImage from '../../../assets/data/Stack-p-2000.png';
+import Pagination from '../../Common/Pagination';
+
+const PURPLE_THEME = {
+  primary: 'var(--theme-primary)',
+  bg: 'var(--bg-canvas)',
+  accent: 'var(--theme-primary-glow)',
+  border: 'var(--border)',
+  text: 'var(--theme-primary)'
+};
+
+function MarketplaceListRow({ w, onChat, onDetails, isRunning, idx }) {
+  const theme = PURPLE_THEME;
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: idx * 0.03 }}
+      style={{
+        background: 'white',
+        border: `1px solid var(--border-light)`,
+        borderRadius: 16,
+        padding: '12px 24px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 20,
+        position: 'relative',
+        overflow: 'hidden',
+        cursor: 'pointer',
+        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+      }}
+      onClick={() => onDetails(w)}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+        e.currentTarget.style.borderColor = '#E5E7EB';
+        e.currentTarget.style.transform = 'translateX(4px)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = 'none';
+        e.currentTarget.style.borderColor = 'var(--border-light)';
+        e.currentTarget.style.transform = 'translateX(0)';
+      }}
+    >
+      {/* Accent bar */}
+      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: 'var(--theme-primary)' }} />
+
+      <div style={{
+        width: 44, height: 44, borderRadius: 12,
+        background: theme.bg,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+        color: theme.primary,
+        border: `1px solid ${theme.border}`
+      }}>
+        <FiUser size={22} />
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 10 }}>
+          {w.name}
+          {isRunning && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#ECFDF5', padding: '2px 8px', borderRadius: 20, border: '1px solid #D1FAE5' }}>
+              <motion.div
+                animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981' }}
+              />
+              <span style={{ fontSize: 10, color: '#065F46', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Live</span>
+            </div>
+          )}
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span title={`Group: ${w.group || 'Default'}`} style={{ display: 'flex', alignItems: 'center', gap: 4, color: theme.primary, fontWeight: 600, fontSize: 12 }}>
+            {w.group || 'Default'}
+          </span>
+          <span title={`Category: ${w.category || 'General'}`} style={{ display: 'flex', alignItems: 'center', gap: 4, color: theme.primary, fontWeight: 600, fontSize: 12 }}>
+            <FiTag size={12} /> {w.category || 'General'}
+          </span>
+          <span style={{ width: 1, height: 12, background: 'var(--border)' }} />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.description || 'No description provided for this specialized AI agent.'}</span>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+        {/* Quick Launch Buttons for Agents List */}
+        {(w.config?.nodes || []).filter(n => n.type === 'button_trigger' || n.data?.type === 'button_trigger').map(n => (
+          <button
+            key={n.id}
+            onClick={() => {
+              const currentWfId = useWorkflowStore.getState().workflowId;
+              if (currentWfId !== w.id) {
+                useRunStore.getState().reset(); // Reset only if switching agents
+              }
+              useWorkflowStore.getState().loadWorkflowIntoEditor(w);
+              const ui = useUIStore.getState();
+              ui.setTargetNodeId(n.id);
+              ui.setInitialRunInput(n.data?.button_input || 'Start');
+              ui.setRunOpen(true);
+            }}
+            style={{
+              height: 32, padding: '0 12px', borderRadius: 8, background: 'var(--theme-primary-glow)', border: 'none',
+              color: 'var(--theme-primary)', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--theme-primary)'; e.currentTarget.style.color = 'white'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--theme-primary-glow)'; e.currentTarget.style.color = 'var(--theme-primary)'; }}
+          >
+            <FiZap size={14} /> {n.data?.button_label || n.data?.label || 'Run'}
+          </button>
+        ))}
+        <button
+          onClick={() => onChat(w)}
+          style={{
+            height: 32, border: 'none', borderRadius: 8,
+            background: 'var(--theme-primary)', color: 'white', padding: '0 14px', display: 'flex', alignItems: 'center',
+            gap: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.filter = 'brightness(1.1)'}
+          onMouseLeave={(e) => e.currentTarget.style.filter = 'none'}
+        >
+          <FiMessageSquare size={16} /> Launch
+        </button>
+        <button
+          onClick={() => onDetails(w)}
+          style={{
+            height: 32, border: '1px solid var(--border-light)', borderRadius: 8,
+            background: 'white', color: 'var(--text-secondary)', padding: '0 12px', display: 'flex', alignItems: 'center',
+            gap: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = '#F9FAFB'; e.currentTarget.style.borderColor = '#D1D5DB'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = 'var(--border-light)'; }}
+        >
+          <FiInfo size={14} /> Details
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+
+function MarketplaceCard({ w, onChat, onDetails, isRunning, idx }) {
+  const theme = PURPLE_THEME;
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -5, transition: { duration: 0.2 } }}
+      transition={{ duration: 0.4, delay: idx * 0.05, ease: [0.23, 1, 0.32, 1] }}
+      style={{
+        background: 'white',
+        border: `1px solid var(--border-light)`,
+        borderRadius: 24,
+        boxShadow: 'var(--shadow-sm)',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        overflow: 'hidden',
+        cursor: 'pointer',
+        height: '100%',
+      }}
+      onClick={() => onDetails(w)}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
+        e.currentTarget.style.borderColor = '#E5E7EB';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+        e.currentTarget.style.borderColor = 'var(--border-light)';
+      }}
+    >
+
+      <div style={{ padding: '20px 20px 16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: 12,
+            background: theme.bg,
+            border: `1px solid ${theme.border}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: theme.primary,
+            boxShadow: `0 4px 12px -2px ${theme.glow}`
+          }}>
+            <FiUser size={22} strokeWidth={2} />
+          </div>
+
+          {isRunning && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#ECFDF5', padding: '3px 8px', borderRadius: 20, border: '1px solid #D1FAE5' }}>
+              <motion.div
+                animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981' }}
+              />
+              <span style={{ fontSize: 9, color: '#065F46', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Active</span>
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginBottom: 8 }}>
+          <h3 style={{
+            fontSize: 16, fontWeight: 800, color: 'var(--text-primary)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            letterSpacing: '-0.02em', marginBottom: 2
+          }}>
+            {w.name}
+          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span title={`Group: ${w.group || 'Default'}`} style={{
+              fontSize: 10, color: theme.primary, fontWeight: 700,
+              textTransform: 'uppercase', letterSpacing: '0.05em',
+              background: theme.bg, padding: '1px 6px', borderRadius: 4
+            }}>
+              {w.group || 'Default'}
+            </span>
+            <span title={`Category: ${w.category || 'General'}`} style={{
+              fontSize: 10, color: theme.primary, fontWeight: 700,
+              textTransform: 'uppercase', letterSpacing: '0.05em',
+              background: theme.bg, padding: '1px 6px', borderRadius: 4
+            }}>
+              {w.category || 'General'}
+            </span>
+          </div>
+        </div>
+
+        <p style={{
+          fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5,
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+          marginBottom: 12
+        }}>
+          {w.description || "Deploy this agent for complex task orchestration and real-time processing."}
+        </p>
+      </div>
+
+      <div style={{
+        padding: '12px 16px',
+        background: '#F9FAFB',
+        borderTop: '1px solid #F3F4F6',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {/* Quick Launch Buttons for Agents Card */}
+          {(w.config?.nodes || []).filter(n => n.type === 'button_trigger' || n.data?.type === 'button_trigger').map(n => (
+            <button
+              key={n.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                const currentWfId = useWorkflowStore.getState().workflowId;
+                if (currentWfId !== w.id) {
+                  useRunStore.getState().reset(); // Reset only if switching agents
+                }
+                useWorkflowStore.getState().loadWorkflowIntoEditor(w);
+                const ui = useUIStore.getState();
+                ui.setTargetNodeId(n.id);
+                ui.setInitialRunInput(n.data?.button_input || 'Start');
+                ui.setRunOpen(true);
+              }}
+              style={{
+                height: 36, padding: '0 14px', borderRadius: 8, border: '1px solid var(--theme-primary-glow)',
+                background: 'var(--theme-primary-glow)', color: 'var(--theme-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: 6, fontSize: 11, fontWeight: 800, cursor: 'pointer', transition: 'all 0.3s'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--theme-primary)'; e.currentTarget.style.color = 'white'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--theme-primary-glow)'; e.currentTarget.style.color = 'var(--theme-primary)'; }}
+            >
+              <FiZap size={13} /> {n.data?.button_label || n.data?.label || 'Run'}
+            </button>
+          ))}
+          <button
+            onClick={(e) => { e.stopPropagation(); onChat(w); }}
+            style={{
+              height: 36, padding: '0 16px', borderRadius: 8, border: '1px solid var(--theme-primary-glow)',
+              background: 'var(--theme-primary-glow)', color: 'var(--theme-primary)', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', gap: 6, fontSize: 11, fontWeight: 800, cursor: 'pointer', transition: 'all 0.3s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--theme-primary)'; e.currentTarget.style.color = 'white'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--theme-primary-glow)'; e.currentTarget.style.color = 'var(--theme-primary)'; }}
+          >
+            <FiMessageSquare size={14} /> Launch
+          </button>
+        </div>
+
+        <button
+          onClick={(e) => { e.stopPropagation(); onDetails(w); }}
+          style={{
+            height: 36, width: 36, borderRadius: 8, border: '1px solid #E5E7EB',
+            background: 'white', color: '#111827', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', transition: 'all 0.2s'
+          }}
+          title="More Details"
+          onMouseEnter={(e) => e.currentTarget.style.background = '#F3F4F6'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+        >
+          <FiInfo size={18} />
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+export default function MarketplacePage() {
+  const { workflows, setWorkflows, loadWorkflowIntoEditor } = useWorkflowStore();
+  const { setRunOpen } = useUIStore();
+  const [loading, setLoading] = useState(false);
+  const [activeRuns, setActiveRuns] = useState(new Set());
+  const [viewMode, setViewMode] = useState('cards');
+  const [search, setSearch] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedGroupFilter, setSelectedGroupFilter] = useState('All');
+  const [categories, setCategories] = useState(['All']);
+  const [groups, setGroups] = useState(['All']);
+
+  const searchInputRef = useRef(null);
+  const filterPanelRef = useRef(null);
+  const containerRef = useRef(null);
+  const { scrollY } = useScroll({ container: containerRef });
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(12);
+  const [totalWorkflows, setTotalWorkflows] = useState(0);
+  const totalPages = Math.ceil(totalWorkflows / pageSize);
+
+  // ⚡ Parallax Effects
+  const bannerBgY = useTransform(scrollY, [0, 400], [0, 120]);
+  const bannerScale = useTransform(scrollY, [0, 400], [1, 1.3]);
+  const bannerOpacity = useTransform(scrollY, [0, 300], [0.12, 0.05]);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await listWorkflows({
+        page: currentPage,
+        limit: pageSize,
+        search,
+        category: selectedCategory === 'All' ? undefined : selectedCategory,
+        group: selectedGroupFilter === 'All' ? undefined : selectedGroupFilter
+      });
+      setWorkflows(r.workflows || []);
+      setTotalWorkflows(r.total || 0);
+
+      // Also load categories for filter if not already loaded or to keep fresh
+      const catRes = await listWorkflowCategories();
+      if (catRes.status === 'success') {
+        const uniqueGroups = Array.from(new Set(r.workflows.map(w => w.group || 'Default')));
+        setGroups(['All', ...uniqueGroups]);
+        setCategories(['All', ...catRes.categories.map(c => typeof c === 'string' ? c : c.name)]);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadActiveRuns = async () => {
+    try {
+      const res = await getActiveRuns();
+      if (res.status === 'success') {
+        const wfIds = new Set();
+        Object.values(res.active_runs).forEach(run => wfIds.add(run.workflow_id));
+        setActiveRuns(wfIds);
+      }
+    } catch (e) { }
+  };
+
+  useEffect(() => {
+    load();
+    const interval = setInterval(loadActiveRuns, 5000);
+    return () => clearInterval(interval);
+  }, [search, selectedCategory, selectedGroupFilter, currentPage]);
+
+  // Reset page strictly when filters or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedCategory, selectedGroupFilter]);
+
+  // Focus input when opening search
+  useEffect(() => {
+    if (searchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [searchOpen]);
+
+  // Handle clicks outside filter panel
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterPanelRef.current && !filterPanelRef.current.contains(event.target)) {
+        setFilterOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleChat = (w) => {
+    const currentWfId = useWorkflowStore.getState().workflowId;
+    if (currentWfId !== w.id) {
+      useRunStore.getState().reset(); // Reset only if switching agents
+    }
+    loadWorkflowIntoEditor(w);
+    setRunOpen(true);
+  };
+
+  const [selectedAgent, setSelectedAgent] = useState(null);
+
+  const handleDetails = (w) => {
+    setSelectedAgent(w);
+  };
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-primary)' }}>
+      {/* ── Details Modal ── */}
+      <AnimatePresence>
+        {selectedAgent && (
+          <MarketplaceDetailsModal
+            agent={selectedAgent}
+            onClose={() => setSelectedAgent(null)}
+            onChat={() => { handleChat(selectedAgent); setSelectedAgent(null); }}
+            onEdit={() => {
+              loadWorkflowIntoEditor(selectedAgent);
+              useUIStore.getState().setActivePage('canvas');
+              setSelectedAgent(null);
+            }}
+          />
+        )}
+      </AnimatePresence>
+      <div style={{ padding: '16px 32px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white' }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Marketplace</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Search bar collapsible */}
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', transition: 'width 0.2s', width: (searchOpen || search) ? 320 : 36 }}>
+            {(!searchOpen && !search) && (
+              <button
+                onClick={() => setSearchOpen(true)}
+                title="Search marketplace by name"
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8
+                }}
+              >
+                <FiSearch size={18} color="#6B7280" />
+              </button>
+            )}
+            {searchOpen && (
+              <div style={{ position: 'relative', width: '100%' }}>
+                <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} size={16} />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Search Marketplace..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  onBlur={() => { if (!search) setSearchOpen(false); }}
+                  onKeyDown={e => {
+                    if (e.key === 'Escape') { setSearch(''); setSearchOpen(false); }
+                    if (e.key === 'Enter') searchInputRef.current.blur();
+                  }}
+                  style={{
+                    width: '100%', padding: '8px 12px 8px 36px', border: '1px solid #E5E7EB', borderRadius: 10,
+                    fontSize: 14, outline: 'none', background: 'white', color: '#111827'
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Filters */}
+          <div style={{ position: 'relative' }} ref={filterPanelRef}>
+            <button
+              onClick={() => setFilterOpen(!filterOpen)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
+                background: filterOpen ? '#111827' : 'white',
+                color: filterOpen ? 'white' : '#111827',
+                border: '1px solid #E5E7EB', borderRadius: 10, fontSize: 13, fontWeight: 600,
+                cursor: 'pointer', transition: 'all 0.2s'
+              }}
+            >
+              <FiFilter size={16} /> Filters
+              {(selectedCategory !== 'All' || selectedGroupFilter !== 'All') && (
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444' }} />
+              )}
+            </button>
+
+            <AnimatePresence>
+              {filterOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                  style={{
+                    position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 260,
+                    background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
+                    boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', zIndex: 100, padding: 16
+                  }}
+                >
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>By Group</div>
+                    <select
+                      value={selectedGroupFilter}
+                      onChange={(e) => setSelectedGroupFilter(e.target.value)}
+                      style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 8, outline: 'none', fontSize: 13 }}
+                    >
+                      {groups.map(g => <option key={g} value={g}>{g}</option>)}
+                    </select>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>By Category</div>
+                    <select
+                      value={selectedCategory}
+                      onChange={(e) => setSelectedCategory(e.target.value)}
+                      style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 8, outline: 'none', fontSize: 13 }}
+                    >
+                      {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+
+                  <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={() => { setSelectedCategory('All'); setSelectedGroupFilter('All'); }}
+                      style={{ padding: '6px 10px', fontSize: 12, color: '#6B7280', border: 'none', background: 'none', cursor: 'pointer' }}
+                    >
+                      Reset All
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div style={{ display: 'flex', gap: 2, background: 'var(--bg-canvas)', border: '1px solid var(--border)', borderRadius: 10, padding: '4px' }}>
+            <button onClick={() => setViewMode('cards')} style={{ background: viewMode === 'cards' ? 'var(--theme-primary)' : 'transparent', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', color: viewMode === 'cards' ? 'white' : '#6B7280' }}><FiGrid size={16} /></button>
+            <button onClick={() => setViewMode('list')} style={{ background: viewMode === 'list' ? 'var(--theme-primary)' : 'transparent', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', color: viewMode === 'list' ? 'white' : '#6B7280' }}><FiList size={16} /></button>
+          </div>
+        </div>
+      </div>
+
+      <div
+        ref={containerRef}
+        style={{ flex: 1, overflowY: 'auto', padding: '32px' }}
+      >
+        {/* ── Agent Banner ── */}
+        <div style={{
+          position: 'relative',
+          width: '100%',
+          height: '240px',
+          background: 'linear-gradient(135deg, #4c1d95 0%, #1e1b4b 100%)',
+          borderRadius: '24px',
+          marginBottom: '40px',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 20px 50px rgba(76, 29, 149, 0.15)',
+          border: '1px solid rgba(142, 119, 187, 0.2)'
+        }}>
+          {/* Decorative Image */}
+          <motion.img
+            src={bannerImage}
+            alt="Mesh Stack"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              opacity: bannerOpacity,
+              pointerEvents: 'none',
+              filter: 'hue-rotate(235deg) saturate(2) brightness(1.2)',
+              scale: bannerScale,
+              y: bannerBgY
+            }}
+          />
+
+          <div style={{
+            position: 'absolute',
+            left: '30%',
+            top: '-20%',
+            width: '60%',
+            height: '100%',
+            background: 'radial-gradient(circle, rgba(142, 119, 187, 0.2) 0%, transparent 70%)',
+            opacity: 0.6,
+            filter: 'blur(80px)'
+          }} />
+
+          {/* Banner Content */}
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+              fontSize: '44px',
+              fontWeight: 900,
+              color: 'white',
+              margin: 0,
+              letterSpacing: '-0.04em',
+              zIndex: 2,
+              textAlign: 'center',
+              textShadow: '0 4px 12px rgba(0,0,0,0.2)'
+            }}
+          >
+            Specialized Marketplace Mesh
+          </motion.h2>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            style={{
+              position: 'absolute',
+              bottom: '24px',
+              fontSize: '13px',
+              fontWeight: 700,
+              color: 'rgba(255,255,255,0.7)',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              zIndex: 2,
+              opacity: 0.9,
+              background: 'rgba(255,255,255,0.1)',
+              padding: '6px 16px',
+              borderRadius: '20px',
+              backdropFilter: 'blur(4px)',
+              border: '1px solid rgba(255,255,255,0.1)'
+            }}
+          >
+            Orchestrate High-Performance Autonomous Intelligence
+          </motion.div>
+        </div>
+
+        {loading && <div style={{ textAlign: 'center', marginTop: 40 }}><div className="loading-spinner" /></div>}
+
+        {!loading && workflows.length === 0 && (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginTop: 80,
+            color: '#6B7280'
+          }}>
+            <FiUser size={48} style={{ opacity: 0.2, marginBottom: 16 }} />
+            <div style={{ fontSize: 16, fontWeight: 600 }}>No items found in marketplace</div>
+            <div style={{ fontSize: 14 }}>Try adjusting your search or create a new agent from the canvas.</div>
+          </div>
+        )}
+
+        {!loading && workflows.length > 0 && (
+          viewMode === 'cards' ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
+              {workflows.map((w, i) => (
+                <MarketplaceCard key={w.id} w={w} idx={i} onChat={handleChat} onDetails={handleDetails} isRunning={activeRuns.has(w.id)} />
+              ))}
+
+              {/* Create Agent Card (Matches Image) */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                whileHover={{ y: -8, boxShadow: 'var(--shadow-lg)', borderColor: 'var(--theme-primary)' }}
+                onClick={() => useUIStore.getState().setActivePage('canvas')}
+                style={{
+                  background: 'white',
+                  border: '2px dashed var(--border)',
+                  borderRadius: 24,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 20,
+                  cursor: 'pointer',
+                  minHeight: 280,
+                  transition: 'all 0.2s ease',
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-canvas)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}
+              >
+                <div style={{
+                  width: 64, height: 64, borderRadius: '50%', background: 'var(--theme-primary-glow)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--theme-primary)',
+                  boxShadow: '0 0 20px rgba(142, 119, 187, 0.1)'
+                }}>
+                  <span style={{ fontSize: 36, fontWeight: 300 }}>+</span>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--theme-primary)', marginBottom: 4 }}>Build New Agent</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Start from a blank canvas</div>
+                </div>
+              </motion.div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {workflows.map((w, i) => (
+                <MarketplaceListRow key={w.id} w={w} idx={i} onChat={handleChat} onDetails={handleDetails} isRunning={activeRuns.has(w.id)} />
+              ))}
+            </div>
+          )
+        )}
+
+        <Pagination 
+          currentPage={currentPage} 
+          totalPages={totalPages} 
+          onPageChange={setCurrentPage} 
+        />
+      </div>
+    </div>
+  );
+}
+
+function MarketplaceDetailsModal({ agent, onClose, onChat, onEdit }) {
+  const [copied, setCopied] = useState(false);
+  const theme = PURPLE_THEME;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(agent.id);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(12px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
+      }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0, y: 30 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 30 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        style={{
+          width: '100%', maxWidth: 580, background: 'white', borderRadius: 32,
+          overflow: 'hidden', boxShadow: '0 40px 100px -20px rgba(0,0,0,0.3)',
+          display: 'flex', flexDirection: 'column', position: 'relative'
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+
+        {/* Header Visual */}
+        <div style={{ height: 160, background: `linear-gradient(135deg, #4c1d95 0%, #1e1b4b 100%)`, position: 'relative', zIndex: 1, overflow: 'hidden' }}>
+          {/* Banner Image Background */}
+          <img
+            src={bannerImage}
+            alt="Mesh Stack"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              opacity: 0.3,
+              pointerEvents: 'none',
+              filter: 'hue-rotate(235deg) saturate(2) brightness(1.2)',
+            }}
+          />
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(to bottom, rgba(30, 27, 75, 0.2), rgba(30, 27, 75, 0.6))',
+            pointerEvents: 'none'
+          }} />
+
+          <button
+            onClick={onClose}
+            style={{
+              position: 'absolute', top: 20, right: 20, width: 36, height: 36,
+              borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: 'none',
+              color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', backdropFilter: 'blur(4px)', transition: 'all 0.2s',
+              zIndex: 2
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+          >
+            <FiX size={20} />
+          </button>
+        </div>
+
+        <div style={{
+          position: 'absolute', top: 110, left: 32,
+          width: 100, height: 100, borderRadius: 28, background: 'white',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 20px 40px -10px rgba(0,0,0,0.15)', color: theme.primary,
+          border: '4px solid white',
+          zIndex: 10
+        }}>
+          <FiUser size={50} />
+        </div>
+
+        <div style={{ padding: '60px 32px 32px', zIndex: 1 }}>
+          <div style={{ marginBottom: 32 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h2 style={{ fontSize: 28, fontWeight: 800, color: '#1e293b', margin: 0, letterSpacing: '-0.03em' }}>{agent.name}</h2>
+            </div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: 13, fontWeight: 500 }} title={`Group: ${agent.group || 'Default Group'}`}>
+                <FiGrid size={14} /> {agent.group || 'Default Group'}
+              </div>
+              <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#cbd5e1', alignSelf: 'center' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: 13, fontWeight: 500 }} title={`Category: ${agent.category || 'General'}`}>
+                <FiTag size={14} /> {agent.category || 'General'}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 32 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Capabilities & Context</div>
+            <div style={{ fontSize: 16, color: '#475569', lineHeight: 1.7, fontWeight: 400 }}>
+              {agent.description || "Deploy this advanced autonomous agent into your workflow for complex orchestration, real-time data processing, and multi-step reasoning tasks."}
+            </div>
+          </div>
+
+          <div style={{
+            background: '#f8fafc',
+            border: '1px solid #f1f5f9',
+            borderRadius: 20,
+            padding: '20px 24px',
+            marginBottom: 40,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Unique Agent Identity</div>
+              <div style={{ fontSize: 13, color: '#1e293b', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{agent.id}</div>
+            </div>
+            <button
+              onClick={handleCopy}
+              style={{
+                padding: '8px 16px', borderRadius: 10, background: copied ? '#dcfce7' : 'white',
+                border: `1px solid ${copied ? '#22c55e' : '#e2e8f0'}`,
+                fontSize: 12, fontWeight: 700, color: copied ? '#15803d' : '#64748b',
+                cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+              }}
+            >
+              {copied ? 'Success!' : 'Copy ID'}
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button
+              onClick={onChat}
+              style={{
+                flex: 1.5, height: 44, borderRadius: 12, background: 'var(--theme-primary-glow)',
+                color: 'var(--theme-primary)', border: '1px solid var(--theme-primary-glow)', fontWeight: 800, fontSize: 13, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                transition: 'all 0.3s'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--theme-primary)'; e.currentTarget.style.color = 'white'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--theme-primary-glow)'; e.currentTarget.style.color = 'var(--theme-primary)'; }}
+            >
+              <FiMessageSquare size={18} /> Launch Agent
+            </button>
+            <button
+              onClick={onEdit}
+              style={{
+                flex: 1, height: 44, borderRadius: 12, background: 'white',
+                color: '#1e293b', border: '1px solid #e2e8f0', fontWeight: 800, fontSize: 13,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: 10, transition: 'all 0.2s'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+            >
+              <FiGrid size={18} /> Configure
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}

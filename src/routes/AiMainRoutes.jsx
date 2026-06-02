@@ -5,6 +5,7 @@ import { OrchestrationRoutes } from '../pages/AI/Orchestration/OrchestrationRout
 import Observability from '../pages/AI/Observability/Observability';
 import F1Mode from '../pages/AI/F1Mode/F1Mode';
 import Predictive from '../pages/AI/Prescriptive Analysis/PrescriptiveAnalysis';
+import { AgentMeshRoutes } from '../pages/AI/AgentMesh/AgentMeshRoutes';
 
 
 export const AIRoutes = (
@@ -12,6 +13,7 @@ export const AIRoutes = (
     {HubRoutes}
     {AIPlaygroundRoutes}
     {OrchestrationRoutes}
+    {AgentMeshRoutes}
     <Route path="/ai/observability" element={<Observability />} />
     <Route path="/ai/f1mode" element={<F1Mode />} />
     <Route path="/ai/prescriptive" element={<Predictive />} />

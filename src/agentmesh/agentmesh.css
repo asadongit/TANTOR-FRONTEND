@@ -1,0 +1,252 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   AgentMesh Scoped Stylesheet
+   Imported ONLY inside AgentMeshWrapper → .agentmesh-root
+   
+   Rules:
+   1. NO @import "tailwindcss" — Tantor's Tailwind v3 handles utility classes
+   2. All CSS custom properties live under .agentmesh-root (scoped, no bleed)
+   3. html/body/  #root selectors replaced with .agentmesh-root scoped equivalents
+   4. React Flow classes are scoped inside .agentmesh-root
+   5. Google Fonts import kept — fonts load globally but that is harmless
+───────────────────────────────────────────────────────────────────────────── */
+
+/* Google Sans + Roboto Mono for code */
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Google+Sans+Display:wght@400;500;700&family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500&display=swap');
+
+/* ─── ALL CSS Variables scoped to .agentmesh-root ─── */
+.agentmesh-root {
+  /* ─── Canvas/Background ─── */
+  --bg-canvas: #F8FAFC;
+  --bg-primary: #F9FAFB;
+  --bg-secondary: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-hover: #F5F5F3;
+
+  /* ─── Borders ─── */
+  --border: #E8E8E5;
+  --border-light: #F0F0ED;
+
+  /* ─── Brand Theme ─── */
+  --theme-primary: #8E77BB;
+  --theme-primary-light: #CBC0E0;
+  --theme-primary-text: #FFFFFF;
+  --theme-primary-glow: rgba(142, 119, 187, 0.3);
+  --theme-primary-glow-heavy: rgba(142, 119, 187, 0.6);
+
+  --accent-btn: var(--theme-primary);
+  --accent-btn-text: var(--theme-primary-text);
+  --accent-blue: var(--theme-primary);
+  --accent-glow: var(--theme-primary-glow);
+
+  /* ─── Node Colors ─── */
+  --node-blue: #C9DEFF;
+  --node-orange: #FFE4B8;
+  --node-purple: #E5D9FF;
+  --node-green: #C9F5E0;
+  --node-yellow: #FFF3B8;
+  --node-pink: #FFD9EE;
+  --node-teal: #C9F5F5;
+
+  /* ─── Text ─── */
+  --text-primary: #1C1C1E;
+  --text-secondary: #5F5F6B;
+  --text-muted: #9898A6;
+
+  /* ─── Semantic ─── */
+  --green: #34C759;
+  --red: #FF3B30;
+  --orange: #FF9F0A;
+  --purple: #AF52DE;
+
+  /* ─── Shadows ─── */
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.03);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.03);
+
+  /* ─── Layout: Fill the Tantor content area ─── */
+  display: flex;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Google Sans', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 14px;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+/* ─── Box sizing reset scoped to agentmesh only ─── */
+.agentmesh-root *, .agentmesh-root *::before, .agentmesh-root *::after {
+  box-sizing: border-box;
+}
+
+/* ─── Monospace for code blocks inside AgentMesh ─── */
+.agentmesh-root code,
+.agentmesh-root pre,
+.agentmesh-root .mono {
+  font-family: 'Roboto Mono', 'JetBrains Mono', monospace;
+}
+
+/* ─── Minimal Scrollbar (scoped) ─── */
+.agentmesh-root ::-webkit-scrollbar { width: 4px; height: 4px; }
+.agentmesh-root ::-webkit-scrollbar-track { background: transparent; }
+.agentmesh-root ::-webkit-scrollbar-thumb { background: #D4D4CC; border-radius: 2px; }
+.agentmesh-root ::-webkit-scrollbar-thumb:hover { background: #B0B0A8; }
+
+/* ─── React Flow Canvas (scoped) ─── */
+.agentmesh-root .react-flow__background { background: var(--bg-canvas) !important; }
+.agentmesh-root .react-flow { background: var(--bg-canvas) !important; }
+.agentmesh-root .react-flow__pane { background: var(--bg-canvas) !important; }
+
+.agentmesh-root .react-flow__minimap {
+  background: white !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+  box-shadow: var(--shadow-md) !important;
+}
+.agentmesh-root .react-flow__controls {
+  background: white !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+.agentmesh-root .react-flow__controls-button {
+  background: white !important;
+  border-bottom: 1px solid var(--border-light) !important;
+  color: var(--text-secondary) !important;
+  fill: var(--text-secondary) !important;
+  width: 28px !important;
+  height: 28px !important;
+}
+.agentmesh-root .react-flow__controls-button:hover {
+  background: var(--bg-hover) !important;
+  fill: var(--text-primary) !important;
+}
+
+/* ─── Edges ─── */
+.agentmesh-root .react-flow__edge-path {
+  stroke: #CACAC4 !important;
+  stroke-width: 1.5 !important;
+}
+.agentmesh-root .react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--accent-blue) !important;
+  stroke-width: 2 !important;
+}
+.agentmesh-root .react-flow__connection-path {
+  stroke: var(--accent-blue) !important;
+  stroke-width: 1.5 !important;
+}
+
+/* ─── Handles ─── */
+.agentmesh-root .react-flow__handle {
+  background: #D1D5DB !important;
+  border: 2px solid white !important;
+}
+.agentmesh-root .react-flow__handle:hover {
+  transform: scale(1.4);
+  background: var(--accent-blue) !important;
+}
+.agentmesh-root .react-flow__panel { margin: 12px !important; }
+
+/* ─── Animations (keyframes are always global — no scoping possible) ─── */
+@keyframes am-node-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(142, 119, 187, 0.6); }
+  70% { box-shadow: 0 0 0 10px rgba(142, 119, 187, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(142, 119, 187, 0); }
+}
+
+@keyframes am-pulse {
+  0% { transform: scale(0.95); opacity: 0.5; }
+  50% { transform: scale(1.05); opacity: 0.8; }
+  100% { transform: scale(0.95); opacity: 0.5; }
+}
+
+@keyframes am-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes am-swarm-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.4); transform: scale(1); }
+  50% { box-shadow: 0 0 0 8px rgba(236, 72, 153, 0); transform: scale(1.05); }
+  100% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); transform: scale(1); }
+}
+
+@keyframes am-parallel-pulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+  50% { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(99, 102, 241, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+}
+
+@keyframes am-fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Utility Classes (scoped) ─── */
+.agentmesh-root .node-active-running {
+  animation: am-node-pulse 2s infinite;
+  border-color: #8E77BB !important;
+  border-width: 2px !important;
+}
+
+.agentmesh-root .animate-fade-in { animation: am-fadeInUp 0.2s ease-out; }
+
+.agentmesh-root .loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--text-primary);
+  border-radius: 50%;
+  animation: am-spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+.agentmesh-root .animate-spin { animation: am-spin 1s linear infinite; }
+
+/* ─── Buttons ─── */
+.agentmesh-root .btn-primary {
+  background: var(--accent-btn);
+  color: var(--accent-btn-text);
+  border: none;
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s;
+}
+.agentmesh-root .btn-primary:hover { opacity: 0.88; }
+
+.agentmesh-root .btn-secondary {
+  background: white;
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.agentmesh-root .btn-secondary:hover { background: var(--bg-hover); }
+
+/* ─── Swarm / Parallel indicators ─── */
+.agentmesh-root .swarm-indicator-pulse {
+  animation: am-swarm-pulse 2.5s infinite ease-in-out;
+  background: #EC4899 !important;
+  color: white !important;
+}
+
+.agentmesh-root .parallel-indicator {
+  animation: am-parallel-pulse 3s infinite ease-in-out;
+  background: #6366F1 !important;
+  color: white !important;
+}
