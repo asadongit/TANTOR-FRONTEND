@@ -4,24 +4,27 @@ import { healthCheck, listWorkflows, listNotifications } from '../../../api/agen
 import { FiAlertCircle } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotificationsWS } from '../../../utils/useNotificationsWS';
+import { lazyWithRetry } from '../../../utils/lazyWithRetry';
 
-// ─── Lazy-loaded pages (P1 optimisation) ─────────────────────────────────────
+// ─── Lazy-loaded pages (P2 optimisation: retry wrapper) ──────────────────────
 // Each page chunk only downloads when first visited.
 // WorkflowCanvas alone is ~400KB — lazy loading cuts cold-start by ~60%.
-const Navbar             = React.lazy(() => import('../../Editor/Navbar'));
-const WorkflowCanvas     = React.lazy(() => import('../../Editor/WorkflowCanvas'));
-const RunPanel           = React.lazy(() => import('../../Editor/RunPanel'));
-const WorkflowNotesModal = React.lazy(() => import('../../Editor/WorkflowNotesModal'));
-const NotificationsModal = React.lazy(() => import('../../Editor/NotificationsModal'));
-const DashboardPage      = React.lazy(() => import('./DashboardPage'));
-const WorkflowsPage      = React.lazy(() => import('./WorkflowsPage'));
-const LibraryPage        = React.lazy(() => import('./LibraryPage'));
-const LogsPage           = React.lazy(() => import('./LogsPage'));
-const RAGPage            = React.lazy(() => import('./RAGPage'));
-const Observability      = React.lazy(() => import('./observability'));
-const MarketplacePage    = React.lazy(() => import('./MarketplacePage'));
-const ConnectionsPage    = React.lazy(() => import('./ConnectionsPage'));
-const SettingsPage       = React.lazy(() => import('./SettingsPage'));
+// lazyWithRetry adds 3 automatic retry attempts with exponential backoff,
+// recovering silently from CDN blips or chunk-hash mismatches after a deploy.
+const Navbar             = lazyWithRetry(() => import('../../Editor/Navbar'));
+const WorkflowCanvas     = lazyWithRetry(() => import('../../Editor/WorkflowCanvas'));
+const RunPanel           = lazyWithRetry(() => import('../../Editor/RunPanel'));
+const WorkflowNotesModal = lazyWithRetry(() => import('../../Editor/WorkflowNotesModal'));
+const NotificationsModal = lazyWithRetry(() => import('../../Editor/NotificationsModal'));
+const DashboardPage      = lazyWithRetry(() => import('./DashboardPage'));
+const WorkflowsPage      = lazyWithRetry(() => import('./WorkflowsPage'));
+const LibraryPage        = lazyWithRetry(() => import('./LibraryPage'));
+const LogsPage           = lazyWithRetry(() => import('./LogsPage'));
+const RAGPage            = lazyWithRetry(() => import('./RAGPage'));
+const Observability      = lazyWithRetry(() => import('./observability'));
+const MarketplacePage    = lazyWithRetry(() => import('./MarketplacePage'));
+const ConnectionsPage    = lazyWithRetry(() => import('./ConnectionsPage'));
+const SettingsPage       = lazyWithRetry(() => import('./SettingsPage'));
 
 // Minimal spinner shown while a lazy chunk is downloading
 function PageLoader() {
@@ -45,24 +48,27 @@ function PageLoader() {
  *     The accordion calls useUIStore.setActivePage() to switch content here.
  */
 export default function MainComponent() {
-  const activePage    = useUIStore((s) => s.activePage);
-  const runOpen       = useUIStore((s) => s.runOpen);
-  const setRunOpen    = useUIStore((s) => s.setRunOpen);
-  const showTemplates = useUIStore((s) => s.showTemplates);
+  const activePage        = useUIStore((s) => s.activePage);
+  const runOpen           = useUIStore((s) => s.runOpen);
+  const setRunOpen        = useUIStore((s) => s.setRunOpen);
+  const showTemplates     = useUIStore((s) => s.showTemplates);
+  const meshInitialized   = useUIStore((s) => s.meshInitialized);
+  const setMeshInitialized = useUIStore((s) => s.setMeshInitialized);
   const [healthStatus, setHealthStatus] = React.useState(null);
 
   // Real-time notification badge via WebSocket
   useNotificationsWS();
 
-  // ─── Init guard (P2 optimisation) ────────────────────────────────────────────
-  // Module-level flag persists across route changes so newWorkflow() only runs
-  // once per app session — not every time the user navigates to /ai/agent-mesh.
+  // ─── Init guard (P2: Strict Mode safe via Zustand) ───────────────────────────
+  // useUIStore.meshInitialized persists in Zustand across route changes.
+  // Unlike a static class property, Zustand state is NOT reset by React
+  // Strict Mode's double-invoke of effects — the second run reads `true`
+  // and exits cleanly, so initialization only ever runs once per session.
   useEffect(() => {
-    if (MainComponent._initialized) return;
-    MainComponent._initialized = true;
+    if (meshInitialized) return;
+    setMeshInitialized(true);
 
-    // Use getState() to get stable references — avoids stale closures
-    // and removes the need for eslint-disable on the dependency array.
+    // Use getState() for stable references — correct empty dep array.
     const { newWorkflow: initWorkflow } = useWorkflowStore.getState();
     initWorkflow();
 
@@ -80,7 +86,7 @@ export default function MainComponent() {
       .then((r) => useUIStore.getState().setUnreadCount(r.total || 0))
       .catch(() => {});
 
-  }, []); // empty array is correct — getState() refs are always stable
+  }, [meshInitialized, setMeshInitialized]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', minWidth: 0, background: 'var(--bg-primary)', overflow: 'hidden' }}>
@@ -145,6 +151,3 @@ export default function MainComponent() {
     </div>
   );
 }
-
-// Module-level init flag — survives route changes, resets on hard refresh only
-MainComponent._initialized = false;

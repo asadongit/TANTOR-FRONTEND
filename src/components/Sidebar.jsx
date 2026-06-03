@@ -481,6 +481,11 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
               toggleExpand(e, route.name);
               return;
             }
+            // For routes with sub-items (e.g. Agent Mesh), clicking anywhere
+            // on the row toggles the accordion — not just the tiny arrow icon.
+            if (hasSubItems) {
+              setExpandedItem(prev => prev === route.name ? null : route.name);
+            }
             handleNavClick(e, route.path);
           }}
           className={({ isActive }) =>
@@ -499,15 +504,10 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
                     {route.name}
                   </span>
                   {hasSubItems && (
-                    <button
-                      onClick={(e) => toggleExpand(e, route.name)}
-                      className="p-1 hover:bg-gray-200 rounded-full transition-transform duration-300"
-                    >
-                      <ChevronRightIcon
-                        className={`h-4 w-4 transition-transform duration-300 ${isExpanded ? 'rotate-90' : 'rotate-0'}`}
-                        style={{ color: isActive ? ACTIVE_COLOR : INACTIVE_ICON_COLOR }}
-                      />
-                    </button>
+                    <ChevronRightIcon
+                      className={`h-4 w-4 transition-transform duration-300 ${isExpanded ? 'rotate-90' : 'rotate-0'} flex-shrink-0`}
+                      style={{ color: isActive ? ACTIVE_COLOR : INACTIVE_ICON_COLOR }}
+                    />
                   )}
                 </>
               )}

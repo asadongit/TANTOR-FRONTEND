@@ -654,6 +654,22 @@ export const useUIStore = create((set) => ({
   activeLibraryTab: 'agents', // agents | tools | apis
   setActiveLibraryTab: (tab) => set({ activeLibraryTab: tab }),
 
+  // ─── Initialization guard (Strict Mode safe) ───────────────────────────────
+  // Static class property (MainComponent._initialized) is NOT safe in React
+  // Strict Mode — effects run twice and the flag blocks the second run.
+  // Zustand state survives the double-invoke correctly.
+  meshInitialized: false,
+  setMeshInitialized: (v) => set({ meshInitialized: v }),
+
+  // ─── Template browser visibility ──────────────────────────────────────────
+  // Previously missing from the store — useUIStore(s => s.showTemplates) in
+  // MainComponent was always returning undefined (falsy), meaning !showTemplates
+  // was always true and the Navbar always rendered. Now properly wired so any
+  // future template browser feature can call setShowTemplates(true) and the
+  // Navbar hides correctly.
+  showTemplates: false,
+  setShowTemplates: (v) => set({ showTemplates: v }),
+
   // Management states (for Navbar integration)
   managementSearch: '',
   managementWfFilter: '',
