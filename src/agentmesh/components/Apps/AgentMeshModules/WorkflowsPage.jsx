@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { useWorkflowStore, useUIStore } from '../../../store';
-import { listWorkflows, deleteWorkflow, cloneWorkflow, dispatchScheduleAction, getActiveRuns, listWorkflowCategories, getWorkflow } from '../../../api/agentmesh';
+import { listWorkflows, deleteWorkflow, cloneWorkflow, dispatchScheduleAction, listWorkflowCategories, getWorkflow } from '../../../api/agentmesh';
 import { FiSearch, FiRefreshCw, FiPlus, FiTrash2, FiGitBranch, FiCopy, FiDownload, FiArrowRight, FiPause, FiPlay, FiGrid, FiList, FiFolder, FiTag, FiChevronDown, FiChevronRight, FiEdit2, FiX, FiCheck, FiFilter, FiMoreHorizontal, FiZap, FiInfo } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationModal from '../../Common/ConfirmationModal';
 import Pagination from '../../Common/Pagination';
+import toast from 'react-hot-toast';
 
 const NODE_COLORS = {
   llm_agent: '#C9DEFF', tool_node: '#FFE4B8', router: '#E5D9FF',
@@ -473,7 +474,6 @@ export default function WorkflowsPage() {
 
   const [deleting, setDeleting] = useState(null);
   const [cloning, setCloning] = useState(null);
-  const [activeRuns, setActiveRuns] = useState(new Set());
   const [error, setError] = useState(null);
 
   const [debouncedSearch, setDebouncedSearch] = useState(search);
@@ -561,23 +561,10 @@ export default function WorkflowsPage() {
     finally { setLoadingWorkflows(false); }
   };
 
-  const loadActiveRuns = async () => {
-    try {
-      const res = await getActiveRuns();
-      if (res.status === 'success') {
-        const wfIds = new Set();
-        Object.values(res.active_runs).forEach(run => wfIds.add(run.workflow_id));
-        setActiveRuns(wfIds);
-      }
-    } catch (e) { /* ignore */ }
-  };
-
   const { refreshTrigger, setActivePage } = useUIStore();
 
   useEffect(() => {
     load();
-    const interval = setInterval(loadActiveRuns, 3000);
-    return () => clearInterval(interval);
   }, [refreshTrigger, currentPage, selectedCategory, selectedGroupFilter, debouncedSearch]);
 
   // Handle search debounce
@@ -622,13 +609,19 @@ export default function WorkflowsPage() {
     try {
       await deleteWorkflow(workflowToDelete);
       setWorkflows(workflows.filter((w) => w.id !== workflowToDelete));
-      // ✅ If the deleted workflow is currently open on the canvas, reset it
+      // If the deleted workflow is currently open on the canvas, reset it
       const currentWorkflowId = useWorkflowStore.getState().workflowId;
       if (currentWorkflowId === workflowToDelete) {
         useWorkflowStore.getState().newWorkflow();
       }
     }
-    catch (err) { alert('Delete failed: ' + err.message); }
+    catch (err) {
+      if (err.status === 409) {
+        toast.error(err.message);
+      } else {
+        toast.error('Delete failed: ' + (err.message || 'Unknown error'));
+      }
+    }
     finally {
       setDeleting(null);
       setWorkflowToDelete(null);
@@ -710,7 +703,11 @@ export default function WorkflowsPage() {
       setShowEditModal(false);
       load();
     } catch (err) {
-      alert('Save failed: ' + err.message);
+      if (err.status === 409) {
+        toast.error(err.message);
+      } else {
+        toast.error('Save failed: ' + (err.message || 'Unknown error'));
+      }
     }
   };
 
@@ -942,7 +939,7 @@ export default function WorkflowsPage() {
                 onOpen={(wf) => { loadWorkflowIntoEditor(wf); setActivePage('canvas'); }}
                 onDelete={handleDelete} onClone={handleClone} onExport={handleExport}
                 onPause={handlePause} onResume={handleResume} onEdit={handleEdit}
-                isRunning={activeRuns.has(w.id)} deleting={deleting} cloning={cloning}
+                isRunning={false} deleting={deleting} cloning={cloning}
               />
             ))}
           </div>
@@ -982,7 +979,7 @@ export default function WorkflowsPage() {
                               onOpen={(wf) => { loadWorkflowIntoEditor(wf); setActivePage('canvas'); }}
                               onDelete={handleDelete} onClone={handleClone} onExport={handleExport}
                               onPause={handlePause} onResume={handleResume} onEdit={handleEdit}
-                              isRunning={activeRuns.has(w.id)} deleting={deleting} cloning={cloning}
+                              isRunning={false} deleting={deleting} cloning={cloning}
                             />
                           ))}
                         </div>
@@ -993,7 +990,7 @@ export default function WorkflowsPage() {
                               onOpen={(wf) => { loadWorkflowIntoEditor(wf); setActivePage('canvas'); }}
                               onDelete={handleDelete} onClone={handleClone} onExport={handleExport}
                               onPause={handlePause} onResume={handleResume} onEdit={handleEdit}
-                              isRunning={activeRuns.has(w.id)} deleting={deleting} cloning={cloning}
+                              isRunning={false} deleting={deleting} cloning={cloning}
                             />
                           ))}
                         </div>

@@ -32,39 +32,6 @@ export default function WorkflowCanvas() {
   const [menu, setMenu] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
 
-  // Poll for active background runs (e.g. Cron/Webhook) to show live status
-  React.useEffect(() => {
-    const BASE = window._env_?.VITE_AGENT_MESH || import.meta.env.VITE_AGENT_MESH || 'http://localhost:8000/api/v1/agentmesh';
-    const poll = async () => {
-      try {
-        const res = await fetch(`${BASE}/active-runs`);
-        const data = await res.json();
-        if (data.status === 'success') {
-          const currentWfId = useWorkflowStore.getState().workflowId;
-          const activeNodeIds = new Set();
-
-          Object.values(data.active_runs).forEach(run => {
-            if (run.workflow_id === currentWfId) {
-              run.active_nodes.forEach(id => activeNodeIds.add(id));
-            }
-          });
-
-          // Check if anything actually changed to avoid unnecessary re-renders
-          const anyChange = nodes.some(n => !!n.data.isRunning !== activeNodeIds.has(n.id));
-          if (anyChange) {
-            setNodes(nodes.map(n => ({
-              ...n,
-              data: { ...n.data, isRunning: activeNodeIds.has(n.id) }
-            })));
-          }
-        }
-      } catch (err) {
-        // Silently fail polling
-      }
-    };
-    const interval = setInterval(poll, 2500);
-    return () => clearInterval(interval);
-  }, [nodes, setNodes]);
 
   const hasNodes = nodes.some(n => n.id !== '__start__' && n.id !== '__end__');
 
