@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useUIStore, useWorkflowStore, useRunStore } from '../../store';
 import {
   FiX, FiTrash2, FiBell, FiCheckCircle, FiInfo, FiAlertTriangle, FiAlertCircle,
-  FiArchive, FiRefreshCw, FiMessageSquare
+  FiArchive, FiRefreshCw, FiMessageSquare,
+  FiStar, FiAlertOctagon, FiSliders, FiShield
 } from 'react-icons/fi';
 import { listNotifications, processNotifications, getWorkflow } from '../../api/agentmesh';
 
@@ -45,7 +46,11 @@ const TYPE_ICONS = {
   info: { icon: FiInfo, color: '#3B82F6', bg: '#EFF6FF' },
   success: { icon: FiCheckCircle, color: '#10B981', bg: '#ECFDF5' },
   warning: { icon: FiAlertTriangle, color: '#F59E0B', bg: '#FFFBEB' },
-  error: { icon: FiAlertCircle, color: '#EF4444', bg: '#FEF2F2' }
+  error: { icon: FiAlertCircle, color: '#EF4444', bg: '#FEF2F2' },
+  important: { icon: FiStar, color: '#6366F1', bg: '#EEF2FF' },
+  critical: { icon: FiAlertOctagon, color: '#B91C1C', bg: '#FEF2F2' },
+  system: { icon: FiSliders, color: '#475569', bg: '#F1F5F9' },
+  security: { icon: FiShield, color: '#E11D48', bg: '#FFF1F2' }
 };
 
 export default function NotificationsModal() {
@@ -53,22 +58,27 @@ export default function NotificationsModal() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('all'); // all | unread
+  const [selectedType, setSelectedType] = useState('all'); // all | info | success | warning | error | important | critical | system | security
 
   useEffect(() => {
     if (showNotifications) {
       loadNotifications();
     }
-  }, [showNotifications, filter]);
+  }, [showNotifications, filter, selectedType]);
 
   const loadNotifications = async () => {
     try {
       setLoading(true);
-      const res = await listNotifications({ unreadOnly: filter === 'unread' });
+      const params = { unreadOnly: filter === 'unread' };
+      if (selectedType !== 'all') {
+        params.type = selectedType;
+      }
+      const res = await listNotifications(params);
       const items = res.notifications || [];
       setNotifications(items);
 
       // Update unread count based on current full pull
-      if (filter === 'all') {
+      if (filter === 'all' && selectedType === 'all') {
         const unread = items.filter(n => !n.is_read).length;
         setUnreadCount(unread);
       }
@@ -166,6 +176,54 @@ export default function NotificationsModal() {
         <div style={{ padding: '0 32px', borderBottom: '1px solid var(--border)', background: 'var(--bg-canvas)', display: 'flex', gap: 24 }}>
           <Tab active={filter === 'all'} onClick={() => setFilter('all')} label="All" />
           <Tab active={filter === 'unread'} onClick={() => setFilter('unread')} label={`Unread (${notifications.filter(n=>!n.is_read).length})`} />
+        </div>
+
+        {/* Type Filters row */}
+        <div style={{ 
+          padding: '10px 32px', 
+          borderBottom: '1px solid var(--border)', 
+          background: 'var(--bg-canvas)', 
+          display: 'flex', 
+          gap: 8, 
+          overflowX: 'auto', 
+          flexWrap: 'nowrap',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
+        }}>
+          {[
+            { value: 'all', label: 'All Types' },
+            { value: 'info', label: 'Info' },
+            { value: 'success', label: 'Success' },
+            { value: 'warning', label: 'Warning' },
+            { value: 'error', label: 'Error' },
+            { value: 'important', label: 'Important' },
+            { value: 'critical', label: 'Critical' },
+            { value: 'system', label: 'System' },
+            { value: 'security', label: 'Security' }
+          ].map(t => {
+            const isSelected = selectedType === t.value;
+            return (
+              <button
+                key={t.value}
+                onClick={() => setSelectedType(t.value)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 100,
+                  border: isSelected ? '1px solid var(--theme-primary)' : '1px solid var(--border)',
+                  background: isSelected ? 'var(--theme-primary-glow)' : 'white',
+                  color: isSelected ? 'var(--theme-primary)' : 'var(--text-secondary)',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  whiteSpace: 'nowrap',
+                  boxShadow: isSelected ? '0 2px 6px rgba(142, 119, 187, 0.1)' : 'none'
+                }}
+              >
+                {t.label}
+              </button>
+            );
+          })}
         </div>
 
         <div style={STYLES.list}>

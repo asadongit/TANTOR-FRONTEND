@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useWorkflowStore, useUIStore, useRunStore } from '../../../store';
-import { listWorkflows, getActiveRuns, listWorkflowCategories } from '../../../api/agentmesh';
+import { listMarketplaceUsecases, getActiveRuns, listWorkflowCategories, getWorkflow } from '../../../api/agentmesh';
 import { FiSearch, FiUser, FiMessageSquare, FiInfo, FiTag, FiGrid, FiList, FiFilter, FiX, FiZap } from 'react-icons/fi';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import bannerImage from '../../../assets/data/Stack-p-2000.png';
@@ -83,6 +83,9 @@ function MarketplaceListRow({ w, onChat, onDetails, isRunning, idx }) {
           <span title={`Category: ${w.category || 'General'}`} style={{ display: 'flex', alignItems: 'center', gap: 4, color: theme.primary, fontWeight: 600, fontSize: 12 }}>
             <FiTag size={12} /> {w.category || 'General'}
           </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#D97706', fontWeight: 700, fontSize: 12 }}>
+            ★ {w.rating !== undefined ? w.rating.toFixed(1) : '0.0'}
+          </span>
           <span style={{ width: 1, height: 12, background: 'var(--border)' }} />
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.description || 'No description provided for this specialized AI agent.'}</span>
         </div>
@@ -90,15 +93,25 @@ function MarketplaceListRow({ w, onChat, onDetails, isRunning, idx }) {
 
       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }} onClick={e => e.stopPropagation()}>
         {/* Quick Launch Buttons for Agents List */}
-        {(w.config?.nodes || []).filter(n => n.type === 'button_trigger' || n.data?.type === 'button_trigger').map(n => (
+        {((w.metadata?.trigger_type === 'button') ? [{ id: w.metadata.trigger_node_id, data: { button_label: w.metadata.button_label, button_input: w.metadata.button_input } }] : (w.config?.nodes || []).filter(n => n.type === 'button_trigger' || n.data?.type === 'button_trigger')).map(n => (
           <button
             key={n.id}
-            onClick={() => {
+            onClick={async () => {
               const currentWfId = useWorkflowStore.getState().workflowId;
               if (currentWfId !== w.id) {
                 useRunStore.getState().reset(); // Reset only if switching agents
               }
-              useWorkflowStore.getState().loadWorkflowIntoEditor(w);
+              let fullWorkflow = w;
+              if (!w.config) {
+                try {
+                  fullWorkflow = await getWorkflow(w.id);
+                } catch (err) {
+                  console.error(err);
+                  alert("Failed to load workflow details: " + err.message);
+                  return;
+                }
+              }
+              useWorkflowStore.getState().loadWorkflowIntoEditor(fullWorkflow);
               const ui = useUIStore.getState();
               ui.setTargetNodeId(n.id);
               ui.setInitialRunInput(n.data?.button_input || 'Start');
@@ -226,6 +239,13 @@ function MarketplaceCard({ w, onChat, onDetails, isRunning, idx }) {
             }}>
               {w.category || 'General'}
             </span>
+            <span style={{
+              fontSize: 10, color: '#D97706', fontWeight: 700,
+              background: '#FEF3C7', padding: '1px 6px', borderRadius: 4,
+              display: 'flex', alignItems: 'center', gap: 2
+            }}>
+              ★ {w.rating !== undefined ? w.rating.toFixed(1) : '0.0'}
+            </span>
           </div>
         </div>
 
@@ -246,16 +266,26 @@ function MarketplaceCard({ w, onChat, onDetails, isRunning, idx }) {
       }}>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           {/* Quick Launch Buttons for Agents Card */}
-          {(w.config?.nodes || []).filter(n => n.type === 'button_trigger' || n.data?.type === 'button_trigger').map(n => (
+          {((w.metadata?.trigger_type === 'button') ? [{ id: w.metadata.trigger_node_id, data: { button_label: w.metadata.button_label, button_input: w.metadata.button_input } }] : (w.config?.nodes || []).filter(n => n.type === 'button_trigger' || n.data?.type === 'button_trigger')).map(n => (
             <button
               key={n.id}
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.stopPropagation();
                 const currentWfId = useWorkflowStore.getState().workflowId;
                 if (currentWfId !== w.id) {
                   useRunStore.getState().reset(); // Reset only if switching agents
                 }
-                useWorkflowStore.getState().loadWorkflowIntoEditor(w);
+                let fullWorkflow = w;
+                if (!w.config) {
+                  try {
+                    fullWorkflow = await getWorkflow(w.id);
+                  } catch (err) {
+                    console.error(err);
+                    alert("Failed to load workflow details: " + err.message);
+                    return;
+                  }
+                }
+                useWorkflowStore.getState().loadWorkflowIntoEditor(fullWorkflow);
                 const ui = useUIStore.getState();
                 ui.setTargetNodeId(n.id);
                 ui.setInitialRunInput(n.data?.button_input || 'Start');
@@ -315,6 +345,7 @@ export default function MarketplacePage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState('All');
+  const [selectedTagFilter, setSelectedTagFilter] = useState('All');
   const [categories, setCategories] = useState(['All']);
   const [groups, setGroups] = useState(['All']);
 
@@ -337,12 +368,13 @@ export default function MarketplacePage() {
   const load = async () => {
     setLoading(true);
     try {
-      const r = await listWorkflows({
+      const r = await listMarketplaceUsecases({
         page: currentPage,
         limit: pageSize,
         search,
         category: selectedCategory === 'All' ? undefined : selectedCategory,
-        group: selectedGroupFilter === 'All' ? undefined : selectedGroupFilter
+        group: selectedGroupFilter === 'All' ? undefined : selectedGroupFilter,
+        tag: selectedTagFilter === 'All' ? undefined : selectedTagFilter
       });
       setWorkflows(r.workflows || []);
       setTotalWorkflows(r.total || 0);
@@ -376,12 +408,12 @@ export default function MarketplacePage() {
     load();
     const interval = setInterval(loadActiveRuns, 5000);
     return () => clearInterval(interval);
-  }, [search, selectedCategory, selectedGroupFilter, currentPage]);
+  }, [search, selectedCategory, selectedGroupFilter, selectedTagFilter, currentPage]);
 
   // Reset page strictly when filters or search change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, selectedCategory, selectedGroupFilter]);
+  }, [search, selectedCategory, selectedGroupFilter, selectedTagFilter]);
 
   // Focus input when opening search
   useEffect(() => {
@@ -401,12 +433,26 @@ export default function MarketplacePage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleChat = (w) => {
+  const handleChat = async (w) => {
+    if (w.launch_url) {
+      window.open(w.launch_url, '_blank', 'noopener,noreferrer');
+      return;
+    }
     const currentWfId = useWorkflowStore.getState().workflowId;
     if (currentWfId !== w.id) {
       useRunStore.getState().reset(); // Reset only if switching agents
     }
-    loadWorkflowIntoEditor(w);
+    let fullWorkflow = w;
+    if (!w.config) {
+      try {
+        fullWorkflow = await getWorkflow(w.id);
+      } catch (err) {
+        console.error(err);
+        alert("Failed to load workflow details: " + err.message);
+        return;
+      }
+    }
+    loadWorkflowIntoEditor(fullWorkflow);
     setRunOpen(true);
   };
 
@@ -425,8 +471,18 @@ export default function MarketplacePage() {
             agent={selectedAgent}
             onClose={() => setSelectedAgent(null)}
             onChat={() => { handleChat(selectedAgent); setSelectedAgent(null); }}
-            onEdit={() => {
-              loadWorkflowIntoEditor(selectedAgent);
+            onEdit={async () => {
+              let fullWorkflow = selectedAgent;
+              if (!selectedAgent.config) {
+                try {
+                  fullWorkflow = await getWorkflow(selectedAgent.id);
+                } catch (err) {
+                  console.error(err);
+                  alert("Failed to load workflow details: " + err.message);
+                  return;
+                }
+              }
+              loadWorkflowIntoEditor(fullWorkflow);
               useUIStore.getState().setActivePage('canvas');
               setSelectedAgent(null);
             }}
@@ -485,7 +541,7 @@ export default function MarketplacePage() {
               }}
             >
               <FiFilter size={16} /> Filters
-              {(selectedCategory !== 'All' || selectedGroupFilter !== 'All') && (
+              {(selectedCategory !== 'All' || selectedGroupFilter !== 'All' || selectedTagFilter !== 'All') && (
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444' }} />
               )}
             </button>
@@ -511,7 +567,7 @@ export default function MarketplacePage() {
                     </select>
                   </div>
 
-                  <div>
+                  <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>By Category</div>
                     <select
                       value={selectedCategory}
@@ -522,9 +578,23 @@ export default function MarketplacePage() {
                     </select>
                   </div>
 
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>By Tag</div>
+                    <select
+                      value={selectedTagFilter}
+                      onChange={(e) => setSelectedTagFilter(e.target.value)}
+                      style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 8, outline: 'none', fontSize: 13 }}
+                    >
+                      <option value="All">All</option>
+                      <option value="top 10">Top 10</option>
+                      <option value="trending">Trending</option>
+                      <option value="hot">Hot</option>
+                    </select>
+                  </div>
+
                   <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end' }}>
                     <button
-                      onClick={() => { setSelectedCategory('All'); setSelectedGroupFilter('All'); }}
+                      onClick={() => { setSelectedCategory('All'); setSelectedGroupFilter('All'); setSelectedTagFilter('All'); }}
                       style={{ padding: '6px 10px', fontSize: 12, color: '#6B7280', border: 'none', background: 'none', cursor: 'pointer' }}
                     >
                       Reset All
@@ -544,7 +614,7 @@ export default function MarketplacePage() {
 
       <div
         ref={containerRef}
-        style={{ flex: 1, overflowY: 'auto', padding: '32px' }}
+        style={{ flex: 1, overflowY: 'auto', padding: '32px', display: 'flex', flexDirection: 'column' }}
       >
         {/* ── Agent Banner ── */}
         <div style={{
@@ -642,7 +712,7 @@ export default function MarketplacePage() {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            marginTop: 80,
+            flex: 1,
             color: '#6B7280'
           }}>
             <FiUser size={48} style={{ opacity: 0.2, marginBottom: 16 }} />
@@ -658,42 +728,7 @@ export default function MarketplacePage() {
                 <MarketplaceCard key={w.id} w={w} idx={i} onChat={handleChat} onDetails={handleDetails} isRunning={activeRuns.has(w.id)} />
               ))}
 
-              {/* Create Agent Card (Matches Image) */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                whileHover={{ y: -8, boxShadow: 'var(--shadow-lg)', borderColor: 'var(--theme-primary)' }}
-                onClick={() => useUIStore.getState().setActivePage('canvas')}
-                style={{
-                  background: 'white',
-                  border: '2px dashed var(--border)',
-                  borderRadius: 24,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 20,
-                  cursor: 'pointer',
-                  minHeight: 280,
-                  transition: 'all 0.2s ease',
-                  position: 'relative',
-                  overflow: 'hidden'
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-canvas)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}
-              >
-                <div style={{
-                  width: 64, height: 64, borderRadius: '50%', background: 'var(--theme-primary-glow)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--theme-primary)',
-                  boxShadow: '0 0 20px rgba(142, 119, 187, 0.1)'
-                }}>
-                  <span style={{ fontSize: 36, fontWeight: 300 }}>+</span>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--theme-primary)', marginBottom: 4 }}>Build New Agent</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Start from a blank canvas</div>
-                </div>
-              </motion.div>
+
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -789,65 +824,107 @@ function MarketplaceDetailsModal({ agent, onClose, onChat, onEdit }) {
           </button>
         </div>
 
-        <div style={{
-          position: 'absolute', top: 110, left: 32,
-          width: 100, height: 100, borderRadius: 28, background: 'white',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 20px 40px -10px rgba(0,0,0,0.15)', color: theme.primary,
-          border: '4px solid white',
-          zIndex: 10
-        }}>
-          <FiUser size={50} />
-        </div>
-
-        <div style={{ padding: '60px 32px 32px', zIndex: 1 }}>
-          <div style={{ marginBottom: 32 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <h2 style={{ fontSize: 28, fontWeight: 800, color: '#1e293b', margin: 0, letterSpacing: '-0.03em' }}>{agent.name}</h2>
+        <div style={{ padding: '32px 32px 32px', zIndex: 1, maxHeight: '65vh', overflowY: 'auto' }}>
+          {/* App Store Style Header Row */}
+          <div style={{ display: 'flex', gap: 24, alignItems: 'center', marginBottom: 24 }}>
+            {/* App Icon */}
+            <div style={{
+              width: 96, height: 96, borderRadius: 22,
+              background: `linear-gradient(135deg, ${theme.primary} 0%, #1e1b4b 100%)`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'white', boxShadow: '0 12px 24px -6px rgba(76, 29, 149, 0.3)',
+              border: '1px solid rgba(255,255,255,0.1)', flexShrink: 0
+            }}>
+              <FiUser size={48} />
             </div>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: 13, fontWeight: 500 }} title={`Group: ${agent.group || 'Default Group'}`}>
-                <FiGrid size={14} /> {agent.group || 'Default Group'}
+
+            {/* Title & Metadata */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1e293b', margin: '0 0 4px 0', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                {agent.name}
+              </h2>
+              <div style={{ fontSize: 15, fontWeight: 600, color: '#10B981', marginBottom: 6 }}>
+                {agent.group || 'Default Group'}
               </div>
-              <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#cbd5e1', alignSelf: 'center' }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: 13, fontWeight: 500 }} title={`Category: ${agent.category || 'General'}`}>
-                <FiTag size={14} /> {agent.category || 'General'}
+              <div style={{ fontSize: 13, color: '#64748B', fontWeight: 500 }}>
+                {agent.category || 'General'} Usecase
               </div>
             </div>
           </div>
 
-          <div style={{ marginBottom: 32 }}>
+          {/* Horizontal Stats Row */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderTop: '1px solid #f1f5f9',
+            borderBottom: '1px solid #f1f5f9',
+            padding: '16px 0',
+            marginBottom: 28
+          }}>
+            {/* Stat 1: Rating */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 4 }}>
+                {agent.rating !== undefined ? agent.rating.toFixed(1) : '0.0'} <span style={{ color: '#D97706', fontSize: 14 }}>★</span>
+              </div>
+              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 650, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                User Rating
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div style={{ width: 1, height: 28, background: '#e2e8f0' }} />
+
+            {/* Stat 2: Active status */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#10B981', display: 'flex', alignItems: 'center', gap: 6 }}>
+                Active
+              </div>
+              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 650, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                Availability
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div style={{ width: 1, height: 28, background: '#e2e8f0' }} />
+
+            {/* Stat 3: Version */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{
+                border: '1.5px solid #475569',
+                borderRadius: 6,
+                padding: '2px 6px',
+                fontSize: 11,
+                fontWeight: 800,
+                color: '#475569',
+                lineHeight: 1
+              }}>
+                V{agent.version || 1}
+              </div>
+              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 650, marginTop: 7, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                Version
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 28 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Capabilities & Context</div>
             <div style={{ fontSize: 16, color: '#475569', lineHeight: 1.7, fontWeight: 400 }}>
               {agent.description || "Deploy this advanced autonomous agent into your workflow for complex orchestration, real-time data processing, and multi-step reasoning tasks."}
             </div>
           </div>
 
-          <div style={{
-            background: '#f8fafc',
-            border: '1px solid #f1f5f9',
-            borderRadius: 20,
-            padding: '20px 24px',
-            marginBottom: 40,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
+          {/* Release Dates Row */}
+          <div style={{ display: 'flex', gap: 24, fontSize: 12, color: '#64748B', marginBottom: 36, background: '#f8fafc', padding: '12px 20px', borderRadius: 14, border: '1px solid #f1f5f9' }}>
             <div>
-              <div style={{ fontSize: 10, fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Unique Agent Identity</div>
-              <div style={{ fontSize: 13, color: '#1e293b', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{agent.id}</div>
+              <span style={{ fontWeight: 700, color: '#475569' }}>Released: </span>
+              {agent.created_at ? new Date(agent.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}
             </div>
-            <button
-              onClick={handleCopy}
-              style={{
-                padding: '8px 16px', borderRadius: 10, background: copied ? '#dcfce7' : 'white',
-                border: `1px solid ${copied ? '#22c55e' : '#e2e8f0'}`,
-                fontSize: 12, fontWeight: 700, color: copied ? '#15803d' : '#64748b',
-                cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-              }}
-            >
-              {copied ? 'Success!' : 'Copy ID'}
-            </button>
+            <div style={{ width: 1, height: 16, background: '#cbd5e1', alignSelf: 'center' }} />
+            <div>
+              <span style={{ fontWeight: 700, color: '#475569' }}>Updated: </span>
+              {agent.updated_at ? new Date(agent.updated_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: 12 }}>

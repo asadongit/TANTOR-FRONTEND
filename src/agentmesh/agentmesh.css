@@ -100,7 +100,9 @@
 /* ─── React Flow Canvas (scoped) ─── */
 .agentmesh-root .react-flow__background { background: var(--bg-canvas) !important; }
 .agentmesh-root .react-flow { background: var(--bg-canvas) !important; }
-.agentmesh-root .react-flow__pane { background: var(--bg-canvas) !important; }
+/* MUST be transparent — Background SVG renders below the pane;
+   an opaque pane covers the dots/lines/cross pattern entirely */
+.agentmesh-root .react-flow__pane { background: transparent !important; }
 
 .agentmesh-root .react-flow__minimap {
   background: white !important;

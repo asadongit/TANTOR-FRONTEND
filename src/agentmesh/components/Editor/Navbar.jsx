@@ -1,7 +1,7 @@
 import React from 'react';
 import { useWorkflowStore, useUIStore } from '../../store';
-import { compileWorkflow, saveWorkflow, listWorkflowCategories, deleteWorkflow, explainWorkflow, getWorkflow, cloneWorkflow, fixGrammar } from '../../api/agentmesh';
-import { FiUpload, FiDownload, FiPlus, FiX, FiCheck, FiAlertTriangle, FiCopy, FiChevronDown, FiChevronUp, FiBookOpen, FiZap, FiLoader, FiTrash2, FiInfo, FiMaximize2, FiMinimize2 } from 'react-icons/fi';
+import { compileWorkflow, saveWorkflow, listWorkflowCategories, deleteWorkflow, explainWorkflow, getWorkflow, cloneWorkflow, fixGrammar, publishWorkflow, getMarketplaceUsecase } from '../../api/agentmesh';
+import { FiUpload, FiDownload, FiPlus, FiX, FiCheck, FiAlertTriangle, FiCopy, FiChevronDown, FiChevronUp, FiBookOpen, FiZap, FiLoader, FiTrash2, FiInfo, FiMaximize2, FiMinimize2, FiShare2 } from 'react-icons/fi';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { AiMagicIcon } from '@hugeicons/core-free-icons';
 import { formatMessage } from '../Common/messageFormatting';
@@ -93,6 +93,43 @@ export default function Navbar() {
   const [ioDropdownOpen, setIoDropdownOpen] = React.useState(false);
   const ioDropdownRef = React.useRef(null);
   const ioTriggerRef = React.useRef(null);
+
+  const [showPublishModal, setShowPublishModal] = React.useState(false);
+  const [publishTags, setPublishTags] = React.useState('');
+  const [publishing, setPublishing] = React.useState(false);
+  const [useWorkflowMeta, setUseWorkflowMeta] = React.useState(true);
+  const [customMarketplaceName, setCustomMarketplaceName] = React.useState('');
+  const [customMarketplaceDesc, setCustomMarketplaceDesc] = React.useState('');
+  const [launchMode, setLaunchMode] = React.useState('default');
+  const [customLaunchUrl, setCustomLaunchUrl] = React.useState('');
+  const [currentVersion, setCurrentVersion] = React.useState(null);
+
+  React.useEffect(() => {
+    if (workflowName) setCustomMarketplaceName(workflowName);
+    if (workflowDescription) setCustomMarketplaceDesc(workflowDescription);
+  }, [workflowName, workflowDescription]);
+
+  const handlePublish = async () => {
+    if (!workflowId) return;
+    setPublishing(true);
+    try {
+      const tagsList = publishTags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+      await publishWorkflow(workflowId, {
+        tags: tagsList,
+        marketplace_name: useWorkflowMeta ? null : customMarketplaceName,
+        marketplace_description: useWorkflowMeta ? null : customMarketplaceDesc,
+        launch_url: launchMode === 'default' ? null : customLaunchUrl
+      });
+      setStatus('compiled');
+      setShowPublishModal(false);
+      setPublishTags('');
+      alert('Workflow successfully published to Marketplace!');
+    } catch (e) {
+      alert('Failed to publish workflow: ' + e.message);
+    } finally {
+      setPublishing(false);
+    }
+  };
 
   // --- AI Workflow Architect States ---
   const [showArchitect, setShowArchitect] = React.useState(false);
@@ -601,6 +638,52 @@ export default function Navbar() {
                     >
                       <FiDownload size={14} /> Export JSON
                     </button>
+                    <button
+                      onClick={async () => {
+                        setIoDropdownOpen(false);
+                        try {
+                          const res = await getMarketplaceUsecase(workflowId);
+                          if (res.status === 'success' && res.published) {
+                            setUseWorkflowMeta(false);
+                            setCustomMarketplaceName(res.marketplace_name || workflowName);
+                            setCustomMarketplaceDesc(res.marketplace_description || workflowDescription);
+                            setPublishTags(res.tags ? res.tags.join(', ') : '');
+                            setLaunchMode(res.launch_url ? 'custom' : 'default');
+                            setCustomLaunchUrl(res.launch_url || '');
+                            setCurrentVersion(res.version);
+                          } else {
+                            setUseWorkflowMeta(true);
+                            setCustomMarketplaceName(workflowName);
+                            setCustomMarketplaceDesc(workflowDescription);
+                            setPublishTags('');
+                            setLaunchMode('default');
+                            setCustomLaunchUrl('');
+                            setCurrentVersion(null);
+                          }
+                        } catch (err) {
+                          console.error("Failed to fetch marketplace details:", err);
+                        }
+                        setShowPublishModal(true);
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        background: 'none',
+                        border: 'none',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        fontSize: 13,
+                        color: 'var(--text-primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        transition: 'background 0.15s',
+                        width: '100%'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                    >
+                      <FiShare2 size={14} /> Publish Usecase
+                    </button>
                   </div>
                 )}
               </div>
@@ -1036,6 +1119,291 @@ export default function Navbar() {
               </button>
               <button onClick={handleImport} style={{ padding: '9px 22px', background: 'var(--theme-primary)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--theme-primary-text)' }}>
                 Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Publish Modal */}
+      {showPublishModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.3)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.98)', border: '1px solid rgba(226, 232, 240, 0.8)', borderRadius: 28, width: 580, padding: '24px 32px 32px 32px', boxShadow: '0 30px 60px rgba(0, 0, 0, 0.15)', fontFamily: "'Google Sans','Roboto',sans-serif", display: 'flex', flexDirection: 'column', gap: 20 }}>
+            
+            {/* Modal Close Button */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: -10 }}>
+              <button onClick={() => { setShowPublishModal(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', borderRadius: 8, padding: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-canvas)'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+                <FiX size={18} />
+              </button>
+            </div>
+
+            {/* App Store Style Header Row */}
+            <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
+              {/* App Icon */}
+              <div style={{
+                width: 80, height: 80, borderRadius: 18,
+                background: `linear-gradient(135deg, var(--theme-primary) 0%, #1e1b4b 100%)`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'white', boxShadow: '0 8px 16px -4px rgba(76, 29, 149, 0.25)',
+                border: '1px solid rgba(255,255,255,0.1)', flexShrink: 0
+              }}>
+                <FiShare2 size={36} />
+              </div>
+
+              {/* Title & Metadata */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h3 style={{ fontSize: 20, fontWeight: 800, color: '#1e293b', margin: '0 0 4px 0', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                  {useWorkflowMeta ? (workflowName || 'My Agent') : (customMarketplaceName || 'My Agent')}
+                </h3>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#10B981', marginBottom: 4 }}>
+                  {workflowGroup || 'Default Group'}
+                </div>
+                <div style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }}>
+                  {workflowCategory || 'General'} Usecase
+                </div>
+              </div>
+            </div>
+
+            {/* Horizontal Stats Row */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderTop: '1px solid #f1f5f9',
+              borderBottom: '1px solid #f1f5f9',
+              padding: '12px 0',
+              margin: '4px 0'
+            }}>
+              {/* Stat 1: Status */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#1e293b' }}>
+                  {currentVersion ? `v${currentVersion}` : 'New App'}
+                </div>
+                <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 650, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                  Status
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div style={{ width: 1, height: 20, background: '#e2e8f0' }} />
+
+              {/* Stat 2: Group */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#10B981', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }} title={workflowGroup || 'Default'}>
+                  {workflowGroup || 'Default'}
+                </div>
+                <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 650, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                  Group
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div style={{ width: 1, height: 20, background: '#e2e8f0' }} />
+
+              {/* Stat 3: Category */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--theme-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }} title={workflowCategory || 'General'}>
+                  {workflowCategory || 'General'}
+                </div>
+                <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 650, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                  Category
+                </div>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxHeight: '42vh', overflowY: 'auto', paddingRight: 4 }}>
+              {/* Custom Switch Toggle for metadata */}
+              <div 
+                onClick={() => setUseWorkflowMeta(!useWorkflowMeta)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
+                  background: 'var(--bg-canvas)', borderRadius: 12, cursor: 'pointer', transition: 'all 0.2s',
+                  border: '1px solid ' + (useWorkflowMeta ? 'var(--theme-primary)' : 'var(--border)'),
+                  boxShadow: useWorkflowMeta ? '0 4px 12px rgba(142, 119, 187, 0.08)' : 'none'
+                }}
+              >
+                <div style={{
+                  width: 32, height: 18, borderRadius: 10, position: 'relative',
+                  background: useWorkflowMeta ? 'var(--theme-primary)' : '#CBD5E1',
+                  transition: 'background 0.2s'
+                }}>
+                  <div style={{
+                    position: 'absolute', top: 2, left: useWorkflowMeta ? 16 : 2,
+                    width: 14, height: 14, borderRadius: '50%', background: 'white',
+                    transition: 'left 0.2s'
+                  }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>Use Workflow Identity</span>
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>Automatically apply current canvas name and description</span>
+                </div>
+              </div>
+ 
+              {!useWorkflowMeta && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: 16, background: 'var(--bg-canvas)', borderRadius: 14, border: '1px solid var(--border)' }}>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Marketplace Name</label>
+                    <input
+                      type="text"
+                      value={customMarketplaceName}
+                      onChange={(e) => setCustomMarketplaceName(e.target.value)}
+                      placeholder="Enter a custom name for the marketplace"
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        background: 'white',
+                        border: '1px solid var(--border)',
+                        borderRadius: 10,
+                        color: 'var(--text-primary)',
+                        fontSize: 13,
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                        transition: 'border-color 0.2s',
+                        fontFamily: 'inherit'
+                      }}
+                      onFocus={e => e.target.style.borderColor = 'var(--theme-primary)'}
+                      onBlur={e => e.target.style.borderColor = 'var(--border)'}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Marketplace Description</label>
+                    <textarea
+                      value={customMarketplaceDesc}
+                      onChange={(e) => setCustomMarketplaceDesc(e.target.value)}
+                      placeholder="Describe what this use case does"
+                      style={{
+                        width: '100%',
+                        height: 80,
+                        padding: '10px 14px',
+                        background: 'white',
+                        border: '1px solid var(--border)',
+                        borderRadius: 10,
+                        color: 'var(--text-primary)',
+                        fontSize: 13,
+                        outline: 'none',
+                        resize: 'none',
+                        boxSizing: 'border-box',
+                        transition: 'border-color 0.2s',
+                        fontFamily: 'inherit',
+                        lineHeight: 1.5
+                      }}
+                      onFocus={e => e.target.style.borderColor = 'var(--theme-primary)'}
+                      onBlur={e => e.target.style.borderColor = 'var(--border)'}
+                    />
+                  </div>
+                </div>
+              )}
+ 
+              {/* Launch URL Selector */}
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Launch Mode</label>
+                <div style={{ display: 'flex', background: 'var(--bg-canvas)', borderRadius: 12, padding: 4, gap: 4, border: '1px solid var(--border)', marginBottom: 12 }}>
+                  <button 
+                    type="button"
+                    onClick={() => setLaunchMode('default')}
+                    style={{
+                      flex: 1, padding: '8px 12px', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: launchMode === 'default' ? 700 : 500,
+                      background: launchMode === 'default' ? 'white' : 'transparent',
+                      boxShadow: launchMode === 'default' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
+                      color: launchMode === 'default' ? 'var(--theme-primary)' : 'var(--text-secondary)',
+                      cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit'
+                    }}
+                  >
+                    Default Chat Panel
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setLaunchMode('custom')}
+                    style={{
+                      flex: 1, padding: '8px 12px', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: launchMode === 'custom' ? 700 : 500,
+                      background: launchMode === 'custom' ? 'white' : 'transparent',
+                      boxShadow: launchMode === 'custom' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
+                      color: launchMode === 'custom' ? 'var(--theme-primary)' : 'var(--text-secondary)',
+                      cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit'
+                    }}
+                  >
+                    Custom Launch URL
+                  </button>
+                </div>
+                {launchMode === 'custom' && (
+                  <input
+                    type="text"
+                    value={customLaunchUrl}
+                    onChange={(e) => setCustomLaunchUrl(e.target.value)}
+                    placeholder="https://example.com/custom-launch-endpoint"
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      background: 'white',
+                      border: '1px solid var(--border)',
+                      borderRadius: 10,
+                      color: 'var(--text-primary)',
+                      fontSize: 13,
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      transition: 'border-color 0.2s',
+                      fontFamily: 'inherit'
+                    }}
+                    onFocus={e => e.target.style.borderColor = 'var(--theme-primary)'}
+                    onBlur={e => e.target.style.borderColor = 'var(--border)'}
+                  />
+                )}
+              </div>
+ 
+              {/* Tags */}
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Marketplace Tags</label>
+                <input
+                  type="text"
+                  value={publishTags}
+                  onChange={(e) => setPublishTags(e.target.value)}
+                  placeholder="e.g. top 10, trending, hot (comma-separated)"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: 'white',
+                    border: '1px solid var(--border)',
+                    borderRadius: 10,
+                    color: 'var(--text-primary)',
+                    fontSize: 13,
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    transition: 'border-color 0.2s',
+                    fontFamily: 'inherit'
+                  }}
+                  onFocus={e => e.target.style.borderColor = 'var(--theme-primary)'}
+                  onBlur={e => e.target.style.borderColor = 'var(--border)'}
+                />
+              </div>
+            </div>
+ 
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: 20 }}>
+              <button onClick={() => { setShowPublishModal(false); }} style={{ padding: '10px 20px', background: 'white', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-secondary)', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-canvas)'} onMouseLeave={e => e.currentTarget.style.background = 'white'}>
+                Cancel
+              </button>
+              <button
+                onClick={handlePublish}
+                disabled={publishing}
+                style={{
+                  padding: '10px 24px',
+                  background: 'var(--theme-primary)',
+                  border: 'none',
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: publishing ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  transition: 'opacity 0.2s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+              >
+                {publishing ? <FiLoader className="spin" size={14} /> : <FiShare2 size={14} />}
+                {publishing ? 'Publishing...' : 'Publish Usecase'}
               </button>
             </div>
           </div>

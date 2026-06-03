@@ -33,6 +33,22 @@ export const saveWorkflow = (config) =>
 export const cloneWorkflow = (id) =>
   request(`/workflow/${id}/clone`, { method: 'POST' });
 
+export const publishWorkflow = (id, params = {}) =>
+  request(`/workflow/${id}/publish`, { method: 'POST', body: JSON.stringify(params) });
+
+export const getMarketplaceUsecase = (id) =>
+  request(`/workflow/${id}/marketplace`);
+
+export const listMarketplaceUsecases = (params = {}) => {
+  const { page = 1, limit = 100, group, category, search, tag } = params;
+  const p = new URLSearchParams({ page, limit });
+  if (group && group !== 'All') p.set('group', group);
+  if (category && category !== 'All') p.set('category', category);
+  if (search) p.set('search', search);
+  if (tag && tag !== 'All') p.set('tag', tag);
+  return request(`/marketplace/usecases?${p}`);
+};
+
 export const dispatchScheduleAction = (id, action) =>
   request(`/workflow/${id}/schedule`, { method: 'POST', body: JSON.stringify({ action }) });
 
@@ -136,9 +152,10 @@ export const generateSkillSop = (payload) =>
 
 // ─── Notifications ────────────────────────────────────────────────────────────
 export const listNotifications = (params = {}) => {
-  const { page = 1, limit = 50, unreadOnly = false, workflowId } = params;
+  const { page = 1, limit = 50, unreadOnly = false, workflowId, type } = params;
   const p = new URLSearchParams({ page, limit, unread_only: unreadOnly });
   if (workflowId) p.set('workflow_id', workflowId);
+  if (type) p.set('type', type);
   return request(`/notifications?${p}`);
 };
 export const processNotifications = (payload) => request('/notifications/action', { method: 'POST', body: JSON.stringify(payload) });

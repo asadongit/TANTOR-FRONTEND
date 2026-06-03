@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
   ReactFlow, Background, Controls, MiniMap, addEdge,
-  applyNodeChanges, applyEdgeChanges, BackgroundVariant,
+  applyNodeChanges, applyEdgeChanges,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useWorkflowStore, useUIStore } from '../../store';
@@ -23,7 +23,7 @@ export default function WorkflowCanvas() {
     cardboardNode: CardboardNode
   }), []);
   const { nodes, edges, setNodes, setEdges, setNodesDirty, setEdgesDirty, addNode, setNodeData, workflowName } = useWorkflowStore();
-  const { selectedNodeId, selectedEdgeId, setSelectedNode, setSelectedEdge } = useUIStore();
+  const { selectedNodeId, selectedEdgeId, setSelectedNode, setSelectedEdge, canvasWireStyle, canvasBackgroundStyle } = useUIStore();
 
   const reactFlowWrapper = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
@@ -34,9 +34,10 @@ export default function WorkflowCanvas() {
 
   // Poll for active background runs (e.g. Cron/Webhook) to show live status
   React.useEffect(() => {
+    const BASE = window._env_?.VITE_AGENT_MESH || import.meta.env.VITE_AGENT_MESH || 'http://localhost:8000/api/v1/agentmesh';
     const poll = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/v1/agentmesh/active-runs');
+        const res = await fetch(`${BASE}/active-runs`);
         const data = await res.json();
         if (data.status === 'success') {
           const currentWfId = useWorkflowStore.getState().workflowId;
@@ -94,15 +95,24 @@ export default function WorkflowCanvas() {
         }
       }
 
+      const edgeType = canvasWireStyle === 'curve' ? 'default' : 'smoothstep';
       setEdgesDirty(addEdge({
         ...params,
         animated: false,
-        type: 'smoothstep',
+        type: edgeType,
         style: { stroke: '#CBD5E1', strokeWidth: 1.5 }
       }, edges));
     },
-    [nodes, edges, setEdgesDirty, setNodeData]
+    [nodes, edges, setEdgesDirty, setNodeData, canvasWireStyle]
   );
+
+  const edgeType = canvasWireStyle === 'curve' ? 'default' : 'smoothstep';
+  const renderedEdges = React.useMemo(() => {
+    return edges.map(edge => ({
+      ...edge,
+      type: edgeType
+    }));
+  }, [edges, edgeType]);
 
   const onDrop = useCallback((e) => {
     e.preventDefault();
@@ -368,7 +378,7 @@ export default function WorkflowCanvas() {
         {/* React Flow */}
         <ReactFlow
           nodes={nodes}
-          edges={edges}
+          edges={renderedEdges}
           onNodesChange={(changes) => {
             let hasDirtyChange = false;
             
@@ -441,7 +451,7 @@ export default function WorkflowCanvas() {
           onPaneContextMenu={onPaneContextMenu}
           nodeTypes={nodeTypes}
           defaultEdgeOptions={{
-            type: 'smoothstep',
+            type: canvasWireStyle === 'curve' ? 'default' : 'smoothstep',
             animated: false,
             style: { stroke: '#CBD5E1', strokeWidth: 1.5 },
           }}
@@ -452,7 +462,16 @@ export default function WorkflowCanvas() {
           deleteKeyCode={['Backspace', 'Delete']}
           style={{ background: '#F8F9FB' }}
         >
-          <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#E2E8F0" />
+          {canvasBackgroundStyle !== 'clean' && (
+            <Background 
+              key={canvasBackgroundStyle}
+              variant={canvasBackgroundStyle} 
+              gap={20} 
+              size={canvasBackgroundStyle === 'cross' ? 6 : canvasBackgroundStyle === 'dots' ? 1.5 : undefined} 
+              lineWidth={canvasBackgroundStyle === 'lines' ? 1 : undefined}
+              color="#CBD5E1" 
+            />
+          )}
           <Controls />
           <MiniMap
             nodeColor={(n) => {

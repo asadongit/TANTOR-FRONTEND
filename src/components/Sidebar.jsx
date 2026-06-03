@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
 import { Bot, Copy } from "lucide-react";
 import {
@@ -51,6 +51,8 @@ import NeoModeIcon from '../assets/ai/neomode.svg';
 import ObservabilityIcon from '../assets/ai/observability.svg';
 import AccountTreeIcon from '../assets/ai/account_tree.svg';
 import { usePersonaStatuses } from '../hooks/dataGovernance/Users/auth';
+import { useUIStore as useAgentMeshUIStore } from '../agentmesh/store';
+import { useShallow } from 'zustand/react/shallow';
 
 const ACTIVE_COLOR = '#8E77BB';
 const INACTIVE_ICON_COLOR = '#818181';
@@ -62,7 +64,8 @@ const INACTIVE_FILTER = 'brightness(0) saturate(100%) invert(53%) sepia(6%) satu
 const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const [expandedItem, setExpandedItem] = useState(null);
   const [expandedSubItem, setExpandedSubItem] = useState(null);
-  const [currentActiveSection, setCurrentActiveSection] = useState(activeSection);
+  // activeSection is now fully controlled by MainLayout (via route detection)
+  // — no local state or localStorage read needed here.
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState(null);
   const [showF1CancelModal, setShowF1CancelModal] = useState(false);
@@ -82,14 +85,33 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const isF1ModeActive = !!F1ModeCtx?.session_id;
   const f1SessionId = F1ModeCtx?.session_id ?? null;
 
+  // ── AgentMesh store bindings (single useShallow selector = 1 subscription) ──
+  const {
+    agentMeshActivePage,
+    agentMeshActiveLibraryTab,
+    agentMeshSetActivePage,
+    agentMeshSetActiveLibTab,
+    agentMeshUnreadCount,
+    agentMeshSetShowNotif,
+  } = useAgentMeshUIStore(useShallow((s) => ({
+    agentMeshActivePage:       s.activePage,
+    agentMeshActiveLibraryTab: s.activeLibraryTab,
+    agentMeshSetActivePage:    s.setActivePage,
+    agentMeshSetActiveLibTab:  s.setActiveLibraryTab,
+    agentMeshUnreadCount:      s.unreadCount ?? 0,
+    agentMeshSetShowNotif:     s.setShowNotifications,
+  })));
+  const location = useLocation();
+  const isOnAgentMesh = location.pathname.startsWith('/ai/agent-mesh');
+
+  // Remove the old localStorage-reading useEffect and currentActiveSection state.
+  // MainLayout already derives the correct section from the route and passes it
+  // as the `activeSection` prop — no need for a second source of truth here.
+
+  // Auto-expand Agent Mesh accordion when navigating to its route
   useEffect(() => {
-    const savedSection = localStorage.getItem('activeSection');
-    if (savedSection && ['platform', 'datagovernance', 'ai'].includes(savedSection)) {
-      setCurrentActiveSection(savedSection);
-    } else {
-      setCurrentActiveSection(activeSection);
-    }
-  }, [activeSection]);
+    if (isOnAgentMesh) setExpandedItem('Agent Mesh');
+  }, [isOnAgentMesh]);
 
   const { isGlobalAdmin, isPolicyManager, isUserManager, isDataAuditor } = useMemo(() => {
   const hasRoleInToken = (roleKey) =>
@@ -381,7 +403,33 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     { name: 'F1 Mode', icon: Flag, path: `${AI_PREFIX}/f1mode` },
     { name: 'Prescriptive Analysis', icon: Sparkles, path: `${AI_PREFIX}/prescriptive` },
     { name: 'Orchestration', icon: AccountTreeIcon, path: `${AI_PREFIX}/orchestration` },
-    { name: 'Agent Mesh', icon: AgentMeshIcon, path: `${AI_PREFIX}/agent-mesh` },
+    {
+      name: 'Agent Mesh',
+      icon: AgentMeshIcon,
+      path: `${AI_PREFIX}/agent-mesh`,
+      agentMeshAccordion: true,
+      subItems: [
+        { name: 'Dashboard',     agentMeshPage: 'dashboard' },
+        { name: 'Canvas',        agentMeshPage: 'canvas' },
+        { name: 'Workflows',     agentMeshPage: 'workflows' },
+        {
+          name: 'Library', agentMeshPage: 'library',
+          subItems: [
+            { name: 'Agents', agentMeshLibTab: 'agents' },
+            { name: 'Tools',  agentMeshLibTab: 'tools' },
+            { name: 'APIs',   agentMeshLibTab: 'apis' },
+            { name: 'Skills', agentMeshLibTab: 'skills' },
+          ]
+        },
+        { name: 'Marketplace',   agentMeshPage: 'marketplace' },
+        { name: 'Logs',          agentMeshPage: 'logs' },
+        { name: 'Knowledge',     agentMeshPage: 'rag' },
+        { name: 'Observability', agentMeshPage: 'observability' },
+        { name: 'Connections',   agentMeshPage: 'connections' },
+        { name: 'Notifications', agentMeshNotif: true },
+        { name: 'Settings',      agentMeshPage: 'settings' },
+      ],
+    },
     { name: 'Marketplace', icon: MarketplaceIcon, path: `${AI_PREFIX}/marketplace` },
     { name: 'Observability', icon: ObservabilityIcon, path: `${AI_PREFIX}/observability` },
     { type: 'divider' },
@@ -390,9 +438,9 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   ];
 
   const currentRoutes =
-    currentActiveSection === 'platform' ? platformRoutes :
-      currentActiveSection === 'ai' ? aiRoutes :
-        dataGovernanceRoutes;
+    activeSection === 'platform'        ? platformRoutes :
+    activeSection === 'ai'              ? aiRoutes :
+                                          dataGovernanceRoutes;
 
   const renderIcon = (IconComponent, isActive) => {
     if (typeof IconComponent === 'string') {
@@ -468,98 +516,154 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
         </NavLink>
 
         {hasSubItems && !isCollapsed && (
+          // CSS grid-template-rows trick: animates to actual content height (no max-h jank)
           <div
-            className={`ml-9 overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}
+            style={{
+              display: 'grid',
+              gridTemplateRows: isExpanded ? '1fr' : '0fr',
+              transition: 'grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              marginLeft: '2.25rem',
+            }}
           >
-            <div className="space-y-1 py-1">
-              {route.subItems.map((subItem) => {
-                const hasNestedSubItems = subItem.subItems && subItem.subItems.length > 0;
-                const isSubExpanded = expandedSubItem === subItem.name;
+            <div style={{ overflow: 'hidden' }}>
+              <div
+                className="space-y-1 py-1"
+                style={route.agentMeshAccordion ? {
+                  borderLeft: '2px solid #DDD6FE',
+                  marginLeft: '4px',
+                  paddingLeft: '10px',
+                  marginTop: '2px',
+                  marginBottom: '4px',
+                } : {}}
+              >
+                {route.subItems.map((subItem) => {
 
-                return (
-                  <div key={subItem.path || subItem.name}>
-                    {subItem.path ? (
-                      <NavLink
-                        to={subItem.path}
-                        onClick={(e) => handleNavClick(e, subItem.path, subItem.name)}
-                        className={({ isActive }) =>
-                          `flex items-center justify-between px-3 py-2 rounded-lg transition-colors duration-200 ${isActive ? 'bg-purple-100' : 'hover:bg-gray-100'}`
-                        }
+                  // ── AgentMesh: Notifications button ──────────────────────
+                  if (subItem.agentMeshNotif) {
+                    return (
+                      <button
+                        key="am-notif"
+                        onClick={() => agentMeshSetShowNotif(true)}
+                        className="flex items-center justify-between w-full px-3 py-2 rounded-lg transition-colors duration-200 hover:bg-gray-100"
                       >
-                        {({ isActive }) => (
-                          <>
-                            <span
-                              className="text-sm"
-                              style={{ color: isActive ? ACTIVE_COLOR : INACTIVE_TEXT_COLOR }}
-                            >
-                              {subItem.name}
-                            </span>
-                            {hasNestedSubItems && (
-                              <button
-                                onClick={(e) => toggleSubExpand(e, subItem.name)}
-                                className="p-1 hover:bg-gray-200 rounded-full transition-transform duration-300"
-                              >
-                                <ChevronRightIcon
-                                  className={`h-3 w-3 transition-transform duration-300 ${isSubExpanded ? 'rotate-90' : 'rotate-0'}`}
-                                  style={{ color: isActive ? ACTIVE_COLOR : INACTIVE_ICON_COLOR }}
-                                />
-                              </button>
-                            )}
-                          </>
-                        )}
-                      </NavLink>
-                    ) : (
-                      <div
-                        className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-gray-100 rounded-lg"
-                        onClick={(e) => toggleSubExpand(e, subItem.name)}
-                      >
-                        <span
-                          className="text-sm font-medium"
-                          style={{ color: INACTIVE_TEXT_COLOR }}
-                        >
-                          {subItem.name}
+                        <span className="text-sm" style={{ color: agentMeshUnreadCount > 0 ? INACTIVE_TEXT_COLOR : INACTIVE_ICON_COLOR, fontWeight: agentMeshUnreadCount > 0 ? 500 : 400 }}>
+                          Notifications
                         </span>
-                        {hasNestedSubItems && (
-                          <span
-                            className="text-base font-light leading-none select-none"
-                            style={{ color: INACTIVE_ICON_COLOR }}
-                          >
-                            {isSubExpanded ? '—' : '+'}
+                        {agentMeshUnreadCount > 0 && (
+                          <span style={{ background: '#EF4444', color: 'white', fontSize: 10, fontWeight: 700, minWidth: 18, height: 18, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>
+                            {agentMeshUnreadCount > 9 ? '9+' : agentMeshUnreadCount}
                           </span>
                         )}
-                      </div>
-                    )}
+                      </button>
+                    );
+                  }
 
-                    {hasNestedSubItems && (
-                      <div
-                        className={`ml-4 overflow-hidden transition-all duration-300 ease-in-out ${isSubExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}
-                      >
-                        <div className="space-y-1 py-1">
-                          {subItem.subItems.map((nestedItem) => (
-                            <NavLink
-                              key={nestedItem.path}
-                              to={nestedItem.path}
-                              onClick={(e) => handleNavClick(e, nestedItem.path, nestedItem.name)}
-                              className={({ isActive }) =>
-                                `block px-6 py-2 rounded-lg transition-colors duration-200 ${isActive ? 'bg-purple-100' : 'hover:bg-gray-50'}`
-                              }
-                            >
-                              {({ isActive }) => (
-                                <span
-                                  className="text-sm"
-                                  style={{ color: isActive ? ACTIVE_COLOR : INACTIVE_TEXT_COLOR }}
-                                >
-                                  {nestedItem.name}
-                                </span>
-                              )}
-                            </NavLink>
-                          ))}
+                  // ── AgentMesh: Library with nested tabs ──────────────────
+                  if (subItem.agentMeshPage === 'library') {
+                    const libActive  = agentMeshActivePage === 'library';
+                    const libOpen    = expandedSubItem === 'Library';
+                    return (
+                      <div key="am-library">
+                        <button
+                          onClick={() => {
+                            agentMeshSetActivePage('library');
+                            setExpandedSubItem(prev => prev === 'Library' ? null : 'Library');
+                            if (!isOnAgentMesh) navigate('/ai/agent-mesh');
+                          }}
+                          className="flex items-center justify-between w-full px-3 py-2 rounded-lg transition-colors duration-200 hover:bg-gray-100"
+                          style={{ background: libActive ? '#F5F3FF' : 'transparent' }}
+                        >
+                          <span className="text-sm" style={{ color: libActive ? ACTIVE_COLOR : INACTIVE_TEXT_COLOR, fontWeight: libActive ? 600 : 400 }}>Library</span>
+                          <ChevronRightIcon className={`h-3 w-3 transition-transform duration-200 ${libOpen ? 'rotate-90' : ''}`} style={{ color: INACTIVE_ICON_COLOR }} />
+                        </button>
+                        {/* Library sub-tabs: grid animation */}
+                        <div style={{ display: 'grid', gridTemplateRows: libOpen ? '1fr' : '0fr', transition: 'grid-template-rows 0.25s ease', marginLeft: 8 }}>
+                          <div style={{ overflow: 'hidden' }}>
+                            <div className="space-y-0.5 py-0.5">
+                              {subItem.subItems.map(lib => {
+                                const tabActive = libActive && agentMeshActiveLibraryTab === lib.agentMeshLibTab;
+                                return (
+                                  <button
+                                    key={lib.agentMeshLibTab}
+                                    onClick={() => { agentMeshSetActivePage('library'); agentMeshSetActiveLibTab(lib.agentMeshLibTab); if (!isOnAgentMesh) navigate('/ai/agent-mesh'); }}
+                                    className="flex w-full px-3 py-1.5 rounded-lg text-sm transition-colors duration-150 hover:bg-gray-100"
+                                    style={{ color: tabActive ? ACTIVE_COLOR : INACTIVE_TEXT_COLOR, fontWeight: tabActive ? 600 : 400, background: tabActive ? '#EDE9FE' : 'transparent' }}
+                                  >
+                                    {lib.name}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+                    );
+                  }
+
+                  // ── AgentMesh: Regular page item ─────────────────────────
+                  if (subItem.agentMeshPage) {
+                    const amActive = agentMeshActivePage === subItem.agentMeshPage;
+                    return (
+                      <button
+                        key={subItem.agentMeshPage}
+                        onClick={() => { agentMeshSetActivePage(subItem.agentMeshPage); if (!isOnAgentMesh) navigate('/ai/agent-mesh'); }}
+                        className="flex w-full px-3 py-2 rounded-lg text-sm transition-colors duration-150 hover:bg-gray-100"
+                        style={{ color: amActive ? ACTIVE_COLOR : INACTIVE_TEXT_COLOR, fontWeight: amActive ? 600 : 400, background: amActive ? '#EDE9FE' : 'transparent' }}
+                      >
+                        {subItem.name}
+                      </button>
+                    );
+                  }
+
+                  // ── Regular Tantor sub-item (non-AgentMesh) ──────────────
+                  const hasNestedSubItems = subItem.subItems && subItem.subItems.length > 0;
+                  const isSubExpanded = expandedSubItem === subItem.name;
+                  return (
+                    <div key={subItem.path || subItem.name}>
+                      {subItem.path ? (
+                        <NavLink
+                          to={subItem.path}
+                          onClick={(e) => handleNavClick(e, subItem.path, subItem.name)}
+                          className={({ isActive }) =>
+                            `flex items-center justify-between px-3 py-2 rounded-lg transition-colors duration-200 ${isActive ? 'bg-purple-100' : 'hover:bg-gray-100'}`
+                          }
+                        >
+                          {({ isActive }) => (
+                            <>
+                              <span className="text-sm" style={{ color: isActive ? ACTIVE_COLOR : INACTIVE_TEXT_COLOR }}>{subItem.name}</span>
+                              {hasNestedSubItems && (
+                                <button onClick={(e) => toggleSubExpand(e, subItem.name)} className="p-1 hover:bg-gray-200 rounded-full">
+                                  <ChevronRightIcon className={`h-3 w-3 transition-transform duration-200 ${isSubExpanded ? 'rotate-90' : ''}`} style={{ color: isActive ? ACTIVE_COLOR : INACTIVE_ICON_COLOR }} />
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </NavLink>
+                      ) : (
+                        <div className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-gray-100 rounded-lg" onClick={(e) => toggleSubExpand(e, subItem.name)}>
+                          <span className="text-sm font-medium" style={{ color: INACTIVE_TEXT_COLOR }}>{subItem.name}</span>
+                          {hasNestedSubItems && <span className="text-base font-light select-none" style={{ color: INACTIVE_ICON_COLOR }}>{isSubExpanded ? '—' : '+'}</span>}
+                        </div>
+                      )}
+                      {hasNestedSubItems && (
+                        <div style={{ display: 'grid', gridTemplateRows: isSubExpanded ? '1fr' : '0fr', transition: 'grid-template-rows 0.25s ease', marginLeft: 16 }}>
+                          <div style={{ overflow: 'hidden' }}>
+                            <div className="space-y-1 py-1">
+                              {subItem.subItems.map((nestedItem) => (
+                                <NavLink key={nestedItem.path} to={nestedItem.path} onClick={(e) => handleNavClick(e, nestedItem.path, nestedItem.name)}
+                                  className={({ isActive }) => `block px-6 py-2 rounded-lg transition-colors duration-200 ${isActive ? 'bg-purple-100' : 'hover:bg-gray-50'}`}
+                                >
+                                  {({ isActive }) => <span className="text-sm" style={{ color: isActive ? ACTIVE_COLOR : INACTIVE_TEXT_COLOR }}>{nestedItem.name}</span>}
+                                </NavLink>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
@@ -572,8 +676,8 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
       <aside
         className={`bg-white border-r border-gray-200 h-[calc(100vh-64px)] transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} fixed flex flex-col`}
       >
-        <nav className="px-2 py-2 flex-1 overflow-y-auto">
-          {personasLoading ? null : currentRoutes.map(renderNavItem)}
+        <nav className="px-2 py-2 flex-1 overflow-y-auto overflow-x-hidden">
+          {currentRoutes.map(renderNavItem)}
         </nav>
 
         <div

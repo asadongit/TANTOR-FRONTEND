@@ -1,6 +1,6 @@
 import "../env-injector";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { useState } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { ReactFlowProvider } from "reactflow";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
@@ -28,7 +28,6 @@ import { ModalProvider } from "./pages/platform/cdc/context/ModalProvider";
 import {
   AuthProvider,
   ProtectedRoute,
-  PublicRoute,
 } from "./context/AuthContext";
 import { BusinessHeader } from "./pages/platform/Federation/BusinessView/BusinessHeader";
 import TransformationCanvas from "./pages/platform/transformation/components/TransformationCanvas";
@@ -36,6 +35,80 @@ import { DatabotProvider } from "./pages/datagovernance/Databot/context/DatabotC
 import MigrationCanvas from "./pages/platform/migration/components/MigrationCanvas";
 import { AIRoutes } from "./routes/AiMainRoutes";
 import { AIPlaygroundProvider } from "./context/AIPlaygroundContext";
+
+// Derives sidebar section from the current path — used both for
+// lazy useState init (correct on first render) and the navigation effect.
+const getSectionFromPath = (path) => {
+  if (path.startsWith('/ai')) return 'ai';
+  if (path.startsWith('/datagovernance')) return 'datagovernance';
+  // On /dashboard, respect whatever the user last chose so the sidebar
+  // doesn't flicker back to 'platform' when returning to the dashboard.
+  return localStorage.getItem('activeSection') || 'platform';
+};
+
+// ─── Inner layout — needs useLocation so must be inside <Router> ──────────────
+function MainLayout({ isSidebarCollapsed, toggleSidebar }) {
+  const location = useLocation();
+
+  // Lazy initializer: correct section on FIRST render — no flash/flicker
+  const [activeSection, setActiveSection] = useState(
+    () => getSectionFromPath(location.pathname)
+  );
+
+  // Keep in sync when the user navigates
+  useEffect(() => {
+    const section = getSectionFromPath(location.pathname);
+    setActiveSection(section);
+    // Persist so /dashboard can restore the last-used section
+    if (location.pathname !== '/dashboard') {
+      localStorage.setItem('activeSection', section);
+    }
+  }, [location.pathname]);
+
+  // AgentMesh manages its own internal scroll — prevent double scroll container
+  const isAgentMesh = location.pathname.startsWith('/ai/agent-mesh');
+
+  return (
+    <DatabotProvider>
+      <AIPlaygroundProvider>
+        <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
+          <Header activeSection={activeSection} />
+          <Chatbot />
+          <div className="flex flex-1 min-h-0">
+            <Sidebar
+              activeSection={activeSection}
+              isCollapsed={isSidebarCollapsed}
+              toggleSidebar={toggleSidebar}
+            />
+            <main
+              className={`flex-1 transition-all duration-300 h-full min-h-0 ${
+                isSidebarCollapsed ? 'ml-16' : 'ml-64'
+              } ${
+                isAgentMesh ? 'overflow-hidden' : 'overflow-y-auto'
+              }`}
+            >
+              <Routes>
+                <Route path="/datagovernance" element={<Navigate to="/" replace />} />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <Dashboard
+                      activeSection={activeSection}
+                      setActiveSection={setActiveSection}
+                    />
+                  }
+                />
+                <Route path="/*" element={<PlatformRoutes />} />
+                {DataGovernanceRoutes}
+                {AIRoutes}
+              </Routes>
+            </main>
+          </div>
+        </div>
+      </AIPlaygroundProvider>
+    </DatabotProvider>
+  );
+}
 
 function App() {
   const [activeSection, setActiveSection] = useState("platform");
@@ -57,44 +130,10 @@ function App() {
               <Route
                 path="/*"
                 element={
-                  <DatabotProvider>
-                  <AIPlaygroundProvider>
-                  <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
-                    <Header
-                     activeSection={activeSection}
-                    />
-                    <Chatbot />
-                    <div className="flex flex-1 min-h-0">
-                      <Sidebar
-                        activeSection={activeSection}
-                        isCollapsed={isSidebarCollapsed}
-                        toggleSidebar={toggleSidebar}
-                      />
-                      <main
-                        className={`flex-1 transition-all duration-300 overflow-y-auto h-full min-h-0 ${
-                          isSidebarCollapsed ? "ml-16" : "ml-64"
-                        }`}
-                      >
-                        <Routes>
-                          <Route path="/datagovernance" element={<Navigate to="/" replace />} />
-                          <Route
-                            path="/dashboard"
-                            element={
-                              <Dashboard
-                                activeSection={activeSection}
-                                setActiveSection={setActiveSection}
-                              />
-                            }
-                          />
-                          <Route path="/*" element={<PlatformRoutes />} />
-                          {DataGovernanceRoutes}
-                          {AIRoutes}
-                        </Routes>
-                      </main>
-                    </div>
-                  </div>
-                  </AIPlaygroundProvider>
-                  </DatabotProvider>
+                  <MainLayout
+                    isSidebarCollapsed={isSidebarCollapsed}
+                    toggleSidebar={toggleSidebar}
+                  />
                 }
               />
 

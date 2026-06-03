@@ -1796,40 +1796,58 @@ function SensitivityClassifierConfig({ data, update, setShowGlobalRuleModal }) {
           );
        }
 
+// ── Doc-type categories per file extension (drives PDF layout etc.) ──────────
+const DOC_TYPE_CATEGORIES = {
+  '.docx': ['Letter', 'Certificate', 'Report', 'Contract', 'Invoice', 'Proposal'],
+  '.pdf':  ['Letter', 'Certificate', 'Report', 'Contract', 'Invoice'],
+  '.xlsx': ['Report', 'Invoice', 'Tracker', 'Dashboard'],
+  '.csv':  ['Report', 'Tracker'],
+  '.md':   ['Report', 'Notes', 'Summary'],
+  '.json': ['Report', 'Data Export'],
+};
+
 function ReportGeneratorConfig({ data, update }) {
-  const [templates, setTemplates] = useState([]);
-  const [category, setCategory] = useState(data.template_category || '');
-  const [format, setFormat] = useState(data.file_format || '');
-  const [deletingId, setDeletingId] = useState(null);  // CHANGE 2: track which template is being deleted
+  const [templates, setTemplates]         = useState([]);
+  const [category, setCategory]           = useState(data.template_category || '');
+  const [format, setFormat]               = useState(data.report_format || data.file_format || '');
+  const [deletingId, setDeletingId]       = useState(null);
+  // Dynamic category list — derived from templates already in DB + doc-type suggestions
+  const [allCategories, setAllCategories] = useState(['General']);
+  const [customCatInput, setCustomCatInput] = useState('');
+  const [showCustomCatInput, setShowCustomCatInput] = useState(false);
 
   // Upload State
-  const [showUpload, setShowUpload] = useState(false);
-  const [uploadName, setUploadName] = useState('');
+  const [showUpload, setShowUpload]       = useState(false);
+  const [uploadName, setUploadName]       = useState('');
   const [uploadCategory, setUploadCategory] = useState('General');
-  const [uploadFiles, setUploadFiles] = useState([]);
-  const [uploading, setUploading] = useState(false);
+  const [uploadCatCustom, setUploadCatCustom] = useState(false); // typing a new category
+  const [uploadFiles, setUploadFiles]     = useState([]);
+  const [uploading, setUploading]         = useState(false);
 
   const fetchTemplates = async () => {
     try {
       const query = new URLSearchParams();
       if (category) query.append('category', category);
-      if (format) query.append('format_type', format);
-
+      if (format)   query.append('format_type', format);
       const res = await fetch(`http://localhost:8000/api/v1/agentmesh/report-templates/?${query.toString()}`);
       if (res.ok) {
         const json = await res.json();
         setTemplates(json);
+        // ── Derive dynamic category list from DB templates ──────────────
+        const dbCats = [...new Set((json).map(t => t.category).filter(Boolean))];
+        // Merge: DB cats + doc-type suggestions for current format + always keep General
+        const docTypeSuggestions = format ? (DOC_TYPE_CATEGORIES[format] || []) : [];
+        const merged = [...new Set(['General', ...dbCats, ...docTypeSuggestions])];
+        setAllCategories(merged);
       } else {
-        console.error("Failed to fetch, status:", res.status);
+        console.error("Failed to fetch templates, status:", res.status);
       }
     } catch (err) {
       console.error("Failed to fetch report templates", err);
     }
   };
 
-  useEffect(() => {
-    fetchTemplates();
-  }, [category, format]);
+  useEffect(() => { fetchTemplates(); }, [category, format]);
 
   const handleUpload = async () => {
     if (!uploadName || uploadFiles.length === 0) return alert("Name and files are required");
@@ -1898,72 +1916,139 @@ function ReportGeneratorConfig({ data, update }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* ── CATEGORY FILTER ── */}
+      {/* ── CATEGORY FILTER — dynamic, sourced from DB + doc-type suggestions ── */}
       <div style={{ marginBottom: 4 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
-          Category Filter
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Category</div>
+          <button
+            onClick={() => setShowCustomCatInput(v => !v)}
+            style={{
+              fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
+              border: '1px dashed var(--border)', background: 'transparent',
+              cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4,
+            }}
+          >
+            <FiPlus size={10} /> Custom
+          </button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-          {[
-            { value: '', label: 'All Categories' },
-            { value: 'Fraud', label: 'Fraud' },
-            { value: 'General', label: 'General' },
-            { value: 'Financial', label: 'Financial' }
-          ].map(opt => {
-            const active = category === opt.value;
+
+        {/* Custom category input */}
+        {showCustomCatInput && (
+          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+            <input
+              value={customCatInput}
+              onChange={e => setCustomCatInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && customCatInput.trim()) {
+                  const newCat = customCatInput.trim();
+                  setAllCategories(prev => prev.includes(newCat) ? prev : [...prev, newCat]);
+                  setCategory(newCat);
+                  update({ template_category: newCat });
+                  setCustomCatInput('');
+                  setShowCustomCatInput(false);
+                }
+              }}
+              placeholder="Type new category + Enter"
+              autoFocus
+              style={{
+                flex: 1, padding: '6px 10px', fontSize: 12, borderRadius: 7,
+                border: '1.5px solid var(--theme-primary)', outline: 'none',
+                fontFamily: 'inherit',
+              }}
+            />
+            <button
+              onClick={() => {
+                if (customCatInput.trim()) {
+                  const newCat = customCatInput.trim();
+                  setAllCategories(prev => prev.includes(newCat) ? prev : [...prev, newCat]);
+                  setCategory(newCat);
+                  update({ template_category: newCat });
+                  setCustomCatInput('');
+                  setShowCustomCatInput(false);
+                }
+              }}
+              style={{
+                padding: '6px 12px', borderRadius: 7, border: 'none',
+                background: 'var(--theme-primary)', color: 'white',
+                fontSize: 11, fontWeight: 700, cursor: 'pointer',
+              }}
+            >Add</button>
+          </div>
+        )}
+
+        {/* Dynamic category chips */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+          {/* "All" chip */}
+          {(() => {
+            const active = category === '';
             return (
               <button
-                key={opt.label}
-                onClick={() => { setCategory(opt.value); update({ template_category: opt.value }); }}
+                key="__all__"
+                onClick={() => { setCategory(''); update({ template_category: '' }); }}
                 style={{
-                  padding: '8px 6px',
-                  borderRadius: 8,
+                  padding: '5px 11px', borderRadius: 99, fontSize: 11, fontWeight: 700,
                   border: active ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
-                  background: active ? 'rgba(59, 130, 246, 0.08)' : 'white',
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                  transition: 'all 0.15s',
+                  background: active ? 'rgba(142,119,187,0.12)' : 'white',
+                  color: active ? 'var(--theme-primary)' : 'var(--text-muted)',
+                  cursor: 'pointer', transition: 'all 0.15s',
                 }}
-              >
-                <div style={{ fontSize: 11, fontWeight: 700, color: active ? 'var(--theme-primary)' : 'var(--text-primary)' }}>
-                  {opt.label}
-                </div>
-              </button>
+              >All</button>
+            );
+          })()}
+          {allCategories.map(cat => {
+            const active = category === cat;
+            return (
+              <button
+                key={cat}
+                onClick={() => { setCategory(active ? '' : cat); update({ template_category: active ? '' : cat }); }}
+                style={{
+                  padding: '5px 11px', borderRadius: 99, fontSize: 11, fontWeight: 700,
+                  border: active ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
+                  background: active ? 'rgba(142,119,187,0.12)' : 'white',
+                  color: active ? 'var(--theme-primary)' : 'var(--text-primary)',
+                  cursor: 'pointer', transition: 'all 0.15s',
+                }}
+              >{cat}</button>
             );
           })}
         </div>
       </div>
 
-      {/* ── FORMAT FILTER ── */}
+      {/* ── FORMAT FILTER — includes .md, writes to report_format ── */}
       <div style={{ marginBottom: 4 }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
-          Format Filter
+          Format
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5 }}>
           {[
-            { value: '', label: 'All', icon: '📁' },
-            { value: '.docx', label: 'Word', icon: '📄' },
+            { value: '',      label: 'All',   icon: '📁' },
+            { value: '.docx', label: 'Word',  icon: '📄' },
             { value: '.xlsx', label: 'Excel', icon: '📊' },
-            { value: '.pdf', label: 'PDF', icon: '📕' },
-            { value: '.csv', label: 'CSV', icon: '📋' },
-            { value: '.json', label: 'JSON', icon: '{ }' }
+            { value: '.pdf',  label: 'PDF',   icon: '📕' },
+            { value: '.csv',  label: 'CSV',   icon: '📋' },
+            { value: '.json', label: 'JSON',  icon: '{ }' },
+            { value: '.md',   label: 'MD',    icon: '📝' },
           ].map(opt => {
             const active = format === opt.value;
             return (
               <button
                 key={opt.label}
-                onClick={() => { setFormat(opt.value); update({ file_format: opt.value }); }}
+                onClick={() => {
+                  setFormat(opt.value);
+                  // Use report_format (not file_format) to avoid bleeding into other nodes
+                  update({ report_format: opt.value });
+                }}
                 style={{
                   padding: '8px 4px',
                   borderRadius: 8,
                   border: active ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
-                  background: active ? 'rgba(59, 130, 246, 0.08)' : 'white',
+                  background: active ? 'rgba(142,119,187,0.10)' : 'white',
                   cursor: 'pointer',
                   textAlign: 'center',
                   transition: 'all 0.15s',
                 }}
               >
-                <div style={{ fontSize: 14, marginBottom: 2 }}>{opt.icon}</div>
+                <div style={{ fontSize: 13, marginBottom: 2 }}>{opt.icon}</div>
                 <div style={{ fontSize: 10, fontWeight: 700, color: active ? 'var(--theme-primary)' : 'var(--text-primary)' }}>
                   {opt.label}
                 </div>
@@ -2038,90 +2123,161 @@ function ReportGeneratorConfig({ data, update }) {
             — No Template (Blank File) —
           </div>
 
-          {/* Grouped by category */}
-          {Object.entries(
-            (Array.isArray(templates) ? templates : []).reduce((acc, t) => {
-              const cat = t.category || 'General';
-              if (!acc[cat]) acc[cat] = [];
-              acc[cat].push(t);
-              return acc;
-            }, {})
-          ).map(([cat, list]) => (
-            <div key={cat}>
-              {/* Category label */}
-              <div style={{
-                padding: '5px 12px',
-                fontSize: 10,
-                fontWeight: 800,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                color: 'var(--text-muted)',
-                background: '#F8FAFC',
-                borderBottom: '1px solid var(--border)',
-              }}>
-                {cat}
-              </div>
+          {/* Deep Nested Grouping (Group -> Format -> Category) */}
+          {(() => {
+            const rawTemplates = Array.isArray(templates) ? templates : [];
+            const tree = {};
 
-              {/* Template rows */}
-              {list.map(t => {
-                const selected = data.template_id === t.id;
-                const isDeleting = deletingId === t.id;
-                return (
-                  <div
-                    key={t.id}
-                    style={{
+            // 1. Build the tree
+            rawTemplates.forEach(t => {
+              let catRaw = t.category || 'General';
+              let group = 'General';
+              let subcategory = catRaw;
+
+              if (catRaw.includes('/')) {
+                const parts = catRaw.split('/');
+                group = parts[0].trim();
+                subcategory = parts.slice(1).join('/').trim();
+              }
+
+              // Normalize format for display
+              let fmt = (t.format_type || 'Unknown').toUpperCase();
+              if (fmt.startsWith('.')) fmt = fmt.substring(1);
+              if (fmt === 'DOCX' || fmt === 'DOTX') fmt = 'WORD (.docx)';
+              if (fmt === 'PDF') fmt = 'PDF (.pdf)';
+              if (fmt === 'XLSX') fmt = 'EXCEL (.xlsx)';
+              if (fmt === 'CSV') fmt = 'CSV (.csv)';
+              if (fmt === 'MD') fmt = 'MARKDOWN (.md)';
+
+              if (!tree[group]) tree[group] = {};
+              if (!tree[group][fmt]) tree[group][fmt] = {};
+              if (!tree[group][fmt][subcategory]) tree[group][fmt][subcategory] = [];
+
+              tree[group][fmt][subcategory].push(t);
+            });
+
+            // 2. Render the tree
+            return Object.entries(tree).sort(([a], [b]) => a.localeCompare(b)).map(([groupName, formats]) => (
+              <div key={groupName} style={{ marginBottom: 16 }}>
+                {/* ── GROUP HEADER ── */}
+                <div style={{
+                  padding: '6px 12px',
+                  fontSize: 12,
+                  fontWeight: 800,
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                  color: 'var(--theme-primary)',
+                  background: 'rgba(59,130,246,0.06)',
+                  borderBottom: '2px solid rgba(59,130,246,0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}>
+                  <FiBox size={14} /> {groupName}
+                </div>
+
+                {Object.entries(formats).sort(([a], [b]) => a.localeCompare(b)).map(([fmtName, categories]) => (
+                  <div key={fmtName} style={{ paddingLeft: 12, borderLeft: '2px solid rgba(0,0,0,0.04)', marginLeft: 6 }}>
+                    {/* ── FORMAT HEADER ── */}
+                    <div style={{
+                      padding: '8px 12px 4px 0',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: 'var(--text-muted)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
                       display: 'flex',
                       alignItems: 'center',
-                      padding: '8px 10px 8px 12px',
-                      background: selected ? 'rgba(59,130,246,0.08)' : 'transparent',
-                      borderBottom: '1px solid var(--border)',
-                      transition: 'background 0.12s',
-                      gap: 8,
-                    }}
-                    onMouseEnter={(e) => { if (!selected) e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                    onMouseLeave={(e) => { if (!selected) e.currentTarget.style.background = 'transparent'; }}
-                  >
-                    {/* Clickable name area */}
-                    <div
-                      onClick={() => update({ template_id: t.id })}
-                      style={{ flex: 1, cursor: 'pointer' }}
-                    >
-                      <div style={{ fontSize: 13, fontWeight: selected ? 600 : 400, color: selected ? 'var(--theme-primary)' : 'var(--text-primary)' }}>
-                        {t.name}
-                      </div>
-                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>
-                        {t.format_type}
-                      </div>
+                      gap: 4
+                    }}>
+                      <FiFileText size={12} /> {fmtName}
                     </div>
 
-                    {/* Delete button */}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(t.id); }}
-                      disabled={isDeleting}
-                      title="Delete template"
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        padding: '4px 6px',
-                        borderRadius: 6,
-                        cursor: isDeleting ? 'not-allowed' : 'pointer',
-                        color: isDeleting ? 'var(--text-muted)' : '#EF4444',
-                        opacity: isDeleting ? 0.4 : 0.6,
-                        display: 'flex',
-                        alignItems: 'center',
-                        transition: 'opacity 0.15s',
-                        flexShrink: 0,
-                      }}
-                      onMouseEnter={(e) => { if (!isDeleting) e.currentTarget.style.opacity = '1'; }}
-                      onMouseLeave={(e) => { if (!isDeleting) e.currentTarget.style.opacity = '0.6'; }}
-                    >
-                      <FiTrash2 size={13} />
-                    </button>
+                    {Object.entries(categories).sort(([a], [b]) => a.localeCompare(b)).map(([subcatName, list]) => (
+                      <div key={subcatName} style={{ marginBottom: 8 }}>
+                        {/* ── SUBCATEGORY LABEL ── */}
+                        <div style={{
+                          padding: '4px 8px',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: '#475569',
+                          background: '#F1F5F9',
+                          borderRadius: 4,
+                          marginLeft: 8,
+                          marginRight: 8,
+                          marginTop: 4,
+                          display: 'inline-block'
+                        }}>
+                          {subcatName.toUpperCase()}
+                        </div>
+
+                        {/* ── TEMPLATE ROWS ── */}
+                        {list.map(t => {
+                          const selected = data.template_id === t.id;
+                          const isDeleting = deletingId === t.id;
+                          return (
+                            <div
+                              key={t.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: '8px 10px 8px 12px',
+                                background: selected ? 'rgba(59,130,246,0.08)' : 'transparent',
+                                borderBottom: '1px solid var(--border)',
+                                transition: 'background 0.12s',
+                                gap: 8,
+                              }}
+                              onMouseEnter={(e) => { if (!selected) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                              onMouseLeave={(e) => { if (!selected) e.currentTarget.style.background = 'transparent'; }}
+                            >
+                              <div
+                                onClick={() => update({ template_id: t.id })}
+                                style={{ flex: 1, cursor: 'pointer', minWidth: 0, overflow: 'hidden' }}
+                              >
+                                <div style={{ 
+                                  fontSize: 13, 
+                                  fontWeight: selected ? 600 : 400, 
+                                  color: selected ? 'var(--theme-primary)' : 'var(--text-primary)',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis'
+                                }}>
+                                  {t.name}
+                                </div>
+                              </div>
+
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(t.id); }}
+                                disabled={isDeleting}
+                                title="Delete template"
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  padding: '4px 6px',
+                                  borderRadius: 6,
+                                  cursor: isDeleting ? 'not-allowed' : 'pointer',
+                                  color: isDeleting ? 'var(--text-muted)' : '#EF4444',
+                                  opacity: isDeleting ? 0.4 : 0.6,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  transition: 'opacity 0.15s',
+                                  flexShrink: 0,
+                                }}
+                                onMouseEnter={(e) => { if (!isDeleting) e.currentTarget.style.opacity = '1'; }}
+                                onMouseLeave={(e) => { if (!isDeleting) e.currentTarget.style.opacity = '0.6'; }}
+                              >
+                                <FiTrash2 size={13} />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
                   </div>
-                );
-              })}
-            </div>
-          ))}
+                ))}
+              </div>
+            ));
+          })()}
 
           {templates.length === 0 && (
             <div style={{ padding: '20px', textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
@@ -2156,12 +2312,56 @@ function ReportGeneratorConfig({ data, update }) {
               </div>
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Category</label>
-                <select value={uploadCategory} onChange={(e) => setUploadCategory(e.target.value)} style={{ width: '100%', padding: '12px 16px', fontSize: 14, borderRadius: 12, background: '#F8FAFC', border: '2px solid #E2E8F0', color: '#0F172A', outline: 'none' }}>
-                  <option value="General">General</option>
-                  <option value="Fraud">Fraud</option>
-                  <option value="Financial">Financial</option>
-                  <option value="Clinical">Clinical</option>
-                </select>
+                {uploadCatCustom ? (
+                  <div style={{ display: 'flex', gap: 5 }}>
+                    <input
+                      autoFocus
+                      value={uploadCategory}
+                      onChange={e => setUploadCategory(e.target.value)}
+                      placeholder="Type category name"
+                      style={{
+                        flex: 1, padding: '12px 14px', fontSize: 13, borderRadius: 12,
+                        background: '#F8FAFC', border: '2px solid #8B5CF6',
+                        outline: 'none', fontFamily: 'inherit',
+                      }}
+                    />
+                    <button
+                      onClick={() => setUploadCatCustom(false)}
+                      style={{
+                        padding: '8px 10px', borderRadius: 10, border: '1px solid #E2E8F0',
+                        background: '#F1F5F9', cursor: 'pointer', fontSize: 11,
+                        fontWeight: 600, color: '#64748B',
+                      }}
+                    >List</button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: 5 }}>
+                    <select
+                      value={uploadCategory}
+                      onChange={(e) => setUploadCategory(e.target.value)}
+                      style={{
+                        flex: 1, padding: '12px 14px', fontSize: 13, borderRadius: 12,
+                        background: '#F8FAFC', border: '2px solid #E2E8F0',
+                        color: '#0F172A', outline: 'none', fontFamily: 'inherit',
+                      }}
+                    >
+                      {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <button
+                      onClick={() => { setUploadCatCustom(true); setUploadCategory(''); }}
+                      title="Type a new category"
+                      style={{
+                        padding: '8px 10px', borderRadius: 10,
+                        border: '1.5px dashed #C4B5FD',
+                        background: '#F5F3FF', cursor: 'pointer', fontSize: 11,
+                        fontWeight: 700, color: '#7C3AED',
+                      }}
+                    ><FiPlus size={13} /></button>
+                  </div>
+                )}
+              </div>
+              <div style={{ marginTop: 8, fontSize: 11, color: '#94A3B8', lineHeight: 1.4 }}>
+                <strong>Tip:</strong> Use <code style={{ background: '#F1F5F9', padding: '1px 4px', borderRadius: 4 }}>/</code> to create subcategories (e.g., <em>HR / Offer Letters</em>). Categories are automatically deleted when all templates inside them are removed.
               </div>
             </div>
 
@@ -4048,7 +4248,11 @@ export default function PropertiesPanel() {
                   { value: 'info', label: 'Info (Blue)' },
                   { value: 'success', label: 'Success (Green)' },
                   { value: 'warning', label: 'Warning (Yellow)' },
-                  { value: 'error', label: 'Error (Red)' }
+                  { value: 'error', label: 'Error (Red)' },
+                  { value: 'important', label: 'Important (Indigo)' },
+                  { value: 'critical', label: 'Critical (Dark Red)' },
+                  { value: 'system', label: 'System (Gray)' },
+                  { value: 'security', label: 'Security (Rose)' }
                 ]}
               />
             </Field>

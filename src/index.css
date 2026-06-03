@@ -1,3 +1,10 @@
+/* ─── Global Layout Tokens ────────────────────────────────────────────────── */
+:root {
+  /* Header height — single source of truth used by AgentMeshWrapper and any
+     full-viewport child that needs to know how much the header takes */
+  --tantor-header-height: 64px;
+}
+
 /* Satoshi Medium 16px, #282F49 */
 .satoshi-medium {
   font-family: 'Satoshi';

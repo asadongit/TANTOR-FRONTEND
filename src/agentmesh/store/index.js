@@ -691,6 +691,18 @@ export const useUIStore = create((set) => ({
   setShowManagementModal: (v) => set({ showManagementModal: v }),
   setIsSyncing: (v) => set({ isSyncing: v }),
   setRunOpen: (v) => set({ runOpen: v }),
+
+  // ─── Canvas Visual Settings (persisted to localStorage) ───────────────────
+  canvasWireStyle: (typeof window !== 'undefined' ? localStorage.getItem('canvas_wire_style') : 'square') || 'square',
+  canvasBackgroundStyle: (typeof window !== 'undefined' ? localStorage.getItem('canvas_background_style') : 'dots') || 'dots',
+  setCanvasWireStyle: (v) => {
+    if (typeof window !== 'undefined') localStorage.setItem('canvas_wire_style', v);
+    set({ canvasWireStyle: v });
+  },
+  setCanvasBackgroundStyle: (v) => {
+    if (typeof window !== 'undefined') localStorage.setItem('canvas_background_style', v);
+    set({ canvasBackgroundStyle: v });
+  },
 }));
 
 // ─── Run Store ────────────────────────────────────────────────────────────────
