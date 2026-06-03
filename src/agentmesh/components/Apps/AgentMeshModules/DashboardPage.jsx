@@ -222,7 +222,7 @@ export default function DashboardPage() {
                             marginBottom: '16px',
                             letterSpacing: '-0.04em'
                         }}>
-                            Operational<br />Intelligence Hub
+                            Agent Mesh
                         </h1>
                         <p style={{
                             fontSize: '18px',

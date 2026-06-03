@@ -3,7 +3,8 @@ import { useUIStore, useWorkflowStore, useRunStore } from '../../store';
 import {
   FiX, FiTrash2, FiBell, FiCheckCircle, FiInfo, FiAlertTriangle, FiAlertCircle,
   FiArchive, FiRefreshCw, FiMessageSquare,
-  FiStar, FiAlertOctagon, FiSliders, FiShield
+  FiStar, FiAlertOctagon, FiSliders, FiShield,
+  FiChevronDown, FiChevronUp
 } from 'react-icons/fi';
 import { listNotifications, processNotifications, getWorkflow } from '../../api/agentmesh';
 
@@ -173,57 +174,48 @@ export default function NotificationsModal() {
           </div>
         </div>
 
-        <div style={{ padding: '0 32px', borderBottom: '1px solid var(--border)', background: 'var(--bg-canvas)', display: 'flex', gap: 24 }}>
-          <Tab active={filter === 'all'} onClick={() => setFilter('all')} label="All" />
-          <Tab active={filter === 'unread'} onClick={() => setFilter('unread')} label={`Unread (${notifications.filter(n=>!n.is_read).length})`} />
-        </div>
-
-        {/* Type Filters row */}
         <div style={{ 
-          padding: '10px 32px', 
+          padding: '0 32px', 
           borderBottom: '1px solid var(--border)', 
           background: 'var(--bg-canvas)', 
           display: 'flex', 
-          gap: 8, 
-          overflowX: 'auto', 
-          flexWrap: 'nowrap',
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none'
+          justifyContent: 'space-between',
+          alignItems: 'center'
         }}>
-          {[
-            { value: 'all', label: 'All Types' },
-            { value: 'info', label: 'Info' },
-            { value: 'success', label: 'Success' },
-            { value: 'warning', label: 'Warning' },
-            { value: 'error', label: 'Error' },
-            { value: 'important', label: 'Important' },
-            { value: 'critical', label: 'Critical' },
-            { value: 'system', label: 'System' },
-            { value: 'security', label: 'Security' }
-          ].map(t => {
-            const isSelected = selectedType === t.value;
-            return (
-              <button
-                key={t.value}
-                onClick={() => setSelectedType(t.value)}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: 100,
-                  border: isSelected ? '1px solid var(--theme-primary)' : '1px solid var(--border)',
-                  background: isSelected ? 'var(--theme-primary-glow)' : 'white',
-                  color: isSelected ? 'var(--theme-primary)' : 'var(--text-secondary)',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                  whiteSpace: 'nowrap',
-                  boxShadow: isSelected ? '0 2px 6px rgba(142, 119, 187, 0.1)' : 'none'
-                }}
-              >
-                {t.label}
-              </button>
-            );
-          })}
+          <div style={{ display: 'flex', gap: 24 }}>
+            <Tab active={filter === 'all'} onClick={() => setFilter('all')} label="All" />
+            <Tab active={filter === 'unread'} onClick={() => setFilter('unread')} label={`Unread (${notifications.filter(n=>!n.is_read).length})`} />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>Type:</span>
+            <select
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: 8,
+                border: '1px solid var(--border)',
+                background: 'white',
+                color: 'var(--text-primary)',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                outline: 'none',
+                boxShadow: 'var(--shadow-sm)'
+              }}
+            >
+              <option value="all">All Types</option>
+              <option value="info">Info</option>
+              <option value="success">Success</option>
+              <option value="warning">Warning</option>
+              <option value="error">Error</option>
+              <option value="important">Important</option>
+              <option value="critical">Critical</option>
+              <option value="system">System</option>
+              <option value="security">Security</option>
+            </select>
+          </div>
         </div>
 
         <div style={STYLES.list}>
@@ -280,6 +272,7 @@ function NotificationItem({ notification, onMarkRead, onDelete, onOpenChat }) {
   const cfg = TYPE_ICONS[notification.type] || TYPE_ICONS.info;
   const Icon = cfg.icon;
   const showChatBtn = notification.metadata_json?.show_chat_button;
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <div style={{ ...STYLES.item, ...(notification.is_read ? {} : STYLES.itemUnread) }}>
@@ -297,7 +290,19 @@ function NotificationItem({ notification, onMarkRead, onDelete, onOpenChat }) {
             {new Date(notification.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>
-        <p style={{ margin: '0 0 12px 0', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+        <p style={{ 
+          margin: '0 0 12px 0', 
+          fontSize: 13, 
+          color: 'var(--text-secondary)', 
+          lineHeight: 1.5,
+          ...(expanded ? {} : {
+            display: '-webkit-box',
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          })
+        }}>
           {notification.message}
         </p>
 
@@ -336,12 +341,20 @@ function NotificationItem({ notification, onMarkRead, onDelete, onOpenChat }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
         <button
           onClick={onDelete}
           style={{ width: 32, height: 32, borderRadius: 8, background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#CBD5E1' }}
+          title="Delete notification"
         >
           <FiTrash2 size={14} />
+        </button>
+        <button
+          onClick={() => setExpanded(!expanded)}
+          style={{ width: 32, height: 32, borderRadius: 8, background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-muted)' }}
+          title={expanded ? "Show less" : "Show more"}
+        >
+          {expanded ? <FiChevronUp size={18} /> : <FiChevronDown size={18} />}
         </button>
       </div>
     </div>

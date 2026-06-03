@@ -4,6 +4,7 @@ import AgentsPage from './AgentsPage';
 import ToolsPage from './ToolsPage';
 import APIsPage from './APIsPage';
 import SkillsPage from './SkillsPage';
+import TemplatesPage from './TemplatesPage';
 
 export default function LibraryPage() {
   const { activeLibraryTab } = useUIStore();
@@ -19,11 +20,11 @@ export default function LibraryPage() {
     }}>
       {/* Tab Content */}
       <div style={{
+        display: 'flex',
         flex: 1,
         width: '100%',
         height: '100%',
         overflow: 'hidden',
-        display: 'flex',
         position: 'relative'
       }}>
         <div style={{ width: '100%', height: '100%' }}>
@@ -31,6 +32,7 @@ export default function LibraryPage() {
           {activeLibraryTab === 'tools' && <ToolsPage />}
           {activeLibraryTab === 'apis' && <APIsPage />}
           {activeLibraryTab === 'skills' && <SkillsPage />}
+          {activeLibraryTab === 'templates' && <TemplatesPage />}
         </div>
       </div>
     </div>

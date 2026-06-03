@@ -124,6 +124,7 @@ export default function MainComponent() {
           {activePage === 'observability' && <Observability />}
           {activePage === 'connections'   && <ConnectionsPage />}
           {activePage === 'settings'      && <SettingsPage />}
+          {activePage === 'templates'     && <TemplatesPage />}
         </Suspense>
       </main>
 

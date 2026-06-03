@@ -192,60 +192,64 @@ function MarketplaceCard({ w, onChat, onDetails, isRunning, idx }) {
     >
 
       <div style={{ padding: '20px 20px 16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+        {/* Header Row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 14 }}>
           <div style={{
             width: 44, height: 44, borderRadius: 12,
             background: theme.bg,
             border: `1px solid ${theme.border}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: theme.primary,
-            boxShadow: `0 4px 12px -2px ${theme.glow}`
+            boxShadow: '0 4px 12px -2px var(--theme-primary-glow)',
+            flexShrink: 0
           }}>
             <FiUser size={22} strokeWidth={2} />
           </div>
 
-          {isRunning && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#ECFDF5', padding: '3px 8px', borderRadius: 20, border: '1px solid #D1FAE5' }}>
-              <motion.div
-                animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-                style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981' }}
-              />
-              <span style={{ fontSize: 9, color: '#065F46', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Active</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+              <h3 style={{
+                fontSize: 16, fontWeight: 800, color: 'var(--text-primary)',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                letterSpacing: '-0.02em', margin: 0, flex: 1
+              }}>
+                {w.name}
+              </h3>
+              {isRunning && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#ECFDF5', padding: '3px 8px', borderRadius: 20, border: '1px solid #D1FAE5', flexShrink: 0, marginLeft: 8 }}>
+                  <motion.div
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                    style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981' }}
+                  />
+                  <span style={{ fontSize: 9, color: '#065F46', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Active</span>
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        <div style={{ marginBottom: 8 }}>
-          <h3 style={{
-            fontSize: 16, fontWeight: 800, color: 'var(--text-primary)',
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            letterSpacing: '-0.02em', marginBottom: 2
-          }}>
-            {w.name}
-          </h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span title={`Group: ${w.group || 'Default'}`} style={{
-              fontSize: 10, color: theme.primary, fontWeight: 700,
-              textTransform: 'uppercase', letterSpacing: '0.05em',
-              background: theme.bg, padding: '1px 6px', borderRadius: 4
-            }}>
-              {w.group || 'Default'}
-            </span>
-            <span title={`Category: ${w.category || 'General'}`} style={{
-              fontSize: 10, color: theme.primary, fontWeight: 700,
-              textTransform: 'uppercase', letterSpacing: '0.05em',
-              background: theme.bg, padding: '1px 6px', borderRadius: 4
-            }}>
-              {w.category || 'General'}
-            </span>
-            <span style={{
-              fontSize: 10, color: '#D97706', fontWeight: 700,
-              background: '#FEF3C7', padding: '1px 6px', borderRadius: 4,
-              display: 'flex', alignItems: 'center', gap: 2
-            }}>
-              ★ {w.rating !== undefined ? w.rating.toFixed(1) : '0.0'}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span title={`Group: ${w.group || 'Default'}`} style={{
+                fontSize: 10, color: theme.primary, fontWeight: 700,
+                textTransform: 'uppercase', letterSpacing: '0.05em',
+                background: theme.bg, padding: '1px 6px', borderRadius: 4
+              }}>
+                {w.group || 'Default'}
+              </span>
+              <span title={`Category: ${w.category || 'General'}`} style={{
+                fontSize: 10, color: theme.primary, fontWeight: 700,
+                textTransform: 'uppercase', letterSpacing: '0.05em',
+                background: theme.bg, padding: '1px 6px', borderRadius: 4
+              }}>
+                {w.category || 'General'}
+              </span>
+              <span style={{
+                fontSize: 10, color: '#D97706', fontWeight: 700,
+                background: '#FEF3C7', padding: '1px 6px', borderRadius: 4,
+                display: 'flex', alignItems: 'center', gap: 2
+              }}>
+                ★ {w.rating !== undefined ? w.rating.toFixed(1) : '0.0'}
+              </span>
+            </div>
           </div>
         </div>
 

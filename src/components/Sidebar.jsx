@@ -64,6 +64,7 @@ const INACTIVE_FILTER = 'brightness(0) saturate(100%) invert(53%) sepia(6%) satu
 const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const [expandedItem, setExpandedItem] = useState(null);
   const [expandedSubItem, setExpandedSubItem] = useState(null);
+  const [expandedSubSubItem, setExpandedSubSubItem] = useState(null);
   // activeSection is now fully controlled by MainLayout (via route detection)
   // — no local state or localStorage read needed here.
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -110,8 +111,13 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
 
   // Auto-expand Agent Mesh accordion when navigating to its route
   useEffect(() => {
-    if (isOnAgentMesh) setExpandedItem('Agent Mesh');
-  }, [isOnAgentMesh]);
+    if (isOnAgentMesh) {
+      setExpandedItem('Agent Mesh');
+      if (['canvas', 'library', 'rag'].includes(agentMeshActivePage)) {
+        setExpandedSubItem('Agent Studio');
+      }
+    }
+  }, [isOnAgentMesh, agentMeshActivePage]);
 
   const { isGlobalAdmin, isPolicyManager, isUserManager, isDataAuditor } = useMemo(() => {
   const hasRoleInToken = (roleKey) =>
@@ -410,20 +416,27 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
       agentMeshAccordion: true,
       subItems: [
         { name: 'Dashboard',     agentMeshPage: 'dashboard' },
-        { name: 'Canvas',        agentMeshPage: 'canvas' },
-        { name: 'Workflows',     agentMeshPage: 'workflows' },
         {
-          name: 'Library', agentMeshPage: 'library',
+          name: 'Agent Studio',
+          agentMeshAccordionStudio: true,
           subItems: [
-            { name: 'Agents', agentMeshLibTab: 'agents' },
-            { name: 'Tools',  agentMeshLibTab: 'tools' },
-            { name: 'APIs',   agentMeshLibTab: 'apis' },
-            { name: 'Skills', agentMeshLibTab: 'skills' },
+            { name: 'Canvas',    agentMeshPage: 'canvas' },
+            {
+              name: 'Library',   agentMeshPage: 'library',
+              subItems: [
+                { name: 'Agents', agentMeshLibTab: 'agents' },
+                { name: 'Tools',  agentMeshLibTab: 'tools' },
+                { name: 'APIs',   agentMeshLibTab: 'apis' },
+                { name: 'Skills', agentMeshLibTab: 'skills' },
+                { name: 'Templates', agentMeshLibTab: 'templates' },
+              ]
+            },
+            { name: 'Knowledge', agentMeshPage: 'rag' },
           ]
         },
+        { name: 'Workflows',     agentMeshPage: 'workflows' },
         { name: 'Marketplace',   agentMeshPage: 'marketplace' },
         { name: 'Logs',          agentMeshPage: 'logs' },
-        { name: 'Knowledge',     agentMeshPage: 'rag' },
         { name: 'Observability', agentMeshPage: 'observability' },
         { name: 'Connections',   agentMeshPage: 'connections' },
         { name: 'Notifications', agentMeshNotif: true },
@@ -558,38 +571,77 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
                     );
                   }
 
-                  // ── AgentMesh: Library with nested tabs ──────────────────
-                  if (subItem.agentMeshPage === 'library') {
-                    const libActive  = agentMeshActivePage === 'library';
-                    const libOpen    = expandedSubItem === 'Library';
+                  // ── AgentMesh: Agent Studio with nested items ─────────────
+                  if (subItem.agentMeshAccordionStudio) {
+                    const studioOpen = expandedSubItem === 'Agent Studio';
+                    const studioActive = ['canvas', 'library', 'rag'].includes(agentMeshActivePage);
                     return (
-                      <div key="am-library">
+                      <div key="am-agent-studio">
                         <button
                           onClick={() => {
-                            agentMeshSetActivePage('library');
-                            setExpandedSubItem(prev => prev === 'Library' ? null : 'Library');
-                            if (!isOnAgentMesh) navigate('/ai/agent-mesh');
+                            setExpandedSubItem(prev => prev === 'Agent Studio' ? null : 'Agent Studio');
                           }}
                           className="flex items-center justify-between w-full px-3 py-2 rounded-lg transition-colors duration-200 hover:bg-gray-100"
-                          style={{ background: libActive ? '#F5F3FF' : 'transparent' }}
+                          style={{ background: studioActive ? '#F5F3FF' : 'transparent' }}
                         >
-                          <span className="text-sm" style={{ color: libActive ? ACTIVE_COLOR : INACTIVE_TEXT_COLOR, fontWeight: libActive ? 600 : 400 }}>Library</span>
-                          <ChevronRightIcon className={`h-3 w-3 transition-transform duration-200 ${libOpen ? 'rotate-90' : ''}`} style={{ color: INACTIVE_ICON_COLOR }} />
+                          <span className="text-sm" style={{ color: studioActive ? ACTIVE_COLOR : INACTIVE_TEXT_COLOR, fontWeight: studioActive ? 600 : 400 }}>Agent Studio</span>
+                          <ChevronRightIcon className={`h-3 w-3 transition-transform duration-200 ${studioOpen ? 'rotate-90' : ''}`} style={{ color: INACTIVE_ICON_COLOR }} />
                         </button>
-                        {/* Library sub-tabs: grid animation */}
-                        <div style={{ display: 'grid', gridTemplateRows: libOpen ? '1fr' : '0fr', transition: 'grid-template-rows 0.25s ease', marginLeft: 8 }}>
+                        {/* Agent Studio items: grid animation */}
+                        <div style={{ display: 'grid', gridTemplateRows: studioOpen ? '1fr' : '0fr', transition: 'grid-template-rows 0.25s ease', marginLeft: 8 }}>
                           <div style={{ overflow: 'hidden' }}>
-                            <div className="space-y-0.5 py-0.5">
-                              {subItem.subItems.map(lib => {
-                                const tabActive = libActive && agentMeshActiveLibraryTab === lib.agentMeshLibTab;
+                            <div className="space-y-1 py-1" style={{ borderLeft: '2px solid #E2E8F0', marginLeft: '4px', paddingLeft: '8px' }}>
+                              {subItem.subItems.map(studioSubItem => {
+                                if (studioSubItem.agentMeshPage === 'library') {
+                                  const libActive  = agentMeshActivePage === 'library';
+                                  const libOpen    = expandedSubSubItem === 'Library';
+                                  return (
+                                    <div key="am-library">
+                                      <button
+                                        onClick={() => {
+                                          agentMeshSetActivePage('library');
+                                          setExpandedSubSubItem(prev => prev === 'Library' ? null : 'Library');
+                                          if (!isOnAgentMesh) navigate('/ai/agent-mesh');
+                                        }}
+                                        className="flex items-center justify-between w-full px-3 py-2 rounded-lg transition-colors duration-200 hover:bg-gray-100"
+                                        style={{ background: libActive ? '#F5F3FF' : 'transparent' }}
+                                      >
+                                        <span className="text-sm" style={{ color: libActive ? ACTIVE_COLOR : INACTIVE_TEXT_COLOR, fontWeight: libActive ? 600 : 400 }}>Library</span>
+                                        <ChevronRightIcon className={`h-3 w-3 transition-transform duration-200 ${libOpen ? 'rotate-90' : ''}`} style={{ color: INACTIVE_ICON_COLOR }} />
+                                      </button>
+                                      {/* Library sub-tabs: grid animation */}
+                                      <div style={{ display: 'grid', gridTemplateRows: libOpen ? '1fr' : '0fr', transition: 'grid-template-rows 0.25s ease', marginLeft: 8 }}>
+                                        <div style={{ overflow: 'hidden' }}>
+                                          <div className="space-y-0.5 py-0.5" style={{ borderLeft: '2px solid #E2E8F0', marginLeft: '4px', paddingLeft: '8px' }}>
+                                            {studioSubItem.subItems.map(lib => {
+                                              const tabActive = libActive && agentMeshActiveLibraryTab === lib.agentMeshLibTab;
+                                              return (
+                                                <button
+                                                  key={lib.agentMeshLibTab}
+                                                  onClick={() => { agentMeshSetActivePage('library'); agentMeshSetActiveLibTab(lib.agentMeshLibTab); if (!isOnAgentMesh) navigate('/ai/agent-mesh'); }}
+                                                  className="flex w-full px-3 py-1.5 rounded-lg text-sm transition-colors duration-150 hover:bg-gray-100"
+                                                  style={{ color: tabActive ? ACTIVE_COLOR : INACTIVE_TEXT_COLOR, fontWeight: tabActive ? 600 : 400, background: tabActive ? '#EDE9FE' : 'transparent' }}
+                                                >
+                                                  {lib.name}
+                                                </button>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+
+                                const amActive = agentMeshActivePage === studioSubItem.agentMeshPage;
                                 return (
                                   <button
-                                    key={lib.agentMeshLibTab}
-                                    onClick={() => { agentMeshSetActivePage('library'); agentMeshSetActiveLibTab(lib.agentMeshLibTab); if (!isOnAgentMesh) navigate('/ai/agent-mesh'); }}
-                                    className="flex w-full px-3 py-1.5 rounded-lg text-sm transition-colors duration-150 hover:bg-gray-100"
-                                    style={{ color: tabActive ? ACTIVE_COLOR : INACTIVE_TEXT_COLOR, fontWeight: tabActive ? 600 : 400, background: tabActive ? '#EDE9FE' : 'transparent' }}
+                                    key={studioSubItem.agentMeshPage}
+                                    onClick={() => { agentMeshSetActivePage(studioSubItem.agentMeshPage); if (!isOnAgentMesh) navigate('/ai/agent-mesh'); }}
+                                    className="flex w-full px-3 py-2 rounded-lg text-sm transition-colors duration-150 hover:bg-gray-100"
+                                    style={{ color: amActive ? ACTIVE_COLOR : INACTIVE_TEXT_COLOR, fontWeight: amActive ? 600 : 400, background: amActive ? '#EDE9FE' : 'transparent' }}
                                   >
-                                    {lib.name}
+                                    {studioSubItem.name}
                                   </button>
                                 );
                               })}
