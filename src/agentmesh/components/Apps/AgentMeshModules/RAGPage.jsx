@@ -1,7 +1,132 @@
-import React, { useState, useRef } from 'react';
-import { ingestData } from '../../../api/agentmesh';
-import { FiBookOpen, FiType, FiUpload, FiCheck, FiAlertCircle, FiInfo, FiFileText, FiX, FiLayers, FiDatabase, FiScissors, FiMic, FiActivity, FiVideo } from 'react-icons/fi';
+import React, { useState, useRef, useEffect } from 'react';
+import { ingestData, listAvailableModels } from '../../../api/agentmesh';
+import { FiBookOpen, FiType, FiUpload, FiCheck, FiAlertCircle, FiInfo, FiFileText, FiX, FiLayers, FiDatabase, FiScissors, FiMic, FiActivity, FiVideo, FiShare2 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
+
+const scrollableSelectInputClass = {
+  width: '100%', padding: '10px 12px', background: 'white',
+  border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)',
+  fontSize: 13, outline: 'none', transition: 'border-color 0.15s',
+  fontFamily: 'inherit',
+};
+
+function ScrollableSelect({ value, onChange, options, placeholder }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={dropdownRef} style={{ position: 'relative', width: '100%' }}>
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          ...scrollableSelectInputClass,
+          cursor: 'pointer',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          background: 'white',
+          border: isOpen ? '1.5px solid var(--accent-btn)' : '1.5px solid var(--border)',
+          userSelect: 'none'
+        }}
+      >
+        <span>{options.find(o => o.value === value)?.label || value || placeholder}</span>
+        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>▼</span>
+      </div>
+      {isOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            left: 0,
+            right: 0,
+            background: 'white',
+            border: '1.5px solid var(--border)',
+            borderRadius: 8,
+            boxShadow: 'var(--shadow-lg)',
+            zIndex: 1000,
+            maxHeight: '170px',
+            overflowY: 'auto',
+          }}
+        >
+          {options.map((opt) => (
+            <div
+              key={opt.value}
+              onClick={() => {
+                onChange(opt.value);
+                setIsOpen(false);
+              }}
+              style={{
+                padding: '8px 12px',
+                cursor: 'pointer',
+                fontSize: 13,
+                background: value === opt.value ? 'var(--theme-primary-glow)' : 'transparent',
+                color: value === opt.value ? 'var(--theme-primary)' : 'var(--text-primary)',
+                fontWeight: value === opt.value ? 600 : 400,
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={(e) => {
+                if (value !== opt.value) e.currentTarget.style.background = '#F3F4F6';
+              }}
+              onMouseLeave={(e) => {
+                if (value !== opt.value) e.currentTarget.style.background = 'transparent';
+              }}
+            >
+              {opt.label}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TooltipLabel({ label, tooltipText }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, position: 'relative' }}>
+      <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500, margin: 0 }}>
+        {label}
+      </label>
+      <div 
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        style={{ cursor: 'help', display: 'flex', alignItems: 'center' }}
+      >
+        <FiInfo size={13} color="var(--text-muted)" />
+      </div>
+      {show && (
+        <div style={{
+          position: 'absolute',
+          bottom: 'calc(100% + 8px)',
+          left: 0,
+          width: 250,
+          background: '#1E293B',
+          color: 'white',
+          padding: '8px 12px',
+          borderRadius: 6,
+          fontSize: 11,
+          lineHeight: 1.4,
+          boxShadow: 'var(--shadow-md)',
+          zIndex: 1001,
+          pointerEvents: 'none'
+        }}>
+          {tooltipText}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 export default function RAGPage() {
   const [tab, setTab] = useState('text');
@@ -19,9 +144,48 @@ export default function RAGPage() {
   const [audioFiles, setAudioFiles] = useState([]);
   const [videoFiles, setVideoFiles] = useState([]);
   const [whisperModel, setWhisperModel] = useState('base');
+  const [targetType, setTargetType] = useState('vector');
+  const [llmProvider, setLlmProvider] = useState('openai');
+  const [llmModel, setLlmModel] = useState('gpt-4o');
+  const [allowedNodes, setAllowedNodes] = useState('');
+  const [allowedRelationships, setAllowedRelationships] = useState('');
+  const [graphDatabase, setGraphDatabase] = useState('neo4j');
+  const [contextHint, setContextHint] = useState('');
+  const [availableModels, setAvailableModels] = useState([]);
+  const [providers, setProviders] = useState([]);
   const fileInputRef = useRef(null);
   const audioInputRef = useRef(null);
   const videoInputRef = useRef(null);
+
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        const res = await listAvailableModels();
+        if (res && res.models) {
+          setAvailableModels(res.models);
+          const uniqueProviders = Array.from(new Set(res.models.map(m => m.provider)));
+          setProviders(uniqueProviders);
+          
+          if (uniqueProviders.includes('openai')) {
+            setLlmProvider('openai');
+            const openaiModels = res.models.filter(m => m.provider === 'openai');
+            if (openaiModels.length > 0) {
+              setLlmModel(openaiModels[0].model);
+            }
+          } else if (uniqueProviders.length > 0) {
+            setLlmProvider(uniqueProviders[0]);
+            const provModels = res.models.filter(m => m.provider === uniqueProviders[0]);
+            if (provModels.length > 0) {
+              setLlmModel(provModels[0].model);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load available models:", err);
+      }
+    };
+    fetchModels();
+  }, []);
 
   // --- Security & Validation Constants ---
   const MAX_DOC_SIZE = 10 * 1024 * 1024; // 10MB
@@ -37,8 +201,8 @@ export default function RAGPage() {
 
     setLoading(true); setResult(null); setError(null);
 
-    // 1. Validate Collection Name
-    if (!COLLECTION_REGEX.test(collection)) {
+    // 1. Validate Collection Name (Only for Vector Target)
+    if (targetType === 'vector' && !COLLECTION_REGEX.test(collection)) {
       setError("Collection name must contain only alphanumeric characters, underscores, or hyphens.");
       setLoading(false); return;
     }
@@ -58,15 +222,30 @@ export default function RAGPage() {
     const finalChunkSize = chunkingStrategy === 'none' ? 0 : chunkSize;
     const finalOverlap = chunkingStrategy === 'none' ? 0 : chunkOverlap;
 
+    const appendFormParameters = (formData) => {
+      formData.append('target_type', targetType);
+      formData.append('chunk_size', finalChunkSize);
+      formData.append('chunk_overlap', finalOverlap);
+      formData.append('chunking_strategy', chunkingStrategy);
+      
+      if (targetType === 'graph') {
+        formData.append('llm_provider', llmProvider);
+        formData.append('llm_model', llmModel);
+        formData.append('allowed_nodes', allowedNodes);
+        formData.append('allowed_relationships', allowedRelationships);
+        formData.append('graph_database', graphDatabase);
+        formData.append('context_hint', contextHint);
+      } else {
+        formData.append('collection_name', collection);
+        formData.append('vector_store', vectorStore);
+      }
+    };
+
     try {
       if (tab === 'text') {
         const formData = new FormData();
         formData.append('text', text);
-        formData.append('collection_name', collection);
-        formData.append('vector_store', vectorStore);
-        formData.append('chunk_size', finalChunkSize);
-        formData.append('chunk_overlap', finalOverlap);
-        formData.append('chunking_strategy', chunkingStrategy);
+        appendFormParameters(formData);
         
         const res = await ingestData(formData);
         setResult(res);
@@ -75,11 +254,7 @@ export default function RAGPage() {
         for (const file of files) {
           const formData = new FormData();
           formData.append('file', file);
-          formData.append('collection_name', collection);
-          formData.append('vector_store', vectorStore);
-          formData.append('chunk_size', finalChunkSize);
-          formData.append('chunk_overlap', finalOverlap);
-          formData.append('chunking_strategy', chunkingStrategy);
+          appendFormParameters(formData);
 
           const res = await ingestData(formData);
           totalChunks += res.chunks_ingested;
@@ -91,12 +266,8 @@ export default function RAGPage() {
         for (const file of audioFiles) {
           const formData = new FormData();
           formData.append('file', file);
-          formData.append('collection_name', collection);
-          formData.append('vector_store', vectorStore);
-          formData.append('chunk_size', finalChunkSize);
-          formData.append('chunk_overlap', finalOverlap);
-          formData.append('chunking_strategy', chunkingStrategy);
           formData.append('model_name', whisperModel);
+          appendFormParameters(formData);
 
           const res = await ingestData(formData);
           totalChunks += res.chunks_ingested;
@@ -108,12 +279,8 @@ export default function RAGPage() {
         for (const file of videoFiles) {
           const formData = new FormData();
           formData.append('file', file);
-          formData.append('collection_name', collection);
-          formData.append('vector_store', vectorStore);
-          formData.append('chunk_size', finalChunkSize);
-          formData.append('chunk_overlap', finalOverlap);
-          formData.append('chunking_strategy', chunkingStrategy);
           formData.append('model_name', whisperModel);
+          appendFormParameters(formData);
 
           const res = await ingestData(formData);
           totalChunks += res.chunks_ingested;
@@ -582,35 +749,159 @@ export default function RAGPage() {
                 </div>
               </div>
 
-              {/* ── Vector Database Segment ── */}
+              {/* ── Storage Target Switcher ── */}
               <div style={{ marginBottom: 24, padding: '18px', background: '#FAFAF9', border: '1px solid var(--border)', borderRadius: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
-                  <FiDatabase size={18} color="var(--text-primary)" />
-                  Vector Database Configuration
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                  <FiLayers size={18} color="var(--text-primary)" />
+                  Knowledge Storage Model
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                  <div>
-                    {labelNode('Vector engine')}
-                    <select value={vectorStore} onChange={(e) => setVectorStore(e.target.value)}
-                      style={{ ...inputClass }}
-                      onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent-btn)'}
-                      onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
-                    >
-                      <option value="chroma">chroma</option>
-                      <option value="qdrant">qdrant</option>
-                      <option value="pinecone">pinecone</option>
-                    </select>
+                  <div
+                    onClick={() => { setTargetType('vector'); setResult(null); setError(null); }}
+                    style={{
+                      display: 'flex', flexDirection: 'column', gap: 12, padding: 16, borderRadius: 16, border: '2px solid ' + (targetType === 'vector' ? 'var(--theme-primary)' : 'var(--border)'),
+                      background: targetType === 'vector' ? 'var(--theme-primary-glow)' : 'white', cursor: 'pointer', transition: 'all 0.25s',
+                      boxShadow: targetType === 'vector' ? 'var(--shadow-sm)' : 'none', textAlign: 'left'
+                    }}
+                  >
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: targetType === 'vector' ? 'var(--theme-primary)' : '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: targetType === 'vector' ? 'white' : 'var(--text-muted)' }}>
+                      <FiDatabase size={20} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Classic RAG</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>Embed document chunks into a vector space to retrieve facts using semantic similarity searches.</div>
+                    </div>
                   </div>
-                  <div>
-                    {labelNode('Collection name')}
-                    <input value={collection} onChange={(e) => setCollection(e.target.value)} placeholder="e.g. documentation"
-                      style={inputClass}
-                      onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent-btn)'}
-                      onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
-                    />
+                  <div
+                    onClick={() => { setTargetType('graph'); setResult(null); setError(null); }}
+                    style={{
+                      display: 'flex', flexDirection: 'column', gap: 12, padding: 16, borderRadius: 16, border: '2px solid ' + (targetType === 'graph' ? 'var(--theme-primary)' : 'var(--border)'),
+                      background: targetType === 'graph' ? 'var(--theme-primary-glow)' : 'white', cursor: 'pointer', transition: 'all 0.25s',
+                      boxShadow: targetType === 'graph' ? 'var(--shadow-sm)' : 'none', textAlign: 'left'
+                    }}
+                  >
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: targetType === 'graph' ? 'var(--theme-primary)' : '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: targetType === 'graph' ? 'white' : 'var(--text-muted)' }}>
+                      <FiShare2 size={20} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Knowledge Graph</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>Extract entities and relationship networks to construct a structured graph index for complex reasoning.</div>
+                    </div>
                   </div>
                 </div>
               </div>
+
+              {/* ── Vector Database Configuration (Conditional) ── */}
+              {targetType === 'vector' && (
+                <div style={{ marginBottom: 24, padding: '18px', background: '#FAFAF9', border: '1px solid var(--border)', borderRadius: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                    <FiDatabase size={18} color="var(--text-primary)" />
+                    Vector Database Configuration
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    <div>
+                      {labelNode('Vector engine')}
+                      <select value={vectorStore} onChange={(e) => setVectorStore(e.target.value)}
+                        style={{ ...inputClass }}
+                        onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent-btn)'}
+                        onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+                      >
+                        <option value="chroma">chroma</option>
+                        <option value="qdrant">qdrant</option>
+                        <option value="pinecone">pinecone</option>
+                      </select>
+                    </div>
+                    <div>
+                      {labelNode('Collection name')}
+                      <input value={collection} onChange={(e) => setCollection(e.target.value)} placeholder="e.g. documentation"
+                        style={inputClass}
+                        onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent-btn)'}
+                        onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Graph Extraction Configuration (Conditional) ── */}
+              {targetType === 'graph' && (
+                <div style={{ marginBottom: 24, padding: '18px', background: '#FAFAF9', border: '1px solid var(--border)', borderRadius: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                    <FiDatabase size={18} color="var(--text-primary)" />
+                    Graph Extractor Configuration
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                    <div>
+                      {labelNode('LLM Provider')}
+                      <ScrollableSelect
+                        value={llmProvider}
+                        onChange={(newProv) => {
+                          setLlmProvider(newProv);
+                          const provModels = availableModels.filter(m => m.provider === newProv);
+                          if (provModels.length > 0) {
+                            setLlmModel(provModels[0].model);
+                          }
+                        }}
+                        options={providers.map(p => ({
+                          value: p,
+                          label: p.charAt(0).toUpperCase() + p.slice(1)
+                        }))}
+                        placeholder="Select Provider"
+                      />
+                    </div>
+                    <div>
+                      {labelNode('Model Name')}
+                      <ScrollableSelect
+                        value={llmModel}
+                        onChange={(val) => setLlmModel(val)}
+                        options={availableModels.filter(m => m.provider === llmProvider).map(m => ({
+                          value: m.model,
+                          label: m.label || m.model
+                        }))}
+                        placeholder="Select Model"
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div>
+                      {labelNode('Tenant Database / Graph Name')}
+                      <input value={graphDatabase} onChange={(e) => setGraphDatabase(e.target.value)} placeholder="e.g. neo4j"
+                        style={inputClass}
+                      />
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
+                        Set a custom tenant database name to physically isolate this ingestion in Neo4j (Default: neo4j).
+                      </div>
+                    </div>
+                    <div>
+                      <TooltipLabel 
+                        label="Context Hint / Subject Anchor (Optional)" 
+                        tooltipText="Declare the main entity/subject of the document (e.g. 'Tata Motors' or 'Mahindra'). This guides the LLM to link every extracted node back to this central entity, preventing orphan nodes and improving connectivity." 
+                      />
+                      <input value={contextHint} onChange={(e) => setContextHint(e.target.value)} placeholder="e.g. Tata Motors"
+                        style={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <TooltipLabel 
+                        label="Allowed Node Labels (Optional)" 
+                        tooltipText="Specifies the target entity types the LLM should extract (e.g., Person, Organization, Location). If left empty, the model will dynamically extract any labels it identifies." 
+                      />
+                      <input value={allowedNodes} onChange={(e) => setAllowedNodes(e.target.value)} placeholder="e.g. Person, Company, Product"
+                        style={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <TooltipLabel 
+                        label="Allowed Relationship Types (Optional)" 
+                        tooltipText="Defines the specific connection types between nodes that the LLM should identify (e.g., WORKS_FOR, LIVES_IN, OWNED_BY). If left empty, the model will dynamically name relationships." 
+                      />
+                      <input value={allowedRelationships} onChange={(e) => setAllowedRelationships(e.target.value)} placeholder="e.g. WORKS_FOR, HAS_METRIC"
+                        style={inputClass}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <button
                 onClick={handleIngest}
@@ -627,7 +918,13 @@ export default function RAGPage() {
                 onMouseEnter={e => { if (!isIngestDisabled) e.currentTarget.style.filter = 'brightness(0.95)'; }}
                 onMouseLeave={e => { if (!isIngestDisabled) e.currentTarget.style.filter = 'none'; }}
               >
-                {loading ? <><div className="loading-spinner" style={{ borderTopColor: 'var(--theme-primary)' }} /> Vectorizing…</> : 'Ingest into Knowledge Base'}
+                {loading ? (
+                  <><div className="loading-spinner" style={{ borderTopColor: 'var(--theme-primary)' }} /> Processing…</>
+                ) : targetType === 'graph' ? (
+                  'Extract & Ingest to Graph'
+                ) : (
+                  'Ingest into Knowledge Base'
+                )}
               </button>
             </div>
           </div>
@@ -644,10 +941,14 @@ export default function RAGPage() {
                 <span style={{ fontSize: 14, fontWeight: 600, color: '#15803D' }}>Ingestion complete</span>
               </div>
               {[
-                { label: 'Chunks indexed', value: result.chunks_ingested },
+                { label: targetType === 'graph' ? 'Nodes Ingested' : 'Chunks indexed', value: result.chunks_ingested },
                 ...(result.file_count ? [{ label: 'Files processed', value: result.file_count }] : []),
-                { label: 'Collection', value: collection },
-                { label: 'Engine', value: vectorStore },
+                ...(targetType === 'graph' ? [
+                  { label: 'LLM Extractor', value: `${llmProvider} (${llmModel})` }
+                ] : [
+                  { label: 'Collection', value: collection },
+                  { label: 'Engine', value: vectorStore }
+                ]),
               ].map(({ label: l, value: v }) => (
                 <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #D1FAE5', fontSize: 13 }}>
                   <span style={{ color: '#5F5F6B' }}>{l}</span>
