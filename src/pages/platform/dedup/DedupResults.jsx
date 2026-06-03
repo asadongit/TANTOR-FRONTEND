@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCcw, Search, X, Eye, ShieldAlert, CheckCircle2, UserCheck, Shield, SlidersHorizontal, Download } from 'lucide-react';
+import { ArrowLeft, RefreshCcw, Search, X, Eye, ShieldAlert, CheckCircle2, UserCheck, Shield, SlidersHorizontal, Download, Upload, Filter } from 'lucide-react';
 import DataTable from '../../../components/DataTable.jsx';
 import Breadcrumb from '../../../components/Breadcrumb.jsx';
 import { useAuth } from '../../../context/AuthContext.jsx';
@@ -200,7 +200,7 @@ const allColumnDefinitions = {
     },
     fuzzy_matches: {
         key: 'fuzzy_matches',
-        label: 'Fuzzy Matches',
+        label: 'Identity Matches',
         render: (row) => {
             const val = row.fuzzy_matches !== null && row.fuzzy_matches !== undefined && row.fuzzy_matches !== '' ? row.fuzzy_matches : '-';
             return <span className="text-gray-700 text-xs truncate max-w-[150px]" title={val}>{val}</span>;
@@ -233,7 +233,12 @@ const DedupResults = () => {
     const [remarksTargetRow, setRemarksTargetRow] = useState(null);
     const [remarksText, setRemarksText] = useState('');
 
-    const [processedCount, setProcessedCount] = useState(0);
+    const [metricCounts, setMetricCounts] = useState({
+        pending_review_count: 0,
+        high_risk_count: 0,
+        duplicate_aadhaar_count: 0,
+        total_processed_count: 0
+    });
 
     const [selectedColumns, setSelectedColumns] = useState(defaultColumns);
     const [isColumnDropdownOpen, setIsColumnDropdownOpen] = useState(false);
@@ -241,7 +246,24 @@ const DedupResults = () => {
 
     const [actionType, setActionType] = useState('Approve');
     const [remarks, setRemarks] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [isBulkAction, setIsBulkAction] = useState(false);
+
+    const [isFilterVisible, setIsFilterVisible] = useState(false);
+    const [filters, setFilters] = useState({
+        riskCategory: '',
+        scoreFilterMode: '=',
+        riskScore: '',
+        minRiskScore: '',
+        maxRiskScore: ''
+    });
+
+    const [infoModalData, setInfoModalData] = useState({
+        isOpen: false,
+        title: '',
+        content: '',
+        record: null
+    });
 
     useEffect(() => {
         if (!isColumnDropdownOpen) return;
@@ -254,13 +276,33 @@ const DedupResults = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isColumnDropdownOpen]);
 
-    const fetchData = useCallback(async (isSilent = false) => {
+    const fetchData = async (isSilent = false, activeFilters = filters) => {
         if (!token) return;
         if (!isSilent) setIsLoading(true);
         try {
+            const params = {};
+            if (activeFilters.riskCategory) {
+                params.risk_category = activeFilters.riskCategory;
+            }
+            if (activeFilters.scoreFilterMode !== 'between') {
+                if (activeFilters.riskScore !== '') {
+                    params.total_risk_score = Number(activeFilters.riskScore);
+                    params.score_operator = activeFilters.scoreFilterMode;
+                }
+            } else {
+                params.score_operator = 'between';
+                if (activeFilters.minRiskScore !== '') {
+                    params.min_risk_score = Number(activeFilters.minRiskScore);
+                }
+                if (activeFilters.maxRiskScore !== '') {
+                    params.max_risk_score = Number(activeFilters.maxRiskScore);
+                }
+            }
+
             const response = await axios.get(
                 `${window._env_?.VITE_FAST_API || 'http://localhost:8000'}/dedup/results`,
                 {
+                    params,
                     headers: {
                         Authorization: `Bearer ${token}`,
                         'x-project': project || 'none',
@@ -279,9 +321,14 @@ const DedupResults = () => {
                         },
                     }
                 );
-                setProcessedCount(countRes.data?.total_processed_count || 0);
+                setMetricCounts({
+                    pending_review_count: countRes.data?.pending_review_count || 0,
+                    high_risk_count: countRes.data?.high_risk_count || 0,
+                    duplicate_aadhaar_count: countRes.data?.duplicate_aadhaar_count || 0,
+                    total_processed_count: countRes.data?.total_processed_count || 0
+                });
             } catch (err) {
-                console.error('Error fetching processed count:', err);
+                console.error('Error fetching metric counts:', err);
             }
 
             return { ok: true };
@@ -292,16 +339,38 @@ const DedupResults = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [token, project]);
+    };
 
     useEffect(() => {
         fetchData();
-    }, [fetchData]);
+    }, []);
 
     const handleRefresh = async () => {
         const result = await fetchData(true);
         if (result.ok) toast.success('Deduplication results refreshed successfully!');
         else toast.error('Failed to refresh data.');
+    };
+
+    const handleClearFilters = () => {
+        const cleared = {
+            riskCategory: '',
+            scoreFilterMode: '=',
+            riskScore: '',
+            minRiskScore: '',
+            maxRiskScore: ''
+        };
+        setFilters(cleared);
+        setSelectedIds([]);
+        fetchData(true, cleared);
+    };
+
+    const handleOpenInfoModal = (title, content, record) => {
+        setInfoModalData({
+            isOpen: true,
+            title,
+            content,
+            record
+        });
     };
 
     const handleExport = () => {
@@ -323,6 +392,8 @@ const DedupResults = () => {
                 const val = row[key];
                 mappedRow[label] = val !== null && val !== undefined ? val : '';
             });
+            mappedRow['action(ACCEPT/REJECT)'] = '';
+            mappedRow['reason'] = '';
             return mappedRow;
         });
 
@@ -334,6 +405,48 @@ const DedupResults = () => {
         toast.success('Records exported to Excel successfully!');
     };
 
+    const handleImportExcel = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        e.target.value = '';
+
+        const fileExtension = file.name.split('.').pop()?.toLowerCase();
+        if (fileExtension !== 'xlsx' && fileExtension !== 'xls') {
+            toast.error('Invalid file format. Please upload an Excel file (.xlsx or .xls).');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        setIsLoading(true);
+        const loadToast = toast.loading('Importing and processing Excel...');
+
+        try {
+            const response = await axios.post(
+                `${window._env_?.VITE_FAST_API || 'http://localhost:8000'}/dedup/results/action/import`,
+                formData,
+                {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        Authorization: `Bearer ${token}`,
+                        'x-project': project || 'none',
+                    },
+                }
+            );
+
+            toast.success(response.data?.message || 'Excel imported successfully!', { id: loadToast });
+            fetchData(true);
+        } catch (err) {
+            console.error('Error importing Excel:', err);
+            const errMsg = err.response?.data?.detail || 'Failed to import Excel file.';
+            toast.error(errMsg, { id: loadToast });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleViewDetails = (row) => {
         setSelectedRecord(row);
         setActionType(row.officer_action || 'Approve');
@@ -342,6 +455,7 @@ const DedupResults = () => {
     };
 
     const handleAccept = (row) => {
+        setIsBulkAction(false);
         setRemarksTargetRow(row);
         setRemarksActionType('ACCEPT');
         setRemarksText('');
@@ -349,6 +463,7 @@ const DedupResults = () => {
     };
 
     const handleReject = (row) => {
+        setIsBulkAction(false);
         setRemarksTargetRow(row);
         setRemarksActionType('REJECT');
         setRemarksText('');
@@ -357,32 +472,58 @@ const DedupResults = () => {
 
     const handleRemarksSubmit = async (e) => {
         e.preventDefault();
-        if (!remarksTargetRow) return;
+        if (!remarksText || !remarksText.trim()) {
+            toast.error('Remarks/Reason is required.');
+            return;
+        }
+        if (!isBulkAction && !remarksTargetRow) return;
+        if (isBulkAction && selectedIds.length === 0) return;
 
         try {
-            await axios.post(
-                `${window._env_?.VITE_FAST_API || 'http://localhost:8000'}/dedup/results/action`,
-                {
-                    beneficiary_id: Number(remarksTargetRow.beneficiary_id),
-                    action: remarksActionType,
-                    remarks: remarksText
-                },
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        'x-project': project || 'none',
+            if (isBulkAction) {
+                await axios.post(
+                    `${window._env_?.VITE_FAST_API || 'http://localhost:8000'}/dedup/results/bulk-action`,
+                    {
+                        beneficiary_ids: selectedIds,
+                        action: remarksActionType,
+                        remarks: remarksText
                     },
-                }
-            );
-            
-            if (remarksActionType === 'ACCEPT') {
-                toast.success(`Beneficiary ID ${remarksTargetRow.beneficiary_id} accepted successfully!`);
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                            'x-project': project || 'none',
+                        },
+                    }
+                );
+                
+                toast.success(`${selectedIds.length} records ${remarksActionType.toLowerCase()}ed successfully!`);
+                setSelectedIds([]);
+                setIsBulkAction(false);
             } else {
-                toast.success(`Beneficiary ID ${remarksTargetRow.beneficiary_id} rejected successfully!`);
+                await axios.post(
+                    `${window._env_?.VITE_FAST_API || 'http://localhost:8000'}/dedup/results/action`,
+                    {
+                        beneficiary_id: Number(remarksTargetRow.beneficiary_id),
+                        action: remarksActionType,
+                        remarks: remarksText
+                    },
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                            'x-project': project || 'none',
+                        },
+                    }
+                );
+                
+                if (remarksActionType === 'ACCEPT') {
+                    toast.success(`Beneficiary ID ${remarksTargetRow.beneficiary_id} accepted successfully!`);
+                } else {
+                    toast.success(`Beneficiary ID ${remarksTargetRow.beneficiary_id} rejected successfully!`);
+                }
+                setRemarksTargetRow(null);
             }
             
             setIsRemarksOpen(false);
-            setRemarksTargetRow(null);
             setRemarksText('');
             fetchData(true);
         } catch (err) {
@@ -415,28 +556,13 @@ const DedupResults = () => {
     };
 
     const metrics = useMemo(() => {
-        const total = results.length;
-        const highRisk = results.filter(r => r.risk_category?.toLowerCase() === 'high').length;
-        
-        const aadhaarCounts = {};
-        results.forEach(r => {
-            const aadhaar = r.aadhaar_no;
-            if (aadhaar !== null && aadhaar !== undefined && aadhaar !== '') {
-                aadhaarCounts[aadhaar] = (aadhaarCounts[aadhaar] || 0) + 1;
-            }
-        });
-        const dupAadhaar = results.filter(r => {
-            const aadhaar = r.aadhaar_no;
-            return aadhaar !== null && aadhaar !== undefined && aadhaar !== '' && aadhaarCounts[aadhaar] > 1;
-        }).length;
-
         return [
-            { title: 'Pending Review', value: total.toLocaleString(), icon: CaptivePortalIcon, bgcolor: 'bg-[#C5EAF0]' },
-            { title: 'High Risk Records', value: highRisk.toLocaleString(), icon: ComplianceIcon, bgcolor: 'bg-[#FEE4FF]' },
-            { title: 'Duplicate Aadhaar', value: dupAadhaar.toLocaleString(), icon: CDCIcon, bgcolor: 'bg-[#FFC93F40]' },
-            { title: 'Total Processed Cases', value: processedCount.toLocaleString(), icon: ComplianceIcon, bgcolor: 'bg-[#E6F7F0]' },
+            { title: 'Pending Review', value: metricCounts.pending_review_count.toLocaleString(), icon: CaptivePortalIcon, bgcolor: 'bg-[#C5EAF0]' },
+            { title: 'High Risk Records', value: metricCounts.high_risk_count.toLocaleString(), icon: ComplianceIcon, bgcolor: 'bg-[#FEE4FF]' },
+            { title: 'Duplicate Aadhaar', value: metricCounts.duplicate_aadhaar_count.toLocaleString(), icon: CDCIcon, bgcolor: 'bg-[#FFC93F40]' },
+            { title: 'Total Processed Cases', value: metricCounts.total_processed_count.toLocaleString(), icon: ComplianceIcon, bgcolor: 'bg-[#E6F7F0]' },
         ];
-    }, [results, processedCount]);
+    }, [metricCounts]);
 
     const filteredData = useMemo(() => {
         return results.filter((item) =>
@@ -452,9 +578,113 @@ const DedupResults = () => {
         );
     }, [columnSearchTerm]);
 
+    const handleSelectRow = useCallback((id) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+        );
+    }, []);
+
+    const isAllSelected = useMemo(() => {
+        if (filteredData.length === 0) return false;
+        return filteredData.every(row => selectedIds.includes(row.beneficiary_id));
+    }, [filteredData, selectedIds]);
+
+    const handleSelectAll = useCallback(() => {
+        if (isAllSelected) {
+            const filteredRowIds = filteredData.map(row => row.beneficiary_id);
+            setSelectedIds(prev => prev.filter(id => !filteredRowIds.includes(id)));
+        } else {
+            const filteredRowIds = filteredData.map(row => row.beneficiary_id);
+            setSelectedIds(prev => {
+                const uniqueIds = new Set([...prev, ...filteredRowIds]);
+                return Array.from(uniqueIds);
+            });
+        }
+    }, [filteredData, isAllSelected]);
+
+    const handleBulkAccept = useCallback(() => {
+        setRemarksActionType('ACCEPT');
+        setRemarksText('');
+        setIsBulkAction(true);
+        setIsRemarksOpen(true);
+    }, []);
+
+    const handleBulkReject = useCallback(() => {
+        setRemarksActionType('REJECT');
+        setRemarksText('');
+        setIsBulkAction(true);
+        setIsRemarksOpen(true);
+    }, []);
+
     const activeTableColumns = useMemo(() => {
-        const activeCols = selectedColumns.map(key => allColumnDefinitions[key]).filter(Boolean);
+        const checkboxCol = {
+            key: 'checkbox',
+            label: (
+                <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    onChange={handleSelectAll}
+                    className="cursor-pointer accent-[#8E77BB] h-4 w-4 rounded border-gray-300"
+                />
+            ),
+            sortable: false,
+            render: (row) => (
+                <input
+                    type="checkbox"
+                    checked={selectedIds.includes(row.beneficiary_id)}
+                    onChange={() => handleSelectRow(row.beneficiary_id)}
+                    className="cursor-pointer accent-[#8E77BB] h-4 w-4 rounded border-gray-300"
+                />
+            )
+        };
+
+        const activeCols = selectedColumns.map(key => {
+            const col = allColumnDefinitions[key];
+            if (!col) return null;
+            if (key === 'validation_details') {
+                return {
+                    ...col,
+                    render: (row) => {
+                        const val = row.validation_details;
+                        if (!val || val === '-') return <span className="text-gray-400 font-medium text-xs">-</span>;
+                        return (
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-gray-600 text-xs truncate max-w-[110px]" title={val}>{val}</span>
+                                <button
+                                    onClick={() => handleOpenInfoModal('Validation Details', val, row)}
+                                    className="text-[10px] font-bold text-[#8E77BB] hover:text-[#7963A3] hover:underline cursor-pointer border-none bg-transparent flex-shrink-0"
+                                >
+                                    see more
+                                </button>
+                            </div>
+                        );
+                    }
+                };
+            }
+            if (key === 'fuzzy_matches') {
+                return {
+                    ...col,
+                    render: (row) => {
+                        const val = row.fuzzy_matches;
+                        if (!val || val === '-') return <span className="text-gray-400 font-medium text-xs">-</span>;
+                        return (
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-gray-700 text-xs truncate max-w-[110px]" title={val}>{val}</span>
+                                <button
+                                    onClick={() => handleOpenInfoModal('Identity Matches', val, row)}
+                                    className="text-[10px] font-bold text-[#8E77BB] hover:text-[#7963A3] hover:underline cursor-pointer border-none bg-transparent flex-shrink-0"
+                                >
+                                    see more
+                                </button>
+                            </div>
+                        );
+                    }
+                };
+            }
+            return col;
+        }).filter(Boolean);
         return [
+            checkboxCol,
             ...activeCols,
             {
                 label: 'Actions',
@@ -479,7 +709,7 @@ const DedupResults = () => {
                 )
             }
         ];
-    }, [selectedColumns]);
+    }, [selectedColumns, selectedIds, isAllSelected, handleSelectRow, handleSelectAll]);
 
     return (
         <div className="p-6 bg-gray-50 min-h-screen">
@@ -502,6 +732,22 @@ const DedupResults = () => {
                         <Download className="h-4 w-4 text-white" />
                         <span>Export</span>
                     </button>
+                    <button
+                        title="Import manually updated Excel sheet"
+                        onClick={() => document.getElementById('excel-upload-input').click()}
+                        disabled={isLoading}
+                        className="flex items-center gap-2 px-4 py-2 bg-white text-[#8E77BB] border border-[#D9CBEF] hover:bg-[#F5F0FF] hover:border-[#8E77BB] rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer font-semibold transition-all duration-200"
+                    >
+                        <Upload className="h-4 w-4 text-[#8E77BB]" />
+                        <span>Import</span>
+                    </button>
+                    <input
+                        type="file"
+                        id="excel-upload-input"
+                        accept=".xlsx, .xls"
+                        className="hidden"
+                        onChange={handleImportExcel}
+                    />
                     <button
                         title="Refresh"
                         onClick={handleRefresh}
@@ -622,6 +868,31 @@ const DedupResults = () => {
                             )}
                         </div>
 
+                        <button
+                            onClick={() => setIsFilterVisible(!isFilterVisible)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-sm font-medium cursor-pointer transition-colors shadow-sm ${
+                                isFilterVisible
+                                    ? 'bg-[#8E77BB] border-[#8E77BB] text-white hover:bg-[#7963A3]'
+                                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                            }`}
+                        >
+                            <Filter size={14} className={isFilterVisible ? 'text-white' : 'text-[#8E77BB]'} />
+                            Filters
+                            {(filters.riskCategory || filters.riskScore || filters.minRiskScore || filters.maxRiskScore) && (
+                                <span className={`flex items-center justify-center rounded-full text-[10px] w-4 h-4 font-bold ${
+                                    isFilterVisible ? 'bg-white text-[#8E77BB]' : 'bg-[#8E77BB] text-white'
+                                }`}>
+                                    {
+                                        (filters.riskCategory ? 1 : 0) +
+                                        (filters.scoreFilterMode !== 'between'
+                                            ? (filters.riskScore !== '' ? 1 : 0)
+                                            : ((filters.minRiskScore !== '' ? 1 : 0) + (filters.maxRiskScore !== '' ? 1 : 0))
+                                        )
+                                    }
+                                </span>
+                            )}
+                        </button>
+
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <input
@@ -642,6 +913,166 @@ const DedupResults = () => {
                         </div>
                     </div>
                 </div>
+
+                {isFilterVisible && (
+                    <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm mb-4 animate-fade-in flex flex-wrap items-start gap-4">
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs font-semibold text-gray-500 uppercase">Risk Category</label>
+                            <select
+                                value={filters.riskCategory}
+                                onChange={(e) => setFilters(prev => ({ ...prev, riskCategory: e.target.value }))}
+                                className="rounded-lg border border-gray-200 py-1.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white text-gray-700 font-medium cursor-pointer shadow-sm min-w-[150px]"
+                            >
+                                <option value="">All Categories</option>
+                                <option value="High">High</option>
+                                <option value="Medium">Medium</option>
+                                <option value="Low">Low</option>
+                                <option value="Clean">Clean</option>
+                            </select>
+                        </div>
+
+                        <div className="h-10 w-[1.5px] bg-gray-300 mx-3 self-center" />
+
+                        <div className="flex flex-col gap-1">
+                            <span className="text-xs font-semibold text-gray-500 uppercase text-center w-full">Total Risk Score</span>
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                    <label className="text-[10px] font-semibold text-gray-400 uppercase select-none">Operator</label>
+                                    <select
+                                        value={filters.scoreFilterMode}
+                                        onChange={(e) => setFilters(prev => ({ ...prev, scoreFilterMode: e.target.value }))}
+                                        className="rounded-lg border border-gray-200 py-1.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white text-gray-700 font-medium cursor-pointer shadow-sm min-w-[120px]"
+                                    >
+                                        <option value="=">Equal (=)</option>
+                                        <option value="!=">Not Equal (!=)</option>
+                                        <option value=">">Greater Than (&gt;)</option>
+                                        <option value=">=">Greater Than or Equal (&gt;=)</option>
+                                        <option value="<">Less Than (&lt;)</option>
+                                        <option value="<=">Less Than or Equal (&lt;=)</option>
+                                        <option value="between">Between (Range)</option>
+                                    </select>
+                                </div>
+
+                                {filters.scoreFilterMode !== 'between' ? (
+                                    <div className="flex items-center gap-2 relative">
+                                        <label className="text-[10px] font-semibold text-gray-400 uppercase select-none">Value</label>
+                                        <div className="relative flex items-center">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max="100"
+                                                placeholder="Enter Value"
+                                                className="w-[130px] rounded-lg border border-gray-200 py-1.5 pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
+                                                value={filters.riskScore}
+                                                onChange={(e) => setFilters(prev => ({ ...prev, riskScore: e.target.value }))}
+                                            />
+                                            {filters.riskScore && (
+                                                <button
+                                                    onClick={() => setFilters(prev => ({ ...prev, riskScore: '' }))}
+                                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer border-none bg-transparent"
+                                                >
+                                                    <X className="h-3.5 w-3.5" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-2">
+                                            <label className="text-[10px] font-semibold text-gray-400 uppercase select-none">Min</label>
+                                            <div className="relative flex items-center">
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    max="100"
+                                                    placeholder="Min"
+                                                    className="w-[90px] rounded-lg border border-gray-200 py-1.5 pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
+                                                    value={filters.minRiskScore}
+                                                    onChange={(e) => setFilters(prev => ({ ...prev, minRiskScore: e.target.value }))}
+                                                />
+                                                {filters.minRiskScore && (
+                                                    <button
+                                                        onClick={() => setFilters(prev => ({ ...prev, minRiskScore: '' }))}
+                                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer border-none bg-transparent"
+                                                    >
+                                                        <X className="h-3.5 w-3.5" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <span className="text-gray-400 font-semibold text-xs select-none">to</span>
+                                        <div className="flex items-center gap-2">
+                                            <label className="text-[10px] font-semibold text-gray-400 uppercase select-none">Max</label>
+                                            <div className="relative flex items-center">
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    max="100"
+                                                    placeholder="Max"
+                                                    className="w-[90px] rounded-lg border border-gray-200 py-1.5 pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
+                                                    value={filters.maxRiskScore}
+                                                    onChange={(e) => setFilters(prev => ({ ...prev, maxRiskScore: e.target.value }))}
+                                                />
+                                                {filters.maxRiskScore && (
+                                                    <button
+                                                        onClick={() => setFilters(prev => ({ ...prev, maxRiskScore: '' }))}
+                                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer border-none bg-transparent"
+                                                    >
+                                                        <X className="h-3.5 w-3.5" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="h-10 w-[1.5px] bg-gray-300 mx-3 self-center" />
+
+                        <div className="flex items-center gap-3 self-end md:ml-auto">
+                            <button
+                                onClick={handleClearFilters}
+                                className="px-4 py-1.5 bg-white text-[#8E77BB] border border-[#D9CBEF] hover:bg-[#F5F0FF] rounded-lg shadow-sm font-semibold transition-all duration-200 text-sm cursor-pointer"
+                            >
+                                Clear
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setSelectedIds([]);
+                                    fetchData();
+                                }}
+                                className="px-4 py-1.5 bg-[#8E77BB] text-white hover:bg-[#7963A3] rounded-lg shadow-md font-semibold transition-all duration-200 text-sm cursor-pointer"
+                            >
+                                Apply
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {selectedIds.length > 0 && (
+                    <div className="flex items-center justify-between rounded-xl px-4 py-3 mb-4 bg-[#F5F0FF] border border-[#D9CBEF] shadow-sm animate-fade-in">
+                        <span className="text-sm font-semibold text-[#8E77BB]">
+                            {selectedIds.length} record{selectedIds.length > 1 ? 's' : ''} selected
+                        </span>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleBulkAccept}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#8E77BB] text-white hover:bg-[#7963A3] rounded-lg cursor-pointer text-xs font-semibold transition-all duration-200 shadow-sm"
+                            >
+                                <CheckCircle2 size={14} />
+                                Bulk Accept
+                            </button>
+                            <button
+                                onClick={handleBulkReject}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2B125C] text-white hover:bg-[#1E0D42] rounded-lg cursor-pointer text-xs font-semibold transition-all duration-200 shadow-sm"
+                            >
+                                <X size={14} />
+                                Bulk Reject
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 <DataTable
                     columns={activeTableColumns}
@@ -815,14 +1246,17 @@ const DedupResults = () => {
                 </div>
             )}
 
-            {isRemarksOpen && remarksTargetRow && (
+            {isRemarksOpen && (isBulkAction || remarksTargetRow) && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl animate-fade-in border border-gray-100 flex flex-col">
                         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
                             <div className="flex items-center gap-2">
                                 <span className={`w-2.5 h-2.5 rounded-full ${remarksActionType === 'ACCEPT' ? 'bg-[#8E77BB]' : 'bg-[#2B125C]'}`} />
                                 <h3 className="text-lg font-bold text-gray-900">
-                                    {remarksActionType === 'ACCEPT' ? 'Accept Record' : 'Reject Record'}
+                                    {isBulkAction 
+                                        ? (remarksActionType === 'ACCEPT' ? 'Bulk Accept Records' : 'Bulk Reject Records')
+                                        : (remarksActionType === 'ACCEPT' ? 'Accept Record' : 'Reject Record')
+                                    }
                                 </h3>
                             </div>
                             <button
@@ -831,6 +1265,7 @@ const DedupResults = () => {
                                     setIsRemarksOpen(false);
                                     setRemarksTargetRow(null);
                                     setRemarksText('');
+                                    setIsBulkAction(false);
                                 }}
                                 className="p-1 hover:bg-gray-200 rounded-lg text-gray-400 hover:text-gray-600 transition-colors border-none bg-transparent cursor-pointer"
                             >
@@ -843,23 +1278,38 @@ const DedupResults = () => {
                                 <p className="text-sm text-gray-500 mb-3 leading-relaxed">
                                     Please provide remarks for executing this action.
                                 </p>
-                                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 mb-4 space-y-1.5 text-xs">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-gray-600 font-medium">Name</span>
-                                        <span className="font-semibold text-gray-800">{remarksTargetRow.name || '-'}</span>
+                                {isBulkAction ? (
+                                    <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 mb-4 space-y-1.5 text-xs">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-gray-600 font-medium">Selected Records</span>
+                                            <span className="font-bold text-[#8E77BB]">{selectedIds.length} records</span>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-gray-600 font-medium">Ration Card</span>
-                                        <span className="font-semibold text-gray-800 font-mono">{remarksTargetRow.ration_card_no || '-'}</span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-gray-600 font-medium">Aadhaar</span>
-                                        <span className="font-semibold text-gray-800 font-mono">{remarksTargetRow.aadhaar_no || '-'}</span>
-                                    </div>
-                                </div>
+                                ) : (
+                                    remarksTargetRow && (
+                                        <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 mb-4 space-y-1.5 text-xs">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-gray-600 font-medium">Name</span>
+                                                <span className="font-semibold text-gray-800">{remarksTargetRow.name || '-'}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-gray-600 font-medium">Ration Card</span>
+                                                <span className="font-semibold text-gray-800 font-mono">{remarksTargetRow.ration_card_no || '-'}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-gray-600 font-medium">Aadhaar</span>
+                                                <span className="font-semibold text-gray-800 font-mono">{remarksTargetRow.aadhaar_no || '-'}</span>
+                                            </div>
+                                            <div className="flex justify-between items-start gap-4">
+                                                <span className="text-gray-600 font-medium shrink-0">Validation Details</span>
+                                                <span className="font-semibold text-gray-800 text-right max-w-[250px] break-words">{remarksTargetRow.validation_details || '-'}</span>
+                                            </div>
+                                        </div>
+                                    )
+                                )}
                                 
                                 <label className="block text-xs font-semibold text-gray-500 uppercase mb-1.5">
-                                    Remarks / Reason
+                                    Remarks / Reason <span className="text-red-500">*</span>
                                 </label>
                                 <textarea
                                     className="w-full rounded-lg border border-gray-300 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 min-h-[100px] resize-none"
@@ -877,6 +1327,7 @@ const DedupResults = () => {
                                         setIsRemarksOpen(false);
                                         setRemarksTargetRow(null);
                                         setRemarksText('');
+                                        setIsBulkAction(false);
                                     }}
                                     className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 text-sm font-medium cursor-pointer"
                                 >
@@ -894,6 +1345,48 @@ const DedupResults = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+            {infoModalData.isOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl animate-fade-in border border-gray-100 flex flex-col max-h-[80vh]">
+                        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50 bg-opacity-70">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-[#8E77BB]/10 text-[#8E77BB] rounded-xl">
+                                    <Shield size={18} />
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-bold text-gray-900">{infoModalData.title}</h3>
+                                    {infoModalData.record && (
+                                        <p className="text-xs text-gray-500 font-mono mt-0.5">
+                                            Beneficiary ID: {infoModalData.record.beneficiary_id} | Name: {infoModalData.record.name}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setInfoModalData(prev => ({ ...prev, isOpen: false }))}
+                                className="p-1 hover:bg-gray-200 rounded-lg text-gray-400 hover:text-gray-600 transition-colors border-none bg-transparent cursor-pointer"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto">
+                            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                                <p className="text-sm text-gray-700 font-mono leading-relaxed whitespace-pre-wrap break-words">
+                                    {infoModalData.content}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="px-6 py-3 border-t border-gray-100 flex justify-end bg-gray-50">
+                            <button
+                                onClick={() => setInfoModalData(prev => ({ ...prev, isOpen: false }))}
+                                className="px-4 py-2 bg-[#8E77BB] text-white hover:bg-[#7963A3] rounded-lg shadow-md font-semibold transition-all duration-200 text-sm cursor-pointer"
+                            >
+                                Close
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
