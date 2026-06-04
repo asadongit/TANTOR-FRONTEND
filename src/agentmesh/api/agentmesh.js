@@ -234,3 +234,24 @@ export const saveComponentTemplate = (payload) =>
 export const deleteComponentTemplate = (id) =>
   request(`/component-template/${id}`, { method: 'DELETE' });
 
+// ─── Workflow Templates ──────────────────────────────────────────────────────
+export const saveWorkflowTemplate = (payload) =>
+  request('/workflow-templates', { method: 'POST', body: JSON.stringify(payload) });
+
+export const listWorkflowTemplates = (params = {}) => {
+  const { page = 1, limit = 12, group, category, search, scope } = params;
+  const p = new URLSearchParams({ page, limit });
+  if (group && group !== 'All') p.set('group', group);
+  if (category && category !== 'All') p.set('category', category);
+  if (search) p.set('search', search);
+  if (scope && scope !== 'All') p.set('scope', scope);
+  return request(`/workflow-templates?${p}`);
+};
+
+export const cloneWorkflowTemplate = (id) =>
+  request(`/workflow-template/${id}/clone`, { method: 'POST' });
+
+export const getWorkflowTemplate = (id) =>
+  request(`/workflow-template/${id}`);
+
+

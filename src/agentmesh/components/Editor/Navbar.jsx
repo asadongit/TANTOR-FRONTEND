@@ -1,11 +1,12 @@
 import React from 'react';
 import { useWorkflowStore, useUIStore } from '../../store';
 import { compileWorkflow, saveWorkflow, listWorkflowCategories, deleteWorkflow, explainWorkflow, getWorkflow, cloneWorkflow, fixGrammar, publishWorkflow, getMarketplaceUsecase } from '../../api/agentmesh';
-import { FiUpload, FiDownload, FiPlus, FiX, FiCheck, FiAlertTriangle, FiCopy, FiChevronDown, FiChevronUp, FiBookOpen, FiZap, FiLoader, FiTrash2, FiInfo, FiMaximize2, FiMinimize2, FiShare2 } from 'react-icons/fi';
+import { FiUpload, FiDownload, FiPlus, FiX, FiCheck, FiAlertTriangle, FiCopy, FiChevronDown, FiChevronUp, FiBookOpen, FiZap, FiLoader, FiTrash2, FiInfo, FiMaximize2, FiMinimize2, FiShare2, FiSave } from 'react-icons/fi';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { AiMagicIcon } from '@hugeicons/core-free-icons';
 import { formatMessage } from '../Common/messageFormatting';
 import ConfirmationModal from '../Common/ConfirmationModal';
+import SaveWorkflowTemplateModal from './SaveWorkflowTemplateModal';
 import { copyToClipboard } from '../../utils/copyToClipboard';
 
 function TooltipWrapper({ text, children }) {
@@ -95,6 +96,7 @@ export default function Navbar() {
   const ioTriggerRef = React.useRef(null);
 
   const [showPublishModal, setShowPublishModal] = React.useState(false);
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = React.useState(false);
   const [publishTags, setPublishTags] = React.useState('');
   const [publishing, setPublishing] = React.useState(false);
   const [useWorkflowMeta, setUseWorkflowMeta] = React.useState(true);
@@ -637,6 +639,35 @@ export default function Navbar() {
                       onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
                     >
                       <FiDownload size={14} /> Export JSON
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (hasNodes) {
+                          setShowSaveTemplateModal(true);
+                          setIoDropdownOpen(false);
+                        }
+                      }}
+                      disabled={!hasNodes}
+                      title={!hasNodes ? "No nodes to save" : "Save as Template"}
+                      style={{
+                        padding: '8px 12px',
+                        background: 'none',
+                        border: 'none',
+                        textAlign: 'left',
+                        cursor: hasNodes ? 'pointer' : 'not-allowed',
+                        fontSize: 13,
+                        color: hasNodes ? 'var(--text-primary)' : '#9CA3AF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        transition: 'background 0.15s',
+                        opacity: hasNodes ? 1 : 0.6,
+                        width: '100%'
+                      }}
+                      onMouseEnter={(e) => { if (hasNodes) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                    >
+                      <FiSave size={14} /> Save as Template
                     </button>
                     <button
                       onClick={async () => {
@@ -1408,6 +1439,14 @@ export default function Navbar() {
             </div>
           </div>
         </div>
+      )}
+
+      {showSaveTemplateModal && (
+        <SaveWorkflowTemplateModal
+          workflowConfig={buildConfig()}
+          onClose={() => setShowSaveTemplateModal(false)}
+          onSaved={() => setShowSaveTemplateModal(false)}
+        />
       )}
 
       {/* AI Workflow Architect Floating Bubble */}
