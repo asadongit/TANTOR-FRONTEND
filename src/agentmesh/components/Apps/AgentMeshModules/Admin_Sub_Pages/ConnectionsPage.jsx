@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiPlus, FiTrash2, FiEdit2, FiKey, FiX, FiCheck, FiEye, FiEyeOff } from 'react-icons/fi';
-import { listConnections, saveConnection, deleteConnection } from '../../../api/agentmesh';
-import ConfirmationModal from '../../Common/ConfirmationModal';
-import { useWorkflowStore } from '../../../store';
+import { listConnections, saveConnection, deleteConnection } from '../../../../api/agentmesh';
+import ConfirmationModal from '../../../Common/ConfirmationModal';
+import { useWorkflowStore } from '../../../../store';
 
 export default function ConnectionsPage() {
   const [connections, setConnections] = useState([]);

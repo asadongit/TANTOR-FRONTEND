@@ -23,8 +23,10 @@ const LogsPage           = lazyWithRetry(() => import('./LogsPage'));
 const RAGPage            = lazyWithRetry(() => import('./RAGPage'));
 const Observability      = lazyWithRetry(() => import('./observability'));
 const MarketplacePage    = lazyWithRetry(() => import('./MarketplacePage'));
-const ConnectionsPage    = lazyWithRetry(() => import('./ConnectionsPage'));
+const ConnectionsPage    = lazyWithRetry(() => import('./Admin_Sub_Pages/ConnectionsPage'));
 const SettingsPage       = lazyWithRetry(() => import('./SettingsPage'));
+const WorkflowPublishController  = lazyWithRetry(() => import('./Admin_Sub_Pages/WorkflowPublishController'));
+const WorkflowTemplateController = lazyWithRetry(() => import('./Admin_Sub_Pages/WorkflowTemplateController'));
 
 // Minimal spinner shown while a lazy chunk is downloading
 function PageLoader() {
@@ -125,6 +127,8 @@ export default function MainComponent() {
           {activePage === 'connections'   && <ConnectionsPage />}
           {activePage === 'settings'      && <SettingsPage />}
           {activePage === 'templates'     && <TemplatesPage />}
+          {activePage === 'publish-approval'  && <WorkflowPublishController />}
+          {activePage === 'template-approval' && <WorkflowTemplateController />}
         </Suspense>
       </main>
 

@@ -32,6 +32,31 @@ export default function WorkflowCanvas() {
   const [menu, setMenu] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
 
+  // Properties Panel resizing state and mouse drag handlers
+  const [propertiesWidth, setPropertiesWidth] = useState(320);
+  const [isResizing, setIsResizing] = useState(false);
+
+  const startResizing = useCallback((mouseDownEvent) => {
+    setIsResizing(true);
+    const startX = mouseDownEvent.clientX;
+    const startWidth = propertiesWidth;
+
+    const doDrag = (mouseMoveEvent) => {
+      const deltaX = startX - mouseMoveEvent.clientX;
+      const newWidth = Math.max(280, Math.min(600, startWidth + deltaX));
+      setPropertiesWidth(newWidth);
+    };
+
+    const stopDrag = () => {
+      setIsResizing(false);
+      document.removeEventListener('mousemove', doDrag);
+      document.removeEventListener('mouseup', stopDrag);
+    };
+
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('mouseup', stopDrag);
+  }, [propertiesWidth]);
+
 
   const hasNodes = nodes.some(n => n.id !== '__start__' && n.id !== '__end__');
 
@@ -492,17 +517,35 @@ export default function WorkflowCanvas() {
           <motion.div 
             key="properties-panel"
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 320, opacity: 1 }}
+            animate={{ width: propertiesWidth, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            transition={isResizing ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
             style={{
               borderLeft: '1px solid var(--border)',
               background: 'white',
               flexShrink: 0,
               overflow: 'hidden',
-              height: '100%'
+              height: '100%',
+              position: 'relative'
             }}
           >
+            {/* Resizable drag handle on the left edge */}
+            <div
+              onMouseDown={startResizing}
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: '6px',
+                cursor: 'col-resize',
+                zIndex: 100,
+                background: isResizing ? 'var(--theme-primary, #4285F4)' : 'transparent',
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={(e) => { if (!isResizing) e.currentTarget.style.background = 'rgba(66, 133, 244, 0.3)'; }}
+              onMouseLeave={(e) => { if (!isResizing) e.currentTarget.style.background = 'transparent'; }}
+            />
             <PropertiesPanel />
           </motion.div>
         )}

@@ -115,6 +115,8 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
       setExpandedItem('Agent Mesh');
       if (['canvas', 'library', 'rag'].includes(agentMeshActivePage)) {
         setExpandedSubItem('Agent Studio');
+      } else if (['publish-approval', 'template-approval', 'connections'].includes(agentMeshActivePage)) {
+        setExpandedSubItem('Admin Panel');
       }
     }
   }, [isOnAgentMesh, agentMeshActivePage]);
@@ -438,7 +440,15 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
         { name: 'Marketplace',   agentMeshPage: 'marketplace' },
         { name: 'Logs',          agentMeshPage: 'logs' },
         { name: 'Observability', agentMeshPage: 'observability' },
-        { name: 'Connections',   agentMeshPage: 'connections' },
+        {
+          name: 'Admin Panel',
+          agentMeshAccordionAdmin: true,
+          subItems: [
+            { name: 'Publish Approval', agentMeshPage: 'publish-approval' },
+            { name: 'Template Approval', agentMeshPage: 'template-approval' },
+            { name: 'Connections',   agentMeshPage: 'connections' },
+          ]
+        },
         { name: 'Notifications', agentMeshNotif: true },
         { name: 'Settings',      agentMeshPage: 'settings' },
       ],
@@ -642,6 +652,46 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
                                     style={{ color: amActive ? ACTIVE_COLOR : INACTIVE_TEXT_COLOR, fontWeight: amActive ? 600 : 400, background: amActive ? '#EDE9FE' : 'transparent' }}
                                   >
                                     {studioSubItem.name}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // ── AgentMesh: Admin Panel with nested items ─────────────
+                  if (subItem.agentMeshAccordionAdmin) {
+                    const adminOpen = expandedSubItem === 'Admin Panel';
+                    const adminActive = ['publish-approval', 'template-approval', 'connections'].includes(agentMeshActivePage);
+                    return (
+                      <div key="am-admin-panel">
+                        <button
+                          onClick={() => {
+                            setExpandedSubItem(prev => prev === 'Admin Panel' ? null : 'Admin Panel');
+                          }}
+                          className="flex items-center justify-between w-full px-3 py-2 rounded-lg transition-colors duration-200 hover:bg-gray-100"
+                          style={{ background: adminActive ? '#F5F3FF' : 'transparent' }}
+                        >
+                          <span className="text-sm" style={{ color: adminActive ? ACTIVE_COLOR : INACTIVE_TEXT_COLOR, fontWeight: adminActive ? 600 : 400 }}>Admin Panel</span>
+                          <ChevronRightIcon className={`h-3 w-3 transition-transform duration-200 ${adminOpen ? 'rotate-90' : ''}`} style={{ color: INACTIVE_ICON_COLOR }} />
+                        </button>
+                        {/* Admin Panel items: grid animation */}
+                        <div style={{ display: 'grid', gridTemplateRows: adminOpen ? '1fr' : '0fr', transition: 'grid-template-rows 0.25s ease', marginLeft: 8 }}>
+                          <div style={{ overflow: 'hidden' }}>
+                            <div className="space-y-1 py-1" style={{ borderLeft: '2px solid #E2E8F0', marginLeft: '4px', paddingLeft: '8px' }}>
+                              {subItem.subItems.map(adminSubItem => {
+                                const amActive = agentMeshActivePage === adminSubItem.agentMeshPage;
+                                return (
+                                  <button
+                                    key={adminSubItem.agentMeshPage}
+                                    onClick={() => { agentMeshSetActivePage(adminSubItem.agentMeshPage); if (!isOnAgentMesh) navigate('/ai/agent-mesh'); }}
+                                    className="flex w-full px-3 py-2 rounded-lg text-sm transition-colors duration-150 hover:bg-gray-100"
+                                    style={{ color: amActive ? ACTIVE_COLOR : INACTIVE_TEXT_COLOR, fontWeight: amActive ? 600 : 400, background: amActive ? '#EDE9FE' : 'transparent' }}
+                                  >
+                                    {adminSubItem.name}
                                   </button>
                                 );
                               })}
