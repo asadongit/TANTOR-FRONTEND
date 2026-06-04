@@ -4,7 +4,13 @@
   import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 
   //  supervised preprocessing steps
-
+  import DataCleaning from './Steps/DataCleaning';
+  import FeatureSelection from './Steps/FeatureSelection';
+  import FeatureEngineering from './Steps/FeatureEngineering';
+  import ScalingTransformation from './Steps/ScalingTransformation';
+  import StatisticalAnalysis from './Steps/StatisticalAnalysis';
+  import FeatureImportance from './Steps/FeatureImportance';
+  import Step7 from './Steps/Step7';
   //  supervised preprocessing steps
   import DataCleaning from './Steps/DataCleaning';
   import FeatureSelection from './Steps/FeatureSelection';
@@ -16,7 +22,6 @@
 
   // Routing utilities
   import { useLocation, useNavigate } from 'react-router-dom';
-
   // Modal for previewing processed data
   import DataPreviewModal from '../../modals/DataPreprocessing/DataPreviewModal';
 
@@ -40,8 +45,8 @@
         { id: 2, label: 'Feature Integrity', isTimeSeries: true },
         { id: 3, label: 'Data Stabilization', isTimeSeries: true },
         { id: 4, label: 'Seasonality Treatment', isTimeSeries: true },
-        { id: 5, label: 'Stationarity Treatment', isTimeSeries: true },
-        { id: 6, label: 'Feature Dependency', isTimeSeries: true },
+        { id: 5, label: 'Stationarity Analysis', isTimeSeries: true },
+        { id: 6, label: 'Stationarity Treatment', isTimeSeries: true },
       ];
     }
 
@@ -87,13 +92,10 @@
     } = useAIPlayground();
 
     // Current workflow state
-    const workflowState = activeWorkflowId
-      ? workflowsState?.[activeWorkflowId]
-      : null;
+    const workflowState = activeWorkflowId ? workflowsState?.[activeWorkflowId]: null;
 
     // Determines whether screen is in readonly/view mode
     const readonly = mode === 'view';
-
     const navigate = useNavigate();
 
     /**
@@ -156,12 +158,12 @@
 });
 
     // Whether preview screen is open on step 7
-    const [isStep7Preview, setIsStep7Preview] = useState(
-      isDataPreprocessingAuto
-    );
-
+    const [isStep7Preview, setIsStep7Preview] = useState(isDataPreprocessingAuto);
     // Whether preview screen is open on step 8 (time series)
     const [isStep8Preview, setIsStep8Preview] = useState(false);
+
+    //preview screen state for univariate time series
+    const [isUnivariatePreview, setIsUnivariatePreview] = useState(false);
 
     // Validation states for individual steps
     const [isStep1Valid, setIsStep1Valid] = useState(true);
@@ -178,35 +180,34 @@
       useState(false);
 
     /**
-     * Auto-advance from step 6 if stationarity analysis was not enabled in step 5
+     * Auto-advance from step 6 if stationarity analysis was not enabled in step 5 and it's not univariate timeseries
      */
     useEffect(() => {
       if (currentStep === 6) {
         const step5Config = workflowState?.dataPreprocessing?.step5?.config;
         const wasStationarityAnalysisEnabledInStep5 = step5Config?.stationarity_analysis_active ?? false;
-
-        if (!wasStationarityAnalysisEnabledInStep5) {
+        const isUnivariateTimeseries = predictionType === 'univariate_timeseries';
+        if (!wasStationarityAnalysisEnabledInStep5 && !isUnivariateTimeseries) {
           setCurrentStep(7);
         }
       }
     }, [currentStep, workflowState?.dataPreprocessing?.step5?.config]);
 
     /**
-     * Auto-advance to preview mode after step 8 for time series if auto-preprocessing is enabled
-     */
+     * Auto-advance to preview mode after step 8 for time series if auto-preprocessing is enabled*/
     useEffect(() => {
       const isTimeSeries =
         predictionType &&
         [
-          'univariate_timeseries',
-          'multivariate_timeseries',
-          'multiseries_timeseries',
+
+          'multivariate_timeseries'
         ].includes(predictionType);
 
       if (isTimeSeries && currentStep === 8 && isDataPreprocessingAuto) {
         setIsStep8Preview(true);
       }
     }, [currentStep, isDataPreprocessingAuto, predictionType]);
+
 
     /**
      * Locks user interactions while
@@ -360,9 +361,6 @@
        * Time series workflow rendering
        */
       if (isTimeSeries) {
-      
-        
-
         switch (currentStep) {
           case 1:
             return (
@@ -375,7 +373,6 @@
                 predictionType={predictionType}
               />
             );
-
           case 2:
             return (
               <HandleMissingValues
@@ -387,7 +384,6 @@
                 predictionType={predictionType}
               />
             );
-
           case 3:
             return (
               <FeatureIntegrity
@@ -398,7 +394,6 @@
                 predictionType={predictionType}
               />
             );
-
           case 4:
             return (
               <DataStabilization
@@ -422,23 +417,21 @@
             );
 
           case 6: {
-            /**
-             * Check if stationarity analysis was enabled in step 5
-             * If not, this step will be skipped by auto-advance useEffect
-             */
+            // if stationarity analysis was not enabled in step 5 and it's not univariate timeseries, skip stationarity treatment
             const step5Config = workflowState?.dataPreprocessing?.step5?.config;
             const wasStationarityAnalysisEnabledInStep5 = step5Config?.stationarity_analysis_active ?? false;
-
-            if (!wasStationarityAnalysisEnabledInStep5) {
-              return null;
+            const isUnivariateTimeseries = predictionType === 'univariate_timeseries';
+         
+            if (!wasStationarityAnalysisEnabledInStep5 && !isUnivariateTimeseries) {
+             return null;
             }
-
             return (
               <StationarityTreatment
                 readonly={isInteractionLocked}
                 onApiCall={(fn) =>
                   (step6ApiCallRef.current = fn)
                 }
+                 showPreview={predictionType === 'univariate_timeseries' && isUnivariatePreview}
               />
             );
           }
@@ -601,6 +594,9 @@
           onPreviewData8={setIsStep8Preview}
           onNextClick={handleNextClick}
           isNextDisabled={getIsNextDisabled()}
+          predictionType={predictionType}
+isUnivariatePreview={isUnivariatePreview}
+onUnivariatePreview={setIsUnivariatePreview}
         >
           <div className="w-full h-full overflow-hidden">
             <div className="flex flex-row h-full overflow-hidden">
