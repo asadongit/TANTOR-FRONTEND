@@ -636,6 +636,72 @@ export const useWorkflowStore = create((set, get) => ({
     });
     return newId;
   },
+
+  mergeTemplateIntoEditor: (w) => {
+    if (!w) return;
+    const meta = w.config?.frontend_meta || w.frontend_meta || {};
+    const rawNodes = (w.config?.nodes || w.nodes || []);
+    const rawEdges = (w.config?.edges || w.edges || []);
+    const triggers = w.config?.triggers || w.triggers || {};
+
+    const { allNodes, rfEdges } = _reconstructRFNodesAndEdges(rawNodes, rawEdges, meta, triggers);
+
+    // 1. Filter out system nodes like '__start__' and '__end__'
+    const operationalNodes = allNodes.filter(n => n.id !== '__start__' && n.id !== '__end__');
+
+    // 2. Resolve ID Collisions & generate unique IDs for incoming nodes
+    const existingNodeIds = new Set(get().nodes.map(n => n.id));
+    const idMap = {}; // oldId -> newId
+
+    // Estimate coordinates to shift so they don't overlap. Shift slightly offset.
+    const offset = 180;
+
+    const processedNodes = operationalNodes.map(n => {
+      let newId = n.id;
+      if (existingNodeIds.has(n.id)) {
+        newId = `${n.id}_merged_${Math.random().toString(36).substring(2, 6)}`;
+      }
+      idMap[n.id] = newId;
+
+      const nextPosition = {
+        x: (n.position?.x ?? 0) + offset,
+        y: (n.position?.y ?? 0) + offset
+      };
+
+      return {
+        ...n,
+        id: newId,
+        position: nextPosition,
+        data: {
+          ...n.data,
+          id: newId
+        }
+      };
+    });
+
+    // 3. Map edge IDs, sources, and targets, filtering out start/end connections
+    const processedEdges = rfEdges
+      .filter(e => e.source !== '__start__' && e.target !== '__end__')
+      .map((e, idx) => {
+        const newSource = idMap[e.source] || e.source;
+        const newTarget = idMap[e.target] || e.target;
+        const newId = `e_merged_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}_${idx}`;
+        return {
+          ...e,
+          id: newId,
+          source: newSource,
+          target: newTarget
+        };
+      });
+
+    // 4. Append to active state
+    set((s) => ({
+      nodes: [...s.nodes, ...processedNodes],
+      edges: [...s.edges, ...processedEdges],
+      isDirty: true,
+      isCompiled: false
+    }));
+  },
 }));
 
 // ─── UI Store ─────────────────────────────────────────────────────────────────

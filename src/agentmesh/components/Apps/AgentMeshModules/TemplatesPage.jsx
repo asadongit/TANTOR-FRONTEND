@@ -275,7 +275,9 @@ const mapConfigEdgesToRFEdges = (rawEdges = [], rawNodes = []) => {
 };
 
 export default function TemplatesPage() {
-  const { loadWorkflowIntoEditor } = useWorkflowStore();
+  const currentNodes = useWorkflowStore(s => s.nodes);
+  const currentIsDirty = useWorkflowStore(s => s.isDirty);
+  const { loadWorkflowIntoEditor, mergeTemplateIntoEditor } = useWorkflowStore();
   const { setActivePage } = useUIStore();
 
   const nodeTypes = React.useMemo(() => ({ 
@@ -293,6 +295,7 @@ export default function TemplatesPage() {
   const [selectedScope, setSelectedScope] = useState('All');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState('All');
   const [cloningId, setCloningId] = useState(null);
+  const [importTarget, setImportTarget] = useState(null);
   
   // Modal details state
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -425,6 +428,34 @@ export default function TemplatesPage() {
     } finally {
       setCloningId(null);
       setSelectedTemplate(null);
+    }
+  };
+
+  const handleMergeTemplate = async (templateId) => {
+    setCloningId(templateId);
+    try {
+      const res = await getWorkflowTemplate(templateId);
+      if (res.status === 'success') {
+        mergeTemplateIntoEditor(res);
+        setActivePage('canvas');
+      }
+    } catch (e) {
+      alert('Failed to merge template: ' + e.message);
+    } finally {
+      setCloningId(null);
+      setImportTarget(null);
+      setSelectedTemplate(null);
+    }
+  };
+
+  const handleUseTemplateClicked = (template) => {
+    const nonSystemNodes = currentNodes.filter(n => n.id !== '__start__' && n.id !== '__end__');
+    const isClean = nonSystemNodes.length === 0 && !currentIsDirty;
+
+    if (isClean) {
+      handleUseTemplate(template.id);
+    } else {
+      setImportTarget(template);
     }
   };
 
@@ -662,7 +693,7 @@ export default function TemplatesPage() {
                         {getScopeIcon(t.scope)} {t.scope}
                       </span>
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleUseTemplate(t.id); }}
+                        onClick={(e) => { e.stopPropagation(); handleUseTemplateClicked(t); }}
                         disabled={cloningId === t.id}
                         style={{
                           height: 28, padding: '0 10px', borderRadius: 6, background: 'var(--theme-primary-glow)',
@@ -805,7 +836,7 @@ export default function TemplatesPage() {
                 </div>
 
                 <button
-                  onClick={() => handleUseTemplate(selectedTemplate.id)}
+                  onClick={() => handleUseTemplateClicked(selectedTemplate)}
                   disabled={cloningId === selectedTemplate.id || loadingDetails}
                   style={{
                     width: '100%', height: 44, background: 'var(--theme-primary)', color: 'white', border: 'none', borderRadius: 10,
@@ -816,6 +847,82 @@ export default function TemplatesPage() {
                   onMouseLeave={e => e.currentTarget.style.opacity = '1'}
                 >
                   {cloningId === selectedTemplate.id ? 'Cloning to Workspace...' : <><FiCopy size={16} /> Clone into Canvas</>}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Choice Modal Dialog for Import Targets */}
+      <AnimatePresence>
+        {importTarget && (
+          <div 
+            style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)' }}
+            onClick={() => setImportTarget(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              style={{
+                width: 460, background: 'white', borderRadius: 20, padding: 24,
+                boxShadow: 'var(--shadow-2xl)', border: '1px solid var(--border)',
+                fontFamily: "'Google Sans','Roboto',sans-serif"
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: '#111827', margin: '0 0 8px 0' }}>Use Template Options</h3>
+              <p style={{ fontSize: 13, color: '#6B7280', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+                You have active work open in your canvas editor. How would you like to load this template?
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+                {/* Option A: Merge */}
+                <div 
+                  onClick={() => handleMergeTemplate(importTarget.id)}
+                  style={{
+                    border: '1px solid var(--border)', borderRadius: 12, padding: '14px 18px', cursor: 'pointer',
+                    transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 14, background: '#FAFBFD'
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--theme-primary)'; e.currentTarget.style.background = 'var(--theme-primary-glow)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = '#FAFBFD'; }}
+                >
+                  <div style={{ width: 36, height: 36, borderRadius: 8, background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4F46E5', flexShrink: 0 }}>
+                    <FiLayers size={18} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>Merge into Current Canvas</span>
+                    <span style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>Append template nodes to your active canvas</span>
+                  </div>
+                </div>
+
+                {/* Option B: New Workspace */}
+                <div 
+                  onClick={() => { handleUseTemplate(importTarget.id); setImportTarget(null); }}
+                  style={{
+                    border: '1px solid var(--border)', borderRadius: 12, padding: '14px 18px', cursor: 'pointer',
+                    transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 14, background: '#FAFBFD'
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--theme-primary)'; e.currentTarget.style.background = 'var(--theme-primary-glow)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = '#FAFBFD'; }}
+                >
+                  <div style={{ width: 36, height: 36, borderRadius: 8, background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10B981', flexShrink: 0 }}>
+                    <FiCopy size={18} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>Open as New Workflow</span>
+                    <span style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>Start a fresh canvas (unsaved changes will be lost)</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button 
+                  onClick={() => setImportTarget(null)}
+                  style={{ padding: '8px 16px', background: 'white', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#4B5563', cursor: 'pointer' }}
+                >
+                  Cancel
                 </button>
               </div>
             </motion.div>
