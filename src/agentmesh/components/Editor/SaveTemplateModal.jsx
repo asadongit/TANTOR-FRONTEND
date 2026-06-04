@@ -368,7 +368,10 @@ export default function SaveTemplateModal({ agentConfig, onClose, onSaved }) {
               <input
                 style={inputStyle}
                 value={group}
-                onChange={(e) => setGroup(e.target.value)}
+                onChange={(e) => {
+                  const validatedVal = e.target.value.toLowerCase().replace(/ /g, '_').replace(/[^a-z_]/g, '');
+                  setGroup(validatedVal);
+                }}
                 placeholder="e.g. Marketing"
               />
             </Field>

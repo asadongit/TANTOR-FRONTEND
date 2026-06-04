@@ -980,7 +980,10 @@ export default function Navbar() {
                         <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'block' }}>Group</label>
                         <input
                           value={workflowGroup}
-                          onChange={(e) => setWorkflowMeta(workflowId, workflowName, workflowDescription, e.target.value, workflowCategory, globalErrorNode, dynamicResumption, warmup, autoNewSession)}
+                          onChange={(e) => {
+                            const validatedVal = e.target.value.toLowerCase().replace(/ /g, '_').replace(/[^a-z_]/g, '');
+                            setWorkflowMeta(workflowId, workflowName, workflowDescription, validatedVal, workflowCategory, globalErrorNode, dynamicResumption, warmup, autoNewSession);
+                          }}
                           placeholder="Default"
                           style={{
                             width: '100%', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', fontSize: 13, color: 'var(--text-primary)', outline: 'none', fontFamily: 'inherit', background: '#F8FAFC'
@@ -1942,7 +1945,10 @@ export default function Navbar() {
                       fontSize: 13, outline: 'none', boxSizing: 'border-box'
                     }}
                     value={promptGroup}
-                    onChange={(e) => setPromptGroup(e.target.value)}
+                    onChange={(e) => {
+                      const validatedVal = e.target.value.toLowerCase().replace(/ /g, '_').replace(/[^a-z_]/g, '');
+                      setPromptGroup(validatedVal);
+                    }}
                     placeholder="Default"
                   />
                 </div>
