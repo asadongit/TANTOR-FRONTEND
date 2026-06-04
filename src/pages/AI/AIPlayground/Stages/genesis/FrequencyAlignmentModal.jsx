@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
+import ColumnSearchableDropdown from '../DataPreprocessing/timeseries/components/HandleMissingValues/ColumnSearchableDropdown';
 
 const FrequencyAlignmentModal = ({
   isOpen,
@@ -10,7 +11,6 @@ const FrequencyAlignmentModal = ({
   hostnameAI,
   onSuccess,
   onClose
-
 }) => {
   const [isAligning, setIsAligning] = useState(false);
 
@@ -18,10 +18,13 @@ const FrequencyAlignmentModal = ({
     useState('mean');
 
   const [categoricalAggregation, setCategoricalAggregation] =
-    useState('first');
+    useState('mode');
 
   const [datetimeAggregation, setDatetimeAggregation] =
-    useState('first');
+    useState('min');
+
+  const [searchValues, setSearchValues] = useState({});
+  const [showDropdowns, setShowDropdowns] = useState({});
 
   if (!isOpen || !validationData) return null;
 
@@ -40,11 +43,10 @@ const FrequencyAlignmentModal = ({
       issue => issue.issue_type === 'irregular'
     );
 
-
   const hasIrregularIssue =
-  validationData?.frequency_issues?.some(
-    issue => issue.issue_type === 'irregular'
-  );
+    validationData?.frequency_issues?.some(
+      issue => issue.issue_type === 'irregular'
+    );
 
   const handleAlign = async () => {
     try {
@@ -69,23 +71,24 @@ const FrequencyAlignmentModal = ({
           })
         }
       );
-      if (!response.ok) {
-  const errorData = await response.json().catch(() => ({}));
 
-  toast.error(
-    errorData.message || 'Frequency alignment failed'
-  );
-  return;
-}
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+
+        toast.error(
+          errorData.message || 'Frequency alignment failed'
+        );
+        return;
+      }
 
       const data = await response.json();
+
       toast.success(
-  data.message || 'Frequency alignment completed successfully'
-);
+        data.message ||
+          'Frequency alignment completed successfully'
+      );
 
-onSuccess?.();
-
-      
+      onSuccess?.();
     } catch (error) {
       console.error(error);
       toast.error('Frequency alignment failed');
@@ -99,7 +102,6 @@ onSuccess?.();
       <div className="absolute inset-0 bg-black/40" />
 
       <div className="relative bg-white rounded-lg shadow-xl w-[850px] max-h-[85vh] overflow-hidden">
-
         {/* Header */}
         <div className="px-6 py-4 border-b">
           <h2 className="text-base font-semibold text-gray-900">
@@ -109,7 +111,6 @@ onSuccess?.();
 
         {/* Body */}
         <div className="p-6 overflow-y-auto max-h-[65vh] space-y-4">
-
           {/* Duplicate */}
           {!hasIrregularIssue && duplicateIssue && (
             <div className="bg-white border border-gray-200 rounded-lg p-4">
@@ -122,76 +123,82 @@ onSuccess?.();
               </p>
 
               <div className="border rounded-md p-3 max-h-40 overflow-y-auto bg-gray-50 mb-4">
-                {duplicateIssue.timestamps?.map((timestamp, index) => (
-                  <div
-                    key={index}
-                    className="text-sm text-gray-700 py-1"
-                  >
-                    {timestamp}
-                  </div>
-                ))}
+                {duplicateIssue.timestamps?.map(
+                  (timestamp, index) => (
+                    <div
+                      key={index}
+                      className="text-sm text-gray-700 py-1"
+                    >
+                      {timestamp}
+                    </div>
+                  )
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-600 mb-2">
+                    Numerical Aggregation
+                  </label>
+
+                  <ColumnSearchableDropdown
+                    value={numericalAggregation}
+                    onChange={setNumericalAggregation}
+                    options={[
+                      'mean',
+                      'sum',
+                      'min',
+                      'max'
+                    ]}
+                    placeholder="Select"
+                    searchValue={searchValues}
+                    setSearchValue={setSearchValues}
+                    showDropdown={showDropdowns}
+                    setShowDropdown={setShowDropdowns}
+                    id="numericalAggregation"
+                  />
+                </div>
 
                 <div>
-  <label className="block text-xs font-medium text-gray-700 mb-2">
-    Numerical Aggregation
-  </label>
+                  <label className="block text-sm text-gray-600 mb-2">
+                    Categorical Aggregation
+                  </label>
 
-  <select
-    value={numericalAggregation}
-    onChange={(e) =>
-      setNumericalAggregation(e.target.value)
-    }
-    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
-  >
-    <option value="mean">Mean</option>
-    <option value="sum">Sum</option>
-    <option value="min">Min</option>
-    <option value="max">Max</option>
-    <option value="first">First</option>
-    <option value="last">Last</option>
-  </select>
-</div>
-
-                <div>
-  <label className="block text-xs font-medium text-gray-700 mb-2">
-    Categorical Aggregation
-  </label>
-
-  <select
-    value={categoricalAggregation}
-    onChange={(e) =>
-      setCategoricalAggregation(e.target.value)
-    }
-    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
-  >
-    <option value="first">First</option>
-    <option value="last">Last</option>
-    <option value="mode">Mode</option>
-  </select>
-</div>
+                  <ColumnSearchableDropdown
+                    value={categoricalAggregation}
+                    onChange={setCategoricalAggregation}
+                    options={[
+                      'mode'
+                    ]}
+                    placeholder="Select"
+                    searchValue={searchValues}
+                    setSearchValue={setSearchValues}
+                    showDropdown={showDropdowns}
+                    setShowDropdown={setShowDropdowns}
+                    id="categoricalAggregation"
+                  />
+                </div>
 
                 <div>
-  <label className="block text-xs font-medium text-gray-700 mb-2">
-    Datetime Aggregation
-  </label>
+                  <label className="block text-sm text-gray-600 mb-2">
+                    Datetime Aggregation
+                  </label>
 
-  <select
-    value={datetimeAggregation}
-    onChange={(e) =>
-      setDatetimeAggregation(e.target.value)
-    }
-    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
-  >
-    <option value="first">First</option>
-    <option value="last">Last</option>
-    <option value="min">Min</option>
-    <option value="max">Max</option>
-  </select>
-</div>
-
+                  <ColumnSearchableDropdown
+                    value={datetimeAggregation}
+                    onChange={setDatetimeAggregation}
+                    options={[
+                      'min',
+                      'max'
+                    ]}
+                    placeholder="Select"
+                    searchValue={searchValues}
+                    setSearchValue={setSearchValues}
+                    showDropdown={showDropdowns}
+                    setShowDropdown={setShowDropdowns}
+                    id="datetimeAggregation"
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -208,14 +215,16 @@ onSuccess?.();
               </p>
 
               <div className="border border-gray-200 rounded-md p-3 max-h-40 overflow-y-auto bg-[#FAFAFA]">
-                {missingIssue.timestamps?.map((timestamp, index) => (
-                  <div
-                    key={index}
-                    className="text-sm text-gray-700 py-1"
-                  >
-                    {timestamp}
-                  </div>
-                ))}
+                {missingIssue.timestamps?.map(
+                  (timestamp, index) => (
+                    <div
+                      key={index}
+                      className="text-sm text-gray-700 py-1"
+                    >
+                      {timestamp}
+                    </div>
+                  )
+                )}
               </div>
             </div>
           )}
@@ -236,29 +245,27 @@ onSuccess?.();
 
         {/* Footer */}
         <div className="px-6 py-4 border-t flex justify-end gap-3">
-
-  {hasIrregularIssue ? (
-    <button
-      onClick={() => onClose?.()}
-      className="px-5 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
-    >
-      Close
-    </button>
-  ) : (
-    <button
-      onClick={handleAlign}
-      disabled={isAligning}
-      className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
-  isAligning
-    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-    : 'bg-[#8e78b7] text-white hover:bg-[#7d67a6]'
-}`}
-    >
-      {isAligning ? 'Aligning...' : 'Align'}
-    </button>
-  )}
-
-</div>
+          {hasIrregularIssue ? (
+            <button
+              onClick={() => onClose?.()}
+              className="px-5 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
+              Close
+            </button>
+          ) : (
+            <button
+              onClick={handleAlign}
+              disabled={isAligning}
+              className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
+                isAligning
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-[#8e78b7] text-white hover:bg-[#7d67a6]'
+              }`}
+            >
+              {isAligning ? 'Aligning...' : 'Align'}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

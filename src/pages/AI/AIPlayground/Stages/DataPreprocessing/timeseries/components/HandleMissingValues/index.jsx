@@ -46,7 +46,7 @@ function HandleMissingValues({
     workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_datetime_column_original || {};
 
   // Flags that determine whether original dataset columns still have missing values.
-
+  // for original 
   const hasNumericMissing = Object.entries(
     missingOriginalNumericColumns
   ).some(([_, val]) => val === 1);
@@ -54,7 +54,6 @@ function HandleMissingValues({
   const hasCategoricalMissing = Object.entries(
     missingOriginalCategoricalColumns
   ).some(([_, val]) => val === 1);
-
   const hasDatetimeMissing = Object.entries(
     missingOriginalDatetimeColumns
   ).some(([_, val]) => val === 1);
@@ -69,19 +68,12 @@ function HandleMissingValues({
   const numericColumns = workflowState?.dataPreprocessing?.step1?.apiResponse?.numerical_columns || [];
 
   const categoricalColumns = workflowState?.dataPreprocessing?.step1?.apiResponse?.categorical_columns || [];
-
   const datetimeColumns = workflowState?.dataPreprocessing?.step1?.apiResponse?.datetime_columns || [];
-
   // Number of generated rows returned by the previous preprocessing step.
-
   const generatedFeatureCount = workflowState?.dataPreprocessing?.step1?.apiResponse?.rows_inserted || 0;
-
   // Flags that determine whether generated columns need missing-value handling.
-
   const hasGeneratedMissingNumerical = generatedFeatureCount > 0 && numericColumns.length > 0;
-
   const hasGeneratedMissingCategorical = generatedFeatureCount > 0 && categoricalColumns.length > 0;  
-
   const hasGeneratedMissingDatetime = generatedFeatureCount > 0 && datetimeColumns.length > 0;
 
 
@@ -104,7 +96,7 @@ function HandleMissingValues({
     categorical: '',
     datetime: '',
     polynomialDegree: '',
-    seasonalPeriod: '',
+   categoricalSeasonalOriginalPeriod: '',
     splineOrder: '',
   });
 
@@ -113,7 +105,8 @@ function HandleMissingValues({
     categorical: '',
     datetime: '',
     rollingWindow: '',
-    seasonalPeriod: '',
+    numericSeasonalgeneratedPeriod: '',
+    categoricalSeasonalgeneratedPeriod: '',
   });
 
   const [searchValues, setSearchValues] = useState({
@@ -149,15 +142,15 @@ function HandleMissingValues({
       datetime: savedConfig.original_missing_value_datetime_method || '',
       polynomialDegree: savedConfig.original_missing_value_polynomial_degree || '', 
       splineOrder: savedConfig.original_missing_value_spline_order || '', 
-      seasonalPeriod: savedConfig.original_missing_value_seasonal_period || '',
-    }); 
+      categoricalSeasonalOriginalPeriod:savedConfig.original_missing_value_categorical_seasonal_period || '',}); 
 
     setGeneratedMissingConfig({
       numeric:savedConfig.generated_missing_value_numeric_method || '',
       categorical:savedConfig.generated_missing_value_categorical_method || '',
       datetime: savedConfig.generated_missing_value_datetime_method || '',
       rollingWindow: savedConfig.generated_missing_value_rolling_window ?? '',
-      seasonalPeriod: savedConfig.generated_missing_value_seasonal_period ?? '', }); }
+      numericSeasonalgeneratedPeriod:savedConfig.generated_missing_value_numeric_seasonal_period || '',
+      categoricalSeasonalgeneratedPeriod:savedConfig.generated_missing_value_categorical_seasonal_period || '', }); }
 }, [mode, workflowState?.dataPreprocessing?.step3?.config, isUnivariateTimeseries]);
 
   // Ensure original missing values toggle stays off for univariate timeseries
@@ -173,15 +166,12 @@ function HandleMissingValues({
   // Validation helpers for the step's original and generated missing-value selections.
 
   const getOriginalMissingError = () => {
-
     if (!hasAnyOriginalMissing) return '';
-
     if (
       hasNumericMissing &&!originalMissingConfig.numeric
     ) {
       return 'Select numeric imputation method';
     }
-
     if (
       hasCategoricalMissing &&!originalMissingConfig.categorical
     ) {
@@ -193,7 +183,7 @@ function HandleMissingValues({
       return 'Select datetime imputation method';
     }
 
-    if (hasNumericMissing && originalMissingConfig.numeric === 'polynomial') {
+    if ( hasNumericMissing && originalMissingConfig.numeric === 'polynomial') {
         const polynomialDegree = Number(originalMissingConfig.polynomialDegree);
         if (!Number.isFinite(polynomialDegree) || polynomialDegree < 2|| polynomialDegree > 365) {
           return 'Polynomial degree must be between 2 and 365';
@@ -207,8 +197,8 @@ function HandleMissingValues({
         }
     }
 
-    if (hasNumericMissing && originalMissingConfig.numeric === 'mode_by_season') {
-        const seasonalPeriod = Number(originalMissingConfig.seasonalPeriod);
+    if (hasCategoricalMissing && originalMissingConfig.categorical === 'mode_by_season') {
+        const seasonalPeriod = Number(originalMissingConfig.categoricalSeasonalOriginalPeriod);
         if (!Number.isFinite(seasonalPeriod) || seasonalPeriod < 7 || seasonalPeriod > 365) {
           return 'Seasonal period must be between 7 and 365';
         }
@@ -240,14 +230,14 @@ function HandleMissingValues({
     }
 
     if (hasGeneratedMissingNumerical && (generatedMissingConfig.numeric === 'mode_by_season' || generatedMissingConfig.numeric === 'seasonal_mean')) {
-      const seasonalPeriod = Number(generatedMissingConfig.seasonalPeriod);
+      const seasonalPeriod = Number(generatedMissingConfig.numericSeasonalgeneratedPeriod);
       if (!Number.isFinite(seasonalPeriod) || seasonalPeriod < 7 || seasonalPeriod > 365) {
         return 'Seasonal period must be between 7 and 365';
       }
     }
 
     if (hasGeneratedMissingCategorical && (generatedMissingConfig.categorical === 'mode_by_season' )) {
-      const seasonalPeriod = Number(generatedMissingConfig.seasonalPeriod);
+      const seasonalPeriod = Number(generatedMissingConfig.categoricalSeasonalgeneratedPeriod);
       if (!Number.isFinite(seasonalPeriod) || seasonalPeriod < 7 || seasonalPeriod > 365) {
         return 'Seasonal period must be between 7 and 365';
       }
@@ -293,6 +283,11 @@ function HandleMissingValues({
         generatedMissingValueCategoricalMethod: generatedMissingConfig.categorical || 'ffill',
         generatedMissingValueDatetimeMethod: generatedMissingConfig.datetime || 'ffill',
         generatedMissingValueRollingWindow: generatedMissingConfig.rollingWindow || 3,
+        generatedMissingValueNumericSeasonalPeriod: generatedMissingConfig.numericSeasonalgeneratedPeriod || 7,
+        generatedMissingValueCategoricalSeasonalPeriod: generatedMissingConfig.categoricalSeasonalgeneratedPeriod || 7,
+        originalMissingValuePolynomialDegree: originalMissingConfig.polynomialDegree || 2,
+        originalMissingValueSplineOrder: originalMissingConfig.splineOrder || 3,
+        originalMissingValueCategoricalSeasonalPeriod: originalMissingConfig.categoricalSeasonalOriginalPeriod || 7,
       };
       const response = await handleMissingValues(payload);
       updatePreprocessingStep('step2', {
@@ -337,12 +332,13 @@ function HandleMissingValues({
           original_missing_value_datetime_method: originalMissingConfig.datetime,
           original_missing_value_polynomial_degree: originalMissingConfig.polynomialDegree,
           original_missing_value_spline_order: originalMissingConfig.splineOrder,
-          original_missing_value_seasonal_period: originalMissingConfig.seasonalPeriod,
+          original_missing_value_categorical_seasonal_period: originalMissingConfig.categoricalSeasonalOriginalPeriod,
           generated_missing_value_numeric_method: generatedMissingConfig.numeric,
           generated_missing_value_categorical_method: generatedMissingConfig.categorical,
           generated_missing_value_datetime_method: generatedMissingConfig.datetime,
           generated_missing_value_rolling_window: generatedMissingConfig.rollingWindow,
-          generated_missing_value_seasonal_period: generatedMissingConfig.seasonalPeriod,
+          generated_missing_value_numeric_seasonal_period: generatedMissingConfig.numericSeasonalgeneratedPeriod,
+          generated_missing_value_categorical_seasonal_period: generatedMissingConfig.categoricalSeasonalgeneratedPeriod,
         },
       });
     }, 500);
