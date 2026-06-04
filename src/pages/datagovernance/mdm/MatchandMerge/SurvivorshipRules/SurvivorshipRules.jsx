@@ -267,7 +267,7 @@ const SurvivorshipRules = () => {
                 key: 'attribute_name',
                 label: 'Attribute',
                 render: (row) => (
-                    <span className="text-[#8E77BB] font-medium">{row.attribute_name}</span>
+                    <span className="text-[#8E77BB] font-normal">{row.attribute_name}</span>
                 ),
             },
             {

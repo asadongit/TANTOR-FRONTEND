@@ -118,6 +118,7 @@ export const useMatchConfigHomepage = () => {
                 (data.rule_sets ?? []).map((rs) => ({
                     id: rs.rule_set_id,
                     ruleName: rs.rule_set_name,
+                    description: rs.rule_description,
                     domain: rs.domain_name,
                     domain_id: rs.domain_id,
                     type: rs.match_type,
@@ -265,20 +266,58 @@ export const useEditRuleSet = (onSuccess) => {
     return { isSubmitting, update };
 };
 
+export const useTestMatchAttributes = () => {
+    const [attributes, setAttributes] = useState([]);
+    const [domainCode, setDomainCode] = useState(null);
+    const [attrsLoading, setAttrsLoading] = useState(false);
+    const [apiError, setApiError] = useState(null);
+
+    const fetchByDomainCode = useCallback(async (code) => {
+        if (!code) return;
+        setAttrsLoading(true);
+        setApiError(null);
+        setAttributes([]);
+        setDomainCode(code);
+        try {
+            const { data } = await api.get('/match/test/attributes', {
+                params: { domain_code: code },
+            });
+            setAttributes(data.attributes ?? []);
+            return data.attributes ?? [];
+        } catch (err) {
+            const detail = err?.response?.data?.detail;
+            const msg = typeof detail === 'string'
+                ? detail
+                : Array.isArray(detail)
+                    ? detail.map((d) => d?.msg ?? d).join(', ')
+                    : 'Failed to load attributes for this domain.';
+            setApiError(msg);
+            return [];
+        } finally {
+            setAttrsLoading(false);
+        }
+    }, []);
+
+    const reset = useCallback(() => {
+        setAttributes([]);
+        setDomainCode(null);
+        setApiError(null);
+        setAttrsLoading(false);
+    }, []);
+
+    return { attributes, domainCode, attrsLoading, apiError, setApiError, fetchByDomainCode, reset };
+};
 
 export const useTestMatchConfig = () => {
     const [isRunning, setIsRunning] = useState(false);
     const [results, setResults] = useState(null);
     const [apiError, setApiError] = useState(null);
 
-    const runTest = useCallback(async (isRuleMode, payload) => {
+    const runTest = useCallback(async (payload) => {
         setIsRunning(true);
         setApiError(null);
         try {
-            const endpoint = isRuleMode
-                ? '/mdm/match_config/test_rule'
-                : '/mdm/match_config/test';
-            const { data } = await api.post(endpoint, payload);
+            const { data } = await api.post('/match/test', payload);
             setResults(data);
             return { ok: true, data };
         } catch (err) {
@@ -365,4 +404,39 @@ export const useAttributesByLevel = (domainId, enabled) => {
     }, [domainId, enabled]);
 
     return { staging: data.staging ?? [], golden: data.golden ?? [], loading };
+};
+
+export const useAlgorithmOptions = () => {
+    const [algorithmOptions, setAlgorithmOptions] = useState([]);
+
+    useEffect(() => {
+        api.get('/mdm/algorithms')
+            .then(({ data }) => {
+                setAlgorithmOptions(
+                    data.map(algo => ({
+                        value: algo,
+                        label: algo,
+                    }))
+                );
+            })
+            .catch(err =>
+                console.error('Failed to fetch algorithms:', err)
+            );
+    }, []);
+
+    return { algorithmOptions };
+};
+
+export const useReorderMatchRules = () => {
+    const reorderRules = useCallback(async (payload) => {
+        try {
+            const { data } = await api.put('/mdm/match_config/reorder_match_rules', payload);
+            return { ok: true, data };
+        } catch (err) {
+            const msg = err?.response?.data?.detail || 'Failed to reorder rules.';
+            return { ok: false, message: msg };
+        }
+    }, []);
+
+    return { reorderRules };
 };

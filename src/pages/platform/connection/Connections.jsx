@@ -12,7 +12,6 @@ import {
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
 import { encrypt } from "../../../utils/Crypto";
-import { useConnectionCardData } from "../../../hooks/platform/cardCounts";
 import { useConnectionData } from "../../../hooks/platform/connection";
 import DataTable from "../../../components/DataTable";
 import CardGrid from "../../../components/CardGrid";
@@ -24,9 +23,15 @@ import ConnectionWizard from "./components/ConnectionWizard";
 import axios from "axios";
 import Breadcrumb from "../../../components/Breadcrumb";
 import { useRealtimeUpdate } from "../../../hooks/platform/realtime_update";
+import { useConnectionCardData, usePolicyIds } from "../../../hooks/platform/cardCounts";
 
 const Connections = () => {
   const { token, project, setSelectedProject, hostnameV1, hostnameV2, decodedToken } = useAuth();
+  const { data: policyIds = [] } = usePolicyIds();
+  const isConnectionCreation = useMemo(() => 
+  decodedToken?.resource_access?.darch?.roles?.some(
+    r => r.toLowerCase() === 'persona:connection manager'
+  ), [decodedToken]);
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState("both");
 
@@ -130,25 +135,22 @@ const Connections = () => {
   };
 
   const fetchViewConnections = useCallback(async (connection) => {
-    setConnectionDetails(connection)
-    setViewConnectionData(null)
-    openLocalModal('view')
-    fetch(
-      `${hostnameV1}/connection-master-metadata/find-by-conn-name-type?conn_name=${connection.connection_name}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+    setConnectionDetails(connection);
+    setViewConnectionData(null);
+    openLocalModal('view');
+
+    const params = new URLSearchParams({ conn_name: connection.connection_name });
+    if (policyIds.length > 0) params.append('policy_ids', policyIds[0]);
+
+    fetch(`${hostnameV1}/connection-master-metadata/find-by-conn-name-type?${params}`, {
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
     })
-      .then((response) => response.json())
+      .then((res) => res.json())
       .then((data) => {
-        const sortedData = data.sort((a, b) => a.table_name.localeCompare(b.table_name));
-        setViewConnectionData(sortedData);
+        setViewConnectionData(data.sort((a, b) => a.table_name.localeCompare(b.table_name)));
       })
-      .catch((error) => {
-        console.error("Error fetching table data:", error);
-      });
-  }, []);
+      .catch((err) => console.error("Error fetching table data:", err));
+  }, [policyIds, token, hostnameV1]);
 
   const deleteConnection = async (id) => {
     try {
@@ -177,6 +179,7 @@ const Connections = () => {
       icon: <Eye size={16} />,
       onClick: (row) => fetchViewConnections(row),
     },
+    ...(isConnectionCreation ? [
     {
       label: "Edit",
       icon: <Pencil size={16} />,
@@ -225,6 +228,7 @@ const Connections = () => {
         }
       },
     },
+    ] : []),
     {
       label: "Refresh",
       icon: <RefreshCw size={16} />,
@@ -353,16 +357,16 @@ const Connections = () => {
             />
           </button>
 
+          {isConnectionCreation && (
           <button
-            onClick={() => {
-              openLocalModal("editCreate", null)
-            }}
+            onClick={() => openLocalModal("editCreate", null)}
             type="button"
             className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] h-10 focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2 flex items-center justify-center dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
             <Icon icon="material-symbols:add" width="20" height="20" className="mr-1 inline-block" />
             Create
           </button>
+        )}
         </div>
       </div>
 
@@ -393,6 +397,7 @@ const Connections = () => {
           setViewConnectionData={setViewConnectionData}
           connectionDetails={connectionDetails}
           closeModal={closeLocalModal}
+          policyIds={policyIds} 
         />
       )}
 

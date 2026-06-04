@@ -194,8 +194,6 @@ const DomainDetailsSidebar = ({ domain, onClose, onEdit }) => {
         { key: 'dataType',      label: 'Data Type',      maxWidth: '130px' },
         { key: 'required',      label: 'Required',       maxWidth: '90px' },
         { key: 'dqRule',        label: 'DQ Rule',        maxWidth: '160px' },
-        { key: 'matchWeight',   label: 'Match Weight',   maxWidth: '110px' },
-        { key: 'survivorship',  label: 'Survivorship',   maxWidth: '150px' },
         {
             label: 'Action',
             sortable: false,

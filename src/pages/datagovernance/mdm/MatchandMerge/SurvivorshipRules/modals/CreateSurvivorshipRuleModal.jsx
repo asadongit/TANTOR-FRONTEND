@@ -90,7 +90,7 @@ const CreateSurvivorshipRuleModal = ({ isOpen, onClose, onSuccess }) => {
         }));
 
     const handleAttributeChange = (e) => {
-        const selected = attributes.find((a) => a.attribute_id === e.target.value);
+        const selected = attributes.find((a) => a.attribute_id === parseInt(e.target.value, 10));
         setFormData((prev) => ({
             ...prev,
             attribute_id: selected?.attribute_id || '',
@@ -122,14 +122,10 @@ const CreateSurvivorshipRuleModal = ({ isOpen, onClose, onSuccess }) => {
     if (!isOpen) return null;
 
     return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-            onClick={handleClose}
-        >
-            <div
-                className="w-[560px] bg-white rounded-2xl border border-[#CCCCCC] mx-4"
-                onClick={(e) => e.stopPropagation()}
-            >
+        <>
+            <div className="fixed inset-0 z-50 bg-black/40"  />
+            <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+                <div className="w-[560px] bg-white rounded-2xl border border-[#CCCCCC] mx-4 pointer-events-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 rounded-t-2xl bg-white shadow-[0px_4px_9px_0px_rgba(0,0,0,0.10)]">
                     <span className="text-lg font-medium text-[#282F49] font-[Satoshi,sans-serif]">
@@ -253,7 +249,9 @@ const CreateSurvivorshipRuleModal = ({ isOpen, onClose, onSuccess }) => {
                 </div>
             </div>
         </div>
+            </>
     );
+
 };
 
 export default CreateSurvivorshipRuleModal;
