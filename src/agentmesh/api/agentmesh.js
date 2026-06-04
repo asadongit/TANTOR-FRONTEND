@@ -42,14 +42,21 @@ export const getMarketplaceUsecase = (id) =>
   request(`/workflow/${id}/marketplace`);
 
 export const listMarketplaceUsecases = (params = {}) => {
-  const { page = 1, limit = 100, group, category, search, tag } = params;
+  const { page = 1, limit = 100, group, category, search, tag, adminStatus } = params;
   const p = new URLSearchParams({ page, limit });
   if (group && group !== 'All') p.set('group', group);
   if (category && category !== 'All') p.set('category', category);
   if (search) p.set('search', search);
   if (tag && tag !== 'All') p.set('tag', tag);
+  if (adminStatus && adminStatus !== 'All') p.set('admin_status', adminStatus);
   return request(`/marketplace/usecases?${p}`);
 };
+
+export const updateMarketplaceUsecaseStatus = (workflowId, status, remarks = null) =>
+  request(`/workflow/${workflowId}/marketplace/status`, { method: 'PATCH', body: JSON.stringify({ status, remarks }) });
+
+export const deleteMarketplaceUsecase = (workflowId) =>
+  request(`/workflow/${workflowId}/marketplace`, { method: 'DELETE' });
 
 export const dispatchScheduleAction = (id, action) =>
   request(`/workflow/${id}/schedule`, { method: 'POST', body: JSON.stringify({ action }) });
@@ -247,12 +254,13 @@ export const saveWorkflowTemplate = (payload) =>
   request('/workflow-templates', { method: 'POST', body: JSON.stringify(payload) });
 
 export const listWorkflowTemplates = (params = {}) => {
-  const { page = 1, limit = 12, group, category, search, scope } = params;
+  const { page = 1, limit = 12, group, category, search, scope, status } = params;
   const p = new URLSearchParams({ page, limit });
   if (group && group !== 'All') p.set('group', group);
   if (category && category !== 'All') p.set('category', category);
   if (search) p.set('search', search);
   if (scope && scope !== 'All') p.set('scope', scope);
+  if (status && status !== 'All') p.set('status', status);
   return request(`/workflow-templates?${p}`);
 };
 
@@ -261,5 +269,11 @@ export const cloneWorkflowTemplate = (id) =>
 
 export const getWorkflowTemplate = (id) =>
   request(`/workflow-template/${id}`);
+
+export const updateWorkflowTemplateStatus = (id, status) =>
+  request(`/workflow-template/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+
+export const deleteWorkflowTemplate = (id) =>
+  request(`/workflow-template/${id}`, { method: 'DELETE' });
 
 
