@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useWorkflowStore, useUIStore, useRunStore } from '../../../store';
-import { listMarketplaceUsecases, getActiveRuns, listWorkflowCategories, getWorkflow } from '../../../api/agentmesh';
+import { listMarketplaceUsecases, listWorkflowCategories, getWorkflow } from '../../../api/agentmesh';
 import { FiSearch, FiUser, FiMessageSquare, FiInfo, FiTag, FiGrid, FiList, FiFilter, FiX, FiZap } from 'react-icons/fi';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import bannerImage from '../../../assets/data/Stack-p-2000.png';
@@ -342,7 +342,6 @@ export default function MarketplacePage() {
   const { workflows, setWorkflows, loadWorkflowIntoEditor } = useWorkflowStore();
   const { setRunOpen } = useUIStore();
   const [loading, setLoading] = useState(false);
-  const [activeRuns, setActiveRuns] = useState(new Set());
   const [viewMode, setViewMode] = useState('cards');
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -397,21 +396,9 @@ export default function MarketplacePage() {
     }
   };
 
-  const loadActiveRuns = async () => {
-    try {
-      const res = await getActiveRuns();
-      if (res.status === 'success') {
-        const wfIds = new Set();
-        Object.values(res.active_runs).forEach(run => wfIds.add(run.workflow_id));
-        setActiveRuns(wfIds);
-      }
-    } catch (e) { }
-  };
 
   useEffect(() => {
     load();
-    const interval = setInterval(loadActiveRuns, 5000);
-    return () => clearInterval(interval);
   }, [search, selectedCategory, selectedGroupFilter, selectedTagFilter, currentPage]);
 
   // Reset page strictly when filters or search change
@@ -729,7 +716,7 @@ export default function MarketplacePage() {
           viewMode === 'cards' ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
               {workflows.map((w, i) => (
-                <MarketplaceCard key={w.id} w={w} idx={i} onChat={handleChat} onDetails={handleDetails} isRunning={activeRuns.has(w.id)} />
+                <MarketplaceCard key={w.id} w={w} idx={i} onChat={handleChat} onDetails={handleDetails} isRunning={false} />
               ))}
 
 
@@ -737,7 +724,7 @@ export default function MarketplacePage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {workflows.map((w, i) => (
-                <MarketplaceListRow key={w.id} w={w} idx={i} onChat={handleChat} onDetails={handleDetails} isRunning={activeRuns.has(w.id)} />
+                <MarketplaceListRow key={w.id} w={w} idx={i} onChat={handleChat} onDetails={handleDetails} isRunning={false} />
               ))}
             </div>
           )

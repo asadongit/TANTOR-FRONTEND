@@ -1,4 +1,5 @@
 import React from 'react';
+import toast from 'react-hot-toast';
 import { useWorkflowStore, useUIStore } from '../../store';
 import { compileWorkflow, saveWorkflow, listWorkflowCategories, deleteWorkflow, explainWorkflow, getWorkflow, cloneWorkflow, fixGrammar, publishWorkflow, getMarketplaceUsecase } from '../../api/agentmesh';
 import { FiUpload, FiDownload, FiPlus, FiX, FiCheck, FiAlertTriangle, FiCopy, FiChevronDown, FiChevronUp, FiBookOpen, FiZap, FiLoader, FiTrash2, FiInfo, FiMaximize2, FiMinimize2, FiShare2, FiSave } from 'react-icons/fi';
@@ -273,8 +274,12 @@ export default function Navbar() {
       setStatus('saved');
       markClean();
     } catch (e) {
-      setStatus('err');
-      setErrMsg(e.message || 'Save failed');
+      if (e.status === 409) {
+        toast.error(e.message);
+      } else {
+        setStatus('err');
+        setErrMsg(e.message || 'Save failed');
+      }
     } finally {
       setSaving(false);
       setTimeout(() => { setStatus(null); setErrMsg(''); }, 3000);
@@ -293,8 +298,12 @@ export default function Navbar() {
       setStatus('compiled');
       markCompiled();
     } catch (e) {
-      setStatus('err');
-      setErrMsg(e.message || 'Compile failed');
+      if (e.status === 409) {
+        toast.error(e.message);
+      } else {
+        setStatus('err');
+        setErrMsg(e.message || 'Compile failed');
+      }
     } finally {
       setCompiling(false);
       setTimeout(() => { setStatus(null); setErrMsg(''); }, 4000);

@@ -9,7 +9,9 @@ async function request(path, options = {}) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     let msg = err.detail || 'Request failed';
     if (typeof msg !== 'string') msg = JSON.stringify(msg);
-    throw new Error(msg);
+    const error = new Error(msg);
+    error.status = res.status;
+    throw error;
   }
   return res.json();
 }
