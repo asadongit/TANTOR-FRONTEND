@@ -432,7 +432,8 @@ function KeyValueEditor({ value = {}, onChange, label, hint }) {
 }
 
 function ToolConfigModal({ toolName, config = {}, onChange, onClose, onRemove, availableTools = [] }) {
-  const toolInfo = availableTools.find(t => t.name === toolName) || { name: toolName };
+  const baseToolName = toolName.split('::')[0];
+  const toolInfo = availableTools.find(t => t.name === baseToolName) || { name: toolName };
 
   // Helper to update a single config key
   const set = (key, val) => onChange({ ...config, [key]: val });
@@ -481,6 +482,26 @@ function ToolConfigModal({ toolName, config = {}, onChange, onClose, onRemove, a
         <div style={{ padding: '20px', maxHeight: '76vh', overflowY: 'auto' }}>
           <Toggle checked={config.return_direct || false} onChange={(v) => set('return_direct', v)} label="Return result direct to user" />
           <Toggle checked={config.interrupt_before || false} onChange={(v) => set('interrupt_before', v)} label="Pause before execution (Human approval)" />
+
+          <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Identity & Scope Overrides</div>
+          
+          <Field label="Custom Instance Alias (LLM Name)" hint="A unique lowercase name for the LLM to identify this specific instance. No spaces/special chars.">
+            <Input
+              value={config.alias_override || ''}
+              onChange={(v) => set('alias_override', v.toLowerCase().replace(/ /g, '_').replace(/[^a-z_]/g, ''))}
+              placeholder={`e.g. ${toolName.toLowerCase()}_override`}
+            />
+          </Field>
+
+          <Field label="Instance Description Override" hint="Appends specific context telling the LLM what dataset or purpose this instance targets.">
+            <Textarea
+              value={config.description_override || ''}
+              onChange={(v) => set('description_override', v)}
+              placeholder="e.g. Searches employee policies and handbook documents."
+              rows={2}
+            />
+          </Field>
 
           <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Parameter Overrides (Human-Only)</div>
@@ -581,21 +602,30 @@ function ToolTagInput({ value = [], configs = {}, onUpdate, availableTools = [] 
   }, [isOpen]);
 
   const add = (tName) => {
-    if (!value.includes(tName)) {
-      const nextTools = [...value, tName];
-      const nextConfigs = { ...configs };
+    const occurrences = value.filter(v => v.split('::')[0] === tName).length;
+    const uniqueInstanceName = `${tName}::instance_${occurrences + 1}`;
 
-      // Auto-initialize defaults for RAG/Memory tools so they are strictly 'Human-Only'
-      if (tName.toLowerCase().includes('rag') || tName.toLowerCase().includes('memory')) {
-        nextConfigs[tName] = {
-          collection_name: 'default',
-          k: 5,
-          threshold: 0.5,
-          vector_store_type: 'chroma'
-        };
-      }
-      onUpdate(nextTools, nextConfigs);
+    const nextTools = [...value, uniqueInstanceName];
+    const nextConfigs = { ...configs };
+
+    // Auto-initialize defaults for RAG/Memory tools so they are strictly 'Human-Only'
+    const baseNameLower = tName.toLowerCase();
+    if (baseNameLower.includes('rag') || baseNameLower.includes('memory')) {
+      nextConfigs[uniqueInstanceName] = {
+        collection_name: 'default',
+        k: 5,
+        threshold: 0.5,
+        vector_store_type: 'chroma'
+      };
+    } else {
+      nextConfigs[uniqueInstanceName] = {};
     }
+
+    // Auto-fill a clean alias_override name on creation for visual neatness
+    const cleanAlias = `${tName.toLowerCase().replace(/_tool$/, '')}_${occurrences + 1}`;
+    nextConfigs[uniqueInstanceName].alias_override = cleanAlias;
+
+    onUpdate(nextTools, nextConfigs);
     setIsOpen(false);
     setSearchTerm('');
   };
@@ -607,7 +637,13 @@ function ToolTagInput({ value = [], configs = {}, onUpdate, availableTools = [] 
     onUpdate(nextTools, nextConfigs);
   };
 
-  const unselectedTools = availableTools.filter(t => !value.includes(t.name));
+  const unselectedTools = availableTools.filter(t => {
+    if (t.allow_duplicate === false) {
+      const isAlreadySelected = value.some(v => v.split('::')[0] === t.name);
+      return !isAlreadySelected;
+    }
+    return true;
+  });
   const filteredTools = unselectedTools.filter(t =>
     t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (t.display_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -633,27 +669,28 @@ function ToolTagInput({ value = [], configs = {}, onUpdate, availableTools = [] 
         {value.map((t) => {
           const toolInfo = availableTools.find(at => at.name === t);
           const description = toolInfo?.description || "No description available";
+          const hasOverride = !!configs[t]?.alias_override;
 
           return (
             <span
               key={t}
-              title={description}
+              title={configs[t]?.description_override ? `[Override]: ${configs[t].description_override}\n\n${description}` : description}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
                 padding: '5px 10px',
-                background: 'white',
-                border: '1px solid var(--border)',
+                background: hasOverride ? 'var(--theme-primary-glow)' : 'white',
+                border: hasOverride ? '1px solid var(--theme-primary)' : '1px solid var(--border)',
                 borderRadius: 20,
                 fontSize: 11,
-                color: 'var(--text-primary)',
+                color: hasOverride ? 'var(--theme-primary)' : 'var(--text-primary)',
                 fontWeight: 600,
                 boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                 cursor: 'help'
               }}
             >
-              {t}
+              {configs[t]?.alias_override || t}
               <button
                 onClick={() => setConfigTool(t)}
                 style={{ background: 'none', border: 'none', color: '#4285F4', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
