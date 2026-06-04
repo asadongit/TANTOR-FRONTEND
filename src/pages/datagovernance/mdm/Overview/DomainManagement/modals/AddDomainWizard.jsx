@@ -19,7 +19,11 @@ const VERSIONING_OPTIONS = [
     { label: "Yes", value: "Yes" },
     { label: "No", value: "No" },
 ];
-
+const CRITICALITY_OPTIONS = [
+    { label: "Low",    value: "low" },
+    { label: "Medium", value: "medium" },
+    { label: "High",   value: "high" },
+];
 const DATA_TYPE_OPTIONS = [
     { label: "VARCHAR", value: "VARCHAR", payloadType: "VARCHAR", lengthMode: null },
     { label: "VARCHAR(n)", value: "VARCHAR_N", payloadType: "VARCHAR", lengthMode: "length" },
@@ -37,18 +41,7 @@ const REQUIRED_OPTIONS = [
     { label: "Yes", value: "yes" },
     { label: "No", value: "no" },
 ];
-const SURVIVORSHIP_OPTIONS = [
-    { label: "Most Recent", value: "MOST_RECENT" },
-    { label: "Most Frequent", value: "MOST_FREQUENT" },
-    { label: "Longest", value: "LONGEST" },
-    { label: "Shortest", value: "SHORTEST" },
-    { label: "First Non-Null", value: "FIRST_NON_NULL" },
-    { label: "Last Non-Null", value: "LAST_NON_NULL" },
-    { label: "Max", value: "MAX" },
-    { label: "Min", value: "MIN" },
-    { label: "Manual", value: "MANUAL" },
-    { label: "Most Trusted", value: "MOST_TRUSTED" },
-];
+
 
 const getLengthMode = (dtValue) =>
     DATA_TYPE_OPTIONS.find(o => o.value === dtValue)?.lengthMode ?? null;
@@ -59,12 +52,13 @@ const getPayloadType = (dtValue) =>
 const emptyAttr = () => ({
     id: Date.now() + Math.random(),
     attributeName: "", displayName: "",
+    sourceAttributeName: "", sourceDisplayName: "",
     dataType: "",
     lengthPrecision: "",
     scaleValue: "",
     required: "",
-    dqRule: [], dqDimension: [], customRegex: "", matchWeight: "",
-    survivorshipStrategy: "", expanded: true,
+    criticality: "",
+    dqRule: [], dqDimension: [], expanded: true,
 });
 
 const inputClass =
@@ -260,6 +254,18 @@ const AttributeCard = ({ attr, index, total, onUpdate, onRemove }) => {
                         <input value={attr.displayName} onChange={e => upd("displayName", e.target.value)} placeholder="Enter Display Name" className={inputClass} />
                     </div>
 
+                    {/* Source Attribute Name */}
+                    <div>
+                        <label className={labelClass}>Source Attribute Name</label>
+                        <input value={attr.sourceAttributeName} onChange={e => upd("sourceAttributeName", e.target.value)} placeholder="Enter Source Attribute Name" className={inputClass} />
+                    </div>
+
+                    {/* Source Display Name */}
+                    <div>
+                        <label className={labelClass}>Source Display Name</label>
+                        <input value={attr.sourceDisplayName} onChange={e => upd("sourceDisplayName", e.target.value)} placeholder="Enter Source Display Name" className={inputClass} />
+                    </div>
+
                     {/* Data Type */}
                     <div>
                         <label className={labelClass}>Data Type <span className="text-[#E05252]">*</span></label>
@@ -279,9 +285,15 @@ const AttributeCard = ({ attr, index, total, onUpdate, onRemove }) => {
                         <SearchableDropdown value={attr.required} onChange={v => upd("required", v)} options={REQUIRED_OPTIONS} placeholder="Select" />
                     </div>
 
+                    {/* Criticality */}
+                    <div>
+                        <label className={labelClass}>Criticality <span className="text-[#E05252]">*</span></label>
+                        <SearchableDropdown value={attr.criticality} onChange={v => upd("criticality", v)} options={CRITICALITY_OPTIONS} placeholder="Select Criticality" />
+                    </div>
+
                     {/* DQ Dimension */}
                     <div>
-                        <label className={labelClass}>DQ Dimension</label>
+                        <label className={labelClass}>DQ Dimension <span className="text-[#E05252]">*</span></label>
                         <MultiSelectDropdown
                             options={dimensionOptions.map(d => ({ rule_id: d.value, rule_name: d.label }))}
                             selectedIds={Array.isArray(attr.dqDimension) ? attr.dqDimension : attr.dqDimension ? [attr.dqDimension] : []}
@@ -305,7 +317,7 @@ const AttributeCard = ({ attr, index, total, onUpdate, onRemove }) => {
 
                     {/* DQ Rule */}
                     <div>
-                        <label className={labelClass}>DQ Rule</label>
+                        <label className={labelClass}>DQ Rule <span className="text-[#E05252]">*</span></label>
                         <MultiSelectDropdown
                             options={ruleOptions}
                             selectedIds={attr.dqRule}
@@ -327,19 +339,6 @@ const AttributeCard = ({ attr, index, total, onUpdate, onRemove }) => {
                                         : "Select Rules"
                             }
                         />
-                    </div>
-
-                    <div>
-                        <label className={labelClass}>Custom Regex (if applicable)</label>
-                        <input value={attr.customRegex} onChange={e => upd("customRegex", e.target.value)} placeholder="Enter Custom Regex" className={inputClass} />
-                    </div>
-                    <div>
-                        <label className={labelClass}>Match Weight (%)</label>
-                        <input value={attr.matchWeight} onChange={e => upd("matchWeight", e.target.value)} placeholder="Enter Match Weight" className={inputClass} type="number" />
-                    </div>
-                    <div>
-                        <label className={labelClass}>Survivorship Strategy</label>
-                        <SearchableDropdown value={attr.survivorshipStrategy} onChange={v => upd("survivorshipStrategy", v)} options={SURVIVORSHIP_OPTIONS} placeholder="Select Survivorship Strategy" />
                     </div>
                 </div>
             )}
@@ -655,11 +654,12 @@ export default function AddDomainWizard() {
                 return {
                     attribute_name: a.attributeName,
                     display_name: a.displayName,
+                    source_attribute_name: a.sourceAttributeName,
+                    source_display_name: a.sourceDisplayName,
                     data_type: getPayloadType(a.dataType),   // "VARCHAR", "NUMERIC", etc.
                     length_precision,
                     required: a.required || "no",
-                    match_weight: a.matchWeight ? Number(a.matchWeight) : null,
-                    survivorship_strategy: a.survivorshipStrategy || null,
+                    criticality: a.criticality || null,
                     rule_ids: a.dqRule.length > 0 ? a.dqRule : null,
                 };
             }),

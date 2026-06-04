@@ -33,28 +33,32 @@ export const useSourceTypeCounts = (modelType) => {
 };
 
 
-const fetchConnectionCounts = async (token, project) => {
+const fetchConnectionCounts = async (token, project, policyIds) => {
   if (!token) throw new Error("Token is missing");
 
-  const response = await axios.get(`${hostnamev2}/connections/dashboard-counts`, {
-      headers: {
-         Authorization: `Bearer ${token}`,
-         "x-project": project
-        },  });
+  const params = policyIds?.length
+    ? `?policy_ids=${policyIds.join(",")}`
+    : "";
+
+  const response = await axios.get(
+    `${hostnamev2}/connections/dashboard-counts${params}`,
+    { headers: { Authorization: `Bearer ${token}`, "x-project": project } }
+  );
 
   return response.data ?? [];
 };
 
 export const useConnectionCardData = () => {
-  const { token,project } = useAuth(); 
+  const { token, project } = useAuth();
+  const { data: policyIds = [] } = usePolicyIds();  // ← reuse cached result
 
   return useQuery({
-    queryKey: ["connectionDashboard",project],
-    queryFn: () => fetchConnectionCounts(token,project), 
-    enabled: !!token, 
-    staleTime: 3 * 60 * 1000, 
-    retry: 2, 
-    refetchOnWindowFocus: false, 
+    queryKey: ["connectionDashboard", project, policyIds],
+    queryFn: () => fetchConnectionCounts(token, project, policyIds),
+    enabled: !!token,
+    staleTime: 3 * 60 * 1000,
+    retry: 2,
+    refetchOnWindowFocus: false,
   });
 };
 
@@ -106,5 +110,30 @@ export const useRulesCardData = () => {
     staleTime: 3 * 60 * 1000, 
     retry: 2, 
     refetchOnWindowFocus: false, 
+  });
+};
+
+export const usePolicyIds = () => {
+  const { token, decodedToken } = useAuth();
+
+  const isConnectionCreation = decodedToken?.resource_access?.darch?.roles?.some(
+    r => r.toLowerCase() === 'persona:connection manager'
+  );
+
+  return useQuery({
+    queryKey: ["policyIds", isConnectionCreation],
+    queryFn: async () => {
+      if (isConnectionCreation) return [];  // admins get no policy filter
+      const sq = await axios.post(
+        `${window._env_?.VITE_FAST_API}/secure-query`,
+        { user_query: "" },
+        { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
+      );
+      return sq.data?.matched_policy_ids ?? [];
+    },
+    enabled: !!token,
+    staleTime: 5 * 60 * 1000,
+    retry: 2,
+    refetchOnWindowFocus: false,
   });
 };
