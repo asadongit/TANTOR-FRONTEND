@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useWorkflowStore, useUIStore } from '../../../store';
-import { listComponentTemplates, deleteComponentTemplate, listCategories } from '../../../api/agentmesh';
+import { listComponentTemplates, deleteComponentTemplate, listComponentTemplateFilters } from '../../../api/agentmesh';
 import { PREDEFINED_API_CATEGORIES } from '../../../constants/apiCategories';
 import {
   FiSearch, FiGlobe, FiInfo, FiTag, FiGrid, FiList,
@@ -308,23 +308,20 @@ export default function APIsPage() {
   };
 
   useEffect(() => {
-    // Fetch unique groups and categories
-    listCategories('api_node')
+    // Fetch unique groups and categories in a single call
+    listComponentTemplateFilters('api_node')
       .then(res => {
+        // Set Categories
         const dbCats = res.categories || [];
         const cSet = new Set(PREDEFINED_API_CATEGORIES.map(c => c.name));
         dbCats.forEach(c => cSet.add(c.name));
         setCategories(['All', ...Array.from(cSet).sort()]);
+        
+        // Set Groups
+        const dbGroups = res.groups || [];
+        setGroups(['All', ...dbGroups]);
       })
       .catch(e => console.error("Failed to load unique filters:", e));
-      
-    listComponentTemplates({ type: 'api_node', limit: 1000 })
-      .then(res => {
-        const gSet = new Set();
-        (res.templates || []).forEach(t => { if (t.group) gSet.add(t.group); });
-        setGroups(['All', ...Array.from(gSet).sort()]);
-      })
-      .catch(() => {});
   }, [refreshTrigger]);
 
   useEffect(() => {

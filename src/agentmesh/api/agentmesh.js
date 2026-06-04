@@ -221,6 +221,12 @@ export const listCategories = (type) => {
 export const createCategory = (payload) => 
   request('/categories', { method: 'POST', body: JSON.stringify(payload) });
 
+export const listComponentTemplateFilters = (type) => {
+  const p = new URLSearchParams();
+  if (type) p.set('type', type);
+  return request(`/component-templates/filters?${p}`);
+};
+
 export const listComponentTemplates = (params = {}) => {
   const { page = 1, limit = 50, group, category_id, category_name, type, search } = params;
   const p = new URLSearchParams({ page, limit });
