@@ -158,6 +158,8 @@ export const useWorkflowStore = create((set, get) => ({
   dynamicResumption: false,
   warmup: false,
   autoNewSession: false,
+  createdAt: null,
+  updatedAt: null,
 
   // Persisted workflows list
   workflows: [], // Used for paged list in Workflows page
@@ -412,6 +414,8 @@ export const useWorkflowStore = create((set, get) => ({
       globalErrorNode: '',
       dynamicResumption: false,
       autoNewSession: false,
+      createdAt: null,
+      updatedAt: null,
     });
     // ✅ VARIABLE EXPLORER: Clear data explorer when starting a new workflow
     useRunStore.getState().reset();
@@ -454,6 +458,8 @@ export const useWorkflowStore = create((set, get) => ({
       edges: rfEdges,
       isDirty: false,
       isCompiled: w.is_active || false,
+      createdAt: w.created_at || null,
+      updatedAt: w.updated_at || null,
     });
     // ✅ VARIABLE EXPLORER: Clear data explorer when loading an existing workflow
     useRunStore.getState().reset();

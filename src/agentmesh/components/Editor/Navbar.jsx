@@ -61,7 +61,7 @@ export default function Navbar() {
   const {
     workflowName, workflowDescription, workflowGroup, workflowCategory, globalErrorNode, dynamicResumption, warmup, autoNewSession, setWorkflowMeta, workflowId,
     buildConfig, newWorkflow, isDirty, isCompiled, importWorkflow, markClean, markCompiled, loadWorkflowIntoEditor,
-    nodes, edges, listSearch, setListSearch
+    nodes, edges, listSearch, setListSearch, createdAt, updatedAt
   } = useWorkflowStore();
   const {
     activePage,
@@ -106,6 +106,22 @@ export default function Navbar() {
   const [launchMode, setLaunchMode] = React.useState('default');
   const [customLaunchUrl, setCustomLaunchUrl] = React.useState('');
   const [currentVersion, setCurrentVersion] = React.useState(null);
+  const [showMetadataPrompt, setShowMetadataPrompt] = React.useState(false);
+  const [promptName, setPromptName] = React.useState('');
+  const [promptDesc, setPromptDesc] = React.useState('');
+  const [promptGroup, setPromptGroup] = React.useState('Default');
+  const [promptCategory, setPromptCategory] = React.useState('General');
+  const [validationError, setValidationError] = React.useState(null);
+
+  React.useEffect(() => {
+    if (showMetadataPrompt) {
+      setPromptName(workflowName === 'Untitled Workflow' ? '' : workflowName);
+      setPromptDesc(workflowDescription || '');
+      setPromptGroup(workflowGroup || 'Default');
+      setPromptCategory(workflowCategory || 'General');
+      setValidationError(null);
+    }
+  }, [showMetadataPrompt, workflowName, workflowDescription, workflowGroup, workflowCategory]);
 
   React.useEffect(() => {
     if (workflowName) setCustomMarketplaceName(workflowName);
@@ -286,7 +302,87 @@ export default function Navbar() {
     }
   };
 
+  const handleSaveMetadataAndCompile = async (e) => {
+    e.preventDefault();
+    setValidationError(null);
+    const cleanName = promptName.trim();
+    const cleanDesc = promptDesc.trim();
+    const cleanGroup = promptGroup.trim();
+    const cleanCategory = promptCategory;
+
+    if (!cleanName) {
+      setValidationError('Workflow Name is required');
+      return;
+    }
+    if (cleanName.toLowerCase() === 'untitled workflow') {
+      setValidationError('Please enter a custom Workflow Name');
+      return;
+    }
+    if (!cleanDesc) {
+      setValidationError('Workflow Description is required');
+      return;
+    }
+
+    setWorkflowMeta(
+      workflowId,
+      cleanName,
+      cleanDesc,
+      cleanGroup || 'Default',
+      cleanCategory,
+      globalErrorNode,
+      dynamicResumption,
+      warmup,
+      autoNewSession
+    );
+    setShowMetadataPrompt(false);
+
+    setCompiling(true); setStatus(null); setErrMsg('');
+    try {
+      const config = buildConfig();
+      config.name = cleanName;
+      config.description = cleanDesc;
+      config.group = cleanGroup || 'Default';
+      config.category = cleanCategory;
+
+      await compileWorkflow(config);
+      setStatus('compiled');
+      markCompiled();
+      toast.success('Workflow saved and compiled successfully!');
+    } catch (err) {
+      if (err.status === 409) {
+        toast.error(err.message);
+      } else {
+        setStatus('err');
+        setErrMsg(err.message || 'Compile failed');
+      }
+    } finally {
+      setCompiling(false);
+      setTimeout(() => { setStatus(null); setErrMsg(''); }, 4000);
+    }
+  };
+
+  const handleSaveDropdownMetaAndCompile = async () => {
+    if (!workflowName || workflowName.trim().toLowerCase() === 'untitled workflow') {
+      toast.error('Please enter a custom Workflow Name');
+      return;
+    }
+    if (!workflowDescription || !workflowDescription.trim()) {
+      toast.error('Workflow Description is required');
+      return;
+    }
+    setMetaDropdownOpen(false);
+    await handleCompile();
+  };
+
   const handleCompile = async () => {
+    const isNameInvalid = !workflowName || workflowName.trim().toLowerCase() === 'untitled workflow';
+    const isDescInvalid = !workflowDescription || !workflowDescription.trim();
+
+    if (isNameInvalid || isDescInvalid) {
+      setShowMetadataPrompt(true);
+      return;
+    }
+
     setCompiling(true); setStatus(null); setErrMsg('');
     try {
       const config = buildConfig();
@@ -835,7 +931,9 @@ export default function Navbar() {
                     <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--theme-primary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>General Details</div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Workflow Name</label>
+                      <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Workflow Name <span style={{ color: '#ef4d5f' }}>*</span>
+                      </label>
                       <input
                         autoFocus
                         value={workflowName}
@@ -848,7 +946,9 @@ export default function Navbar() {
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</label>
+                      <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Description <span style={{ color: '#ef4d5f' }}>*</span>
+                      </label>
                       <div style={{ position: 'relative' }}>
                         <textarea
                           value={workflowDescription}
@@ -929,6 +1029,25 @@ export default function Navbar() {
                         >
                           {copiedId ? <FiCheck size={12} color="#098c60" /> : <FiCopy size={12} color="#64748B" />}
                         </button>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+                      <div>
+                        <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'block' }}>Created At</label>
+                        <div style={{
+                          fontSize: 12, color: 'var(--text-secondary)', background: '#F8FAFC', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontFamily: 'monospace'
+                        }}>
+                          {createdAt ? new Date(createdAt).toLocaleString() : 'Not Saved Yet'}
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'block' }}>Last Updated</label>
+                        <div style={{
+                          fontSize: 12, color: 'var(--text-secondary)', background: '#F8FAFC', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontFamily: 'monospace'
+                        }}>
+                          {updatedAt ? new Date(updatedAt).toLocaleString() : 'Not Saved Yet'}
+                        </div>
                       </div>
                     </div>
                   </>
@@ -1093,6 +1212,17 @@ export default function Navbar() {
               <button
                 onClick={() => setMetaDropdownOpen(false)}
                 style={{
+                  padding: '8px 16px', background: 'white', border: '1px solid var(--border)', borderRadius: 10,
+                  color: 'var(--text-secondary)', fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveDropdownMetaAndCompile}
+                style={{
                   padding: '8px 24px',
                   background: 'var(--theme-primary-glow)',
                   border: '1px solid var(--theme-primary-glow)',
@@ -1112,7 +1242,7 @@ export default function Navbar() {
                   e.currentTarget.style.color = 'var(--theme-primary)';
                 }}
               >
-                Done
+                Save &amp; Compile
               </button>
             </div>
           </div>
@@ -1698,30 +1828,165 @@ export default function Navbar() {
             justifyContent: 'center'
           }}>
             <button
-              onClick={handleGenerateExplanation}
-              disabled={explaining || !hasNodes}
-              style={{
-                background: 'var(--theme-primary)',
-                color: 'var(--theme-primary-text)',
-                border: 'none',
-                padding: '10px 20px',
-                borderRadius: 12,
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: explaining || !hasNodes ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                transition: 'all 0.2s',
-                opacity: !hasNodes ? 0.6 : 1,
-                boxShadow: '0 4px 12px var(--theme-primary-glow)'
-              }}
-              onMouseEnter={e => { if (!explaining && hasNodes) e.currentTarget.style.background = 'var(--theme-primary-light)'; }}
-              onMouseLeave={e => { if (!explaining && hasNodes) e.currentTarget.style.background = 'var(--theme-primary)'; }}
-            >
-              <FiZap size={14} />
-              {explaining ? 'Analyzing...' : architectExplanation ? 'Regenerate Walkthrough' : 'Explain Workflow'}
-            </button>
+               onClick={handleGenerateExplanation}
+               disabled={explaining || !hasNodes}
+               style={{
+                 background: 'var(--theme-primary)',
+                 color: 'var(--theme-primary-text)',
+                 border: 'none',
+                 padding: '10px 20px',
+                 borderRadius: 12,
+                 fontSize: 13,
+                 fontWeight: 700,
+                 cursor: explaining || !hasNodes ? 'not-allowed' : 'pointer',
+                 display: 'flex',
+                 alignItems: 'center',
+                 gap: 8,
+                 transition: 'all 0.2s',
+                 opacity: !hasNodes ? 0.6 : 1,
+                 boxShadow: '0 4px 12px var(--theme-primary-glow)'
+               }}
+               onMouseEnter={e => { if (!explaining && hasNodes) e.currentTarget.style.background = 'var(--theme-primary-light)'; }}
+               onMouseLeave={e => { if (!explaining && hasNodes) e.currentTarget.style.background = 'var(--theme-primary)'; }}
+             >
+               <FiZap size={14} />
+               {explaining ? 'Analyzing...' : architectExplanation ? 'Regenerate Walkthrough' : 'Explain Workflow'}
+             </button>
+           </div>
+         </div>
+       )}
+      
+      {/* Workflow Metadata Prompt Modal */}
+      {showMetadataPrompt && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 99999,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)'
+        }}>
+          <div style={{
+            width: 500, background: 'white', borderRadius: 20,
+            boxShadow: 'var(--shadow-2xl)', border: '1px solid var(--border)',
+            display: 'flex', flexDirection: 'column', fontFamily: "'Google Sans','Roboto',sans-serif"
+          }}>
+            <div style={{
+              padding: '18px 24px', borderBottom: '1px solid var(--border)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F8FAFC',
+              borderTopLeftRadius: 20, borderTopRightRadius: 20
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--theme-primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--theme-primary)' }}>
+                  <FiSave size={18} />
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
+                  Save &amp; Compile Workflow
+                </div>
+              </div>
+              <button onClick={() => setShowMetadataPrompt(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}>
+                <FiX size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveMetadataAndCompile} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
+              {validationError ? (
+                <div style={{ padding: '10px 14px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 8, color: '#DC2626', fontSize: 12, fontWeight: 500 }}>
+                  {validationError}
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  A custom workflow name and description are required before compiling.
+                </div>
+              )}
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
+                  Workflow Name <span style={{ color: '#ef4d5f' }}>*</span>
+                </label>
+                <input
+                  style={{
+                    width: '100%', padding: '10px 12px', background: 'white',
+                    border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)',
+                    fontSize: 13, outline: 'none', boxSizing: 'border-box'
+                  }}
+                  value={promptName}
+                  onChange={(e) => setPromptName(e.target.value)}
+                  placeholder="e.g. Lead Ingestion & Scoring Engine"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
+                  Workflow Description <span style={{ color: '#ef4d5f' }}>*</span>
+                </label>
+                <textarea
+                  style={{
+                    width: '100%', padding: '10px 12px', background: 'white',
+                    border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)',
+                    fontSize: 13, outline: 'none', boxSizing: 'border-box', minHeight: 70, resize: 'vertical'
+                  }}
+                  value={promptDesc}
+                  onChange={(e) => setPromptDesc(e.target.value)}
+                  placeholder="Describe what this workflow specializes in..."
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
+                    Group
+                  </label>
+                  <input
+                    style={{
+                      width: '100%', padding: '10px 12px', background: 'white',
+                      border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)',
+                      fontSize: 13, outline: 'none', boxSizing: 'border-box'
+                    }}
+                    value={promptGroup}
+                    onChange={(e) => setPromptGroup(e.target.value)}
+                    placeholder="Default"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
+                    Category
+                  </label>
+                  <select
+                    style={{
+                      width: '100%', padding: '10px 12px', background: 'white',
+                      border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)',
+                      fontSize: 13, outline: 'none', boxSizing: 'border-box', cursor: 'pointer'
+                    }}
+                    value={promptCategory}
+                    onChange={(e) => setPromptCategory(e.target.value)}
+                  >
+                    <option value="General">General</option>
+                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ 
+                marginTop: 10, display: 'flex', justifyContent: 'flex-end', gap: 12
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setShowMetadataPrompt(false)}
+                  style={{ padding: '9px 18px', background: 'white', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    padding: '9px 22px', background: 'var(--theme-primary)', color: 'white', 
+                    border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    boxShadow: '0 4px 12px var(--theme-primary-glow)'
+                  }}
+                >
+                  Save &amp; Compile
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
