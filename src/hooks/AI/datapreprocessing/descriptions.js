@@ -6,6 +6,7 @@
 export const dataPreprocessingDescriptions = {
   changeDataType: "Change Data Type refers to converting a feature to its appropriate data format (e.g., string to numeric, date to datetime). Correct data types ensure accurate calculations, proper validation, and correct model behavior.",
   aggregation: " Aggregation combines multiple records with the same timestamp. It combines those rows into a single row by applying operations like sum, average, max, or count. This removes duplication and creates one clean summarized value for analysis.",
+  handleHighMissing: "Configure the threshold used to identify columns with a high percentage of missing values",
   handleOriginalMissing: "Handle missing values that existed in the original dataset using interpolation or forward/backward fill methods.",
   handleGeneratedMissing: "Handle missing values that were created during preprocessing or feature generation.",
   stationarityTreatment: "Stationarity Treatment applies transformations to non-stationary time series to achieve statistical stationarity. This includes differencing, detrending, and other techniques to stabilize the mean, variance, and autocovariance over time, making the data suitable for time series modeling.",
@@ -26,50 +27,284 @@ export const featureSelectionDescriptions = {
   imputation: "Imputation is the process of handling missing or null values by replacing them with meaningful estimates based on data patterns or predefined rules. It helps maintain dataset completeness, prevents errors during model training, and ensures reliable analytical results."
 };
 
+
+
 export const dataStabilizationDescriptions = {
   outlierTreatment: "Outlier Treatment refers to techniques used to identify and handle extreme or abnormal values that can distort time series behavior. These methods help reduce noise, improve stability, and make downstream forecasting more reliable.",
   stationarityAnalysis: "Stationarity Analysis evaluates whether a time series has stable statistical properties over time. Identifying non-stationary behavior helps determine whether transformations are needed before modeling.",
   seasonalityAnalysis: "Seasonality Analysis detects and quantifies recurring patterns in time series data. It identifies periodic fluctuations that repeat at fixed intervals, helping to understand cyclic behavior and improve forecasting accuracy."
 };
+export const univariateOutlierDetectionMethods = [
+  {
+    value: 'stl_mad',
+    label: 'STL + MAD',
+    description:
+      'Uses STL decomposition and Median Absolute Deviation (MAD) on residuals to identify anomalous observations.',
+    subMethod: 'seasonal_period'
+  },
+  {
+    value: 'rolling_median_iqr',
+    label: 'Rolling Median + IQR',
+    description:
+      'Detects outliers using a rolling median and Interquartile Range (IQR) within a moving window.',
+    subMethod: 'rolling_window'
+  },
+  {
+    value: 'rolling_mean_sigma',
+    label: 'Rolling Mean + Sigma',
+    description:
+      'Detects outliers by measuring deviations from the rolling mean using standard deviation thresholds.',
+    subMethod: 'rolling_window'
+  },
+  {
+    value: 'seasonal_decomp_residuals',
+    label: 'Seasonal Decomposition Residuals',
+    description:
+      'Performs seasonal decomposition and identifies anomalies from the residual component.',
+    subMethod: 'seasonal_period'
+  },
+  {
+    value: 'loess_residuals',
+    label: 'LOESS Residuals',
+    description:
+      'Uses LOESS smoothing and detects outliers based on deviations from the locally fitted trend.'
+  },
+  {
+    value: 'isolation_forest',
+    label: 'Isolation Forest',
+    description:
+      'A tree-based anomaly detection algorithm that isolates observations through random partitioning. Outliers require fewer splits and are identified as anomalies.'
+  },
+  {
+    value: 'pelt',
+    label: 'PELT',
+    description:
+      'Pruned Exact Linear Time (PELT) detects structural changes and changepoints that may indicate anomalous behavior.'
+  },
+  {
+    value: 'modified_zscore',
+    label: 'Modified Z-Score',
+    description:
+      'A robust statistical method that uses the median and Median Absolute Deviation (MAD) to identify outliers.'
+  }
+];
 
-export const outlierTreatmentMethods = [
+export const multivariateOutlierDetectionMethods = [
   {
-    value: 'cap_95',
-    label: 'Cap 95%',
-    description: 'Cap 95% is an outlier treatment technique that limits extreme values to the 95th percentile of the data. Any value above this threshold is replaced with the 95th percentile value, reducing the impact of extreme observations while keeping all records.'
+    value: 'isolation_forest',
+    label: 'Isolation Forest',
+    description:
+      'A tree-based anomaly detection algorithm that isolates observations through random partitioning. Outliers require fewer splits and are identified as anomalies.'
   },
   {
-    value: 'cap_99',
-    label: 'Cap 99%',
-    description: 'Cap 99% is an outlier treatment method that limits extreme values to the 99th percentile. It preserves most data variability while preventing very rare extreme values from dominating the analysis.'
+    value: 'lof',
+    label: 'LOF',
+    description:
+      'Local Outlier Factor detects anomalies by comparing the local density of each observation with its neighbors.'
   },
   {
-    value: 'log',
-    label: 'Log Transform',
-    description: 'Log Transform is a mathematical transformation that reduces the effect of large values by applying a logarithmic scale. It compresses extreme values and helps normalize skewed data, making patterns easier for models to learn.'
+    value: 'one_class_svm',
+    label: 'One Class SVM',
+    description:
+      'Learns the boundary of normal observations and flags records lying outside that boundary as anomalies.'
   },
   {
-    value: 'bin',
-    label: 'Bin',
-    description: 'Binning groups continuous values into discrete intervals or bins, reducing the impact of outliers by treating them as part of boundary bins.'
+    value: 'elliptic_envelope',
+    label: 'Elliptic Envelope',
+    description:
+      'Fits a robust covariance-based elliptical boundary around normal observations and identifies points outside it as outliers.'
+  },
+  {
+    value: 'dbscan',
+    label: 'DBSCAN',
+    description:
+      'A density-based clustering algorithm that identifies observations not belonging to any dense cluster as anomalies.'
+  }
+];
+
+
+export const univariateOutlierMethods = [
+  {
+    value: 'pchip',
+    label: 'PCHIP',
+    description:
+      'Piecewise Cubic Hermite Interpolating Polynomial (PCHIP) replaces outliers using a shape-preserving interpolation technique. It maintains local trends and avoids overshooting, making it suitable for smooth time series reconstruction.'
+  },
+  {
+    value: 'linear',
+    label: 'Linear',
+    description:
+      'Linear interpolation replaces outliers by estimating values along a straight line between neighboring observations. It is simple, efficient, and works well when changes between observations are gradual.'
+  },
+  {
+    value: 'cubic_spline',
+    label: 'Cubic Spline',
+    description:
+      'Cubic spline interpolation replaces outliers using smooth polynomial curves fitted between neighboring observations. It produces smoother transitions than linear interpolation and captures non-linear patterns.'
+  },
+  {
+    value: 'time_weighted',
+    label: 'Time Weighted',
+    description:
+      'Time-weighted interpolation estimates replacement values based on the temporal distance between observations. Closer observations receive greater influence than distant observations.'
+  },
+  {
+    value: 'rolling_median',
+    label: 'Rolling Median',
+    description:
+      'Rolling Median replaces outliers using the median value within a moving window. It is robust to extreme observations and helps preserve the underlying trend.',
+    subMethod: 'rolling_window'
+  },
+  {
+    value: 'rolling_mean',
+    label: 'Rolling Mean',
+    description:
+      'Rolling Mean replaces outliers using the average value within a moving window. It smooths short-term fluctuations and reduces the influence of isolated spikes.',
+    subMethod: 'rolling_window'
+  },
+  {
+    value: 'ewm',
+    label: 'Exponentially Weighted Mean',
+    description:
+      'Exponentially Weighted Mean replaces outliers using a weighted average that assigns greater importance to recent observations. This helps preserve recent trends while reducing noise.',
+    subMethod: 'rolling_window'
+  },
+  {
+    value: 'seasonal_naive',
+    label: 'Seasonal Naive',
+    description:
+      'Seasonal Naive replaces outliers using values from the same seasonal position in previous cycles. It is effective when the series exhibits strong repeating seasonal patterns.',
+    subMethod: 'seasonal_period'
+  },
+  {
+    value: 'seasonal_median',
+    label: 'Seasonal Median',
+    description:
+      'Seasonal Median replaces outliers using the median of values from equivalent seasonal positions across cycles. This reduces sensitivity to extreme seasonal observations.',
+    subMethod: 'seasonal_period'
+  },
+  {
+    value: 'seasonal_mean',
+    label: 'Seasonal Mean',
+    description:
+      'Seasonal Mean replaces outliers using the average value from equivalent seasonal positions across cycles. It preserves recurring seasonal behavior while reducing noise.',
+    subMethod: 'seasonal_period'
+  },
+  {
+    value: 'stl_reconstruction',
+    label: 'STL Reconstruction',
+    description:
+      'STL Reconstruction decomposes the series into trend, seasonal, and residual components. Outliers are replaced using the reconstructed signal while preserving overall structure.',
+    subMethod: 'seasonal_period'
+  },
+  {
+    value: 'ffill',
+    label: 'Forward Fill',
+    description:
+      'Forward Fill replaces outliers using the most recent valid observation. This approach is useful when values are expected to remain relatively stable over short periods.'
+  },
+  {
+    value: 'bfill',
+    label: 'Backward Fill',
+    description:
+      'Backward Fill replaces outliers using the next available valid observation. It is useful when future observations provide a reasonable estimate of the abnormal value.'
+  },
+  {
+    value: 'nearest',
+    label: 'Nearest',
+    description:
+      'Nearest replacement substitutes outliers with the closest valid neighboring observation. It preserves existing values without introducing interpolated estimates.'
+  },
+  {
+    value: 'local_winsorize',
+    label: 'Local Winsorize',
+    description:
+      'Local Winsorization limits extreme values within a moving window by capping them to local percentile boundaries. This reduces the influence of outliers while retaining observations.',
+    subMethod: 'rolling_window'
+  },
+  {
+    value: 'hard_clip',
+    label: 'Hard Clip',
+    description:
+      'Hard Clip replaces values outside predefined limits with boundary values. This prevents extreme observations from disproportionately influencing analysis.'
+  },
+  {
+    value: 'flag_binary',
+    label: 'Flag Binary',
+    description:
+      'Flag Binary creates an indicator variable identifying whether an observation is considered an outlier. The original value remains unchanged.'
+  },
+  {
+    value: 'flag_magnitude',
+    label: 'Flag Magnitude',
+    description:
+      'Flag Magnitude records the severity of deviation from expected behavior. It preserves information about the size of the anomaly while allowing downstream handling.',
+    subMethod: 'rolling_window'
+  }
+];
+
+
+export const multivariateOutlierMethods = [
+  {
+    value: 'pchip',
+    label: 'PCHIP',
+    description:
+      'PCHIP interpolation replaces outliers while preserving local shape and monotonicity across related variables.'
+  },
+  {
+    value: 'rolling_median',
+    label: 'Rolling Median',
+    description:
+      'Rolling Median replaces outliers using the median value within a moving window, reducing sensitivity to extreme observations.',
+    subMethod: 'rolling_window'
+  },
+  {
+    value: 'flag_binary',
+    label: 'Flag Binary',
+    description:
+      'Creates an indicator feature showing whether a record has been identified as an outlier.'
+  },
+  {
+    value: 'flag_magnitude',
+    label: 'Flag Magnitude',
+    description:
+      'Creates a feature representing the magnitude of deviation from expected behavior.',
+    subMethod: 'rolling_window'
+  },
+  {
+    value: 'mahalanobis_clip',
+    label: 'Mahalanobis Clip',
+    description:
+      'Uses Mahalanobis distance to identify multivariate outliers and clips observations that exceed the acceptable threshold while preserving overall relationships between variables.'
+  },
+  {
+    value: 'median_impute',
+    label: 'Median Impute',
+    description:
+      'Replaces detected outliers with the median value of the corresponding feature. This approach is robust to skewed distributions and extreme observations.'
+  },
+  {
+    value: 'knn_impute',
+    label: 'KNN Impute',
+    description:
+      'Uses K-Nearest Neighbors to replace outliers with values inferred from similar observations. It preserves local structure and feature relationships.'
+  },
+  {
+    value: 'soft_impute',
+    label: 'Soft Impute',
+    description:
+      'Uses matrix-completion techniques to estimate replacement values while preserving relationships across multiple variables.'
   },
   {
     value: 'remove',
     label: 'Remove',
-    description: 'Remove is an outlier handling approach that completely deletes records identified as outliers. This method is used when extreme values are invalid, erroneous, or likely to distort model performance.'
+    description:
+      'Removes observations identified as outliers from the dataset. This method is suitable when abnormal values are likely caused by errors or corruption.'
   }
 ];
 
-export const outlierMethods = [
-  { value: 'zscore', label: 'Z-Score', description: 'A statistical method that identifies outliers based on how far a data point deviates from the mean in terms of standard deviation. Values with very high or low Z-scores are considered outliers. Best suited for data that follows a normal distribution.' },
-  { value: 'modified_zscore', label: 'Modified Z-Score', description: 'A robust version of Z-score that uses the median and median absolute deviation (MAD). It reduces the impact of extreme values. More reliable than standard Z-score for skewed data.' },
-  { value: 'iqr', label: 'IQR', description: 'A statistical method that identifies outliers using the range between the first and third quartiles. Values falling far below or above this range are treated as outliers. Commonly used for non-normal data distributions.' },
-  { value: 'isolation_forest', label: 'Isolation Forest', description: 'A tree-based anomaly detection algorithm that isolates outliers by randomly partitioning data. Outliers are detected because they require fewer splits to isolate. Effective for large and high-dimensional datasets.' },
-  { value: 'lof', label: 'LOF', description: 'A density-based method that detects outliers by comparing local data density. Points with significantly lower density than their neighbors are flagged as outliers. Captures local anomalies effectively.' },
-  { value: 'one_class_svm', label: 'One Class SVM', description: 'A machine learning algorithm that learns the boundary of normal data. Data points falling outside the learned boundary are treated as outliers. Useful when only normal data is available for training.' },
-  { value: 'elliptic_envelope', label: 'Elliptic Envelope', description: 'A statistical method that fits an elliptical boundary around normal data points. Observations outside the ellipse are considered outliers. Works best when data follows a Gaussian distribution.' },
-  { value: 'dbscan', label: 'DBSCAN', description: 'A density-based clustering algorithm that identifies noise points as outliers. Points not belonging to any dense cluster are labeled as outliers. Effective for detecting clusters of arbitrary shape.' }
-];
+
+
 
 export const encodingMethods = [
   {

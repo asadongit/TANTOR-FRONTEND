@@ -6,6 +6,7 @@ import { useAIPlayground } from '../../../../../../../../context/AIPlaygroundCon
 
 import HandleOriginalMissingValues from './HandleOriginalMissingValues';
 import HandleGeneratedMissingValues from './HandleGeneratedMissingValues';
+import HandleHighMissingValues from './HandleHighMissingValues';
 
 function HandleMissingValues({
   readonly: readonlyProp,
@@ -87,8 +88,13 @@ function HandleMissingValues({
   // Local UI state for the step cards and dropdown controls.
 
   const [toggles, setToggles] = useState({
+     handleHighMissing: numericColumns.length > 0,
   handleOriginalMissing: isUnivariateTimeseries ? false : hasAnyOriginalMissing,
   handleGeneratedMissing: hasAnyGeneratedMissing,
+  
+});
+const [highMissingConfig, setHighMissingConfig] = useState({
+  threshold: '',
 });
 
   const [originalMissingConfig, setOriginalMissingConfig] = useState({
@@ -121,6 +127,7 @@ function HandleMissingValues({
   });
 
   const [expandedSections, setExpandedSections] = useState({
+    handleHighMissing: true,
     handleOriginalMissing: true,
     handleGeneratedMissing: false,
   });
@@ -133,9 +140,12 @@ function HandleMissingValues({
     workflowState?.dataPreprocessing?.step3?.config;
   if (savedConfig) {
     setToggles({
+       handleHighMissing:savedConfig.high_missing_value_active ??(numericColumns.length > 0),
       handleOriginalMissing: isUnivariateTimeseries ? false : (savedConfig.original_missing_value_active || false),
       handleGeneratedMissing:savedConfig.generated_missing_value_active || false, });
-
+    setHighMissingConfig({threshold:
+    savedConfig.high_missing_value_threshold ?? '',
+    });
     setOriginalMissingConfig({
       numeric:savedConfig.original_missing_value_numeric_method || '',
       categorical: savedConfig.original_missing_value_categorical_method || '',
@@ -151,7 +161,7 @@ function HandleMissingValues({
       rollingWindow: savedConfig.generated_missing_value_rolling_window ?? '',
       numericSeasonalgeneratedPeriod:savedConfig.generated_missing_value_numeric_seasonal_period || '',
       categoricalSeasonalgeneratedPeriod:savedConfig.generated_missing_value_categorical_seasonal_period || '', }); }
-}, [mode, workflowState?.dataPreprocessing?.step3?.config, isUnivariateTimeseries]);
+}, [mode, workflowState?.dataPreprocessing?.step3?.config, isUnivariateTimeseries, numericColumns]);
 
   // Ensure original missing values toggle stays off for univariate timeseries
   useEffect(() => {
@@ -162,6 +172,14 @@ function HandleMissingValues({
       }));
     }
   }, [isUnivariateTimeseries, toggles.handleOriginalMissing]);
+// Automatically enable the generated missing values toggle if generated features with missing values are detected.
+  useEffect(() => {
+  const hasNumericalColumns = numericColumns.length > 0;
+
+  setToggles(prev => ({
+    ...prev,
+    handleHighMissing: hasNumericalColumns,}));
+    }, [numericColumns]);
 
   // Validation helpers for the step's original and generated missing-value selections.
 
@@ -247,10 +265,32 @@ function HandleMissingValues({
     return '';
   };
 
-  const validateStep = () => {
-    return !getOriginalMissingError() && !getGeneratedMissingError();
-  };
 
+  const getHighMissingError = () => {
+  if (!toggles.handleHighMissing) return '';
+
+  const threshold = Number(
+    highMissingConfig.threshold
+  );
+
+  if (
+    !Number.isFinite(threshold) ||
+    threshold < 0 ||
+    threshold > 100
+  ) {
+    return 'Threshold must be between 0 and 100';
+  }
+
+  return '';
+};
+// VALIDATION helper to determine if the step is ready to be submitted to the API.
+  const validateStep = () => {
+  return (
+    !getHighMissingError() &&
+    !getOriginalMissingError() &&
+    !getGeneratedMissingError()
+  );
+};
   const getApiErrorMessage = () => 'Failed to handle missing values, please try again';
 
  
@@ -274,6 +314,8 @@ function HandleMissingValues({
       const payload= {
         ensembleId: datasetState?.ensembleId,
         workflowId: currentWorkflowId,
+        highMissingValueActive:toggles.handleHighMissing,
+        highMissingValueThreshold:Number(highMissingConfig.threshold) || 70,
         originalMissingValueActive: hasAnyOriginalMissing,
         originalMissingValueNumericMethod: originalMissingConfig.numeric || 'linear',
         originalMissingValueCategoricalMethod: originalMissingConfig.categorical || 'ffill',
@@ -308,6 +350,8 @@ function HandleMissingValues({
     validateStep,
     datasetState,
     currentWorkflowId,
+    highMissingConfig,
+    toggles.handleHighMissing,
     originalMissingConfig,
     generatedMissingConfig,
     hasAnyOriginalMissing,
@@ -325,6 +369,8 @@ function HandleMissingValues({
     const timeout = setTimeout(() => {
       updatePreprocessingStep('step3', {
         config: {
+          high_missing_value_active:toggles.handleHighMissing,
+          high_missing_value_threshold:highMissingConfig.threshold,
           original_missing_value_active: toggles.handleOriginalMissing,
           generated_missing_value_active: toggles.handleGeneratedMissing,
           original_missing_value_numeric_method: originalMissingConfig.numeric,
@@ -344,14 +390,29 @@ function HandleMissingValues({
     }, 500);
 
     return () => clearTimeout(timeout);
-  }, [toggles, originalMissingConfig, generatedMissingConfig, updatePreprocessingStep]);
-
+  }, [toggles, highMissingConfig,originalMissingConfig, generatedMissingConfig, updatePreprocessingStep]);
+useEffect(() => {
+  setToggles(prev => ({
+    ...prev,
+    handleGeneratedMissing: hasAnyGeneratedMissing,
+  }));
+}, [hasAnyGeneratedMissing]);
   // Surface validation feedback only after the user attempts to process the step.
   const originalMissingError = showFieldErrors ? getOriginalMissingError() : '';
   const generatedMissingError = showFieldErrors ? getGeneratedMissingError() : '';
 
   return (
     <div className="space-y-4 p-4">
+      {/*High missing values card.*/}
+      <HandleHighMissingValues
+       readonly={readonly}
+      toggles={toggles}
+      setToggles={setToggles}
+      highMissingConfig={highMissingConfig}
+      setHighMissingConfig={setHighMissingConfig}
+     numericColumns={numericColumns}
+     showFieldErrors={showFieldErrors}
+     />
       {/* Original missing-values card. */}
       {!isUnivariateTimeseries && (
         <HandleOriginalMissingValues

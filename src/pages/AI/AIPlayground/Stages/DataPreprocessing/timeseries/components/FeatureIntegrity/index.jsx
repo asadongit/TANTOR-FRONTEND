@@ -6,7 +6,7 @@ import { useAIPlayground } from '../../../../../../../../context/AIPlaygroundCon
 import HighUniqunessDrop from './HighUniquenessDrop';
 import OutlierDetection from './OutlierDetection';
 import LowVarianceDroppedNotification from './LowVarianceDroppedNotification';
-import { featureSelectionDescriptions, outlierMethods as OUTLIER_METHODS } from '../../../../../../../../hooks/AI/datapreprocessing/descriptions';
+import { univariateOutlierDetectionMethods,multivariateOutlierDetectionMethods,} from '../../../../../../../../hooks/AI/datapreprocessing/descriptions';
 
 
 function FeatureIntegrity({ readonly: readonlyProp, onApiCall ,predictionType,}) {
@@ -22,50 +22,127 @@ function FeatureIntegrity({ readonly: readonlyProp, onApiCall ,predictionType,})
       uniqueness: `${(item.uniqueness_ratio * 100).toFixed(2)}%`,
     })) || [];
 
-  const lowVarianceColumnsDropped =
-    workflowState?.dataPreprocessing?.step2?.apiResponse
-      ?.low_variance_columns_dropped || [];
+  const lowVarianceColumnsDropped =workflowState?.dataPreprocessing?.step2?.apiResponse?.low_variance_columns_dropped || [];
   const isUnivariateTimeseries = predictionType === 'univariate_timeseries';
-  const [expandedSections, setExpandedSections] = useState({ dropLowValue: false });
+  // outlier methods rendered depend on prediction type
+  const availableOutlierOptions = isUnivariateTimeseries? univariateOutlierDetectionMethods: multivariateOutlierDetectionMethods;
+  const [expandedSections, setExpandedSections] = useState({ dropLowValue: false, detectOutliers: false });
   const [toggles, setToggles] = useState({ dropLowValue: false, detectOutliers: false });
   const [selectedColumns, setSelectedColumns] = useState({});
   const [selectAll, setSelectAll] = useState(false);
   const [showFieldErrors, setShowFieldErrors] = useState(false);
-  const [outlierMethod, setOutlierMethod] = useState('zscore');
-  const [hoveredOutlier, setHoveredOutlier] = useState(null);
-
-  
+  const [outlierConfig, setOutlierConfig] = useState({ method: '',rollingWindow: '',seasonalPeriod: '',});
+  const rollingWindowMethods = ['rolling_median_iqr','rolling_mean_sigma',];
+  const seasonalPeriodMethods = ['stl_mad','seasonal_decomp_residuals',];
 
   useEffect(() => {
-    if ((mode === 'view' || mode === 'edit') && workflowState?.dataPreprocessing?.step2?.config) {
-      const config = workflowState.dataPreprocessing.step2.config;
-      setToggles((p) => ({ ...p, dropLowValue: config.drop_high_uniqueness_active || false }));
-      if (config.columns_to_drop_manually && config.columns_to_drop_manually.length > 0) {
-        const newSelected = {};
-        config.columns_to_drop_manually.forEach((columnName, idx) => {
-          newSelected[`${columnName}-${idx}`] = true;
-        });
-        setSelectedColumns(newSelected);
-      }
+  if (
+    (mode === 'view' || mode === 'edit') &&
+    workflowState?.dataPreprocessing?.step2?.config
+  ) {
+    const config = workflowState.dataPreprocessing.step2.config;
+    setToggles({
+      dropLowValue:config.dropColumnsActive || false,
+      detectOutliers: config.outlierDetectionActive || false,
+    });
+    setOutlierConfig({
+      method:config.outlierDetectionMethod || '',
+      rollingWindow:config.outlierRollingWindow || '',
+      seasonalPeriod:config.outlierSeasonPeriod || '',
+    });
+    if (
+      config.columnsToDrop &&
+      config.columnsToDrop.length > 0
+    ) {
+      const newSelected = {};
+      config.columnsToDrop.forEach((columnName, idx) => {
+        newSelected[`${columnName}-${idx}`] = true;
+      });
+      setSelectedColumns(newSelected);
     }
-  }, [mode, workflowState?.dataPreprocessing?.step2?.config]);
+    setExpandedSections({
+      dropLowValue:
+        config.dropColumnsActive || false,
+      detectOutliers:
+        config.outlierDetectionActive || false,
+    });
+  }}, [mode,workflowState?.dataPreprocessing?.step3?.config,]);
 
   const getDropLowValueError = () => {
     if (!toggles.dropLowValue) return '';
     if (Object.values(selectedColumns).filter(Boolean).length === 0) return 'Please select at least one column.';
     return '';
   };
-
   const dropLowValueError = showFieldErrors ? getDropLowValueError() : '';
+  const validateStep = () => {
+  if (getDropLowValueError()) return false;
+  if (
+    toggles.detectOutliers &&
+    (
+      !outlierConfig.method ||
+      rollingWindowError ||
+      seasonalPeriodError
+    )
+  ) {
+    return false;
+  }
+  return true;
+};
+  const methodError =showFieldErrors &&toggles.detectOutliers &&!outlierConfig.method? 'Please select an outlier detection method': '';
+  const rollingWindowError =
+  showFieldErrors &&
+  toggles.detectOutliers &&
+  rollingWindowMethods.includes(outlierConfig.method) &&
+  (
+    !Number(outlierConfig.rollingWindow) ||
+    Number(outlierConfig.rollingWindow) < 3 ||
+    Number(outlierConfig.rollingWindow) > 365
+  )
+    ? 'Value must be between 3 and 365'
+    : '';
 
-  const validateStep = () => !getDropLowValueError();
+  const seasonalPeriodError =
+  showFieldErrors &&
+  toggles.detectOutliers &&
+  seasonalPeriodMethods.includes(outlierConfig.method) &&
+  (
+    !Number(outlierConfig.seasonalPeriod) ||
+    Number(outlierConfig.seasonalPeriod) < 2 ||
+    Number(outlierConfig.seasonalPeriod) > 365
+  )
+    ? 'Value must be between 2 and 365'
+    : '';  
 
+  useEffect(() => {
+  if (!showFieldErrors) return;
+
+  const outlierError =
+    toggles.detectOutliers &&
+    (
+      !outlierConfig.method ||
+      rollingWindowError ||
+      seasonalPeriodError
+    );
+
+  if (!outlierError) {
+    setShowFieldErrors(false);
+  }
+}, [outlierConfig,toggles,showFieldErrors,rollingWindowError, seasonalPeriodError,]);  
   const makeApiCall = async () => {
     if (readonly) return true;
     const isValid = validateStep();
     if (!isValid) {
       setShowFieldErrors(true);
-      setExpandedSections({ dropLowValue: !!getDropLowValueError() });
+      setExpandedSections({
+  dropLowValue: !!getDropLowValueError(),
+  detectOutliers:
+    toggles.detectOutliers &&
+    (
+      !outlierConfig.method ||
+      rollingWindowError ||
+      seasonalPeriodError
+    ),
+});
       return false;
     }
 
@@ -78,7 +155,9 @@ function FeatureIntegrity({ readonly: readonlyProp, onApiCall ,predictionType,})
         dropColumnsActive: toggles.dropLowValue,
         columnsToDrop: columnsToDropManually,
         outlierDetectionActive: toggles.detectOutliers,
-        outlierDetectionMethod: outlierMethod,
+        outlierDetectionMethod: outlierConfig.method,
+        outlierRollingWindow:Number(outlierConfig.rollingWindow) || 7,
+        outlierSeasonPeriod:Number(outlierConfig.seasonalPeriod) || 7,
         outlierThreshold: 3,
       };
 
@@ -100,7 +179,7 @@ function FeatureIntegrity({ readonly: readonlyProp, onApiCall ,predictionType,})
 
   useEffect(() => {
     if (onApiCall) onApiCall(makeApiCall);
-  }, [toggles, selectedColumns, datasetState?.ensembleId, currentWorkflowId, outlierMethod]);
+  }, [toggles, selectedColumns, datasetState?.ensembleId, currentWorkflowId, outlierConfig]);
 
   const toggleSection = (section) => {
     setExpandedSections({ dropLowValue: false, [section]: !expandedSections[section] });
@@ -157,17 +236,23 @@ function FeatureIntegrity({ readonly: readonlyProp, onApiCall ,predictionType,})
       )}
 
       <OutlierDetection
-        toggles={toggles}
-        toggleSwitch={toggleSwitch}
-        expandedSections={expandedSections}
-        toggleSection={toggleSection}
-        outlierMethod={outlierMethod}
-        setOutlierMethod={setOutlierMethod}
-        hoveredOutlier={hoveredOutlier}
-        setHoveredOutlier={setHoveredOutlier}
-        outlierMethods={OUTLIER_METHODS}
-        readonly={readonly}
-      />
+      isToggled={toggles.detectOutliers}
+      isExpanded={expandedSections.detectOutliers}
+      onToggle={() => toggleSwitch('detectOutliers')}
+      onExpand={() => toggleSection('detectOutliers')}
+      readonly={readonly}
+      outlierConfig={outlierConfig}
+      setOutlierConfig={setOutlierConfig}
+      availableOutlierOptions={availableOutlierOptions}
+      methodError={methodError}
+      rollingWindowError={rollingWindowError}
+      seasonalPeriodError={seasonalPeriodError}
+      hasError={
+        !!methodError ||
+        !!rollingWindowError ||
+        !!seasonalPeriodError
+      }
+     />
     </div>
   );
 }

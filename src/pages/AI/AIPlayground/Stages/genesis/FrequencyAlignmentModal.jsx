@@ -13,45 +13,20 @@ const FrequencyAlignmentModal = ({
   onClose
 }) => {
   const [isAligning, setIsAligning] = useState(false);
-
-  const [numericalAggregation, setNumericalAggregation] =
-    useState('mean');
-
-  const [categoricalAggregation, setCategoricalAggregation] =
-    useState('mode');
-
-  const [datetimeAggregation, setDatetimeAggregation] =
-    useState('min');
-
+  const [numericalAggregation, setNumericalAggregation] =useState('mean');
+  const [categoricalAggregation, setCategoricalAggregation] =useState('mode');
+  const [datetimeAggregation, setDatetimeAggregation] =useState('min');
   const [searchValues, setSearchValues] = useState({});
   const [showDropdowns, setShowDropdowns] = useState({});
-
   if (!isOpen || !validationData) return null;
-
-  const duplicateIssue =
-    validationData?.frequency_issues?.find(
-      issue => issue.issue_type === 'duplicate'
-    );
-
-  const missingIssue =
-    validationData?.frequency_issues?.find(
-      issue => issue.issue_type === 'missing'
-    );
-
-  const irregularIssue =
-    validationData?.frequency_issues?.find(
-      issue => issue.issue_type === 'irregular'
-    );
-
-  const hasIrregularIssue =
-    validationData?.frequency_issues?.some(
-      issue => issue.issue_type === 'irregular'
-    );
-
+  // backend data
+  const duplicateIssue =validationData?.frequency_issues?.find(issue => issue.issue_type === 'duplicate');
+  const missingIssue =validationData?.frequency_issues?.find(issue => issue.issue_type === 'missing' );
+  const irregularIssue =validationData?.frequency_issues?.find(issue => issue.issue_type === 'irregular');
+  const hasIrregularIssue =validationData?.frequency_issues?.some( issue => issue.issue_type === 'irregular');
   const handleAlign = async () => {
     try {
       setIsAligning(true);
-
       const response = await fetch(
         `${hostnameAI}/genesis/frequency-alignment`,
         {

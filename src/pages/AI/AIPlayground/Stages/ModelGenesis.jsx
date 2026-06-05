@@ -1188,29 +1188,37 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
             <div className="bg-white rounded-lg p-4 border border-gray-200">
               <div className="flex items-center gap-4">
                 <input
-                  type="range"
-                  min="3"
-                  max="18"
-                  value={config.timeSeriesLookback || 7}
-                  disabled={readonly}
-                  onChange={
-                    readonly
-                      ? undefined
-                      : (e) => handleTimeSeriesLookbackChange(parseInt(e.target.value))
-                  }
-                  className={`slider-train flex-1 rounded-lg appearance-none ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-                  style={{
-  height: '10px',
-  background: `linear-gradient(to right, #8e78b7 0%, #8e78b7 ${(((config.timeSeriesLookback || 7) - 3) / (18 - 3)) * 100}%, #E5E5E5 ${(((config.timeSeriesLookback || 7) - 3) / (18 - 3)) * 100}%, #E5E5E5 100%)`
-}}
-                />
+  type="range"
+  min="6"
+  max="18"
+  value={config.timeSeriesLookback || 7}
+  disabled={readonly}
+  onChange={
+    readonly
+      ? undefined
+      : (e) => handleTimeSeriesLookbackChange(parseInt(e.target.value))
+  }
+  className={`slider-train flex-1 rounded-lg appearance-none ${
+    readonly ? 'cursor-not-allowed' : 'cursor-pointer'
+  }`}
+  style={{
+    height: '10px',
+    background: `linear-gradient(
+      to right,
+      #8e78b7 0%,
+      #8e78b7 ${(((config.timeSeriesLookback || 7) - 6) / (18 - 6)) * 100}%,
+      #E5E5E5 ${(((config.timeSeriesLookback || 7) - 6) / (18 - 6)) * 100}%,
+      #E5E5E5 100%
+    )`
+  }}
+/>
                 <div className="flex items-center justify-center bg-[#8e78b7] text-white rounded-md px-4 py-2 min-w-16">
                   <span className="text-sm font-medium">{config.timeSeriesLookback || 7}</span>
                 </div>
               </div>
 
               <div className="flex justify-between mt-3 text-xs text-gray-500">
-                <span>3</span>
+                <span>6</span>
                 <span>18</span>
               </div>
             </div>

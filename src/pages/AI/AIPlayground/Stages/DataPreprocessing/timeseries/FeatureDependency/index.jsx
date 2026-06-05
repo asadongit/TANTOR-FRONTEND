@@ -237,10 +237,20 @@ function FeatureDependency({
    * =======================================================
    */
 
-  const toggleDropper = (key) => {
-    if (isReadonly || isLoading) return;
-    setDropperToggles(prev => ({ ...prev, [key]: !prev[key] }));
-  };
+ const toggleDropper = (key) => {
+  if (isReadonly || isLoading) return;
+
+  setDropperToggles(prev => {
+    const isCurrentlyOpen = prev[key];
+
+    return {
+      vif: false,
+      correlation: false,
+      featureTarget: false,
+      [key]: !isCurrentlyOpen
+    };
+  });
+};
 
   /**
    * =======================================================
