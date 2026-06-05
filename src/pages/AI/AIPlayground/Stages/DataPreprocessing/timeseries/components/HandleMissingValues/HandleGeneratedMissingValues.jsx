@@ -33,47 +33,42 @@ function HandleGeneratedMissingValues({
   showFieldErrors,
 }) {
 
-  /* -------------------------------------------------------------
-   * Local state: controls whether the card section is expanded.
-   * ------------------------------------------------------------- */
+ 
+//Local state: controls whether the card section is expanded.
+
   const [expandedSections, setExpandedSections] = useState({
     handleGeneratedMissing: false,
   });
 
-  /* -------------------------------------------------------------
-   * Local state: stores search input text for each dropdown.
-   * ------------------------------------------------------------- */
+
+// Local state: stores search input text for each dropdown.
+   
   const [searchValues, setSearchValues] = useState({
     generatedNumeric: '',
     generatedCategorical: '',
     generatedDatetime: '',
   });
 
-  /* -------------------------------------------------------------
-   * Local state: controls open/close state of dropdown menus.
-   * ------------------------------------------------------------- */
+// Local state: controls open/close state of dropdown menus.
+  
   const [showDropdowns, setShowDropdowns] = useState({
     generatedNumeric: false,
     generatedCategorical: false,
     generatedDatetime: false,
   });
 
-  /* -------------------------------------------------------------
-   * Check if any generated missing-value columns exist.
-   * ------------------------------------------------------------- */
+//Check if any generated missing-value columns exist.
   const hasAnyGeneratedMissing =
     hasGeneratedMissingNumerical ||
     hasGeneratedMissingCategorical ||
     hasGeneratedMissingDatetime;
 
-  /* -------------------------------------------------------------
-   * Disable toggle if readonly OR no generated missing values.
-   * ------------------------------------------------------------- */
-  const toggleDisabled = readonly || hasAnyGeneratedMissing;
 
-  /* -------------------------------------------------------------
-   * Available imputation methods for each column type.
-   * ------------------------------------------------------------- */
+// Disable toggle if readonly OR no generated missing values.
+  const toggleDisabled = readonly || !hasAnyGeneratedMissing;
+   
+
+//method options
   const methodOptions = {
     generatedNumeric: [
       'rolling_mean',
@@ -98,18 +93,13 @@ function HandleGeneratedMissingValues({
       'bfill',
     ],
   };
-
-  /* -------------------------------------------------------------
-   * Info tooltip descriptions.
-   * ------------------------------------------------------------- */
+// descriptions
   const sectionDescriptions = {
     handleGeneratedMissing:
       'Handle missing values that were created during preprocessing or feature generation.',
   };
 
-  /* -------------------------------------------------------------
-   * Expands/collapses the section card.
-   * ------------------------------------------------------------- */
+// expand/collapse section
   const toggleSection = (section) => {
     setExpandedSections(prev => ({
       ...prev,
@@ -117,9 +107,7 @@ function HandleGeneratedMissingValues({
     }));
   };
 
-  /* -------------------------------------------------------------
-   * Enables/disables generated missing-value handling.
-   * ------------------------------------------------------------- */
+// Enable/disable handling of generated missing values. When enabling, also auto-expand the section 
   const toggleSwitch = (key) => {
     if (toggleDisabled) return;
 
@@ -129,10 +117,7 @@ function HandleGeneratedMissingValues({
     }));
   };
 
-  /* -------------------------------------------------------------
-   * Main validation for generated missing configuration.
-   * Returns the first validation error encountered.
-   * ------------------------------------------------------------- */
+  // validation for generated missing values
   const getGeneratedMissingError = () => {
     if (!toggles.handleGeneratedMissing) return '';
 
@@ -159,31 +144,23 @@ function HandleGeneratedMissingValues({
 
     return '';
   };
-
-  /* -------------------------------------------------------------
-   * Show validation errors only when validation is triggered.
-   * ------------------------------------------------------------- */
+// show validation error if user has attempted to process the step without filling required fields.
   const generatedMissingError = showFieldErrors
     ? getGeneratedMissingError()
     : '';
-
-  /* -------------------------------------------------------------
-   * Individual field-level validation messages.
-   * ------------------------------------------------------------- */
+// feild specific errors
   const numericError =
     showFieldErrors &&
     hasGeneratedMissingNumerical &&
     !generatedMissingConfig.numeric
       ? 'Select numeric imputation method'
       : '';
-
   const categoricalError =
     showFieldErrors &&
     hasGeneratedMissingCategorical &&
     !generatedMissingConfig.categorical
       ? 'Select categorical imputation method'
       : '';
-
   const datetimeError =
     showFieldErrors &&
     hasGeneratedMissingDatetime &&
@@ -191,9 +168,7 @@ function HandleGeneratedMissingValues({
       ? 'Select datetime imputation method'
       : '';
 
-  /* -------------------------------------------------------------
-   * Validate rolling window size for rolling_mean method.
-   * ------------------------------------------------------------- */
+// Validate rolling window size for rolling mean method.
   const rollingWindowValue = Number(generatedMissingConfig.rollingWindow);
 
   const rollingWindowInvalid =
@@ -210,9 +185,7 @@ function HandleGeneratedMissingValues({
       ? 'Value must be between 3 and 365'
       : '';
 
-/* -------------------------------------------------------------
- * Validate seasonal period for numeric seasonal methods.
- * ------------------------------------------------------------- */
+// Validate seasonal period for numeric seasonal methods.
 const numericSeasonalPeriodValue = Number(
   generatedMissingConfig.numericSeasonalgeneratedPeriod
 );
@@ -226,9 +199,7 @@ const numericSeasonalPeriodInvalid =
     numericSeasonalPeriodValue > 365
   );
 
-/* -------------------------------------------------------------
- * Validate seasonal period for categorical seasonal methods.
- * ------------------------------------------------------------- */
+// Validate seasonal period for categorical seasonal method.
 const categoricalSeasonalPeriodValue = Number(
   generatedMissingConfig.categoricalSeasonalgeneratedPeriod
 );
@@ -257,9 +228,7 @@ const categoricalSeasonalPeriodError =
     ? 'Value must be between 7 and 365'
     : '';
   
-  /* -------------------------------------------------------------
-   * Auto-expand section when validation errors appear.
-   * ------------------------------------------------------------- */
+// Auto-expand section if there are validation errors to show.
   React.useEffect(() => {
     if (
       showFieldErrors &&
@@ -289,10 +258,7 @@ const categoricalSeasonalPeriodError =
   return (
     <div className="rounded-lg bg-[#FAFAFA] ">
 
-      {/* =========================================================
-       * Card Header
-       * Title + info tooltip + toggle + expand button
-       * ========================================================= */}
+     {/* header- title, info button, toggle switch, expand/collapse button */}
       <div className="w-full px-4 py-3 flex items-center justify-between ">
         <div className="flex items-center gap-3 flex-1">
 
@@ -335,18 +301,11 @@ const categoricalSeasonalPeriodError =
         </div>
       </div>
 
-      {/* =========================================================
-       * Card Body
-       * Render only when section is expanded AND enabled.
-       * ========================================================= */}
+     {/* Expandable content section - only rendered if toggle is on and section is expanded */}
       {expandedSections.handleGeneratedMissing &&
         toggles.handleGeneratedMissing && (
-
           <div className="px-4 py-4 border-t border-gray-100">
-
-            {/* ---------------------------------------------------
-             * Dynamic grid layout depending on visible sections.
-             * --------------------------------------------------- */}
+{/* Use a responsive grid layout that adapts based on how many types of generated missing values are present. */}
             <div
               className={`grid gap-4 ${
                 (hasGeneratedMissingNumerical ? 1 : 0) +
@@ -360,10 +319,7 @@ const categoricalSeasonalPeriodError =
                     : 'grid-cols-1'
               }`}
             >
-
-              {/* =================================================
-               * Numeric Missing Values Section
-               * ================================================= */}
+              {/* Numeric Missing Values Section */}
               {hasGeneratedMissingNumerical && (
                 <div>
 
@@ -444,9 +400,8 @@ const categoricalSeasonalPeriodError =
                 </div>
               )}
 
-              {/* =================================================
-               * Categorical Missing Values Section
-               * ================================================= */}
+               {/* Categorical Missing Values Section */}
+             
               {hasGeneratedMissingCategorical && (
                 <div>
 
@@ -503,9 +458,7 @@ const categoricalSeasonalPeriodError =
                 </div>
               )}
 
-              {/* =================================================
-               * Datetime Missing Values Section
-               * ================================================= */}
+                {/* Datetime Missing Values Section */}
               {hasGeneratedMissingDatetime && (
                 <div>
 

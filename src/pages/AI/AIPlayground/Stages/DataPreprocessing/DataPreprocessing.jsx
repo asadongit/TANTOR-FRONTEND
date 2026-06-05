@@ -11,14 +11,6 @@
   import StatisticalAnalysis from './Steps/StatisticalAnalysis';
   import FeatureImportance from './Steps/FeatureImportance';
   import Step7 from './Steps/Step7';
-  //  supervised preprocessing steps
-  import DataCleaning from './Steps/DataCleaning';
-  import FeatureSelection from './Steps/FeatureSelection';
-  import FeatureEngineering from './Steps/FeatureEngineering';
-  import ScalingTransformation from './Steps/ScalingTransformation';
-  import StatisticalAnalysis from './Steps/StatisticalAnalysis';
-  import FeatureImportance from './Steps/FeatureImportance';
-  import Step7 from './Steps/Step7';
 
   // Routing utilities
   import { useLocation, useNavigate } from 'react-router-dom';
@@ -44,9 +36,9 @@
         { id: 1, label: 'Handle Missing Values', isTimeSeries: true },
         { id: 2, label: 'Feature Integrity', isTimeSeries: true },
         { id: 3, label: 'Data Stabilization', isTimeSeries: true },
-        { id: 4, label: 'Seasonality Treatment', isTimeSeries: true },
-        { id: 5, label: 'Stationarity Analysis', isTimeSeries: true },
-        { id: 6, label: 'Stationarity Treatment', isTimeSeries: true },
+        { id: 4, label: 'Stationarity Analysis', isTimeSeries: true },
+        { id: 5, label: 'Stationarity Treatment', isTimeSeries: true },
+       
       ];
     }
 
@@ -151,7 +143,7 @@
   if (isDataPreprocessingAuto) return 7;
 
   if (predictionType === 'univariate_timeseries') {
-    return 2;
+    return 1;
   }
 
   return 1;
@@ -349,213 +341,285 @@
      * based on workflow type and current step.
      */
     const renderStepContent = () => {
-      const isTimeSeries =
-        predictionType &&
-        [
-          'univariate_timeseries',
-          'multivariate_timeseries',
-          'multiseries_timeseries',
-        ].includes(predictionType);
 
-      /**
-       * Time series workflow rendering
-       */
-      if (isTimeSeries) {
-        switch (currentStep) {
-          case 1:
-            return (
-              <TimeSeriesDataCleaning
-                readonly={isInteractionLocked}
-                onValidationChange={setIsStep1Valid}
-                onApiCall={(fn) =>
-                  (step1ApiCallRef.current = fn)
-                }
-                predictionType={predictionType}
-              />
-            );
-          case 2:
-            return (
-              <HandleMissingValues
-                readonly={isInteractionLocked}
-                onValidationChange={setIsStep2Valid}
-                onApiCall={(fn) =>
-                  (step2ApiCallRef.current = fn)
-                }
-                predictionType={predictionType}
-              />
-            );
-          case 3:
-            return (
-              <FeatureIntegrity
-                readonly={isInteractionLocked}
-                onApiCall={(fn) =>
-                  (step3ApiCallRef.current = fn)
-                }
-                predictionType={predictionType}
-              />
-            );
-          case 4:
-            return (
-              <DataStabilization
-                readonly={isInteractionLocked}
-                onApiCall={(fn) =>
-                  (step4ApiCallRef.current = fn)
-                }
-                predictionType={predictionType}
-              />
-            );
+  // =========================
+  // Univariate Time Series
+  // =========================
+  if (predictionType === 'univariate_timeseries') {
+    switch (currentStep) {
+      case 1:
+  return (
+    <HandleMissingValues
+      readonly={isInteractionLocked}
+      onValidationChange={setIsStep2Valid}
+      onApiCall={(fn) =>
+        (step1ApiCallRef.current = fn)
+      }
+      predictionType={predictionType}
+    />
+  );
 
-          case 5:
-            return (
-              <Seasonality
-                readonly={isInteractionLocked}
-                onApiCall={(fn) =>
-                  (step5ApiCallRef.current = fn)
-                }
-                predictionType={predictionType}
-              />
-            );
-
-          case 6: {
-            // if stationarity analysis was not enabled in step 5 and it's not univariate timeseries, skip stationarity treatment
-            const step5Config = workflowState?.dataPreprocessing?.step5?.config;
-            const wasStationarityAnalysisEnabledInStep5 = step5Config?.stationarity_analysis_active ?? false;
-            const isUnivariateTimeseries = predictionType === 'univariate_timeseries';
-         
-            if (!wasStationarityAnalysisEnabledInStep5 && !isUnivariateTimeseries) {
-             return null;
+      case 2:
+        return (
+          <FeatureIntegrity
+            readonly={isInteractionLocked}
+            onApiCall={(fn) =>
+              (step2ApiCallRef.current = fn)
             }
-            return (
-              <StationarityTreatment
-                readonly={isInteractionLocked}
-                onApiCall={(fn) =>
-                  (step6ApiCallRef.current = fn)
-                }
-                 showPreview={predictionType === 'univariate_timeseries' && isUnivariatePreview}
-              />
-            );
-          }
+            predictionType={predictionType}
+          />
+        );
 
-          case 7:
-            return (
-              <FeatureDependency
-                readonly={isInteractionLocked}
-                onApiCall={(fn) =>
-                  (step7ApiCallRef.current = fn)
-                }
-              />
-            );
+      case 3:
+        return (
+          <DataStabilization
+            readonly={isInteractionLocked}
+            onApiCall={(fn) =>
+              (step3ApiCallRef.current = fn)
+            }
+            predictionType={predictionType}
+          />
+        );
 
-          case 8:
-            return (
-              <ScalingandEncoding
-                readonly={isInteractionLocked}
-                onApiCall={(fn) =>
-                  (step8ApiCallRef.current = fn)
-                }
-                showPreview={isStep8Preview}
-              />
-            );
+      case 4:
+        return (
+          <Seasonality
+            readonly={isInteractionLocked}
+            onApiCall={(fn) =>
+              (step4ApiCallRef.current = fn)
+            }
+            predictionType={predictionType}
+          />
+        );
 
-          default:
-            return null;
+
+      case 5:
+        return (
+          <StationarityTreatment
+            readonly={isInteractionLocked}
+            onApiCall={(fn) =>
+              (step5ApiCallRef.current = fn)
+            }
+            showPreview={isUnivariatePreview}
+          />
+        );
+
+      default:
+        return null;
+    }
+  }
+
+  const isTimeSeries =
+    predictionType &&
+    [
+      'multivariate_timeseries',
+      'multiseries_timeseries',
+    ].includes(predictionType);
+
+  /**
+   * Time series workflow rendering
+   */
+  if (isTimeSeries) {
+    switch (currentStep) {
+      case 1:
+        return (
+          <TimeSeriesDataCleaning
+            readonly={isInteractionLocked}
+            onValidationChange={setIsStep1Valid}
+            onApiCall={(fn) =>
+              (step1ApiCallRef.current = fn)
+            }
+            predictionType={predictionType}
+          />
+        );
+
+      case 2:
+        return (
+          <HandleMissingValues
+            readonly={isInteractionLocked}
+            onValidationChange={setIsStep2Valid}
+            onApiCall={(fn) =>
+              (step2ApiCallRef.current = fn)
+            }
+            predictionType={predictionType}
+          />
+        );
+
+      case 3:
+        return (
+          <FeatureIntegrity
+            readonly={isInteractionLocked}
+            onApiCall={(fn) =>
+              (step3ApiCallRef.current = fn)
+            }
+            predictionType={predictionType}
+          />
+        );
+
+      case 4:
+        return (
+          <DataStabilization
+            readonly={isInteractionLocked}
+            onApiCall={(fn) =>
+              (step4ApiCallRef.current = fn)
+            }
+            predictionType={predictionType}
+          />
+        );
+
+      case 5:
+        return (
+          <Seasonality
+            readonly={isInteractionLocked}
+            onApiCall={(fn) =>
+              (step5ApiCallRef.current = fn)
+            }
+            predictionType={predictionType}
+          />
+        );
+
+      case 6: {
+        const step5Config =workflowState?.dataPreprocessing?.step5?.config;
+        const wasStationarityAnalysisEnabledInStep5 =step5Config?.stationarity_analysis_active ?? false;
+        
+        if (!wasStationarityAnalysisEnabledInStep5  ) {
+          return null;
         }
+
+        return (
+          <StationarityTreatment
+            readonly={isInteractionLocked}
+            onApiCall={(fn) =>
+              (step6ApiCallRef.current = fn)
+            }
+            showPreview={
+              predictionType === 'univariate_timeseries' &&
+              isUnivariatePreview
+            }
+          />
+        );
       }
 
-      /**
-       * Standard ML workflow rendering
-       */
-      switch (currentStep) {
-        case 1:
-          return (
-            <DataCleaning
-              readonly={isInteractionLocked}
-              onValidationChange={setIsStep1Valid}
-              onApiCall={(fn) =>
-                (step1ApiCallRef.current = fn)
-              }
-            />
-          );
+      case 7:
+        return (
+          <FeatureDependency
+            readonly={isInteractionLocked}
+            onApiCall={(fn) =>
+              (step7ApiCallRef.current = fn)
+            }
+          />
+        );
 
-        case 2:
-          return (
-            <FeatureSelection
-              readonly={isInteractionLocked}
-              onValidationChange={setIsStep2Valid}
-              onApiCall={(fn) =>
-                (step2ApiCallRef.current = fn)
-              }
-            />
-          );
+      case 8:
+        return (
+          <ScalingandEncoding
+            readonly={isInteractionLocked}
+            onApiCall={(fn) =>
+              (step8ApiCallRef.current = fn)
+            }
+            showPreview={isStep8Preview}
+          />
+        );
 
-        case 3:
-          return (
-            <FeatureEngineering
-              readonly={isInteractionLocked}
-              onApiCall={(fn) =>
-                (step3ApiCallRef.current = fn)
-              }
-            />
-          );
+      default:
+        return null;
+    }
+  }
 
-        case 4:
-          return (
-            <ScalingTransformation
-              readonly={isInteractionLocked}
-              onValidationChange={setIsStep4Valid}
-              onApiCall={(fn) =>
-                (step4ApiCallRef.current = fn)
-              }
-            />
-          );
+  /**
+   * Standard ML workflow rendering
+   */
+  switch (currentStep) {
+    case 1:
+      return (
+        <DataCleaning
+          readonly={isInteractionLocked}
+          onValidationChange={setIsStep1Valid}
+          onApiCall={(fn) =>
+            (step1ApiCallRef.current = fn)
+          }
+        />
+      );
 
-        case 5:
-          return (
-            <StatisticalAnalysis
-              readonly={isInteractionLocked}
-              onValidationChange={setIsStep5Valid}
-              onApiCall={(fn) =>
-                (step5ApiCallRef.current = fn)
-              }
-            />
-          );
+    case 2:
+      return (
+        <FeatureSelection
+          readonly={isInteractionLocked}
+          onValidationChange={setIsStep2Valid}
+          onApiCall={(fn) =>
+            (step2ApiCallRef.current = fn)
+          }
+        />
+      );
 
-        case 6:
-          return (
-            <FeatureImportance
-              readonly={isInteractionLocked}
-              onApiCall={(fn) =>
-                (step6ApiCallRef.current = fn)
-              }
-            />
-          );
+    case 3:
+      return (
+        <FeatureEngineering
+          readonly={isInteractionLocked}
+          onApiCall={(fn) =>
+            (step3ApiCallRef.current = fn)
+          }
+        />
+      );
 
-        case 7:
-          return (
-            <Step7
-              readonly={isInteractionLocked}
-              showPreview={isStep7Preview}
-              isDataPreprocessingAuto={
-                isDataPreprocessingAuto
-              }
-              onApiCall={(fn) =>
-                (step7ApiCallRef.current = fn)
-              }
-            />
-          );
+    case 4:
+      return (
+        <ScalingTransformation
+          readonly={isInteractionLocked}
+          onValidationChange={setIsStep4Valid}
+          onApiCall={(fn) =>
+            (step4ApiCallRef.current = fn)
+          }
+        />
+      );
 
-        default:
-          return (
-            <DataCleaning
-              readonly={isInteractionLocked}
-              onValidationChange={setIsStep1Valid}
-              onApiCall={(fn) =>
-                (step1ApiCallRef.current = fn)
-              }
-            />
-          );
-      }
-    };
+    case 5:
+      return (
+        <StatisticalAnalysis
+          readonly={isInteractionLocked}
+          onValidationChange={setIsStep5Valid}
+          onApiCall={(fn) =>
+            (step5ApiCallRef.current = fn)
+          }
+        />
+      );
+
+    case 6:
+      return (
+        <FeatureImportance
+          readonly={isInteractionLocked}
+          onApiCall={(fn) =>
+            (step6ApiCallRef.current = fn)
+          }
+        />
+      );
+
+    case 7:
+      return (
+        <Step7
+          readonly={isInteractionLocked}
+          showPreview={isStep7Preview}
+          isDataPreprocessingAuto={
+            isDataPreprocessingAuto
+          }
+          onApiCall={(fn) =>
+            (step7ApiCallRef.current = fn)
+          }
+        />
+      );
+
+    default:
+      return (
+        <DataCleaning
+          readonly={isInteractionLocked}
+          onValidationChange={setIsStep1Valid}
+          onApiCall={(fn) =>
+            (step1ApiCallRef.current = fn)
+          }
+        />
+      );
+  }
+};
 
     /**
      * Determines whether next button
@@ -570,15 +634,21 @@
 
       return false;
     };
-
+    const isPreviewMode =
+  (currentStep === 7 && isStep7Preview) ||
+  (currentStep === 8 && isStep8Preview) ||
+  (
+    predictionType === 'univariate_timeseries' &&
+    currentStep === 5 &&
+    isUnivariatePreview
+  );
     /**
      * Show preview button only after step 1
      * and not inside final preview screen.
      */
-    const showPreviewButton =
-      currentStep > 1 &&
-      !(currentStep === 7 && isStep7Preview) &&
-      !(currentStep === 8 && isStep8Preview);
+    const showPreviewButton =currentStep >= 1 && !isPreviewMode;
+
+  !isPreviewMode;
 
     return (
       <>
@@ -602,7 +672,7 @@ onUnivariatePreview={setIsUnivariatePreview}
             <div className="flex flex-row h-full overflow-hidden">
               
               {/* Sidebar hidden during final preview */}
-              {!(currentStep === 7 && isStep7Preview) && !(currentStep === 8 && isStep8Preview) && (
+              {!isPreviewMode && (
                 <div className="w-72 flex-shrink-0 h-full overflow-hidden">
                   <div className="bg-white px-3 border-r border-[#CCCCCC] h-full flex flex-col">
 

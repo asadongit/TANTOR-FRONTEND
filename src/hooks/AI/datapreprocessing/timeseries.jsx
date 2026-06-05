@@ -53,7 +53,7 @@ export const handleMissingValues = async (params) => {
         original_missing_value_datetime_method: params.originalMissingValueDatetimeMethod || 'ffill',
         original_missing_value_polynomial_order: params.originalMissingValuePolynomialOrder !== undefined ? params.originalMissingValuePolynomialOrder : 2,
         original_missing_value_spline_order: params.originalMissingValueSplineOrder !== undefined ? params.originalMissingValueSplineOrder : 3,
-        original_missing_value_seasonal_period: params.originalMissingValueSeasonalPeriod !== undefined ? params.originalMissingValueSeasonalPeriod : 7
+        original_missing_value_seasonal_period: params.originalMissingValueCategoricalSeasonalPeriod !== undefined ? params.originalMissingValueCategoricalSeasonalPeriod : 7,
       },
       {
         headers: {
@@ -82,6 +82,11 @@ export const featureIntegrity = async (params) => {
         outlier_detection_active: params.outlierDetectionActive !== undefined ? params.outlierDetectionActive : true,
         outlier_detection_method: params.outlierDetectionMethod || 'iqr',
         outlier_thershold: params.outlierThreshold !== undefined ? params.outlierThreshold : 3,
+        outlier_seasonal_period: params.outlierSeasonPeriod !== undefined ? params.outlierSeasonPeriod : 7,
+        outlier_rolling_window: params.outlierRollingWindow !== undefined ? params.outlierRollingWindow : 7,
+        outlier_loess_frac: params.outlierLoessFrac !== undefined ? params.outlierLoessFrac : 0.3,
+        outlier_pelt_penalty: params.outlierPeltPenalty !== undefined ? params.outlierPeltPenalty : 10,
+        outlier_contamination: params.outlierContamination !== undefined ? params.outlierContamination : 0.05,
       },
       {
         headers: {
@@ -107,7 +112,11 @@ export const stabilizeData = async (params) => {
         workflow_id: params.workflowId,
         outlier_treatment_active: params.outlierTreatmentActive !== undefined ? params.outlierTreatmentActive : true,
         outlier_treatment_strategy: params.outlierTreatmentStrategy,
-        outlier_thershold: params.outlierThreshold !== undefined ? params.outlierThreshold : 3,
+        outlier_threshold: params.outlierThreshold !== undefined ? params.outlierThreshold : 3,
+        outlier_season_period: params.outlierSeasonPeriod !== undefined ? params.outlierSeasonPeriod : 8,
+        outlier_rolling_window: params.outlierRollingWindow !== undefined ? params.outlierRollingWindow : 7,
+        outlier_clip_bounds: params.outlierClipBounds !== undefined ? params.outlierClipBounds : [0],
+        outlier_contamination: params.outlierContamination !== undefined ? params.outlierContamination : 0.05,
         seasonality_analysis: params.seasonalityAnalysis !== undefined ? params.seasonalityAnalysis : false,
         seasonality_min_period: params.seasonalityMinPeriod !== undefined ? params.seasonalityMinPeriod : 2,
         seasonality_max_period: params.seasonalityMaxPeriod !== undefined ? params.seasonalityMaxPeriod : 365,
@@ -118,11 +127,12 @@ export const stabilizeData = async (params) => {
           'Content-Type': 'application/json'}
       }
     );
+
     return response.data;
   } catch (error) {
-    console.error('Error stabilizing data:', error);
+    console.error('Data stabilization API error:', error);
     throw error;
-  } 
+  }
 };
 
 
