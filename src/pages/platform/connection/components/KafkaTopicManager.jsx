@@ -47,7 +47,6 @@ const TEMPORAL_TYPE_ALLOWED_FORMATS = {
 };
 
 const validateKafkaTopicJson = (filename, text, seenTopicNames = new Set()) => {
-  // 1. Valid JSON
   let data;
   try {
     data = typeof text === "string" ? JSON.parse(text) : text;
@@ -65,129 +64,61 @@ const validateKafkaTopicJson = (filename, text, seenTopicNames = new Set()) => {
     return `Unexpected top-level properties: [${extraTopLevel.join(", ")}]. Only 'tableName', 'topicName', and 'message' are allowed.`;
   }
 
-  if (!("tableName" in data)) {
-    return `Missing required field 'tableName'.`;
-  }
-  if (typeof data.tableName !== "string" || data.tableName.trim() === "") {
-    return `'tableName' must be a non-empty string.`;
-  }
-
-  if (!("topicName" in data)) {
-    return `Missing required field 'topicName'.`;
-  }
-  if (typeof data.topicName !== "string" || data.topicName.trim() === "") {
-    return `'topicName' must be a non-empty string.`;
-  }
-
-  if (data.tableName !== data.topicName) {
-    return `'tableName' and 'topicName' must be the same, got '${data.tableName}' and '${data.topicName}'.`;
-  }
-
-  if (seenTopicNames.has(data.topicName)) {
-    return `A file with topicName '${data.topicName}' has already been uploaded. Duplicate topics are not allowed.`;
-  }
-
-  if (!("message" in data)) {
-    return `Missing required field 'message'.`;
-  }
-  if (typeof data.message !== "object" || Array.isArray(data.message) || data.message === null) {
-    return `'message' must be an object.`;
-  }
+  if (!("tableName" in data)) return `Missing required field 'tableName'.`;
+  if (typeof data.tableName !== "string" || data.tableName.trim() === "") return `'tableName' must be a non-empty string.`;
+  if (!("topicName" in data)) return `Missing required field 'topicName'.`;
+  if (typeof data.topicName !== "string" || data.topicName.trim() === "") return `'topicName' must be a non-empty string.`;
+  if (data.tableName !== data.topicName) return `'tableName' and 'topicName' must be the same, got '${data.tableName}' and '${data.topicName}'.`;
+  if (seenTopicNames.has(data.topicName)) return `A file with topicName '${data.topicName}' has already been uploaded. Duplicate topics are not allowed.`;
+  if (!("message" in data)) return `Missing required field 'message'.`;
+  if (typeof data.message !== "object" || Array.isArray(data.message) || data.message === null) return `'message' must be an object.`;
 
   const messageKeys = new Set(Object.keys(data.message));
   const extraMessageKeys = [...messageKeys].filter((k) => !ALLOWED_MESSAGE_KEYS.has(k));
-  if (extraMessageKeys.length > 0) {
-    return `'message' contains unexpected properties: [${extraMessageKeys.join(", ")}]. Only 'dataFormat' and 'fields' are allowed.`;
-  }
-
-  if (!("dataFormat" in data.message)) {
-    return `Missing required field 'message.dataFormat'.`;
-  }
-  if (typeof data.message.dataFormat !== "string" || data.message.dataFormat.trim() === "") {
-    return `'message.dataFormat' must be a non-empty string.`;
-  }
-  if (data.message.dataFormat !== "json") {
-    return `'message.dataFormat' must be "json", got "${data.message.dataFormat}".`;
-  }
-
-  if (!("fields" in data.message)) {
-    return `Missing required field 'message.fields'.`;
-  }
-  if (!Array.isArray(data.message.fields) || data.message.fields.length === 0) {
-    return `'message.fields' must be a non-empty array.`;
-  }
+  if (extraMessageKeys.length > 0) return `'message' contains unexpected properties: [${extraMessageKeys.join(", ")}]. Only 'dataFormat' and 'fields' are allowed.`;
+  if (!("dataFormat" in data.message)) return `Missing required field 'message.dataFormat'.`;
+  if (typeof data.message.dataFormat !== "string" || data.message.dataFormat.trim() === "") return `'message.dataFormat' must be a non-empty string.`;
+  if (data.message.dataFormat !== "json") return `'message.dataFormat' must be "json", got "${data.message.dataFormat}".`;
+  if (!("fields" in data.message)) return `Missing required field 'message.fields'.`;
+  if (!Array.isArray(data.message.fields) || data.message.fields.length === 0) return `'message.fields' must be a non-empty array.`;
 
   for (let idx = 0; idx < data.message.fields.length; idx++) {
     const field = data.message.fields[idx];
-
-    if (typeof field !== "object" || Array.isArray(field) || field === null) {
-      return `'message.fields[${idx + 1}]' must be an object.`;
-    }
+    if (typeof field !== "object" || Array.isArray(field) || field === null) return `'message.fields[${idx + 1}]' must be an object.`;
 
     const fieldKeys = new Set(Object.keys(field));
     const fieldLabel = "name" in field ? `field '${field.name}'` : `field ${idx + 1}`;
 
     const extraFieldKeys = [...fieldKeys].filter((k) => !ALLOWED_FIELD_KEYS.has(k));
-    if (extraFieldKeys.length > 0) {
-      return `${fieldLabel} contains unexpected properties: [${extraFieldKeys.join(", ")}]. Allowed keys are 'name', 'type', 'mapping', 'dataFormat', and 'formatHint'.`;
-    }
+    if (extraFieldKeys.length > 0) return `${fieldLabel} contains unexpected properties: [${extraFieldKeys.join(", ")}]. Allowed keys are 'name', 'type', 'mapping', 'dataFormat', and 'formatHint'.`;
 
     const missingFieldKeys = [...REQUIRED_FIELD_KEYS].filter((k) => !fieldKeys.has(k));
-    if (missingFieldKeys.length > 0) {
-      return `${fieldLabel} is missing required properties: [${missingFieldKeys.join(", ")}].`;
-    }
+    if (missingFieldKeys.length > 0) return `${fieldLabel} is missing required properties: [${missingFieldKeys.join(", ")}].`;
 
     for (const key of ["name", "type", "mapping"]) {
-      if (typeof field[key] !== "string" || field[key].trim() === "") {
-        return `${fieldLabel} — '${key}' must be a non-empty string.`;
-      }
+      if (typeof field[key] !== "string" || field[key].trim() === "") return `${fieldLabel} — '${key}' must be a non-empty string.`;
     }
 
-    if (field.name !== field.mapping) {
-      return `${fieldLabel} — 'name' and 'mapping' must be the same, got name='${field.name}' and mapping='${field.mapping}'.`;
-    }
-
-    if (!SUPPORTED_TYPES.has(field.type)) {
-      return `${fieldLabel} — unsupported type '${field.type}'. Supported types are: ${[...SUPPORTED_TYPES].join(", ")}.`;
-    }
+    if (field.name !== field.mapping) return `${fieldLabel} — 'name' and 'mapping' must be the same, got name='${field.name}' and mapping='${field.mapping}'.`;
+    if (!SUPPORTED_TYPES.has(field.type)) return `${fieldLabel} — unsupported type '${field.type}'. Supported types are: ${[...SUPPORTED_TYPES].join(", ")}.`;
 
     const isTemporal = TEMPORAL_TYPES.has(field.type);
-
-    if (isTemporal && !("dataFormat" in field)) {
-      return `${fieldLabel} — 'dataFormat' is required for temporal type '${field.type}'.`;
-    }
-
-    if (!isTemporal && "dataFormat" in field) {
-      return `${fieldLabel} — 'dataFormat' is only allowed for temporal types, but '${field.type}' is not a temporal type.`;
-    }
+    if (isTemporal && !("dataFormat" in field)) return `${fieldLabel} — 'dataFormat' is required for temporal type '${field.type}'.`;
+    if (!isTemporal && "dataFormat" in field) return `${fieldLabel} — 'dataFormat' is only allowed for temporal types, but '${field.type}' is not a temporal type.`;
 
     if ("dataFormat" in field) {
-      if (typeof field.dataFormat !== "string" || field.dataFormat.trim() === "") {
-        return `${fieldLabel} — 'dataFormat' must be a non-empty string.`;
-      }
-
-      if (!SUPPORTED_DATA_FORMATS.has(field.dataFormat)) {
-        return `${fieldLabel} — unsupported dataFormat '${field.dataFormat}'. Supported formats are: ${[...SUPPORTED_DATA_FORMATS].join(", ")}.`;
-      }
-
+      if (typeof field.dataFormat !== "string" || field.dataFormat.trim() === "") return `${fieldLabel} — 'dataFormat' must be a non-empty string.`;
+      if (!SUPPORTED_DATA_FORMATS.has(field.dataFormat)) return `${fieldLabel} — unsupported dataFormat '${field.dataFormat}'. Supported formats are: ${[...SUPPORTED_DATA_FORMATS].join(", ")}.`;
       const allowedFormats = TEMPORAL_TYPE_ALLOWED_FORMATS[field.type];
-      if (!allowedFormats.has(field.dataFormat)) {
-        return `${fieldLabel} — dataFormat '${field.dataFormat}' is not supported for type '${field.type}'. Allowed formats: ${[...allowedFormats].join(", ")}.`;
-      }
+      if (!allowedFormats.has(field.dataFormat)) return `${fieldLabel} — dataFormat '${field.dataFormat}' is not supported for type '${field.type}'. Allowed formats: ${[...allowedFormats].join(", ")}.`;
     }
 
     if ("formatHint" in field) {
-      if (field.dataFormat !== "custom-date-time") {
-        return `${fieldLabel} — 'formatHint' is only allowed when 'dataFormat' is "custom-date-time".`;
-      }
-      if (typeof field.formatHint !== "string" || field.formatHint.trim() === "") {
-        return `${fieldLabel} — 'formatHint' must be a non-empty string.`;
-      }
+      if (field.dataFormat !== "custom-date-time") return `${fieldLabel} — 'formatHint' is only allowed when 'dataFormat' is "custom-date-time".`;
+      if (typeof field.formatHint !== "string" || field.formatHint.trim() === "") return `${fieldLabel} — 'formatHint' must be a non-empty string.`;
     }
 
-    if (field.dataFormat === "custom-date-time" && !("formatHint" in field)) {
-      return `${fieldLabel} — 'formatHint' is required when 'dataFormat' is "custom-date-time".`;
-    }
+    if (field.dataFormat === "custom-date-time" && !("formatHint" in field)) return `${fieldLabel} — 'formatHint' is required when 'dataFormat' is "custom-date-time".`;
   }
 
   return null;
@@ -201,6 +132,8 @@ const readFileText = (file) =>
     reader.readAsText(file);
   });
 
+// ─── BulkJsonUpload ──────────────────────────────────────────────────────────
+
 const BulkJsonUpload = ({ files, onChange, hasError, compact = false, existingTopicNames = [] }) => {
   const [search, setSearch] = useState("");
   const [isDragging, setIsDragging] = useState(false);
@@ -211,9 +144,7 @@ const BulkJsonUpload = ({ files, onChange, hasError, compact = false, existingTo
 
   const addFiles = async (incoming) => {
     const jsonOnly = incoming.filter((f) => f.name.toLowerCase().endsWith(".json"));
-    if (jsonOnly.length !== incoming.length) {
-      toast.error("Only .json files are accepted");
-    }
+    if (jsonOnly.length !== incoming.length) toast.error("Only .json files are accepted");
     if (jsonOnly.length === 0) return;
 
     setIsValidating(true);
@@ -229,8 +160,7 @@ const BulkJsonUpload = ({ files, onChange, hasError, compact = false, existingTo
         const text = await readFileText(existing);
         const data = JSON.parse(text);
         if (data?.topicName) seenTopicNames.add(data.topicName);
-      } catch {
-      }
+      } catch { }
     }
 
     for (let i = 0; i < jsonOnly.length; i++) {
@@ -273,9 +203,7 @@ const BulkJsonUpload = ({ files, onChange, hasError, compact = false, existingTo
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const filtered = search
-    ? files.filter((f) => f.name.toLowerCase().includes(search.toLowerCase()))
-    : files;
+  const filtered = search ? files.filter((f) => f.name.toLowerCase().includes(search.toLowerCase())) : files;
 
   const highlightMatch = (name) => {
     if (!search) return name;
@@ -284,9 +212,7 @@ const BulkJsonUpload = ({ files, onChange, hasError, compact = false, existingTo
     return (
       <>
         {name.slice(0, idx)}
-        <mark className="bg-[#e8e0f7] text-[#6b52a8] rounded-sm px-px">
-          {name.slice(idx, idx + search.length)}
-        </mark>
+        <mark className="bg-[#e8e0f7] text-[#6b52a8] rounded-sm px-px">{name.slice(idx, idx + search.length)}</mark>
         {name.slice(idx + search.length)}
       </>
     );
@@ -300,15 +226,10 @@ const BulkJsonUpload = ({ files, onChange, hasError, compact = false, existingTo
         </label>
       )}
 
-      {/* Drop zone */}
       <div
         onDragOver={(e) => { e.preventDefault(); if (!isValidating) setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setIsDragging(false);
-          if (!isValidating) addFiles(Array.from(e.dataTransfer.files));
-        }}
+        onDrop={(e) => { e.preventDefault(); setIsDragging(false); if (!isValidating) addFiles(Array.from(e.dataTransfer.files)); }}
         onClick={() => { if (!isValidating) inputRef.current?.click(); }}
         className={`flex items-center gap-3 px-4 py-3 border rounded-lg transition-all duration-200
           ${isValidating
@@ -352,14 +273,7 @@ const BulkJsonUpload = ({ files, onChange, hasError, compact = false, existingTo
             )}
           </>
         )}
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".json"
-          multiple
-          className="hidden"
-          onChange={(e) => { addFiles(Array.from(e.target.files)); e.target.value = ""; }}
-        />
+        <input ref={inputRef} type="file" accept=".json" multiple className="hidden" onChange={(e) => { addFiles(Array.from(e.target.files)); e.target.value = ""; }} />
       </div>
 
       {hasError && !isValidating && (
@@ -375,12 +289,7 @@ const BulkJsonUpload = ({ files, onChange, hasError, compact = false, existingTo
                 {validationErrors.length} file{validationErrors.length !== 1 ? "s" : ""} rejected
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setValidationErrors([])}
-              className="text-red-400 hover:text-red-600 transition-colors"
-              aria-label="Dismiss errors"
-            >
+            <button type="button" onClick={() => setValidationErrors([])} className="text-red-400 hover:text-red-600 transition-colors" aria-label="Dismiss errors">
               <X size={14} />
             </button>
           </div>
@@ -411,34 +320,21 @@ const BulkJsonUpload = ({ files, onChange, hasError, compact = false, existingTo
               placeholder="Search files..."
               className="flex-1 text-sm bg-transparent outline-none text-gray-700 placeholder-gray-400 min-w-0"
             />
-            {search && (
-              <span className="text-sm text-gray-400">{filtered.length}/{files.length}</span>
-            )}
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); clearAll(); }}
-              className="text-sm text-[#8e78b7] hover:underline shrink-0"
-            >
+            {search && <span className="text-sm text-gray-400">{filtered.length}/{files.length}</span>}
+            <button type="button" onClick={(e) => { e.stopPropagation(); clearAll(); }} className="text-sm text-[#8e78b7] hover:underline shrink-0">
               Clear all
             </button>
           </div>
           <div className="overflow-y-auto max-h-[180px] divide-y divide-gray-100 scrollbar-thin scrollbar-thumb-[#c4b8e8] scrollbar-track-transparent">
             {filtered.length === 0 ? (
-              <div className="py-4 text-center text-sm text-gray-400">
-                No files match &ldquo;{search}&rdquo;
-              </div>
+              <div className="py-4 text-center text-sm text-gray-400">No files match &ldquo;{search}&rdquo;</div>
             ) : (
               filtered.map((f) => (
-                <div
-                  key={f.name}
-                  className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 transition-colors group"
-                >
+                <div key={f.name} className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 transition-colors group">
                   <div className="w-7 h-7 rounded flex items-center justify-center bg-[#f0eafa] shrink-0">
                     <FileJson size={14} className="text-[#8e78b7]" />
                   </div>
-                  <span className="flex-1 text-sm text-gray-700 truncate min-w-0">
-                    {highlightMatch(f.name)}
-                  </span>
+                  <span className="flex-1 text-sm text-gray-700 truncate min-w-0">{highlightMatch(f.name)}</span>
                   <span className="text-sm text-gray-400 shrink-0">{formatSize(f.size)}</span>
                   <button
                     type="button"
@@ -457,6 +353,8 @@ const BulkJsonUpload = ({ files, onChange, hasError, compact = false, existingTo
     </div>
   );
 };
+
+// ─── Monaco hook ─────────────────────────────────────────────────────────────
 
 const useMonaco = () => {
   const [ready, setReady] = useState(false);
@@ -487,6 +385,8 @@ const useMonaco = () => {
 
   return ready;
 };
+
+// ─── JsonEditorModal ─────────────────────────────────────────────────────────
 
 const JsonEditorModal = ({ topic, connectionName, hostnameV1, token, onClose, onSave }) => {
   const editorContainerRef = useRef(null);
@@ -558,10 +458,7 @@ const JsonEditorModal = ({ topic, connectionName, hostnameV1, token, onClose, on
       setJsonError(null);
     });
 
-    return () => {
-      editor.dispose();
-      editorRef.current = null;
-    };
+    return () => { editor.dispose(); editorRef.current = null; };
   }, [monacoReady, initialJson]);
 
   const handleValidate = () => {
@@ -580,8 +477,7 @@ const JsonEditorModal = ({ topic, connectionName, hostnameV1, token, onClose, on
         setIsValidated(false);
         return;
       }
-    } catch {
-    }
+    } catch { }
 
     const error = validateKafkaTopicJson(filename, text);
     if (error) {
@@ -607,11 +503,7 @@ const JsonEditorModal = ({ topic, connectionName, hostnameV1, token, onClose, on
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60]">
-      <div
-        className="bg-white rounded-xl w-full max-w-5xl shadow-2xl flex flex-col overflow-hidden"
-        style={{ height: "min(90vh, 900px)" }}
-      >
-        {/* Header */}
+      <div className="bg-white rounded-xl w-full max-w-5xl shadow-2xl flex flex-col overflow-hidden" style={{ height: "min(90vh, 900px)" }}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-md bg-[#f0eafa] flex items-center justify-center">
@@ -622,40 +514,27 @@ const JsonEditorModal = ({ topic, connectionName, hostnameV1, token, onClose, on
               <p className="text-sm text-gray-400">Edit topic configuration</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-          >
+          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
             <X size={18} />
           </button>
         </div>
 
-        {/* Editor area */}
         <div className="flex flex-col flex-1 overflow-hidden">
           {(isLoading || !monacoReady) && !fetchError && (
             <div className="flex flex-col flex-1 items-center justify-center gap-3">
               <div className="h-8 w-8 border-2 border-[#8e78b7] border-t-transparent rounded-full animate-spin" />
-              <p className="text-base text-gray-400">
-                {isLoading ? "Loading configuration..." : "Initialising editor..."}
-              </p>
+              <p className="text-base text-gray-400">{isLoading ? "Loading configuration..." : "Initialising editor..."}</p>
             </div>
           )}
-
           {fetchError && (
             <div className="flex flex-col flex-1 items-center justify-center gap-3">
               <AlertCircle size={20} className="text-red-400" />
               <p className="text-sm text-red-500">{fetchError}</p>
             </div>
           )}
-
-          <div
-            ref={editorContainerRef}
-            style={{ display: isEditorReady ? "block" : "none" }}
-            className="flex-1 min-h-0"
-          />
+          <div ref={editorContainerRef} style={{ display: isEditorReady ? "block" : "none" }} className="flex-1 min-h-0" />
         </div>
 
-        {/* Status + footer */}
         <div className="shrink-0 bg-white border-t border-gray-100 rounded-b-2xl shadow-[0px_-4px_9px_0px_rgba(0,0,0,0.08)]">
           <div className="px-6 pt-3 min-h-[28px]">
             {jsonError ? (
@@ -672,31 +551,19 @@ const JsonEditorModal = ({ topic, connectionName, hostnameV1, token, onClose, on
               <p className="text-sm text-gray-400">Validate your changes before saving</p>
             ) : null}
           </div>
-
           <div className="flex items-center justify-end gap-3 px-6 py-4">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-sm border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              Cancel
-            </button>
+            <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">Cancel</button>
             <button
               onClick={handleValidate}
               disabled={!canValidate}
-              className={`px-4 py-2 text-sm rounded-lg transition-colors font-medium border
-                ${canValidate
-                  ? "border-[#8e78b7] text-[#8e78b7] hover:bg-[#f0eafa]"
-                  : "border-gray-200 text-gray-400 cursor-not-allowed"}`}
+              className={`px-4 py-2 text-sm rounded-lg transition-colors font-medium border ${canValidate ? "border-[#8e78b7] text-[#8e78b7] hover:bg-[#f0eafa]" : "border-gray-200 text-gray-400 cursor-not-allowed"}`}
             >
               Validate
             </button>
             <button
               onClick={handleSave}
               disabled={!canSave}
-              className={`px-4 py-2 text-sm rounded-lg transition-colors font-medium
-                ${canSave
-                  ? "bg-[#8e78b7] text-white hover:bg-[#7a6aa3]"
-                  : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}
+              className={`px-4 py-2 text-sm rounded-lg transition-colors font-medium ${canSave ? "bg-[#8e78b7] text-white hover:bg-[#7a6aa3]" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}
             >
               Save Changes
             </button>
@@ -707,7 +574,9 @@ const JsonEditorModal = ({ topic, connectionName, hostnameV1, token, onClose, on
   );
 };
 
-const DeleteConfirmModal = ({ topicName, onConfirm, onClose }) => (
+// ─── DeleteConfirmModal ───────────────────────────────────────────────────────
+
+const DeleteConfirmModal = ({ topicName, onConfirm, onClose, isBulk = false }) => (
   <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60]">
     <div className="bg-white rounded-xl w-full max-w-sm shadow-2xl p-6">
       <div className="flex items-start gap-3 mb-5">
@@ -715,7 +584,9 @@ const DeleteConfirmModal = ({ topicName, onConfirm, onClose }) => (
           <Trash2 size={18} className="text-red-500" />
         </div>
         <div>
-          <p className="text-lg font-medium text-gray-800 mb-2">Remove Topic Json</p>
+          <p className="text-lg font-medium text-gray-800 mb-2">
+            {isBulk ? "Remove Topics" : "Remove Topic Json"}
+          </p>
           <p className="text-md text-gray-500 leading-relaxed">
             Are you sure you want to remove{" "}
             <span className="font-medium text-gray-700">{topicName}</span>?
@@ -735,7 +606,16 @@ const DeleteConfirmModal = ({ topicName, onConfirm, onClose }) => (
   </div>
 );
 
-const TopicRow = ({ topic, onEditJson, onUploadJson, onDelete, pendingFile, isMarkedForDelete }) => {
+const TopicRow = ({
+  topic,
+  onEditJson,
+  onUploadJson,
+  onDelete,
+  pendingFile,
+  isMarkedForDelete,
+  isSelected,
+  onToggleSelect,
+}) => {
   const fileInputRef = useRef(null);
   const [isValidating, setIsValidating] = useState(false);
 
@@ -754,10 +634,7 @@ const TopicRow = ({ topic, onEditJson, onUploadJson, onDelete, pendingFile, isMa
       const text = await readFileText(file);
       const error = validateKafkaTopicJson(file.name, text);
       if (error) {
-        toast.error(error, {
-          duration: 8000,
-          style: { maxWidth: "520px", wordBreak: "break-word", whiteSpace: "pre-wrap" },
-        });
+        toast.error(error, { duration: 8000, style: { maxWidth: "520px", wordBreak: "break-word", whiteSpace: "pre-wrap" } });
         e.target.value = "";
         return;
       }
@@ -775,34 +652,43 @@ const TopicRow = ({ topic, onEditJson, onUploadJson, onDelete, pendingFile, isMa
       className={`flex items-center gap-2.5 px-3 py-2.5 transition-colors group
         ${isMarkedForDelete
           ? "opacity-60"
-          : pendingFile
-            ? "bg-[#faf8fe]"
-            : "hover:bg-gray-50"}`}
+          : isSelected
+            ? "bg-[#f5f2fd]"
+            : pendingFile
+              ? "bg-[#faf8fe]"
+              : "hover:bg-gray-50"}`}
     >
-      <div className={`w-7 h-7 rounded flex items-center justify-center shrink-0
-        ${isMarkedForDelete ? "bg-red-100" : "bg-[#f0eafa]"}`}>
+      {/* Checkbox */}
+      <input
+        type="checkbox"
+        checked={isSelected}
+        onChange={(e) => { e.stopPropagation(); onToggleSelect(topic.table_name); }}
+        disabled={isMarkedForDelete || isValidating}
+        className="w-3 h-3 accent-[#8e78b7] cursor-pointer shrink-0 disabled:opacity-30"
+      />
+
+      {/* Icon */}
+      <div className={`w-7 h-7 rounded flex items-center justify-center shrink-0 ${isMarkedForDelete ? "bg-red-100" : "bg-[#f0eafa]"}`}>
         {isValidating
           ? <Loader2 size={14} className="text-[#8e78b7] animate-spin" />
           : <FileJson size={14} className={isMarkedForDelete ? "text-red-400" : "text-[#8e78b7]"} />
         }
       </div>
 
+      {/* Name */}
       <div className="flex-1 min-w-0">
         <p className={`text-sm truncate ${isMarkedForDelete ? "line-through text-gray-400" : "text-gray-700"}`}>
           {topic.table_name}
         </p>
-        {isValidating && (
-          <p className="text-xs text-[#8e78b7] mt-0.5">Validating...</p>
-        )}
+        {isValidating && <p className="text-xs text-[#8e78b7] mt-0.5">Validating...</p>}
         {!isValidating && pendingFile && !isMarkedForDelete && (
           <p className="text-xs text-[#8e78b7] truncate mt-0.5">
-            {pendingFile.name === `${topic.table_name}.json`
-              ? "Edited · pending save"
-              : `${pendingFile.name} · pending save`}
+            {pendingFile.name === `${topic.table_name}.json` ? "Edited · pending save" : `${pendingFile.name} · pending save`}
           </p>
         )}
       </div>
 
+      {/* Actions */}
       {!isMarkedForDelete ? (
         <div className="flex items-center gap-1 shrink-0">
           <button
@@ -832,16 +718,14 @@ const TopicRow = ({ topic, onEditJson, onUploadJson, onDelete, pendingFile, isMa
           </button>
         </div>
       ) : (
-        <button
-          onClick={() => onDelete(topic.table_name)}
-          className="text-sm text-[#8e78b7] hover:underline shrink-0 font-medium"
-        >
+        <button onClick={() => onDelete(topic.table_name)} className="text-sm text-[#8e78b7] hover:underline shrink-0 font-medium">
           Undo
         </button>
       )}
     </div>
   );
 };
+
 
 const TopicListPanel = ({
   connectionName,
@@ -851,6 +735,8 @@ const TopicListPanel = ({
   onCustomFilesChange,
   removedTopics,
   onRemovedTopicsChange,
+  customFilesError,
+  customFilesErrorMessage,
 }) => {
   const [topics, setTopics] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -862,6 +748,8 @@ const TopicListPanel = ({
   const [newFiles, setNewFiles] = useState([]);
   const [topicSearch, setTopicSearch] = useState("");
   const [showAddNew, setShowAddNew] = useState(false);
+  const [selectedTopics, setSelectedTopics] = useState(new Set());
+  const [bulkDeletePending, setBulkDeletePending] = useState(false);
 
   const fetchTopics = async () => {
     if (!connectionName) return;
@@ -875,6 +763,7 @@ const TopicListPanel = ({
       if (res.ok) {
         const data = await res.json();
         setTopics(data.tables || []);
+        setSelectedTopics(new Set());
       } else {
         setLoadError("Could not load topics. Please try again.");
       }
@@ -921,13 +810,11 @@ const TopicListPanel = ({
     }
   };
 
+  // ── Single delete ──
   const handleToggleDelete = async (tableName) => {
     const key = `${tableName}.json`;
     if (removedTopics.includes(key)) {
-      const conflict = await Promise.all(
-        newFiles.map((f) => getTopicNameFromFile(f))
-      ).then((names) => names.some((n) => n === tableName));
-
+      const conflict = await Promise.all(newFiles.map((f) => getTopicNameFromFile(f))).then((names) => names.some((n) => n === tableName));
       if (conflict) {
         toast.error(
           `Cannot restore '${tableName}' — a newly uploaded file already uses this topic name. Remove it from the new files list first.`,
@@ -961,7 +848,21 @@ const TopicListPanel = ({
       syncToParent(updatedPending, newFiles);
     }
 
+    setSelectedTopics((prev) => {
+      const next = new Set(prev);
+      next.delete(name);
+      return next;
+    });
+
     setDeleteTopic(null);
+  };
+
+  const toggleSelectTopic = (name) => {
+    setSelectedTopics((prev) => {
+      const next = new Set(prev);
+      next.has(name) ? next.delete(name) : next.add(name);
+      return next;
+    });
   };
 
   const filteredTopics = topicSearch
@@ -971,6 +872,40 @@ const TopicListPanel = ({
   const activeFiltered = filteredTopics.filter((t) => !removedTopics.includes(`${t.table_name}.json`));
   const removedFiltered = filteredTopics.filter((t) => removedTopics.includes(`${t.table_name}.json`));
 
+  const selectableTopics = activeFiltered.map((t) => t.table_name);
+  const allSelected = selectableTopics.length > 0 && selectableTopics.every((n) => selectedTopics.has(n));
+  const someSelected = selectableTopics.some((n) => selectedTopics.has(n));
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedTopics(new Set());
+    } else {
+      setSelectedTopics(new Set(selectableTopics));
+    }
+  };
+
+  const confirmBulkDelete = async () => {
+    const names = [...selectedTopics];
+    const newRemoved = [...removedTopics];
+    let updatedPending = { ...pendingFiles };
+
+    for (const name of names) {
+      const key = `${name}.json`;
+      if (!newRemoved.includes(key)) newRemoved.push(key);
+      if (updatedPending[name]) delete updatedPending[name];
+    }
+
+    const topicNamesInNew = await Promise.all(newFiles.map((f) => getTopicNameFromFile(f)));
+    const updatedNew = newFiles.filter((_, i) => !names.includes(topicNamesInNew[i]));
+
+    setPendingFiles(updatedPending);
+    if (updatedNew.length !== newFiles.length) setNewFiles(updatedNew);
+    syncToParent(updatedPending, updatedNew.length !== newFiles.length ? updatedNew : newFiles);
+    onRemovedTopicsChange(newRemoved);
+    setSelectedTopics(new Set());
+    setBulkDeletePending(false);
+  };
+
   const pendingCount = Object.keys(pendingFiles).length;
   const removedCount = removedTopics.length;
   const newCount = newFiles.length;
@@ -978,6 +913,7 @@ const TopicListPanel = ({
   return (
     <>
       <div className="mt-6 border border-gray-200 rounded-xl overflow-hidden">
+        {/* Accordion header */}
         <button
           type="button"
           onClick={() => setIsExpanded((v) => !v)}
@@ -994,29 +930,21 @@ const TopicListPanel = ({
           </div>
           <div className="flex items-center gap-2">
             {pendingCount > 0 && (
-              <span className="text-sm bg-[#f0eafa] text-[#8e78b7] px-2.5 py-1 rounded-md font-medium">
-                {pendingCount} edited
-              </span>
+              <span className="text-sm bg-[#f0eafa] text-[#8e78b7] px-2.5 py-1 rounded-md font-medium">{pendingCount} edited</span>
             )}
             {newCount > 0 && (
-              <span className="text-sm bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-md font-medium">
-                {newCount} new
-              </span>
+              <span className="text-sm bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-md font-medium">{newCount} new</span>
             )}
             {removedCount > 0 && (
-              <span className="text-sm bg-red-50 text-red-500 px-2.5 py-1 rounded-md font-medium">
-                {removedCount} removed
-              </span>
+              <span className="text-sm bg-red-50 text-red-500 px-2.5 py-1 rounded-md font-medium">{removedCount} removed</span>
             )}
-            <ChevronRight
-              size={18}
-              className={`text-gray-400 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
-            />
+            <ChevronRight size={18} className={`text-gray-400 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
           </div>
         </button>
 
         {isExpanded && (
           <div className="border-t border-gray-100 bg-gray-50 px-5 py-4 space-y-4">
+            {/* Toolbar */}
             <div className="flex items-center justify-end gap-3">
               <button
                 type="button"
@@ -1040,6 +968,7 @@ const TopicListPanel = ({
               </button>
             </div>
 
+            {/* Add new files panel */}
             {showAddNew && (
               <div className="bg-white border border-gray-200 rounded-lg p-4">
                 <p className="text-md font-medium text-gray-600 mb-3">Upload new topic JSON files</p>
@@ -1056,6 +985,7 @@ const TopicListPanel = ({
               </div>
             )}
 
+            {/* Loading */}
             {isLoading && (
               <div className="flex flex-col items-center justify-center py-10 gap-3">
                 <div className="h-5 w-5 border-2 border-[#8e78b7] border-t-transparent rounded-full animate-spin" />
@@ -1063,6 +993,7 @@ const TopicListPanel = ({
               </div>
             )}
 
+            {/* Load error */}
             {!isLoading && loadError && (
               <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-100 rounded-lg">
                 <AlertCircle size={15} className="text-red-500 shrink-0" />
@@ -1071,15 +1002,26 @@ const TopicListPanel = ({
               </div>
             )}
 
+            {/* Empty */}
             {!isLoading && !loadError && topics.length === 0 && (
               <div className="py-8 text-center">
                 <p className="text-sm text-gray-400">No topics found for this connection.</p>
               </div>
             )}
 
+            {/* Topic list */}
             {!isLoading && !loadError && topics.length > 0 && (
               <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
                 <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                    onChange={toggleSelectAll}
+                    disabled={selectableTopics.length === 0}
+                    title={allSelected ? "Deselect all" : "Select all"}
+                    className="w-3 h-3 accent-[#8e78b7] cursor-pointer shrink-0 disabled:opacity-30"
+                  />
                   <Search size={14} className="text-gray-400 shrink-0" />
                   <input
                     type="text"
@@ -1098,8 +1040,20 @@ const TopicListPanel = ({
                   ) : (
                     <span className="text-sm text-gray-400 shrink-0">{topics.length} topic{topics.length !== 1 ? "s" : ""}</span>
                   )}
+
+                  {selectedTopics.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setBulkDeletePending(true)}
+                      className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md bg-red-50 text-red-500 hover:bg-red-100 border border-red-200 shrink-0 font-medium transition-colors"
+                    >
+                      <Trash2 size={12} />
+                      Delete {selectedTopics.size}
+                    </button>
+                  )}
                 </div>
 
+                {/* Rows */}
                 <div className="overflow-y-auto max-h-[280px] divide-y divide-gray-100 scrollbar-thin scrollbar-thumb-[#c4b8e8] scrollbar-track-transparent">
                   {activeFiltered.map((topic) => (
                     <TopicRow
@@ -1110,6 +1064,8 @@ const TopicListPanel = ({
                       onDelete={handleToggleDelete}
                       pendingFile={pendingFiles[topic.table_name] || null}
                       isMarkedForDelete={false}
+                      isSelected={selectedTopics.has(topic.table_name)}
+                      onToggleSelect={toggleSelectTopic}
                     />
                   ))}
                   {removedFiltered.map((topic) => (
@@ -1121,6 +1077,8 @@ const TopicListPanel = ({
                       onDelete={handleToggleDelete}
                       pendingFile={null}
                       isMarkedForDelete={true}
+                      isSelected={false}
+                      onToggleSelect={() => { }}
                     />
                   ))}
                   {topicSearch && filteredTopics.length === 0 && (
@@ -1135,10 +1093,37 @@ const TopicListPanel = ({
             {!isLoading && topics.length > 0 && (
               <p className="text-sm text-gray-400 leading-relaxed">Changes take effect when you save the connection.</p>
             )}
+
+            {customFilesError && (
+              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <AlertCircle size={14} className="text-red-500 shrink-0" />
+                <p className="text-sm text-red-600">{customFilesErrorMessage}</p>
+              </div>
+            )}
           </div>
         )}
       </div>
 
+      {/* Single delete modal */}
+      {deleteTopic && (
+        <DeleteConfirmModal
+          topicName={deleteTopic}
+          onConfirm={confirmDelete}
+          onClose={() => setDeleteTopic(null)}
+        />
+      )}
+
+      {/* Bulk delete modal */}
+      {bulkDeletePending && (
+        <DeleteConfirmModal
+          topicName={`${selectedTopics.size} topic${selectedTopics.size !== 1 ? "s" : ""}`}
+          onConfirm={confirmBulkDelete}
+          onClose={() => setBulkDeletePending(false)}
+          isBulk={true}
+        />
+      )}
+
+      {/* JSON editor modal */}
       {editorTopic && (
         <JsonEditorModal
           topic={editorTopic}
@@ -1147,13 +1132,6 @@ const TopicListPanel = ({
           token={token}
           onClose={() => setEditorTopic(null)}
           onSave={handleSaveJson}
-        />
-      )}
-      {deleteTopic && (
-        <DeleteConfirmModal
-          topicName={deleteTopic}
-          onConfirm={confirmDelete}
-          onClose={() => setDeleteTopic(null)}
         />
       )}
     </>
@@ -1170,6 +1148,7 @@ const KafkaTopicManager = ({
   removedTopics,
   onRemovedTopicsChange,
   customFilesError,
+  customFilesErrorMessage,
 }) => {
   if (isEditMode) {
     return (
@@ -1181,6 +1160,8 @@ const KafkaTopicManager = ({
         onCustomFilesChange={onCustomFilesChange}
         removedTopics={removedTopics}
         onRemovedTopicsChange={onRemovedTopicsChange}
+        customFilesError={customFilesError}
+        customFilesErrorMessage={customFilesErrorMessage}
       />
     );
   }
