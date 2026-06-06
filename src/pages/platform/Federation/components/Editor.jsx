@@ -87,7 +87,6 @@ export default function Editor() {
     if (typeof av === "number" && typeof bv === "number") return sortConfig.direction === "asc" ? av - bv : bv - av;
     return sortConfig.direction === "asc" ? String(av || "").localeCompare(String(bv || "")) : String(bv || "").localeCompare(String(av || ""));
   });
-  const toTitleCase = s => s.replace(/_/g, " ").toLowerCase().replace(/\w/g, c => c.toUpperCase());
   // ──────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -925,7 +924,7 @@ export default function Editor() {
                                   onDragOver={e => handleColDragOver(e, vi)}
                                   onDrop={e => handleColDrop(e, vi)}
                                   onDragEnd={handleColDragEnd}
-                                  title={toTitleCase(col)}
+                                  title={col}
                                   onClick={() => handleSort(col)}
                                   style={{
                                     background: "#F9F9F9",
@@ -950,7 +949,7 @@ export default function Editor() {
                                   <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden" }}>
                                     <GripVertical size={12} style={{ opacity: 0.5, flexShrink: 0 }} />
                                     <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
-                                      {toTitleCase(col)}
+                                      {col}
                                     </span>
                                     <ArrowUpDown size={13} style={{ flexShrink: 0, opacity: sortConfig.key === col ? 1 : 0.5 }} />
                                   </div>
