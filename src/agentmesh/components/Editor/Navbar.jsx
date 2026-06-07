@@ -2,13 +2,14 @@ import React from 'react';
 import toast from 'react-hot-toast';
 import { useWorkflowStore, useUIStore } from '../../store';
 import { compileWorkflow, saveWorkflow, listWorkflowCategories, deleteWorkflow, explainWorkflow, getWorkflow, cloneWorkflow, fixGrammar, publishWorkflow, getMarketplaceUsecase } from '../../api/agentmesh';
-import { FiUpload, FiDownload, FiPlus, FiX, FiCheck, FiAlertTriangle, FiCopy, FiChevronDown, FiChevronUp, FiBookOpen, FiZap, FiLoader, FiTrash2, FiInfo, FiMaximize2, FiMinimize2, FiShare2, FiSave } from 'react-icons/fi';
+import { FiUpload, FiDownload, FiPlus, FiX, FiCheck, FiAlertTriangle, FiCopy, FiChevronDown, FiChevronUp, FiBookOpen, FiZap, FiLoader, FiTrash2, FiInfo, FiMaximize2, FiMinimize2, FiShare2, FiSave, FiCode } from 'react-icons/fi';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { AiMagicIcon } from '@hugeicons/core-free-icons';
 import { formatMessage } from '../Common/messageFormatting';
 import ConfirmationModal from '../Common/ConfirmationModal';
 import SaveWorkflowTemplateModal from './SaveWorkflowTemplateModal';
 import { copyToClipboard } from '../../utils/copyToClipboard';
+import WorkflowAPIConsole from './WorkflowAPIConsole';
 
 function TooltipWrapper({ text, children }) {
   const [visible, setVisible] = React.useState(false);
@@ -95,6 +96,7 @@ export default function Navbar() {
   const [ioDropdownOpen, setIoDropdownOpen] = React.useState(false);
   const ioDropdownRef = React.useRef(null);
   const ioTriggerRef = React.useRef(null);
+  const [showApiConsole, setShowApiConsole] = React.useState(false);
 
   const [showPublishModal, setShowPublishModal] = React.useState(false);
   const [showSaveTemplateModal, setShowSaveTemplateModal] = React.useState(false);
@@ -823,6 +825,25 @@ export default function Navbar() {
                   </div>
                 )}
               </div>
+
+              {/* API Console */}
+              <button
+                onClick={() => setShowApiConsole(true)}
+                disabled={!workflowId || !isCompiled}
+                title={!isCompiled ? 'Compile the workflow first to see the API' : 'Open API Console'}
+                style={{
+                  padding: '7px 14px', border: '1px solid var(--border)', borderRadius: 8,
+                  background: showApiConsole ? 'var(--theme-primary-glow)' : 'white',
+                  color: (!workflowId || !isCompiled) ? '#9CA3AF' : showApiConsole ? 'var(--theme-primary)' : 'var(--text-secondary)',
+                  fontSize: 13, fontWeight: 500, cursor: (!workflowId || !isCompiled) ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', gap: 7, transition: 'all 0.15s',
+                  opacity: (!workflowId || !isCompiled) ? 0.6 : 1
+                }}
+                onMouseEnter={(e) => { if (workflowId && isCompiled && !showApiConsole) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = showApiConsole ? 'var(--theme-primary-glow)' : 'white'; }}
+              >
+                <FiCode size={14} /> API
+              </button>
 
               {/* Compile */}
               <button
@@ -1989,6 +2010,13 @@ export default function Navbar() {
             </form>
           </div>
         </div>
+      )}
+
+      {showApiConsole && (
+        <WorkflowAPIConsole
+          workflowId={workflowId}
+          onClose={() => setShowApiConsole(false)}
+        />
       )}
     </>
   );

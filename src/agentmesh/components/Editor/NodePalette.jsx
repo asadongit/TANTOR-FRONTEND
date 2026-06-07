@@ -52,6 +52,10 @@ export const NODE_TYPES = [
   // Data & Storage
   { type: 'set_data',   icon: FiEdit,      label: 'Set Message',    desc: 'Static data/response',      bg: '#F5F3FF', color: '#7C3AED', category: 'Data & Storage' },
   { type: 'output_parser', icon: FiFilter,  label: 'Output Parser',  desc: 'Auto-fix malformed JSON',   bg: '#FEF3C7', color: '#D97706', category: 'Data & Storage' },
+  { type: 'json_transform', icon: FiFilter, label: 'JSON Transform', desc: 'Flatten, pick, rename JSON keys', bg: '#E0F2FE', color: '#0284C7', category: 'Data & Storage' },
+  { type: 'pattern_extract', icon: FiSearch, label: 'Pattern Extractor', desc: 'Extract values via keyword/regex patterns', bg: '#FDF2F8', color: '#DB2777', category: 'Data & Storage' },
+  { type: 'db_node',    icon: FiBox,       label: 'MongoDB',        desc: 'Read/Write MongoDB collections', bg: '#D1FAE5', color: '#065F46', category: 'Data & Storage' },
+  { type: 'cd_postprocessor', icon: FiLayers, label: 'CD Post-Processor', desc: 'Write to Credit Decisioning DB', bg: '#E9D5FF', color: '#6B21A8', category: 'Data & Storage' },
   { type: 'file_store', icon: FiFileText,  label: 'File Store',   desc: 'Save data to CSV/Excel',    bg: '#ECFDF5', color: '#059669', category: 'Data & Storage' },
   { type: 'notification', icon: FiBell,     label: 'Notification', desc: 'In-app alert storage',      bg: '#F0F4FF', color: '#6366F1', category: 'Data & Storage' },
   

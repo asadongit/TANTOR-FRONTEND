@@ -180,6 +180,15 @@ export const healthCheck = () => request('/health');
 // ─── Realtime ─────────────────────────────────────────────────────────────────
 export const getActiveRuns = () => request('/active-runs');
 
+// ─── Workflow API Console ─────────────────────────────────────────────────
+export const fetchWorkflowApiSpec = (workflowId) => request(`/workflow/${workflowId}/api-spec`);
+export const sendWebhookTest = async (url, { method = 'POST', headers = {}, body }) => {
+  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) });
+  let data;
+  try { data = await res.json(); } catch { data = { raw: 'Non-JSON response' }; }
+  return { status: res.status, statusText: res.statusText, headers: Object.fromEntries(res.headers.entries()), body: data };
+};
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 export const getDashboardStats = () => request('/dashboard/stats');
 

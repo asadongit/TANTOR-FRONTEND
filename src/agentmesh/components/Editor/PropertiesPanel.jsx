@@ -2717,6 +2717,9 @@ export default function PropertiesPanel() {
     template_node: FiFileText,
     webhook_response: FiShare2,
     error_router: FiAlertTriangle,
+    json_transform: FiFilter,
+    pattern_extract: FiSearch,
+    db_node: FiBox,
   };
   const Icon = nodeIcons[data.type] || FiLayers;
 
@@ -5014,18 +5017,20 @@ export default function PropertiesPanel() {
 
         {data.type === 'ocr_node' && (
           <>
-            <Field label="OCR Mode" hint="Vision OCR uses Cloud LLMs; Standard OCR uses local server engines.">
+            <Field label="OCR Mode" hint="Vision uses Cloud LLMs; Standard uses local engines; External sends files to an API service (e.g., DocBot).">
               <Select
                 value={data.ocr_engine || 'vision'}
                 onChange={(v) => update({ ocr_engine: v })}
                 options={[
                   { value: 'vision', label: 'Vision OCR (AI/LLM)' },
-                  { value: 'standard', label: 'Standard OCR (Local)' }
+                  { value: 'standard', label: 'Standard OCR (Local)' },
+                  { value: 'external', label: 'External Service (API)' }
                 ]}
               />
             </Field>
 
-            {(data.ocr_engine || 'vision') === 'vision' ? (
+            {/* ── Vision Engine Config ── */}
+            {(data.ocr_engine || 'vision') === 'vision' && (
               <>
                 <Field label="OCR Instruction / Prompt" hint="Instruction for the vision model. Be specific about what data to extract.">
                   <Textarea value={data.ocr_prompt} onChange={(v) => update({ ocr_prompt: v })} placeholder="e.g. Extract all text from this receipt accurately..." />
@@ -5038,7 +5043,10 @@ export default function PropertiesPanel() {
                   <LLMConfigSection llm={data.llm} onChange={(v) => update({ llm: v })} />
                 </div>
               </>
-            ) : (
+            )}
+
+            {/* ── Standard (Local) Engine Config ── */}
+            {data.ocr_engine === 'standard' && (
               <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: 12, border: '1px solid var(--border)', marginTop: 10 }}>
                 <Field label="Local OCR Engine" hint="Select the local model installed on your server.">
                   <Select
@@ -5057,17 +5065,470 @@ export default function PropertiesPanel() {
               </div>
             )}
 
+            {/* ── External Service Engine Config ── */}
+            {data.ocr_engine === 'external' && (
+              <>
+                <div style={{ padding: 16, background: '#FFF7ED', borderRadius: 12, border: '1px solid #FED7AA', marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9A3412', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>External OCR Service</div>
+
+                  <Field label="Service URL" hint="Full URL of the extraction API endpoint.">
+                    <Input
+                      value={data.ocr_service_url || ''}
+                      onChange={(v) => update({ ocr_service_url: v })}
+                      placeholder="http://localhost:8003/api/ocr/upload"
+                    />
+                  </Field>
+
+                  <Field label="Response Type" hint="How the service returns data.">
+                    <Select
+                      value={data.ocr_service_response_type || 'sse'}
+                      onChange={(v) => update({ ocr_service_response_type: v })}
+                      options={[
+                        { value: 'sse', label: 'SSE Stream (Server-Sent Events)' },
+                        { value: 'json', label: 'JSON (Standard Response)' }
+                      ]}
+                    />
+                  </Field>
+
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <div style={{ flex: 1 }}>
+                      <Field label="File Field Name" hint="Multipart form field name for file.">
+                        <Input value={data.ocr_service_file_field || 'files'} onChange={(v) => update({ ocr_service_file_field: v })} placeholder="files" />
+                      </Field>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <Field label="Text Path in Response" hint="Dot-path to extracted text in each event/result.">
+                        <Input value={data.ocr_service_text_path || 'data.text'} onChange={(v) => update({ ocr_service_text_path: v })} placeholder="data.text" />
+                      </Field>
+                    </div>
+                  </div>
+                </div>
+
+                <KeyValueEditor
+                  label="Service Form Fields"
+                  value={data.ocr_service_params || {}}
+                  onChange={(v) => update({ ocr_service_params: v })}
+                  hint="Extra fields sent with the file (e.g., provider: groq, mask_pii: true)"
+                />
+
+                <KeyValueEditor
+                  label="Service Headers"
+                  value={data.ocr_service_headers || {}}
+                  onChange={(v) => update({ ocr_service_headers: v })}
+                  hint="Optional headers (e.g., Authorization: Bearer xxx)"
+                />
+
+                <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0', opacity: 0.5 }} />
+
+                <Field label="Multi-File Input Key (Optional)" hint="Context key containing a list of uploaded file objects (e.g., payload.uploaded_files). If set, processes ALL files.">
+                  <Input
+                    value={data.ocr_multi_file_key || ''}
+                    onChange={(v) => update({ ocr_multi_file_key: v })}
+                    placeholder="e.g. payload.uploaded_files"
+                  />
+                </Field>
+              </>
+            )}
+
             <div style={{
               padding: '12px 14px', background: '#F8FAFC', borderRadius: 10, fontSize: 11, color: 'var(--text-secondary)',
               border: '1px solid var(--border)', lineHeight: 1.5, marginTop: 18, display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'space-between'
             }}>
               <span style={{ flex: 1, fontWeight: 500 }}>
-                {data.ocr_engine === 'vision'
-                  ? "Vision Mode: Best for complex layouts, handwriting, and tables using AI."
-                  : `Standard Mode: Best for high-speed, plain text extraction using ${data.ocr_standard_model}.`
+                {data.ocr_engine === 'external'
+                  ? "External Mode: Sends files to a remote OCR/extraction service via multipart upload."
+                  : data.ocr_engine === 'standard'
+                    ? `Standard Mode: Best for high-speed, plain text extraction using ${data.ocr_standard_model || 'tesseract'}.`
+                    : "Vision Mode: Best for complex layouts, handwriting, and tables using AI."
                 }
               </span>
               <FiCamera size={16} style={{ color: 'var(--text-muted)', opacity: 0.5 }} />
+            </div>
+          </>
+        )}
+
+        {/* ── JSON Transform ── */}
+        {data.type === 'json_transform' && (
+          <>
+            <Field label="Operation" hint="Choose how to transform the JSON data.">
+              <Select
+                value={data.transform_operation || 'flatten'}
+                onChange={(v) => update({ transform_operation: v })}
+                options={[
+                  { value: 'flatten', label: 'Flatten (nested → flat keys)' },
+                  { value: 'pick', label: 'Pick (keep only listed fields)' },
+                  { value: 'rename', label: 'Rename (change key names)' },
+                  { value: 'omit', label: 'Omit (remove specific keys)' }
+                ]}
+              />
+            </Field>
+
+            <Field label="Input Key" hint="Context variable containing the JSON data.">
+              <Input value={data.transform_input_key || 'payload'} onChange={(v) => update({ transform_input_key: v })} placeholder="payload" />
+            </Field>
+
+            <Field label="Output Key" hint="Context variable where the result will be stored.">
+              <Input value={data.transform_output_key || 'transformed_json'} onChange={(v) => update({ transform_output_key: v })} placeholder="transformed_json" />
+            </Field>
+
+            {(data.transform_operation || 'flatten') === 'flatten' && (
+              <Field label="Separator" hint="Character between nested key segments (e.g., '/' → 'basic_info/name').">
+                <Input value={data.transform_separator || '/'} onChange={(v) => update({ transform_separator: v })} placeholder="/" />
+              </Field>
+            )}
+
+            {(data.transform_operation) === 'pick' && (
+              <Field label="Fields to Pick" hint="Comma-separated list of field paths to keep (e.g., name,address.city).">
+                <Textarea
+                  value={(data.transform_pick_fields || []).join(', ')}
+                  onChange={(v) => update({ transform_pick_fields: v.split(',').map(s => s.trim()).filter(Boolean) })}
+                  placeholder="name, age, address.city"
+                  rows={3}
+                />
+              </Field>
+            )}
+
+            {(data.transform_operation) === 'rename' && (
+              <KeyValueEditor
+                label="Rename Map (Old Key → New Key)"
+                value={data.transform_rename_map || {}}
+                onChange={(v) => update({ transform_rename_map: v })}
+                hint="Left = original key name, Right = new key name"
+              />
+            )}
+
+            {(data.transform_operation) === 'omit' && (
+              <Field label="Keys to Omit" hint="Comma-separated list of keys to remove.">
+                <Textarea
+                  value={(data.transform_omit_keys || []).join(', ')}
+                  onChange={(v) => update({ transform_omit_keys: v.split(',').map(s => s.trim()).filter(Boolean) })}
+                  placeholder="ssn, password, internal_id"
+                  rows={3}
+                />
+              </Field>
+            )}
+
+            <div style={{
+              padding: '12px 14px', background: '#F0F9FF', borderRadius: 10, fontSize: 11, color: '#0369A1',
+              border: '1px solid #BAE6FD', lineHeight: 1.5, marginTop: 12, display: 'flex', alignItems: 'center', gap: 10
+            }}>
+              <FiInfo size={14} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, fontWeight: 500 }}>
+                JSON Transform processes structured data from APIs, uploads, or previous nodes. Use "Flatten" for nested JSON → flat keys before Pattern Extraction.
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* ── Pattern Extractor ── */}
+        {data.type === 'pattern_extract' && (
+          <>
+            <Field label="Extraction Mode" hint="Identifier: extract labeled values. Field Mapper: group by target class.">
+              <Select
+                value={data.extract_mode || 'identifier'}
+                onChange={(v) => update({ extract_mode: v })}
+                options={[
+                  { value: 'identifier', label: 'Identifier (PAN, Name, Account No.)' },
+                  { value: 'field_mapper', label: 'Field Mapper (group by agent class)' }
+                ]}
+              />
+            </Field>
+
+            <Field label="Input Key" hint="Context variable containing the flat dictionary to scan.">
+              <Input value={data.extract_input_key || 'transformed_json'} onChange={(v) => update({ extract_input_key: v })} placeholder="transformed_json" />
+            </Field>
+
+            <Field label="Output Key" hint="Context variable where extraction results are stored.">
+              <Input value={data.extract_output_key || ((data.extract_mode || 'identifier') === 'identifier' ? 'extracted_identifiers' : 'mapped_fields')} onChange={(v) => update({ extract_output_key: v })} placeholder="extracted_identifiers" />
+            </Field>
+
+            {/* Pattern list editor */}
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Patterns ({(data.extract_patterns || []).length})
+                </label>
+                <button
+                  onClick={() => update({
+                    extract_patterns: [
+                      ...(data.extract_patterns || []),
+                      {
+                        concept: '',
+                        display_label: '',
+                        search_keywords: [],
+                        match_strategy: 'contains',
+                        is_required: false,
+                        target_class: (data.extract_mode || 'identifier') === 'field_mapper' ? '' : undefined
+                      }
+                    ]
+                  })}
+                  style={{
+                    background: 'none', border: 'none', color: 'var(--accent-btn)',
+                    cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center',
+                    borderRadius: 4
+                  }}
+                >
+                  <FiPlus size={16} strokeWidth={3} />
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {(data.extract_patterns || []).map((pattern, idx) => (
+                  <div key={idx} style={{ padding: 10, background: '#F8FAFC', borderRadius: 8, border: '1px solid var(--border)', position: 'relative' }}>
+                    <button
+                      onClick={() => {
+                        const next = [...(data.extract_patterns || [])];
+                        next.splice(idx, 1);
+                        update({ extract_patterns: next });
+                      }}
+                      style={{ position: 'absolute', top: 6, right: 6, background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}
+                    >
+                      <FiX size={12} />
+                    </button>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
+                      <div>
+                        <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>CONCEPT</label>
+                        <Input
+                          value={pattern.concept || ''}
+                          onChange={(v) => {
+                            const next = [...(data.extract_patterns || [])];
+                            next[idx] = { ...next[idx], concept: v, display_label: next[idx].display_label || v };
+                            update({ extract_patterns: next });
+                          }}
+                          placeholder="e.g. PAN"
+                          style={{ padding: '4px 8px', fontSize: 11 }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DISPLAY LABEL</label>
+                        <Input
+                          value={pattern.display_label || ''}
+                          onChange={(v) => {
+                            const next = [...(data.extract_patterns || [])];
+                            next[idx] = { ...next[idx], display_label: v };
+                            update({ extract_patterns: next });
+                          }}
+                          placeholder="e.g. PAN Number"
+                          style={{ padding: '4px 8px', fontSize: 11 }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: 6 }}>
+                      <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>SEARCH KEYWORDS (comma-separated)</label>
+                      <Input
+                        value={(pattern.search_keywords || []).join(', ')}
+                        onChange={(v) => {
+                          const next = [...(data.extract_patterns || [])];
+                          next[idx] = { ...next[idx], search_keywords: v.split(',').map(s => s.trim()).filter(Boolean) };
+                          update({ extract_patterns: next });
+                        }}
+                        placeholder="pan, pan_number, permanent_account"
+                        style={{ padding: '4px 8px', fontSize: 11 }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                      <div>
+                        <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>STRATEGY</label>
+                        <Select
+                          value={pattern.match_strategy || 'contains'}
+                          onChange={(v) => {
+                            const next = [...(data.extract_patterns || [])];
+                            next[idx] = { ...next[idx], match_strategy: v };
+                            update({ extract_patterns: next });
+                          }}
+                          options={[
+                            { value: 'contains', label: 'Contains' },
+                            { value: 'exact', label: 'Exact Match' },
+                            { value: 'starts_with', label: 'Starts With' },
+                            { value: 'ends_with', label: 'Ends With' },
+                            { value: 'regex', label: 'Regex' }
+                          ]}
+                        />
+                      </div>
+                      {(data.extract_mode || 'identifier') === 'field_mapper' ? (
+                        <div>
+                          <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>TARGET CLASS</label>
+                          <Input
+                            value={pattern.target_class || ''}
+                            onChange={(v) => {
+                              const next = [...(data.extract_patterns || [])];
+                              next[idx] = { ...next[idx], target_class: v };
+                              update({ extract_patterns: next });
+                            }}
+                            placeholder="e.g. FA, LOAN"
+                            style={{ padding: '4px 8px', fontSize: 11 }}
+                          />
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 4 }}>
+                          <Toggle
+                            checked={pattern.is_required || false}
+                            onChange={(v) => {
+                              const next = [...(data.extract_patterns || [])];
+                              next[idx] = { ...next[idx], is_required: v };
+                              update({ extract_patterns: next });
+                            }}
+                            label="Required"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {(data.extract_patterns || []).length === 0 && (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', padding: '4px 0' }}>
+                    No patterns defined. Click the plus button above to add patterns.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{
+              padding: '12px 14px', background: '#FDF2F8', borderRadius: 10, fontSize: 11, color: '#DB2777',
+              border: '1px solid #FBCFE8', lineHeight: 1.5, marginTop: 12, display: 'flex', alignItems: 'center', gap: 10
+            }}>
+              <FiSearch size={14} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, fontWeight: 500 }}>
+                {(data.extract_mode || 'identifier') === 'identifier'
+                  ? 'Identifier mode finds labeled values (PAN, Name, etc.) from flat JSON keys. Connect after a JSON Transform node.'
+                  : 'Field Mapper mode groups extracted values by target class (FA, LOAN, etc.) for routing to specialist agents.'
+                }
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* ── MongoDB Node ── */}
+        {data.type === 'db_node' && (
+          <>
+            <Field label="Operation" hint="Choose the MongoDB CRUD operation.">
+              <Select
+                value={data.db_operation || 'insert_one'}
+                onChange={(v) => update({ db_operation: v })}
+                options={[
+                  { value: 'insert_one', label: 'Insert One' },
+                  { value: 'insert_many', label: 'Insert Many' },
+                  { value: 'find_one', label: 'Find One' },
+                  { value: 'find_many', label: 'Find Many' },
+                  { value: 'update_one', label: 'Update One' },
+                  { value: 'delete_one', label: 'Delete One' }
+                ]}
+              />
+            </Field>
+
+            <Field label="Connection String" hint="MongoDB URI. Leave blank to use backend MONGODB_URI env var.">
+              <Input
+                value={data.db_connection_string || ''}
+                onChange={(v) => update({ db_connection_string: v || null })}
+                placeholder="mongodb://localhost:27017 (or leave blank)"
+                type="password"
+              />
+            </Field>
+
+            <Field label="Database Name" hint="Target MongoDB database.">
+              <Input value={data.db_database || ''} onChange={(v) => update({ db_database: v })} placeholder="e.g. credit_decisioning" />
+            </Field>
+
+            <Field label="Collection Name" hint="Target MongoDB collection. Supports {{context.xxx}} interpolation.">
+              <Input value={data.db_collection || ''} onChange={(v) => update({ db_collection: v })} placeholder="e.g. customer_profiles" />
+            </Field>
+
+            {['insert_one', 'insert_many', 'update_one'].includes(data.db_operation || 'insert_one') && (
+              <Field label="Document Template" hint="JSON template with {{context.xxx}} placeholders. Use {{__NOW__}} for current timestamp.">
+                <Textarea
+                  value={typeof data.db_document === 'string' ? data.db_document : JSON.stringify(data.db_document || {}, null, 2)}
+                  onChange={(v) => {
+                    try { update({ db_document: JSON.parse(v) }); } catch { update({ db_document: v }); }
+                  }}
+                  placeholder={'{\n  "name": "{{extracted_identifiers.0.value}}",\n  "status": "completed",\n  "created_at": "{{__NOW__}}"\n}'}
+                  rows={8}
+                />
+              </Field>
+            )}
+
+            {['find_one', 'find_many', 'update_one', 'delete_one'].includes(data.db_operation || 'insert_one') && (
+              <Field label="Query Filter" hint="MongoDB query filter with {{context.xxx}} placeholders.">
+                <Textarea
+                  value={typeof data.db_query === 'string' ? data.db_query : JSON.stringify(data.db_query || {}, null, 2)}
+                  onChange={(v) => {
+                    try { update({ db_query: JSON.parse(v) }); } catch { update({ db_query: v }); }
+                  }}
+                  placeholder={'{\n  "customer_uid": "{{customer_uid}}"\n}'}
+                  rows={4}
+                />
+              </Field>
+            )}
+
+            {['find_one', 'find_many'].includes(data.db_operation || 'insert_one') && (
+              <Field label="Output Key" hint="Context key to store query results.">
+                <Input value={data.db_output_key || 'db_result'} onChange={(v) => update({ db_output_key: v })} placeholder="db_result" />
+              </Field>
+            )}
+
+            {(data.db_operation || 'insert_one') === 'find_many' && (
+              <Field label="Limit" hint="Maximum documents to return.">
+                <Input type="number" value={data.db_limit || 100} onChange={(v) => update({ db_limit: parseInt(v) || 100 })} placeholder="100" />
+              </Field>
+            )}
+
+            <div style={{
+              padding: '12px 14px', background: '#D1FAE5', borderRadius: 10, fontSize: 11, color: '#065F46',
+              border: '1px solid #A7F3D0', lineHeight: 1.5, marginTop: 12, display: 'flex', alignItems: 'center', gap: 10
+            }}>
+              <FiBox size={14} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, fontWeight: 500 }}>
+                {'MongoDB node performs real database operations. Use {{context.xxx}} in document templates to inject workflow data dynamically.'}
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* ── CD Post-Processor Node ── */}
+        {data.type === 'cd_postprocessor' && (
+          <>
+            <div style={{
+              padding: '14px 16px', background: '#F5F3FF', borderRadius: 12, fontSize: 12, color: '#6B21A8',
+              border: '1px solid #DDD6FE', lineHeight: 1.6, marginTop: 8
+            }}>
+              <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 13 }}>📋 Credit Decisioning Post-Processor</div>
+              <div style={{ color: '#44337A', fontSize: 11 }}>
+                Writes pipeline results to all legacy CD MongoDB collections so the 
+                Decision Workbench and Dashboard work without changes.
+              </div>
+            </div>
+
+            <div style={{ marginTop: 12, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.7 }}>
+              <div style={{ fontWeight: 600, marginBottom: 6, color: 'var(--text-primary)' }}>Collections Written:</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div>✅ <b>User_Data</b> — Customer profile + orchestration decision</div>
+                <div>✅ <b>Ocr_Data</b> — OCR extraction results</div>
+                <div>✅ <b>Upload_Batches</b> — Pipeline tracking</div>
+                <div>✅ <b>Governance_Workflow</b> — Workflow-level timing</div>
+                <div>✅ <b>Governance_Workflow_Stages</b> — Per-stage metrics</div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 12, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.7 }}>
+              <div style={{ fontWeight: 600, marginBottom: 6, color: 'var(--text-primary)' }}>Context Keys Read:</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <div>📄 <code style={{fontSize: 10, background: '#F1F5F9', padding: '1px 4px', borderRadius: 3}}>latest_ocr_output</code> — OCR results from OCR node</div>
+                <div>📊 <code style={{fontSize: 10, background: '#F1F5F9', padding: '1px 4px', borderRadius: 3}}>aggregated_results</code> — Classified agent outputs</div>
+                <div>📋 <code style={{fontSize: 10, background: '#F1F5F9', padding: '1px 4px', borderRadius: 3}}>items</code> — LLM agent outputs (orchestrator)</div>
+                <div>📂 <code style={{fontSize: 10, background: '#F1F5F9', padding: '1px 4px', borderRadius: 3}}>payload.uploaded_files</code> — File metadata</div>
+              </div>
+            </div>
+
+            <div style={{
+              padding: '12px 14px', background: '#ECFDF5', borderRadius: 10, fontSize: 11, color: '#065F46',
+              border: '1px solid #A7F3D0', lineHeight: 1.5, marginTop: 12, display: 'flex', alignItems: 'center', gap: 10
+            }}>
+              <span style={{ fontSize: 16 }}>⚙️</span>
+              <span style={{ flex: 1, fontWeight: 500 }}>
+                No configuration needed — reads database connection from environment variables (Cd_Host, Cd_Username, etc.)
+              </span>
             </div>
           </>
         )}

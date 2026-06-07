@@ -499,7 +499,15 @@ export const useWorkflowStore = create((set, get) => ({
           'direct_tool_name', 'tool_arguments', 'destination_key',
           'classification_classes', 'classification_summary', 'classification_engine', 'classification_input_field',
           'engine_mode', 'custom_entities', 'output_format',
-          'template_content', 'template_output_key', 'template_data_key', 'template_file_path'
+          'template_content', 'template_output_key', 'template_data_key', 'template_file_path',
+          'db_connection_string', 'db_database', 'db_collection', 'db_operation', 'db_document', 'db_query', 'db_output_key', 'db_limit',
+          'transform_operation', 'transform_separator', 'transform_pick_fields', 'transform_rename_map', 'transform_omit_keys', 'transform_input_key', 'transform_output_key',
+          'ocr_service_url', 'ocr_service_params', 'ocr_service_headers', 'ocr_service_response_type', 'ocr_service_file_field', 'ocr_service_text_path', 'ocr_multi_file_key',
+          'classification_input_key', 'classification_output_key',
+          'destination_field', 'action', 'field_to_aggregate', 'separator',
+          'show_citations',
+          'extract_mode', 'extract_patterns', 'extract_input_key', 'extract_output_key',
+          'debug_scope', 'debug_key'
         ];
 
         const nodeConfig = {};
