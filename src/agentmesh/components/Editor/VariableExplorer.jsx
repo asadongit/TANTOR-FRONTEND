@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { useRunStore, useWorkflowStore } from '../../store';
 import {
   FiSearch, FiCopy, FiChevronRight, FiChevronDown, FiDatabase,
-  FiCpu, FiActivity, FiTerminal, FiGlobe, FiX
+  FiActivity, FiTerminal, FiX
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const THEME_ACCENT = 'var(--theme-primary)';
-const THEME_BORDER = 'rgba(0, 0, 0, 0.08)';
-const THEME_TEXT = '#111827';
+const THEME_BORDER = 'var(--border)';
+const THEME_TEXT = 'var(--text-primary)';
 
 export default function VariableExplorer({ onClose }) {
   const { latestContext } = useRunStore();
@@ -122,8 +123,8 @@ export default function VariableExplorer({ onClose }) {
       style={{
         width: 320,
         height: '100%',
-        background: '#FFFFFF',
-        borderLeft: `1px solid ${THEME_BORDER}`,
+        background: 'var(--bg-secondary, #FFFFFF)',
+        borderLeft: `1px solid var(--border)`,
         display: 'flex',
         flexDirection: 'column',
       }}
@@ -131,11 +132,11 @@ export default function VariableExplorer({ onClose }) {
       {/* Header */}
       <div style={{
         padding: '20px 24px',
-        borderBottom: `1px solid ${THEME_BORDER}`,
+        borderBottom: `1px solid var(--border)`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        background: '#FAFBFC'
+        background: 'var(--bg-primary, #FAFBFC)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
@@ -148,7 +149,7 @@ export default function VariableExplorer({ onClose }) {
           </div>
           <div>
             <div style={{ fontSize: 13, fontWeight: 800, color: THEME_TEXT, letterSpacing: '-0.01em' }}>Data Explorer</div>
-            <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 600 }}>RUNTIME CONTEXT</div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted, #6B7280)', fontWeight: 600 }}>RUNTIME CONTEXT</div>
           </div>
         </div>
 
@@ -174,7 +175,7 @@ export default function VariableExplorer({ onClose }) {
               width: 28, height: 28, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 0.15s'
             }}
-            onMouseEnter={e => e.currentTarget.style.background = '#F3F4F6'}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover, #F3F4F6)'}
             onMouseLeave={e => e.currentTarget.style.background = 'none'}
           >
             <FiX size={18} />
@@ -183,7 +184,7 @@ export default function VariableExplorer({ onClose }) {
       </div>
 
       {/* Search */}
-      <div style={{ padding: '16px 20px', borderBottom: `1px solid ${THEME_BORDER}` }}>
+      <div style={{ padding: '16px 20px', borderBottom: `1px solid var(--border)` }}>
         <div style={{
           position: 'relative',
           display: 'flex',
@@ -199,10 +200,10 @@ export default function VariableExplorer({ onClose }) {
               width: '100%',
               padding: '10px 12px 10px 36px',
               borderRadius: 10,
-              border: `1px solid ${THEME_BORDER}`,
+              border: `1px solid var(--border)`,
               fontSize: 12,
               outline: 'none',
-              background: '#F9FAFB',
+              background: 'var(--bg-primary, #F9FAFB)',
               color: THEME_TEXT,
               fontWeight: 500
             }}
@@ -275,10 +276,10 @@ export default function VariableExplorer({ onClose }) {
       {/* Footer Info */}
       <div style={{
         padding: '16px 24px',
-        borderTop: `1px solid ${THEME_BORDER}`,
-        background: '#FAFBFC',
+        borderTop: `1px solid var(--border)`,
+        background: 'var(--bg-primary, #FAFBFC)',
         fontSize: 10,
-        color: '#9CA3AF',
+        color: 'var(--text-muted, #9CA3AF)',
         fontWeight: 600,
         display: 'flex',
         alignItems: 'center',
@@ -309,8 +310,8 @@ function VariableItem({ name, value, onCopy }) {
       }}
       style={{
         padding: '10px 24px',
-        borderBottom: '1px solid rgba(0,0,0,0.02)',
-        background: isHovered ? 'rgba(0,0,0,0.015)' : 'transparent',
+        borderBottom: '1px solid var(--border-light, rgba(0,0,0,0.02))',
+        background: isHovered ? 'var(--bg-hover, rgba(0,0,0,0.015))' : 'transparent',
         transition: 'all 0.15s',
         position: 'relative',
         cursor: 'grab'
@@ -343,19 +344,18 @@ function VariableItem({ name, value, onCopy }) {
             onClick={() => isObject && setIsOpen(!isOpen)}
             style={{
               fontSize: 11,
-              color: '#6B7280',
+              color: 'var(--text-secondary, #6B7280)',
               marginTop: 4,
-              // maxHeight: isOpen ? 'none' : 'unset',
               display: '-webkit-box',
               WebkitLineClamp: isOpen ? 50 : 1,
               WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
               cursor: isObject ? 'pointer' : 'default',
               fontFamily: 'monospace',
-              background: '#F8F9FA',
+              background: 'var(--bg-primary, #F8F9FA)',
               padding: '4px 8px',
               borderRadius: 6,
-              border: '1px solid rgba(0,0,0,0.03)'
+              border: '1px solid var(--border)'
             }}
           >
             {displayValue}
@@ -367,7 +367,7 @@ function VariableItem({ name, value, onCopy }) {
           style={{
             width: 28, height: 28, borderRadius: 6,
             background: isHovered ? 'var(--theme-primary)' : 'transparent',
-            border: `1px solid ${isHovered ? 'transparent' : THEME_BORDER}`,
+            border: `1px solid ${isHovered ? 'transparent' : 'var(--border)'}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', transition: 'all 0.2s',
             boxShadow: isHovered ? '0 4px 12px rgba(142, 119, 187, 0.2)' : 'none',
@@ -418,3 +418,13 @@ function VariableItem({ name, value, onCopy }) {
     </div>
   );
 }
+
+VariableExplorer.propTypes = {
+  onClose: PropTypes.func.isRequired
+};
+
+VariableItem.propTypes = {
+  name: PropTypes.string.isRequired,
+  value: PropTypes.any,
+  onCopy: PropTypes.func.isRequired
+};

@@ -79,6 +79,72 @@
   box-sizing: border-box;
 }
 
+/* ─── DARK MODE VARIABLES OVERRIDE ─── */
+.agentmesh-root.is-dark-theme,
+.agentmesh-root .is-dark-theme {
+  --bg-canvas: #1D1D1F;
+  --bg-primary: #1F1E22;
+  --bg-secondary: #2C2B30;
+  --bg-card: #2C2B30;
+  --bg-hover: #3E3D43;
+  --border: #4C4B52;
+  --border-light: #39383E;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --theme-primary-glow: rgba(162, 140, 216, 0.15);
+  
+  color: var(--text-primary) !important;
+}
+
+/* Explicit Dark Theme Overrides for Form Inputs, Textareas, and Selects */
+.agentmesh-root .is-dark-theme input,
+.agentmesh-root .is-dark-theme textarea,
+.agentmesh-root .is-dark-theme select {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border) !important;
+}
+
+/* Override Inline White/Light Backgrounds */
+.agentmesh-root .is-dark-theme div[style*="background: white"],
+.agentmesh-root .is-dark-theme div[style*="background: #FFFFFF"],
+.agentmesh-root .is-dark-theme div[style*="background: #ffffff"],
+.agentmesh-root .is-dark-theme div[style*="background-color: white"],
+.agentmesh-root .is-dark-theme div[style*="background-color: #FFFFFF"],
+.agentmesh-root .is-dark-theme div[style*="background-color: #ffffff"],
+.agentmesh-root .is-dark-theme div[style*="background: rgb(255, 255, 255)"] {
+  background-color: var(--bg-secondary) !important;
+}
+
+.agentmesh-root .is-dark-theme div[style*="background: #F8FAFC"],
+.agentmesh-root .is-dark-theme div[style*="background: #F9FAFB"],
+.agentmesh-root .is-dark-theme div[style*="background: #FAFBFC"],
+.agentmesh-root .is-dark-theme div[style*="background: rgb(248, 250, 252)"],
+.agentmesh-root .is-dark-theme div[style*="background: rgb(249, 250, 251)"],
+.agentmesh-root .is-dark-theme div[style*="background: rgb(250, 251, 252)"] {
+  background-color: var(--bg-primary) !important;
+}
+
+/* Override Inline Dark Text Colors */
+.agentmesh-root .is-dark-theme div[style*="color: #111827"],
+.agentmesh-root .is-dark-theme div[style*="color: #1C1C1E"],
+.agentmesh-root .is-dark-theme div[style*="color: rgb(17, 24, 39)"],
+.agentmesh-root .is-dark-theme span[style*="color: #111827"],
+.agentmesh-root .is-dark-theme span[style*="color: #1C1C1E"],
+.agentmesh-root .is-dark-theme span[style*="color: rgb(17, 24, 39)"] {
+  color: var(--text-primary) !important;
+}
+
+.agentmesh-root .is-dark-theme div[style*="color: #6B7280"],
+.agentmesh-root .is-dark-theme div[style*="color: #64748B"],
+.agentmesh-root .is-dark-theme div[style*="color: rgb(107, 114, 128)"],
+.agentmesh-root .is-dark-theme span[style*="color: #6B7280"],
+.agentmesh-root .is-dark-theme span[style*="color: #64748B"],
+.agentmesh-root .is-dark-theme span[style*="color: rgb(107, 114, 128)"] {
+  color: var(--text-secondary) !important;
+}
+
 /* ─── Box sizing reset scoped to agentmesh only ─── */
 .agentmesh-root *, .agentmesh-root *::before, .agentmesh-root *::after {
   box-sizing: border-box;

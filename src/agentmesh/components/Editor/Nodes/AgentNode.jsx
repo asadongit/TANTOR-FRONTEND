@@ -315,12 +315,12 @@ function AgentNode({ id, data, selected }) {
 
                 {actualType === 'splitter' && (
                   <>
-                    <div style={logicRowStyle}>
+                    <div style={logicRowStyleActive}>
                        <span style={{ fontSize: 10, fontWeight: 800, color: '#EA580C', marginRight: 4 }}>LOOP (ITEM)</span>
                        <Handle type="source" position={Position.Right} id="loop" style={logicHandleStyle('#EA580C')} />
                     </div>
-                    <div style={logicRowStyle}>
-                       <span style={{ fontSize: 10, fontWeight: 800, color: '#94A3B8', marginRight: 4 }}>DONE</span>
+                    <div style={logicRowStyleActive}>
+                       <span style={{ fontSize: 10, fontWeight: 800, color: isDarkNode ? '#94A3B8' : '#64748B', marginRight: 4 }}>DONE</span>
                        <Handle type="source" position={Position.Right} id="done" style={logicHandleStyle('#94A3B8')} />
                     </div>
                   </>

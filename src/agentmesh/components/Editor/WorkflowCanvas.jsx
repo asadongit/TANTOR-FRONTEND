@@ -273,14 +273,14 @@ export default function WorkflowCanvas() {
   }, [reactFlowInstance, addNode]);
 
   return (
-    <div style={{ display: 'flex', height: '100%', overflow: 'hidden', background: 'var(--bg-canvas)', fontFamily: "'Inter', sans-serif", position: 'relative' }}>
+    <div className={isDarkCanvas ? 'is-dark-theme' : ''} style={{ display: 'flex', height: '100%', overflow: 'hidden', background: 'var(--bg-canvas)', fontFamily: "'Inter', sans-serif", position: 'relative' }}>
 
       {/* ── Left Palette Panel (Now on the left) ── */}
       {paletteOpen && !selectedNodeId && (
         <div style={{
           width: 260,
           borderRight: '1px solid var(--border)',
-          background: 'white',
+          background: 'var(--bg-secondary, white)',
           flexShrink: 0,
           overflow: 'hidden',
           animation: 'paletteIn 0.2s ease-out'
@@ -530,7 +530,7 @@ export default function WorkflowCanvas() {
             transition={isResizing ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
             style={{
               borderLeft: '1px solid var(--border)',
-              background: 'white',
+              background: 'var(--bg-secondary, white)',
               flexShrink: 0,
               overflow: 'hidden',
               height: '100%',
@@ -567,7 +567,7 @@ export default function WorkflowCanvas() {
             transition={{ duration: 0.2, ease: "easeOut" }}
             style={{
               borderLeft: '1px solid var(--border)',
-              background: 'white',
+              background: 'var(--bg-secondary, white)',
               flexShrink: 0,
               overflow: 'hidden',
               height: '100%'
