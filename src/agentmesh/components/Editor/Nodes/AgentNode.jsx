@@ -82,6 +82,8 @@ function AgentNode({ id, data, selected }) {
   const actualType = data.type || 'llm_agent';
   const config = NODE_CONFIGS[actualType] || NODE_CONFIGS.llm_agent;
   const setSelectedNode = useUIStore((s) => s.setSelectedNode);
+  const selectedNodeId = useUIStore((s) => s.selectedNodeId);
+  const isSelected = selected || selectedNodeId === id;
   const nodeTheme = useUIStore((s) => s.canvasNodeTheme) || 'modern';
   const { nodes, edges } = useWorkflowStore(); 
   const [hovered, setHovered] = useState(false);
@@ -121,7 +123,6 @@ function AgentNode({ id, data, selected }) {
 
   // Dynamic Theme Styling Helper
   const getThemeStyles = () => {
-    const activeColor = 'var(--theme-primary, #3B82F6)';
     const baseStyle = {
       minWidth: isLogicNode ? 220 : config.small ? 100 : 180,
       transform: hovered ? 'translateY(-2px)' : 'none',
@@ -141,26 +142,26 @@ function AgentNode({ id, data, selected }) {
       case 'dark':
         return {
           ...baseStyle,
-          background: '#1E293B',
+          background: '#2C2B30',
           color: '#F8FAFC',
-          border: selected 
-            ? `1.5px solid ${activeColor}` 
-            : '1.5px solid #334155',
+          border: isSelected 
+            ? '2px solid #A28CD8' 
+            : '1.5px solid #4C4B52',
           borderRadius: config.round,
-          boxShadow: selected 
-            ? `0 0 0 3px rgba(139, 92, 246, 0.35), 0 10px 20px rgba(0,0,0,0.3)`
+          boxShadow: isSelected 
+            ? '0 0 0 3px rgba(162, 140, 216, 0.25), 0 12px 24px rgba(0, 0, 0, 0.4)'
             : hovered 
-              ? '0 12px 20px rgba(0,0,0,0.25)'
-              : '0 4px 6px rgba(0,0,0,0.15)',
+              ? '0 12px 24px rgba(0, 0, 0, 0.3)'
+              : '0 4px 12px rgba(0, 0, 0, 0.2)',
         };
       case 'modern':
       default:
         return {
           ...baseStyle,
           background: 'white',
-          border: selected ? '1.5px solid var(--theme-primary, #3B82F6)' : '1.5px solid rgba(0,0,0,0.04)',
+          border: isSelected ? '1.5px solid var(--theme-primary, #3B82F6)' : '1.5px solid rgba(0,0,0,0.04)',
           borderRadius: config.round,
-          boxShadow: selected 
+          boxShadow: isSelected 
             ? '0 0 0 3px rgba(59, 130, 246, 0.25), 0 10px 20px -5px rgba(0, 0, 0, 0.15)'
             : hovered ? '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)' 
             : '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.025)',
@@ -169,6 +170,20 @@ function AgentNode({ id, data, selected }) {
   };
 
   const isDarkNode = nodeTheme === 'dark';
+
+  const logicRowStyleActive = {
+    padding: '6px 12px',
+    background: isDarkNode ? '#232227' : '#F9FAFB',
+    borderRadius: 8,
+    display: 'flex',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    position: 'relative',
+    border: isDarkNode ? '1px solid #36353B' : '1px solid #F1F5F9',
+    minHeight: 32,
+    marginBottom: 4,
+    transition: 'all 0.2s ease'
+  };
 
   return (
     <div
@@ -182,16 +197,16 @@ function AgentNode({ id, data, selected }) {
       {isLogicNode && (
           <div style={{ 
             padding: '10px 14px', 
-            background: isDarkNode ? '#1E293B' : config.bg, 
+            background: isDarkNode ? '#2C2B30' : config.bg, 
             display: 'flex', 
             alignItems: 'center', 
             gap: 10, 
-            borderBottom: isDarkNode ? '1px solid #334155' : '1px solid #F1F5F9',
+            borderBottom: isDarkNode ? '1px solid #4C4B52' : '1px solid #F1F5F9',
             borderTopLeftRadius: config.round - 1,
             borderTopRightRadius: config.round - 1
           }}>
              <div style={{ 
-                width: 28, height: 28, borderRadius: 8, background: isDarkNode ? '#0F172A' : 'white', 
+                width: 28, height: 28, borderRadius: 8, background: isDarkNode ? '#1F1E22' : 'white', 
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 boxShadow: '0 2px 5px rgba(0,0,0,0.06), inset 0 0 0 1px rgba(0,0,0,0.02)'
              }}>
@@ -220,13 +235,13 @@ function AgentNode({ id, data, selected }) {
             width: config.small ? 32 : 40,
             height: config.small ? 32 : 40,
             borderRadius: config.round - 4,
-            background: isDarkNode ? '#0F172A' : config.bg,
+            background: isDarkNode ? '#1F1E22' : config.bg,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
-            boxShadow: 'inset 0 2px 4px rgba(255, 255, 255, 0.5), inset 0 -2px 4px rgba(0,0,0,0.02), 0 2px 5px rgba(0,0,0,0.05)',
-            border: '1px solid rgba(0,0,0,0.03)'
+            boxShadow: isDarkNode ? 'none' : 'inset 0 2px 4px rgba(255, 255, 255, 0.5), inset 0 -2px 4px rgba(0,0,0,0.02), 0 2px 5px rgba(0,0,0,0.05)',
+            border: isDarkNode ? '1px solid #353439' : '1px solid rgba(0,0,0,0.03)'
           }}>
             <Icon size={config.small ? 14 : 20} color={config.color} />
           </div>
@@ -272,12 +287,12 @@ function AgentNode({ id, data, selected }) {
              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {actualType === 'condition' && (
                   <>
-                    <div style={logicRowStyle}>
-                       <span style={{ fontSize: 10, fontWeight: 800, color: '#94A3B8', marginRight: 4 }}>PASS</span>
+                    <div style={logicRowStyleActive}>
+                       <span style={{ fontSize: 10, fontWeight: 800, color: isDarkNode ? '#94A3B8' : '#64748B', marginRight: 4 }}>PASS</span>
                        <Handle type="source" position={Position.Right} id="true" style={logicHandleStyle('#10B981')} />
                     </div>
-                    <div style={logicRowStyle}>
-                       <span style={{ fontSize: 10, fontWeight: 800, color: '#94A3B8', marginRight: 4 }}>FAIL</span>
+                    <div style={logicRowStyleActive}>
+                       <span style={{ fontSize: 10, fontWeight: 800, color: isDarkNode ? '#94A3B8' : '#64748B', marginRight: 4 }}>FAIL</span>
                        <Handle type="source" position={Position.Right} id="false" style={logicHandleStyle('#EF4444')} />
                     </div>
                   </>
@@ -286,13 +301,13 @@ function AgentNode({ id, data, selected }) {
                 {actualType === 'switch' && (
                   <>
                     {(data.branches || []).map((b, i) => (
-                      <div key={i} style={logicRowStyle}>
-                        <span style={{ fontSize: 10, fontWeight: 800, color: '#64748B', marginRight: 4 }}>{b.name?.toUpperCase() || `PATH ${i+1}`}</span>
+                      <div key={i} style={logicRowStyleActive}>
+                        <span style={{ fontSize: 10, fontWeight: 800, color: isDarkNode ? '#94A3B8' : '#64748B', marginRight: 4 }}>{b.name?.toUpperCase() || `PATH ${i+1}`}</span>
                         <Handle type="source" position={Position.Right} id={b.name || `path-${i}`} style={logicHandleStyle('#3B82F6')} />
                       </div>
                     ))}
-                    <div style={{ ...logicRowStyle, background: '#F9FAFB' }}>
-                       <span style={{ fontSize: 10, fontWeight: 800, color: '#CBD5E1', marginRight: 4 }}>ELSE</span>
+                    <div style={{ ...logicRowStyleActive, background: isDarkNode ? '#1C1C1E' : '#F9FAFB' }}>
+                       <span style={{ fontSize: 10, fontWeight: 800, color: isDarkNode ? '#64748B' : '#CBD5E1', marginRight: 4 }}>ELSE</span>
                        <Handle type="source" position={Position.Right} id="else" style={logicHandleStyle('#CBD5E1')} />
                     </div>
                   </>

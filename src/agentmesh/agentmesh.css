@@ -98,8 +98,19 @@
 .agentmesh-root ::-webkit-scrollbar-thumb:hover { background: #B0B0A8; }
 
 /* ─── React Flow Canvas (scoped) ─── */
-.agentmesh-root .react-flow__background { background: var(--bg-canvas) !important; }
-.agentmesh-root .react-flow { background: var(--bg-canvas) !important; }
+.agentmesh-root .react-flow__background { background: transparent !important; }
+.agentmesh-root .react-flow { background: var(--bg-canvas); }
+/* Disable default React Flow node outlines and shadows to let custom themes render cleanly */
+.agentmesh-root .react-flow__node {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+.agentmesh-root .react-flow__node.selected {
+  box-shadow: none !important;
+  outline: none !important;
+}
 /* MUST be transparent — Background SVG renders below the pane;
    an opaque pane covers the dots/lines/cross pattern entirely */
 .agentmesh-root .react-flow__pane { background: transparent !important; }
@@ -132,8 +143,12 @@
 
 /* ─── Edges ─── */
 .agentmesh-root .react-flow__edge-path {
-  stroke: #CACAC4 !important;
+  stroke: #A1A1AA !important;
   stroke-width: 1.5 !important;
+}
+.agentmesh-root .is-dark-theme .react-flow__edge-path {
+  stroke: #71717A !important;
+  stroke-width: 2 !important;
 }
 .agentmesh-root .react-flow__edge.selected .react-flow__edge-path {
   stroke: var(--accent-blue) !important;
@@ -148,6 +163,10 @@
 .agentmesh-root .react-flow__handle {
   background: #D1D5DB !important;
   border: 2px solid white !important;
+}
+.agentmesh-root .is-dark-theme .react-flow__handle {
+  background: #71717A !important;
+  border: 2px solid #121214 !important;
 }
 .agentmesh-root .react-flow__handle:hover {
   transform: scale(1.4);

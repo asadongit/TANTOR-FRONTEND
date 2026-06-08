@@ -23,7 +23,8 @@ export default function WorkflowCanvas() {
     cardboardNode: CardboardNode
   }), []);
   const { nodes, edges, setNodes, setEdges, setNodesDirty, setEdgesDirty, addNode, setNodeData, workflowName } = useWorkflowStore();
-  const { selectedNodeId, selectedEdgeId, setSelectedNode, setSelectedEdge, canvasWireStyle, canvasBackgroundStyle } = useUIStore();
+  const { selectedNodeId, selectedEdgeId, setSelectedNode, setSelectedEdge, canvasWireStyle, canvasBackgroundStyle, canvasNodeTheme } = useUIStore();
+  const isDarkCanvas = canvasNodeTheme === 'dark';
 
   const reactFlowWrapper = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
@@ -452,7 +453,8 @@ export default function WorkflowCanvas() {
           snapToGrid={true}
           snapGrid={[20, 20]}
           deleteKeyCode={['Backspace', 'Delete']}
-          style={{ background: '#F8F9FB' }}
+          className={isDarkCanvas ? 'is-dark-theme' : ''}
+          style={{ background: isDarkCanvas ? '#1D1D1F' : '#F8F9FB' }}
         >
           {canvasBackgroundStyle !== 'clean' && (
             <Background 
@@ -461,7 +463,7 @@ export default function WorkflowCanvas() {
               gap={20} 
               size={canvasBackgroundStyle === 'cross' ? 6 : canvasBackgroundStyle === 'dots' ? 1.5 : undefined} 
               lineWidth={canvasBackgroundStyle === 'lines' ? 1 : undefined}
-              color="#CBD5E1" 
+              color={isDarkCanvas ? '#4C4B53' : '#CBD5E1'} 
             />
           )}
           <Controls />
@@ -475,8 +477,13 @@ export default function WorkflowCanvas() {
               };
               return colors[n.data?.type] || '#E8E8E5';
             }}
-            maskColor="rgba(248, 249, 251, 0.7)"
-            style={{ borderRadius: 10, border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
+            maskColor={isDarkCanvas ? 'rgba(15, 23, 42, 0.7)' : 'rgba(248, 249, 251, 0.7)'}
+            style={{ 
+              borderRadius: 10, 
+              border: isDarkCanvas ? '1px solid #334155' : '1px solid var(--border)', 
+              boxShadow: 'var(--shadow-sm)',
+              background: isDarkCanvas ? '#1E293B' : 'white'
+            }}
           />
         </ReactFlow>
 
@@ -497,15 +504,16 @@ export default function WorkflowCanvas() {
           }}>
             <div style={{
               width: 56, height: 56, borderRadius: 16,
-              background: 'white', border: '1px solid var(--border)',
+              background: isDarkCanvas ? '#1E293B' : 'white', 
+              border: isDarkCanvas ? '1px solid #334155' : '1px solid var(--border)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: 'var(--shadow-sm)', color: '#9898A6'
+              boxShadow: 'var(--shadow-sm)', color: isDarkCanvas ? '#94A3B8' : '#9898A6'
             }}>
               <FiGitBranch size={24} strokeWidth={1.5} />
             </div>
-            <div style={{ fontSize: 18, fontWeight: 500, color: 'var(--text-primary)' }}>{workflowName}</div>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 320, textAlign: 'center', lineHeight: 1.6 }}>
-              Click the <strong style={{ color: 'var(--text-primary)' }}>+ icon</strong> on the top left to start building your AI system.
+            <div style={{ fontSize: 18, fontWeight: 500, color: isDarkCanvas ? '#F8FAFC' : 'var(--text-primary)' }}>{workflowName}</div>
+            <div style={{ fontSize: 13, color: isDarkCanvas ? '#94A3B8' : 'var(--text-muted)', maxWidth: 320, textAlign: 'center', lineHeight: 1.6 }}>
+              Click the <strong style={{ color: isDarkCanvas ? '#F8FAFC' : 'var(--text-primary)' }}>+ icon</strong> on the top left to start building your AI system.
             </div>
           </div>
         )}
