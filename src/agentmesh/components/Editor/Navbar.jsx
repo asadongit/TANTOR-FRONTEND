@@ -776,6 +776,7 @@ export default function Navbar() {
                     </button>
                     <button
                       onClick={async () => {
+                        if (!isCompiled || isDirty) return;
                         setIoDropdownOpen(false);
                         try {
                           const res = await getMarketplaceUsecase(workflowId);
@@ -784,8 +785,8 @@ export default function Navbar() {
                             setCustomMarketplaceName(res.marketplace_name || workflowName);
                             setCustomMarketplaceDesc(res.marketplace_description || workflowDescription);
                             setPublishTags(res.tags ? res.tags.join(', ') : '');
-                            setLaunchMode(res.launch_url ? 'custom' : 'default');
-                            setCustomLaunchUrl(res.launch_url || '');
+                            setLaunchMode(res.launch_url && res.launch_url !== 'swagger' ? 'custom' : 'default');
+                            setCustomLaunchUrl(res.launch_url && res.launch_url !== 'swagger' ? res.launch_url : '');
                             setCurrentVersion(res.version);
                           } else {
                             setUseWorkflowMeta(true);
@@ -801,22 +802,25 @@ export default function Navbar() {
                         }
                         setShowPublishModal(true);
                       }}
+                      disabled={!isCompiled || isDirty}
+                      title={!isCompiled ? "Compile the workflow before publishing" : isDirty ? "Save changes before publishing" : "Publish Usecase"}
                       style={{
                         padding: '8px 12px',
                         background: 'none',
                         border: 'none',
                         textAlign: 'left',
-                        cursor: 'pointer',
+                        cursor: (!isCompiled || isDirty) ? 'not-allowed' : 'pointer',
                         fontSize: 13,
-                        color: 'var(--text-primary)',
+                        color: (!isCompiled || isDirty) ? '#9CA3AF' : 'var(--text-primary)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 8,
                         transition: 'background 0.15s',
-                        width: '100%'
+                        width: '100%',
+                        opacity: (!isCompiled || isDirty) ? 0.6 : 1
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                      onMouseEnter={(e) => { if (isCompiled && !isDirty) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
                     >
                       <FiShare2 size={14} /> Publish Usecase
                     </button>
@@ -1470,7 +1474,7 @@ export default function Navbar() {
               {/* Launch URL Selector */}
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Launch Mode</label>
-                <div style={{ display: 'flex', background: 'var(--bg-canvas)', borderRadius: 12, padding: 4, gap: 4, border: '1px solid var(--border)', marginBottom: 12 }}>
+                 <div style={{ display: 'flex', background: 'var(--bg-canvas)', borderRadius: 12, padding: 4, gap: 4, border: '1px solid var(--border)', marginBottom: 12 }}>
                   <button 
                     type="button"
                     onClick={() => setLaunchMode('default')}
@@ -1482,7 +1486,7 @@ export default function Navbar() {
                       cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit'
                     }}
                   >
-                    Default Chat Panel
+                    Default Chat
                   </button>
                   <button 
                     type="button"
@@ -1495,7 +1499,7 @@ export default function Navbar() {
                       cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit'
                     }}
                   >
-                    Custom Launch URL
+                    Custom URL
                   </button>
                 </div>
                 {launchMode === 'custom' && (

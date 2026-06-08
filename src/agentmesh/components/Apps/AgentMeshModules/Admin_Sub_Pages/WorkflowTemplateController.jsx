@@ -541,13 +541,13 @@ export default function WorkflowTemplateController() {
             </AnimatePresence>
           </div>
 
-          <div style={{ display: 'flex', border: '1px solid #E5E7EB', borderRadius: 8, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', gap: 2, background: 'var(--bg-canvas)', border: '1px solid var(--border)', borderRadius: 10, padding: '4px' }}>
             <button 
               onClick={() => setViewMode('card')}
               style={{
-                background: viewMode === 'card' ? '#111827' : 'white',
+                background: viewMode === 'card' ? 'var(--theme-primary)' : 'transparent',
                 color: viewMode === 'card' ? 'white' : '#6B7280',
-                border: 'none', padding: '8px 12px', display: 'flex', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s'
+                border: 'none', borderRadius: 6, padding: '6px 10px', display: 'flex', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s'
               }}
               title="Card View"
             >
@@ -556,9 +556,9 @@ export default function WorkflowTemplateController() {
             <button 
               onClick={() => setViewMode('list')}
               style={{
-                background: viewMode === 'list' ? '#111827' : 'white',
+                background: viewMode === 'list' ? 'var(--theme-primary)' : 'transparent',
                 color: viewMode === 'list' ? 'white' : '#6B7280',
-                border: 'none', padding: '8px 12px', display: 'flex', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s'
+                border: 'none', borderRadius: 6, padding: '6px 10px', display: 'flex', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s'
               }}
               title="List View"
             >

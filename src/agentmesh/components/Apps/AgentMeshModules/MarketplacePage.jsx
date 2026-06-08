@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useWorkflowStore, useUIStore, useRunStore } from '../../../store';
 import { listMarketplaceUsecases, listWorkflowCategories, getWorkflow } from '../../../api/agentmesh';
-import { FiSearch, FiUser, FiMessageSquare, FiInfo, FiTag, FiGrid, FiList, FiFilter, FiX, FiZap } from 'react-icons/fi';
+import { FiSearch, FiUser, FiMessageSquare, FiInfo, FiTag, FiGrid, FiList, FiFilter, FiX, FiZap, FiBookOpen } from 'react-icons/fi';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import bannerImage from '../../../assets/data/Stack-p-2000.png';
 import Pagination from '../../Common/Pagination';
+import SwaggerUI from 'swagger-ui-react';
+import 'swagger-ui-react/swagger-ui.css';
 
 const PURPLE_THEME = {
   primary: 'var(--theme-primary)',
@@ -12,6 +14,179 @@ const PURPLE_THEME = {
   accent: 'var(--theme-primary-glow)',
   border: 'var(--border)',
   text: 'var(--theme-primary)'
+};
+
+const generateOpenApiSpec = (workflow) => {
+  const workflowId = workflow.id;
+  const workflowName = workflow.name || "Workflow Agent";
+  const workflowDesc = workflow.description || "Autonomous Agentic workflow execution API.";
+  
+  const serverUrl = window._env_?.VITE_AGENT_MESH || import.meta.env.VITE_AGENT_MESH || 'http://localhost:8000/api/v1/agentmesh';
+  const cleanServerUrl = serverUrl.endsWith('/api/v1/agentmesh') ? serverUrl : `${serverUrl}/api/v1/agentmesh`;
+
+  // Parse Form fields if any Form nodes exist in configuration
+  const formSchemas = {};
+  const config = workflow.config || {};
+  const nodes = config.nodes || [];
+
+  nodes.forEach(node => {
+    if (node.type === 'form_node' && node.form_fields && node.form_fields.length > 0) {
+      const properties = {};
+      const required = [];
+      node.form_fields.forEach(field => {
+        const fieldName = field.id || field.name;
+        properties[fieldName] = {
+          type: field.type === 'number' ? 'number' : field.type === 'boolean' ? 'boolean' : 'string',
+          description: field.label || field.placeholder || ""
+        };
+        if (field.required) {
+          required.push(fieldName);
+        }
+      });
+      formSchemas[node.id] = {
+        type: 'object',
+        properties: properties,
+        required: required.length > 0 ? required : undefined,
+        description: `Input parameters expected by the Form Node: "${node.label || node.id}"`
+      };
+    }
+  });
+
+  return {
+    openapi: "3.0.3",
+    info: {
+      title: `${workflowName} API`,
+      description: `${workflowDesc}\n\nUse this interactive Swagger specification to integrate and communicate with this workflow.`,
+      version: `v${workflow.version || 1}`
+    },
+    servers: [
+      {
+        url: cleanServerUrl,
+        description: "AgentMesh Engine Server"
+      }
+    ],
+    paths: {
+      [`/workflow/${workflowId}/execute`]: {
+        post: {
+          summary: "Execute or Resume Workflow",
+          description: "Trigger standard workflow execution or resume a paused/interrupted workflow thread.",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    input: {
+                      type: "string",
+                      description: "Initial prompt or input payload to pass to the workflow entry node.",
+                      example: "Hello, run this workflow."
+                    },
+                    thread_id: {
+                      type: "string",
+                      description: "Unique conversation/session thread ID to maintain context.",
+                      example: "session-12345"
+                    },
+                    mode: {
+                      type: "string",
+                      enum: ["run", "stream", "resume"],
+                      default: "run",
+                      description: "Execution mode. Use 'run' for standard response, 'stream' for SSE token streaming, or 'resume' to continue an interrupted workflow thread."
+                    },
+                    action: {
+                      type: "string",
+                      description: "For resume mode: Action to send to the paused node (e.g., 'approve', 'submit').",
+                      example: "submit"
+                    },
+                    payload: {
+                      type: "object",
+                      description: "For resume mode: The key-value payload to feed back into the interrupted node. If resuming a Form node, pass fields matching the corresponding form schema.",
+                      example: {}
+                    }
+                  },
+                  required: ["input"]
+                }
+              }
+            }
+          },
+          responses: {
+            "200": {
+              description: "Workflow executed or resumed successfully.",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      status: {
+                        type: "string",
+                        example: "success"
+                      },
+                      output: {
+                        type: "string",
+                        description: "The output produced by the workflow.",
+                        example: "Here is the response..."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      [`/workflow/${workflowId}/threads`]: {
+        get: {
+          summary: "List Threads",
+          description: "Retrieve all active conversation thread IDs associated with this workflow.",
+          responses: {
+            "200": {
+              description: "List of threads retrieved successfully."
+            }
+          }
+        }
+      },
+      [`/workflow/${workflowId}/thread/{thread_id}`]: {
+        get: {
+          summary: "Get Thread State & History",
+          description: "Fetch step-by-step execution history and inspect whether the workflow is currently paused or interrupted.",
+          parameters: [
+            {
+              name: "thread_id",
+              in: "path",
+              required: true,
+              schema: {
+                type: "string"
+              },
+              description: "The ID of the thread context to retrieve."
+            }
+          ],
+          responses: {
+            "200": {
+              description: "Thread history and state retrieved successfully.",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      status: { type: "string", example: "success" },
+                      thread_id: { type: "string", example: "session-12345" },
+                      is_paused: { type: "boolean", example: true, description: "Indicates if the workflow execution is currently halted / waiting for input." },
+                      next_node: { type: "string", example: "form_node_1", description: "The ID of the node currently waiting for input." },
+                      active_agent: { type: "string", example: "AgentAlpha" },
+                      context: { type: "object", description: "The current global context dictionary." }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    components: {
+      schemas: formSchemas
+    }
+  };
 };
 
 function MarketplaceListRow({ w, onChat, onDetails, isRunning, idx }) {
@@ -424,7 +599,23 @@ export default function MarketplacePage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const [swaggerWorkflow, setSwaggerWorkflow] = useState(null);
+
   const handleChat = async (w) => {
+    if (w.launch_url === 'swagger') {
+      let fullWorkflow = w;
+      if (!w.config) {
+        try {
+          fullWorkflow = await getWorkflow(w.id);
+        } catch (err) {
+          console.error(err);
+          alert("Failed to load workflow details: " + err.message);
+          return;
+        }
+      }
+      setSwaggerWorkflow(fullWorkflow);
+      return;
+    }
     if (w.launch_url) {
       window.open(w.launch_url, '_blank', 'noopener,noreferrer');
       return;
@@ -462,6 +653,20 @@ export default function MarketplacePage() {
             agent={selectedAgent}
             onClose={() => setSelectedAgent(null)}
             onChat={() => { handleChat(selectedAgent); setSelectedAgent(null); }}
+            onSwagger={async () => {
+              let fullWorkflow = selectedAgent;
+              if (!selectedAgent.config) {
+                try {
+                  fullWorkflow = await getWorkflow(selectedAgent.id);
+                } catch (err) {
+                  console.error(err);
+                  alert("Failed to load workflow details: " + err.message);
+                  return;
+                }
+              }
+              setSwaggerWorkflow(fullWorkflow);
+              setSelectedAgent(null);
+            }}
             onEdit={async () => {
               let fullWorkflow = selectedAgent;
               if (!selectedAgent.config) {
@@ -478,6 +683,65 @@ export default function MarketplacePage() {
               setSelectedAgent(null);
             }}
           />
+        )}
+      </AnimatePresence>
+
+      {/* ── Swagger UI Modal ── */}
+      <AnimatePresence>
+        {swaggerWorkflow && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 1100,
+              background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(12px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px'
+            }}
+            onClick={() => setSwaggerWorkflow(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              style={{
+                width: '100%', maxWidth: '1000px', height: '80vh', background: 'white',
+                borderRadius: 24, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                boxShadow: '0 30px 60px rgba(0,0,0,0.2)'
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div style={{
+                padding: '20px 32px', borderBottom: '1px solid #E2E8F0',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                background: '#F8FAFC'
+              }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#1E293B' }}>
+                    {swaggerWorkflow.name} API Documentation
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setSwaggerWorkflow(null)}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: '#94A3B8', padding: 6, borderRadius: '50%', display: 'flex',
+                    alignItems: 'center', transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#E2E8F0'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                >
+                  <FiX size={20} />
+                </button>
+              </div>
+              
+              {/* Swagger Spec Container */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }} className="swagger-spec-container">
+                <SwaggerUI spec={generateOpenApiSpec(swaggerWorkflow)} />
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
       <div style={{ padding: '16px 32px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white' }}>
@@ -740,7 +1004,7 @@ export default function MarketplacePage() {
   );
 }
 
-function MarketplaceDetailsModal({ agent, onClose, onChat, onEdit }) {
+function MarketplaceDetailsModal({ agent, onClose, onChat, onEdit, onSwagger }) {
   const [copied, setCopied] = useState(false);
   const theme = PURPLE_THEME;
 
@@ -931,6 +1195,19 @@ function MarketplaceDetailsModal({ agent, onClose, onChat, onEdit }) {
               onMouseLeave={e => { e.currentTarget.style.background = 'var(--theme-primary-glow)'; e.currentTarget.style.color = 'var(--theme-primary)'; }}
             >
               <FiMessageSquare size={18} /> Launch Agent
+            </button>
+            <button
+              onClick={onSwagger}
+              style={{
+                flex: 1, height: 44, borderRadius: 12, background: 'white',
+                color: theme.primary, border: '1px solid #e2e8f0', fontWeight: 800, fontSize: 13,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: 10, transition: 'all 0.2s'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = theme.bg; e.currentTarget.style.borderColor = theme.primary; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+            >
+              <FiBookOpen size={18} /> Swagger Spec
             </button>
             <button
               onClick={onEdit}
