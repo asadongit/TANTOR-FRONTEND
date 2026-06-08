@@ -638,6 +638,25 @@ const TopicRow = ({
         e.target.value = "";
         return;
       }
+
+      const parsed = JSON.parse(text);
+      if (parsed.tableName !== topic.table_name) {
+        toast.error(
+          `'tableName' cannot be changed. Expected '${topic.table_name}', got '${parsed.tableName}'.`,
+          { duration: 8000, style: { maxWidth: "520px", wordBreak: "break-word", whiteSpace: "pre-wrap" } }
+        );
+        e.target.value = "";
+        return;
+      }
+      if (parsed.topicName !== topic.table_name) {
+        toast.error(
+          `'topicName' cannot be changed. Expected '${topic.table_name}', got '${parsed.topicName}'.`,
+          { duration: 8000, style: { maxWidth: "520px", wordBreak: "break-word", whiteSpace: "pre-wrap" } }
+        );
+        e.target.value = "";
+        return;
+      }
+
       onUploadJson(topic.table_name, file);
     } catch {
       toast.error(`Failed to read '${file.name}'.`);
