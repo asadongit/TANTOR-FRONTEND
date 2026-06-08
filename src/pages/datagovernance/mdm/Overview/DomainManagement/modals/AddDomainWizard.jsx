@@ -244,26 +244,26 @@ const AttributeCard = ({ attr, index, total, onUpdate, onRemove }) => {
                 <div className="px-4 pb-4 grid grid-cols-3 gap-x-4 gap-y-3.5">
                     {/* Attribute Name */}
                     <div>
-                        <label className={labelClass}>Attribute Name <span className="text-[#E05252]">*</span></label>
-                        <input value={attr.attributeName} onChange={e => upd("attributeName", e.target.value)} placeholder="Enter Attribute Name" className={inputClass} />
+                        <label className={labelClass}>Golden Attribute Name <span className="text-[#E05252]">*</span></label>
+                        <input value={attr.attributeName} onChange={e => upd("attributeName", e.target.value)} placeholder="Enter Golden Attribute Name" className={inputClass} />
                     </div>
 
                     {/* Display Name */}
                     <div>
-                        <label className={labelClass}>Display Name <span className="text-[#E05252]">*</span></label>
-                        <input value={attr.displayName} onChange={e => upd("displayName", e.target.value)} placeholder="Enter Display Name" className={inputClass} />
+                        <label className={labelClass}> Golden Attribute Display Name <span className="text-[#E05252]">*</span></label>
+                        <input value={attr.displayName} onChange={e => upd("displayName", e.target.value)} placeholder="Enter Golden Display Name" className={inputClass} />
                     </div>
 
                     {/* Source Attribute Name */}
                     <div>
-                        <label className={labelClass}>Source Attribute Name</label>
-                        <input value={attr.sourceAttributeName} onChange={e => upd("sourceAttributeName", e.target.value)} placeholder="Enter Source Attribute Name" className={inputClass} />
+                        <label className={labelClass}>Staging Attribute Name</label>
+                        <input value={attr.sourceAttributeName} onChange={e => upd("sourceAttributeName", e.target.value)} placeholder="Enter Staging Attribute Name" className={inputClass} />
                     </div>
 
                     {/* Source Display Name */}
                     <div>
-                        <label className={labelClass}>Source Display Name</label>
-                        <input value={attr.sourceDisplayName} onChange={e => upd("sourceDisplayName", e.target.value)} placeholder="Enter Source Display Name" className={inputClass} />
+                        <label className={labelClass}>Staging Attribute Display Name</label>
+                        <input value={attr.sourceDisplayName} onChange={e => upd("sourceDisplayName", e.target.value)} placeholder="Enter Staging Display Name" className={inputClass} />
                     </div>
 
                     {/* Data Type */}

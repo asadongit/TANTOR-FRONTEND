@@ -303,7 +303,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
             subItems: [
                 { name: 'Match Configuration', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/match-configuration` },
                 { name: 'Survivorship Rules', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/survivorship-rules` },
-                { name: 'Match Jobs', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/match-jobs` },
+                // { name: 'Match Jobs', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/match-jobs` },
                 { name: 'Review Queue', path: `${DATAGOVERNANCE_PREFIX}/mdm/match&merge/review-queue` },
             ]
         },
