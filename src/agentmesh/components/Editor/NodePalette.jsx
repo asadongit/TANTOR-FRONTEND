@@ -47,7 +47,7 @@ export const NODE_TYPES = [
 
   // Document Processing
   { type: 'template_node', icon: FiFileText,  label: 'Template Engine',   desc: 'Render Jinja/Markdown Templates',    bg: '#FDF2F8', color: '#DB2777', category: 'Document Processing' },
-  { type: 'report_generator', icon: FiDownload,  label: 'Report Generator',   desc: 'Export data to PDF/Docx/Excel',    bg: '#E0E7FF', color: '#4338CA', category: 'Document Processing' },
+  { type: 'report_generator', icon: FiFileText,  label: 'Report Generator',   desc: 'Export data to PDF/Docx/Excel',    bg: '#E0E7FF', color: '#4338CA', category: 'Document Processing' },
 
   // Data & Storage
   { type: 'set_data',   icon: FiEdit,      label: 'Set Message',    desc: 'Static data/response',      bg: '#F5F3FF', color: '#7C3AED', category: 'Data & Storage' },
@@ -66,6 +66,10 @@ export const NODE_TYPES = [
 
   // Visual Organizers
   { type: 'cardboard',   icon: FiLayers,    label: 'Sticky Note',     desc: 'Visual container for canvas organization and notes', bg: '#F1F5F9', color: '#64748B', category: 'Visual Organizers' },
+
+  // Banking (Custom Specialized Nodes)
+  { type: 'ingestion_adapter', icon: FiDownload,  label: 'Ingestion Adapter', desc: 'Converts raw inputs (ISO8583/XML/CSV/JSON) to Canonical Transaction Schema', bg: '#F5F3FF', color: '#7C3AED', category: 'Banking' },
+  { type: 'banking_enrichment', icon: FiDatabase, label: 'Banking Pre-Enrichment', desc: 'Orchestrates external & internal API data gathering.', bg: '#F5F3FF', color: '#7C3AED', category: 'Banking' },
 ];
 
 export default function NodePalette({ onClose }) {
@@ -85,6 +89,7 @@ export default function NodePalette({ onClose }) {
     n.desc.toLowerCase().includes(search.toLowerCase())
   );
   const CATEGORY_ORDER = [
+    'Banking',
     'Events & Triggers', 
     'Visual Organizers',
     'Autonomous Agents', 
