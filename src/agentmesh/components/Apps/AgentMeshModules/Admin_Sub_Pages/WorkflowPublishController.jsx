@@ -321,20 +321,18 @@ export default function WorkflowPublishController() {
         )}
 
         {!loading && !error && usecases.length === 0 ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <motion.div 
-              initial={{ opacity: 0, y: 15 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              style={{ textAlign: 'center', background: 'white', padding: '48px 32px', borderRadius: 20, border: '1px dashed #CBD5E1', maxWidth: 440 }}
-            >
-              <div style={{ width: 54, height: 54, borderRadius: '50%', background: 'var(--theme-primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: 'var(--theme-primary)' }}>
-                <FiGitBranch size={26} />
-              </div>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1E1B4B', margin: '0 0 8px 0' }}>No Requests Found</h2>
-              <p style={{ fontSize: 13, color: '#64748B', margin: 0, lineHeight: 1.5 }}>
-                There are no workflow publish requests matching the current status tab.
-              </p>
-            </motion.div>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            minHeight: '300px',
+            gap: 16,
+            color: '#64748B'
+          }}>
+            <FiGitBranch size={48} strokeWidth={1} />
+            <div style={{ fontSize: 14, fontWeight: 500 }}>No requests found</div>
           </div>
         ) : (
           !loading && (
