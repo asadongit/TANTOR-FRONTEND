@@ -394,15 +394,14 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       }
     });
 
-    if (isKafkaCustom) {
-      const hasNoFilesInCreate = !isEditMode && customFiles.length === 0;
-      const hasNoFilesInEdit =
-        isEditMode && customFiles.length === 0 && removedTopics.length > 0;
+    if (isKafkaCustom && customFiles.length === 0) {
+      newErrors["custom_files"] = "At least one topic JSON file is required";
+      allTouched["custom_files"] = true;
+    }
 
-      if (hasNoFilesInCreate || hasNoFilesInEdit) {
-        newErrors["custom_files"] = "At least one topic JSON file is required";
-        allTouched["custom_files"] = true;
-      }
+    if (isKafkaCustomOriginal && customFiles.length === 0 && removedTopics.length > 0) {
+      newErrors["custom_files"] = "At least one topic JSON file is required";
+      allTouched["custom_files"] = true;
     }
 
     if (isKafkaRawOrAvro && isTestSuccessful && selectedKafkaTopics.length === 0) {
@@ -1160,9 +1159,15 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
                 }`}
               >
                 <option value="">Select behaviour</option>
-                <option value="source">Source</option>
-                <option value="target">Target</option>
-                <option value="both">Both</option>
+                  {selectedConnector === "kafka" ? (
+                    <option value="source">Source</option>
+                  ) : (
+                    <>
+                      <option value="source">Source</option>
+                      <option value="target">Target</option>
+                      <option value="both">Both</option>
+                    </>
+                  )}
               </select>
               <ChevronDown
                 className="absolute right-3 top-10 pointer-events-none text-gray-500"
