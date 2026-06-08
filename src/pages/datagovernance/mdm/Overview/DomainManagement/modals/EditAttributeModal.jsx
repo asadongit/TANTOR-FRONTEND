@@ -245,13 +245,13 @@ if (!isOpen) return null;
                     {/* Row 1: Attribute Name | Display Name | Source Attribute Name | Source Display Name */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className={labelClass}>Attribute Name <span className="text-[#E05252]">*</span></label>
-                            <input type="text" placeholder="Enter Attribute Name" value={formData.attributeName}
+                            <label className={labelClass}>Golden Attribute Name <span className="text-[#E05252]">*</span></label>
+                            <input type="text" placeholder="Enter Golden Attribute Name" value={formData.attributeName}
                                 onChange={e => handleChange('attributeName', e.target.value)} className={inputClass} />
                         </div>
                         <div>
-                            <label className={labelClass}>Display Name <span className="text-[#E05252]">*</span></label>
-                            <input type="text" placeholder="Enter Display Name" value={formData.displayName}
+                            <label className={labelClass}>Golden Attribute Display Name <span className="text-[#E05252]">*</span></label>
+                            <input type="text" placeholder="Enter Golden Attribute Display Name" value={formData.displayName}
                                 onChange={e => handleChange('displayName', e.target.value)} className={inputClass} />
                         </div>
                         <div>

@@ -337,15 +337,15 @@ const AddAttributeModal = ({
                             {attr.expanded && (
                                 <div className="px-4 pb-4 grid grid-cols-2 gap-3.5">
                                     <div>
-                                        <label className={labelClass}>Attribute Name <span className="text-[#E05252]">*</span></label>
-                                        <input type="text" placeholder="Enter Attribute Name"
+                                        <label className={labelClass}>Golden Attribute Name <span className="text-[#E05252]">*</span></label>
+                                        <input type="text" placeholder="Enter Golden Attribute Name"
                                             value={attr.attributeName}
                                             onChange={(e) => updateAttr(attr.id, 'attributeName', e.target.value)}
                                             className={inputClass} />
                                     </div>
                                     <div>
-                                        <label className={labelClass}>Display Name <span className="text-[#E05252]">*</span></label>
-                                        <input type="text" placeholder="Enter Display Name"
+                                        <label className={labelClass}> Golden Attribute Display Name <span className="text-[#E05252]">*</span></label>
+                                        <input type="text" placeholder="Enter Golden Attribute Display Name"
                                             value={attr.displayName}
                                             onChange={(e) => updateAttr(attr.id, 'displayName', e.target.value)}
                                             className={inputClass} />
