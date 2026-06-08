@@ -8,8 +8,9 @@ import {
   FiTrash2, FiMousePointer, FiInfo, FiLayers, FiSettings, FiCpu, FiTool,
   FiGitMerge, FiTarget, FiShare2, FiUser, FiBookOpen, FiLink, FiPlus, FiX,
   FiGlobe, FiClock, FiCopy, FiCheck, FiSearch, FiChevronDown, FiRepeat, FiFileText,
-  FiZap, FiLoader, FiAlertTriangle, FiGitBranch, FiActivity, FiEdit, FiFilter, FiShield, FiCamera, FiBox, FiSave, FiUploadCloud, FiDownload
+  FiZap, FiLoader, FiAlertTriangle, FiGitBranch, FiActivity, FiEdit, FiFilter, FiShield, FiCamera, FiBox, FiSave, FiUploadCloud, FiDownload, FiDatabase
 } from 'react-icons/fi';
+
 
 const FONT = "'Google Sans','Roboto',sans-serif";
 

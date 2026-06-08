@@ -82,6 +82,7 @@ function AgentNode({ id, data, selected }) {
   const actualType = data.type || 'llm_agent';
   const config = NODE_CONFIGS[actualType] || NODE_CONFIGS.llm_agent;
   const setSelectedNode = useUIStore((s) => s.setSelectedNode);
+  const nodeTheme = useUIStore((s) => s.canvasNodeTheme) || 'modern';
   const { nodes, edges } = useWorkflowStore(); 
   const [hovered, setHovered] = useState(false);
   
@@ -118,55 +119,85 @@ function AgentNode({ id, data, selected }) {
 
   const isLogicNode = ['condition', 'switch', 'splitter', 'error_router'].includes(actualType);
 
+  // Dynamic Theme Styling Helper
+  const getThemeStyles = () => {
+    const activeColor = 'var(--theme-primary, #3B82F6)';
+    const baseStyle = {
+      minWidth: isLogicNode ? 220 : config.small ? 100 : 180,
+      transform: hovered ? 'translateY(-2px)' : 'none',
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      cursor: 'pointer',
+      padding: isLogicNode ? 0 : '10px 14px',
+      display: 'flex',
+      flexDirection: isLogicNode ? 'column' : 'row',
+      alignItems: isLogicNode ? 'stretch' : 'center',
+      gap: isLogicNode ? 0 : 12,
+      fontFamily: "'Inter', sans-serif",
+      position: 'relative',
+      overflow: 'visible'
+    };
+
+    switch (nodeTheme) {
+      case 'dark':
+        return {
+          ...baseStyle,
+          background: '#1E293B',
+          color: '#F8FAFC',
+          border: selected 
+            ? `1.5px solid ${activeColor}` 
+            : '1.5px solid #334155',
+          borderRadius: config.round,
+          boxShadow: selected 
+            ? `0 0 0 3px rgba(139, 92, 246, 0.35), 0 10px 20px rgba(0,0,0,0.3)`
+            : hovered 
+              ? '0 12px 20px rgba(0,0,0,0.25)'
+              : '0 4px 6px rgba(0,0,0,0.15)',
+        };
+      case 'modern':
+      default:
+        return {
+          ...baseStyle,
+          background: 'white',
+          border: selected ? '1.5px solid var(--theme-primary, #3B82F6)' : '1.5px solid rgba(0,0,0,0.04)',
+          borderRadius: config.round,
+          boxShadow: selected 
+            ? '0 0 0 3px rgba(59, 130, 246, 0.25), 0 10px 20px -5px rgba(0, 0, 0, 0.15)'
+            : hovered ? '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)' 
+            : '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.025)',
+        };
+    }
+  };
+
+  const isDarkNode = nodeTheme === 'dark';
+
   return (
     <div
       onClick={(e) => { e.stopPropagation(); setSelectedNode(id); }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       className={data.isRunning ? "node-active-running" : ""}
-      style={{
-        minWidth: isLogicNode ? 220 : config.small ? 100 : 180,
-        background: 'white',
-        border: selected ? '1.5px solid var(--theme-primary, #3B82F6)' : '1.5px solid rgba(0,0,0,0.04)',
-        borderRadius: config.round,
-        boxShadow: selected 
-          ? '0 0 0 3px rgba(59, 130, 246, 0.25), 0 10px 20px -5px rgba(0, 0, 0, 0.15)'
-          : hovered ? '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)' 
-          : '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.025)',
-        transform: hovered ? 'translateY(-2px)' : 'none',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        cursor: 'pointer',
-        padding: isLogicNode ? 0 : '10px 14px',
-        display: 'flex',
-        flexDirection: isLogicNode ? 'column' : 'row',
-        alignItems: isLogicNode ? 'stretch' : 'center',
-        gap: isLogicNode ? 0 : 12,
-        fontFamily: "'Inter', sans-serif",
-        position: 'relative',
-        // Critical Fix: Remove overflow hidden to prevent badge/handle cropping
-        overflow: 'visible' 
-      }}
+      style={getThemeStyles()}
     >
       {/* ── HEADER (FOR LOGIC NODES) ── */}
       {isLogicNode && (
           <div style={{ 
             padding: '10px 14px', 
-            background: config.bg, 
+            background: isDarkNode ? '#1E293B' : config.bg, 
             display: 'flex', 
             alignItems: 'center', 
             gap: 10, 
-            borderBottom: '1px solid #F1F5F9',
+            borderBottom: isDarkNode ? '1px solid #334155' : '1px solid #F1F5F9',
             borderTopLeftRadius: config.round - 1,
             borderTopRightRadius: config.round - 1
           }}>
              <div style={{ 
-               width: 28, height: 28, borderRadius: 8, background: 'white', 
-               display: 'flex', alignItems: 'center', justifyContent: 'center',
-               boxShadow: '0 2px 5px rgba(0,0,0,0.06), inset 0 0 0 1px rgba(0,0,0,0.02)'
+                width: 28, height: 28, borderRadius: 8, background: isDarkNode ? '#0F172A' : 'white', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 2px 5px rgba(0,0,0,0.06), inset 0 0 0 1px rgba(0,0,0,0.02)'
              }}>
                 <Icon size={16} color={config.color} />
              </div>
-             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+             <span style={{ fontSize: 13, fontWeight: 700, color: isDarkNode ? '#F8FAFC' : 'var(--text-primary)' }}>
                {config.label || actualType.toUpperCase()}
              </span>
           </div>
@@ -189,7 +220,7 @@ function AgentNode({ id, data, selected }) {
             width: config.small ? 32 : 40,
             height: config.small ? 32 : 40,
             borderRadius: config.round - 4,
-            background: config.bg,
+            background: isDarkNode ? '#0F172A' : config.bg,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -204,7 +235,7 @@ function AgentNode({ id, data, selected }) {
             <span style={{ 
               fontSize: config.small ? 12 : 14, 
               fontWeight: 700, 
-              color: 'var(--text-primary)',
+              color: isDarkNode ? '#F8FAFC' : 'var(--text-primary)',
               whiteSpace: 'nowrap',
               textOverflow: 'ellipsis',
               overflow: 'hidden',
@@ -216,7 +247,7 @@ function AgentNode({ id, data, selected }) {
               <span style={{ 
                 fontSize: 10, 
                 fontWeight: 600, 
-                color: '#64748B',
+                color: isDarkNode ? '#94A3B8' : '#64748B',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 marginTop: 2

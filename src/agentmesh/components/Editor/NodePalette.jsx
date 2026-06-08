@@ -3,8 +3,9 @@ import { useWorkflowStore, useUIStore } from '../../store';
 import {
   FiPlay, FiSquare, FiCpu, FiBox, FiGitMerge,
   FiTarget, FiShare2, FiBookOpen, FiLink,
-  FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiAlertTriangle, FiZap, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiLayers, FiDownload
+  FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiAlertTriangle, FiZap, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiLayers, FiDownload, FiDatabase
 } from 'react-icons/fi';
+
 
 export const NODE_TYPES = [
   // Events & Triggers

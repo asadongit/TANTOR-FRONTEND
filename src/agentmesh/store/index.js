@@ -783,6 +783,7 @@ export const useUIStore = create((set) => ({
   // ─── Canvas Visual Settings (persisted to localStorage) ───────────────────
   canvasWireStyle: (typeof window !== 'undefined' ? localStorage.getItem('canvas_wire_style') : 'square') || 'square',
   canvasBackgroundStyle: (typeof window !== 'undefined' ? localStorage.getItem('canvas_background_style') : 'dots') || 'dots',
+  canvasNodeTheme: (typeof window !== 'undefined' ? localStorage.getItem('canvas_node_theme') : 'modern') || 'modern',
   setCanvasWireStyle: (v) => {
     if (typeof window !== 'undefined') localStorage.setItem('canvas_wire_style', v);
     set({ canvasWireStyle: v });
@@ -790,6 +791,10 @@ export const useUIStore = create((set) => ({
   setCanvasBackgroundStyle: (v) => {
     if (typeof window !== 'undefined') localStorage.setItem('canvas_background_style', v);
     set({ canvasBackgroundStyle: v });
+  },
+  setCanvasNodeTheme: (v) => {
+    if (typeof window !== 'undefined') localStorage.setItem('canvas_node_theme', v);
+    set({ canvasNodeTheme: v });
   },
 }));
 

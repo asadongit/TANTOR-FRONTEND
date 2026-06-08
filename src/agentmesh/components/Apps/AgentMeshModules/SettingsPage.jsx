@@ -22,19 +22,21 @@ export default function SettingsPage() {
   // Canvas Settings State
   const [wireStyle, setWireStyle] = useState('square');
   const [backgroundStyle, setBackgroundStyle] = useState('dots');
+  const [nodeTheme, setNodeTheme] = useState('modern');
   
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Track the last-persisted values to compute isDirty
-  const savedRef = useRef({ provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0.2, apiKeyOverride: '', wireStyle: 'square', backgroundStyle: 'dots' });
+  const savedRef = useRef({ provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0.2, apiKeyOverride: '', wireStyle: 'square', backgroundStyle: 'dots', nodeTheme: 'modern' });
   const isDirty =
     provider !== savedRef.current.provider ||
     model !== savedRef.current.model ||
     temperature !== savedRef.current.temperature ||
     apiKeyOverride !== savedRef.current.apiKeyOverride ||
     wireStyle !== savedRef.current.wireStyle ||
-    backgroundStyle !== savedRef.current.backgroundStyle;
+    backgroundStyle !== savedRef.current.backgroundStyle ||
+    nodeTheme !== savedRef.current.nodeTheme;
 
   useEffect(() => {
     // Load settings from localStorage
@@ -44,6 +46,7 @@ export default function SettingsPage() {
     const cachedKey = localStorage.getItem('architect_api_key') || '';
     const cachedWire = localStorage.getItem('canvas_wire_style') || 'square';
     const cachedBg = localStorage.getItem('canvas_background_style') || 'dots';
+    const cachedTheme = localStorage.getItem('canvas_node_theme') || 'modern';
 
     setProvider(cachedProvider);
     setModel(cachedModel);
@@ -51,6 +54,7 @@ export default function SettingsPage() {
     setApiKeyOverride(cachedKey);
     setWireStyle(cachedWire);
     setBackgroundStyle(cachedBg);
+    setNodeTheme(cachedTheme);
 
     // Sync ref so isDirty starts false
     savedRef.current = {
@@ -59,7 +63,8 @@ export default function SettingsPage() {
       temperature: parseFloat(cachedTemp),
       apiKeyOverride: cachedKey,
       wireStyle: cachedWire,
-      backgroundStyle: cachedBg
+      backgroundStyle: cachedBg,
+      nodeTheme: cachedTheme
     };
 
     // Fetch available models
@@ -85,14 +90,16 @@ export default function SettingsPage() {
 
       localStorage.setItem('canvas_wire_style', wireStyle);
       localStorage.setItem('canvas_background_style', backgroundStyle);
+      localStorage.setItem('canvas_node_theme', nodeTheme);
 
       // Propagate setting changes to store instantly
       const storeState = useUIStore.getState();
       if (storeState.setCanvasWireStyle) storeState.setCanvasWireStyle(wireStyle);
       if (storeState.setCanvasBackgroundStyle) storeState.setCanvasBackgroundStyle(backgroundStyle);
+      if (storeState.setCanvasNodeTheme) storeState.setCanvasNodeTheme(nodeTheme);
 
       // Update ref so isDirty resets to false
-      savedRef.current = { provider, model, temperature, apiKeyOverride, wireStyle, backgroundStyle };
+      savedRef.current = { provider, model, temperature, apiKeyOverride, wireStyle, backgroundStyle, nodeTheme };
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
     } catch (e) {
@@ -386,6 +393,48 @@ export default function SettingsPage() {
                             <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, lineHeight: 1.3, maxWidth: 110, textAlign: 'center' }}>
                               {bgOpt.desc}
                             </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Node Design Theme */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#4B5563', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Node Design Theme</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                    {[
+                      { value: 'modern', label: 'Modern (Default)', desc: 'Clean rounded borders' },
+                      { value: 'dark', label: 'Dark Mode', desc: 'Chamber dark theme nodes' }
+                    ].map(themeOpt => {
+                      const isSelected = nodeTheme === themeOpt.value;
+                      return (
+                        <button
+                          key={themeOpt.value}
+                          type="button"
+                          onClick={() => setNodeTheme(themeOpt.value)}
+                          style={{
+                            padding: '16px 12px',
+                            borderRadius: 12,
+                            border: isSelected ? '2px solid var(--theme-primary)' : '1px solid #E2E8F0',
+                            background: isSelected ? 'var(--theme-primary-glow)' : 'white',
+                            color: 'var(--text-primary)',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            textAlign: 'center',
+                            gap: 6,
+                            boxShadow: isSelected ? '0 4px 12px rgba(142, 119, 187, 0.15)' : 'none',
+                          }}
+                        >
+                          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                            {themeOpt.label}
+                          </div>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500, lineHeight: 1.3 }}>
+                            {themeOpt.desc}
                           </div>
                         </button>
                       );
