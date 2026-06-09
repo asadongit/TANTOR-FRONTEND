@@ -28,11 +28,15 @@ const NODE_DEFAULTS = {
   set_data: { label: 'Set Data', message: '' },
   output_parser: { label: 'Output Parser', parse_mode: 'auto', fallback_to_raw: true, output_context_key: 'parsed_output' },
   pii_node: { label: 'PII Masking', pii_engine: 'regex', pii_target: 'latest_message', pii_entities: ['EMAIL_ADDRESS', 'PHONE_NUMBER', 'PERSON'], pii_custom_regex: [] },
-  ocr_node: { label: 'OCR Node', ocr_input_key: 'latest_file_path', ocr_prompt: 'Please perform OCR on this document and return the full text accurately.', llm: { provider: 'groq', model: 'llama-3.2-90b-vision-preview', temperature: 0 }, interrupt_before: false, interrupt_after: false },
+  ocr_node: { label: 'OCR Node', ocr_input_key: 'latest_file_path', ocr_prompt: 'Please perform OCR on this document and return the full text accurately.', llm: { provider: 'groq', model: 'llama-3.2-90b-vision-preview', temperature: 0 }, interrupt_before: false, interrupt_after: false, pii_verification: false },
   api_node: { label: 'API Request', method: 'GET', url: '', headers: {}, params: {}, body: '', auth_method: 'none', api_auth_config: {} },
   ingestion_node: { label: 'Ingestion', vector_store: 'chroma', vector_collection: 'default', chunk_size: 1000, chunk_overlap: 100, chunking_strategy: 'recursive', ingestion_source_key: 'latest_ocr_output' },
   classification: { label: 'Classification Agent', classification_classes: [{ class: 'Class A', description: 'Description for Class A' }], classification_summary: false, classification_engine: 'llm', classification_input_field: '', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 } },
   sensitivity_classifier: { label: 'Sensitivity Classifier', classification_input_key: 'latest_ocr_output', classification_output_key: '', engine_mode: 'both', custom_entities: '', output_format: 'markdown' },
+  cd_document_router: { label: 'CD Document Router' },
+  cd_postprocessor: { label: 'CD Postprocessor' },
+  ingestion_router: { label: 'Ingestion Router', scan_mode: 'auto', file_filters: ['.pdf', '.jpg', '.png', '.jpeg'], concurrency_limit: 5 },
+  event_emitter: { label: 'Event Emitter', webhook_url: 'http://localhost:8000/documents/mesh-status-sync' },
   cardboard: { label: 'Sticky Note', color: 'slate' }
 };
 
@@ -493,13 +497,15 @@ export const useWorkflowStore = create((set, get) => ({
           'notification_title', 'notification_message', 'notification_type', 'mute_notification_message', 'show_chat_button',
           'form_title', 'form_description', 'form_fields', 'form_submit_label', 'form_use_context_schema',
           'pii_engine', 'pii_target', 'pii_entities', 'pii_custom_regex',
-          'ocr_input_key', 'ocr_prompt', 'ocr_engine', 'ocr_standard_model',
+          'ocr_input_key', 'ocr_prompt', 'ocr_engine', 'ocr_standard_model', 'pii_verification',
+          'scan_mode', 'file_filters', 'concurrency_limit', 'webhook_url',
           'on_error',
           'response_status', 'response_headers', 'response_body_key',
           'direct_tool_name', 'tool_arguments', 'destination_key',
           'classification_classes', 'classification_summary', 'classification_engine', 'classification_input_field',
           'engine_mode', 'custom_entities', 'output_format',
           'template_content', 'template_output_key', 'template_data_key', 'template_file_path',
+          'template_id', 'input_data_key', 'output_file_name', 'report_format', 'template_category',
           'db_connection_string', 'db_database', 'db_collection', 'db_operation', 'db_document', 'db_query', 'db_output_key', 'db_limit',
           'transform_operation', 'transform_separator', 'transform_pick_fields', 'transform_rename_map', 'transform_omit_keys', 'transform_input_key', 'transform_output_key',
           'ocr_service_url', 'ocr_service_params', 'ocr_service_headers', 'ocr_service_response_type', 'ocr_service_file_field', 'ocr_service_text_path', 'ocr_multi_file_key',
@@ -507,12 +513,29 @@ export const useWorkflowStore = create((set, get) => ({
           'destination_field', 'action', 'field_to_aggregate', 'separator',
           'show_citations',
           'extract_mode', 'extract_patterns', 'extract_input_key', 'extract_output_key',
-          'debug_scope', 'debug_key'
+          'debug_scope', 'debug_key',
+          'subscription_filters', 'subscription_input_key', 'subscription_output_key',
+          'payload_template', 'payload_destination_key',
+          'classification_extract_identifiers'
         ];
 
         const nodeConfig = {};
         validFields.forEach(field => {
-          if (d[field] !== undefined) nodeConfig[field] = d[field];
+          if (d[field] !== undefined) {
+             if (field === 'subscription_filters') {
+               if (typeof d[field] === 'string') {
+                 if (d[field].trim() === '') {
+                   nodeConfig[field] = null;
+                 } else {
+                   try { nodeConfig[field] = JSON.parse(d[field]); } catch(e) { nodeConfig[field] = null; }
+                 }
+               } else {
+                 nodeConfig[field] = Object.keys(d[field] || {}).length > 0 ? d[field] : null;
+               }
+             } else {
+               nodeConfig[field] = d[field];
+             }
+          }
         });
 
         // Ensure ID and position are correctly set from React Flow node state

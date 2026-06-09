@@ -50,7 +50,10 @@ const NODE_CONFIGS = {
   debug_node:    { bg: '#F1F5F9', color: '#475569', icon: FiActivity, round: 14 },
   json_transform: { bg: '#E0F2FE', color: '#0284C7', icon: FiFilter, round: 14 },
   pattern_extract: { bg: '#FDF2F8', color: '#DB2777', icon: FiSearch, round: 14 },
-  cd_postprocessor: { bg: '#F5F3FF', color: '#6B21A8', icon: FiLayers, round: 14 }
+  cd_postprocessor: { bg: '#F5F3FF', color: '#6B21A8', icon: FiLayers, round: 14 },
+  cd_document_router: { bg: '#ECFDF5', color: '#059669', icon: FiGitMerge, round: 14 },
+  ingestion_router: { bg: '#C9F5E0', color: '#065F46', icon: FiLayers, round: 14 },
+  event_emitter: { bg: '#E0F2FE', color: '#0369A1', icon: FiGlobe, round: 14 }
 };
 
 const logicRowStyle = {

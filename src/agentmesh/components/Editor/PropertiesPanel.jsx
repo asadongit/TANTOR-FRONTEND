@@ -3248,7 +3248,34 @@ export default function PropertiesPanel() {
               </div>
 
               <div id="advanced-options-agent" style={{ display: 'none', padding: '16px', background: 'white' }}>
-                {/* 6a. Human-in-the-Loop */}
+                {/* 6a. Data Subscriptions (Pub/Sub) */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Data Subscriptions (Pub/Sub)</div>
+                  <Field label="Subscription Filters (JSON Array/Object)" hint="If provided, the agent will filter the input array and ONLY execute if matches are found.">
+                    <Textarea 
+                      value={typeof data.subscription_filters === 'string' ? data.subscription_filters : data.subscription_filters ? JSON.stringify(data.subscription_filters, null, 2) : ''} 
+                      onChange={(v) => update({ subscription_filters: v })}
+                      placeholder='{\n  "class": ["BALANCE_SHEET"]\n}'
+                      rows={4}
+                    />
+                  </Field>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ flex: 1 }}>
+                      <Field label="Input Array Key" hint="The context key containing the array to filter.">
+                        <Input value={data.subscription_input_key !== undefined ? data.subscription_input_key : 'aggregated_results'} onChange={(v) => update({ subscription_input_key: v })} placeholder="aggregated_results" />
+                      </Field>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <Field label="Output Data Key" hint="Where the matched data is stored for the prompt.">
+                        <Input value={data.subscription_output_key || ''} onChange={(v) => update({ subscription_output_key: v })} placeholder="latest_ocr_output" />
+                      </Field>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />
+
+                {/* 6b. Human-in-the-Loop */}
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Human-in-the-Loop</div>
                   <Toggle
@@ -4330,6 +4357,34 @@ export default function PropertiesPanel() {
         )}
 
 
+        {/* ── Payload Builder ── */}
+        {data.type === 'payload_builder' && (
+          <>
+            <Field label="Payload Template (JSON or String)" hint="Define the template. Supports {{context.var}} interpolation.">
+              <Textarea
+                value={typeof data.payload_template === 'object' && data.payload_template !== null ? JSON.stringify(data.payload_template, null, 2) : data.payload_template || ''}
+                onChange={(v) => {
+                  try {
+                    const parsed = JSON.parse(v);
+                    update({ payload_template: parsed });
+                  } catch (e) {
+                    update({ payload_template: v });
+                  }
+                }}
+                placeholder='{\n  "customer_name": "{{context.customer_name}}"\n}'
+                rows={10}
+              />
+            </Field>
+            <Field label="Destination Key" hint="The context key where the built payload will be stored.">
+              <Input
+                value={data.payload_destination_key || 'webhook_payload'}
+                onChange={(v) => update({ payload_destination_key: v })}
+                placeholder="webhook_payload"
+              />
+            </Field>
+          </>
+        )}
+
         {/* ── Text to Audio ── */}
         {data.type === 'textToAudio' && (
           <>
@@ -4806,16 +4861,28 @@ export default function PropertiesPanel() {
 
             {/* 4. Summary toggle (only for LLM engine) */}
             {data.classification_engine !== 'regex' && (
-              <div style={{ marginBottom: 18 }}>
-                <Toggle
-                  checked={data.classification_summary === true}
-                  onChange={(v) => update({ classification_summary: v })}
-                  label="Summarize Classified Content"
-                />
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, marginLeft: 28, marginBottom: 20 }}>
-                  If enabled, the node will return a summary of the input data instead of the original raw data.
+              <>
+                <div style={{ marginBottom: 18 }}>
+                  <Toggle
+                    checked={data.classification_summary === true}
+                    onChange={(v) => update({ classification_summary: v })}
+                    label="Summarize Classified Content"
+                  />
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, marginLeft: 28, marginBottom: 20 }}>
+                    If enabled, the node will return a summary of the input data instead of the original raw data.
+                  </div>
                 </div>
-              </div>
+                <div style={{ marginBottom: 18 }}>
+                  <Toggle
+                    checked={data.classification_extract_identifiers === true}
+                    onChange={(v) => update({ classification_extract_identifiers: v })}
+                    label="Extract Identifiers (NER)"
+                  />
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, marginLeft: 28, marginBottom: 20 }}>
+                    If enabled, dynamically extracts key reference IDs (e.g. Govt IDs, Account Numbers) into an array.
+                  </div>
+                </div>
+              </>
             )}
 
             {/* 5. Optional Input Field Path (Moved to Bottom) */}
@@ -5130,6 +5197,17 @@ export default function PropertiesPanel() {
               </>
             )}
 
+              <div style={{ marginTop: 12, marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid #BBF7D0' }}>
+                <Toggle
+                  checked={data.pii_verification === true}
+                  onChange={(v) => update({ pii_verification: v })}
+                  label="Enable PII Verification Gate (HITL)"
+                />
+                <div style={{ fontSize: 10, color: '#059669', marginTop: 4, marginLeft: 28 }}>
+                  Pauses the workflow and saves a draft to User_Data for human review.
+                </div>
+              </div>
+
             <div style={{
               padding: '12px 14px', background: '#F8FAFC', borderRadius: 10, fontSize: 11, color: 'var(--text-secondary)',
               border: '1px solid var(--border)', lineHeight: 1.5, marginTop: 18, display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'space-between'
@@ -5143,6 +5221,18 @@ export default function PropertiesPanel() {
                 }
               </span>
               <FiCamera size={16} style={{ color: 'var(--text-muted)', opacity: 0.5 }} />
+            </div>
+
+            <div style={{ marginTop: 24, padding: 16, border: '1px solid #E2E8F0', borderRadius: 12, background: '#F8FAFC' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>Execution Control</div>
+              <Toggle
+                checked={data.interrupt_after || false}
+                onChange={(v) => update({ interrupt_after: v })}
+                label="Pause Workflow After Node (interrupt_after)"
+              />
+              <div style={{ fontSize: 10, color: '#64748B', marginTop: 4, marginLeft: 28 }}>
+                The execution engine will halt and wait for external input/resumption.
+              </div>
             </div>
           </>
         )}
@@ -5530,6 +5620,50 @@ export default function PropertiesPanel() {
                 No configuration needed — reads database connection from environment variables (Cd_Host, Cd_Username, etc.)
               </span>
             </div>
+          </>
+        )}
+
+        {data.type === 'ingestion_router' && (
+          <>
+            <Field label="Scan Mode" hint="How should this router handle the payload?">
+              <Select
+                value={data.scan_mode || 'auto'}
+                onChange={(v) => update({ scan_mode: v })}
+                options={[
+                  { value: 'auto', label: 'Auto Detect' },
+                  { value: 'files', label: 'Files Only' },
+                  { value: 'directory', label: 'Directory Bulk Dispatch' }
+                ]}
+              />
+            </Field>
+
+            <Field label="File Filters" hint="Comma-separated extensions for bulk directory scanning (e.g. .pdf, .jpg)">
+              <Input
+                value={(data.file_filters || ['.pdf', '.jpg', '.png', '.jpeg']).join(', ')}
+                onChange={(v) => update({ file_filters: v.split(',').map(s => s.trim()).filter(Boolean) })}
+                placeholder=".pdf, .jpg, .png"
+              />
+            </Field>
+
+            <Field label="Concurrency Limit" hint="Maximum number of parallel child workflows to spawn (Semaphore limit).">
+              <Input
+                type="number"
+                value={data.concurrency_limit ?? 5}
+                onChange={(v) => update({ concurrency_limit: v === '' ? '' : parseInt(v) })}
+              />
+            </Field>
+          </>
+        )}
+
+        {data.type === 'event_emitter' && (
+          <>
+            <Field label="Webhook URL" hint="The URL to ping when the workflow reaches this node (e.g. for SSE sync).">
+              <Input
+                value={data.webhook_url || 'http://localhost:8000/documents/mesh-status-sync'}
+                onChange={(v) => update({ webhook_url: v })}
+                placeholder="http://localhost:8000/documents/mesh-status-sync"
+              />
+            </Field>
           </>
         )}
 
