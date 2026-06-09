@@ -71,7 +71,8 @@ export default function Navbar() {
     showManagementModal, setShowManagementModal,
     isSyncing, setIsSyncing,
     showNotes, toggleNotes,
-    showNotifications, setShowNotifications, unreadCount
+    showNotifications, setShowNotifications, unreadCount,
+    canvasNodeTheme
   } = useUIStore();
   const workflows = useWorkflowStore(s => s.workflows);
   const [saving, setSaving] = React.useState(false);
@@ -1607,11 +1608,11 @@ export default function Navbar() {
           maxWidth: '90vw',
           height: architectExpanded ? '88vh' : 'auto',
           maxHeight: architectExpanded ? '88vh' : '82vh',
-          background: 'rgba(255, 255, 255, 0.9)',
+          background: 'var(--bg-secondary)',
           backdropFilter: 'blur(20px)',
           borderRadius: 24,
-          border: '1px solid var(--theme-primary-light)',
-          boxShadow: '0 20px 40px rgba(142, 119, 187, 0.15), 0 0 30px rgba(142, 119, 187, 0.1)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-lg)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -1662,18 +1663,18 @@ export default function Navbar() {
           {/* Architect Bubble Header */}
           <div style={{
             padding: '16px 20px',
-            borderBottom: '1px solid rgba(241, 245, 249, 0.6)',
+            borderBottom: '1px solid var(--border)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            background: 'linear-gradient(135deg, var(--theme-primary-glow), rgba(255, 255, 255, 0.8))'
+            background: 'linear-gradient(135deg, var(--theme-primary-glow), var(--bg-secondary))'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div className="architect-orb" style={{ width: 32, height: 32, fontSize: 14 }}>
                 <HugeiconsIcon icon={AiMagicIcon} size={16} color="white" />
               </div>
               <div>
-                <h3 style={{ fontSize: 15, fontWeight: 800, color: '#1E1B4B', margin: 0 }}>Workflow Architect</h3>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Workflow Architect</h3>
                 <p style={{ fontSize: 10, color: 'var(--theme-primary)', margin: '2px 0 0', fontWeight: 650 }}>Explain workflow walkthrough and node details</p>
               </div>
             </div>
@@ -1684,7 +1685,7 @@ export default function Navbar() {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#64748B',
+                  color: 'var(--text-secondary)',
                   cursor: 'pointer',
                   padding: 6,
                   borderRadius: 8,
@@ -1704,7 +1705,7 @@ export default function Navbar() {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#64748B',
+                  color: 'var(--text-secondary)',
                   cursor: 'pointer',
                   padding: 6,
                   borderRadius: 8,
@@ -1745,7 +1746,7 @@ export default function Navbar() {
             {explaining && (
               <div style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                padding: '40px 20px', gap: 16, background: 'rgba(255,255,255,0.4)', borderRadius: 16
+                padding: '40px 20px', gap: 16, background: 'var(--bg-primary)', borderRadius: 16
               }}>
                 <div className="architect-wave-container">
                   <div className="architect-bar architect-bar-1" />
@@ -1764,17 +1765,19 @@ export default function Navbar() {
             {architectExplanation && !explaining && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 11, fontWeight: 750, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Walkthrough Result</span>
+                  <span style={{ fontSize: 11, fontWeight: 750, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Walkthrough Result</span>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button
                       onClick={handleCopyExplanation}
                       style={{
-                        background: 'white', border: '1px solid #E2E8F0', borderRadius: 6,
+                        background: 'var(--bg-secondary)', 
+                        border: '1px solid var(--border)', 
+                        borderRadius: 6,
                         padding: '4px 8px', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                        color: '#475569', fontWeight: 650, transition: 'all 0.2s'
+                        color: 'var(--text-primary)', fontWeight: 650, transition: 'all 0.2s'
                       }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'white'}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-secondary)'}
                     >
                       {copiedExplanation ? <FiCheck color="#16A34A" size={12} /> : <FiCopy size={12} />}
                       {copiedExplanation ? 'Copied' : 'Copy'}
@@ -1783,12 +1786,14 @@ export default function Navbar() {
                       onClick={handleSaveToNotes}
                       disabled={savingNote}
                       style={{
-                        background: 'white', border: '1px solid #E2E8F0', borderRadius: 6,
+                        background: 'var(--bg-secondary)', 
+                        border: '1px solid var(--border)', 
+                        borderRadius: 6,
                         padding: '4px 8px', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                         color: 'var(--theme-primary)', fontWeight: 650, transition: 'all 0.2s'
                       }}
                       onMouseEnter={e => e.currentTarget.style.background = 'var(--theme-primary-glow)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'white'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-secondary)'}
                     >
                       {savedToNotes ? <FiCheck color="#16A34A" size={12} /> : <FiBookOpen size={12} />}
                       {savedToNotes ? 'Saved!' : 'Save Notes'}
@@ -1797,8 +1802,10 @@ export default function Navbar() {
                 </div>
 
                 <div style={{
-                  flex: 1, minHeight: 200, maxHeight: architectExpanded ? '70vh' : '42vh', padding: '16px', background: 'white', border: '1px solid rgba(226, 232, 240, 0.8)',
-                  borderRadius: 16, overflowY: 'auto', fontSize: 13.5, color: '#334155', lineHeight: 1.6,
+                  flex: 1, minHeight: 200, maxHeight: architectExpanded ? '70vh' : '42vh', padding: '16px', 
+                  background: 'var(--bg-primary)', 
+                  border: '1px solid var(--border)',
+                  borderRadius: 16, overflowY: 'auto', fontSize: 13.5, color: 'var(--text-primary)', lineHeight: 1.6,
                   fontFamily: 'inherit', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.01)'
                 }} className="msg-scrollbar">
                   {formatMessage(architectExplanation)}
@@ -1809,7 +1816,7 @@ export default function Navbar() {
             {!architectExplanation && !explaining && (
               <div style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                padding: '40px 20px', gap: 12, textAlign: 'center', color: '#94A3B8'
+                padding: '40px 20px', gap: 12, textAlign: 'center', color: 'var(--text-muted)'
               }}>
                 <div style={{
                   width: 56, height: 56, borderRadius: '50%',
@@ -1819,8 +1826,8 @@ export default function Navbar() {
                   <HugeiconsIcon icon={AiMagicIcon} size={24} />
                 </div>
                 <div>
-                  <h4 style={{ fontSize: 14, fontWeight: 700, color: '#1E293B', margin: '0 0 4px' }}>Ready to Explain</h4>
-                  <p style={{ fontSize: 11, margin: 0 }}>Click the button below to generate a detailed architectural walkthrough of this pipeline.</p>
+                  <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px' }}>Ready to Explain</h4>
+                  <p style={{ fontSize: 11, margin: 0, color: 'var(--text-secondary)' }}>Click the button below to generate a detailed architectural walkthrough of this pipeline.</p>
                 </div>
               </div>
             )}
@@ -1829,8 +1836,8 @@ export default function Navbar() {
           {/* Bubble Action Footer */}
           <div style={{
             padding: '16px 20px',
-            borderTop: '1px solid rgba(241, 245, 249, 0.6)',
-            background: 'white',
+            borderTop: '1px solid var(--border)',
+            background: 'var(--bg-secondary)',
             display: 'flex',
             justifyContent: 'center'
           }}>
