@@ -34,40 +34,19 @@ function HandleGeneratedMissingValues({
 }) {
 
  
-//Local state: controls whether the card section is expanded.
+  const [expandedSections, setExpandedSections] = useState({ handleGeneratedMissing: false,});
+  const missingTypeCount = [hasGeneratedMissingNumerical, hasGeneratedMissingCategorical, hasGeneratedMissingDatetime].filter(Boolean).length;
+  const singleTypeOnly = missingTypeCount === 1;
+  const [searchValues, setSearchValues] = useState({generatedNumeric: '',generatedCategorical: '',generatedDatetime: '',});
 
-  const [expandedSections, setExpandedSections] = useState({
-    handleGeneratedMissing: false,
-  });
-
-
-// Local state: stores search input text for each dropdown.
-   
-  const [searchValues, setSearchValues] = useState({
-    generatedNumeric: '',
-    generatedCategorical: '',
-    generatedDatetime: '',
-  });
-
-// Local state: controls open/close state of dropdown menus.
   
-  const [showDropdowns, setShowDropdowns] = useState({
-    generatedNumeric: false,
-    generatedCategorical: false,
-    generatedDatetime: false,
-  });
+  const [showDropdowns, setShowDropdowns] = useState({generatedNumeric: false,generatedCategorical: false, generatedDatetime: false,});
+  const hasAnyGeneratedMissing =hasGeneratedMissingNumerical ||hasGeneratedMissingCategorical ||hasGeneratedMissingDatetime;
+  const isGeneratedMissingMandatory = hasAnyGeneratedMissing;
 
-//Check if any generated missing-value columns exist.
-  const hasAnyGeneratedMissing =
-    hasGeneratedMissingNumerical ||
-    hasGeneratedMissingCategorical ||
-    hasGeneratedMissingDatetime;
-
-
-// Disable toggle if readonly OR no generated missing values.
-  const toggleDisabled = readonly || !hasAnyGeneratedMissing;
+// Disable toggle if readonly, unavailable, or mandatory.
+  const toggleDisabled = readonly || !hasAnyGeneratedMissing || isGeneratedMissingMandatory;
    
-
 //method options
   const methodOptions = {
     generatedNumeric: [
@@ -120,28 +99,12 @@ function HandleGeneratedMissingValues({
   // validation for generated missing values
   const getGeneratedMissingError = () => {
     if (!toggles.handleGeneratedMissing) return '';
-
-    if (
-      hasGeneratedMissingNumerical &&
-      !generatedMissingConfig.numeric
-    ) {
-      return 'Select numeric imputation method';
-    }
-
-    if (
-      hasGeneratedMissingCategorical &&
-      !generatedMissingConfig.categorical
-    ) {
-      return 'Select categorical imputation method';
-    }
-
-    if (
-      hasGeneratedMissingDatetime &&
-      !generatedMissingConfig.datetime
-    ) {
-      return 'Select datetime imputation method';
-    }
-
+    if ( hasGeneratedMissingNumerical &&!generatedMissingConfig.numeric) {
+        return 'Select numeric imputation method'; }
+    if (hasGeneratedMissingCategorical &&!generatedMissingConfig.categorical) {
+      return 'Select categorical imputation method';}
+    if (hasGeneratedMissingDatetime &&!generatedMissingConfig.datetime) {
+      return 'Select datetime imputation method';}
     return '';
   };
 // show validation error if user has attempted to process the step without filling required fields.
@@ -321,7 +284,7 @@ const categoricalSeasonalPeriodError =
             >
               {/* Numeric Missing Values Section */}
               {hasGeneratedMissingNumerical && (
-                <div>
+                <div className={singleTypeOnly ? 'max-w-sm' : 'w-full'}>
 
                   {/* Section label */}
                   <label className="block text-sm text-gray-600 mb-2">
@@ -403,7 +366,7 @@ const categoricalSeasonalPeriodError =
                {/* Categorical Missing Values Section */}
              
               {hasGeneratedMissingCategorical && (
-                <div>
+                <div className={singleTypeOnly ? 'max-w-sm' : 'w-full'}>
 
                   {/* Section label */}
                   <label className="block text-sm text-gray-600 mb-2">
@@ -460,7 +423,7 @@ const categoricalSeasonalPeriodError =
 
                 {/* Datetime Missing Values Section */}
               {hasGeneratedMissingDatetime && (
-                <div>
+                <div className={singleTypeOnly ? 'max-w-sm' : 'w-full'}>
 
                   {/* Section label */}
                   <label className="block text-sm text-gray-600 mb-2">

@@ -20,6 +20,51 @@ const REGRESSION_METRICS = [
   { key: 'HuberLoss', label: 'Huber Loss', testKey: 'testHuberLoss', trainKey: 'trainHuberLoss', isLowerBetter: true },
 ];
 
+const TIMESERIES_METRICS = [
+  {
+    key: 'MAE',
+    label: 'MAE',
+    testKey: 'testMAE',
+    trainKey: 'trainMAE',
+    isLowerBetter: true,
+  },
+  {
+    key: 'RMSE',
+    label: 'RMSE',
+    testKey: 'testRMSE',
+    trainKey: 'trainRMSE',
+    isLowerBetter: true,
+  },
+  {
+    key: 'MAPE',
+    label: 'MAPE',
+    testKey: 'testMAPE',
+    trainKey: 'trainMAPE',
+    isLowerBetter: true,
+  },
+  {
+    key: 'SMAPE',
+    label: 'SMAPE',
+    testKey: 'testSMAPE',
+    trainKey: 'trainSMAPE',
+    isLowerBetter: true,
+  },
+  {
+    key: 'WMAPE',
+    label: 'WMAPE',
+    testKey: 'testWMAPE',
+    trainKey: 'trainWMAPE',
+    isLowerBetter: true,
+  },
+  {
+    key: 'MASE',
+    label: 'MASE',
+    testKey: 'testMASE',
+    trainKey: 'trainMASE',
+    isLowerBetter: true,
+  },
+];
+
 
 const SortIcon = ({ active, direction }) => {
   if (!active) return <ChevronsUpDown className="w-3 h-3 ml-1 text-gray-400 inline-block" />;
@@ -82,8 +127,20 @@ const formatVal = (val, isLowerBetter = false, isRegression = false) => {
 };
 
 const UnifiedMetricsTable = ({ allData, searchQuery, rowsPerPage = 10 }) => {
-  const isRegression = allData.some(algo => algo.testMAE !== undefined);
-  const metricConfig = isRegression ? REGRESSION_METRICS : CLASSIFICATION_METRICS;
+  const hasTimeSeriesMetrics =
+  allData.some(algo => algo.testSMAPE !== undefined);
+
+const hasRegressionMetrics =
+  allData.some(algo => algo.testR2 !== undefined);
+
+const metricConfig =
+  hasTimeSeriesMetrics
+    ? TIMESERIES_METRICS
+    : hasRegressionMetrics
+      ? REGRESSION_METRICS
+      : CLASSIFICATION_METRICS;
+  const isNumericMetricModel =
+  hasTimeSeriesMetrics || hasRegressionMetrics;    
   const [sortConfig, setSortConfig] = useState({ key: null, prefix: null, direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -261,7 +318,7 @@ const UnifiedMetricsTable = ({ allData, searchQuery, rowsPerPage = 10 }) => {
                         key={`test-${m.key}`}
                         className={`py-1.5 px-4 text-gray-700 ${isLast ? 'border-r border-gray-200' : ''}`}
                       >
-                        {formatVal(algo[m.testKey], m.isLowerBetter, isRegression)}
+                        {formatVal(algo[m.testKey], m.isLowerBetter, isNumericMetricModel)}
                       </td>
                     );
                   })}
@@ -269,7 +326,7 @@ const UnifiedMetricsTable = ({ allData, searchQuery, rowsPerPage = 10 }) => {
                   {/* Train metric cells */}
                   {visibleMetrics.filter(m => trainVisible[m.key]).map((m) => (
                     <td key={`train-${m.key}`} className="py-1.5 px-4 text-gray-700">
-                      {formatVal(algo[m.trainKey], m.isLowerBetter, isRegression)}
+                      {formatVal(algo[m.trainKey], m.isLowerBetter, isNumericMetricModel)}
                     </td>
                   ))}
                 </tr>

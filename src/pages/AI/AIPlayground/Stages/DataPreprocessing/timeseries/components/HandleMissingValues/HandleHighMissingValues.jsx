@@ -53,6 +53,11 @@ function HandleHighMissingValues({
     }));
   };
 //validation 
+  const thresholdEmpty =
+    highMissingConfig.threshold === '' ||
+    highMissingConfig.threshold === null ||
+    highMissingConfig.threshold === undefined;
+
   const thresholdValue = Number(
     highMissingConfig.threshold
   );
@@ -60,6 +65,7 @@ function HandleHighMissingValues({
   const thresholdInvalid =
     toggles.handleHighMissing &&
     (
+      thresholdEmpty ||
       !Number.isFinite(thresholdValue) ||
       thresholdValue < 0 ||
       thresholdValue > 100
@@ -68,7 +74,9 @@ function HandleHighMissingValues({
   const thresholdError =
     showFieldErrors &&
     thresholdInvalid
-      ? 'Value must be between 0 and 100'
+      ? thresholdEmpty
+        ? 'Please enter a value'
+        : 'Value must be between 0 and 100'
       : '';
 // Auto-expand section if there are validation errors
   useEffect(() => {
@@ -136,20 +144,17 @@ function HandleHighMissingValues({
         toggles.handleHighMissing && (
           <div className="px-4 py-4 border-t border-gray-100">
             <div className="grid grid-cols-1 gap-4">
-            <div className="w-80">
+            <div className="max-w-sm">
               <MethodParameterField
                 label="Missing Value Threshold (%)"
-                value={
-                  highMissingConfig.threshold ?? ''
-                }
+                value={highMissingConfig.threshold ?? ''}
                 min={0}
                 max={100}
                 hasError={!!thresholdError}
                 errorMessage={thresholdError}
                 disabled={readonly}
                 onChange={(value) =>
-                  setHighMissingConfig((prev) => ({
-                    ...prev,
+                  setHighMissingConfig((prev) => ({ ...prev,
                     threshold: value,
                   }))
                 }
