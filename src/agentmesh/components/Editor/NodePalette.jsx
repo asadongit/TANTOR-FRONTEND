@@ -3,9 +3,8 @@ import { useWorkflowStore, useUIStore } from '../../store';
 import {
   FiPlay, FiSquare, FiCpu, FiBox, FiGitMerge,
   FiTarget, FiShare2, FiBookOpen, FiLink,
-  FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiAlertTriangle, FiZap, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiLayers, FiDownload, FiDatabase
+  FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiAlertTriangle, FiZap, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiLayers, FiInbox, FiDatabase, FiServer, FiDownload
 } from 'react-icons/fi';
-
 
 export const NODE_TYPES = [
   // Events & Triggers
@@ -70,9 +69,11 @@ export const NODE_TYPES = [
   // Visual Organizers
   { type: 'cardboard',   icon: FiLayers,    label: 'Sticky Note',     desc: 'Visual container for canvas organization and notes', bg: '#F1F5F9', color: '#64748B', category: 'Visual Organizers' },
 
-  // Banking (Custom Specialized Nodes)
+  // Banking
   { type: 'ingestion_adapter', icon: FiDownload,  label: 'Ingestion Adapter', desc: 'Converts raw inputs (ISO8583/XML/CSV/JSON) to Canonical Transaction Schema', bg: '#F5F3FF', color: '#7C3AED', category: 'Banking' },
-  { type: 'banking_enrichment', icon: FiDatabase, label: 'Banking Pre-Enrichment', desc: 'Orchestrates external & internal API data gathering.', bg: '#F5F3FF', color: '#7C3AED', category: 'Banking' },
+  { type: 'banking_enrichment', icon: FiServer,   label: 'Banking Pre-Enrichment Node', desc: 'Orchestrates external & internal API data gathering.', bg: '#F5F3FF', color: '#7C3AED', category: 'Banking' },
+  { type: 'beneficiary_risk', icon: FiGitBranch,   label: 'Beneficiary Risk Router', desc: 'Evaluates beneficiary (Mule, Age, Velocity) and routes workflow', bg: '#F5F3FF', color: '#7C3AED', category: 'Banking' },
+  { type: 'rule_engine', icon: FiShield,    label: 'Rule Engine',    desc: 'Custom Python Rules & Scorecards', bg: '#FEE2E2', color: '#DC2626', category: 'Banking' },
 ];
 
 export default function NodePalette({ onClose }) {
