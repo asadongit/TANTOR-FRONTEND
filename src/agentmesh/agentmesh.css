@@ -57,6 +57,37 @@
   --red: #FF3B30;
   --orange: #FF9F0A;
   --purple: #AF52DE;
+  /* ─── Semantic properties panel cards/alerts ─── */
+  --bg-panel: #FFFFFF;
+  --bg-card-neutral: #F8FAFC;
+  --bg-card-info: #F0F9FF;
+  --bg-card-success: #ECFDF5;
+  --bg-card-danger: #FEF2F2;
+  --bg-card-warning: #FFFBEB;
+  
+  --border-card-info: #BAE6FD;
+  --border-card-success: #A7F3D0;
+  --border-card-danger: #FEE2E2;
+  --border-card-warning: #FDE68A;
+  
+  --text-card-info: #0369A1;
+  --text-card-success: #059669;
+  --text-card-danger: #EF4444;
+  --text-card-warning: #B45309;
+
+  --bg-copy-btn: #FFFFFF;
+
+  --bg-card-warning-alt: #FFF7ED;
+  --border-card-warning-alt: #FED7AA;
+  --text-card-warning-alt: #9A3412;
+
+  --bg-card-purple: #F5F3FF;
+  --border-card-purple: #DDD6FE;
+  --text-card-purple: #7C3AED;
+
+  --bg-card-amber: #FFFDF5;
+  --border-card-amber: #FEF08A;
+  --text-card-amber: #854D0E;
 
   /* ─── Shadows ─── */
   --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
@@ -82,18 +113,52 @@
 /* ─── DARK MODE VARIABLES OVERRIDE ─── */
 .agentmesh-root.is-dark-theme,
 .agentmesh-root .is-dark-theme {
-  --bg-canvas: #1D1D1F;
-  --bg-primary: #1F1E22;
-  --bg-secondary: #2C2B30;
-  --bg-card: #2C2B30;
-  --bg-hover: #3E3D43;
-  --border: #4C4B52;
-  --border-light: #39383E;
-  --text-primary: #F8FAFC;
-  --text-secondary: #94A3B8;
-  --text-muted: #64748B;
-  --theme-primary-glow: rgba(162, 140, 216, 0.15);
+  --bg-canvas: #131314;       /* Google Dark Canvas */
+  --bg-primary: #1E1F20;      /* Google Dark Sidebar / Panel Background */
+  --bg-secondary: #28292a;    /* Google Dark Card / Active Row Background */
+  --bg-card: #1E1F20;
+  --bg-hover: #3c4043;        /* Google Dark Hover */
+  --border: #444746;          /* Google Dark Border Outline */
+  --border-light: #2A2B2D;
+  --text-primary: #e3e3e3;    /* Google Dark Primary Text */
+  --text-secondary: #c4c7c5;  /* Google Dark Secondary Text */
+  --text-muted: #8e918f;      /* Google Dark Muted Text */
+  --theme-primary: #D0BCFF;   /* Google Dark Theme Primary Purple (Lavender) */
+  --theme-primary-glow: rgba(208, 188, 255, 0.15);
+  --grid-color: #303134;      /* Google Dark Grid dots */
   
+  /* Overrides for semantic cards/alerts in dark mode */
+  --bg-panel: #1E1F20;
+  --bg-card-neutral: #28292a;
+  --bg-card-info: #1a2736;
+  --bg-card-success: #142e24;
+  --bg-card-danger: #2c1a1a;
+  --bg-card-warning: #2d2615;
+  
+  --border-card-info: #1e3a5f;
+  --border-card-success: #1b4d3e;
+  --border-card-danger: #5f2b2b;
+  --border-card-warning: #4e3d1d;
+  
+  --text-card-info: #7dd3fc;
+  --text-card-success: #6ee7b7;
+  --text-card-danger: #fca5a5;
+  --text-card-warning: #fde047;
+
+  --bg-copy-btn: #28292a;
+
+  --bg-card-warning-alt: #2d1f15;
+  --border-card-warning-alt: #5f3e23;
+  --text-card-warning-alt: #ffb07c;
+
+  --bg-card-purple: #231b30;
+  --border-card-purple: #483a69;
+  --text-card-purple: #d7c1f9;
+
+  --bg-card-amber: #2a2618;
+  --border-card-amber: #584c24;
+  --text-card-amber: #ffd966;
+
   color: var(--text-primary) !important;
 }
 
@@ -182,20 +247,20 @@
 .agentmesh-root .react-flow__pane { background: transparent !important; }
 
 .agentmesh-root .react-flow__minimap {
-  background: white !important;
+  background: var(--bg-secondary, white) !important;
   border: 1px solid var(--border) !important;
   border-radius: 10px !important;
   box-shadow: var(--shadow-md) !important;
 }
 .agentmesh-root .react-flow__controls {
-  background: white !important;
+  background: var(--bg-secondary, white) !important;
   border: 1px solid var(--border) !important;
   border-radius: 10px !important;
   overflow: hidden !important;
   box-shadow: var(--shadow-sm) !important;
 }
 .agentmesh-root .react-flow__controls-button {
-  background: white !important;
+  background: var(--bg-secondary, white) !important;
   border-bottom: 1px solid var(--border-light) !important;
   color: var(--text-secondary) !important;
   fill: var(--text-secondary) !important;
@@ -205,6 +270,7 @@
 .agentmesh-root .react-flow__controls-button:hover {
   background: var(--bg-hover) !important;
   fill: var(--text-primary) !important;
+  color: var(--text-primary) !important;
 }
 
 /* ─── Edges ─── */

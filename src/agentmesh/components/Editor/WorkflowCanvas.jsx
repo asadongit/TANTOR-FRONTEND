@@ -298,7 +298,7 @@ export default function WorkflowCanvas() {
             onClick={() => { setPaletteOpen((v) => !v); setSelectedNode(null); }}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px',
-              background: paletteOpen ? 'var(--theme-primary-glow)' : 'white',
+              background: paletteOpen ? 'var(--theme-primary-glow)' : 'var(--bg-secondary, white)',
               border: paletteOpen ? '1px solid var(--theme-primary)' : '1px solid var(--border)', 
               borderRadius: 12,
               color: paletteOpen ? 'var(--theme-primary)' : 'var(--text-primary)',
@@ -318,7 +318,7 @@ export default function WorkflowCanvas() {
             onClick={() => useUIStore.getState().setShowVariableExplorer(!useUIStore.getState().showVariableExplorer)}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px',
-              background: useUIStore((s) => s.showVariableExplorer) ? 'var(--theme-primary-glow)' : 'white',
+              background: useUIStore((s) => s.showVariableExplorer) ? 'var(--theme-primary-glow)' : 'var(--bg-secondary, white)',
               border: useUIStore((s) => s.showVariableExplorer) ? '1px solid var(--theme-primary)' : '1px solid var(--border)', 
               borderRadius: 12,
               color: useUIStore((s) => s.showVariableExplorer) ? 'var(--theme-primary)' : 'var(--text-primary)',
@@ -336,10 +336,10 @@ export default function WorkflowCanvas() {
             disabled={!hasNodes}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px',
-              background: hasNodes ? 'var(--theme-primary-glow)' : '#E5E7EB',
-              border: hasNodes ? '1px solid var(--theme-primary-glow)' : '1px solid #E5E7EB', 
+              background: hasNodes ? 'var(--theme-primary-glow)' : 'var(--border-light, #E5E7EB)',
+              border: hasNodes ? '1px solid var(--theme-primary-glow)' : '1px solid var(--border-light, #E5E7EB)', 
               borderRadius: 12,
-              color: hasNodes ? 'var(--theme-primary)' : '#9CA3AF',
+              color: hasNodes ? 'var(--theme-primary)' : 'var(--text-muted, #9CA3AF)',
               cursor: hasNodes ? 'pointer' : 'not-allowed',
               boxShadow: hasNodes ? '0 2px 8px rgba(142, 119, 187, 0.1)' : 'none',
               transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -454,7 +454,7 @@ export default function WorkflowCanvas() {
           snapGrid={[20, 20]}
           deleteKeyCode={['Backspace', 'Delete']}
           className={isDarkCanvas ? 'is-dark-theme' : ''}
-          style={{ background: isDarkCanvas ? '#1D1D1F' : '#F8F9FB' }}
+           style={{ background: isDarkCanvas ? 'var(--bg-canvas)' : '#F8F9FB' }}
         >
           {canvasBackgroundStyle !== 'clean' && (
             <Background 
@@ -463,7 +463,7 @@ export default function WorkflowCanvas() {
               gap={20} 
               size={canvasBackgroundStyle === 'cross' ? 6 : canvasBackgroundStyle === 'dots' ? 1.5 : undefined} 
               lineWidth={canvasBackgroundStyle === 'lines' ? 1 : undefined}
-              color={isDarkCanvas ? '#4C4B53' : '#CBD5E1'} 
+              color={isDarkCanvas ? 'var(--grid-color, #4C4B53)' : '#CBD5E1'} 
             />
           )}
           <Controls />

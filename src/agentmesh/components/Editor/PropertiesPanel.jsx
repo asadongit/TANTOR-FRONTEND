@@ -40,7 +40,7 @@ const MODELS = {
 const MODEL_LABELS = {};
 
 const inputStyle = {
-  width: '100%', padding: '9px 12px', background: 'white',
+  width: '100%', padding: '9px 12px', background: 'var(--bg-primary, white)',
   border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)',
   fontSize: 13, outline: 'none', fontFamily: FONT, transition: 'border-color 0.15s',
   boxSizing: 'border-box',
@@ -196,10 +196,10 @@ function LogicHelper() {
   ];
 
   return (
-    <div style={{ marginTop: 15, borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden', background: '#F8FAFC' }}>
+    <div style={{ marginTop: 15, borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden', background: 'var(--bg-card-neutral, #F8FAFC)' }}>
       <div
         onClick={() => setIsOpen(!isOpen)}
-        style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F1F5F9' }}
+        style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-hover, #F1F5F9)' }}
       >
         <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <FiBookOpen size={12} color="var(--accent-btn)" /> LOGIC EXAMPLES GUIDE
@@ -278,7 +278,7 @@ function SearchableSelect({ value, onChange, options, placeholder = "Search...",
           alignItems: 'center',
           justifyContent: 'space-between',
           cursor: disabled ? 'not-allowed' : 'pointer',
-          background: disabled ? '#F1F5F9' : 'white',
+          background: disabled ? 'var(--bg-primary, #F1F5F9)' : 'var(--bg-secondary, white)',
           borderColor: isOpen ? 'var(--accent-btn)' : 'var(--border)',
           opacity: disabled ? 0.7 : 1
         }}
@@ -297,21 +297,21 @@ function SearchableSelect({ value, onChange, options, placeholder = "Search...",
       {isOpen && (
         <div style={{
           position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
-          background: 'white', border: '1px solid var(--border)', borderRadius: 10,
+          background: 'var(--bg-secondary, white)', border: '1px solid var(--border)', borderRadius: 10,
           boxShadow: 'var(--shadow-xl)', zIndex: 1000, overflow: 'hidden'
         }}>
           {showSearch && (
-            <div style={{ padding: '8px', borderBottom: '1px solid var(--border-light)', background: '#F8FAFC' }}>
+            <div style={{ padding: '8px', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-card-neutral, #F8FAFC)' }}>
               <div style={{ position: 'relative' }}>
                 <FiSearch size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input
                   ref={inputRef}
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Type to filter..."
                   style={{
                     width: '100%', padding: '7px 10px 7px 32px', borderRadius: 6, border: '1px solid var(--border)',
-                    fontSize: 12, outline: 'none', background: 'white'
+                    fontSize: 12, outline: 'none', background: 'var(--bg-secondary, white)'
                   }}
                 />
               </div>
@@ -327,13 +327,13 @@ function SearchableSelect({ value, onChange, options, placeholder = "Search...",
                   onClick={() => { onChange(o.value); setIsOpen(false); }}
                   style={{
                     padding: '8px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 13,
-                    background: value === o.value ? '#F0F4FF' : 'transparent',
+                    background: value === o.value ? 'var(--bg-card-info, #F0F4FF)' : 'transparent',
                     color: value === o.value ? 'var(--accent-btn)' : 'var(--text-primary)',
                     fontWeight: value === o.value ? 600 : 400,
                     transition: 'all 0.15s',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = '#F0F4FF'; e.currentTarget.style.color = 'var(--accent-btn)'; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-card-info, #F0F4FF)'; e.currentTarget.style.color = 'var(--accent-btn)'; }}
                   onMouseLeave={(e) => { 
                     if (value !== o.value) {
                       e.currentTarget.style.background = 'transparent';
@@ -373,7 +373,7 @@ function Toggle({ checked, onChange, label }) {
         onClick={() => onChange(!checked)}
         style={{
           width: 40, height: 22, borderRadius: 11, cursor: 'pointer', position: 'relative',
-          background: checked ? 'var(--accent-btn)' : '#e2e8f0',
+          background: checked ? 'var(--accent-btn)' : 'var(--border, #e2e8f0)',
           transition: 'all 0.2s',
           flexShrink: 0,
         }}
@@ -440,7 +440,7 @@ function KeyValueEditor({ value = {}, onChange, label, hint }) {
         <button
           onClick={() => onChange({ ...value, [`key_${entries.length + 1}`]: '' })}
           style={{
-            padding: '8px', background: '#F8FAFC', border: '1px dashed var(--border)',
+            padding: '8px', background: 'var(--bg-card-neutral, #F8FAFC)', border: '1px dashed var(--border)',
             borderRadius: 8, fontSize: 11, color: 'var(--accent-btn)', cursor: 'pointer',
             fontWeight: 600, marginTop: 4
           }}
@@ -546,7 +546,7 @@ function ToolConfigModal({ toolName, config = {}, onChange, onClose, onRemove, a
               })}
             </div>
           ) : (
-            <div style={{ padding: 12, background: '#F1F5F9', borderRadius: 8, fontSize: 12, color: '#475569', textAlign: 'center' }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-neutral, #F1F5F9)', borderRadius: 8, fontSize: 12, color: 'var(--text-secondary, #475569)', textAlign: 'center' }}>
               No specific parameter overrides defined for this tool.
             </div>
           )}
@@ -665,7 +665,7 @@ function ToolTagInput({ value = [], configs = {}, onUpdate, availableTools = [] 
                 alignItems: 'center',
                 gap: 6,
                 padding: '5px 10px',
-                background: 'white',
+                background: 'var(--bg-secondary, white)',
                 border: '1px solid var(--border)',
                 borderRadius: 20,
                 fontSize: 11,
@@ -678,7 +678,7 @@ function ToolTagInput({ value = [], configs = {}, onUpdate, availableTools = [] 
               {t}
               <button
                 onClick={() => setConfigTool(t)}
-                style={{ background: 'none', border: 'none', color: '#4285F4', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
+                style={{ background: 'none', border: 'none', color: 'var(--accent-btn, #4285F4)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
                 title="Configure parameters"
               >
                 <FiSettings size={12} />
@@ -699,18 +699,18 @@ function ToolTagInput({ value = [], configs = {}, onUpdate, availableTools = [] 
             height: 26,
             borderRadius: 8,
             border: '1px solid var(--border)',
-            background: 'white',
+            background: 'var(--bg-secondary, white)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            color: isOpen ? 'var(--accent-btn)' : '#64748B',
+            color: isOpen ? 'var(--accent-btn)' : 'var(--text-secondary, #64748B)',
             boxShadow: 'var(--shadow-sm)',
             transition: 'all 0.2s',
             zIndex: 5
           }}
           onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-btn)'; e.currentTarget.style.color = 'var(--accent-btn)'; }}
-          onMouseLeave={(e) => { if (!isOpen) { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = '#64748B'; } }}
+          onMouseLeave={(e) => { if (!isOpen) { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; } }}
         >
           {isOpen ? <FiX size={14} /> : <FiPlus size={14} />}
         </button>
@@ -740,7 +740,7 @@ function ToolTagInput({ value = [], configs = {}, onUpdate, availableTools = [] 
           left: 0,
           right: 0,
           zIndex: 110,
-          background: 'white',
+          background: 'var(--bg-secondary, white)',
           border: '1px solid var(--border)',
           borderRadius: 12,
           boxShadow: 'var(--shadow-2xl)',
@@ -748,7 +748,7 @@ function ToolTagInput({ value = [], configs = {}, onUpdate, availableTools = [] 
           overflow: 'hidden'
         }}>
           {/* Tool Search Bar */}
-          <div style={{ padding: '10px', borderBottom: '1px solid var(--border-light)', background: '#F8FAFC' }}>
+          <div style={{ padding: '10px', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-card-neutral, #F8FAFC)' }}>
             <div style={{ position: 'relative' }}>
               <FiSearch size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input
@@ -763,7 +763,7 @@ function ToolTagInput({ value = [], configs = {}, onUpdate, availableTools = [] 
                   border: '1px solid var(--border)',
                   fontSize: 12,
                   outline: 'none',
-                  background: 'white',
+                  background: 'var(--bg-primary, white)',
                   fontFamily: FONT
                 }}
               />
@@ -788,7 +788,7 @@ function ToolTagInput({ value = [], configs = {}, onUpdate, availableTools = [] 
                     transition: 'all 0.15s',
                     margin: '2px'
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = '#F0F4FF'; e.currentTarget.style.transform = 'translateX(4px)'; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-card-info, #F0F4FF)'; e.currentTarget.style.transform = 'translateX(4px)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.transform = 'translateX(0)'; }}
                 >
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -841,7 +841,7 @@ function FormFieldsEditor({ fields = [], onChange }) {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {fields.map((f, i) => (
-          <div key={i} style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, border: '1px solid var(--border)', position: 'relative' }}>
+          <div key={i} style={{ padding: 12, background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 10, border: '1px solid var(--border)', position: 'relative' }}>
             <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 4 }}>
               <button onClick={() => moveField(i, -1)} disabled={i === 0} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', opacity: i === 0 ? 0.3 : 1 }}><FiChevronDown size={14} style={{ transform: 'rotate(180deg)' }} /></button>
               <button onClick={() => moveField(i, 1)} disabled={i === fields.length - 1} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', opacity: i === fields.length - 1 ? 0.3 : 1 }}><FiChevronDown size={14} /></button>
@@ -908,7 +908,7 @@ function FormFieldsEditor({ fields = [], onChange }) {
                     placeholder={"First Option\nSecond Option\n{{techniques}}"}
                     style={{
                       width: '100%', minHeight: 80, padding: '12px 14px', borderRadius: 10,
-                      border: '1px solid var(--border)', background: '#F9FAFB', fontSize: 13,
+                      border: '1px solid var(--border)', background: 'var(--bg-primary, #F9FAFB)', color: 'var(--text-primary)',
                       fontFamily: 'inherit', outline: 'none', resize: 'vertical', boxSizing: 'border-box'
                     }}
                   />
@@ -925,7 +925,7 @@ function FormFieldsEditor({ fields = [], onChange }) {
                     placeholder={"General Terms:\n1. Non-refundable\n2. Requires ID verification"}
                     style={{
                       width: '100%', minHeight: 100, padding: '12px 14px', borderRadius: 10,
-                      border: '1px solid var(--border)', background: '#F9FAFB', fontSize: 13,
+                      border: '1px solid var(--border)', background: 'var(--bg-primary, #F9FAFB)', color: 'var(--text-primary)',
                       fontFamily: 'inherit', outline: 'none', resize: 'vertical', boxSizing: 'border-box'
                     }}
                   />
@@ -939,12 +939,12 @@ function FormFieldsEditor({ fields = [], onChange }) {
           onClick={addField}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            padding: '12px', borderRadius: 10, border: '1px dashed #CBD5E1',
-            background: 'white', color: '#64748B', fontSize: 12, fontWeight: 600,
+            padding: '12px', borderRadius: 10, border: '1px dashed var(--border)',
+            background: 'var(--bg-card-neutral, white)', color: 'var(--text-secondary, #64748B)', fontSize: 12, fontWeight: 600,
             cursor: 'pointer', transition: 'all 0.2s'
           }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-btn)'; e.currentTarget.style.color = 'var(--accent-btn)'; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#64748B'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
         >
           <FiPlus size={14} /> Add Form Field
         </button>
@@ -1033,7 +1033,7 @@ function CustomRegexEditor({ value = [], onChange }) {
             ...inputStyle,
             padding: '7px 10px 7px 32px',
             fontSize: 12,
-            background: '#F8FAFC'
+            background: 'var(--bg-card-neutral, #F8FAFC)'
           }}
         />
       </div>
@@ -1053,13 +1053,13 @@ function CustomRegexEditor({ value = [], onChange }) {
               }}
               style={{
                 padding: '5px 12px',
-                background: isSelected ? '#F5F3FF' : '#F1F5F9',
+                background: isSelected ? 'var(--bg-card-purple, #F5F3FF)' : 'var(--bg-primary, #F1F5F9)',
                 border: '1px solid',
-                borderColor: isSelected ? '#DDD6FE' : 'var(--border)',
+                borderColor: isSelected ? 'var(--border-card-purple, #DDD6FE)' : 'var(--border)',
                 borderRadius: 8,
                 fontSize: 10,
                 cursor: 'pointer',
-                color: isSelected ? '#7C3AED' : 'var(--text-secondary)',
+                color: isSelected ? 'var(--text-card-purple, #7C3AED)' : 'var(--text-secondary)',
                 fontWeight: isSelected ? 600 : 400,
                 transition: 'all 0.2s',
                 display: 'flex',
@@ -1076,10 +1076,10 @@ function CustomRegexEditor({ value = [], onChange }) {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {filteredValue.map((item) => (
-          <div key={item.originalIdx} style={{ padding: 10, background: '#F8FAFC', borderRadius: 8, border: '1px solid var(--border)', position: 'relative' }}>
+          <div key={item.originalIdx} style={{ padding: 10, background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 8, border: '1px solid var(--border)', position: 'relative' }}>
             <button
               onClick={() => remove(item.originalIdx)}
-              style={{ position: 'absolute', top: 6, right: 6, background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}
+              style={{ position: 'absolute', top: 6, right: 6, background: 'none', border: 'none', color: 'var(--text-card-danger, #EF4444)', cursor: 'pointer' }}
             >
               <FiX size={12} />
             </button>
@@ -1204,9 +1204,9 @@ function NodeIdList({ value = [], onChange, placeholder, allNodes = [] }) {
         {value.filter(id => allNodes.some(n => n.id === id)).map((id) => {
           const targetNode = allNodes.find(n => n.id === id);
           return (
-            <span key={id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: '#EEF2FF', border: '1px solid #C7D2FE', borderRadius: 20, fontSize: 11, color: '#4338CA', fontWeight: 600 }}>
+            <span key={id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: 'var(--bg-card-info, #EEF2FF)', border: '1px solid var(--border-card-info, #C7D2FE)', borderRadius: 20, fontSize: 11, color: 'var(--text-card-info, #4338CA)', fontWeight: 600 }}>
               {targetNode?.data?.label || id}
-              <button onClick={() => remove(id)} style={{ background: 'none', border: 'none', color: '#6366F1', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>&times;</button>
+              <button onClick={() => remove(id)} style={{ background: 'none', border: 'none', color: 'var(--text-card-info, #6366F1)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>&times;</button>
             </span>
           );
         })}
@@ -1504,13 +1504,13 @@ function CronHelper({ value, onChange }) {
 
   const btnStyle = (active) => ({
     padding: '6px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
-    background: active ? 'var(--accent-btn)' : '#F1F5F9', color: active ? 'var(--accent-btn-text)' : '#475569',
-    border: '1px solid', borderColor: active ? 'var(--accent-btn)' : '#E2E8F0', transition: 'all 0.15s'
+    background: active ? 'var(--accent-btn)' : 'var(--bg-primary, #F1F5F9)', color: active ? 'var(--accent-btn-text)' : 'var(--text-secondary, #475569)',
+    border: '1px solid', borderColor: active ? 'var(--accent-btn)' : 'var(--border)', transition: 'all 0.15s'
   });
 
   return (
-    <div style={{ background: '#F8F9FA', padding: 12, borderRadius: 10, border: '1px solid var(--border)' }}>
-      <div style={{ display: 'flex', gap: 4, marginBottom: 12, background: '#F1F5F9', padding: 3, borderRadius: 8 }}>
+    <div style={{ background: 'var(--bg-card-neutral, #F8F9FA)', padding: 12, borderRadius: 10, border: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 12, background: 'var(--bg-primary, #F1F5F9)', padding: 3, borderRadius: 8 }}>
         <button onClick={() => setMode('simple')} style={{ ...btnStyle(mode === 'simple'), flex: 1, border: 'none' }}>Simple</button>
         <button onClick={() => setMode('advanced')} style={{ ...btnStyle(mode === 'advanced'), flex: 1, border: 'none' }}>Advanced</button>
       </div>
@@ -1553,8 +1553,8 @@ function CronHelper({ value, onChange }) {
             </Field>
           )}
 
-          <div style={{ fontSize: 11, color: '#64748B', marginTop: 8, fontStyle: 'italic', fontWeight: 500 }}>
-            Generated Cron: <code style={{ color: '#0F172A', background: '#E2E8F0', padding: '2px 4px', borderRadius: 4 }}>{value}</code>
+          <div style={{ fontSize: 11, color: 'var(--text-secondary, #64748B)', marginTop: 8, fontStyle: 'italic', fontWeight: 500 }}>
+            Generated Cron: <code style={{ color: 'var(--text-primary, #0F172A)', background: 'var(--bg-primary, #E2E8F0)', padding: '2px 4px', borderRadius: 4 }}>{value}</code>
           </div>
         </>
       )}
@@ -2078,7 +2078,7 @@ function ReportGeneratorConfig({ data, update }) {
         </>
       {/* ── I/O ROUTING (collapsible) ── */}
       <div style={{ borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden', marginBottom: 18 }}>
-        <div onClick={() => setAdvancedOpen(o => !o)} style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F8FAFC' }}>
+        <div onClick={() => setAdvancedOpen(o => !o)} style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-card-neutral, #F8FAFC)' }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
             <FiBox size={12} color="var(--text-muted)" /> ADVANCED — I/O ROUTING
           </span>
@@ -2352,10 +2352,10 @@ export default function PropertiesPanel() {
     const removeEdge = () => setEdges(edges.filter(e => e.id !== edge.id));
 
     return (
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'white', fontFamily: FONT }}>
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-panel, white)', fontFamily: FONT }}>
         <div style={{ padding: '16px 16px 14px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7C3AED' }}>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--bg-card-purple, #F5F3FF)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-card-purple, #7C3AED)' }}>
               <FiLink size={15} strokeWidth={1.5} />
             </div>
             <div>
@@ -2372,7 +2372,7 @@ export default function PropertiesPanel() {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-          <div style={{ marginBottom: 20, padding: 12, background: '#F8F9FF', borderRadius: 10, fontSize: 11, color: '#6366F1', lineHeight: 1.5, border: '1px solid #E0E7FF' }}>
+          <div style={{ marginBottom: 20, padding: 12, background: 'var(--bg-card-info, #F8F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #6366F1)', lineHeight: 1.5, border: '1px solid var(--border-card-info, #E0E7FF)' }}>
             <FiInfo size={11} style={{ marginRight: 5 }} />
             Conditional edges are used by <strong>Router</strong> nodes. If a node is not a Router, the edge acts as a standard flow connection.
           </div>
@@ -2408,20 +2408,20 @@ export default function PropertiesPanel() {
           </Field>
 
           {edge.data?.condition?.key && (
-            <div style={{ marginTop: 12, padding: '8px 12px', background: '#F0FDF4', borderRadius: 8, border: '1px solid #BBF7D0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ marginTop: 12, padding: '8px 12px', background: 'var(--bg-card-success, #F0FDF4)', borderRadius: 8, border: '1px solid var(--border-card-success, #BBF7D0)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E' }}></div>
-              <div style={{ fontSize: 11, color: '#166534', fontWeight: 600 }}>Active Condition: {edge.data.condition.key} {edge.data.condition.operator} {edge.data.condition.value}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-card-success, #166534)', fontWeight: 600 }}>Active Condition: {edge.data.condition.key} {edge.data.condition.operator} {edge.data.condition.value}</div>
             </div>
           )}
         </div>
 
-        <div style={{ padding: 16, borderTop: '1px solid var(--border)', background: 'white' }}>
+        <div style={{ padding: 16, borderTop: '1px solid var(--border)', background: 'var(--bg-panel, white)' }}>
           <button
             onClick={() => { removeEdge(); setSelectedEdge(null); }}
             style={{
-              width: '100%', padding: '12px', background: '#FEF2F2',
-              border: '1px solid #FEE2E2', borderRadius: 10,
-              color: '#EF4444', fontSize: 13, fontWeight: 600,
+              width: '100%', padding: '12px', background: 'var(--bg-card-danger, #FEF2F2)',
+              border: '1px solid var(--border-card-danger, #FEE2E2)', borderRadius: 10,
+              color: 'var(--text-card-danger, #EF4444)', fontSize: 13, fontWeight: 600,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               cursor: 'pointer'
             }}
@@ -2454,7 +2454,7 @@ export default function PropertiesPanel() {
   const isSystemNode = ['start', 'end'].includes(data.type);
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'white', fontFamily: FONT }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-panel, white)', fontFamily: FONT }}>
       {/* Header */}
       <div style={{ padding: '16px 16px 14px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -2561,7 +2561,7 @@ export default function PropertiesPanel() {
             </Field>
 
             <div style={{
-              background: '#F8FAFC',
+              background: 'var(--bg-card-neutral, #F8FAFC)',
               borderRadius: 12,
               padding: 16,
               border: '1px solid var(--border)',
@@ -2590,7 +2590,7 @@ export default function PropertiesPanel() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <Toggle checked={data.enabled !== false} onChange={(v) => update({ enabled: v })} label="Trigger Enabled" />
 
-              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: '#F8FAFC' }}>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: 'var(--bg-card-neutral, #F8FAFC)' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Authentication</div>
                 <Field label="Auth Method" hint="Header: Uses static secret in X-AgentMesh-Secret. HMAC: Uses SHA256 signature verification.">
                   <Select
@@ -2610,8 +2610,8 @@ export default function PropertiesPanel() {
                 )}
               </div>
 
-              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: '#F0F9FF' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#0369A1', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Response Settings</div>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: 'var(--bg-card-info, #F0F9FF)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-card-info, #0369A1)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Response Settings</div>
                 <Field label="Response Mode" hint="Immediate: Responds 202 Accepted instantly. On Completion: Waits for workflow to finish and returns its output.">
                   <Select
                     value={data.response_mode || 'immediate'}
@@ -2645,7 +2645,7 @@ export default function PropertiesPanel() {
 
               <Field label="Webhook Path" hint="Custom path for the webhook. If empty, uses the Workflow ID.">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', background: '#F1F5F9', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)' }}>/webhook/</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', background: 'var(--bg-card-neutral, #F1F5F9)', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)' }}>/webhook/</div>
                   <Input value={data.path || ''} onChange={(v) => update({ path: v })} placeholder="my-custom-path" />
                 </div>
               </Field>
@@ -2653,7 +2653,7 @@ export default function PropertiesPanel() {
               <div style={{ marginTop: 8 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Webhook Endpoint</div>
                 <div style={{
-                  background: '#F8FAFC',
+                  background: 'var(--bg-card-neutral, #F8FAFC)',
                   border: '1px solid var(--border)',
                   borderRadius: 12,
                   padding: '12px 14px',
@@ -2662,10 +2662,10 @@ export default function PropertiesPanel() {
                   alignItems: 'center'
                 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 10, color: '#64748B', marginBottom: 2, fontWeight: 600 }}>{data.response_mode === 'on_completion' ? 'SYNC' : 'ASYNC'} • POST / GET / PUT</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2, fontWeight: 600 }}>{data.response_mode === 'on_completion' ? 'SYNC' : 'ASYNC'} • POST / GET / PUT</div>
                     <div style={{
                       fontSize: 12,
-                      color: '#1E293B',
+                      color: 'var(--text-primary, #1E293B)',
                       fontFamily: 'monospace',
                       wordBreak: 'break-all',
                       lineHeight: 1.4
@@ -2687,7 +2687,7 @@ export default function PropertiesPanel() {
                     }}
                     id="copy-webhook-btn"
                     style={{
-                      width: 32, height: 32, borderRadius: 8, background: 'white',
+                      width: 32, height: 32, borderRadius: 8, background: 'var(--bg-copy-btn, white)',
                       border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       cursor: 'pointer', color: 'var(--text-muted)', flexShrink: 0
                     }}
@@ -2698,7 +2698,7 @@ export default function PropertiesPanel() {
                 </div>
               </div>
             </div>
-            <div style={{ marginTop: 20, padding: 12, background: '#F0F9FF', borderRadius: 10, fontSize: 11, color: '#0369A1', lineHeight: 1.5, border: '1px solid #BAE6FD' }}>
+            <div style={{ marginTop: 20, padding: 12, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', lineHeight: 1.5, border: '1px solid var(--border-card-info, #BAE6FD)' }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               {data.response_mode === 'on_completion'
                 ? "Synchronous Mode: Caller waits for result. Use a 'Webhook Response' node to customize the output."
@@ -2730,7 +2730,7 @@ export default function PropertiesPanel() {
               />
             </Field>
 
-            <div style={{ padding: 12, background: '#ECFDF5', borderRadius: 10, fontSize: 11, color: '#059669', lineHeight: 1.5, border: '1px solid #A7F3D0', marginTop: 10 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-success, #ECFDF5)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-success, #059669)', lineHeight: 1.5, border: '1px solid var(--border-card-success, #A7F3D0)', marginTop: 10 }}>
               <FiShare2 size={12} style={{ marginRight: 6 }} />
               This node only has an effect if the Webhook Trigger is set to <strong>On Completion</strong> mode. It captures specific data and prepares the final HTTP response for the caller.
             </div>
@@ -2752,7 +2752,7 @@ export default function PropertiesPanel() {
                 options={['UTC', 'local', 'America/New_York', 'Europe/London', 'Asia/Tokyo']}
               />
             </Field>
-            <div style={{ marginTop: 20, padding: 12, background: '#FFFBEB', borderRadius: 10, fontSize: 11, color: '#92400E', lineHeight: 1.5, border: '1px solid #FDE68A' }}>
+            <div style={{ marginTop: 20, padding: 12, background: 'var(--bg-card-warning, #FFFBEB)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-warning, #92400E)', lineHeight: 1.5, border: '1px solid var(--border-card-warning, #FDE68A)' }}>
               <FiClock size={12} style={{ marginRight: 6 }} />
               The Cron trigger automatically executes the workflow at specified intervals using the backend scheduler.
             </div>
@@ -2801,7 +2801,7 @@ export default function PropertiesPanel() {
                 <div style={{
                   marginBottom: 18,
                   padding: '14px 16px',
-                  background: '#F8FAFC',
+                  background: 'var(--bg-card-neutral, #F8FAFC)',
                   border: '1px solid var(--border)',
                   borderRadius: 12,
                 }}>
@@ -2821,18 +2821,18 @@ export default function PropertiesPanel() {
                         {Object.entries(properties).map(([argName, argMeta]) => {
                           const isRequired = requiredFields.includes(argName) || argMeta.required;
                           return (
-                            <div key={argName} style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 10px', background: 'white', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                            <div key={argName} style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 10px', background: 'var(--bg-panel, white)', borderRadius: 8, border: '1px solid var(--border, #E2E8F0)' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: '#0F172A' }}>{argName}</span>
-                                <span style={{ fontSize: 9, color: '#6366F1', background: '#EEF2FF', padding: '1px 5px', borderRadius: 4, fontWeight: 600 }}>
+                                <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: 'var(--text-primary, #0F172A)' }}>{argName}</span>
+                                <span style={{ fontSize: 9, color: 'var(--text-card-purple, #6366F1)', background: 'var(--bg-card-purple, #EEF2FF)', padding: '1px 5px', borderRadius: 4, fontWeight: 600 }}>
                                   {argMeta.type || 'any'}
                                 </span>
                                 {isRequired && (
-                                  <span style={{ fontSize: 9, color: '#EF4444', fontWeight: 600 }}>required</span>
+                                  <span style={{ fontSize: 9, color: 'var(--text-card-danger, #EF4444)', fontWeight: 600 }}>required</span>
                                 )}
                               </div>
                               {argMeta.description && (
-                                <div style={{ fontSize: 10, color: '#64748B', lineHeight: 1.4, marginTop: 2 }}>
+                                <div style={{ fontSize: 10, color: 'var(--text-muted, #64748B)', lineHeight: 1.4, marginTop: 2 }}>
                                   {argMeta.description}
                                 </div>
                               )}
@@ -2842,7 +2842,7 @@ export default function PropertiesPanel() {
                       </div>
                     </div>
                   ) : (
-                    <div style={{ fontSize: 11, color: '#64748B', fontStyle: 'italic' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted, #64748B)', fontStyle: 'italic' }}>
                       This tool does not accept any arguments.
                     </div>
                   )}
@@ -2865,7 +2865,7 @@ export default function PropertiesPanel() {
               hint="Key-value arguments to supply to the poller tool on every execution."
             />
 
-            <div style={{ marginTop: 20, padding: 12, background: '#FFFDF5', borderRadius: 10, fontSize: 11, color: '#854D0E', lineHeight: 1.5, border: '1px solid #FEF08A' }}>
+            <div style={{ marginTop: 20, padding: 12, background: 'var(--bg-card-amber, #FFFDF5)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-amber, #854D0E)', lineHeight: 1.5, border: '1px solid var(--border-card-amber, #FEF08A)' }}>
               <FiClock size={12} style={{ marginRight: 6 }} />
               The Polling trigger runs the selected tool on a scheduled interval without an LLM. If new items are returned, it starts a workflow run.
             </div>
@@ -2964,7 +2964,7 @@ export default function PropertiesPanel() {
                   }
                 }}
                 style={{
-                  padding: '12px 16px', background: '#F8FAFC', cursor: 'pointer',
+                  padding: '12px 16px', background: 'var(--bg-card-neutral, #F8FAFC)', cursor: 'pointer',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   borderBottom: '1px solid var(--border)'
                 }}
@@ -2975,7 +2975,7 @@ export default function PropertiesPanel() {
                 <FiChevronDown id="advanced-arrow-agent" size={14} style={{ color: 'var(--text-muted)', transition: 'transform 0.2s' }} />
               </div>
 
-              <div id="advanced-options-agent" style={{ display: 'none', padding: '16px', background: 'white' }}>
+              <div id="advanced-options-agent" style={{ display: 'none', padding: '16px', background: 'var(--bg-panel, white)' }}>
                 {/* 6a. Human-in-the-Loop */}
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Human-in-the-Loop</div>
@@ -3063,8 +3063,8 @@ export default function PropertiesPanel() {
 
             {/* Swarm membership info (Special Context) */}
             {nodes.some(n => n.data?.type === 'swarm' && (n.data?.member_ids || []).includes(selectedNodeId)) && (
-              <div style={{ marginTop: 8, marginBottom: 20, padding: 14, background: '#FDF2F8', borderRadius: 12, border: '1px solid #FBCFE8' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#9D174D', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Swarm Handoff Rules</div>
+              <div style={{ marginTop: 8, marginBottom: 20, padding: 14, background: 'var(--bg-card-pink, #FDF2F8)', borderRadius: 12, border: '1px solid var(--border-card-pink, #FBCFE8)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-card-pink, #9D174D)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Swarm Handoff Rules</div>
                 <Field label="Allowed Handoffs" hint="Restrict which other swarm members this agent can transfer control to.">
                   <NodeIdList
                     value={data.allowed_transitions || []}
@@ -3128,7 +3128,7 @@ export default function PropertiesPanel() {
                 <button
                   onClick={() => setSkillGalleryOpen(true)}
                   style={{
-                    padding: '4px 10px', background: '#F5F3FF', color: '#8B5CF6',
+                    padding: '4px 10px', background: 'var(--bg-card-purple, #F5F3FF)', color: 'var(--text-card-purple, #8B5CF6)',
                     borderRadius: 6, fontSize: 10, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, border: 'none'
                   }}
@@ -3147,7 +3147,7 @@ export default function PropertiesPanel() {
                   return (
                     <div key={skillPath} style={{
                       display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px',
-                      background: 'white', border: '1px solid var(--border)', borderRadius: 20,
+                      background: 'var(--bg-panel, white)', border: '1px solid var(--border)', borderRadius: 20,
                       fontSize: 10, fontWeight: 700, color: 'var(--text-primary)'
                     }}>
                       <FiZap size={10} color="#8B5CF6" />
@@ -3185,7 +3185,7 @@ export default function PropertiesPanel() {
                   }
                 }}
                 style={{
-                  padding: '12px 16px', background: '#F8FAFC', cursor: 'pointer',
+                  padding: '12px 16px', background: 'var(--bg-card-neutral, #F8FAFC)', cursor: 'pointer',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   borderBottom: '1px solid var(--border)'
                 }}
@@ -3196,7 +3196,7 @@ export default function PropertiesPanel() {
                 <FiChevronDown id="advanced-arrow-deep" size={14} style={{ color: 'var(--text-muted)', transition: 'transform 0.2s' }} />
               </div>
 
-              <div id="advanced-options-deep" style={{ display: 'none', padding: '16px', background: 'white' }}>
+              <div id="advanced-options-deep" style={{ display: 'none', padding: '16px', background: 'var(--bg-panel, white)' }}>
                 <Field label="Max Reasoning Steps" hint="Limits the number of autonomous task updates.">
                   <Input type="number" value={data.max_iterations ?? 10} onChange={(v) => update({ max_iterations: parseInt(v) || 10 })} placeholder="10" />
                 </Field>
@@ -3266,7 +3266,7 @@ export default function PropertiesPanel() {
             <Field label="Initial Input" hint="The text sent to the workflow when the button is clicked.">
               <Textarea value={data.button_input || 'Start'} onChange={(v) => update({ button_input: v })} placeholder="e.g. Please generate the daily report" rows={3} />
             </Field>
-            <div style={{ padding: 12, background: '#F0F9FF', borderRadius: 10, fontSize: 11, color: '#0369A1', lineHeight: 1.5, border: '1px solid #BAE6FD' }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', lineHeight: 1.5, border: '1px solid var(--border-card-info, #BAE6FD)' }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               This node creates a clickable button in the chat interface for quick execution.
             </div>
@@ -3285,7 +3285,7 @@ export default function PropertiesPanel() {
               />
             </Field>
             <LogicHelper />
-            <div style={{ padding: 12, background: '#FFFBEB', borderRadius: 10, fontSize: 11, color: '#92400E', lineHeight: 1.5, border: '1px solid #FDE68A', marginTop: 10 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-warning, #FFFBEB)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-warning, #92400E)', lineHeight: 1.5, border: '1px solid var(--border-card-warning, #FDE68A)', marginTop: 10 }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               Connect two edges from this node. Label one <strong>true</strong> and the other <strong>false</strong>.
             </div>
@@ -3303,7 +3303,7 @@ export default function PropertiesPanel() {
                 placeholder="e.g. 60"
               />
             </Field>
-            <div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, fontSize: 11, color: '#475569', lineHeight: 1.5, border: '1px solid var(--border)', marginTop: 10 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 10, fontSize: 11, color: 'var(--text-secondary, #475569)', lineHeight: 1.5, border: '1px solid var(--border)', marginTop: 10 }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               Useful for rate limiting or waiting for external processes to settle.
             </div>
@@ -3312,7 +3312,7 @@ export default function PropertiesPanel() {
 
         {/* ── Join Node ── */}
         {data.type === 'join' && (
-          <div style={{ padding: 16, background: '#ECFDF5', borderRadius: 12, fontSize: 12, color: '#065F46', border: '1px solid #A7F3D0', lineHeight: 1.6 }}>
+          <div style={{ padding: 16, background: 'var(--bg-card-success, #ECFDF5)', borderRadius: 12, fontSize: 12, color: 'var(--text-card-success, #065F46)', border: '1px solid var(--border-card-success, #A7F3D0)', lineHeight: 1.6 }}>
             <div style={{ fontWeight: 800, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
               <FiShare2 size={14} /> SYNCHRONIZATION POINT
             </div>
@@ -3323,19 +3323,19 @@ export default function PropertiesPanel() {
         {/* ── Switch Node ── */}
         {data.type === 'switch' && (
           <>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 12 }}>Logical Branches</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary, #1E293B)', marginBottom: 12 }}>Logical Branches</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {(data.branches || []).map((branch, idx) => (
-                <div key={idx} style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, border: '1px solid var(--border)' }}>
+                <div key={idx} style={{ padding: 12, background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 10, border: '1px solid var(--border)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: '#64748B' }}>BRANCH {idx + 1}</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted, #64748B)' }}>BRANCH {idx + 1}</div>
                     <button
                       onClick={() => {
                         const newBranches = [...(data.branches || [])];
                         newBranches.splice(idx, 1);
                         update({ branches: newBranches });
                       }}
-                      style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4 }}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-card-danger, #EF4444)', cursor: 'pointer', padding: 4 }}
                     >
                       <FiTrash2 size={12} />
                     </button>
@@ -3375,15 +3375,15 @@ export default function PropertiesPanel() {
                 }}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  padding: '10px', borderRadius: 10, border: '1px dashed #CBD5E1',
-                  background: 'white', color: '#64748B', fontSize: 12, fontWeight: 600,
+                  padding: '10px', borderRadius: 10, border: '1px dashed var(--border, #CBD5E1)',
+                  background: 'var(--bg-panel, white)', color: 'var(--text-muted, #64748B)', fontSize: 12, fontWeight: 600,
                   cursor: 'pointer', marginTop: 8
                 }}
               >
                 <FiPlus size={14} /> Add Branch
               </button>
             </div>
-            <div style={{ padding: 12, background: '#F1F5F9', borderRadius: 10, fontSize: 11, color: '#475569', lineHeight: 1.5, border: '1px solid var(--border)', marginTop: 16 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-neutral, #F1F5F9)', borderRadius: 10, fontSize: 11, color: 'var(--text-secondary, #475569)', lineHeight: 1.5, border: '1px solid var(--border)', marginTop: 16 }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               The workflow routes to the <strong>first</strong> branch that evaluates to True. If none match, it follows the <strong>ELSE</strong> path.
             </div>
@@ -3401,7 +3401,7 @@ export default function PropertiesPanel() {
                 style={{ ...inputStyle, minHeight: 120, resize: 'vertical' }}
               />
             </Field>
-            <div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, fontSize: 11, color: '#64748B', lineHeight: 1.5, border: '1px solid var(--border)', marginTop: 16 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 10, fontSize: 11, color: 'var(--text-muted, #64748B)', lineHeight: 1.5, border: '1px solid var(--border)', marginTop: 16 }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               Use this to inject static responses into the conversation without using an LLM.
             </div>
@@ -3440,7 +3440,7 @@ export default function PropertiesPanel() {
                 placeholder="parsed_output"
               />
             </Field>
-            <div style={{ padding: 12, background: '#FEF3C7', borderRadius: 10, fontSize: 11, color: '#92400E', lineHeight: 1.5, border: '1px solid #FDE68A', marginTop: 16 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-warning, #FEF3C7)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-warning, #92400E)', lineHeight: 1.5, border: '1px solid var(--border-card-warning, #FDE68A)', marginTop: 16 }}>
               <FiFilter size={12} style={{ marginRight: 6, display: 'inline' }} />
               Automatically reads latest message and repairs malformed JSON: fixes missing quotes, trailing commas, unquoted keys, etc. Result stored in context automatically.
             </div>
@@ -3518,7 +3518,7 @@ export default function PropertiesPanel() {
                   }
                 }}
                 style={{
-                  padding: '12px 16px', background: '#F8FAFC', cursor: 'pointer',
+                  padding: '12px 16px', background: 'var(--bg-card-neutral, #F8FAFC)', cursor: 'pointer',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   borderBottom: '1px solid var(--border)'
                 }}
@@ -3529,7 +3529,7 @@ export default function PropertiesPanel() {
                 <FiChevronDown id="advanced-arrow-tool" size={14} style={{ color: 'var(--text-muted)', transition: 'transform 0.2s' }} />
               </div>
 
-              <div id="advanced-options-tool" style={{ display: 'none', padding: '16px', background: 'white' }}>
+              <div id="advanced-options-tool" style={{ display: 'none', padding: '16px', background: 'var(--bg-panel, white)' }}>
                 <Toggle checked={data.return_direct} onChange={(v) => syncToggle('return_direct', v)} label="Return tool result directly to user" />
                 <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />
                 <Field label="Error Target (On Failure)" hint="If this tool execution fails, jump to this error handler.">
@@ -3583,7 +3583,7 @@ export default function PropertiesPanel() {
                 <div style={{
                   marginBottom: 18,
                   padding: '14px 16px',
-                  background: '#F8FAFC',
+                  background: 'var(--bg-card-neutral, #F8FAFC)',
                   border: '1px solid var(--border)',
                   borderRadius: 12,
                 }}>
@@ -3603,18 +3603,18 @@ export default function PropertiesPanel() {
                         {Object.entries(properties).map(([argName, argMeta]) => {
                           const isRequired = requiredFields.includes(argName) || argMeta.required;
                           return (
-                            <div key={argName} style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 10px', background: 'white', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                            <div key={argName} style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 10px', background: 'var(--bg-panel, white)', borderRadius: 8, border: '1px solid var(--border, #E2E8F0)' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: '#0F172A' }}>{argName}</span>
-                                <span style={{ fontSize: 9, color: '#6366F1', background: '#EEF2FF', padding: '1px 5px', borderRadius: 4, fontWeight: 600 }}>
+                                <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: 'var(--text-primary, #0F172A)' }}>{argName}</span>
+                                <span style={{ fontSize: 9, color: 'var(--text-card-purple, #6366F1)', background: 'var(--bg-card-purple, #EEF2FF)', padding: '1px 5px', borderRadius: 4, fontWeight: 600 }}>
                                   {argMeta.type || 'any'}
                                 </span>
                                 {isRequired && (
-                                  <span style={{ fontSize: 9, color: '#EF4444', fontWeight: 600 }}>required</span>
+                                  <span style={{ fontSize: 9, color: 'var(--text-card-danger, #EF4444)', fontWeight: 600 }}>required</span>
                                 )}
                               </div>
                               {argMeta.description && (
-                                <div style={{ fontSize: 10, color: '#64748B', lineHeight: 1.4, marginTop: 2 }}>
+                                <div style={{ fontSize: 10, color: 'var(--text-muted, #64748B)', lineHeight: 1.4, marginTop: 2 }}>
                                   {argMeta.description}
                                 </div>
                               )}
@@ -3624,7 +3624,7 @@ export default function PropertiesPanel() {
                       </div>
                     </div>
                   ) : (
-                    <div style={{ fontSize: 11, color: '#64748B', fontStyle: 'italic' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted, #64748B)', fontStyle: 'italic' }}>
                       This tool does not accept any arguments.
                     </div>
                   )}
@@ -3661,7 +3661,7 @@ export default function PropertiesPanel() {
                   }
                 }}
                 style={{
-                  padding: '12px 16px', background: '#F8FAFC', cursor: 'pointer',
+                  padding: '12px 16px', background: 'var(--bg-card-neutral, #F8FAFC)', cursor: 'pointer',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   borderBottom: '1px solid var(--border)'
                 }}
@@ -3672,7 +3672,7 @@ export default function PropertiesPanel() {
                 <FiChevronDown id="advanced-arrow-direct-tool" size={14} style={{ color: 'var(--text-muted)', transition: 'transform 0.2s' }} />
               </div>
 
-              <div id="advanced-options-direct-tool" style={{ display: 'none', padding: '16px', background: 'white' }}>
+              <div id="advanced-options-direct-tool" style={{ display: 'none', padding: '16px', background: 'var(--bg-panel, white)' }}>
                 <Toggle checked={data.interrupt_before || false} onChange={(v) => update({ interrupt_before: v })} label="Pause before execution (HITL)" />
                 <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />
                 <Toggle checked={data.interrupt_after || false} onChange={(v) => update({ interrupt_after: v })} label="Pause after execution (HITL)" />
@@ -3731,7 +3731,7 @@ export default function PropertiesPanel() {
               />
             </div>
             {!data.workflow_id && (
-              <div style={{ padding: 12, background: '#FFFBEB', borderRadius: 10, fontSize: 12, color: '#92400E', border: '1px solid #FDE68A' }}>
+              <div style={{ padding: 12, background: 'var(--bg-card-warning, #FFFBEB)', borderRadius: 10, fontSize: 12, color: 'var(--text-card-warning, #92400E)', border: '1px solid var(--border-card-warning, #FDE68A)' }}>
                 Select a compiled workflow to use as a subgraph.
               </div>
             )}
@@ -3744,7 +3744,7 @@ export default function PropertiesPanel() {
             <Field label="Routing Key" hint="The state key whose value determines which node to route to.">
               <Input value={data.routing_key || 'next'} onChange={(v) => update({ routing_key: v })} placeholder="next" />
             </Field>
-            <div style={{ padding: 12, background: '#F5F3FF', borderRadius: 10, fontSize: 12, color: '#6D28D9', border: '1px solid #DDD6FE', lineHeight: 1.5 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-purple, #F5F3FF)', borderRadius: 10, fontSize: 12, color: 'var(--text-card-purple, #6D28D9)', border: '1px solid var(--border-card-purple, #DDD6FE)', lineHeight: 1.5 }}>
               <FiInfo size={12} style={{ marginRight: 5 }} />
               Connect edges from this router to each possible destination. The routing key value must match the edge condition values.
             </div>
@@ -3807,7 +3807,7 @@ export default function PropertiesPanel() {
                   }
                 }}
                 style={{
-                  padding: '12px 16px', background: '#F8FAFC', cursor: 'pointer',
+                  padding: '12px 16px', background: 'var(--bg-card-neutral, #F8FAFC)', cursor: 'pointer',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   borderBottom: '1px solid var(--border)'
                 }}
@@ -3818,7 +3818,7 @@ export default function PropertiesPanel() {
                 <FiChevronDown id="advanced-arrow-supervisor" size={14} style={{ color: 'var(--text-muted)', transition: 'transform 0.2s' }} />
               </div>
 
-              <div id="advanced-options-supervisor" style={{ display: 'none', padding: '16px', background: 'white' }}>
+              <div id="advanced-options-supervisor" style={{ display: 'none', padding: '16px', background: 'var(--bg-panel, white)' }}>
                 {/* Iteration policy for supervisor */}
                 <div style={{ marginBottom: 20 }}>
                   <IterationConfigSection
@@ -3906,7 +3906,7 @@ export default function PropertiesPanel() {
                   }
                 }}
                 style={{
-                  padding: '12px 16px', background: '#F8FAFC', cursor: 'pointer',
+                  padding: '12px 16px', background: 'var(--bg-card-neutral, #F8FAFC)', cursor: 'pointer',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   borderBottom: '1px solid var(--border)'
                 }}
@@ -3917,7 +3917,7 @@ export default function PropertiesPanel() {
                 <FiChevronDown id="advanced-arrow-swarm" size={14} style={{ color: 'var(--text-muted)', transition: 'transform 0.2s' }} />
               </div>
 
-              <div id="advanced-options-swarm" style={{ display: 'none', padding: '16px', background: 'white' }}>
+              <div id="advanced-options-swarm" style={{ display: 'none', padding: '16px', background: 'var(--bg-panel, white)' }}>
                 {/* Iteration policy for swarm */}
                 <div style={{ marginBottom: 20 }}>
                   <IterationConfigSection
@@ -3997,7 +3997,7 @@ export default function PropertiesPanel() {
               checked={data.show_chat_button || false}
               onChange={(v) => update({ show_chat_button: v })}
             />
-            <div style={{ marginTop: 20, padding: 12, background: '#F0F9FF', borderRadius: 10, fontSize: 11, color: '#0369A1', lineHeight: 1.5, border: '1px solid #BAE6FD' }}>
+            <div style={{ marginTop: 20, padding: 12, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', lineHeight: 1.5, border: '1px solid var(--border-card-info, #BAE6FD)' }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               Triggering this node stores a persistent notification that can be viewed in the notifications center.
             </div>
@@ -4016,7 +4016,7 @@ export default function PropertiesPanel() {
             <Field label="Destination Field" hint="The context key where the current item will be stored (default: 'item').">
               <Input value={data.destination_field || 'item'} onChange={(v) => update({ destination_field: v })} placeholder="item" />
             </Field>
-            <div style={{ padding: 12, background: '#FFF7ED', borderRadius: 10, fontSize: 11, color: '#9A3412', border: '1px solid #FED7AA', lineHeight: 1.5 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-warning-alt, #FFF7ED)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-warning-alt, #9A3412)', border: '1px solid var(--border-card-warning-alt, #FED7AA)', lineHeight: 1.5 }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               Iterates through a list. Each iteration puts the current item into <strong>context.{data.destination_field || 'item'}</strong>.
               <br /><br />
@@ -4050,7 +4050,7 @@ export default function PropertiesPanel() {
                 <Input value={data.separator || '\\n'} onChange={(v) => update({ separator: v })} placeholder="\\n" />
               </Field>
             )}
-            <div style={{ padding: 12, background: '#F0F9FF', borderRadius: 10, fontSize: 11, color: '#0369A1', border: '1px solid #BAE6FD', lineHeight: 1.5 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', border: '1px solid var(--border-card-info, #BAE6FD)', lineHeight: 1.5 }}>
               <FiLayers size={12} style={{ marginRight: 6 }} />
               Collects data across loop iterations. It will release the full payload to <strong>context.{data.destination_field || 'aggregated_results'}</strong> automatically once the Splitter finishes.
             </div>
@@ -4061,8 +4061,8 @@ export default function PropertiesPanel() {
         {/* ── Ingestion Adapter Node ── */}
         {data.type === 'ingestion_adapter' && (
           <>
-            <div style={{ padding: 16, background: '#F5F3FF', borderRadius: 12, border: '1px solid #DDD6FE', marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#7C3AED', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Banking Ingestion Configuration</div>
+            <div style={{ padding: 16, background: 'var(--bg-card-purple, #F5F3FF)', borderRadius: 12, border: '1px solid var(--border-card-purple, #DDD6FE)', marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-card-purple, #7C3AED)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Banking Ingestion Configuration</div>
               
               <Field label="Source Format" hint="Define how the incoming stream format will be identified.">
                 <Select
@@ -4077,7 +4077,7 @@ export default function PropertiesPanel() {
                   ]}
                 />
               </Field>
-
+ 
               <Field label="Validation Mode" hint="Strict enforces complete schema validity, Lax appends defaults.">
                 <Select
                   value={data.validation_mode || 'Strict'}
@@ -4110,7 +4110,7 @@ export default function PropertiesPanel() {
               />
             </Field>
 
-            <div style={{ padding: 12, background: '#F0F9FF', borderRadius: 10, fontSize: 11, color: '#0369A1', border: '1px solid #BAE6FD', lineHeight: 1.5 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', border: '1px solid var(--border-card-info, #BAE6FD)', lineHeight: 1.5 }}>
               <FiDownload size={12} style={{ marginRight: 6 }} />
               Normalizes transaction streams. Custom columns and up to 200 dynamic fields are preserved automatically using the Pydantic pass-through schema config.
             </div>
@@ -4120,8 +4120,8 @@ export default function PropertiesPanel() {
         {/* ── Banking Pre-Enrichment Node ── */}
         {data.type === 'banking_enrichment' && (
           <>
-            <div style={{ padding: 16, background: '#F5F3FF', borderRadius: 12, border: '1px solid #DDD6FE', marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#7C3AED', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Banking Enrichment Setup</div>
+            <div style={{ padding: 16, background: 'var(--bg-card-purple, #F5F3FF)', borderRadius: 12, border: '1px solid var(--border-card-purple, #DDD6FE)', marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-card-purple, #7C3AED)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Banking Enrichment Setup</div>
               
               <Field label="Source Context Key" hint="Context key containing the canonical transaction data to enrich.">
                 <Input
@@ -4161,7 +4161,7 @@ export default function PropertiesPanel() {
                         else arr.splice(arr.indexOf(opt.id), 1);
                         update({ external_integrations: arr });
                       }}
-                      style={{ accentColor: '#7C3AED' }}
+                      style={{ accentColor: 'var(--theme-primary, #7C3AED)' }}
                     />
                     {opt.label}
                   </label>
@@ -4190,7 +4190,7 @@ export default function PropertiesPanel() {
                         else arr.splice(arr.indexOf(opt.id), 1);
                         update({ internal_integrations: arr });
                       }}
-                      style={{ accentColor: '#7C3AED' }}
+                      style={{ accentColor: 'var(--theme-primary, #7C3AED)' }}
                     />
                     {opt.label}
                   </label>
@@ -4198,7 +4198,7 @@ export default function PropertiesPanel() {
               </div>
             </div>
 
-            <div style={{ padding: 12, background: '#F0F9FF', borderRadius: 10, fontSize: 11, color: '#0369A1', border: '1px solid #BAE6FD', lineHeight: 1.5 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', border: '1px solid var(--border-card-info, #BAE6FD)', lineHeight: 1.5 }}>
               <FiDatabase size={12} style={{ marginRight: 6 }} />
               High-speed orchestration node. API calls run concurrently using Python <strong>asyncio.gather</strong> to prevent blocking, enforcing graceful degradation on timeout.
             </div>
@@ -4234,7 +4234,7 @@ export default function PropertiesPanel() {
               />
             </Field>
 
-            <div style={{ marginTop: 20, padding: 12, background: '#FFF7ED', borderRadius: 10, fontSize: 11, color: '#9A3412', lineHeight: 1.5, border: '1px solid #FED7AA' }}>
+            <div style={{ marginTop: 20, padding: 12, background: 'var(--bg-card-warning-alt, #FFF7ED)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-warning-alt, #9A3412)', lineHeight: 1.5, border: '1px solid var(--border-card-warning-alt, #FED7AA)' }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               This node converts the content of the latest message into audio. It automatically manages file storage and deletes old recordings for this thread.
             </div>
@@ -4244,14 +4244,14 @@ export default function PropertiesPanel() {
         {/* ── API Node ── */}
         {data.type === 'api_node' && (
           <>
-            <div style={{ padding: 16, background: '#F0F9FF', borderRadius: 12, border: '1px solid #BAE6FD', marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#0369A1', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Enterprise Connector</div>
+            <div style={{ padding: 16, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 12, border: '1px solid var(--border-card-info, #BAE6FD)', marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-card-info, #0369A1)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Enterprise Connector</div>
               
               <Field label="Connection Profile" hint="Select a saved connection from the vault to handle Auth automatically.">
                 <ConnectionsDropdown 
                    value={data.connection_id} 
                    onChange={(v) => update({ connection_id: v })} 
-                />
+                 />
               </Field>
 
               <Field label="API Protocol">
@@ -4284,10 +4284,10 @@ export default function PropertiesPanel() {
                     value={data.api_url || ''}
                     onChange={(v) => update({ api_url: v })}
                     placeholder="https://api.example.com/..."
-                    style={(!data.api_url || data.api_url.trim().startsWith('http://') || data.api_url.trim().startsWith('https://') || data.api_url.trim().startsWith('{{')) ? {} : { border: '1px solid #EF4444', background: '#FEF2F2' }}
+                    style={(!data.api_url || data.api_url.trim().startsWith('http://') || data.api_url.trim().startsWith('https://') || data.api_url.trim().startsWith('{{')) ? {} : { border: '1px solid var(--border-card-danger, #EF4444)', background: 'var(--bg-card-danger, #FEF2F2)' }}
                   />
                   {data.api_url && !(data.api_url.trim().startsWith('http://') || data.api_url.trim().startsWith('https://') || data.api_url.trim().startsWith('{{')) && (
-                    <div style={{ color: '#EF4444', fontSize: 11, marginTop: 4, fontWeight: 500 }}>
+                    <div style={{ color: 'var(--text-card-danger, #EF4444)', fontSize: 11, marginTop: 4, fontWeight: 500 }}>
                       URL must start with http://, https://, or a variable {'{{...}}'}.
                     </div>
                   )}
@@ -4296,7 +4296,7 @@ export default function PropertiesPanel() {
             </div>
 
             {!data.connection_id && (
-              <div style={{ padding: 16, background: '#F8F9FA', borderRadius: 12, border: '1px solid var(--border)', marginBottom: 20 }}>
+              <div style={{ padding: 16, background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 12, border: '1px solid var(--border)', marginBottom: 20 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Manual Authentication</div>
                 <Field label="Auth Type">
                   <Select
@@ -4384,7 +4384,7 @@ export default function PropertiesPanel() {
               />
             </Field>
 
-            <div style={{ marginTop: 20, padding: 12, background: '#F0F9FF', borderRadius: 10, fontSize: 11, color: '#0369A1', lineHeight: 1.5, border: '1px solid #BAE6FD' }}>
+            <div style={{ marginTop: 20, padding: 12, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', lineHeight: 1.5, border: '1px solid var(--border-card-info, #BAE6FD)' }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               Result is saved to <strong>context.api_result_{selectedNodeId}</strong>. Use it in prompts as <code>{`{{api_result_${selectedNodeId}.some_field}}`}</code>.
             </div>
@@ -4472,12 +4472,12 @@ export default function PropertiesPanel() {
               onChange={(v) => update({ form_use_context_schema: v })}
             />
             {data.form_use_context_schema && (
-              <div style={{ padding: 10, background: '#F0F9FF', borderRadius: 10, fontSize: 11, color: '#0369A1', border: '1px solid #BAE6FD', marginTop: -10, marginBottom: 20 }}>
+              <div style={{ padding: 10, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', border: '1px solid var(--border-card-info, #BAE6FD)', marginTop: -10, marginBottom: 20 }}>
                 If enabled, the form will be generated from <code>context.form_schema</code> (must be a JSON array of fields) instead of the static fields above.
               </div>
             )}
 
-            <div style={{ marginTop: 20, padding: 12, background: '#F8F9FA', borderRadius: 10, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5, border: '1px solid var(--border)' }}>
+            <div style={{ marginTop: 20, padding: 12, background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 10, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5, border: '1px solid var(--border)' }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               Workflow will pause and wait for the user to submit this form. Results are merged into the workflow context.
             </div>
@@ -4515,7 +4515,7 @@ export default function PropertiesPanel() {
               />
             </Field>
 
-            <div style={{ padding: 16, background: '#F8F9FA', borderRadius: 12, border: '1px solid var(--border)', marginBottom: 20 }}>
+            <div style={{ padding: 16, background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 12, border: '1px solid var(--border)', marginBottom: 20 }}>
               <Toggle
                 checked={data.file_overwrite !== false}
                 onChange={(v) => update({ file_overwrite: v })}
@@ -4526,7 +4526,7 @@ export default function PropertiesPanel() {
               </div>
             </div>
 
-            <div style={{ padding: 12, background: '#ECFDF5', borderRadius: 10, fontSize: 11, color: '#059669', lineHeight: 1.5, border: '1px solid #A7F3D0' }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-success, #ECFDF5)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-success, #059669)', lineHeight: 1.5, border: '1px solid var(--border-card-success, #A7F3D0)' }}>
               <div style={{ fontWeight: 700, marginBottom: 4 }}>Storage Location:</div>
               Files are saved in <strong>Backend/mnt/exports/</strong> and the full path is saved to <strong>latest_file_path</strong>.
             </div>
@@ -4560,7 +4560,7 @@ export default function PropertiesPanel() {
               </Field>
             )}
 
-            <div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, fontSize: 11, color: '#475569', lineHeight: 1.5, border: '1px solid var(--border)' }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 10, fontSize: 11, color: 'var(--text-secondary, #475569)', lineHeight: 1.5, border: '1px solid var(--border)' }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               Prints a formatted JSON snapshot of the workflow state directly to the chat interface. Use this to verify data movement between nodes.
             </div>
@@ -4577,7 +4577,7 @@ export default function PropertiesPanel() {
                 onChange={(llm) => update({ llm })}
               />
             </div>
-            <div style={{ padding: 12, background: '#FEF2F2', borderRadius: 10, fontSize: 11, color: '#991B1B', border: '1px solid #FECACA', lineHeight: 1.5 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-danger, #FEF2F2)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-danger, #991B1B)', border: '1px solid var(--border-card-danger, #FECACA)', lineHeight: 1.5 }}>
               <FiInfo size={12} style={{ marginRight: 5 }} />
               Analyzes system failures and decides: <strong>retry</strong>, <strong>abort</strong>, or <strong>human_help</strong>.
               Connect edges with these specific labels to define recovery paths.
@@ -4621,7 +4621,7 @@ export default function PropertiesPanel() {
 
             <div style={{
               padding: '12px 14px',
-              background: '#F8FAFC',
+              background: 'var(--bg-card-neutral, #F8FAFC)',
               borderRadius: 10,
               fontSize: 11,
               color: 'var(--text-secondary)',
@@ -4711,11 +4711,11 @@ export default function PropertiesPanel() {
 
             <div style={{
               padding: '12px 14px',
-              background: '#F0F9FF',
+              background: 'var(--bg-card-info, #F0F9FF)',
               borderRadius: 10,
               fontSize: 11,
-              color: '#0369A1',
-              border: '1px solid #BAE6FD',
+              color: 'var(--text-card-info, #0369A1)',
+              border: '1px solid var(--border-card-info, #BAE6FD)',
               lineHeight: 1.5,
               marginTop: 18,
               display: 'flex',
@@ -4793,7 +4793,7 @@ export default function PropertiesPanel() {
               />
             </Field>
 
-            <div style={{ padding: 12, background: '#F0F9FF', borderRadius: 10, fontSize: 11, color: '#0369A1', border: '1px solid #BAE6FD', marginTop: 10 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', border: '1px solid var(--border-card-info, #BAE6FD)', marginTop: 10 }}>
               <FiBox size={12} style={{ marginRight: 6 }} />
               This node automatically splits large text into searchable chunks and saves them in your vector database.
             </div>
@@ -4884,7 +4884,7 @@ export default function PropertiesPanel() {
               />
             </Field>
 
-            <div style={{ padding: 12, background: '#FFF7ED', borderRadius: 10, fontSize: 11, color: '#92400E', border: '1px solid #FED7AA', marginTop: 10 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-warning-alt, #FFF7ED)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-warning-alt, #92400E)', border: '1px solid var(--border-card-warning-alt, #FED7AA)', marginTop: 10 }}>
               <FiBookOpen size={12} style={{ marginRight: 6 }} />
               The RAG node searches your vector database for relevant info and uses an LLM to generate an answer based only on those results.
             </div>
@@ -4918,7 +4918,7 @@ export default function PropertiesPanel() {
                 </div>
               </>
             ) : (
-              <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: 12, border: '1px solid var(--border)', marginTop: 10 }}>
+              <div style={{ padding: '16px', background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 12, border: '1px solid var(--border)', marginTop: 10 }}>
                 <Field label="Local OCR Engine" hint="Select the local model installed on your server.">
                   <Select
                     value={data.ocr_standard_model || 'tesseract'}
@@ -4930,15 +4930,15 @@ export default function PropertiesPanel() {
                     ]}
                   />
                 </Field>
-                <div style={{ fontSize: 11, color: '#64748B', marginTop: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted, #64748B)', marginTop: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <FiSettings size={12} /> Running on local CPU/GPU resources.
                 </div>
               </div>
             )}
 
             <div style={{
-              padding: '12px 14px', background: '#F8FAFC', borderRadius: 10, fontSize: 11, color: 'var(--text-secondary)',
-              border: '1px solid var(--border)', lineHeight: 1.5, marginTop: 18, display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'space-between'
+              padding: '12px 14px', background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 10, fontSize: 11, color: 'var(--text-secondary)',
+              border: '1px solid var(--border)', lineHeight: 1.5, marginTop: 18, display: 'flex', alignItems: 'center', gap: 12, justifycontent: 'space-between'
             }}>
               <span style={{ flex: 1, fontWeight: 500 }}>
                 {data.ocr_engine === 'vision'

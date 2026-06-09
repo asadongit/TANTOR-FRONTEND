@@ -142,14 +142,14 @@ function AgentNode({ id, data, selected }) {
       case 'dark':
         return {
           ...baseStyle,
-          background: '#2C2B30',
-          color: '#F8FAFC',
+          background: 'var(--bg-secondary, #2C2B30)',
+          color: 'var(--text-primary, #F8FAFC)',
           border: isSelected 
-            ? '2px solid #A28CD8' 
-            : '1.5px solid #4C4B52',
+            ? '2px solid var(--theme-primary, #A28CD8)' 
+            : '1.5px solid var(--border, #4C4B52)',
           borderRadius: config.round,
           boxShadow: isSelected 
-            ? '0 0 0 3px rgba(162, 140, 216, 0.25), 0 12px 24px rgba(0, 0, 0, 0.4)'
+            ? '0 0 0 3px var(--theme-primary-glow, rgba(162, 140, 216, 0.25)), 0 12px 24px rgba(0, 0, 0, 0.4)'
             : hovered 
               ? '0 12px 24px rgba(0, 0, 0, 0.3)'
               : '0 4px 12px rgba(0, 0, 0, 0.2)',
