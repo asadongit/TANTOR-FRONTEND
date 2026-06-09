@@ -1,43 +1,121 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useWorkflowStore, useUIStore } from '../../store';
-import { listTools, fixGrammar, listAvailableModels, testConnection } from '../../api/agentmesh';
+import { listTools, fixGrammar } from '../../api/agentmesh';
 import SkillGallery from './SkillGallery';
 import SaveTemplateModal from './SaveTemplateModal';
+import { FiTrash2, FiMousePointer, FiInfo, FiLayers, FiSettings, FiCpu, FiTool, FiGitMerge, FiTarget, FiShare2, FiUser, FiBookOpen, FiLink, FiPlus, FiX, FiGlobe, FiClock, FiCopy, FiCheck, FiSearch, FiChevronDown, FiRepeat, FiFileText, FiZap, FiLoader, FiAlertTriangle, FiGitBranch, FiActivity, FiEdit, FiFilter, FiShield, FiCamera, FiBox, FiSave, FiTerminal, FiDatabase, FiUploadCloud, FiDownload, FiAlignLeft, FiKey, FiLock, FiMessageSquare, FiPlay } from 'react-icons/fi';
 import ConnectionsDropdown from './ConnectionsDropdown';
-import {
-  FiTrash2, FiMousePointer, FiInfo, FiLayers, FiSettings, FiCpu, FiTool,
-  FiGitMerge, FiTarget, FiShare2, FiUser, FiBookOpen, FiLink, FiPlus, FiX, FiMinus,
-  FiGlobe, FiClock, FiCopy, FiCheck, FiSearch, FiChevronDown, FiRepeat, FiFileText,
-  FiZap, FiLoader, FiAlertTriangle, FiGitBranch, FiActivity, FiEdit, FiFilter, FiShield, FiCamera, FiBox, FiSave, FiUploadCloud, FiDownload, FiDatabase
-} from 'react-icons/fi';
+import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
+import jsonLang from 'react-syntax-highlighter/dist/esm/languages/hljs/json';
+import { vs2015 } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import toast from 'react-hot-toast';
 
 
-const FONT = "'Google Sans','Roboto',sans-serif";
+SyntaxHighlighter.registerLanguage('json', jsonLang);
 
-// Dynamic model lists - populated from backend API on mount, with static fallbacks
-const PROVIDERS = [
-  'groq', 'openai', 'anthropic', 'google', 'ollama', 'together', 'mistral', 'huggingface',
-  'deepseek', 'cohere', 'perplexity', 'openrouter', 'azure', 'bedrock', 'vllm'
-];
+const FONT = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+function GlobalRuleModal({ onClose }) {
+  const [pattern, setPattern] = useState("");
+  const [entityType, setEntityType] = useState("");
+  const [category, setCategory] = useState("CUSTOM");
+  const [criticality, setCriticality] = useState("HIGH");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSave = async () => {
+    if (!pattern || !entityType) {
+      setError("Pattern and Entity Type are required.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      // 1. Fetch current rules
+      const res = await fetch('http://localhost:8000/api/v1/agentmesh/sensitivity_rules');
+      if (!res.ok) throw new Error("Failed to fetch global rules");
+      const data = await res.json();
+      
+      // 2. Append new rule
+      const newRule = { pattern, category, entity_type: entityType, criticality };
+      
+      // 3. Save rules
+      const saveRes = await fetch('http://localhost:8000/api/v1/agentmesh/sensitivity_rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRule)
+      });
+      if (!saveRes.ok) throw new Error("Failed to save global rule");
+      
+      toast.success("Global Rule added successfully!");
+      onClose();
+    } catch (e) {
+      toast.error(e.message);
+      setError(e.message);
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: 'white', padding: 24, borderRadius: 12, width: 400, fontFamily: FONT, boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+        <h3 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}><FiShield color="#B45309" /> Add Global Rule</h3>
+        <p style={{ fontSize: 13, color: '#666', marginBottom: 20 }}>This rule will apply globally across all Sensitivity Classifier nodes on the server.</p>
+        
+        {error && <div style={{ color: 'red', fontSize: 12, marginBottom: 12 }}>{error}</div>}
+
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Regex Pattern *</label>
+          <input value={pattern} onChange={e => setPattern(e.target.value)} placeholder="e.g. \bPRJ-\d{4}\b" style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, boxSizing: 'border-box' }} />
+        </div>
+        
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Entity Type Name *</label>
+          <input value={entityType} onChange={e => setEntityType(e.target.value)} placeholder="e.g. PROJECT_CODE" style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, boxSizing: 'border-box' }} />
+        </div>
+
+        <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Category</label>
+            <input value={category} onChange={e => setCategory(e.target.value)} placeholder="e.g. PII, CUSTOM" style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Risk Level</label>
+            <select value={criticality} onChange={e => setCriticality(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, boxSizing: 'border-box' }}>
+              <option value="HIGH">HIGH</option>
+              <option value="MEDIUM">MEDIUM</option>
+              <option value="LOW">LOW</option>
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+          <button onClick={onClose} style={{ padding: '8px 16px', background: '#eee', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+          <button onClick={handleSave} disabled={saving} style={{ padding: '8px 16px', background: '#059669', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
+            {saving ? 'Saving...' : 'Save Global Rule'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const PROVIDERS = ['groq', 'openai', 'anthropic', 'google', 'ollama'];
 const MODELS = {
-  groq: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'],
-  openai: ['gpt-4o', 'gpt-4o-mini'],
-  anthropic: ['claude-3-5-sonnet-20241022'],
-  google: ['gemini-2.0-flash'],
-  ollama: [],
-  together: [],
-  mistral: [],
-  huggingface: [],
-  deepseek: ['deepseek-chat', 'deepseek-coder'],
-  cohere: ['command-r', 'command-r-plus'],
-  perplexity: ['sonar', 'sonar-pro'],
-  openrouter: ['auto'],
-  azure: ['gpt-4o', 'gpt-4o-mini', 'o1'],
-  bedrock: ['claude-3-5-sonnet', 'meta-llama-3-8b'],
-  vllm: [],
+  groq: [
+    'openai/gpt-oss-120b',
+    'meta-llama/llama-4-scout-17b-16e-instruct',
+    'llama-3.3-70b-versatile',
+    'llama-3.1-8b-instant',
+    'qwen/qwen3-32b',
+    'moonshotai/kimi-k2-instruct-0905',
+    'openai/gpt-oss-20b'
+  ],
+  openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'o1-preview', 'o1-mini'],
+  anthropic: ['claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307', 'claude-opus-4'],
+  google: ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
+  ollama: ['gemma3:1b', 'granite4:1b', 'deepseek-coder-v2:16b', 'qwen2.5:7b', 'gemma4:e2b'],
 };
-// Labels map: "provider::model" -> "model (Provider)" - populated from backend API
-const MODEL_LABELS = {};
 
 const inputStyle = {
   width: '100%', padding: '9px 12px', background: 'var(--bg-primary, white)',
@@ -242,7 +320,7 @@ function Select({ value, onChange, options, disabled }) {
   );
 }
 
-function SearchableSelect({ value, onChange, options, placeholder = "Search...", disabled, showSearch = true }) {
+function SearchableSelect({ value, onChange, options, placeholder = "Search...", disabled }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const containerRef = useRef(null);
@@ -340,22 +418,11 @@ function SearchableSelect({ value, onChange, options, placeholder = "Search...",
                       e.currentTarget.style.color = 'var(--text-primary)';
                     }
                   }}
+                  onMouseEnter={(e) => { if (value !== o.value) e.currentTarget.style.background = '#F8FAFC'; }}
+                  onMouseLeave={(e) => { if (value !== o.value) e.currentTarget.style.background = 'transparent'; }}
                 >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.label}</div>
-                    {o.sublabel && <div style={{ fontSize: 10, opacity: 0.6, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.sublabel}</div>}
-                  </div>
-                  {o.onDelete && (
-                    <div
-                      onClick={(e) => { e.stopPropagation(); o.onDelete(); }}
-                      style={{ padding: '4px', borderRadius: 4, cursor: 'pointer', color: '#EF4444', opacity: 0.5, flexShrink: 0 }}
-                      onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                      onMouseLeave={e => e.currentTarget.style.opacity = '0.5'}
-                      title="Delete"
-                    >
-                      <FiTrash2 size={12} />
-                    </div>
-                  )}
+                  {o.label}
+                  {o.sublabel && <div style={{ fontSize: 10, opacity: 0.6, marginTop: 1 }}>{o.sublabel}</div>}
                 </div>
               ))
             )}
@@ -453,7 +520,7 @@ function KeyValueEditor({ value = {}, onChange, label, hint }) {
   );
 }
 
-function ToolConfigModal({ toolName, config = {}, onChange, onClose, onRemove, availableTools = [] }) {
+function ToolConfigModal({ toolName, config = {}, onChange, onClose, availableTools = [] }) {
   const toolInfo = availableTools.find(t => t.name === toolName) || { name: toolName };
 
   // Helper to update a single config key
@@ -507,43 +574,30 @@ function ToolConfigModal({ toolName, config = {}, onChange, onClose, onRemove, a
           <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Parameter Overrides (Human-Only)</div>
 
-           {fields.length > 0 ? (
+          {fields.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {fields.map(f => {
-                if (f.type === 'boolean') {
-                  return (
-                    <Field key={f.name} label={f.name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} hint={f.description}>
-                      <Toggle
-                        checked={config[f.name] ?? f.default ?? false}
-                        onChange={(v) => set(f.name, v)}
-                        label=""
-                      />
-                    </Field>
-                  );
-                }
-                return (
-                  <Field key={f.name} label={f.name.replace(/_/g, ' ')} hint={f.description}>
-                    {f.options && f.options.length > 0 ? (
-                      <Select
-                        value={config[f.name] || f.default}
-                        onChange={(v) => set(f.name, f.type === 'number' ? parseFloat(v) : v)}
-                        options={f.options.map(o => ({ value: o, label: o }))}
-                      />
-                    ) : (
-                      <Input
-                        type={
-                          f.type === 'number' ? 'number' :
-                            (f.type === 'password' || f.name.toLowerCase().includes('password') || f.name.toLowerCase().includes('key')) ? 'password' :
-                              'text'
-                        }
-                        value={config[f.name]}
-                        onChange={(v) => set(f.name, f.type === 'number' ? parseFloat(v) : v)}
-                        placeholder={f.name === 'collection_name' ? 'default' : ''}
-                      />
-                    )}
-                  </Field>
-                );
-              })}
+              {fields.map(f => (
+                <Field key={f.name} label={f.name.replace(/_/g, ' ')} hint={f.description}>
+                  {f.options && f.options.length > 0 ? (
+                    <Select
+                      value={config[f.name] || f.default}
+                      onChange={(v) => set(f.name, f.type === 'number' ? parseFloat(v) : v)}
+                      options={f.options.map(o => ({ value: o, label: o }))}
+                    />
+                  ) : (
+                    <Input
+                      type={
+                        f.type === 'number' ? 'number' :
+                          (f.type === 'password' || f.name.toLowerCase().includes('password') || f.name.toLowerCase().includes('key')) ? 'password' :
+                            'text'
+                      }
+                      value={config[f.name]}
+                      onChange={(v) => set(f.name, f.type === 'number' ? parseFloat(v) : v)}
+                      placeholder={f.name === 'collection_name' ? 'default' : ''}
+                    />
+                  )}
+                </Field>
+              ))}
             </div>
           ) : (
             <div style={{ padding: 12, background: 'var(--bg-card-neutral, #F1F5F9)', borderRadius: 8, fontSize: 12, color: 'var(--text-secondary, #475569)', textAlign: 'center' }}>
@@ -552,20 +606,7 @@ function ToolConfigModal({ toolName, config = {}, onChange, onClose, onRemove, a
           )}
         </div>
 
-        <div style={{ padding: '16px 20px', background: '#F8FAFC', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {onRemove && (
-            <button
-              onClick={() => {
-                onRemove(toolName);
-                onClose();
-              }}
-              style={{ padding: '8px 14px', background: '#F87171', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-              title="Remove this tool from the agent"
-            >
-              <FiTrash2 size={14} />
-              Remove Tool
-            </button>
-          )}
+        <div style={{ padding: '16px 20px', background: '#F8FAFC', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
           <button
             onClick={onClose}
             style={{ padding: '8px 16px', background: 'var(--accent-btn)', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
@@ -723,13 +764,6 @@ function ToolTagInput({ value = [], configs = {}, onUpdate, availableTools = [] 
           availableTools={availableTools}
           onClose={() => setConfigTool(null)}
           onChange={(newConf) => onUpdate(value, { ...configs, [configTool]: newConf })}
-          onRemove={(tName) => {
-            const nextTools = value.filter((x) => x !== tName);
-            const nextConfigs = { ...configs };
-            delete nextConfigs[tName];
-            onUpdate(nextTools, nextConfigs);
-            setConfigTool(null);
-          }}
         />
       )}
 
@@ -876,7 +910,6 @@ function FormFieldsEditor({ fields = [], onChange }) {
                       { value: 'multiselect', label: 'Multi-Select' },
                       { value: 'date', label: 'Date Picker' },
                       { value: 'boolean', label: 'Checkbox/Toggle' },
-                      { value: 'rating', label: 'Star Rating (1-5)' },
                       { value: 'file', label: 'File Upload' },
                       { value: 'remark', label: 'Info / Remark (Static Text)' },
                     ]}
@@ -1169,75 +1202,6 @@ function CustomRegexEditor({ value = [], onChange }) {
   );
 }
 
-function ClassificationClassesEditor({ value = [], onChange, engine }) {
-  const add = () => {
-    if (engine === 'regex') {
-      onChange([...value, { class: '', regex_patterns: '' }]);
-    } else {
-      onChange([...value, { class: '', description: '' }]);
-    }
-  };
-  const updateItem = (idx, patch) => {
-    const next = [...value];
-    next[idx] = { ...next[idx], ...patch };
-    onChange(next);
-  };
-  const remove = (idx) => onChange(value.filter((_, i) => i !== idx));
-
-  return (
-    <div style={{ marginTop: 15 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-          {engine === 'regex' ? 'Classes & Regex Patterns' : 'Classes & Descriptions'}
-        </label>
-        <button
-          onClick={add}
-          style={{
-            background: 'none', border: 'none', color: 'var(--accent-btn)',
-            cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center',
-            borderRadius: 4, transition: 'background 0.2s'
-          }}
-        >
-          <FiPlus size={16} strokeWidth={3} />
-        </button>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {value.map((item, idx) => (
-          <div key={idx} style={{ padding: 10, background: '#F8FAFC', borderRadius: 8, border: '1px solid var(--border)', position: 'relative' }}>
-            <button
-              onClick={() => remove(idx)}
-              style={{ position: 'absolute', top: 6, right: 6, background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}
-            >
-              <FiX size={12} />
-            </button>
-            <div style={{ marginBottom: 6 }}>
-              <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>CLASS NAME</label>
-              <Input value={item.class} onChange={(v) => updateItem(idx, { class: v })} placeholder="e.g. Support" style={{ padding: '4px 8px', fontSize: 11 }} />
-            </div>
-            {engine === 'regex' ? (
-              <div>
-                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>REGEX PATTERNS (comma-separated)</label>
-                <Input value={item.regex_patterns || ''} onChange={(v) => updateItem(idx, { regex_patterns: v })} placeholder="e.g. help,support,login" style={{ padding: '4px 8px', fontSize: 11 }} />
-              </div>
-            ) : (
-              <div>
-                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DESCRIPTION</label>
-                <Input value={item.description || ''} onChange={(v) => updateItem(idx, { description: v })} placeholder="e.g. User asking for tech help" style={{ padding: '4px 8px', fontSize: 11 }} />
-              </div>
-            )}
-          </div>
-        ))}
-        {value.length === 0 && (
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', padding: '4px 0' }}>
-            No classes defined. Click the plus button above to add classes.
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // Inline node ID list editor (for supervisor/swarm member_ids)
 function NodeIdList({ value = [], onChange, placeholder, allNodes = [] }) {
   const [input, setInput] = useState('');
@@ -1289,121 +1253,26 @@ function LLMConfigSection({ llm, onChange }) {
   const models = MODELS[provider] || [];
   const isOllama = provider === 'ollama';
 
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState(null); // 'success' | 'error' | null
-  const [errorMessage, setErrorMessage] = useState('');
-
-  const handleTestConnection = async () => {
-    if (!llm?.api_key_override) return;
-    try {
-      setTesting(true);
-      setTestResult(null);
-      setErrorMessage('');
-      const res = await testConnection({
-        provider,
-        api_key: llm.api_key_override,
-        base_url: llm.base_url
-      });
-      if (res && res.status === 'success') {
-        setTestResult('success');
-        if (Array.isArray(res.models) && res.models.length > 0) {
-          const newModels = [];
-          res.models.forEach(m => {
-            newModels.push(m.model);
-            MODEL_LABELS[`${provider}::${m.model}`] = m.label || `${m.model} (${provider})`;
-          });
-          MODELS[provider] = newModels;
-          if (!llm.model || !newModels.includes(llm.model)) {
-            onChange({ ...llm, model: newModels[0] });
-          } else {
-            onChange({ ...llm });
-          }
-        }
-      } else {
-        setTestResult('error');
-        setErrorMessage(res.message || 'Connection failed.');
-      }
-    } catch (e) {
-      console.error(e);
-      setTestResult('error');
-      setErrorMessage(e.message || 'Connection failed.');
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  // Build model options with labels from backend
-  const modelOptions = [
-    ...models.map(m => {
-      const labelKey = `${provider}::${m}`;
-      return { value: m, label: MODEL_LABELS[labelKey] || `${m} (${provider.charAt(0).toUpperCase() + provider.slice(1)})` };
-    }),
-    // Include current model even if not in the dynamic list (backward compat)
-    ...(llm?.model && !models.includes(llm.model) ? [{ value: llm.model, label: llm.model }] : [])
-  ];
-
   return (
     <>
       <Field label="Provider">
         <Select value={provider} onChange={(v) => onChange({ ...llm, provider: v, model: MODELS[v]?.[0] || '' })} options={PROVIDERS} />
       </Field>
       <Field label="Model">
-        <SearchableSelect
-          value={llm?.model || ''}
-          onChange={(v) => onChange({ ...llm, model: v })}
-          options={modelOptions}
-          placeholder="Search models..."
-        />
+        <Select value={llm?.model || ''} onChange={(v) => onChange({ ...llm, model: v })} options={[...(models), ...(llm?.model && !models.includes(llm.model) ? [llm.model] : [])]} />
       </Field>
       <Field label="Temperature">
         <Input type="number" value={llm?.temperature ?? 0} onChange={(v) => onChange({ ...llm, temperature: parseFloat(v) || 0 })} placeholder="0.0" style={{ width: '100%' }} />
       </Field>
-      {isOllama && (
-        <Field label="Ollama Base URL" hint="e.g., http://192.168.1.100:11434 or http://localhost:11434">
+      {isOllama ? (
+        <Field label="Ollama Base URL" hint="e.g., http://73.245.233.186:31059 or http://localhost:11434">
           <Input value={llm?.base_url || ''} onChange={(v) => onChange({ ...llm, base_url: v || null })} placeholder="http://localhost:11434" />
         </Field>
+      ) : (
+        <Field label="API Key Override" hint="Leave blank to use the backend's default key.">
+          <Input value={llm?.api_key_override || ''} onChange={(v) => onChange({ ...llm, api_key_override: v || null })} placeholder="sk-..." type="password" />
+        </Field>
       )}
-      <Field label="API Key Override" hint="Leave blank to use the backend's default key from .env">
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <div style={{ flex: 1 }}>
-            <Input value={llm?.api_key_override || ''} onChange={(v) => onChange({ ...llm, api_key_override: v || null })} placeholder="sk-... or custom key" type="password" />
-          </div>
-          {llm?.api_key_override && (
-            <button
-              onClick={handleTestConnection}
-              disabled={testing}
-              style={{
-                padding: '8px 12px',
-                background: testing ? '#F1F5F9' : testResult === 'success' ? '#10B981' : testResult === 'error' ? '#EF4444' : 'var(--accent-btn)',
-                color: 'white',
-                border: 'none',
-                borderRadius: 10,
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: testing ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                boxShadow: 'var(--shadow-sm)'
-              }}
-            >
-              {testing ? <FiLoader className="animate-spin" size={14} /> : testResult === 'success' ? <FiCheck size={14} /> : testResult === 'error' ? <FiAlertTriangle size={14} /> : null}
-              {testing ? 'Testing...' : testResult === 'success' ? 'Connected' : testResult === 'error' ? 'Failed' : 'Test'}
-            </button>
-          )}
-        </div>
-        {testResult === 'error' && (
-          <div style={{ color: '#EF4444', fontSize: 11, marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <FiAlertTriangle size={12} /> {errorMessage}
-          </div>
-        )}
-        {testResult === 'success' && (
-          <div style={{ color: '#10B981', fontSize: 11, marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <FiCheck size={12} /> Connection verified! Dynamic model listings updated.
-          </div>
-        )}
-      </Field>
     </>
   );
 }
@@ -1492,7 +1361,7 @@ function CronHelper({ value, onChange }) {
     let min = '00';
     let days = ['1', '2', '3', '4', '5'];
 
-    if (!value || value === '* * * * *' || value === '*/1 * * * *' || value.startsWith('*/')) {
+    if (!value || value === '* * * * *' || value === '*/1 * * * *') {
       return { mode, freq: 'minute', hour, min, days };
     }
 
@@ -1631,90 +1500,8 @@ function CronHelper({ value, onChange }) {
   );
 }
 
-function GlobalRuleModal({ onClose }) {
-  const [pattern, setPattern] = useState("");
-  const [entityType, setEntityType] = useState("");
-  const [category, setCategory] = useState("CUSTOM");
-  const [criticality, setCriticality] = useState("HIGH");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
 
-  const handleSave = async () => {
-    if (!pattern || !entityType) {
-      setError("Pattern and Entity Type are required.");
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      // 1. Fetch current rules
-      const res = await fetch('http://localhost:8000/api/v1/agentmesh/sensitivity_rules');
-      if (!res.ok) throw new Error("Failed to fetch global rules");
-      const data = await res.json();
-      
-      // 2. Append new rule
-      const newRule = { pattern, category, entity_type: entityType, criticality };
-      
-      // 3. Save rules
-      const saveRes = await fetch('http://localhost:8000/api/v1/agentmesh/sensitivity_rules', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newRule)
-      });
-      if (!saveRes.ok) throw new Error("Failed to save global rule");
-      
-      toast.success("Global Rule added successfully!");
-      onClose();
-    } catch (e) {
-      toast.error(e.message);
-      setError(e.message);
-      setSaving(false);
-    }
-  };
 
-  return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: 'white', padding: 24, borderRadius: 12, width: 400, fontFamily: FONT, boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
-        <h3 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}><FiShield color="#B45309" /> Add Global Rule</h3>
-        <p style={{ fontSize: 13, color: '#666', marginBottom: 20 }}>This rule will apply globally across all Sensitivity Classifier nodes on the server.</p>
-        
-        {error && <div style={{ color: 'red', fontSize: 12, marginBottom: 12 }}>{error}</div>}
-
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Regex Pattern *</label>
-          <input value={pattern} onChange={e => setPattern(e.target.value)} placeholder="e.g. \bPRJ-\d{4}\b" style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, boxSizing: 'border-box' }} />
-        </div>
-        
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Entity Type Name *</label>
-          <input value={entityType} onChange={e => setEntityType(e.target.value)} placeholder="e.g. PROJECT_CODE" style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, boxSizing: 'border-box' }} />
-        </div>
-
-        <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-          <div style={{ flex: 1 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Category</label>
-            <input value={category} onChange={e => setCategory(e.target.value)} placeholder="e.g. PII, CUSTOM" style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, boxSizing: 'border-box' }} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Risk Level</label>
-            <select value={criticality} onChange={e => setCriticality(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, boxSizing: 'border-box' }}>
-              <option value="HIGH">HIGH</option>
-              <option value="MEDIUM">MEDIUM</option>
-              <option value="LOW">LOW</option>
-            </select>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-          <button onClick={onClose} style={{ padding: '8px 16px', background: '#eee', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
-          <button onClick={handleSave} disabled={saving} style={{ padding: '8px 16px', background: '#059669', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
-            {saving ? 'Saving...' : 'Save Global Rule'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 
 function SensitivityClassifierConfig({ data, update, setShowGlobalRuleModal }) {
@@ -2264,6 +2051,10 @@ function ReportGeneratorConfig({ data, update }) {
 
 
 
+
+
+const ClassificationClassesEditor = ({value, onChange}) => <div style={{padding:10, border:"1px solid var(--border)"}}>Classes Editor (Placeholder)</div>;
+
 export default function PropertiesPanel() {
   const selectedNodeId = useUIStore((s) => s.selectedNodeId);
   const selectedEdgeId = useUIStore((s) => s.selectedEdgeId);
@@ -2282,7 +2073,6 @@ export default function PropertiesPanel() {
   const [skillGalleryOpen, setSkillGalleryOpen] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [showGlobalRuleModal, setShowGlobalRuleModal] = useState(false);
-  const [modelsLoaded, setModelsLoaded] = useState(false);
 
   const handleFixGrammar = async (targetKey) => {
     if (!data[targetKey]) return;
@@ -2303,30 +2093,6 @@ export default function PropertiesPanel() {
     listTools().then(res => {
       setAvailableTools(res.tools || []);
     }).catch(err => console.error('Failed to load tools:', err));
-
-    listAvailableModels().then(res => {
-      if (res && res.status === 'success' && Array.isArray(res.models) && res.models.length > 0) {
-        const grouped = {};
-        const uniqueProviders = new Set();
-        res.models.forEach(m => {
-          const prov = m.provider;
-          uniqueProviders.add(prov);
-          if (!grouped[prov]) grouped[prov] = [];
-          if (!grouped[prov].includes(m.model)) grouped[prov].push(m.model);
-          // Store label mapping
-          MODEL_LABELS[`${prov}::${m.model}`] = m.label || `${m.model} (${prov})`;
-        });
-
-        // Update global mutable arrays
-        PROVIDERS.length = 0;
-        PROVIDERS.push(...Array.from(uniqueProviders));
-
-        Object.keys(MODELS).forEach(k => delete MODELS[k]);
-        Object.assign(MODELS, grouped);
-
-        setModelsLoaded(true);
-      }
-    }).catch(err => console.error('Failed to load dynamic models:', err));
   }, []);
 
   const node = nodes.find((n) => n.id === selectedNodeId);
@@ -2505,18 +2271,16 @@ export default function PropertiesPanel() {
   const update = (patch) => setNodeData(selectedNodeId, patch);
 
   const nodeIcons = {
-    llm_agent: FiCpu, classification: FiFilter, tool_node: FiTool, router: FiGitMerge,
+    llm_agent: FiCpu, tool_node: FiTool, router: FiGitMerge,
     supervisor: FiTarget, swarm: FiShare2,
     rag_node: FiBookOpen, subgraph: FiLink,
     chat_model: FiCpu, memory: FiBookOpen,
-    webhook: FiGlobe, cron: FiClock, polling: FiClock, ingestion_adapter: FiDownload,
+    webhook: FiGlobe, cron: FiClock, polling: FiClock,
     splitter: FiRepeat,
     api_node: FiGlobe,
     file_store: FiFileText,
-    template_node: FiFileText,
     webhook_response: FiShare2,
     error_router: FiAlertTriangle,
-    report_generator: FiFileText,
   };
   const Icon = nodeIcons[data.type] || FiLayers;
 
@@ -2536,7 +2300,7 @@ export default function PropertiesPanel() {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          {['llm_agent', 'deep_agent', 'supervisor', 'swarm', 'api_node'].includes(data.type) && (
+          {['llm_agent', 'deep_agent', 'supervisor', 'swarm'].includes(data.type) && (
             <button
               onClick={() => setSaveModalOpen(true)}
               style={{ width: 30, height: 30, background: 'none', border: 'none', borderRadius: 6, color: 'var(--accent-btn)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.15s' }}
@@ -3211,7 +2975,7 @@ export default function PropertiesPanel() {
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', padding: '4px 0' }}>No skills applied yet.</div>
                 )}
                 {/* Multi-skill support */}
-                {(data.skills || []).filter(s => typeof s === 'string' && s).map(skillPath => {
+                {(data.skills || []).map(skillPath => {
                   const label = skillPath.split('/').pop().replace(/-/g, ' ').toUpperCase();
                   return (
                     <div key={skillPath} style={{
@@ -4083,11 +3847,7 @@ export default function PropertiesPanel() {
                   { value: 'info', label: 'Info (Blue)' },
                   { value: 'success', label: 'Success (Green)' },
                   { value: 'warning', label: 'Warning (Yellow)' },
-                  { value: 'error', label: 'Error (Red)' },
-                  { value: 'important', label: 'Important (Indigo)' },
-                  { value: 'critical', label: 'Critical (Dark Red)' },
-                  { value: 'system', label: 'System (Gray)' },
-                  { value: 'security', label: 'Security (Rose)' }
+                  { value: 'error', label: 'Error (Red)' }
                 ]}
               />
             </Field>
@@ -4162,6 +3922,7 @@ export default function PropertiesPanel() {
         )}
 
 
+
         {/* ── Ingestion Adapter Node ── */}
         {data.type === 'ingestion_adapter' && (
           <>
@@ -4222,94 +3983,7 @@ export default function PropertiesPanel() {
         )}
 
         {/* ── Banking Pre-Enrichment Node ── */}
-        {data.type === 'banking_enrichment' && (
-          <>
-            <div style={{ padding: 16, background: 'var(--bg-card-purple, #F5F3FF)', borderRadius: 12, border: '1px solid var(--border-card-purple, #DDD6FE)', marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-card-purple, #7C3AED)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Banking Enrichment Setup</div>
-              
-              <Field label="Source Context Key" hint="Context key containing the canonical transaction data to enrich.">
-                <Input
-                  value={data.source_key || 'canonical_transaction'}
-                  onChange={(v) => update({ source_key: v })}
-                  placeholder="e.g. canonical_transaction"
-                />
-              </Field>
-              <Field label="Destination Key" hint="Context key to save the highly enriched transaction payload.">
-                <Input
-                  value={data.destination_key || 'enriched_transaction'}
-                  onChange={(v) => update({ destination_key: v })}
-                  placeholder="e.g. enriched_transaction"
-                />
-              </Field>
-            </div>
-
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>External Integrations</div>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 12 }}>Mock external API fetches directly into the workflow memory.</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {[
-                  { id: 'cibil_experian', label: 'Credit Bureaus (Synthetic ID Check)' },
-                  { id: 'npci_registry', label: 'NPCI Registry (Blacklisted VPAs)' },
-                  { id: 'sanctions_lists', label: 'OFAC / RBI Sanctions (Watchlists)' },
-                  { id: 'ip_geolocation', label: 'MaxMind IP (VPN / TOR Check)' },
-                  { id: 'threat_metrix', label: 'ThreatMetrix (Device Rep / Bot)' },
-                  { id: 'telecom_data', label: 'Telecom APIs (SIM Swap Alerts)' }
-                ].map(opt => (
-                  <label key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, cursor: 'pointer', background: 'var(--bg-canvas)', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8 }}>
-                    <input 
-                      type="checkbox" 
-                      checked={(data.external_integrations || []).includes(opt.id)}
-                      onChange={e => {
-                        const arr = [...(data.external_integrations || [])];
-                        if (e.target.checked) arr.push(opt.id);
-                        else arr.splice(arr.indexOf(opt.id), 1);
-                        update({ external_integrations: arr });
-                      }}
-                      style={{ accentColor: 'var(--theme-primary, #7C3AED)' }}
-                    />
-                    {opt.label}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>Internal Bank Systems</div>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 12 }}>Mock internal DB queries to fetch historical signals.</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {[
-                  { id: 'core_banking', label: 'Core Banking (History & Velocity)' },
-                  { id: 'card_management', label: 'Card Management (PIN/Usage)' },
-                  { id: 'mobile_app_logs', label: 'Mobile App Logs (Biometric Auth)' },
-                  { id: 'kyc_repository', label: 'KYC Repository (Identity)' },
-                  { id: 'crm_system', label: 'CRM System (Customer Value Tier)' }
-                ].map(opt => (
-                  <label key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, cursor: 'pointer', background: 'var(--bg-canvas)', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8 }}>
-                    <input 
-                      type="checkbox" 
-                      checked={(data.internal_integrations || []).includes(opt.id)}
-                      onChange={e => {
-                        const arr = [...(data.internal_integrations || [])];
-                        if (e.target.checked) arr.push(opt.id);
-                        else arr.splice(arr.indexOf(opt.id), 1);
-                        update({ internal_integrations: arr });
-                      }}
-                      style={{ accentColor: 'var(--theme-primary, #7C3AED)' }}
-                    />
-                    {opt.label}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ padding: 12, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', border: '1px solid var(--border-card-info, #BAE6FD)', lineHeight: 1.5 }}>
-              <FiDatabase size={12} style={{ marginRight: 6 }} />
-              High-speed orchestration node. API calls run concurrently using Python <strong>asyncio.gather</strong> to prevent blocking, enforcing graceful degradation on timeout.
-            </div>
-          </>
-        )}
-
-
+        
         {/* ── Text to Audio ── */}
         {data.type === 'textToAudio' && (
           <>
@@ -4348,6 +4022,7 @@ export default function PropertiesPanel() {
         {/* ── API Node ── */}
         {data.type === 'api_node' && (
           <>
+
             <div style={{ padding: 16, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 12, border: '1px solid var(--border-card-info, #BAE6FD)', marginBottom: 20 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-card-info, #0369A1)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Enterprise Connector</div>
               
@@ -4371,6 +4046,7 @@ export default function PropertiesPanel() {
               </Field>
             </div>
 
+
             <div style={{ display: 'flex', gap: 10 }}>
               <div style={{ width: '120px' }}>
                 <Field label="Method">
@@ -4378,7 +4054,6 @@ export default function PropertiesPanel() {
                     value={data.api_method || 'GET'}
                     onChange={(v) => update({ api_method: v })}
                     options={['GET', 'POST', 'PUT', 'DELETE', 'PATCH']}
-                    disabled={data.api_protocol === 'SOAP' || data.api_protocol === 'GRAPHQL'}
                   />
                 </Field>
               </div>
@@ -4388,6 +4063,7 @@ export default function PropertiesPanel() {
                     value={data.api_url || ''}
                     onChange={(v) => update({ api_url: v })}
                     placeholder="https://api.example.com/..."
+
                     style={(!data.api_url || data.api_url.trim().startsWith('http://') || data.api_url.trim().startsWith('https://') || data.api_url.trim().startsWith('{{')) ? {} : { border: '1px solid var(--border-card-danger, #EF4444)', background: 'var(--bg-card-danger, #FEF2F2)' }}
                   />
                   {data.api_url && !(data.api_url.trim().startsWith('http://') || data.api_url.trim().startsWith('https://') || data.api_url.trim().startsWith('{{')) && (
@@ -4398,6 +4074,7 @@ export default function PropertiesPanel() {
                 </Field>
               </div>
             </div>
+
 
             {!data.connection_id && (
               <div style={{ padding: 16, background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 12, border: '1px solid var(--border)', marginBottom: 20 }}>
@@ -4410,23 +4087,23 @@ export default function PropertiesPanel() {
                   />
                 </Field>
 
-                {data.api_auth_type === 'Basic' && (
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <Field label="Username">
-                      <Input value={data.api_auth_config?.username} onChange={(v) => update({ api_auth_config: { ...data.api_auth_config, username: v } })} placeholder="user" />
-                    </Field>
-                    <Field label="Password">
-                      <Input value={data.api_auth_config?.password} onChange={(v) => update({ api_auth_config: { ...data.api_auth_config, password: v } })} placeholder="pass" type="password" />
-                    </Field>
-                  </div>
-                )}
-
-                {data.api_auth_type === 'Bearer' && (
-                  <Field label="Token">
-                    <Input value={data.api_auth_config?.token} onChange={(v) => update({ api_auth_config: { ...data.api_auth_config, token: v } })} placeholder="Bearer token…" type="password" />
+              {data.api_auth_type === 'Basic' && (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Field label="Username">
+                    <Input value={data.api_auth_config?.username} onChange={(v) => update({ api_auth_config: { ...data.api_auth_config, username: v } })} placeholder="user" />
                   </Field>
-                )}
-              </div>
+                  <Field label="Password">
+                    <Input value={data.api_auth_config?.password} onChange={(v) => update({ api_auth_config: { ...data.api_auth_config, password: v } })} placeholder="pass" type="password" />
+                  </Field>
+                </div>
+              )}
+
+              {data.api_auth_type === 'Bearer' && (
+                <Field label="Token">
+                  <Input value={data.api_auth_config?.token} onChange={(v) => update({ api_auth_config: { ...data.api_auth_config, token: v } })} placeholder="Bearer token…" type="password" />
+                </Field>
+              )}
+            </div>
             )}
 
             <KeyValueEditor
@@ -4443,35 +4120,13 @@ export default function PropertiesPanel() {
               hint="Appended to the URL"
             />
 
-            {(data.api_protocol === 'REST' || !data.api_protocol) && ['POST', 'PUT', 'PATCH'].includes(data.api_method || 'GET') && (
-              <Field label="JSON Request Body" hint="JSON or raw text. Supports {{interpolation}}.">
+            {['POST', 'PUT', 'PATCH'].includes(data.api_method) && (
+              <Field label="Request Body" hint="JSON or raw text. Supports {{interpolation}}.">
                 <Textarea
                   value={data.api_body || ''}
                   onChange={(v) => update({ api_body: v })}
                   placeholder='{"id": "{{item.id}}"}'
                   rows={5}
-                />
-              </Field>
-            )}
-
-            {data.api_protocol === 'SOAP' && (
-              <Field label="XML SOAP Envelope" hint="Write standard XML. Supports {{interpolation}}.">
-                <Textarea
-                  value={data.api_body || ''}
-                  onChange={(v) => update({ api_body: v })}
-                  placeholder='<soap:Envelope><soap:Body>...</soap:Body></soap:Envelope>'
-                  rows={7}
-                />
-              </Field>
-            )}
-
-            {data.api_protocol === 'GRAPHQL' && (
-              <Field label="GraphQL Query" hint="Standard GraphQL syntax. Supports {{interpolation}}.">
-                <Textarea
-                  value={data.graphql_query || ''}
-                  onChange={(v) => update({ graphql_query: v })}
-                  placeholder='query { user(id: "{{user_id}}") { name } }'
-                  rows={7}
                 />
               </Field>
             )}
@@ -4493,49 +4148,6 @@ export default function PropertiesPanel() {
               Result is saved to <strong>context.api_result_{selectedNodeId}</strong>. Use it in prompts as <code>{`{{api_result_${selectedNodeId}.some_field}}`}</code>.
             </div>
           </>
-        )}
-
-        {/* ── Template Engine Node ── */}
-        {data.type === 'template_node' && (
-          <>
-            <Field label="Template Output Key" hint="The context key where the rendered document will be saved (default: rendered_template).">
-              <Input
-                value={data.template_output_key || 'rendered_template'}
-                onChange={(v) => update({ template_output_key: v })}
-                placeholder="e.g. final_report"
-              />
-            </Field>
-            <Field label="Template Data Key (Optional)" hint="A specific context key to pass to the template. Leave blank to pass the entire context.">
-              <Input
-                value={data.template_data_key || ''}
-                onChange={(v) => update({ template_data_key: v })}
-                placeholder="e.g. latest_ocr_output"
-              />
-            </Field>
-            <Field label="Template Content" hint="The Jinja2/Markdown template. Use {{variable}} to inject data.">
-              <div style={{ position: 'relative' }}>
-                <Textarea
-                  value={data.template_content || ''}
-                  onChange={(v) => update({ template_content: v })}
-                  placeholder="# Report\n\nName: {{name}}"
-                  rows={12}
-                  style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 1.5 }}
-                />
-              </div>
-            </Field>
-            <Field label="Or Load from File Path (Optional)" hint="Absolute path to a .md or .html template file on the server.">
-              <Input
-                value={data.template_file_path || ''}
-                onChange={(v) => update({ template_file_path: v })}
-                placeholder="/path/to/template.md"
-              />
-            </Field>
-          </>
-        )}
-
-        {/* ── Report Generator Node ── */}
-        {data.type === 'report_generator' && (
-          <ReportGeneratorConfig data={data} update={update} />
         )}
 
         {/* ── Form Submission Node ── */}
@@ -4819,6 +4431,7 @@ export default function PropertiesPanel() {
           </>
         )}
 
+
         {/* ── Classification Node ── */}
         {data.type === 'classification' && (
           <>
@@ -4912,6 +4525,7 @@ export default function PropertiesPanel() {
         {data.type === 'sensitivity_classifier' && (
           <SensitivityClassifierConfig data={data} update={update} setShowGlobalRuleModal={setShowGlobalRuleModal} />
         )}
+
         {/* ── OCR Node ── */}
         {/* ── Ingestion Node ── */}
         {data.type === 'ingestion_node' && (
@@ -5055,6 +4669,8 @@ export default function PropertiesPanel() {
               </div>
             </div>
 
+
+            <div style={{ padding: 12, background: '#FFF7ED', borderRadius: 10, fontSize: 11, color: '#92400E', border: '1px solid #FED7AA', marginTop: 10 }}>
             <Field label="Show Citations" hint="If enabled, source filenames will be appended to retrieved document chunks.">
               <Toggle
                 checked={data.show_citations || false}
@@ -5062,6 +4678,7 @@ export default function PropertiesPanel() {
                 label=""
               />
             </Field>
+            </div>
 
             <div style={{ padding: 12, background: 'var(--bg-card-warning-alt, #FFF7ED)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-warning-alt, #92400E)', border: '1px solid var(--border-card-warning-alt, #FED7AA)', marginTop: 10 }}>
               <FiBookOpen size={12} style={{ marginRight: 6 }} />
@@ -5130,10 +4747,315 @@ export default function PropertiesPanel() {
           </>
         )}
 
+
+
+
+        {/* ── Sensitivity Classifier Node ── */}
+        
+
+
+
+
+        {/* ── Banking Data Enrichment Orchestrator ── */}
+        {data.type === 'banking_enrichment' && (() => {
+          const extList = data.external_integrations || [];
+          const intList = data.internal_integrations || [];
+          
+          const toggleExternal = (key) => {
+            const next = extList.includes(key) ? extList.filter(k => k !== key) : [...extList, key];
+            update({ external_integrations: next });
+          };
+
+          const toggleInternal = (key) => {
+            const next = intList.includes(key) ? intList.filter(k => k !== key) : [...intList, key];
+            update({ internal_integrations: next });
+          };
+
+          const externals = [
+            { key: 'cibil_experian', label: 'CIBIL / Experian Bureau', desc: 'Credit profile checks' },
+            { key: 'npci_registry', label: 'NPCI Fraud Registry', desc: 'Mule bank account blacklist' },
+            { key: 'sanctions_lists', label: 'OFAC / RBI Sanctions', desc: 'PEP & Global sanctions check' },
+            { key: 'ip_geolocation', label: 'MaxMind IP Geolocation', desc: 'IP network & location metadata' },
+            { key: 'threat_metrix', label: 'ThreatMetrix Device ID', desc: 'Device fingerprinting' },
+            { key: 'telecom_data', label: 'Telecom Carrier API', desc: 'SIM swap & porting status' },
+          ];
+
+          const internals = [
+            { key: 'core_banking', label: 'Core Banking (CBS)', desc: 'Account age & transaction history' },
+            { key: 'card_management', label: 'Card Management (CMS)', desc: 'Card status & pin errors' },
+            { key: 'mobile_app_logs', label: 'Mobile App Session logs', desc: 'Biometric & active session metadata' },
+            { key: 'kyc_repository', label: 'KYC Registry', desc: 'Identity verification & documents' },
+            { key: 'crm_system', label: 'CRM System', desc: 'Customer value tiering' },
+          ];
+
+          return (
+            <>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiGlobe color="var(--theme-primary)" size={14} /> 1. External Third-Party Sources
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {externals.map((source) => (
+                    <div
+                      key={source.key}
+                      onClick={() => toggleExternal(source.key)}
+                      style={{
+                        padding: '10px 12px',
+                        background: extList.includes(source.key) ? 'rgba(142, 119, 187, 0.05)' : '#F8FAFC',
+                        border: extList.includes(source.key) ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
+                        borderRadius: 10,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginRight: 8 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: extList.includes(source.key) ? 'var(--theme-primary)' : 'var(--text-primary)' }}>{source.label}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{source.desc}</span>
+                      </div>
+                      <div style={{
+                        width: 32, height: 18, borderRadius: 9, position: 'relative',
+                        background: extList.includes(source.key) ? 'var(--theme-primary)' : '#cbd5e1',
+                        transition: 'all 0.2s', flexShrink: 0
+                      }}>
+                        <div style={{
+                          position: 'absolute', top: 2, left: extList.includes(source.key) ? 16 : 2, width: 14, height: 14,
+                          borderRadius: '50%', background: '#fff', transition: 'left 0.2s ease'
+                        }} />
+                      </div>
+                    </div>
+                  ))}
+
+                  <div
+                    onClick={() => {
+                      const name = prompt("Enter custom external source name:");
+                      if(name) {
+                        const next = [...extList, name];
+                        update({ external_integrations: next });
+                      }
+                    }}
+                    style={{ padding: '10px 12px', background: 'rgba(124, 58, 237, 0.05)', border: '1px dashed var(--theme-primary)', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--theme-primary)', fontSize: 12, fontWeight: 600 }}
+                  >
+                    <FiPlus size={14} /> Add Source
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiLayers color="var(--theme-primary)" size={14} /> 2. Internal Bank Systems
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {internals.map((source) => (
+                    <div
+                      key={source.key}
+                      onClick={() => toggleInternal(source.key)}
+                      style={{
+                        padding: '10px 12px',
+                        background: intList.includes(source.key) ? 'rgba(142, 119, 187, 0.05)' : '#F8FAFC',
+                        border: intList.includes(source.key) ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
+                        borderRadius: 10,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginRight: 8 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: intList.includes(source.key) ? 'var(--theme-primary)' : 'var(--text-primary)' }}>{source.label}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{source.desc}</span>
+                      </div>
+                      <div style={{
+                        width: 32, height: 18, borderRadius: 9, position: 'relative',
+                        background: intList.includes(source.key) ? 'var(--theme-primary)' : '#cbd5e1',
+                        transition: 'all 0.2s', flexShrink: 0
+                      }}>
+                        <div style={{
+                          position: 'absolute', top: 2, left: intList.includes(source.key) ? 16 : 2, width: 14, height: 14,
+                          borderRadius: '50%', background: '#fff', transition: 'left 0.2s ease'
+                        }} />
+                      </div>
+                    </div>
+                  ))}
+
+                  <div
+                    onClick={() => {
+                      const name = prompt("Enter custom internal source name:");
+                      if(name) {
+                        const next = [...intList, name];
+                        update({ internal_integrations: next });
+                      }
+                    }}
+                    style={{ padding: '10px 12px', background: 'rgba(124, 58, 237, 0.05)', border: '1px dashed var(--theme-primary)', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--theme-primary)', fontSize: 12, fontWeight: 600 }}
+                  >
+                    <FiPlus size={14} /> Add Source
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Data Keys</div>
+                <Field label="Source Context Key" hint="Key where canonical transaction data resides.">
+                  <Input value={data.source_key ?? 'canonical_transaction'} onChange={(v) => update({ source_key: v })} placeholder="canonical_transaction" />
+                </Field>
+                <Field label="Destination Context Key" hint="Key to store the resulting enriched payload.">
+                  <Input value={data.destination_key ?? 'enriched_transaction'} onChange={(v) => update({ destination_key: v })} placeholder="enriched_transaction" />
+                </Field>
+              </div>
+            </>
+          );
+        })()}
+
+        {/* ── Rule Engine Node ── */}
+        {data.type === 'rule_engine' && (() => {
+          return (
+            <>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiShield color="#DC2626" size={14} /> Rule Engine Configuration
+                </div>
+                <Field label="Rule Set Selection" hint="Choose which Python rule logic to execute for this node.">
+                  <Select
+                    value={data.routing_key || 'fast_path'}
+                    onChange={(v) => update({ routing_key: v })}
+                    options={[
+                      { label: 'Fast-Path (Instant P1 Block rules)', value: 'fast_path' },
+                      { label: 'ML Fallback (Scorecard logic)', value: 'ml_fallback' }
+                    ]}
+                  />
+                </Field>
+                <div style={{ background: '#F8F9FB', padding: 12, borderRadius: 8, border: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  <strong>Note:</strong> The exact rules for each set are coded dynamically in the backend Python node ('fast_path_rules.py' and 'ml_fallback_rules.py').
+                </div>
+              </div>
+            </>
+          );
+        })()}
+
+        {/* ── Beneficiary Risk Router ── */}
+        {data.type === 'beneficiary_risk' && (() => {
+          const checks = data.risk_checks || ['mule_detection', 'account_age', 'sanctions_list', 'relationship_graph'];
+          
+          const toggleCheck = (key) => {
+            const next = checks.includes(key) ? checks.filter(k => k !== key) : [...checks, key];
+            update({ risk_checks: next });
+          };
+
+          const checkList = [
+            { key: 'mule_detection', label: 'Mule Velocity Check', desc: 'Checks inbound velocity / mule indicators' },
+            { key: 'account_age', label: 'Account Age Registry', desc: 'Checks if recipient account is new' },
+            { key: 'sanctions_list', label: 'Sanctions Check', desc: 'Screens against OFAC & local blacklists' },
+            { key: 'relationship_graph', label: 'Relationship Graph', desc: 'Checks history between sender and receiver' },
+          ];
+
+          return (
+            <>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiShield color="var(--theme-primary)" size={14} /> Risk Evaluator Checks
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {checkList.map((chk) => (
+                    <div
+                      key={chk.key}
+                      onClick={() => toggleCheck(chk.key)}
+                      style={{
+                        padding: '10px 12px',
+                        background: checks.includes(chk.key) ? 'rgba(142, 119, 187, 0.05)' : '#F8FAFC',
+                        border: checks.includes(chk.key) ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
+                        borderRadius: 10,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginRight: 8 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: checks.includes(chk.key) ? 'var(--theme-primary)' : 'var(--text-primary)' }}>{chk.label}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{chk.desc}</span>
+                      </div>
+                      <div style={{
+                        width: 32, height: 18, borderRadius: 9, position: 'relative',
+                        background: checks.includes(chk.key) ? 'var(--theme-primary)' : '#cbd5e1',
+                        transition: 'all 0.2s', flexShrink: 0
+                      }}>
+                        <div style={{
+                          position: 'absolute', top: 2, left: checks.includes(chk.key) ? 16 : 2, width: 14, height: 14,
+                          borderRadius: '50%', background: '#fff', transition: 'left 0.2s ease'
+                        }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: '#EF4444' }}>🔴</span> Known Fraudster Branch
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.4 }}>
+                  Triggered only if deterministic check (Sanctions hit) matches 100%. Executes real-time block and raises alert.
+                </p>
+                <Field label="Fraud Alert API" hint="API endpoint to push immediate alert details.">
+                  <Input value={data.fraud_api_endpoint ?? ''} onChange={(v) => update({ fraud_api_endpoint: v })} placeholder="https://api.bank.com/v1/fraud-alerts" />
+                </Field>
+                <Field label="Alert Severity Level" hint="Level of severity logged downstream.">
+                  <Select
+                    value={data.fraud_alert_level ?? 'CRITICAL'}
+                    onChange={(v) => update({ fraud_alert_level: v })}
+                    options={[
+                      { value: 'CRITICAL', label: 'Critical' },
+                      { value: 'HIGH', label: 'High' },
+                      { value: 'MEDIUM', label: 'Medium' }
+                    ]}
+                  />
+                </Field>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: '#F59E0B' }}>🟡</span> New Beneficiary Branch
+                </div>
+                <div style={{
+                  padding: 10, background: '#FEF3C7', borderRadius: 8, border: '1px solid #FCD34D',
+                  fontSize: 11, color: '#92400E', lineHeight: 1.4, marginBottom: 12, display: 'flex', gap: 6
+                }}>
+                  <FiShield size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+                  <span>
+                    <strong>Privacy Sandbox Active:</strong> This node strips private sender data and passes only recipient details (Name, Account, Bank) down the yellow wire for KYC/registration.
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: '#10B981' }}>🟢</span> Safe / Continue Branch
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, margin: 0 }}>
+                  Payload passes untouched. Mule check scores and geo-velocity metrics are injected into `risk_profile` for downstream scoring engines.
+                </p>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Data Keys</div>
+                <Field label="Input Context Key" hint="Context key that holds the transaction payload.">
+                  <Input value={data.context_key ?? 'enriched_transaction'} onChange={(v) => update({ context_key: v })} placeholder="enriched_transaction" />
+                </Field>
+              </div>
+            </>
+          );
+        })()}
+
         {/* Removed redundant Global Discovery Section */}
+
+
       </div>
-      {showGlobalRuleModal && <GlobalRuleModal onClose={() => setShowGlobalRuleModal(false)} />}
       <SkillGallery isOpen={skillGalleryOpen} onClose={() => setSkillGalleryOpen(false)} />
+      {showGlobalRuleModal && <GlobalRuleModal onClose={() => setShowGlobalRuleModal(false)} />}
       {saveModalOpen && (
         <SaveTemplateModal
           agentConfig={data}
