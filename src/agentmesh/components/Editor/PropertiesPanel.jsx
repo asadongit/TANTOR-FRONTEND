@@ -4764,6 +4764,52 @@ export default function PropertiesPanel() {
           </>
         )}
 
+        {/* ── Network Graph Node ── */}
+        {data.type === 'network_graph' && (
+          <>
+            <Field label="Data Source Target" hint="Where is the data coming from?">
+              <Select
+                value={data.graph_target_key || 'latest_message'}
+                onChange={(v) => update({ graph_target_key: v })}
+                options={[
+                  { value: 'latest_message', label: 'Latest Chat Message' },
+                  { value: 'context_data', label: 'Workflow Context Key' }
+                ]}
+              />
+            </Field>
+
+            <Field label="Neo4j URI" hint="Optional. Defaults to NEO4J_URI environment variable or bolt://localhost:7687">
+              <Input
+                value={data.graph_neo4j_uri || ''}
+                onChange={(v) => update({ graph_neo4j_uri: v })}
+                placeholder="bolt://localhost:7687"
+              />
+            </Field>
+
+            <Field label="Neo4j User" hint="Optional. Defaults to NEO4J_USER environment variable or neo4j">
+              <Input
+                value={data.graph_neo4j_user || ''}
+                onChange={(v) => update({ graph_neo4j_user: v })}
+                placeholder="neo4j"
+              />
+            </Field>
+
+            <Field label="Neo4j Password" hint="Optional. Defaults to NEO4J_PASSWORD environment variable">
+              <Input
+                type="password"
+                value={data.graph_neo4j_password || ''}
+                onChange={(v) => update({ graph_neo4j_password: v })}
+                placeholder="password"
+              />
+            </Field>
+
+            <div style={{ marginTop: 20, padding: 12, background: '#EFF6FF', borderRadius: 10, fontSize: 11, color: '#1D4ED8', lineHeight: 1.5, border: '1px solid #BFDBFE' }}>
+              <FiInfo size={12} style={{ marginRight: 6 }} />
+              Ingests transaction data containing Account IDs and Amount/Date properties into Neo4j graph database. Fraud decisions are mapped as properties on the Transaction nodes.
+            </div>
+          </>
+        )}
+
         {/* ── PII Masking Node ── */}
         {data.type === 'pii_node' && (
           <>

@@ -54,6 +54,7 @@ export const NODE_TYPES = [
   { type: 'set_data',   icon: FiEdit,      label: 'Set Message',    desc: 'Static data/response',      bg: '#F5F3FF', color: '#7C3AED', category: 'Data & Storage' },
   { type: 'output_parser', icon: FiFilter,  label: 'Output Parser',  desc: 'Auto-fix malformed JSON',   bg: '#FEF3C7', color: '#D97706', category: 'Data & Storage' },
   { type: 'data_cleaning', icon: FiFilter,  label: 'Data Cleaning',  desc: 'Clean dataset and run Pandas scripts', bg: '#ECFDF5', color: '#059669', category: 'Data & Storage' },
+  { type: 'network_graph', icon: FiDatabase, label: 'Network Graph', desc: 'Ingest into Neo4j graph database', bg: '#EFF6FF', color: '#1D4ED8', category: 'Data & Storage' },
   { type: 'file_store', icon: FiFileText,  label: 'File Store',   desc: 'Save data to CSV/Excel',    bg: '#ECFDF5', color: '#059669', category: 'Data & Storage' },
   { type: 'notification', icon: FiBell,     label: 'Notification', desc: 'In-app alert storage',      bg: '#F0F4FF', color: '#6366F1', category: 'Data & Storage' },
   

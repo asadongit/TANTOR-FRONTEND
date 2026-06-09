@@ -5,7 +5,7 @@ import {
   FiPlay, FiSquare, FiCpu, FiBox, FiGitMerge,
   FiTarget, FiShare2, FiBookOpen, FiLink, FiZap,
   FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiUser, FiAlertTriangle,
-  FiLayers, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiDownload
+  FiLayers, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiDownload, FiDatabase
 } from 'react-icons/fi';
 
 const NODE_CONFIGS = {
@@ -46,6 +46,7 @@ const NODE_CONFIGS = {
   output_parser: { bg: '#FEF3C7', color: '#D97706', icon: FiFilter, round: 14 },
   pii_node:      { bg: '#FFEBEE', color: '#D32F2F', icon: FiShield, round: 14 },
   data_cleaning: { bg: '#ECFDF5', color: '#059669', icon: FiFilter, round: 14 },
+  network_graph: { bg: '#EFF6FF', color: '#1D4ED8', icon: FiDatabase, round: 14 },
   sensitivity_classifier: { bg: '#FEF3C7', color: '#B45309', icon: FiShield, round: 14 },
   aggregator:    { bg: '#F0F9FF', color: '#0EA5E9', icon: FiLayers, round: 14 },
   webhook_response: { bg: '#E0F2FE', color: '#0369A1', icon: FiShare2, round: 14 },
