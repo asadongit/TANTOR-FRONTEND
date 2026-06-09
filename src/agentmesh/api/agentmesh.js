@@ -156,6 +156,8 @@ export const fixGrammar = (text) =>
   request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'fix_grammar', payload: { text } }) });
 export const explainWorkflow = (workflow, llm) =>
   request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'explain_workflow', payload: { workflow, llm } }) });
+export const chatArchitect = (workflow, context, messages, llm) =>
+  request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'chat_architect', payload: { workflow, context, messages, llm } }) });
 export const generateSkillSop = (payload) =>
   request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'generate_skill_sop', payload }) });
 

@@ -341,21 +341,24 @@ function VariableItem({ name, value, onCopy }) {
           </div>
 
           <div
-            onClick={() => isObject && setIsOpen(!isOpen)}
+            onClick={() => setIsOpen(!isOpen)}
             style={{
               fontSize: 11,
               color: 'var(--text-secondary, #6B7280)',
               marginTop: 4,
-              display: '-webkit-box',
-              WebkitLineClamp: isOpen ? 50 : 1,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-              cursor: isObject ? 'pointer' : 'default',
+              cursor: 'pointer',
               fontFamily: 'monospace',
               background: 'var(--bg-primary, #F8F9FA)',
-              padding: '4px 8px',
+              padding: '6px 10px',
               borderRadius: 6,
-              border: '1px solid var(--border)'
+              border: '1px solid var(--border)',
+              whiteSpace: isOpen ? 'pre-wrap' : 'nowrap',
+              wordBreak: isOpen ? 'break-all' : 'normal',
+              overflow: isOpen ? 'auto' : 'hidden',
+              textOverflow: isOpen ? 'clip' : 'ellipsis',
+              display: 'block',
+              maxHeight: isOpen ? '320px' : '26px',
+              transition: 'max-height 0.2s ease-out'
             }}
           >
             {displayValue}
