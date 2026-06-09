@@ -45,6 +45,7 @@ const NODE_CONFIGS = {
   error_router: { bg: '#FEF2F2', color: '#DC2626', icon: FiAlertTriangle, round: 14 },
   output_parser: { bg: '#FEF3C7', color: '#D97706', icon: FiFilter, round: 14 },
   pii_node:      { bg: '#FFEBEE', color: '#D32F2F', icon: FiShield, round: 14 },
+  data_cleaning: { bg: '#ECFDF5', color: '#059669', icon: FiFilter, round: 14 },
   sensitivity_classifier: { bg: '#FEF3C7', color: '#B45309', icon: FiShield, round: 14 },
   aggregator:    { bg: '#F0F9FF', color: '#0EA5E9', icon: FiLayers, round: 14 },
   webhook_response: { bg: '#E0F2FE', color: '#0369A1', icon: FiShare2, round: 14 },
