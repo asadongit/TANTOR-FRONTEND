@@ -899,6 +899,75 @@ function FormFieldsEditor({ fields = [], onChange }) {
               )}
             </div>
 
+            {f.type === 'file' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12, borderTop: '1px solid var(--border-light, #e2e8f0)', paddingTop: 12 }}>
+                <div>
+                  <Field label="Storage Mode" hint="Choose whether to save the file in context as a Base64 binary string or as a path reference.">
+                    <Select
+                      value={f.fileStorageMode || 'path'}
+                      onChange={(v) => updateField(i, { fileStorageMode: v })}
+                      options={[
+                        { value: 'path', label: 'File Path Reference (Recommended)' },
+                        { value: 'binary', label: 'Direct Binary (Base64)' },
+                      ]}
+                    />
+                  </Field>
+                </div>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <Field label="Max Size (MB)">
+                      <Input
+                        type="number"
+                        value={f.maxSizeMB || 10}
+                        onChange={(v) => updateField(i, { maxSizeMB: parseFloat(v) || 10 })}
+                        placeholder="10"
+                      />
+                    </Field>
+                  </div>
+                  <div style={{ flex: 1, paddingTop: 10 }}>
+                    <Toggle
+                      checked={f.allowMultiple || false}
+                      onChange={(v) => updateField(i, { allowMultiple: v })}
+                      label="Allow Multiple Files"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Allowed Formats</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, background: 'var(--bg-canvas, #F1F5F9)', padding: 10, borderRadius: 8 }}>
+                    {[
+                      { key: 'pdf', label: 'PDF Documents (.pdf)' },
+                      { key: 'csv', label: 'CSV (.csv)' },
+                      { key: 'excel', label: 'Excel (.xlsx, .xls)' },
+                      { key: 'word', label: 'Word (.docx, .doc)' },
+                      { key: 'image', label: 'Images (PNG, JPG, etc.)' },
+                      { key: 'video', label: 'Videos (MP4, etc.)' },
+                      { key: 'zip', label: 'ZIP Archives (.zip)' },
+                      { key: 'json', label: 'JSON Data (.json)' },
+                    ].map(format => {
+                      const allowed = f.allowedTypes || [];
+                      const isChecked = allowed.includes(format.key);
+                      return (
+                        <label key={format.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', color: 'var(--text-primary)' }}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              const nextAllowed = e.target.checked
+                                ? [...allowed, format.key]
+                                : allowed.filter(x => x !== format.key);
+                              updateField(i, { allowedTypes: nextAllowed });
+                            }}
+                          />
+                          {format.label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {(f.type === 'select' || f.type === 'multiselect') && (
               <div style={{ marginTop: 8 }}>
                 <Field label="Options (One per line)" hint="Enter each option on a separate line. Use {{variable}} (e.g. {{techniques}}) to load a list from context.">
