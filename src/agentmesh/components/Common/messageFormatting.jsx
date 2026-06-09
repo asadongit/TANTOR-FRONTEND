@@ -101,11 +101,140 @@ const LANG_COLORS = {
     yaml: '#cb171e', markdown: '#083fa1', text: '#6B7280',
 };
 
+// ─── Structured Table ──────────────────────────────────────────────────────────
+const StructuredTable = ({ data }) => {
+    if (!Array.isArray(data) || data.length === 0) return null;
+    
+    // Get all unique keys from all objects to use as headers
+    const headers = Array.from(new Set(data.flatMap(obj => Object.keys(obj || {}))));
+    
+    const [copied, setCopied] = React.useState(false);
+
+    const handleCopyCsv = () => {
+        const csvHeaders = headers.join(',');
+        const csvRows = data.map(row => 
+            headers.map(h => {
+                const val = row[h] === null || row[h] === undefined ? '' : String(row[h]);
+                // Escape quotes
+                return `"${val.replace(/"/g, '""')}"`;
+            }).join(',')
+        );
+        const csv = [csvHeaders, ...csvRows].join('\n');
+        navigator.clipboard.writeText(csv);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <div style={{ margin: '20px 0' }}>
+            <div style={{
+                borderRadius: 12,
+                border: '1px solid #E5E7EB',
+                overflow: 'hidden',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+            }}>
+                <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 20px', background: '#F9FAFB',
+                    borderBottom: '1px solid #E5E7EB',
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" /></svg>
+                        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#9CA3AF' }}>
+                            {headers.length} columns · {data.length} rows
+                        </span>
+                    </div>
+                    <button onClick={handleCopyCsv} style={{
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        padding: '5px 10px', borderRadius: 7, border: '1px solid #E5E7EB',
+                        background: copied ? '#ECFDF5' : 'white',
+                        color: copied ? '#059669' : '#6B7280',
+                        fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                        letterSpacing: '0.05em', textTransform: 'uppercase',
+                        fontFamily: 'inherit', transition: 'all 0.15s',
+                    }}>
+                        {copied ? <Check size={11} /> : <Copy size={11} />}
+                        {copied ? 'Copied' : 'CSV'}
+                    </button>
+                </div>
+
+                <div style={{ overflowX: 'auto' }} className="msg-scrollbar">
+                    <table className="msg-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr style={{ background: '#F9FAFB', borderBottom: '2px solid #E5E7EB' }}>
+                                {headers.map((h, i) => (
+                                    <th key={i} style={{
+                                        padding: '12px 20px',
+                                        textAlign: 'left',
+                                        fontSize: 12, fontWeight: 700,
+                                        color: '#374151',
+                                        letterSpacing: '0.04em',
+                                        textTransform: 'uppercase',
+                                        whiteSpace: 'nowrap',
+                                    }}>
+                                        {h}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {data.map((row, ri) => (
+                                <tr key={ri} style={{
+                                    background: ri % 2 === 0 ? 'white' : '#FAFAFA',
+                                    borderBottom: ri < data.length - 1 ? '1px solid #F3F4F6' : 'none',
+                                    transition: 'background 0.1s',
+                                }}
+                                    onMouseEnter={e => e.currentTarget.style.background = '#EFF6FF'}
+                                    onMouseLeave={e => e.currentTarget.style.background = ri % 2 === 0 ? 'white' : '#FAFAFA'}
+                                >
+                                    {headers.map((header, ci) => {
+                                        const cellValue = row[header];
+                                        let renderedValue = '';
+                                        if (cellValue === null || cellValue === undefined) {
+                                            renderedValue = <em style={{ color: '#9CA3AF' }}>null</em>;
+                                        } else if (typeof cellValue === 'object') {
+                                            renderedValue = JSON.stringify(cellValue);
+                                        } else {
+                                            const valStr = String(cellValue);
+                                            const hasBlockMarkdown = valStr.includes('\n') || 
+                                                valStr.trim().startsWith('#') || 
+                                                valStr.trim().startsWith('|') || 
+                                                /^[-\*•\d]/.test(valStr.trim());
+                                            
+                                            renderedValue = hasBlockMarkdown 
+                                                ? formatMessage(valStr, true) 
+                                                : formatInlineStyles(valStr);
+                                        }
+
+                                        return (
+                                            <td key={ci} style={{
+                                                padding: '13px 20px',
+                                                fontSize: 14,
+                                                color: ci === 0 ? '#111827' : '#4B5563',
+                                                fontWeight: ci === 0 ? 600 : 400,
+                                                lineHeight: 1.55,
+                                                verticalAlign: 'top',
+                                                whiteSpace: (typeof cellValue === 'string' && cellValue.includes('\n')) ? 'pre-wrap' : 'normal'
+                                            }}>
+                                                {renderedValue}
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const CodeBlock = ({ part }) => {
     const [copied, setCopied] = React.useState(false);
     const lines = part.split('\n');
     const firstLine = lines[0].trim();
-    const hasLang = firstLine && !firstLine.includes(' ') && firstLine.length < 30;
+    const hasLang = firstLine && !firstLine.includes(' ') && firstLine.length < 30 && !firstLine.match(/^[\[\{\'\"]/);
     const lang = hasLang ? firstLine.toLowerCase() : '';
     const code = (hasLang ? lines.slice(1).join('\n') : part).trim();
 
@@ -115,15 +244,40 @@ const CodeBlock = ({ part }) => {
         setTimeout(() => setCopied(false), 2000);
     };
 
+    // Try parsing code as standard JSON or Python list of dicts first to render as structured table
+    const trimmedCode = code.trim();
+    if ((trimmedCode.startsWith('[') && trimmedCode.endsWith(']')) || (trimmedCode.startsWith('{') && trimmedCode.endsWith('}'))) {
+        let parsedTableData = null;
+        try {
+            parsedTableData = JSON.parse(trimmedCode);
+        } catch {
+            try {
+                const fn = new Function('True', 'False', 'None', `return (${trimmedCode})`);
+                parsedTableData = fn(true, false, null);
+            } catch {}
+        }
+        
+        if (parsedTableData) {
+            if (Array.isArray(parsedTableData) && parsedTableData.length > 0 && typeof parsedTableData[0] === 'object' && parsedTableData[0] !== null && !Array.isArray(parsedTableData[0])) {
+                return <StructuredTable data={parsedTableData} />;
+            }
+            if (!Array.isArray(parsedTableData) && typeof parsedTableData === 'object' && parsedTableData !== null) {
+                const isChartOrGraph = parsedTableData.nodes || parsedTableData.elements || parsedTableData.type === 'pie' || parsedTableData.type === 'bar' || parsedTableData.type === 'line' || parsedTableData.type === 'area';
+                if (!isChartOrGraph) {
+                    return <StructuredTable data={[parsedTableData]} />;
+                }
+            }
+        }
+    }
+
     // Special block types
     if (hasLang) {
         if (lang === 'mermaid') return <MermaidBlock chart={code} />;
         if (lang === 'chart') return <ChartBlock config={code} />;
         if (lang === 'json' || lang === 'graph') {
-            const trimmed = code.trim();
-            if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+            if (trimmedCode.startsWith('{') || trimmedCode.startsWith('[')) {
                 try {
-                    const parsed = JSON.parse(trimmed);
+                    const parsed = JSON.parse(trimmedCode);
                     // Improved detection: nodes/elements MUST be arrays to be considered a graph
                     const hasGraph = (Array.isArray(parsed.nodes) && parsed.nodes.length > 0) || 
                                      (Array.isArray(parsed.elements) && parsed.elements.length > 0) || 
@@ -953,8 +1107,45 @@ const parseTextBlocks = (content, bi) => {
 };
 
 // ─── Main formatMessage ────────────────────────────────────────────────────────
-export const formatMessage = (msg) => {
+export const formatMessage = (msg, isCell = false) => {
     if (!msg) return null;
+
+    // Direct structured table rendering check
+    let parsedData = null;
+    if (!isCell) {
+        if (Array.isArray(msg) && msg.length > 0 && typeof msg[0] === 'object' && msg[0] !== null && !Array.isArray(msg[0])) {
+            // Exclude message lists
+            const isMsgList = msg.every(m => (m.type || m.role) && (m.content || m.text));
+            if (!isMsgList) {
+                parsedData = msg;
+            }
+        } else if (typeof msg === 'string') {
+            const trimmed = msg.trim();
+            if ((trimmed.startsWith('[') && trimmed.endsWith(']')) || (trimmed.startsWith('{') && trimmed.endsWith('}'))) {
+                try {
+                    parsedData = JSON.parse(trimmed);
+                } catch {
+                    try {
+                        const fn = new Function('True', 'False', 'None', `return (${trimmed})`);
+                        parsedData = fn(true, false, null);
+                    } catch {}
+                }
+            }
+        }
+    }
+
+    if (parsedData) {
+        if (Array.isArray(parsedData) && parsedData.length > 0 && typeof parsedData[0] === 'object' && parsedData[0] !== null && !Array.isArray(parsedData[0])) {
+            return <StructuredTable data={parsedData} />;
+        }
+        if (!Array.isArray(parsedData) && typeof parsedData === 'object' && parsedData !== null) {
+            const isChartOrGraph = parsedData.nodes || parsedData.elements || parsedData.type === 'pie' || parsedData.type === 'bar' || parsedData.type === 'line' || parsedData.type === 'area';
+            if (!isChartOrGraph) {
+                return <StructuredTable data={[parsedData]} />;
+            }
+        }
+    }
+
     let content = '';
     if (typeof msg === 'string') {
         content = msg;

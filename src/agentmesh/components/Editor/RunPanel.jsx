@@ -831,7 +831,7 @@ export default function RunPanel({ onClose }) {
       )}
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '60px 40px 140px', background: THEME_BG }} className="custom-scrollbar" ref={scrollRef}>
-        <div style={{ maxWidth: 840, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 40, width: '100%' }}>
+        <div style={{ margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 40, width: '100%' }}>
           {streamEvents.length === 0 && !runError && (
             <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.9, paddingTop: 100 }}>
               <motion.div
@@ -1150,7 +1150,7 @@ export default function RunPanel({ onClose }) {
         pointerEvents: 'none', // Let clicks through the transparent part
         display: (pausedInfo.isPaused && pausedInfo.nodeType === 'form_node') ? 'none' : 'block'
       }}>
-        <div style={{ maxWidth: 840, margin: '0 auto', position: 'relative', pointerEvents: 'auto' }}>
+        <div style={{ margin: '0 auto', position: 'relative', pointerEvents: 'auto' }}>
           {pausedInfo.isPaused && pausedInfo.nodeType !== 'form_node' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%' }}>
               <AnimatePresence>
@@ -1667,7 +1667,7 @@ function UnifiedAgentTurn({ finalAgent, intermediateSteps, isLast, running, onRe
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             style={{
-              overflow: 'hidden', padding: '0 0 12px 64px',
+              overflow: 'hidden', padding: '0 0 12px 0',
               display: 'flex', flexDirection: 'column', gap: 20
             }}
           >
@@ -1713,7 +1713,7 @@ function UnifiedAgentTurn({ finalAgent, intermediateSteps, isLast, running, onRe
       </AnimatePresence>
 
       {/* ── Main Answer Content ── */}
-      <div style={{ marginLeft: 64, position: 'relative', minWidth: 0, padding: '4px 0' }}>
+      <div style={{ marginLeft: 0, marginTop: 12, position: 'relative', minWidth: 0, padding: '4px 0' }}>
         <div style={{ fontSize: 15, color: THEME_TEXT, lineHeight: 1.75, fontWeight: 400 }}>
           {formatMessage(finalAgent.content)}
         </div>
@@ -1848,7 +1848,7 @@ function TurnRenderer({ streamEvents, running, removeEventsFromIndex, onSend, no
 
               if (isArtifact) {
                 return (
-                  <motion.div key={`art-${idx}`} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} style={{ alignSelf: 'stretch', width: '100%', maxWidth: 840, margin: '14px auto' }}>
+                  <motion.div key={`art-${idx}`} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} style={{ alignSelf: 'stretch', width: '100%', margin: '14px auto' }}>
                     {formatMessage(evt.content)}
                   </motion.div>
                 );
