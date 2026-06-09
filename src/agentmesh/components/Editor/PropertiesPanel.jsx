@@ -6,7 +6,7 @@ import SaveTemplateModal from './SaveTemplateModal';
 import ConnectionsDropdown from './ConnectionsDropdown';
 import {
   FiTrash2, FiMousePointer, FiInfo, FiLayers, FiSettings, FiCpu, FiTool,
-  FiGitMerge, FiTarget, FiShare2, FiUser, FiBookOpen, FiLink, FiPlus, FiX,
+  FiGitMerge, FiTarget, FiShare2, FiUser, FiBookOpen, FiLink, FiPlus, FiX, FiMinus,
   FiGlobe, FiClock, FiCopy, FiCheck, FiSearch, FiChevronDown, FiRepeat, FiFileText,
   FiZap, FiLoader, FiAlertTriangle, FiGitBranch, FiActivity, FiEdit, FiFilter, FiShield, FiCamera, FiBox, FiSave, FiUploadCloud, FiDownload, FiDatabase
 } from 'react-icons/fi';
@@ -307,7 +307,7 @@ function SearchableSelect({ value, onChange, options, placeholder = "Search...",
                 <input
                   ref={inputRef}
                   value={search}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => setSearch(e.target.value)}
                   placeholder="Type to filter..."
                   style={{
                     width: '100%', padding: '7px 10px 7px 32px', borderRadius: 6, border: '1px solid var(--border)',
@@ -3671,16 +3671,51 @@ export default function PropertiesPanel() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {Object.entries(properties).map(([argName, argMeta]) => {
                           const isRequired = requiredFields.includes(argName) || argMeta.required;
+                          const isAdded = data.tool_arguments && data.tool_arguments.hasOwnProperty(argName);
                           return (
                             <div key={argName} style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 10px', background: 'var(--bg-panel, white)', borderRadius: 8, border: '1px solid var(--border, #E2E8F0)' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: 'var(--text-primary, #0F172A)' }}>{argName}</span>
-                                <span style={{ fontSize: 9, color: 'var(--text-card-purple, #6366F1)', background: 'var(--bg-card-purple, #EEF2FF)', padding: '1px 5px', borderRadius: 4, fontWeight: 600 }}>
-                                  {argMeta.type || 'any'}
-                                </span>
-                                {isRequired && (
-                                  <span style={{ fontSize: 9, color: 'var(--text-card-danger, #EF4444)', fontWeight: 600 }}>required</span>
-                                )}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: 'var(--text-primary, #0F172A)' }}>{argName}</span>
+                                  <span style={{ fontSize: 9, color: 'var(--text-card-purple, #6366F1)', background: 'var(--bg-card-purple, #EEF2FF)', padding: '1px 5px', borderRadius: 4, fontWeight: 600 }}>
+                                    {argMeta.type || 'any'}
+                                  </span>
+                                  {isRequired && (
+                                    <span style={{ fontSize: 9, color: 'var(--text-card-danger, #EF4444)', fontWeight: 600 }}>required</span>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    const next = { ...(data.tool_arguments || {}) };
+                                    if (isAdded) {
+                                      delete next[argName];
+                                    } else {
+                                      next[argName] = '';
+                                    }
+                                    update({ tool_arguments: next });
+                                  }}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '4px 6px',
+                                    borderRadius: 4,
+                                    color: isAdded ? 'var(--text-card-danger, #EF4444)' : 'var(--accent-btn, #3B82F6)',
+                                    background: isAdded ? 'var(--bg-card-danger, #FEF2F2)' : 'var(--bg-card-info, #EFF6FF)',
+                                    fontSize: 10,
+                                    fontWeight: 600,
+                                    gap: 3
+                                  }}
+                                >
+                                  {isAdded ? (
+                                    <FiMinus size={12} />
+                                  ) : (
+                                    <FiPlus size={12} />
+                                  )}
+                                </button>
                               </div>
                               {argMeta.description && (
                                 <div style={{ fontSize: 10, color: 'var(--text-muted, #64748B)', lineHeight: 1.4, marginTop: 2 }}>
