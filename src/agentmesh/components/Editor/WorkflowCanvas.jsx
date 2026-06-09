@@ -58,6 +58,31 @@ export default function WorkflowCanvas() {
     document.addEventListener('mouseup', stopDrag);
   }, [propertiesWidth]);
 
+  // Variable/Data Explorer resizing state and mouse drag handlers
+  const [explorerWidth, setExplorerWidth] = useState(320);
+  const [isResizingExplorer, setIsResizingExplorer] = useState(false);
+
+  const startResizingExplorer = useCallback((mouseDownEvent) => {
+    setIsResizingExplorer(true);
+    const startX = mouseDownEvent.clientX;
+    const startWidth = explorerWidth;
+
+    const doDrag = (mouseMoveEvent) => {
+      const deltaX = startX - mouseMoveEvent.clientX;
+      const newWidth = Math.max(280, Math.min(600, startWidth + deltaX));
+      setExplorerWidth(newWidth);
+    };
+
+    const stopDrag = () => {
+      setIsResizingExplorer(false);
+      document.removeEventListener('mousemove', doDrag);
+      document.removeEventListener('mouseup', stopDrag);
+    };
+
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('mouseup', stopDrag);
+  }, [explorerWidth]);
+
 
   const hasNodes = nodes.some(n => n.id !== '__start__' && n.id !== '__end__');
 
@@ -562,17 +587,35 @@ export default function WorkflowCanvas() {
           <motion.div 
             key="variable-explorer"
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 320, opacity: 1 }}
+            animate={{ width: explorerWidth, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            transition={isResizingExplorer ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
             style={{
               borderLeft: '1px solid var(--border)',
               background: 'var(--bg-secondary, white)',
               flexShrink: 0,
               overflow: 'hidden',
-              height: '100%'
+              height: '100%',
+              position: 'relative'
             }}
           >
+            {/* Resizable drag handle on the left edge */}
+            <div
+              onMouseDown={startResizingExplorer}
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: '6px',
+                cursor: 'col-resize',
+                zIndex: 100,
+                background: isResizingExplorer ? 'var(--theme-primary, #4285F4)' : 'transparent',
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={(e) => { if (!isResizingExplorer) e.currentTarget.style.background = 'rgba(66, 133, 244, 0.3)'; }}
+              onMouseLeave={(e) => { if (!isResizingExplorer) e.currentTarget.style.background = 'transparent'; }}
+            />
             <VariableExplorer onClose={() => useUIStore.getState().setShowVariableExplorer(false)} />
           </motion.div>
         )}
