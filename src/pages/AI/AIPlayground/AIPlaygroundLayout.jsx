@@ -934,7 +934,10 @@ if (
                 <div className="bg-white rounded-md px-6 py-2">
                     <div className="flex items-center justify-between w-full">
                         <div className="flex items-center gap-3">
-                            <button onClick={() => navigate('/ai/playground')} className="text-gray-600 hover:text-gray-900">
+                            <button
+    onClick={handleCancel}
+    className="text-gray-600 hover:text-gray-900">
+
                                 <ChevronLeft size={24} />
                             </button>
                             <h1 className="text-xl font-bold text-gray-700">Build Machine Learning</h1>

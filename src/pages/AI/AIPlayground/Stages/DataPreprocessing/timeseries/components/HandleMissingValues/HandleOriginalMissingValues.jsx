@@ -100,7 +100,8 @@ function HandleOriginalMissingValues({
     showFieldErrors && hasNumericMissing && !originalMissingConfig.numeric
       ? 'Select numeric imputation method'
       : '';
-
+  const missingTypeCount =(hasNumericMissing ? 1 : 0) +(hasCategoricalMissing ? 1 : 0) +(hasDatetimeMissing ? 1 : 0);
+  const singleTypeOnly = missingTypeCount === 1;
   /* Validation error shown when categorical method is not selected. */
   const categoricalError =
     showFieldErrors && hasCategoricalMissing && !originalMissingConfig.categorical
@@ -234,7 +235,7 @@ function HandleOriginalMissingValues({
             {/* ==================== NUMERIC COLUMN SECTION ==================== */}
             {/* Dropdown for selecting numeric missing-value handling method. */}
             {hasNumericMissing && (
-              <div>
+              <div className={singleTypeOnly ? 'max-w-sm' : 'w-full'}>
                 <label className="block text-sm text-gray-600 mb-2">
                   Numeric Columns 
                 </label>
@@ -318,7 +319,7 @@ function HandleOriginalMissingValues({
             {/* ==================== CATEGORICAL COLUMN SECTION ==================== */}
             {/* Dropdown for selecting categorical missing-value handling method. */}
             {hasCategoricalMissing && (
-              <div>
+              <div className={singleTypeOnly ? 'max-w-sm' : 'w-full'}>
                 <label className="block text-sm text-gray-600 mb-2">
                   Categorical Columns
                 </label>
@@ -384,7 +385,7 @@ function HandleOriginalMissingValues({
             {/* ==================== DATETIME COLUMN SECTION ==================== */}
             {/* Dropdown for selecting datetime missing-value handling method. */}
             {hasDatetimeMissing && (
-              <div>
+              <div className={singleTypeOnly ? 'max-w-sm' : 'w-full'}>
                 <label className="block text-sm text-gray-600 mb-2">
                   Datetime Columns 
                 </label>

@@ -82,6 +82,7 @@ function HandleMissingValues({
   hasGeneratedMissingNumerical ||
   hasGeneratedMissingCategorical ||
   hasGeneratedMissingDatetime;
+  const isGeneratedMissingMandatory = hasAnyGeneratedMissing;
 
 
 
@@ -266,8 +267,16 @@ const [highMissingConfig, setHighMissingConfig] = useState({
   };
 
 
-  const getHighMissingError = () => {
+const getHighMissingError = () => {
   if (!toggles.handleHighMissing) return '';
+
+  if (
+    highMissingConfig.threshold === '' ||
+    highMissingConfig.threshold === null ||
+    highMissingConfig.threshold === undefined
+  ) {
+    return 'Please enter a value';
+  }
 
   const threshold = Number(
     highMissingConfig.threshold
@@ -320,7 +329,7 @@ const [highMissingConfig, setHighMissingConfig] = useState({
         originalMissingValueNumericMethod: originalMissingConfig.numeric || 'linear',
         originalMissingValueCategoricalMethod: originalMissingConfig.categorical || 'ffill',
         originalMissingValueDatetimeMethod: originalMissingConfig.datetime || 'ffill',
-        generatedMissingValueActive: toggles.handleGeneratedMissing,
+        generatedMissingValueActive: isGeneratedMissingMandatory || toggles.handleGeneratedMissing,
         generatedMissingValueNumericMethod: generatedMissingConfig.numeric || 'ffill',
         generatedMissingValueCategoricalMethod: generatedMissingConfig.categorical || 'ffill',
         generatedMissingValueDatetimeMethod: generatedMissingConfig.datetime || 'ffill',
@@ -355,6 +364,7 @@ const [highMissingConfig, setHighMissingConfig] = useState({
     originalMissingConfig,
     generatedMissingConfig,
     hasAnyOriginalMissing,
+    isGeneratedMissingMandatory,
     toggles.handleGeneratedMissing,
     updatePreprocessingStep,
     onApiCall,
@@ -394,9 +404,9 @@ const [highMissingConfig, setHighMissingConfig] = useState({
 useEffect(() => {
   setToggles(prev => ({
     ...prev,
-    handleGeneratedMissing: hasAnyGeneratedMissing,
+    handleGeneratedMissing: isGeneratedMissingMandatory,
   }));
-}, [hasAnyGeneratedMissing]);
+}, [isGeneratedMissingMandatory]);
   // Surface validation feedback only after the user attempts to process the step.
   const originalMissingError = showFieldErrors ? getOriginalMissingError() : '';
   const generatedMissingError = showFieldErrors ? getGeneratedMissingError() : '';

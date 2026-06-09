@@ -178,8 +178,8 @@
       if (currentStep === 6) {
         const step5Config = workflowState?.dataPreprocessing?.step5?.config;
         const wasStationarityAnalysisEnabledInStep5 = step5Config?.stationarity_analysis_active ?? false;
-        const isUnivariateTimeseries = predictionType === 'univariate_timeseries';
-        if (!wasStationarityAnalysisEnabledInStep5 && !isUnivariateTimeseries) {
+        const isMultivariateTimeseries = predictionType === 'multivariate_timeseries';
+        if (!wasStationarityAnalysisEnabledInStep5 && isMultivariateTimeseries) {
           setCurrentStep(7);
         }
       }

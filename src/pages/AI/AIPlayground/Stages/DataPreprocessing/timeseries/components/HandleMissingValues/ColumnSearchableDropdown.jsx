@@ -21,7 +21,7 @@ const ColumnSearchableDropdown = ({
   hasError
 }) => {
   const dropdownRef = React.useRef(null);
-
+  const [openUpward, setOpenUpward] = React.useState(false);
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -47,7 +47,25 @@ const ColumnSearchableDropdown = ({
       <button
         type="button"
         disabled={disabled}
-        onClick={() => !disabled && setShowDropdown(prev => ({ ...prev, [id]: !prev[id] }))}
+        onClick={() => {
+  if (disabled) return;
+
+  const nextState = !showDropdown[id];
+
+  if (nextState && dropdownRef.current) {
+    const rect = dropdownRef.current.getBoundingClientRect();
+
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const dropdownHeight = 260;
+
+    setOpenUpward(spaceBelow < dropdownHeight);
+  }
+
+  setShowDropdown(prev => ({
+    ...prev,
+    [id]: nextState
+  }));
+}}
         className={`w-full px-3 py-2 border rounded-lg text-sm bg-white flex items-center justify-between focus:outline-none focus:ring-2 focus:border-transparent transition-colors ${
           disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-[#8e78b7]'
         } ${value ? 'text-gray-700' : hasError ? 'text-[#EF4D5F]' : 'text-gray-400'} ${
@@ -61,7 +79,13 @@ const ColumnSearchableDropdown = ({
       </button>
 
       {showDropdown[id] && !disabled && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-hidden">
+        <div
+  className={`absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-hidden ${
+    openUpward
+      ? 'bottom-full mb-1'
+      : 'top-full mt-1'
+  }`}
+>
           <div className="p-2 border-b border-gray-200">
             <input
               type="text"

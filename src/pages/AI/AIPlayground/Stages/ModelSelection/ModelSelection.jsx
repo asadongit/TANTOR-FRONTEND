@@ -3,11 +3,15 @@ import { AIPlaygroundLayout } from '../../AIPlaygroundLayout';
 import { Search } from 'lucide-react';
 import classificationAlgorithmsData from '../../../../../components/classification_models_hyperparameters.json';
 import regressionAlgorithmsData from '../../../../../components/regression_models_hyperparameters.json';
+import timeseriesAlgorithmsData from '../../../../../components/timeseries_models_hyperparameters.json';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 import AlgorithmCard from './AlgorithmCard';
 import SidePanel from './SidePanel';
-import { validateAlgorithm } from './validationUtils';
+import {
+    isNestedParameter,
+    validateAlgorithm
+} from './validationUtils';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { tw } from '../../../../../components/themeContext';
 
@@ -19,6 +23,15 @@ const CLASSIFICATION_METRIC_NAME_MAPPING = {
     "F1 Score": "f1",
     "Log Loss": "log_loss"
 };
+
+const TIMESERIES_METRICS = [
+    { name: 'MAE', enabled: false },
+    { name: 'RMSE', enabled: false },
+    { name: 'MAPE', enabled: false },
+    { name: 'SMAPE', enabled: false },
+    { name: 'WMAPE', enabled: false },
+    { name: 'MASE', enabled: false }
+];
 
 const CLASSIFICATION_REVERSE_METRIC_MAPPING = {
     "accuracy": "Accuracy",
@@ -58,6 +71,25 @@ const REGRESSION_REVERSE_METRIC_MAPPING = {
     "huber_loss": "Huber Loss"
 };
 
+
+const TIMESERIES_METRIC_NAME_MAPPING = {
+    "MAE": "mae",
+    "RMSE": "rmse",
+    "MAPE": "mape",
+    "SMAPE": "smape",
+    "WMAPE": "wmape",
+    "MASE": "mase"
+};
+
+const TIMESERIES_REVERSE_METRIC_MAPPING = {
+    "mae": "MAE",
+    "rmse": "RMSE",
+    "mape": "MAPE",
+    "smape": "SMAPE",
+    "wmape": "WMAPE",
+    "mase": "MASE"
+};
+
 const CLASSIFICATION_MANDATORY_METRICS = ['confusion_matrix'];
 
 const toMetricBackendKey = (metric) => {
@@ -65,6 +97,12 @@ const toMetricBackendKey = (metric) => {
     if (normalized.startsWith('train_')) return normalized.slice(6);
     if (normalized.startsWith('test_')) return normalized.slice(5);
     return normalized;
+};
+
+const toPayloadValue = (value) => {
+    const stringValue = String(value).trim();
+    const numericValue = Number(stringValue);
+    return stringValue !== '' && Number.isFinite(numericValue) ? numericValue : value;
 };
 
 function ModelSelection() {
@@ -86,9 +124,32 @@ function ModelSelection() {
     // In view mode, saved config typically stores `modelling_type`.
     const classificationType = modelGenesisConfig?.modelling_type || modelGenesisConfig?.classification;
     const isRegression = String(classificationType || '').trim().toLowerCase() === 'regression';
-    const algorithmData = isRegression ? regressionAlgorithmsData : classificationAlgorithmsData;
-    const METRIC_NAME_MAPPING = isRegression ? REGRESSION_METRIC_NAME_MAPPING : CLASSIFICATION_METRIC_NAME_MAPPING;
-    const REVERSE_METRIC_MAPPING = isRegression ? REGRESSION_REVERSE_METRIC_MAPPING : CLASSIFICATION_REVERSE_METRIC_MAPPING;
+    const predictionType =
+    modelGenesisConfig?.prediction_type ||
+    modelGenesisConfig?.predictionType ||'';
+    const isTimeSeries =
+    String(predictionType).trim().toLowerCase() === 'time series' ||
+    String(predictionType).trim().toLowerCase() === 'timeseries' ||
+    String(predictionType).trim().toLowerCase() === 'univariate_timeseries' ||
+    String(predictionType).trim().toLowerCase() === 'multivariate_timeseries';
+    let algorithmData;
+    if (isTimeSeries) {algorithmData = timeseriesAlgorithmsData;} 
+    else if (isRegression) { algorithmData = regressionAlgorithmsData;}
+    else {algorithmData = classificationAlgorithmsData;}
+    
+
+
+    const METRIC_NAME_MAPPING = isTimeSeries
+    ? TIMESERIES_METRIC_NAME_MAPPING
+    : isRegression
+        ? REGRESSION_METRIC_NAME_MAPPING
+        : CLASSIFICATION_METRIC_NAME_MAPPING;
+
+const REVERSE_METRIC_MAPPING = isTimeSeries
+    ? TIMESERIES_REVERSE_METRIC_MAPPING
+    : isRegression
+        ? REGRESSION_REVERSE_METRIC_MAPPING
+        : CLASSIFICATION_REVERSE_METRIC_MAPPING;
 
     // Tracks whether user has attempted to proceed (triggers inline validation)
     const [showValidation, setShowValidation] = useState(false);
@@ -168,26 +229,29 @@ function ModelSelection() {
 
     // Initialize metrics based on problem type
     const getInitialMetrics = () => {
-        if (isRegression) {
-            return [
-                { name: 'MAE', enabled: false },
-                { name: 'MAPE', enabled: false },
-                { name: 'RMSE', enabled: false },
-                { name: 'R²', enabled: false },
-                { name: 'Quantile Loss', enabled: false },
-                { name: 'Huber Loss', enabled: false }
-            ];
-        } else {
-            return [
-                { name: 'Accuracy', enabled: false },
-                { name: 'Precision', enabled: false },
-                { name: 'Recall', enabled: false },
-                { name: 'F1 Score', enabled: false },
-                { name: 'Log Loss', enabled: false }
-            ];
-        }
-    };
+    if (isTimeSeries) {
+    return TIMESERIES_METRICS;
+}
 
+    if (isRegression) {
+        return [
+            { name: 'MAE', enabled: false },
+            { name: 'MAPE', enabled: false },
+            { name: 'RMSE', enabled: false },
+            { name: 'R²', enabled: false },
+            { name: 'Quantile Loss', enabled: false },
+            { name: 'Huber Loss', enabled: false }
+        ];
+    }
+
+    return [
+        { name: 'Accuracy', enabled: false },
+        { name: 'Precision', enabled: false },
+        { name: 'Recall', enabled: false },
+        { name: 'F1 Score', enabled: false },
+        { name: 'Log Loss', enabled: false }
+    ];
+};
     const [metrics, setMetrics] = useState(getInitialMetrics());
 
     const [searchQuery, setSearchQuery] = useState('');
@@ -219,7 +283,7 @@ function ModelSelection() {
 
         const categories = Object.keys(categorizeAlgorithms());
         setSelectedTab(prevTab => (categories.includes(prevTab) ? prevTab : (categories[0] || 'Linear')));
-    }, [isRegression]);
+    }, [isRegression, isTimeSeries]);
 
     useEffect(() => {
         const savedConfig = workflowState?.modelSelection?.config;
@@ -231,8 +295,17 @@ function ModelSelection() {
         }
 
         if (savedConfig.performance_metrics && Array.isArray(savedConfig.performance_metrics)) {
-            const reverseMap = isRegression ? REGRESSION_REVERSE_METRIC_MAPPING : CLASSIFICATION_REVERSE_METRIC_MAPPING;
-            const nameMap = isRegression ? REGRESSION_METRIC_NAME_MAPPING : CLASSIFICATION_METRIC_NAME_MAPPING;
+            const reverseMap = isTimeSeries
+    ? TIMESERIES_REVERSE_METRIC_MAPPING
+    : isRegression
+        ? REGRESSION_REVERSE_METRIC_MAPPING
+        : CLASSIFICATION_REVERSE_METRIC_MAPPING;
+
+const nameMap = isTimeSeries
+    ? TIMESERIES_METRIC_NAME_MAPPING
+    : isRegression
+        ? REGRESSION_METRIC_NAME_MAPPING
+        : CLASSIFICATION_METRIC_NAME_MAPPING;
             const initialMetrics = getInitialMetrics();
             const byName = new Map(initialMetrics.map(metric => [metric.name, metric]));
 
@@ -304,12 +377,34 @@ function ModelSelection() {
 
                         if (configMode === 'Hyper Parameter') {
                             hyperparameterValues = Object.entries(paramGridValues).reduce((acc, [key, value]) => {
-                                acc[key] = String(value);
+                                const paramConfig = algo.hyperparameters?.[key];
+                                if (isNestedParameter(paramConfig) && value && typeof value === 'object') {
+                                    acc[key] = Object.entries(value).reduce((nestedAcc, [subParam, subValue]) => {
+                                        nestedAcc[subParam] = String(subValue);
+                                        return nestedAcc;
+                                    }, {});
+                                } else {
+                                    acc[key] = String(value);
+                                }
                                 return acc;
                             }, {});
                         } else if (configMode === 'Grid Search') {
                             gridSearchValues = Object.entries(paramGridValues).reduce((acc, [key, value]) => {
-                                if (Array.isArray(value)) {
+                                const paramConfig = algo.hyperparameters?.[key];
+                                if (isNestedParameter(paramConfig) && value && typeof value === 'object') {
+                                    acc[key] = Object.entries(paramConfig).reduce(
+                                        (nestedAcc, [subParam]) => {
+                                            const savedValues = value[subParam];
+                                            nestedAcc[subParam] = Array.isArray(savedValues)
+                                                ? savedValues.map(item => String(item))
+                                                : savedValues !== undefined
+                                                    ? [String(savedValues)]
+                                                    : [''];
+                                            return nestedAcc;
+                                        },
+                                        {}
+                                    );
+                                } else if (Array.isArray(value)) {
                                     acc[key] = value.map(v => String(v));
                                 } else {
                                     acc[key] = [String(value)];
@@ -318,7 +413,18 @@ function ModelSelection() {
                             }, {});
 
                             gridSearchErrors = Object.keys(gridSearchValues).reduce((acc, key) => {
-                                acc[key] = gridSearchValues[key].map(() => null);
+                                const paramConfig = algo.hyperparameters?.[key];
+                                if (isNestedParameter(paramConfig)) {
+                                    acc[key] = Object.entries(gridSearchValues[key]).reduce(
+                                        (nestedAcc, [subParam, values]) => {
+                                            nestedAcc[subParam] = values.map(() => null);
+                                            return nestedAcc;
+                                        },
+                                        {}
+                                    );
+                                } else {
+                                    acc[key] = gridSearchValues[key].map(() => null);
+                                }
                                 return acc;
                             }, {});
                         }
@@ -347,7 +453,7 @@ function ModelSelection() {
                 return updatedState;
             });
         }
-    }, [workflowState?.modelSelection?.config, readonly, isRegression]);
+    }, [workflowState?.modelSelection?.config, readonly, isRegression, isTimeSeries]);
 
     useEffect(() => {
         if (searchQuery && filteredCategories.length > 0) {
@@ -364,7 +470,7 @@ function ModelSelection() {
             return;
         }
         setMetrics(getInitialMetrics());
-    }, [isRegression, readonly, workflowState?.modelSelection?.config?.performance_metrics]);
+    }, [isRegression,isTimeSeries, readonly, workflowState?.modelSelection?.config?.performance_metrics]);
 
     const updateAlgorithmState = (algoId, updates) => {
         setAllAlgorithmsState(prevState => ({
@@ -394,8 +500,27 @@ function ModelSelection() {
         let initializedGridSearchErrors = { ...algo.gridSearchErrors };
 
         if (newEnabled && algo.hyperparameters) {
-            Object.keys(algo.hyperparameters).forEach(paramName => {
-                if (!initializedGridSearchValues[paramName] || initializedGridSearchValues[paramName].length === 0) {
+            Object.entries(algo.hyperparameters).forEach(([paramName, paramValue]) => {
+                if (isNestedParameter(paramValue)) {
+                    const currentNestedValues = initializedGridSearchValues[paramName] || {};
+                    const currentNestedErrors = initializedGridSearchErrors[paramName] || {};
+
+                    initializedGridSearchValues[paramName] = {};
+                    initializedGridSearchErrors[paramName] = {};
+
+                    Object.keys(paramValue).forEach(subParam => {
+                        const values = currentNestedValues[subParam];
+                        initializedGridSearchValues[paramName][subParam] =
+                            Array.isArray(values) && values.length > 0 ? values : [''];
+                        initializedGridSearchErrors[paramName][subParam] =
+                            Array.isArray(currentNestedErrors[subParam])
+                                ? currentNestedErrors[subParam]
+                                : initializedGridSearchValues[paramName][subParam].map(() => null);
+                    });
+                } else if (
+                    !Array.isArray(initializedGridSearchValues[paramName]) ||
+                    initializedGridSearchValues[paramName].length === 0
+                ) {
                     initializedGridSearchValues[paramName] = [''];
                     initializedGridSearchErrors[paramName] = [null];
                 }
@@ -465,9 +590,23 @@ function ModelSelection() {
                 if (algo.hyperparameterValues && Object.keys(algo.hyperparameterValues).length > 0) {
                     paramGrid[algo.backend_key] = {};
                     Object.entries(algo.hyperparameterValues).forEach(([paramName, value]) => {
-                        if (value && value.trim() !== '') {
-                            const numValue = parseFloat(value);
-                            paramGrid[algo.backend_key][paramName] = isNaN(numValue) ? value : numValue;
+                        if (value && typeof value === 'object') {
+                            const nestedValue = Object.entries(value).reduce((acc, [key, item]) => {
+                                if (item !== null && item !== undefined && String(item).trim() !== '') {
+                                    acc[key] = toPayloadValue(item);
+                                }
+                                return acc;
+                            }, {});
+
+                            if (Object.keys(nestedValue).length > 0) {
+                                paramGrid[algo.backend_key][paramName] = nestedValue;
+                            }
+                        } else if (
+                            value !== null &&
+                            value !== undefined &&
+                            String(value).trim() !== ''
+                        ) {
+                            paramGrid[algo.backend_key][paramName] = toPayloadValue(value);
                         }
                     });
                 }
@@ -475,12 +614,29 @@ function ModelSelection() {
                 if (algo.gridSearchValues && Object.keys(algo.gridSearchValues).length > 0) {
                     paramGrid[algo.backend_key] = {};
                     Object.entries(algo.gridSearchValues).forEach(([paramName, values]) => {
-                        const validValues = values.filter(v => v && v.trim() !== '');
-                        if (validValues.length > 0) {
-                            paramGrid[algo.backend_key][paramName] = validValues.map(v => {
-                                const numValue = parseFloat(v);
-                                return isNaN(numValue) ? v : numValue;
-                            });
+                        if (values && typeof values === 'object' && !Array.isArray(values)) {
+                            const nestedValues = Object.entries(values).reduce(
+                                (acc, [subParam, subValues]) => {
+                                    const validValues = (subValues || []).filter(
+                                        value => value && value.trim() !== ''
+                                    );
+                                    if (validValues.length > 0) {
+                                        acc[subParam] = validValues.map(toPayloadValue);
+                                    }
+                                    return acc;
+                                },
+                                {}
+                            );
+
+                            if (Object.keys(nestedValues).length > 0) {
+                                paramGrid[algo.backend_key][paramName] = nestedValues;
+                            }
+                        } else {
+                            const validValues = (values || []).filter(v => v && v.trim() !== '');
+                            if (validValues.length > 0) {
+                                paramGrid[algo.backend_key][paramName] =
+                                    validValues.map(toPayloadValue);
+                            }
                         }
                     });
                 }
@@ -491,9 +647,16 @@ function ModelSelection() {
             .filter(m => m.enabled)
             .map(m => METRIC_NAME_MAPPING[m.name] || m.name.toLowerCase());
 
-        const finalPerformanceMetrics = isRegression
-            ? performanceMetrics
-            : Array.from(new Set([...performanceMetrics, ...CLASSIFICATION_MANDATORY_METRICS]));
+        const finalPerformanceMetrics = isTimeSeries
+    ? performanceMetrics
+    : isRegression
+        ? performanceMetrics
+        : Array.from(
+            new Set([
+                ...performanceMetrics,
+                ...CLASSIFICATION_MANDATORY_METRICS
+            ])
+        );
 
         const finalParamGrid = Object.keys(paramGrid).length > 0 ? paramGrid : {
             "additionalProp1": { "additionalProp1": {} },
@@ -501,8 +664,17 @@ function ModelSelection() {
             "additionalProp3": { "additionalProp1": {} }
         };
 
-        const defaultScoringMetric = isRegression ? 'r2' : 'accuracy';
-        const defaultPerformanceMetrics = isRegression ? ['r2'] : ['accuracy', ...CLASSIFICATION_MANDATORY_METRICS];
+        const defaultScoringMetric = isTimeSeries
+    ? 'rmse'
+    : isRegression
+        ? 'r2'
+        : 'accuracy';
+
+const defaultPerformanceMetrics = isTimeSeries
+    ? ['rmse']
+    : isRegression
+        ? ['r2']
+        : ['accuracy', ...CLASSIFICATION_MANDATORY_METRICS];
 
         const payload = {
             ensemble_id: datasetState?.ensembleId,
@@ -765,16 +937,16 @@ function ModelSelection() {
                 </div>
 
                 <SidePanel
-    normalizeData={normalizeData}
-    setNormalizeData={setNormalizeData}
-    metrics={metrics}
-    setMetrics={setMetrics}
-    readonly={readonly}
-    disabled={isInteractionLocked}
-    hasEnabledMetrics={hasEnabledMetrics}
-    showValidation={showValidation}
-    metricFullFormMap={isRegression ? REGRESSION_METRIC_FULL_FORM : {}}
-/>
+                    normalizeData={normalizeData}
+                    setNormalizeData={setNormalizeData}
+                    metrics={metrics}
+                    setMetrics={setMetrics}
+                    readonly={readonly}
+                    disabled={isInteractionLocked}
+                    hasEnabledMetrics={hasEnabledMetrics}
+                    showValidation={showValidation}
+                    metricFullFormMap={isRegression ? REGRESSION_METRIC_FULL_FORM : {}}
+                />
             </div>
         </AIPlaygroundLayout>
     );

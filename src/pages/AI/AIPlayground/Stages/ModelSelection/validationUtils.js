@@ -1,80 +1,108 @@
+export const isRangeParameter = (paramValue) => (
+    typeof paramValue === 'object' &&
+    paramValue !== null &&
+    paramValue.low !== undefined &&
+    paramValue.high !== undefined
+);
+
+export const isNestedParameter = (paramValue) => (
+    typeof paramValue === 'object' &&
+    paramValue !== null &&
+    !isRangeParameter(paramValue) &&
+    Object.values(paramValue).length > 0 &&
+    Object.values(paramValue).every(isRangeParameter)
+);
+
+const hasValidationError = (errorValue) => {
+    if (Array.isArray(errorValue)) {
+        return errorValue.some(hasValidationError);
+    }
+
+    if (errorValue && typeof errorValue === 'object') {
+        return Object.values(errorValue).some(hasValidationError);
+    }
+
+    return Boolean(errorValue);
+};
+
+export const hasValidationErrors = (errors) => (
+    errors && Object.values(errors).some(hasValidationError)
+);
+
 export const validateHyperparameterValue = (paramName, paramValue, value, silent = false) => {
-    if (!value || value.trim() === '') {
+    const stringValue = value === null || value === undefined ? '' : String(value);
+
+    // Required checks are handled by the algorithm-level validator.
+    if (stringValue.trim() === '') {
         return true;
     }
 
-    if (typeof paramValue === 'object' && paramValue.low && paramValue.high) {
-        const trimmedValue = value.trim();
+    if (isRangeParameter(paramValue)) {
+        const trimmedValue = stringValue.trim();
+        const specialValues = paramValue.special
+            ? (Array.isArray(paramValue.special) ? paramValue.special : [paramValue.special])
+            : [];
 
-        if (paramValue.special) {
-            const specialValues = Array.isArray(paramValue.special)
-                ? paramValue.special
-                : [paramValue.special];
-
-            if (specialValues.some(sv => sv.toLowerCase() === trimmedValue.toLowerCase())) {
-                return true;
-            }
+        if (specialValues.some(special =>
+            String(special).toLowerCase() === trimmedValue.toLowerCase()
+        )) {
+            return true;
         }
 
-        const numValue = parseFloat(trimmedValue);
-        if (isNaN(numValue)) {
-            if (!silent) {
-                const specialText = paramValue.special
-                    ? Array.isArray(paramValue.special)
-                        ? paramValue.special.join(', ')
-                        : paramValue.special
-                    : '';
-                return `Must be a number between ${paramValue.low} and ${paramValue.high}${specialText ? ` or ${specialText}` : ''}`;
-            }
-            return false;
-        }
+        const numValue = Number(trimmedValue);
+        const low = Number(paramValue.low);
+        const high = Number(paramValue.high);
+        const specialText = specialValues.join(', ');
 
-        const low = parseFloat(paramValue.low);
-        const high = parseFloat(paramValue.high);
+        if (!Number.isFinite(numValue)) {
+            return silent
+                ? false
+                : `Must be a number between ${paramValue.low} and ${paramValue.high}${specialText ? ` or ${specialText}` : ''}`;
+        }
 
         if (numValue < low || numValue > high) {
-            if (!silent) {
-                const specialText = paramValue.special
-                    ? Array.isArray(paramValue.special)
-                        ? paramValue.special.join(', ')
-                        : paramValue.special
-                    : '';
-                return `Value must be between ${paramValue.low} and ${paramValue.high}${specialText ? ` (or ${specialText})` : ''}`;
-            }
-            return false;
+            return silent
+                ? false
+                : `Value must be between ${paramValue.low} and ${paramValue.high}${specialText ? ` (or ${specialText})` : ''}`;
         }
     }
 
     return true;
 };
 
-export const validateAlgorithm = (algo) => {
-    const configMode = algo.configMode;
+const isFilled = (value) => (
+    value !== null &&
+    value !== undefined &&
+    String(value).trim() !== ''
+);
 
-    if (configMode === 'Base') {
+export const validateAlgorithm = (algo) => {
+    if (algo.configMode === 'Base') {
         return true;
     }
 
-    if (configMode === 'Hyper Parameter') {
-        if (algo.errors && Object.values(algo.errors).some(error => error)) {
+    if (algo.configMode === 'Hyper Parameter') {
+        if (hasValidationErrors(algo.errors)) {
             return false;
         }
 
-        if (algo.hyperparameters) {
-            for (const [paramName, paramValue] of Object.entries(algo.hyperparameters)) {
-                const value = algo.hyperparameterValues[paramName];
+        for (const [paramName, paramValue] of Object.entries(algo.hyperparameters || {})) {
+            const value = algo.hyperparameterValues?.[paramName];
 
-                if (typeof paramValue === 'string') {
-                    if (!value || value === '') {
-                        return false;
-                    }
+            if (typeof paramValue === 'string') {
+                if (!isFilled(value)) return false;
+            } else if (isRangeParameter(paramValue)) {
+                if (!isFilled(value)) return false;
+                if (validateHyperparameterValue(paramName, paramValue, value, true) !== true) {
+                    return false;
                 }
-                else if (typeof paramValue === 'object' && paramValue.low && paramValue.high) {
-                    if (!value || value.trim() === '') {
-                        return false;
-                    }
-                    const result = validateHyperparameterValue(paramName, paramValue, value, true);
-                    if (result !== true) {
+            } else if (isNestedParameter(paramValue)) {
+                const nestedValues = value || {};
+
+                for (const [subParam, subConfig] of Object.entries(paramValue)) {
+                    const nestedValue = nestedValues[subParam];
+                    if (!isFilled(nestedValue)) return false;
+                    if (validateHyperparameterValue(subParam, subConfig, nestedValue, true) !== true) {
                         return false;
                     }
                 }
@@ -84,34 +112,37 @@ export const validateAlgorithm = (algo) => {
         return true;
     }
 
-    if (configMode === 'Grid Search') {
-        if (algo.gridSearchErrors && Object.values(algo.gridSearchErrors).some(errors =>
-            errors && errors.some(error => error))) {
+    if (algo.configMode === 'Grid Search') {
+        if (hasValidationErrors(algo.gridSearchErrors)) {
             return false;
         }
 
-        if (algo.hyperparameters) {
-            for (const [paramName, paramValue] of Object.entries(algo.hyperparameters)) {
-                const values = algo.gridSearchValues[paramName] || [];
+        for (const [paramName, paramValue] of Object.entries(algo.hyperparameters || {})) {
+            if (isNestedParameter(paramValue)) {
+                const nestedValues = algo.gridSearchValues?.[paramName] || {};
 
-                if (typeof paramValue === 'string') {
-                    const validValues = values.filter(v => v && v.trim() !== '');
-                    if (validValues.length === 0) {
+                for (const [subParam, subConfig] of Object.entries(paramValue)) {
+                    const filledValues = (nestedValues[subParam] || []).filter(isFilled);
+                    if (filledValues.length === 0) return false;
+                    if (filledValues.some(value =>
+                        validateHyperparameterValue(subParam, subConfig, value, true) !== true
+                    )) {
                         return false;
                     }
                 }
-                else if (typeof paramValue === 'object' && paramValue.low && paramValue.high) {
-                    const filledValues = values.filter(v => v && v.trim() !== '');
-                    if (filledValues.length === 0) {
-                        return false;
-                    }
-                    const allValid = filledValues.every(val =>
-                        validateHyperparameterValue(paramName, paramValue, val, true) === true
-                    );
-                    if (!allValid) {
-                        return false;
-                    }
-                }
+                continue;
+            }
+
+            const filledValues = (algo.gridSearchValues?.[paramName] || []).filter(isFilled);
+            if (filledValues.length === 0) return false;
+
+            if (
+                isRangeParameter(paramValue) &&
+                filledValues.some(value =>
+                    validateHyperparameterValue(paramName, paramValue, value, true) !== true
+                )
+            ) {
+                return false;
             }
         }
 
