@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
   ReactFlow, Background, Controls, MiniMap, addEdge,
-  applyNodeChanges, applyEdgeChanges,
+  applyNodeChanges, applyEdgeChanges, ReactFlowProvider
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useWorkflowStore, useUIStore } from '../../store';
@@ -23,8 +23,7 @@ export default function WorkflowCanvas() {
     cardboardNode: CardboardNode
   }), []);
   const { nodes, edges, setNodes, setEdges, setNodesDirty, setEdgesDirty, addNode, setNodeData, workflowName } = useWorkflowStore();
-  const { selectedNodeId, selectedEdgeId, setSelectedNode, setSelectedEdge, canvasWireStyle, canvasBackgroundStyle, canvasNodeTheme } = useUIStore();
-  const isDarkCanvas = canvasNodeTheme === 'dark';
+  const { selectedNodeId, selectedEdgeId, setSelectedNode, setSelectedEdge, canvasWireStyle, canvasBackgroundStyle, isDarkCanvas } = useUIStore();
 
   const reactFlowWrapper = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
@@ -33,31 +32,38 @@ export default function WorkflowCanvas() {
   const [menu, setMenu] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
 
-  // Properties Panel resizing state and mouse drag handlers
-  const [propertiesWidth, setPropertiesWidth] = useState(320);
-  const [isResizing, setIsResizing] = useState(false);
+  // Poll for active background runs (e.g. Cron/Webhook) to show live status
+  React.useEffect(() => {
+    const poll = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/v1/agentmesh/active-runs');
+        const data = await res.json();
+        if (data.status === 'success') {
+          const currentWfId = useWorkflowStore.getState().workflowId;
+          const activeNodeIds = new Set();
 
-  const startResizing = useCallback((mouseDownEvent) => {
-    setIsResizing(true);
-    const startX = mouseDownEvent.clientX;
-    const startWidth = propertiesWidth;
+          Object.values(data.active_runs).forEach(run => {
+            if (run.workflow_id === currentWfId) {
+              run.active_nodes.forEach(id => activeNodeIds.add(id));
+            }
+          });
 
-    const doDrag = (mouseMoveEvent) => {
-      const deltaX = startX - mouseMoveEvent.clientX;
-      const newWidth = Math.max(280, Math.min(600, startWidth + deltaX));
-      setPropertiesWidth(newWidth);
+          // Check if anything actually changed to avoid unnecessary re-renders
+          const anyChange = nodes.some(n => !!n.data.isRunning !== activeNodeIds.has(n.id));
+          if (anyChange) {
+            setNodes(nodes.map(n => ({
+              ...n,
+              data: { ...n.data, isRunning: activeNodeIds.has(n.id) }
+            })));
+          }
+        }
+      } catch {
+        // Silently fail polling
+      }
     };
-
-    const stopDrag = () => {
-      setIsResizing(false);
-      document.removeEventListener('mousemove', doDrag);
-      document.removeEventListener('mouseup', stopDrag);
-    };
-
-    document.addEventListener('mousemove', doDrag);
-    document.addEventListener('mouseup', stopDrag);
-  }, [propertiesWidth]);
-
+    const interval = setInterval(poll, 2500);
+    return () => clearInterval(interval);
+  }, [nodes, setNodes]);
   // Variable/Data Explorer resizing state and mouse drag handlers
   const [explorerWidth, setExplorerWidth] = useState(320);
   const [isResizingExplorer, setIsResizingExplorer] = useState(false);
@@ -298,14 +304,14 @@ export default function WorkflowCanvas() {
   }, [reactFlowInstance, addNode]);
 
   return (
-    <div className={isDarkCanvas ? 'is-dark-theme' : ''} style={{ display: 'flex', height: '100%', overflow: 'hidden', background: 'var(--bg-canvas)', fontFamily: "'Inter', sans-serif", position: 'relative' }}>
+    <div style={{ display: 'flex', height: '100%', overflow: 'hidden', background: 'var(--bg-canvas)', fontFamily: "'Inter', sans-serif", position: 'relative' }}>
 
       {/* ── Left Palette Panel (Now on the left) ── */}
       {paletteOpen && !selectedNodeId && (
         <div style={{
           width: 260,
           borderRight: '1px solid var(--border)',
-          background: 'var(--bg-secondary, white)',
+          background: 'white',
           flexShrink: 0,
           overflow: 'hidden',
           animation: 'paletteIn 0.2s ease-out'
@@ -393,53 +399,53 @@ export default function WorkflowCanvas() {
           </button>
         </div>
 
-        {/* React Flow */}
-        <ReactFlow
-          nodes={nodes}
-          edges={renderedEdges}
-          onNodesChange={(changes) => {
-            let hasDirtyChange = false;
-            
-            // Check changes to see if a cardboard node is being manually resized
-            changes.forEach(change => {
-              if (change.type === 'dimensions' && change.dimensions) {
-                const node = nodes.find(n => n.id === change.id);
-                if (node && (node.type === 'cardboardNode' || node.data?.type === 'cardboard')) {
-                  const currentWidth = node.style?.width;
-                  const currentHeight = node.style?.height;
-                  const newWidth = change.dimensions.width;
-                  const newHeight = change.dimensions.height;
-                  
-                  if (newWidth !== undefined && newHeight !== undefined && 
-                      (newWidth !== currentWidth || newHeight !== currentHeight)) {
-                    hasDirtyChange = true;
+        <ReactFlowProvider>
+          <ReactFlow
+            nodes={nodes}
+            edges={renderedEdges}
+            onNodesChange={(changes) => {
+              let hasDirtyChange = false;
+              
+              // Check changes to see if a cardboard node is being manually resized
+              changes.forEach(change => {
+                if (change.type === 'dimensions' && change.dimensions) {
+                  const node = nodes.find(n => n.id === change.id);
+                  if (node && (node.type === 'cardboardNode' || node.data?.type === 'cardboard')) {
+                    const currentWidth = node.style?.width;
+                    const currentHeight = node.style?.height;
+                    const newWidth = change.dimensions.width;
+                    const newHeight = change.dimensions.height;
+                    
+                    if (newWidth !== undefined && newHeight !== undefined && 
+                        (newWidth !== currentWidth || newHeight !== currentHeight)) {
+                      hasDirtyChange = true;
+                    }
+                  }
+                } else if (!NON_DIRTY_CHANGE_TYPES.has(change.type)) {
+                  hasDirtyChange = true;
+                }
+              });
+
+              let updated = applyNodeChanges(changes, nodes);
+
+              // Sync cardboard node dimensions to style width/height so it's persisted correctly
+              updated = updated.map(node => {
+                if (node.type === 'cardboardNode' || node.data?.type === 'cardboard') {
+                  const width = node.width ?? node.measured?.width;
+                  const height = node.height ?? node.measured?.height;
+                  if (width !== undefined && height !== undefined) {
+                    return {
+                      ...node,
+                      style: {
+                        ...node.style,
+                        width,
+                        height
+                      }
+                    };
                   }
                 }
-              } else if (!NON_DIRTY_CHANGE_TYPES.has(change.type)) {
-                hasDirtyChange = true;
-              }
-            });
-
-            let updated = applyNodeChanges(changes, nodes);
-
-            // Sync cardboard node dimensions to style width/height so it's persisted correctly
-            updated = updated.map(node => {
-              if (node.type === 'cardboardNode' || node.data?.type === 'cardboard') {
-                const width = node.width ?? node.measured?.width;
-                const height = node.height ?? node.measured?.height;
-                if (width !== undefined && height !== undefined) {
-                  return {
-                    ...node,
-                    style: {
-                      ...node.style,
-                      width,
-                      height
-                    }
-                  };
-                }
-              }
-              return node;
-            });
+                return node;
+              });
 
             if (hasDirtyChange) {
               setNodesDirty(updated);
@@ -465,7 +471,7 @@ export default function WorkflowCanvas() {
           onNodeClick={onNodeClick}
           onNodeContextMenu={onNodeContextMenu}
           onEdgeClick={onEdgeClick}
-          onPaneClick={(e) => { onPaneClick(); onPaneClickCloseMenu(); }}
+          onPaneClick={() => { onPaneClick(); onPaneClickCloseMenu(); }}
           onPaneContextMenu={onPaneContextMenu}
           nodeTypes={nodeTypes}
           defaultEdgeOptions={{
@@ -479,7 +485,7 @@ export default function WorkflowCanvas() {
           snapGrid={[20, 20]}
           deleteKeyCode={['Backspace', 'Delete']}
           className={isDarkCanvas ? 'is-dark-theme' : ''}
-           style={{ background: isDarkCanvas ? 'var(--bg-canvas)' : '#F8F9FB' }}
+          style={{ background: isDarkCanvas ? '#1D1D1F' : '#F8F9FB' }}
         >
           {canvasBackgroundStyle !== 'clean' && (
             <Background 
@@ -488,7 +494,7 @@ export default function WorkflowCanvas() {
               gap={20} 
               size={canvasBackgroundStyle === 'cross' ? 6 : canvasBackgroundStyle === 'dots' ? 1.5 : undefined} 
               lineWidth={canvasBackgroundStyle === 'lines' ? 1 : undefined}
-              color={isDarkCanvas ? 'var(--grid-color, #4C4B53)' : '#CBD5E1'} 
+              color={isDarkCanvas ? '#4C4B53' : '#CBD5E1'} 
             />
           )}
           <Controls />
@@ -529,19 +535,19 @@ export default function WorkflowCanvas() {
           }}>
             <div style={{
               width: 56, height: 56, borderRadius: 16,
-              background: isDarkCanvas ? '#1E293B' : 'white', 
-              border: isDarkCanvas ? '1px solid #334155' : '1px solid var(--border)',
+              background: 'white', border: '1px solid var(--border)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: 'var(--shadow-sm)', color: isDarkCanvas ? '#94A3B8' : '#9898A6'
+              boxShadow: 'var(--shadow-sm)', color: '#9898A6'
             }}>
               <FiGitBranch size={24} strokeWidth={1.5} />
             </div>
-            <div style={{ fontSize: 18, fontWeight: 500, color: isDarkCanvas ? '#F8FAFC' : 'var(--text-primary)' }}>{workflowName}</div>
-            <div style={{ fontSize: 13, color: isDarkCanvas ? '#94A3B8' : 'var(--text-muted)', maxWidth: 320, textAlign: 'center', lineHeight: 1.6 }}>
-              Click the <strong style={{ color: isDarkCanvas ? '#F8FAFC' : 'var(--text-primary)' }}>+ icon</strong> on the top left to start building your AI system.
+            <div style={{ fontSize: 18, fontWeight: 500, color: 'var(--text-primary)' }}>{workflowName}</div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 320, textAlign: 'center', lineHeight: 1.6 }}>
+              Click the <strong style={{ color: 'var(--text-primary)' }}>+ icon</strong> on the top left to start building your AI system.
             </div>
           </div>
         )}
+        </ReactFlowProvider>
       </div>
 
       {/* ── Right side panels ── */}
@@ -550,35 +556,17 @@ export default function WorkflowCanvas() {
           <motion.div 
             key="properties-panel"
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: propertiesWidth, opacity: 1 }}
+            animate={{ width: 320, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
-            transition={isResizing ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
             style={{
               borderLeft: '1px solid var(--border)',
-              background: 'var(--bg-secondary, white)',
+              background: 'white',
               flexShrink: 0,
               overflow: 'hidden',
-              height: '100%',
-              position: 'relative'
+              height: '100%'
             }}
           >
-            {/* Resizable drag handle on the left edge */}
-            <div
-              onMouseDown={startResizing}
-              style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: '6px',
-                cursor: 'col-resize',
-                zIndex: 100,
-                background: isResizing ? 'var(--theme-primary, #4285F4)' : 'transparent',
-                transition: 'background 0.2s',
-              }}
-              onMouseEnter={(e) => { if (!isResizing) e.currentTarget.style.background = 'rgba(66, 133, 244, 0.3)'; }}
-              onMouseLeave={(e) => { if (!isResizing) e.currentTarget.style.background = 'transparent'; }}
-            />
             <PropertiesPanel />
           </motion.div>
         )}
@@ -592,7 +580,7 @@ export default function WorkflowCanvas() {
             transition={isResizingExplorer ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
             style={{
               borderLeft: '1px solid var(--border)',
-              background: 'var(--bg-secondary, white)',
+              background: 'white',
               flexShrink: 0,
               overflow: 'hidden',
               height: '100%',
