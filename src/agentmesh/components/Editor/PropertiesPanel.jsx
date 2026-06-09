@@ -3,7 +3,7 @@ import { useWorkflowStore, useUIStore } from '../../store';
 import { listTools, fixGrammar } from '../../api/agentmesh';
 import SkillGallery from './SkillGallery';
 import SaveTemplateModal from './SaveTemplateModal';
-import { FiTrash2, FiMousePointer, FiInfo, FiLayers, FiSettings, FiCpu, FiTool, FiGitMerge, FiTarget, FiShare2, FiUser, FiBookOpen, FiLink, FiPlus, FiX, FiGlobe, FiClock, FiCopy, FiCheck, FiSearch, FiChevronDown, FiRepeat, FiFileText, FiZap, FiLoader, FiAlertTriangle, FiGitBranch, FiActivity, FiEdit, FiFilter, FiShield, FiCamera, FiBox, FiSave, FiTerminal, FiDatabase, FiUploadCloud, FiDownload, FiAlignLeft, FiKey, FiLock, FiMessageSquare, FiPlay } from 'react-icons/fi';
+import { FiMinus, FiTrash2, FiMousePointer, FiInfo, FiLayers, FiSettings, FiCpu, FiTool, FiGitMerge, FiTarget, FiShare2, FiUser, FiBookOpen, FiLink, FiPlus, FiX, FiGlobe, FiClock, FiCopy, FiCheck, FiSearch, FiChevronDown, FiRepeat, FiFileText, FiZap, FiLoader, FiAlertTriangle, FiGitBranch, FiActivity, FiEdit, FiFilter, FiShield, FiCamera, FiBox, FiSave, FiTerminal, FiDatabase, FiUploadCloud, FiDownload, FiAlignLeft, FiKey, FiLock, FiMessageSquare, FiPlay } from 'react-icons/fi';
 import ConnectionsDropdown from './ConnectionsDropdown';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import jsonLang from 'react-syntax-highlighter/dist/esm/languages/hljs/json';
@@ -320,7 +320,7 @@ function Select({ value, onChange, options, disabled }) {
   );
 }
 
-function SearchableSelect({ value, onChange, options, placeholder = "Search...", disabled }) {
+function SearchableSelect({ value, onChange, options, placeholder = "Search...", disabled, showSearch = true }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const containerRef = useRef(null);
@@ -411,15 +411,24 @@ function SearchableSelect({ value, onChange, options, placeholder = "Search...",
                     transition: 'all 0.15s',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-card-info, #F0F4FF)'; e.currentTarget.style.color = 'var(--accent-btn)'; }}
+                  onMouseEnter={(e) => {
+                    if (value !== o.value) {
+                      e.currentTarget.style.background = '#F8FAFC';
+                      e.currentTarget.style.color = 'var(--text-primary)';
+                    } else {
+                      e.currentTarget.style.background = 'var(--bg-card-info, #F0F4FF)';
+                      e.currentTarget.style.color = 'var(--accent-btn)';
+                    }
+                  }}
                   onMouseLeave={(e) => { 
                     if (value !== o.value) {
                       e.currentTarget.style.background = 'transparent';
                       e.currentTarget.style.color = 'var(--text-primary)';
+                    } else {
+                      e.currentTarget.style.background = 'var(--bg-card-info, #F0F4FF)';
+                      e.currentTarget.style.color = 'var(--accent-btn)';
                     }
                   }}
-                  onMouseEnter={(e) => { if (value !== o.value) e.currentTarget.style.background = '#F8FAFC'; }}
-                  onMouseLeave={(e) => { if (value !== o.value) e.currentTarget.style.background = 'transparent'; }}
                 >
                   {o.label}
                   {o.sublabel && <div style={{ fontSize: 10, opacity: 0.6, marginTop: 1 }}>{o.sublabel}</div>}
@@ -3459,7 +3468,6 @@ export default function PropertiesPanel() {
                                     update({ tool_arguments: next });
                                   }}
                                   style={{
-                                    background: 'none',
                                     border: 'none',
                                     cursor: 'pointer',
                                     display: 'flex',
