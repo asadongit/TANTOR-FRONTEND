@@ -26,6 +26,35 @@ function genThreadId() {
   return 'thread_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6);
 }
 
+const findProfileReportHtml = (ctx) => {
+  if (!ctx) return null;
+  if (typeof ctx.profile_report_html === 'string' && ctx.profile_report_html.trim()) {
+    return ctx.profile_report_html;
+  }
+  if (ctx.latest_api_result && typeof ctx.latest_api_result.profile_report_html === 'string') {
+    return ctx.latest_api_result.profile_report_html;
+  }
+  if (ctx.nodes && typeof ctx.nodes === 'object') {
+    for (const nodeKey of Object.keys(ctx.nodes)) {
+      const nodeData = ctx.nodes[nodeKey];
+      if (nodeData && typeof nodeData === 'object') {
+        if (typeof nodeData.profile_report_html === 'string') {
+          return nodeData.profile_report_html;
+        }
+        if (nodeData.latest_api_result && typeof nodeData.latest_api_result.profile_report_html === 'string') {
+          return nodeData.latest_api_result.profile_report_html;
+        }
+      }
+    }
+  }
+  for (const key of Object.keys(ctx)) {
+    if (key.includes('api_result_') && ctx[key] && typeof ctx[key].profile_report_html === 'string') {
+      return ctx[key].profile_report_html;
+    }
+  }
+  return null;
+};
+
 export default function RunPanel({ onClose }) {
   const {
     workflowId, workflowName, isDirty, isCompiled, nodes,
@@ -35,7 +64,8 @@ export default function RunPanel({ onClose }) {
   const {
     running, streamEvents, runOutput, runError, threadId, history,
     startRun, addEvent, finishRun, setError, reset, removeEventsFromIndex,
-    pausedInfo, setPausedInfo, setHistory, addToHistory, removeFromHistory, setEvents
+    pausedInfo, setPausedInfo, setHistory, addToHistory, removeFromHistory, setEvents,
+    latestContext
   } = useRunStore();
   const [input, setInput] = useState('');
   const [reworkFeedback, setReworkFeedback] = useState('');
@@ -43,6 +73,7 @@ export default function RunPanel({ onClose }) {
   const [showHistory, setShowHistory] = useState(false);
   const [vfsTarget, setVfsTarget] = useState(null);
   const [artifactCount, setArtifactCount] = useState(0); // 📊 New State for Badge
+  const [showProfilingModal, setShowProfilingModal] = useState(false);
   const scrollRef = useRef(null);
   const audioRef = useRef(null);
   const textareaRef = useRef(null);
@@ -453,7 +484,8 @@ export default function RunPanel({ onClose }) {
           enabledActions: enabledActions,
           showReworkForm: false,
           nodeType: pausedNode?.type,
-          nodeConfig: pausedNode
+          nodeConfig: pausedNode,
+          context: res.context || {}
         });
       } else if (res.status === 'rejected') {
         // Workflow was rejected
@@ -621,7 +653,8 @@ export default function RunPanel({ onClose }) {
           threadId: tid,
           enabledActions: enabledActions,
           nodeType: pausedNode?.type,
-          nodeConfig: pausedNode
+          nodeConfig: pausedNode,
+          context: res.context || {}
         });
       }
 
@@ -695,54 +728,82 @@ export default function RunPanel({ onClose }) {
     }
   };
 
-  return (
-    <div style={{
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      background: THEME_BG,
-      color: THEME_TEXT,
-      fontFamily: FONT,
-      position: 'relative'
-    }}>
-      {/* ── Chat Header ── */}
-      <div style={{
-        padding: '10px 24px',
-        borderBottom: `1px solid ${THEME_BORDER}`,
-        background: 'rgba(255, 255, 255, 0.8)',
-        backdropFilter: 'blur(20px)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        zIndex: 100,
-        position: 'sticky',
-        top: 0
-      }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: 8,
-          background: '#1C1C1E',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0
-        }}>
-          <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
-            <circle cx="4" cy="4" r="3" fill="#8E77BB" />
-            <circle cx="10" cy="10" r="3" fill="white" opacity="0.4" />
-          </svg>
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: THEME_TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{workflowName}</div>
-          <div style={{ fontSize: 9, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 4, marginTop: 1, fontWeight: 700 }}>
-            <span style={{
-              width: 5, height: 5, borderRadius: '50%',
-              background: running ? '#8E77BB' : canRun ? '#8E77BB' : '#F59E0B'
-            }} />
-            {running ? 'TRANSMITTING' : canRun ? 'CONNECTED' : 'STANDBY'}
-          </div>
-        </div>
+        const reportHtml = findProfileReportHtml(pausedInfo?.context) || findProfileReportHtml(latestContext);
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-          <button
-            onClick={() => setShowHistory(!showHistory)}
+        return (
+          <div style={{
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            background: THEME_BG,
+            color: THEME_TEXT,
+            fontFamily: FONT,
+            position: 'relative'
+          }}>
+            {/* ── Chat Header ── */}
+            <div style={{
+              padding: '10px 24px',
+              borderBottom: `1px solid ${THEME_BORDER}`,
+              background: 'rgba(255, 255, 255, 0.8)',
+              backdropFilter: 'blur(20px)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              zIndex: 100,
+              position: 'sticky',
+              top: 0
+            }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: 8,
+                background: '#1C1C1E',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
+                  <circle cx="4" cy="4" r="3" fill="#8E77BB" />
+                  <circle cx="10" cy="10" r="3" fill="white" opacity="0.4" />
+                </svg>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: THEME_TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{workflowName}</div>
+                <div style={{ fontSize: 9, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 4, marginTop: 1, fontWeight: 700 }}>
+                  <span style={{
+                    width: 5, height: 5, borderRadius: '50%',
+                    background: running ? '#8E77BB' : canRun ? '#8E77BB' : '#F59E0B'
+                  }} />
+                  {running ? 'TRANSMITTING' : canRun ? 'CONNECTED' : 'STANDBY'}
+                </div>
+              </div>
+      
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                {reportHtml && (
+                  <button
+                    onClick={() => setShowProfilingModal(true)}
+                    title="View Data Profiling Report"
+                    style={{
+                      height: 28,
+                      padding: '0 10px',
+                      borderRadius: 6,
+                      border: '1px solid #6366F1',
+                      background: 'rgba(99, 102, 241, 0.05)',
+                      cursor: 'pointer',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      color: '#6366F1',
+                      transition: 'all 0.15s'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(99, 102, 241, 0.1)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(99, 102, 241, 0.05)'; }}
+                  >
+                    <FiActivity size={11} /> Profiling Report
+                  </button>
+                )}
+      
+                <button
+                  onClick={() => setShowHistory(!showHistory)}
             title="History"
             style={{
               height: 28,
@@ -1535,6 +1596,114 @@ export default function RunPanel({ onClose }) {
         threadId={threadId}
       />
 
+      <AnimatePresence>
+        {showProfilingModal && reportHtml && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.6)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 9999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px'
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              style={{
+                background: '#FFFFFF',
+                width: '95vw',
+                height: '90vh',
+                borderRadius: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+              }}
+            >
+              {/* Modal Header */}
+              <div style={{
+                padding: '16px 24px',
+                borderBottom: '1px solid #E5E7EB',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: '#F9FAFB'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <FiActivity size={18} color="#6366F1" />
+                  <span style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>Data Profiling Report</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button
+                    onClick={() => {
+                      const blob = new Blob([reportHtml], { type: 'text/html' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `Profiling_Report_${threadId || 'report'}.html`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    }}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 6,
+                      border: '1px solid #D1D5DB',
+                      background: 'white',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    Download HTML
+                  </button>
+                  <button
+                    onClick={() => setShowProfilingModal(false)}
+                    style={{
+                      border: 'none',
+                      background: 'none',
+                      cursor: 'pointer',
+                      color: '#6B7280',
+                      padding: 4,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <FiX size={20} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div style={{ flex: 1, background: '#FFFFFF' }}>
+                <iframe
+                  title="Profiling Report"
+                  srcDoc={reportHtml}
+                  style={{ width: '100%', height: '100%', border: 'none' }}
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <input
         type="file"
         id="run-panel-file-upload"
@@ -1747,11 +1916,7 @@ function UnifiedAgentTurn({ finalAgent, intermediateSteps, isLast, running, onRe
 // TURN RENDERER
 // ─────────────────────────────────────────────────────────────
 
-/**
- * TurnRenderer
- * Groups streamEvents into conversation turns.
- */
-function TurnRenderer({ streamEvents, running, removeEventsFromIndex, onSend, nodes = [], onShowVfs }) {
+const TurnRenderer = React.forwardRef(({ streamEvents, running, removeEventsFromIndex, onSend, nodes = [], onShowVfs }, ref) => {
   const turns = [];
   let currentTurn = { user: null, agents: [], logs: [] };
 
@@ -1771,7 +1936,7 @@ function TurnRenderer({ streamEvents, running, removeEventsFromIndex, onSend, no
   turns.push(currentTurn);
 
   return (
-    <>
+    <div ref={ref} style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
       {turns.map((turn, tIdx) => {
         const isAbsoluteLastTurn = tIdx === turns.length - 1;
         const intermediateAgents = turn.agents.slice(0, -1);
@@ -1858,9 +2023,9 @@ function TurnRenderer({ streamEvents, running, removeEventsFromIndex, onSend, no
           </React.Fragment>
         );
       })}
-    </>
+    </div>
   );
-}
+});
 
 // ─────────────────────────────────────────────────────────────
 // HELPER COMPONENTS FOR HITL MINIMAL DESIGN
@@ -2599,6 +2764,195 @@ function FileUploadField({ field, value, onChange, isLoading, threadId }) {
 }
 
 /**
+ * CustomSelect - A premium custom dropdown selection component that overrides native select limits
+ */
+function CustomSelect({ value, options, required, disabled, placeholder, hasError, onChange }) {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const containerRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  React.useEffect(() => {
+    if (!isOpen) {
+      setSearchQuery('');
+    }
+  }, [isOpen]);
+
+  const selectedOption = options.find(opt => {
+    const optValue = typeof opt === 'string' ? opt : opt.value;
+    return String(optValue) === String(value);
+  });
+  
+  const displayLabel = selectedOption 
+    ? (typeof selectedOption === 'string' ? selectedOption : selectedOption.label)
+    : placeholder;
+
+  const filteredOptions = React.useMemo(() => {
+    if (!searchQuery.trim()) return options;
+    const query = searchQuery.toLowerCase();
+    return options.filter(opt => {
+      const label = typeof opt === 'string' ? opt : (opt.label || '');
+      return label.toLowerCase().includes(query);
+    });
+  }, [options, searchQuery]);
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
+      <div
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        style={{
+          width: '100%',
+          padding: '12px 14px',
+          borderRadius: 10,
+          border: `1px solid ${hasError ? '#EF4444' : '#E5E7EB'}`,
+          background: '#F9FAFB',
+          fontSize: 13,
+          color: value ? '#1E293B' : '#9CA3AF',
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          boxSizing: 'border-box',
+          userSelect: 'none'
+        }}
+      >
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {displayLabel}
+        </span>
+        <svg 
+          width="12" 
+          height="12" 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          stroke="currentColor" 
+          strokeWidth="2.5" 
+          style={{ 
+            transition: 'transform 0.2s', 
+            transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+            color: '#6B7280'
+          }}
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </div>
+
+      {isOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            left: 0,
+            right: 0,
+            zIndex: 1000,
+            background: 'white',
+            border: '1px solid #E5E7EB',
+            borderRadius: 10,
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            display: 'flex',
+            flexDirection: 'column',
+            maxHeight: '240px', // Extra height to hold search + scrollable options list
+            padding: 4
+          }}
+        >
+          {/* Search Input Bar */}
+          {options.length > 5 && (
+            <div 
+              onClick={e => e.stopPropagation()} 
+              style={{ padding: '4px 6px', borderBottom: '1px solid #F1F5F9', marginBottom: 4 }}
+            >
+              <input
+                type="text"
+                placeholder="Search option..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '6px 10px',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  outline: 'none',
+                  background: '#F8FAFC',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+          )}
+
+          {/* Options List */}
+          <div 
+            className="modern-scrollbar"
+            style={{ overflowY: 'auto', flex: 1, maxHeight: '180px' }}
+          >
+            {!required && !searchQuery && (
+              <div
+                onClick={() => { onChange(''); setIsOpen(false); }}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 6,
+                  fontSize: 13,
+                  color: '#6B7280',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#F3F4F6'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                {placeholder}
+              </div>
+            )}
+            {filteredOptions.length === 0 ? (
+              <div style={{ padding: '8px 12px', fontSize: 12, color: '#94A3B8', textAlign: 'center' }}>
+                No options found
+              </div>
+            ) : (
+              filteredOptions.map((opt) => {
+                const optValue = typeof opt === 'string' ? opt : opt.value;
+                const optLabel = typeof opt === 'string' ? opt : opt.label;
+                const isSelected = String(optValue) === String(value);
+
+                return (
+                  <div
+                    key={optValue}
+                    onClick={() => { onChange(optValue); setIsOpen(false); }}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      fontSize: 13,
+                      color: isSelected ? 'var(--theme-primary, #4285F4)' : '#374151',
+                      fontWeight: isSelected ? 600 : 400,
+                      background: isSelected ? 'var(--theme-primary-glow, #F0F4FF)' : 'transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}
+                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#F3F4F6'; }}
+                    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    {optLabel}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * FormRenderer - Renders a dynamic form based on node configuration
  */
 function FormRenderer({ config, context, onSubmit, isLoading }) {
@@ -2646,8 +3000,51 @@ function FormRenderer({ config, context, onSubmit, isLoading }) {
     }
   };
 
+  const resolveValue = React.useCallback((val) => {
+    if (typeof val !== 'string') return val;
+    return val.replace(/\{\{([^}]+)\}\}/g, (_, path) => {
+      const trimmedPath = path.trim();
+      
+      // Support nested lookup in context (e.g. context.some_key or node_id.output)
+      const parts = trimmedPath.split('.');
+      let current = context;
+      for (const part of parts) {
+        if (current === null || current === undefined) break;
+        current = current[part];
+      }
+      
+      // Fallback to latest_api_result nested lookup
+      if ((current === undefined || current === null) && context.latest_api_result) {
+        let tempVal = context.latest_api_result;
+        for (const part of parts) {
+          if (tempVal === null || tempVal === undefined) {
+            tempVal = undefined;
+            break;
+          }
+          tempVal = tempVal[part];
+        }
+        if (tempVal !== undefined && tempVal !== null) {
+          current = tempVal;
+        }
+      }
+
+      if (current !== undefined && current !== null) {
+        return typeof current === 'object' ? JSON.stringify(current) : String(current);
+      }
+      
+      // Fallback to direct lookup in context
+      if (context[trimmedPath] !== undefined && context[trimmedPath] !== null) {
+        const directVal = context[trimmedPath];
+        return typeof directVal === 'object' ? JSON.stringify(directVal) : String(directVal);
+      }
+      
+      return `{{${trimmedPath}}}`;
+    });
+  }, [context]);
+
   // 🧪 DYNAMIC OPTION RESOLUTION
   const resolveOptions = React.useCallback((rawOptions) => {
+    console.log("[resolveOptions] rawOptions:", rawOptions, "context:", context);
     if (!Array.isArray(rawOptions)) return [];
     
     let resolved = [];
@@ -2656,11 +3053,56 @@ function FormRenderer({ config, context, onSubmit, isLoading }) {
       const match = optStr.match(/^{{(.+)}}$/);
       if (match) {
         const varName = match[1].trim();
-        const value = context[varName];
+        
+        // Resolve nested path in context (e.g. parent.child.key)
+        const parts = varName.split('.');
+        let value = context;
+        for (const part of parts) {
+          if (value === null || value === undefined) {
+            value = undefined;
+            break;
+          }
+          value = value[part];
+        }
+
+        // Fallback to latest_api_result nested lookup
+        if (value === undefined && context.latest_api_result) {
+          let tempVal = context.latest_api_result;
+          for (const part of parts) {
+            if (tempVal === null || tempVal === undefined) {
+              tempVal = undefined;
+              break;
+            }
+            tempVal = tempVal[part];
+          }
+          if (tempVal !== undefined) {
+            value = tempVal;
+          }
+        }
+
+        // Fallback to direct lookup
+        if (value === undefined && context[varName] !== undefined) {
+          value = context[varName];
+        }
+
         if (Array.isArray(value)) {
           resolved = [...resolved, ...value];
-        } else if (value !== undefined) {
-          resolved.push(value);
+        } else if (value !== undefined && value !== null) {
+          // Check if value is a stringified JSON array (e.g., '[ "item1", "item2" ]')
+          if (typeof value === 'string' && value.trim().startsWith('[') && value.trim().endsWith(']')) {
+            try {
+              const parsed = JSON.parse(value);
+              if (Array.isArray(parsed)) {
+                resolved = [...resolved, ...parsed];
+              } else {
+                resolved.push(value);
+              }
+            } catch {
+              resolved.push(value);
+            }
+          } else {
+            resolved.push(value);
+          }
         } else {
           resolved.push(opt);
         }
@@ -2678,7 +3120,7 @@ function FormRenderer({ config, context, onSubmit, isLoading }) {
     fields.forEach(f => {
       // 1. Try default_value from config first
       if (f.default_value !== undefined && f.default_value !== null && f.default_value !== '') {
-        initial[f.id] = f.default_value;
+        initial[f.id] = resolveValue(f.default_value);
       } 
       // 2. For dropdowns, if mandatory and no default, pulse the first option into state
       else if (f.type === 'select' && f.required) {
@@ -2692,185 +3134,188 @@ function FormRenderer({ config, context, onSubmit, isLoading }) {
       else if (f.type === 'multiselect' || f.type === 'checkbox') {
         initial[f.id] = f.default_value || [];
       }
+      // 4. For boolean fields, default to false (or resolve default value)
+      else if (f.type === 'boolean') {
+        initial[f.id] = f.default_value !== undefined && f.default_value !== null ? (f.default_value === 'true' || f.default_value === true) : false;
+      }
     });
     setFormData(initial);
-  }, [finalConfig, resolveOptions]);
+  }, [finalConfig, resolveOptions, resolveValue]);
 
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {finalConfig.form_description && (
         <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.6, marginBottom: 4 }}>
-          {finalConfig.form_description}
+          {resolveValue(finalConfig.form_description)}
         </div>
       )}
 
-      {(finalConfig.form_fields || []).map((f) => (
-        <div key={f.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {f.type !== 'remark' && (
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>
-              {f.label} {f.required && <span style={{ color: '#EF4444' }}>*</span>}
-            </label>
-          )}
+      {(finalConfig.form_fields || []).map((f) => {
+        const resolvedLabel = resolveValue(f.label);
+        const resolvedPlaceholder = resolveValue(f.placeholder);
+        return (
+          <div key={f.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {f.type !== 'remark' && (
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>
+                {resolvedLabel} {f.required && <span style={{ color: '#EF4444' }}>*</span>}
+              </label>
+            )}
 
-          {f.type === 'textarea' ? (
-            <textarea
-              value={formData[f.id] || ''}
-              onChange={(e) => updateField(f.id, e.target.value)}
-              placeholder={`Enter ${f.label?.toLowerCase() || ''}...`}
-              disabled={isLoading}
-              style={{
-                width: '100%', minHeight: 100, padding: '12px 14px', borderRadius: 10,
-                border: `1px solid ${errors[f.id] ? '#EF4444' : '#E5E7EB'}`,
-                background: '#F9FAFB', fontSize: 13, fontFamily: 'inherit', outline: 'none',
-                resize: 'vertical'
-              }}
-            />
-          ) : f.type === 'select' ? (
-            <select
-              value={formData[f.id] || ''}
-              onChange={(e) => updateField(f.id, e.target.value)}
-              disabled={isLoading}
-              style={{
-                width: '100%', padding: '10px 14px', borderRadius: 10,
-                border: `1px solid ${errors[f.id] ? '#EF4444' : '#E5E7EB'}`,
-                background: '#F9FAFB', fontSize: 13, outline: 'none'
-              }}
-            >
-              {!f.required && <option value="">— Select an option —</option>}
-              {resolveOptions(f.options).map(opt => {
-                const optValue = typeof opt === 'string' ? opt : opt.value;
-                const optLabel = typeof opt === 'string' ? opt : opt.label;
-                return <option key={optValue} value={optValue}>{optLabel}</option>;
-              })}
-            </select>
-          ) : f.type === 'multiselect' ? (
-            <div style={{
-              display: 'flex', flexDirection: 'column', gap: 10,
-              background: '#F9FAFB', padding: '12px 14px', borderRadius: 10,
-              border: `1px solid ${errors[f.id] ? '#EF4444' : '#E5E7EB'}`,
-              maxHeight: 200, overflowY: 'auto'
-            }}>
-              {resolveOptions(f.options).map(opt => {
-                const optValue = typeof opt === 'string' ? opt : opt.value;
-                const optLabel = typeof opt === 'string' ? opt : opt.label;
-                const isChecked = (formData[f.id] || []).includes(optValue);
-                return (
-                  <label key={optValue} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', transition: 'all 0.2s' }}>
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={(e) => {
-                        const current = formData[f.id] || [];
-                        const next = e.target.checked
-                          ? [...current, optValue]
-                          : current.filter(v => v !== optValue);
-                        updateField(f.id, next);
-                      }}
-                      disabled={isLoading}
-                      style={{ width: 17, height: 17, accentColor: THEME_SECONDARY, cursor: 'pointer' }}
-                    />
-                    <span style={{ fontSize: 13, color: isChecked ? THEME_TEXT : '#6B7280', fontWeight: isChecked ? 600 : 400 }}>{optLabel}</span>
-                  </label>
-                );
-              })}
-            </div>
-          ) : f.type === 'boolean' ? (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={!!formData[f.id]}
-                onChange={(e) => updateField(f.id, e.target.checked)}
+            {f.type === 'textarea' ? (
+              <textarea
+                value={formData[f.id] || ''}
+                onChange={(e) => updateField(f.id, e.target.value)}
+                placeholder={resolvedPlaceholder || `Enter ${resolvedLabel?.toLowerCase() || ''}...`}
                 disabled={isLoading}
-                style={{ width: 18, height: 18, accentColor: THEME_SECONDARY }}
+                style={{
+                  width: '100%', minHeight: 100, padding: '12px 14px', borderRadius: 10,
+                  border: `1px solid ${errors[f.id] ? '#EF4444' : '#E5E7EB'}`,
+                  background: '#F9FAFB', fontSize: 13, fontFamily: 'inherit', outline: 'none',
+                  resize: 'vertical'
+                }}
               />
-              <span style={{ fontSize: 13, color: '#4B5563' }}>{f.label}</span>
-            </label>
-          ) : f.type === 'rating' ? (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '4px 0' }}>
-              {[1, 2, 3, 4, 5].map((star) => {
-                const isSelected = star <= (formData[f.id] || 0);
-                return (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => updateField(f.id, star)}
-                    disabled={isLoading}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      cursor: isLoading ? 'not-allowed' : 'pointer',
-                      padding: 0,
-                      color: isSelected ? '#F59E0B' : '#D1D5DB',
-                      transition: 'transform 0.1s ease, color 0.1s ease',
-                      outline: 'none'
-                    }}
-                    onMouseEnter={(e) => { if (!isLoading) e.currentTarget.style.transform = 'scale(1.2)'; }}
-                    onMouseLeave={(e) => { if (!isLoading) e.currentTarget.style.transform = 'scale(1.0)'; }}
-                  >
-                    <FiStar size={26} fill={isSelected ? '#F59E0B' : 'none'} strokeWidth={2} />
-                  </button>
-                );
-              })}
-              {formData[f.id] > 0 && (
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#6B7280', marginLeft: 8 }}>
-                  {formData[f.id]} / 5
-                </span>
-              )}
-            </div>
-          ) : f.type === 'email' || f.type === 'password' || f.type === 'number' ? (
-            <input
-              type={f.type}
-              value={formData[f.id] || ''}
-              onChange={(e) => updateField(f.id, e.target.value)}
-              placeholder={f.placeholder || `Enter ${f.label?.toLowerCase() || ''}...`}
-              disabled={isLoading}
-              style={{
-                width: '100%', padding: '12px 14px', borderRadius: 10,
-                border: `1px solid ${errors[f.id] ? '#EF4444' : '#E5E7EB'}`,
-                background: '#F9FAFB', fontSize: 13, fontFamily: 'inherit', outline: 'none'
-              }}
-            />
-          ) : f.type === 'remark' ? (
-            <div style={{
-              fontSize: 13,
-              color: '#4B5563',
-              lineHeight: 1.6,
-              background: '#F3F4F6',
-              padding: '12px 14px',
-              borderRadius: 10,
-              borderLeft: `4px solid ${THEME_ACCENT}`,
-              whiteSpace: 'pre-wrap'
-            }}>
-              {f.content || '...'}
-            </div>
-          ) : f.type === 'file' ? (
-            <FileUploadField
-              field={f}
-              value={formData[f.id]}
-              onChange={(val) => updateField(f.id, val)}
-              isLoading={isLoading}
-              threadId={context?.thread_id || 'default_thread'}
-            />
-          ) : (
-            <input
-              type={f.type || 'text'}
-              value={formData[f.id] || ''}
-              onChange={(e) => updateField(f.id, e.target.value)}
-              placeholder={f.placeholder || `Enter ${f.label?.toLowerCase() || ''}...`}
-              disabled={isLoading}
-              style={{
-                width: '100%', padding: '10px 14px', borderRadius: 10,
-                border: `1px solid ${errors[f.id] ? '#EF4444' : '#E5E7EB'}`,
-                background: '#F9FAFB', fontSize: 13, outline: 'none'
-              }}
-            />
-          )}
+            ) : f.type === 'select' ? (
+              <CustomSelect
+                value={formData[f.id] || ''}
+                options={resolveOptions(f.options)}
+                required={f.required}
+                disabled={isLoading}
+                placeholder={resolvedPlaceholder || '— Select an option —'}
+                hasError={!!errors[f.id]}
+                onChange={(val) => updateField(f.id, val)}
+              />
+            ) : f.type === 'multiselect' ? (
+              <div 
+                className="modern-scrollbar"
+                style={{
+                  display: 'flex', flexDirection: 'column', gap: 10,
+                  background: '#F9FAFB', padding: '12px 14px', borderRadius: 10,
+                  border: `1px solid ${errors[f.id] ? '#EF4444' : '#E5E7EB'}`,
+                  maxHeight: '190px', overflowY: 'auto'
+                }}
+              >
+                {resolveOptions(f.options).map(opt => {
+                  const optValue = typeof opt === 'string' ? opt : opt.value;
+                  const optLabel = typeof opt === 'string' ? opt : opt.label;
+                  const isChecked = (formData[f.id] || []).includes(optValue);
+                  return (
+                    <label key={optValue} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', transition: 'all 0.2s' }}>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          const current = formData[f.id] || [];
+                          const next = e.target.checked
+                            ? [...current, optValue]
+                            : current.filter(v => v !== optValue);
+                          updateField(f.id, next);
+                        }}
+                        disabled={isLoading}
+                        style={{ width: 17, height: 17, accentColor: THEME_SECONDARY, cursor: 'pointer' }}
+                      />
+                      <span style={{ fontSize: 13, color: isChecked ? THEME_TEXT : '#6B7280', fontWeight: isChecked ? 600 : 400 }}>{resolveValue(optLabel)}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            ) : f.type === 'boolean' ? (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={!!formData[f.id]}
+                  onChange={(e) => updateField(f.id, e.target.checked)}
+                  disabled={isLoading}
+                  style={{ width: 18, height: 18, accentColor: THEME_SECONDARY }}
+                />
+                <span style={{ fontSize: 13, color: '#4B5563' }}>{resolvedLabel}</span>
+              </label>
+            ) : f.type === 'rating' ? (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '4px 0' }}>
+                {[1, 2, 3, 4, 5].map((star) => {
+                  const isSelected = star <= (formData[f.id] || 0);
+                  return (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => updateField(f.id, star)}
+                      disabled={isLoading}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: isLoading ? 'not-allowed' : 'pointer',
+                        padding: 0,
+                        color: isSelected ? '#F59E0B' : '#D1D5DB',
+                        transition: 'transform 0.1s ease, color 0.1s ease',
+                        outline: 'none'
+                      }}
+                      onMouseEnter={(e) => { if (!isLoading) e.currentTarget.style.transform = 'scale(1.2)'; }}
+                      onMouseLeave={(e) => { if (!isLoading) e.currentTarget.style.transform = 'scale(1.0)'; }}
+                    >
+                      <FiStar size={26} fill={isSelected ? '#F59E0B' : 'none'} strokeWidth={2} />
+                    </button>
+                  );
+                })}
+                {formData[f.id] > 0 && (
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#6B7280', marginLeft: 8 }}>
+                    {formData[f.id]} / 5
+                  </span>
+                )}
+              </div>
+            ) : f.type === 'email' || f.type === 'password' || f.type === 'number' ? (
+              <input
+                type={f.type}
+                value={formData[f.id] || ''}
+                onChange={(e) => updateField(f.id, e.target.value)}
+                placeholder={resolvedPlaceholder || `Enter ${resolvedLabel?.toLowerCase() || ''}...`}
+                disabled={isLoading}
+                style={{
+                  width: '100%', padding: '12px 14px', borderRadius: 10,
+                  border: `1px solid ${errors[f.id] ? '#EF4444' : '#E5E7EB'}`,
+                  background: '#F9FAFB', fontSize: 13, fontFamily: 'inherit', outline: 'none'
+                }}
+              />
+            ) : f.type === 'remark' ? (
+              <div style={{
+                fontSize: 13,
+                color: '#4B5563',
+                lineHeight: 1.6,
+                background: '#F3F4F6',
+                padding: '12px 14px',
+                borderRadius: 10,
+                borderLeft: `4px solid ${THEME_ACCENT}`,
+                whiteSpace: 'pre-wrap'
+              }}>
+                {resolveValue(f.content) || '...'}
+              </div>
+            ) : f.type === 'file' ? (
+              <FileUploadField
+                field={f}
+                value={formData[f.id]}
+                onChange={(val) => updateField(f.id, val)}
+                isLoading={isLoading}
+                threadId={context?.thread_id || 'default_thread'}
+              />
+            ) : (
+              <input
+                type={f.type || 'text'}
+                value={formData[f.id] || ''}
+                onChange={(e) => updateField(f.id, e.target.value)}
+                placeholder={resolvedPlaceholder || `Enter ${resolvedLabel?.toLowerCase() || ''}...`}
+                disabled={isLoading}
+                style={{
+                  width: '100%', padding: '10px 14px', borderRadius: 10,
+                  border: `1px solid ${errors[f.id] ? '#EF4444' : '#E5E7EB'}`,
+                  background: '#F9FAFB', fontSize: 13, outline: 'none'
+                }}
+              />
+            )}
 
-          {f.type !== 'remark' && errors[f.id] && (
-            <div style={{ fontSize: 11, color: '#EF4444', fontWeight: 600 }}>{errors[f.id]}</div>
-          )}
-        </div>
-      ))}
+            {f.type !== 'remark' && errors[f.id] && (
+              <div style={{ fontSize: 11, color: '#EF4444', fontWeight: 600 }}>{errors[f.id]}</div>
+            )}
+          </div>
+        );
+      })}
 
       <div style={{ marginTop: 12, paddingTop: 20, borderTop: '1px solid #F1F5F9' }}>
         <button
