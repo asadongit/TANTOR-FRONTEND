@@ -91,35 +91,36 @@ const isProfilingHtml = (val) => {
 
 const findProfileReportHtml = (ctx) => {
   if (!ctx) return null;
-  
-  const search = (obj, depth = 0) => {
-    if (depth > 5 || !obj) return null;
-    
-    if (typeof obj === 'string') {
-      if (isProfilingHtml(obj)) return obj;
-      return null;
-    }
-    
-    if (typeof obj === 'object') {
-      // Prioritize known profiling keys to speed up search
-      const knownKeys = ['profile_report_html', 'data_profiling', 'profiling_report', 'report_html', 'latest_api_result'];
-      for (const key of knownKeys) {
-        if (obj[key] !== undefined) {
-          const res = search(obj[key], depth + 1);
-          if (res) return res;
+
+  // 1. Direct top-level check
+  if (ctx.profile_report_html && isProfilingHtml(ctx.profile_report_html)) {
+    return ctx.profile_report_html;
+  }
+
+  // 2. Check in latest_api_result
+  if (ctx.latest_api_result && ctx.latest_api_result.profile_report_html && isProfilingHtml(ctx.latest_api_result.profile_report_html)) {
+    return ctx.latest_api_result.profile_report_html;
+  }
+
+  // 3. Check in nodes keys (e.g., nodes.node_id.profile_report_html or nodes.node_id.latest_api_result.profile_report_html)
+  if (ctx.nodes && typeof ctx.nodes === 'object') {
+    for (const nodeKey of Object.keys(ctx.nodes)) {
+      const nodeObj = ctx.nodes[nodeKey];
+      if (nodeObj && typeof nodeObj === 'object') {
+        if (nodeObj.profile_report_html && isProfilingHtml(nodeObj.profile_report_html)) {
+          return nodeObj.profile_report_html;
+        }
+        if (nodeObj.latest_api_result && nodeObj.latest_api_result.profile_report_html && isProfilingHtml(nodeObj.latest_api_result.profile_report_html)) {
+          return nodeObj.latest_api_result.profile_report_html;
+        }
+        if (nodeObj[`api_result_${nodeKey}`] && nodeObj[`api_result_${nodeKey}`].profile_report_html && isProfilingHtml(nodeObj[`api_result_${nodeKey}`].profile_report_html)) {
+          return nodeObj[`api_result_${nodeKey}`].profile_report_html;
         }
       }
-      
-      for (const key of Object.keys(obj)) {
-        if (knownKeys.includes(key)) continue; // Already searched
-        const res = search(obj[key], depth + 1);
-        if (res) return res;
-      }
     }
-    return null;
-  };
+  }
 
-  return search(ctx);
+  return null;
 };
 
 export default function RunPanel({ onClose }) {

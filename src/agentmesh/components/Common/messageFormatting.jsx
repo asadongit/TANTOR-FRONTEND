@@ -192,8 +192,46 @@ const StructuredTable = ({ data }) => {
                                         let renderedValue = '';
                                         if (cellValue === null || cellValue === undefined) {
                                             renderedValue = <em style={{ color: '#9CA3AF' }}>null</em>;
-                                        } else if (typeof cellValue === 'object') {
-                                            renderedValue = JSON.stringify(cellValue);
+                                        } else if (typeof cellValue === 'object' && cellValue !== null) {
+                                            renderedValue = Array.isArray(cellValue) ? (
+                                                <div style={{ fontSize: 11, fontFamily: 'monospace', color: '#4B5563' }}>
+                                                    {JSON.stringify(cellValue)}
+                                                </div>
+                                            ) : (
+                                                <div style={{ 
+                                                    fontSize: 11, 
+                                                    fontFamily: 'monospace', 
+                                                    display: 'flex', 
+                                                    flexDirection: 'column', 
+                                                    gap: '3px',
+                                                    minWidth: '220px',
+                                                    maxWidth: '350px',
+                                                    maxHeight: '180px',
+                                                    overflowY: 'auto',
+                                                    padding: '8px 10px',
+                                                    background: '#FAFAFA',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid #E5E7EB',
+                                                    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
+                                                }} className="msg-scrollbar">
+                                                    {Object.entries(cellValue).map(([k, v]) => {
+                                                        let formattedVal = '';
+                                                        if (typeof v === 'number') {
+                                                            formattedVal = Number.isInteger(v) ? String(v) : v.toFixed(4);
+                                                        } else if (typeof v === 'object' && v !== null) {
+                                                            formattedVal = JSON.stringify(v);
+                                                        } else {
+                                                            formattedVal = String(v);
+                                                        }
+                                                        return (
+                                                            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, borderBottom: '1px dashed #E5E7EB', paddingBottom: '3px', paddingTop: '1px' }}>
+                                                                <span style={{ color: '#4B5563', fontWeight: 600 }}>{k}</span>
+                                                                <span style={{ color: '#111827', fontWeight: 700 }}>{formattedVal}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            );
                                         } else {
                                             const valStr = String(cellValue);
                                             const hasBlockMarkdown = valStr.includes('\n') || 
@@ -1248,6 +1286,41 @@ const parseTextBlocks = (content, bi) => {
 
             sections.push(<MathBlock key={`math-${bi}-${i}`} math={mathContent} />);
             continue;
+        }
+
+        // 3. JSON Array Table Detection
+        if (line.trim().startsWith('[')) {
+            let jsonBuffer = line;
+            let j = i + 1;
+            let foundEnd = line.trim().endsWith(']');
+            
+            while (!foundEnd && j < lines.length) {
+                jsonBuffer += '\n' + lines[j];
+                if (lines[j].trim().endsWith(']')) {
+                    foundEnd = true;
+                }
+                j++;
+            }
+            
+            if (foundEnd) {
+                let parsed = null;
+                const trimmedJson = jsonBuffer.trim();
+                try {
+                    parsed = JSON.parse(trimmedJson);
+                } catch {
+                    try {
+                        const fn = new Function('True', 'False', 'None', `return (${trimmedJson})`);
+                        parsed = fn(true, false, null);
+                    } catch {}
+                }
+                
+                if (parsed && Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object' && parsed[0] !== null && !Array.isArray(parsed[0])) {
+                    flushText();
+                    sections.push(<StructuredTable key={`json-tbl-${bi}-${i}`} data={parsed} />);
+                    i = j;
+                    continue;
+                }
+            }
         }
 
         textBuffer.push(line);
