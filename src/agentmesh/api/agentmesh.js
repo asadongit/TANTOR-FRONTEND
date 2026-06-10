@@ -278,4 +278,9 @@ export const updateWorkflowTemplateStatus = (id, status) =>
 export const deleteWorkflowTemplate = (id) =>
   request(`/workflow-template/${id}`, { method: 'DELETE' });
 
+// ─── Blackboard / Tasks ──────────────────────────────────────────────────────
+export const getBlackboardTasks = (threadId) =>
+  request(`/workflow/thread/${threadId}/blackboard`);
+
+
 

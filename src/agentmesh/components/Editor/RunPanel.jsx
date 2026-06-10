@@ -6,7 +6,7 @@ import {
   FiSend, FiRotateCcw, FiPaperclip, FiMic, FiChevronDown, FiChevronUp, FiArrowUp,
   FiAlertCircle, FiCpu, FiBox, FiActivity,
   FiMessageSquare, FiX, FiCheck, FiEdit, FiTrash, FiUser, FiMicOff, FiClock, FiPlus,
-  FiFolder, FiZap, FiStar
+  FiFolder, FiZap, FiStar, FiBriefcase, FiCheckSquare, FiRefreshCw, FiList
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatMessage } from '../Common/messageFormatting';
@@ -80,33 +80,46 @@ function genThreadId() {
   return 'thread_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6);
 }
 
+const isProfilingHtml = (val) => {
+  if (typeof val !== 'string') return false;
+  const trimmed = val.trim();
+  return (
+    trimmed.startsWith('<!doctype html>') &&
+    (trimmed.includes('ydata-profiling') || trimmed.includes('pandas-profiling') || trimmed.includes('Dataset Profile') || trimmed.includes('generator" content="YData'))
+  );
+};
+
 const findProfileReportHtml = (ctx) => {
   if (!ctx) return null;
-  if (typeof ctx.profile_report_html === 'string' && ctx.profile_report_html.trim()) {
-    return ctx.profile_report_html;
-  }
-  if (ctx.latest_api_result && typeof ctx.latest_api_result.profile_report_html === 'string') {
-    return ctx.latest_api_result.profile_report_html;
-  }
-  if (ctx.nodes && typeof ctx.nodes === 'object') {
-    for (const nodeKey of Object.keys(ctx.nodes)) {
-      const nodeData = ctx.nodes[nodeKey];
-      if (nodeData && typeof nodeData === 'object') {
-        if (typeof nodeData.profile_report_html === 'string') {
-          return nodeData.profile_report_html;
-        }
-        if (nodeData.latest_api_result && typeof nodeData.latest_api_result.profile_report_html === 'string') {
-          return nodeData.latest_api_result.profile_report_html;
+  
+  const search = (obj, depth = 0) => {
+    if (depth > 5 || !obj) return null;
+    
+    if (typeof obj === 'string') {
+      if (isProfilingHtml(obj)) return obj;
+      return null;
+    }
+    
+    if (typeof obj === 'object') {
+      // Prioritize known profiling keys to speed up search
+      const knownKeys = ['profile_report_html', 'data_profiling', 'profiling_report', 'report_html', 'latest_api_result'];
+      for (const key of knownKeys) {
+        if (obj[key] !== undefined) {
+          const res = search(obj[key], depth + 1);
+          if (res) return res;
         }
       }
+      
+      for (const key of Object.keys(obj)) {
+        if (knownKeys.includes(key)) continue; // Already searched
+        const res = search(obj[key], depth + 1);
+        if (res) return res;
+      }
     }
-  }
-  for (const key of Object.keys(ctx)) {
-    if (key.includes('api_result_') && ctx[key] && typeof ctx[key].profile_report_html === 'string') {
-      return ctx[key].profile_report_html;
-    }
-  }
-  return null;
+    return null;
+  };
+
+  return search(ctx);
 };
 
 export default function RunPanel({ onClose }) {
@@ -128,6 +141,112 @@ export default function RunPanel({ onClose }) {
   const [vfsTarget, setVfsTarget] = useState(null);
   const [artifactCount, setArtifactCount] = useState(0); // 📊 New State for Badge
   const [showProfilingModal, setShowProfilingModal] = useState(false);
+  const [showToolsBubble, setShowToolsBubble] = useState(false);
+  const [showBlackboardModal, setShowBlackboardModal] = useState(false);
+  const [blackboardTasks, setBlackboardTasks] = useState([]);
+  const [loadingBlackboard, setLoadingBlackboard] = useState(false);
+  const [blackboardError, setBlackboardError] = useState(null);
+
+  const startingButtonTriggers = nodes
+    .filter(n => n.data?.type === 'button_trigger')
+    .filter(n => {
+      const visited = new Set();
+      let foundStart = false;
+
+      const traverse = (currentId) => {
+        if (currentId === 'START' || currentId === 'start' || currentId === '__start__') {
+          foundStart = true;
+          return;
+        }
+        if (visited.has(currentId)) return;
+        visited.add(currentId);
+
+        const incoming = edges ? edges.filter(e => e.target === currentId) : [];
+        for (const edge of incoming) {
+          const parentNode = nodes.find(n => n.id === edge.source);
+          if (parentNode) {
+            const type = parentNode.type || parentNode.data?.type;
+            if (type !== 'start' && parentNode.id !== 'START' && parentNode.id !== 'start' && parentNode.id !== '__start__') {
+              continue;
+            }
+          }
+          traverse(edge.source);
+          if (foundStart) return;
+        }
+      };
+
+      traverse(n.id);
+      return foundStart;
+    });
+
+  const startingAutoTriggers = nodes
+    .filter(n => n.data?.type === 'auto_trigger')
+    .filter(n => {
+      const visited = new Set();
+      let foundStart = false;
+
+      const traverse = (currentId) => {
+        if (currentId === 'START' || currentId === 'start' || currentId === '__start__') {
+          foundStart = true;
+          return;
+        }
+        if (visited.has(currentId)) return;
+        visited.add(currentId);
+
+        const incoming = edges ? edges.filter(e => e.target === currentId) : [];
+        for (const edge of incoming) {
+          const parentNode = nodes.find(n => n.id === edge.source);
+          if (parentNode) {
+            const type = parentNode.type || parentNode.data?.type;
+            if (type !== 'start' && parentNode.id !== 'START' && parentNode.id !== 'start' && parentNode.id !== '__start__') {
+              continue;
+            }
+          }
+          traverse(edge.source);
+          if (foundStart) return;
+        }
+      };
+
+      traverse(n.id);
+      return foundStart;
+    });
+
+  const hasButtonTriggers = startingButtonTriggers.length > 0;
+  const hasAutoTriggers = startingAutoTriggers.length > 0;
+  const hasOcrNodes = nodes.some(n => n.data?.type === 'ocr_node');
+  const isChatStarted = streamEvents.some(e => ['node_start', 'token', 'user_message'].includes(e.type));
+  const hideInput = !isChatStarted && (hasButtonTriggers || hasAutoTriggers || hasOcrNodes);
+  const hasBlackboardTool = nodes.some(n => {
+    const tools = n.data?.tools || n.tools || [];
+    const directTool = n.data?.direct_tool_name || n.direct_tool_name;
+    return tools.includes('agent_blackboard') || directTool === 'agent_blackboard';
+  });
+  
+  const fetchBlackboardTasks = async () => {
+    if (!threadId) return;
+    setLoadingBlackboard(true);
+    setBlackboardError(null);
+    try {
+      const { getBlackboardTasks } = await import('../../api/agentmesh');
+      const res = await getBlackboardTasks(threadId);
+      if (res.status === 'success') {
+        setBlackboardTasks(res.blackboard?.tasks || []);
+      } else {
+        setBlackboardError("Failed to fetch blackboard tasks");
+      }
+    } catch (err) {
+      setBlackboardError(err.message || "Failed to load blackboard tasks");
+    } finally {
+      setLoadingBlackboard(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showBlackboardModal && threadId) {
+      fetchBlackboardTasks();
+    }
+  }, [showBlackboardModal, threadId]);
+
   const scrollRef = useRef(null);
   const audioRef = useRef(null);
   const textareaRef = useRef(null);
@@ -241,7 +360,7 @@ export default function RunPanel({ onClose }) {
   // Can the user run? 
   const canRun = true; // We auto-compile now
 
-  const onSend = async (overrideInput, overrideContext, overrideTargetId) => {
+  const onSend = async (overrideInput, overrideContext, overrideTargetId, isAutoTrigger) => {
     const textToSubmit = typeof overrideInput === 'string' ? overrideInput : input;
     if (!textToSubmit.trim() || running) return;
     const currentInput = textToSubmit;
@@ -276,7 +395,9 @@ export default function RunPanel({ onClose }) {
 
     try {
       // Add the user message immediately for responsiveness
-      addEvent({ type: 'user_message', content: currentInput });
+      if (!isAutoTrigger) {
+        addEvent({ type: 'user_message', content: currentInput });
+      }
 
       const res = await executeWorkflow(workflowId, {
         input: currentInput,
@@ -312,7 +433,7 @@ export default function RunPanel({ onClose }) {
           threadId: tid,
           enabledActions: enabledActions,
           nodeType: pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type),
-          nodeConfig: pausedNode,
+          nodeConfig: pausedNode?.data || {},
           context: res.context || {}
         });
       }
@@ -450,6 +571,20 @@ export default function RunPanel({ onClose }) {
     }
   }, [running, isCompiled, onSend]);
 
+  // 🚀 AUTO-TRIGGER NODE EFFECT: If there is an auto_trigger node on canvas, run automatically on mount
+  useEffect(() => {
+    const hasAutoTrigger = startingAutoTriggers.length > 0;
+    if (hasAutoTrigger && !running && !isChatStarted && !pausedInfo.isPaused) {
+      const autoNode = startingAutoTriggers[0];
+      const initialInput = autoNode.data?.button_input || 'Start Auto Workflow';
+      console.log("[AutoTriggerNode] Triggering workflow automatically via:", autoNode.id);
+      const timer = setTimeout(() => {
+        onSend(initialInput, null, null, true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [running, isChatStarted, startingAutoTriggers, onSend, pausedInfo.isPaused]);
+
   const onResume = async (actionArg, choicePayload) => {
     if (running) return;
 
@@ -539,7 +674,7 @@ export default function RunPanel({ onClose }) {
           enabledActions: enabledActions,
           showReworkForm: false,
           nodeType: pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type),
-          nodeConfig: pausedNode,
+          nodeConfig: pausedNode?.data || {},
           context: res.context || {}
         });
       } else if (res.status === 'rejected') {
@@ -742,44 +877,7 @@ export default function RunPanel({ onClose }) {
     }
   };
 
-  const startingButtonTriggers = nodes
-    .filter(n => n.data?.type === 'button_trigger')
-    .filter(n => {
-      // Trace backwards from this button to see if we can reach START/start
-      // without passing through another button or form node.
-      const visited = new Set();
-      let foundStart = false;
 
-      const traverse = (currentId) => {
-        if (currentId === 'START' || currentId === 'start') {
-          foundStart = true;
-          return;
-        }
-        if (visited.has(currentId)) return;
-        visited.add(currentId);
-
-        const incoming = edges ? edges.filter(e => e.target === currentId) : [];
-        for (const edge of incoming) {
-          const parentNode = nodes.find(n => n.id === edge.source);
-          if (parentNode) {
-            const type = parentNode.type || parentNode.data?.type;
-            if (type === 'button_trigger' || type === 'form_node') {
-              continue;
-            }
-          }
-          traverse(edge.source);
-          if (foundStart) return;
-        }
-      };
-
-      traverse(n.id);
-      return foundStart;
-    });
-
-  const hasButtonTriggers = startingButtonTriggers.length > 0;
-  const hasOcrNodes = nodes.some(n => n.data?.type === 'ocr_node');
-  const isChatStarted = streamEvents.some(e => ['node_start', 'token', 'user_message'].includes(e.type));
-  const hideInput = hasButtonTriggers || (hasOcrNodes && !isChatStarted);
 
   const fileInputRef = useRef(null);
 
@@ -981,10 +1079,10 @@ export default function RunPanel({ onClose }) {
         </motion.div>
       )}
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '60px 40px 140px', background: THEME_BG }} className="custom-scrollbar" ref={scrollRef}>
-        <div style={{ margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 40, width: '100%' }}>
-          {streamEvents.length === 0 && !runError && (
-            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.9, paddingTop: 100 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '60px 40px 140px', background: THEME_BG, display: 'flex', flexDirection: 'column' }} className="custom-scrollbar" ref={scrollRef}>
+        <div style={{ margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 40, width: '100%', flex: 1, justifyContent: (streamEvents.length === 0 && !runError && !running) ? 'center' : 'flex-start' }}>
+          {streamEvents.length === 0 && !runError && !running && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.9 }}>
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -1241,6 +1339,7 @@ export default function RunPanel({ onClose }) {
               zIndex: 95,
               width: '90%',
               maxWidth: 600,
+              minHeight: 450,
               maxHeight: '80vh',
               display: 'flex',
               flexDirection: 'column',
@@ -1604,8 +1703,7 @@ export default function RunPanel({ onClose }) {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', pointerEvents: 'auto' }}>
-              {/* 🖱️ BRANDED BUTTON TRIGGERS (ALWAYS VISIBLE IN TRIGGER-ONLY MODE) */}
-              {canRun && !running && (hasButtonTriggers || (hasOcrNodes && !isChatStarted)) && (
+              {canRun && !running && !isChatStarted && (hasButtonTriggers || hasOcrNodes) && (
                 <div style={{
                   display: 'flex',
                   flexWrap: 'wrap',
@@ -1702,27 +1800,136 @@ export default function RunPanel({ onClose }) {
                 }} id="input-container">
                   {/* VFS Quick Access Icon */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <button
-                      onClick={() => {
-                        const daNode = nodes.find(n => n.data?.type === 'deep_agent');
-                        setVfsTarget({ rootDir: daNode?.data?.deep_agent_root_dir || './mnt/deep_agents' });
-                      }}
-                      title="Open Virtual Filesystem"
-                      style={{
-                        width: 36, height: 36, border: 'none', background: 'transparent',
-                        cursor: 'pointer', display: 'flex', alignItems: 'center',
-                        justifyContent: 'center', color: '#9CA3AF', transition: 'all 0.2s',
-                        borderRadius: 10,
-                        position: 'relative'
-                      }}
-                    >
-                      <FiFolder size={18} />
-                      {artifactCount > 0 && (
-                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} style={{ position: 'absolute', top: 2, right: 2, background: THEME_ACCENT, color: 'white', fontSize: '9px', fontWeight: 900, width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(142, 119, 187, 0.4)', border: '2px solid #F9FAFB', pointerEvents: 'none' }}>
-                          {artifactCount}
-                        </motion.div>
+                    {/* Session Tools Bubble Trigger */}
+                    <div style={{ position: 'relative' }}>
+                      <button
+                        onClick={() => setShowToolsBubble(!showToolsBubble)}
+                        title="Session Tools (VFS, Tasks, etc.)"
+                        style={{
+                          width: 36, height: 36, border: 'none', background: showToolsBubble ? 'rgba(0, 0, 0, 0.05)' : 'transparent',
+                          cursor: 'pointer', display: 'flex', alignItems: 'center',
+                          justifyContent: 'center', color: showToolsBubble ? '#111827' : '#9CA3AF', transition: 'all 0.2s',
+                          borderRadius: 10
+                        }}
+                      >
+                        <FiBriefcase size={18} />
+                        {artifactCount > 0 && (
+                          <div style={{ position: 'absolute', top: 2, right: 2, background: THEME_ACCENT, color: 'white', fontSize: '9px', fontWeight: 900, width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(142, 119, 187, 0.4)', border: '2px solid #F9FAFB' }}>
+                            {artifactCount}
+                          </div>
+                        )}
+                      </button>
+
+                      {showToolsBubble && (
+                        <>
+                          {/* Backdrop to close bubble */}
+                          <div 
+                            style={{ position: 'fixed', inset: 0, zIndex: 998 }} 
+                            onClick={() => setShowToolsBubble(false)} 
+                          />
+                          {/* Popover Bubble */}
+                          <div style={{
+                            position: 'absolute',
+                            bottom: 'calc(100% + 8px)',
+                            left: 0,
+                            background: '#FFFFFF',
+                            borderRadius: '12px',
+                            border: `1px solid ${THEME_BORDER}`,
+                            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
+                            width: 220,
+                            padding: '6px',
+                            zIndex: 999,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 2
+                          }}>
+                            <div style={{
+                              padding: '6px 8px 4px',
+                              fontSize: '9px',
+                              fontWeight: 800,
+                              color: '#9CA3AF',
+                              letterSpacing: '0.05em',
+                              borderBottom: `1px solid ${THEME_BORDER}`,
+                              marginBottom: 4,
+                              textTransform: 'uppercase'
+                            }}>
+                              Session Tools
+                            </div>
+
+                            {/* VFS Option */}
+                            <button
+                              onClick={() => {
+                                const daNode = nodes.find(n => n.data?.type === 'deep_agent');
+                                setVfsTarget({ rootDir: daNode?.data?.deep_agent_root_dir || './mnt/deep_agents' });
+                                setShowToolsBubble(false);
+                              }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 10,
+                                padding: '8px 10px',
+                                border: 'none',
+                                background: 'transparent',
+                                borderRadius: 8,
+                                color: THEME_TEXT,
+                                fontSize: 13,
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                transition: 'all 0.15s'
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = '#F3F4F6'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                            >
+                              <FiFolder size={16} style={{ color: '#4F46E5' }} />
+                              <span style={{ flex: 1 }}>Virtual Filesystem</span>
+                              {artifactCount > 0 && (
+                                <span style={{
+                                  background: 'rgba(79, 70, 229, 0.1)',
+                                  color: '#4F46E5',
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  padding: '2px 6px',
+                                  borderRadius: 10
+                                }}>
+                                  {artifactCount}
+                                </span>
+                              )}
+                            </button>
+
+                            {/* Blackboard Option */}
+                            {hasBlackboardTool && (
+                              <button
+                                onClick={() => {
+                                  setShowBlackboardModal(true);
+                                  setShowToolsBubble(false);
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 10,
+                                  padding: '8px 10px',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  borderRadius: 8,
+                                  color: THEME_TEXT,
+                                  fontSize: 13,
+                                  fontWeight: 500,
+                                  cursor: 'pointer',
+                                  textAlign: 'left',
+                                  transition: 'all 0.15s'
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = '#F3F4F6'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                              >
+                                <FiCheckSquare size={16} style={{ color: '#10B981' }} />
+                                <span style={{ flex: 1 }}>Task Blackboard</span>
+                              </button>
+                            )}
+                          </div>
+                        </>
                       )}
-                    </button>
+                    </div>
 
                     {hasOcrNodes && (
                       <>
@@ -1894,6 +2101,175 @@ export default function RunPanel({ onClose }) {
                   srcDoc={reportHtml}
                   style={{ width: '100%', height: '100%', border: 'none' }}
                 />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 📋 Blackboard Viewer Modal */}
+      <AnimatePresence>
+        {showBlackboardModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed',
+              top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0, 0, 0, 0.4)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 9999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px'
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              style={{
+                background: '#FFFFFF',
+                width: '100%',
+                maxWidth: '650px',
+                maxHeight: '80vh',
+                borderRadius: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                border: '1px solid rgba(0, 0, 0, 0.05)'
+              }}
+            >
+              {/* Modal Header */}
+              <div style={{
+                padding: '18px 24px',
+                borderBottom: '1px solid #E5E7EB',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: '#F9FAFB'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <FiCheckSquare size={18} color="#10B981" />
+                  <span style={{ fontWeight: 800, fontSize: 16, color: '#111827', letterSpacing: '-0.02em' }}>Task Blackboard</span>
+                  <span style={{ fontSize: 11, background: '#E5E7EB', color: '#4B5563', padding: '2px 8px', borderRadius: 12, fontWeight: 600 }}>
+                    {threadId || 'No Session'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button
+                    onClick={fetchBlackboardTasks}
+                    disabled={loadingBlackboard || !threadId}
+                    style={{
+                      border: 'none',
+                      background: 'none',
+                      cursor: 'pointer',
+                      color: '#4B5563',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 6,
+                      borderRadius: 6,
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#E5E7EB'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    title="Refresh blackboard tasks"
+                  >
+                    <FiRefreshCw size={16} className={loadingBlackboard ? 'animate-spin' : ''} />
+                  </button>
+                  <button
+                    onClick={() => setShowBlackboardModal(false)}
+                    style={{
+                      border: 'none',
+                      background: 'none',
+                      cursor: 'pointer',
+                      color: '#9CA3AF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 4,
+                      borderRadius: 6
+                    }}
+                  >
+                    <FiX size={20} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }} className="custom-scrollbar">
+                {!threadId ? (
+                  <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9CA3AF' }}>
+                    <FiCheckSquare size={36} style={{ marginBottom: 12, opacity: 0.5 }} />
+                    <p style={{ fontSize: 14, fontWeight: 500 }}>No active session. Start a conversation first.</p>
+                  </div>
+                ) : loadingBlackboard ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0' }}>
+                    <div style={{ border: '3px solid #f3f3f3', borderTop: '3px solid #10B981', borderRadius: '50%', width: 28, height: 28, animation: 'spin 1s linear infinite' }} />
+                    <p style={{ marginTop: 12, fontSize: 13, color: '#6B7280' }}>Loading blackboard state...</p>
+                  </div>
+                ) : blackboardError ? (
+                  <div style={{ textAlign: 'center', padding: '40px 20px', color: '#EF4444' }}>
+                    <p>{blackboardError}</p>
+                  </div>
+                ) : blackboardTasks.length === 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '50px 20px', color: '#9CA3AF', textAlign: 'center' }}>
+                    <FiList size={40} style={{ marginBottom: 12, opacity: 0.4, color: '#10B981' }} />
+                    <p style={{ fontSize: 14, fontWeight: 600, color: '#4B5563' }}>Blackboard is currently empty</p>
+                    <p style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4, maxWidth: 300 }}>Tasks posted by the agent during this session will appear here.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {blackboardTasks.map((task, index) => (
+                      <div
+                        key={task.id || index}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: 14,
+                          padding: '16px',
+                          borderRadius: '12px',
+                          background: task.status === 'done' ? '#F9FAFB' : '#FFFFFF',
+                          border: `1px solid ${task.status === 'done' ? '#E5E7EB' : 'rgba(16, 185, 129, 0.15)'}`,
+                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.01)',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, marginTop: 2, flexShrink: 0 }}>
+                          {task.status === 'done' ? (
+                            <FiCheckSquare size={18} color="#10B981" />
+                          ) : (
+                            <div style={{ width: 16, height: 16, borderRadius: 4, border: '2px solid #D1D5DB', background: '#FFF' }} />
+                          )}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{
+                            fontSize: 14,
+                            color: task.status === 'done' ? '#9CA3AF' : '#111827',
+                            textDecoration: task.status === 'done' ? 'line-through' : 'none',
+                            lineHeight: 1.5,
+                            fontWeight: 500,
+                            wordBreak: 'break-word'
+                          }}>
+                            {task.content}
+                          </p>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                            <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#9CA3AF', background: '#F3F4F6', padding: '2px 6px', borderRadius: 4 }}>
+                              ID: {task.id}
+                            </span>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#10B981', background: 'rgba(16, 185, 129, 0.08)', padding: '2px 8px', borderRadius: 12, textTransform: 'uppercase' }}>
+                              #{task.category || 'general'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>

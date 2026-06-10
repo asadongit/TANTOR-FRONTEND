@@ -35,7 +35,27 @@ const NODE_DEFAULTS = {
   ingestion_node: { label: 'Ingestion', vector_store: 'chroma', vector_collection: 'default', chunk_size: 1000, chunk_overlap: 100, chunking_strategy: 'recursive', ingestion_source_key: 'latest_ocr_output' },
   classification: { label: 'Classification Agent', classification_classes: [{ class: 'Class A', description: 'Description for Class A' }], classification_summary: false, classification_engine: 'llm', classification_input_field: '', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 } },
   sensitivity_classifier: { label: 'Sensitivity Classifier', classification_input_key: 'latest_ocr_output', classification_output_key: '', engine_mode: 'both', custom_entities: '', output_format: 'markdown' },
-  cardboard: { label: 'Sticky Note', color: 'slate' }
+  cardboard: { label: 'Sticky Note', color: 'slate' },
+  json_transform: {
+    label: 'JSON Transform',
+    jt_input_key: 'latest_api_result',
+    jt_output_key: 'transformed_data',
+    jt_mode: 'jmespath',
+    jt_query: '',
+    jt_operations: [],
+    jt_expression: '',
+    jt_pass_through: false
+  },
+  button_trigger: {
+    label: 'Button Trigger',
+    button_label: 'Start Workflow',
+    button_input: 'Start',
+    button_category: 'action'
+  },
+  auto_trigger: {
+    label: 'Auto Trigger',
+    button_input: 'Auto Start'
+  }
 };
 
 const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
@@ -98,6 +118,13 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           classification_summary: n.classification_summary ?? n.data?.classification_summary ?? false,
           classification_engine: n.classification_engine || n.data?.classification_engine || 'llm',
           classification_input_field: n.classification_input_field || n.data?.classification_input_field || '',
+          jt_input_key: n.jt_input_key || n.data?.jt_input_key || 'latest_api_result',
+          jt_output_key: n.jt_output_key || n.data?.jt_output_key || 'transformed_data',
+          jt_mode: n.jt_mode || n.data?.jt_mode || 'jmespath',
+          jt_query: n.jt_query || n.data?.jt_query || '',
+          jt_operations: n.jt_operations || n.data?.jt_operations || [],
+          jt_expression: n.jt_expression || n.data?.jt_expression || '',
+          jt_pass_through: n.jt_pass_through ?? n.data?.jt_pass_through ?? false,
         },
       };
     });
@@ -511,7 +538,8 @@ export const useWorkflowStore = create((set, get) => ({
           'direct_tool_name', 'tool_arguments', 'destination_key',
           'classification_classes', 'classification_summary', 'classification_engine', 'classification_input_field',
           'template_content', 'template_output_key', 'template_data_key', 'template_file_path',
-          'button_label', 'button_input', 'button_category'
+          'button_label', 'button_input', 'button_category',
+          'jt_input_key', 'jt_output_key', 'jt_mode', 'jt_query', 'jt_operations', 'jt_expression', 'jt_pass_through'
         ];
 
         const nodeConfig = {};

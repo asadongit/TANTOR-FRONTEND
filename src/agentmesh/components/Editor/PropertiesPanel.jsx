@@ -2290,6 +2290,7 @@ export default function PropertiesPanel() {
     file_store: FiFileText,
     webhook_response: FiShare2,
     error_router: FiAlertTriangle,
+    json_transform: FiFilter,
   };
   const Icon = nodeIcons[data.type] || FiLayers;
 
@@ -3099,31 +3100,37 @@ export default function PropertiesPanel() {
             </div>
           </>
         )}
-        {data.type === 'button_trigger' && (
+        {(data.type === 'button_trigger' || data.type === 'auto_trigger') && (
           <>
-            <Field label="Button Label" hint="The text displayed on the button in the Run Panel.">
-              <Input value={data.button_label || 'Start Workflow'} onChange={(v) => update({ button_label: v })} placeholder="e.g. Generate Report" />
-            </Field>
-            <Field label="Button Theme/Style" hint="Determine the color coding of the button.">
-              <Select
-                value={data.button_category || 'action'}
-                onChange={(v) => update({ button_category: v })}
-                options={[
-                  { value: 'action', label: 'Action (Indigo Theme)' },
-                  { value: 'info', label: 'Info (Blue)' },
-                  { value: 'help', label: 'Help (Purple)' },
-                  { value: 'success', label: 'Success (Green)' },
-                  { value: 'reject', label: 'Reject (Orange)' },
-                  { value: 'delete', label: 'Delete (Red)' }
-                ]}
-              />
-            </Field>
-            <Field label="Initial Input" hint="The text sent to the workflow when the button is clicked.">
-              <Textarea value={data.button_input || 'Start'} onChange={(v) => update({ button_input: v })} placeholder="e.g. Please generate the daily report" rows={3} />
+            {data.type === 'button_trigger' && (
+              <>
+                <Field label="Button Label" hint="The text displayed on the button in the Run Panel.">
+                  <Input value={data.button_label || 'Start Workflow'} onChange={(v) => update({ button_label: v })} placeholder="e.g. Generate Report" />
+                </Field>
+                <Field label="Button Theme/Style" hint="Determine the color coding of the button.">
+                  <Select
+                    value={data.button_category || 'action'}
+                    onChange={(v) => update({ button_category: v })}
+                    options={[
+                      { value: 'action', label: 'Action (Indigo Theme)' },
+                      { value: 'info', label: 'Info (Blue)' },
+                      { value: 'help', label: 'Help (Purple)' },
+                      { value: 'success', label: 'Success (Green)' },
+                      { value: 'reject', label: 'Reject (Orange)' },
+                      { value: 'delete', label: 'Delete (Red)' }
+                    ]}
+                  />
+                </Field>
+              </>
+            )}
+            <Field label="Initial Input" hint={data.type === 'button_trigger' ? "The text sent to the workflow when the button is clicked." : "The text sent to the workflow when triggered automatically."}>
+              <Textarea value={data.button_input || 'Start'} onChange={(v) => update({ button_input: v })} placeholder={data.type === 'button_trigger' ? "e.g. Please generate the daily report" : "e.g. Auto run workflow"} rows={3} />
             </Field>
             <div style={{ padding: 12, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', lineHeight: 1.5, border: '1px solid var(--border-card-info, #BAE6FD)' }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
-              This node creates a clickable button in the chat interface for quick execution.
+              {data.type === 'button_trigger' 
+                ? 'This node creates a clickable button in the chat interface for quick execution.'
+                : 'This node triggers the workflow automatically as soon as the user launches/opens it.'}
             </div>
           </>
         )}
@@ -4494,6 +4501,82 @@ export default function PropertiesPanel() {
               <span style={{ flex: 1, fontWeight: 500 }}>
                 Privacy Guard: Sensitive data is masked and replaced with placeholders (e.g., [PERSON]) to ensure compliance before data leaves this step.
               </span>
+            </div>
+          </>
+        )}
+
+
+        {/* ── JSON Transform Node ── */}
+        {data.type === 'json_transform' && (
+          <>
+            <Field label="Input Context Key" hint="Context key to read data from (supports dot notation, e.g. latest_api_result.data). Defaults to latest_api_result.">
+              <Input
+                value={data.jt_input_key ?? 'latest_api_result'}
+                onChange={(v) => update({ jt_input_key: v })}
+                placeholder="latest_api_result"
+              />
+            </Field>
+
+            <Field label="Output Context Key" hint="Context key where the transformed data will be saved. Defaults to transformed_data.">
+              <Input
+                value={data.jt_output_key ?? 'transformed_data'}
+                onChange={(v) => update({ jt_output_key: v })}
+                placeholder="transformed_data"
+              />
+            </Field>
+
+            <Field label="Transform Mode" hint="JMESPath (declarative queries), Python Expression (custom sandboxed logic), or Operations (visual rules).">
+              <Select
+                value={data.jt_mode ?? 'jmespath'}
+                onChange={(v) => update({ jt_mode: v })}
+                options={[
+                  { value: 'jmespath', label: 'JMESPath (JSON Query)' },
+                  { value: 'python_expr', label: 'Python Expression (Sandboxed)' },
+                  { value: 'operations', label: 'Visual Operations' },
+                ]}
+              />
+            </Field>
+
+            {data.jt_mode === 'jmespath' && (
+              <Field label="JMESPath Query" hint="Query string. E.g. tasks[?status=='SUCCESS'].task_id or job_status.tasks[*].task_id">
+                <Textarea
+                  value={data.jt_query ?? ''}
+                  onChange={(v) => update({ jt_query: v })}
+                  placeholder="job_status.tasks[*].task_id"
+                  rows={4}
+                />
+              </Field>
+            )}
+
+            {data.jt_mode === 'python_expr' && (
+              <Field label="Python Expression" hint="A sandboxed python expression. Use 'data' as the input variable. E.g. [t['task_id'] for t in data['tasks']]">
+                <Textarea
+                  value={data.jt_expression ?? ''}
+                  onChange={(v) => update({ jt_expression: v })}
+                  placeholder="[t['task_id'] for t in data['tasks']]"
+                  rows={4}
+                />
+              </Field>
+            )}
+
+            {data.jt_mode === 'operations' && (
+              <div style={{ padding: 12, background: 'var(--bg-card-warning, #FEF3C7)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-warning, #92400E)', border: '1px solid var(--border-card-warning, #FDE68A)', marginBottom: 18 }}>
+                Visual Operations configuration is managed via JSON config or dynamic backend rules. Mode selected: <strong>operations</strong>.
+              </div>
+            )}
+
+            <Toggle
+              label="Merge / Pass Through Input"
+              checked={data.jt_pass_through || false}
+              onChange={(v) => update({ jt_pass_through: v })}
+            />
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: -8, marginBottom: 20 }}>
+              If enabled, merges the output dictionary into the input dictionary.
+            </div>
+
+            <div style={{ padding: 12, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', border: '1px solid var(--border-card-info, #BAE6FD)' }}>
+              <FiFilter size={12} style={{ marginRight: 6, display: 'inline' }} />
+              Transforms JSON data structure without an LLM. Pure, zero-latency deterministic transformation.
             </div>
           </>
         )}

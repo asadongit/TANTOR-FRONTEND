@@ -787,9 +787,133 @@ const DataTable = ({ tableRows, formatText }) => {
     );
 };
 
+const isBase64Image = (str) => {
+    if (typeof str !== 'string') return false;
+    const trimmed = str.trim();
+    if (/^data:image\/(png|jpeg|jpg|webp|gif|svg\+xml);base64,/i.test(trimmed)) {
+        return true;
+    }
+    // Check if it looks like raw base64 for png, jpg, gif, webp
+    if (trimmed.length > 100 && /^(iVBORw0KGgo|R0lGOD|[a-zA-Z0-9+/]{50,}\/9j\/|UklGR)/.test(trimmed)) {
+        return true;
+    }
+    return false;
+};
+
+const ImageModal = ({ src, alt, onClose }) => {
+    const [scale, setScale] = React.useState(1);
+    React.useEffect(() => {
+        const handler = (e) => { if (e.key === 'Escape') onClose(); };
+        document.addEventListener('keydown', handler);
+        return () => document.removeEventListener('keydown', handler);
+    }, [onClose]);
+    return (
+        <div style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            background: 'rgba(255,255,255,0.95)',
+            backdropFilter: 'blur(12px)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+        }}>
+            <div style={{ position: 'absolute', top: 24, right: 24, display: 'flex', gap: 8, zIndex: 10000 }}>
+                <button onClick={() => setScale(s => Math.min(s + 0.2, 4))} style={{ padding: '10px', borderRadius: 10, border: '1px solid #E5E5E5', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ZoomIn size={18} style={{ color: '#333' }} /></button>
+                <button onClick={() => setScale(s => Math.max(s - 0.2, 0.3))} style={{ padding: '10px', borderRadius: 10, border: '1px solid #E5E5E5', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ZoomOut size={18} style={{ color: '#333' }} /></button>
+                <button onClick={() => setScale(1)} style={{ padding: '10px', borderRadius: 10, border: '1px solid #E5E5E5', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><RotateCcw size={18} style={{ color: '#333' }} /></button>
+                <button onClick={onClose} style={{ padding: '10px', borderRadius: 10, border: '1px solid #FECACA', background: '#FEF2F2', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={18} style={{ color: '#DC2626' }} /></button>
+            </div>
+            <div style={{ overflow: 'auto', maxWidth: '90vw', maxHeight: '80vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }} className="msg-scrollbar">
+                <img 
+                    src={src} 
+                    alt={alt || "Zoomed image"} 
+                    style={{ 
+                        transform: `scale(${scale})`, 
+                        transformOrigin: 'center center', 
+                        transition: 'transform 0.2s',
+                        maxWidth: '100%',
+                        maxHeight: '100%'
+                    }} 
+                />
+            </div>
+        </div>
+    );
+};
+
+const ZoomableImage = ({ src, alt, style = {} }) => {
+    const [modalOpen, setModalOpen] = React.useState(false);
+    return (
+        <>
+            <div 
+                style={{ position: 'relative', display: 'inline-block', cursor: 'zoom-in', marginTop: '8px' }} 
+                onClick={(e) => { e.stopPropagation(); setModalOpen(true); }}
+            >
+                <img 
+                    src={src} 
+                    alt={alt || "Base64 Content"} 
+                    style={{ 
+                        maxWidth: '100%', 
+                        maxHeight: '300px', 
+                        borderRadius: '8px', 
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                        border: '1px solid #E5E7EB',
+                        display: 'block',
+                        ...style 
+                    }} 
+                />
+                <div style={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    background: 'rgba(255,255,255,0.85)',
+                    borderRadius: '6px',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    cursor: 'pointer',
+                    opacity: 0.8,
+                }} title="Zoom Image">
+                    <Maximize2 size={12} color="#111827" />
+                </div>
+            </div>
+            {modalOpen && createPortal(
+                <ImageModal src={src} alt={alt} onClose={() => setModalOpen(false)} />,
+                document.body
+            )}
+        </>
+    );
+};
+
+const renderBase64Image = (str, style = {}) => {
+    const trimmed = str.trim();
+    let src = trimmed;
+    if (!/^data:image\//i.test(trimmed)) {
+        if (trimmed.startsWith('iVBORw0KGgo')) {
+            src = `data:image/png;base64,${trimmed}`;
+        } else if (trimmed.startsWith('/9j/')) {
+            src = `data:image/jpeg;base64,${trimmed}`;
+        } else if (trimmed.startsWith('R0lGOD')) {
+            src = `data:image/gif;base64,${trimmed}`;
+        } else if (trimmed.startsWith('UklGR')) {
+            src = `data:image/webp;base64,${trimmed}`;
+        } else {
+            src = `data:image/png;base64,${trimmed}`;
+        }
+    }
+    return <ZoomableImage src={src} alt={style.alt} style={style} />;
+};
+
 // ─── Inline Formatter ──────────────────────────────────────────────────────────
 export const formatInlineStyles = (text) => {
     if (typeof text !== 'string') return text;
+
+    if (isBase64Image(text)) {
+        return renderBase64Image(text);
+    }
 
     // Step 1: Split on <br> / <br/> / <br /> to handle explicit line breaks
     const brParts = text.split(/<br\s*\/?>/gi);
@@ -803,9 +927,9 @@ export const formatInlineStyles = (text) => {
         ));
     }
 
-        // Step 2: Bold, italic, inline code, and Links
-        // We use a more robust split regex that accounts for spaces and potential newlines inside links
-        const parts = text.split(/(\*\*[\s\S]*?\*\*|\*[^*]+\*|`[^`]+`|\[[\s\S]+?\]\([\s\S]+?\)|https?:\/\/[^\s]+)/g);
+        // Step 2: Bold, italic, inline code, and Links/Images
+        // We use a more robust split regex that accounts for spaces and potential newlines inside links/images
+        const parts = text.split(/(\*\*[\s\S]*?\*\*|\*[^*]+\*|`[^`]+`|!?\[[\s\S]+?\]\([\s\S]+?\)|https?:\/\/[^\s]+)/g);
         
         return parts.map((part, i) => {
             if (!part) return null;
@@ -833,13 +957,40 @@ export const formatInlineStyles = (text) => {
                 );
             }
 
+            // 3.5. Markdown Image: ![alt](url)
+            const imgMatch = part.match(/^!\[([\s\S]*?)\]\(([\s\S]+?)\)$/);
+            if (imgMatch) {
+                const alt = imgMatch[1];
+                const url = imgMatch[2].trim();
+                if (isBase64Image(url)) {
+                    return renderBase64Image(url, { alt });
+                }
+                const finalUrl = url.startsWith('http') || url.startsWith('data:') ? url : `http://localhost:8000${url}`;
+                return (
+                    <img 
+                        key={i}
+                        src={finalUrl} 
+                        alt={alt || "Rendered Image"} 
+                        style={{ 
+                            maxWidth: '100%', 
+                            maxHeight: '300px', 
+                            borderRadius: '8px', 
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                            marginTop: '8px',
+                            border: '1px solid #E5E7EB',
+                            display: 'block'
+                        }} 
+                    />
+                );
+            }
+
             // 4. Markdown Link: [text](url)
             // We use a broader match and trim any invisible fluff (common on Windows)
-            const linkMatch = part.match(/\[([\s\S]+?)\]\(([\s\S]+?)\)/);
+            const linkMatch = part.match(/^\[([\s\S]+?)\]\(([\s\S]+?)\)$/);
             if (part.includes('](') && linkMatch) {
                 const label = linkMatch[1];
                 const rawUrl = linkMatch[2].trim();
-                const finalUrl = rawUrl.startsWith('http') ? rawUrl : `http://localhost:8000${rawUrl}`;
+                const finalUrl = rawUrl.startsWith('http') || rawUrl.startsWith('data:') ? rawUrl : `http://localhost:8000${rawUrl}`;
                 
                 const isDownload = rawUrl.includes('/exports/') || rawUrl.includes('/api/vfs/download');
                 const isPdf = rawUrl.toLowerCase().endsWith('.pdf');
@@ -1106,9 +1257,49 @@ const parseTextBlocks = (content, bi) => {
     return sections;
 };
 
+const isProfilingHtml = (val) => {
+  if (typeof val !== 'string') return false;
+  const trimmed = val.trim();
+  return (
+    trimmed.startsWith('<!doctype html>') &&
+    (trimmed.includes('ydata-profiling') || trimmed.includes('pandas-profiling') || trimmed.includes('Dataset Profile') || trimmed.includes('generator" content="YData'))
+  );
+};
+
+const cleanProfilingData = (data) => {
+  if (!data) return data;
+  if (typeof data === 'string') {
+    if (isBase64Image(data)) return data;
+    if (isProfilingHtml(data)) {
+      return "[Profiling Report HTML]";
+    }
+    return data;
+  }
+  if (Array.isArray(data)) {
+    return data.map(item => cleanProfilingData(item));
+  }
+  if (typeof data === 'object') {
+    const cleaned = {};
+    for (const key of Object.keys(data)) {
+      cleaned[key] = cleanProfilingData(data[key]);
+    }
+    return cleaned;
+  }
+  return data;
+};
+
 // ─── Main formatMessage ────────────────────────────────────────────────────────
 export const formatMessage = (msg, isCell = false) => {
     if (!msg) return null;
+
+    // Direct check to suppress raw profiling HTML content
+    if (typeof msg === 'string' && isProfilingHtml(msg)) {
+        return (
+            <div style={{ fontSize: 13, color: '#6B7280', fontStyle: 'italic', padding: '6px 0' }}>
+                [Data Profiling Report generated. Click the button at the top to view.]
+            </div>
+        );
+    }
 
     // Direct structured table rendering check
     let parsedData = null;
@@ -1135,26 +1326,32 @@ export const formatMessage = (msg, isCell = false) => {
     }
 
     if (parsedData) {
-        if (Array.isArray(parsedData) && parsedData.length > 0 && typeof parsedData[0] === 'object' && parsedData[0] !== null && !Array.isArray(parsedData[0])) {
-            return <StructuredTable data={parsedData} />;
+        const cleanedData = cleanProfilingData(parsedData);
+        if (Array.isArray(cleanedData) && cleanedData.length > 0 && typeof cleanedData[0] === 'object' && cleanedData[0] !== null && !Array.isArray(cleanedData[0])) {
+            return <StructuredTable data={cleanedData} />;
         }
-        if (!Array.isArray(parsedData) && typeof parsedData === 'object' && parsedData !== null) {
-            const isChartOrGraph = parsedData.nodes || parsedData.elements || parsedData.type === 'pie' || parsedData.type === 'bar' || parsedData.type === 'line' || parsedData.type === 'area';
+        if (!Array.isArray(cleanedData) && typeof cleanedData === 'object' && cleanedData !== null) {
+            const isChartOrGraph = cleanedData.nodes || cleanedData.elements || cleanedData.type === 'pie' || cleanedData.type === 'bar' || cleanedData.type === 'line' || cleanedData.type === 'area';
             if (!isChartOrGraph) {
-                return <StructuredTable data={[parsedData]} />;
+                return <StructuredTable data={[cleanedData]} />;
             }
         }
     }
 
+    let cleanedMsg = msg;
+    if (typeof msg === 'object' && msg !== null) {
+        cleanedMsg = cleanProfilingData(msg);
+    }
+
     let content = '';
-    if (typeof msg === 'string') {
-        content = msg;
-    } else if (msg.content || msg.text) {
-        content = msg.content || msg.text;
-    } else if (Array.isArray(msg)) {
-        content = msg.map(m => (typeof m === 'string' ? m : (m.content || m.text || JSON.stringify(m)))).join('\n\n');
+    if (typeof cleanedMsg === 'string') {
+        content = cleanedMsg;
+    } else if (cleanedMsg.content || cleanedMsg.text) {
+        content = cleanedMsg.content || cleanedMsg.text;
+    } else if (Array.isArray(cleanedMsg)) {
+        content = cleanedMsg.map(m => (typeof m === 'string' ? m : (m.content || m.text || JSON.stringify(m)))).join('\n\n');
     } else {
-        content = JSON.stringify(msg, null, 2);
+        content = JSON.stringify(cleanedMsg, null, 2);
     }
 
     try {
