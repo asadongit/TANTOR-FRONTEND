@@ -1255,6 +1255,39 @@ const parseTextBlocks = (content, bi) => {
     while (i < lines.length) {
         const line = lines[i];
 
+        // 0. HTML Block Detection
+        if (line.trim().startsWith('<')) {
+            const tagMatch = line.trim().match(/^<([a-zA-Z1-6]+)\b/);
+            if (tagMatch) {
+                flushText();
+                const tagName = tagMatch[1].toLowerCase();
+                const selfClosingTags = ['hr', 'br', 'img', 'input', 'meta', 'link'];
+                const isSelfClosing = selfClosingTags.includes(tagName) || line.trim().endsWith('/>');
+                const closeTag = `</${tagName}>`;
+                let htmlBuffer = line;
+                let j = i + 1;
+                let foundClose = isSelfClosing || line.includes(closeTag);
+                
+                while (!foundClose && j < lines.length) {
+                    htmlBuffer += '\n' + lines[j];
+                    if (lines[j].includes(closeTag)) {
+                        foundClose = true;
+                    }
+                    j++;
+                }
+                
+                sections.push(
+                    <div 
+                        key={`html-blk-${bi}-${i}`} 
+                        dangerouslySetInnerHTML={{ __html: htmlBuffer }} 
+                        style={{ wordBreak: 'break-word' }}
+                    />
+                );
+                i = j;
+                continue;
+            }
+        }
+
         // 1. Table Detection
         if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
             flushText();
@@ -1425,6 +1458,20 @@ export const formatMessage = (msg, isCell = false) => {
         content = cleanedMsg.map(m => (typeof m === 'string' ? m : (m.content || m.text || JSON.stringify(m)))).join('\n\n');
     } else {
         content = JSON.stringify(cleanedMsg, null, 2);
+    }
+
+    // Detect if content is HTML to render it directly
+    const trimmedContent = typeof content === 'string' ? content.trim() : '';
+    const isHtml = trimmedContent.startsWith('<') && 
+        /<\/?(div|span|p|a|img|table|tr|td|th|tbody|thead|ul|ol|li|h[1-6]|br|hr|section|style|iframe|button|svg|path|em|strong|b|i|u|font|center|form|input|label|select|option|textarea)\b[^>]*>/i.test(trimmedContent);
+
+    if (isHtml) {
+        return (
+            <div 
+                style={{ wordBreak: 'break-word' }} 
+                dangerouslySetInnerHTML={{ __html: content }} 
+            />
+        );
     }
 
     try {
