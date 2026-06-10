@@ -3099,11 +3099,24 @@ export default function PropertiesPanel() {
             </div>
           </>
         )}
-        {/* ── Button Trigger ── */}
         {data.type === 'button_trigger' && (
           <>
             <Field label="Button Label" hint="The text displayed on the button in the Run Panel.">
               <Input value={data.button_label || 'Start Workflow'} onChange={(v) => update({ button_label: v })} placeholder="e.g. Generate Report" />
+            </Field>
+            <Field label="Button Theme/Style" hint="Determine the color coding of the button.">
+              <Select
+                value={data.button_category || 'action'}
+                onChange={(v) => update({ button_category: v })}
+                options={[
+                  { value: 'action', label: 'Action (Indigo Theme)' },
+                  { value: 'info', label: 'Info (Blue)' },
+                  { value: 'help', label: 'Help (Purple)' },
+                  { value: 'success', label: 'Success (Green)' },
+                  { value: 'reject', label: 'Reject (Orange)' },
+                  { value: 'delete', label: 'Delete (Red)' }
+                ]}
+              />
             </Field>
             <Field label="Initial Input" hint="The text sent to the workflow when the button is clicked.">
               <Textarea value={data.button_input || 'Start'} onChange={(v) => update({ button_input: v })} placeholder="e.g. Please generate the daily report" rows={3} />

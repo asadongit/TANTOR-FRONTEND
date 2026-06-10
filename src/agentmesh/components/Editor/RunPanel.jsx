@@ -22,6 +22,60 @@ const THEME_SECONDARY = '#6366F1'; // Vibrant indigo for light accents
 const THEME_USER_BUBBLE = '#F3F4FB'; // Soft light indigo/gray for user messages
 const FONT = "'Inter', 'Outfit', 'Google Sans', 'Roboto', sans-serif";
 
+const getButtonCategoryStyles = (category) => {
+  const styles = {
+    action: {
+      bg: 'rgba(99, 102, 241, 0.08)',
+      color: 'var(--theme-primary, #6366F1)',
+      border: 'rgba(99, 102, 241, 0.25)',
+      bgHover: 'rgba(99, 102, 241, 0.15)',
+      borderHover: 'rgba(99, 102, 241, 0.45)',
+      dotColor: 'var(--theme-primary, #6366F1)'
+    },
+    info: {
+      bg: 'rgba(14, 165, 233, 0.08)',
+      color: '#0ea5e9',
+      border: 'rgba(14, 165, 233, 0.25)',
+      bgHover: 'rgba(14, 165, 233, 0.15)',
+      borderHover: 'rgba(14, 165, 233, 0.45)',
+      dotColor: '#0ea5e9'
+    },
+    help: {
+      bg: 'rgba(168, 85, 247, 0.08)',
+      color: '#a855f7',
+      border: 'rgba(168, 85, 247, 0.25)',
+      bgHover: 'rgba(168, 85, 247, 0.15)',
+      borderHover: 'rgba(168, 85, 247, 0.45)',
+      dotColor: '#a855f7'
+    },
+    reject: {
+      bg: 'rgba(245, 158, 11, 0.08)',
+      color: '#f59e0b',
+      border: 'rgba(245, 158, 11, 0.25)',
+      bgHover: 'rgba(245, 158, 11, 0.15)',
+      borderHover: 'rgba(245, 158, 11, 0.45)',
+      dotColor: '#f59e0b'
+    },
+    delete: {
+      bg: 'rgba(244, 63, 94, 0.08)',
+      color: '#f43f5e',
+      border: 'rgba(244, 63, 94, 0.25)',
+      bgHover: 'rgba(244, 63, 94, 0.15)',
+      borderHover: 'rgba(244, 63, 94, 0.45)',
+      dotColor: '#f43f5e'
+    },
+    success: {
+      bg: 'rgba(16, 185, 129, 0.08)',
+      color: '#10b981',
+      border: 'rgba(16, 185, 129, 0.25)',
+      bgHover: 'rgba(16, 185, 129, 0.15)',
+      borderHover: 'rgba(16, 185, 129, 0.45)',
+      dotColor: '#10b981'
+    }
+  };
+  return styles[category] || styles.action;
+};
+
 function genThreadId() {
   return 'thread_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6);
 }
@@ -57,7 +111,7 @@ const findProfileReportHtml = (ctx) => {
 
 export default function RunPanel({ onClose }) {
   const {
-    workflowId, workflowName, isDirty, isCompiled, nodes,
+    workflowId, workflowName, isDirty, isCompiled, nodes, edges,
     autoNewSession, setWorkflowMeta, workflowDescription, workflowGroup,
     workflowCategory, globalErrorNode, dynamicResumption, warmup
   } = useWorkflowStore();
@@ -244,9 +298,9 @@ export default function RunPanel({ onClose }) {
         }
 
         const pausedOriginalNodeId = res.next_node?.replace(/^(gate_|pre_gate_|post_gate_)/, '') || res.next_node;
-        const runConfig = useWorkflowStore.getState().buildConfig();
-        const pausedNode = runConfig.nodes.find(n => n.id === pausedOriginalNodeId);
-        const enabledActions = pausedNode?.hitl_actions || ['approve', 'rework', 'reject'];
+        const storeNodes = useWorkflowStore.getState().nodes;
+        const pausedNode = storeNodes.find(n => n.id === pausedOriginalNodeId);
+        const enabledActions = pausedNode?.hitl_actions || pausedNode?.data?.hitl_actions || ['approve', 'rework', 'reject'];
 
         console.log(`DEBUG [RunPanel]: Pause detected at ${res.next_node} (Original: ${pausedOriginalNodeId}). Enabled actions:`, enabledActions);
 
@@ -257,7 +311,7 @@ export default function RunPanel({ onClose }) {
           pausedNodeOutput: pausedOutput,
           threadId: tid,
           enabledActions: enabledActions,
-          nodeType: pausedNode?.type,
+          nodeType: pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type),
           nodeConfig: pausedNode,
           context: res.context || {}
         });
@@ -396,7 +450,7 @@ export default function RunPanel({ onClose }) {
     }
   }, [running, isCompiled, onSend]);
 
-  const onResume = async (actionArg) => {
+  const onResume = async (actionArg, choicePayload) => {
     if (running) return;
 
     // Detect if we are submitting a form (actionArg is an object)
@@ -443,6 +497,7 @@ export default function RunPanel({ onClose }) {
       // ✅ FORM FIX (Apr 15, 2026): Spread form field values into payload for backend context injection
       const payload = {
         ...(isForm ? actionArg : {}),  // Spread individual form field values (customer_name, email, etc.)
+        ...(choicePayload || {}),      // Spread choice selection payload (clicked_button_id)
         feedback: reworkFeedback || null,
         decision: action,
         include_original_output: pausedInfo.includeOriginalOutput ?? true,
@@ -471,9 +526,9 @@ export default function RunPanel({ onClose }) {
         }
 
         const resumeOriginalNodeId = res.next_node?.replace(/^(gate_|pre_gate_|post_gate_)/, '') || res.next_node;
-        const resumeConfig = useWorkflowStore.getState().buildConfig();
-        const pausedNode = resumeConfig.nodes.find(n => n.id === resumeOriginalNodeId);
-        const enabledActions = pausedNode?.hitl_actions || ['approve', 'rework', 'reject'];
+        const storeNodes = useWorkflowStore.getState().nodes;
+        const pausedNode = storeNodes.find(n => n.id === resumeOriginalNodeId);
+        const enabledActions = pausedNode?.hitl_actions || pausedNode?.data?.hitl_actions || ['approve', 'rework', 'reject'];
 
         setPausedInfo({
           isPaused: true,
@@ -483,7 +538,7 @@ export default function RunPanel({ onClose }) {
           threadId: threadId,
           enabledActions: enabledActions,
           showReworkForm: false,
-          nodeType: pausedNode?.type,
+          nodeType: pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type),
           nodeConfig: pausedNode,
           context: res.context || {}
         });
@@ -639,8 +694,9 @@ export default function RunPanel({ onClose }) {
         const originalNodeId = nextNode?.replace(/^(gate_|pre_gate_|post_gate_)/, '') || nextNode;
 
         const config = useWorkflowStore.getState().buildConfig();
-        const pausedNode = config.nodes.find(n => n.id === originalNodeId);
-        const enabledActions = pausedNode?.hitl_actions || ['approve', 'rework', 'reject'];
+        const storeNodes = useWorkflowStore.getState().nodes;
+        const pausedNode = storeNodes.find(n => n.id === originalNodeId);
+        const enabledActions = pausedNode?.hitl_actions || pausedNode?.data?.hitl_actions || ['approve', 'rework', 'reject'];
 
         // Get last AI message for the preview bubble
         const lastAiMsg = [...messages].reverse().find(m => m.type === 'AIMessage');
@@ -652,7 +708,7 @@ export default function RunPanel({ onClose }) {
           pausedNodeOutput: lastAiMsg?.content || 'Ready for approval...',
           threadId: tid,
           enabledActions: enabledActions,
-          nodeType: pausedNode?.type,
+          nodeType: pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type),
           nodeConfig: pausedNode,
           context: res.context || {}
         });
@@ -686,7 +742,41 @@ export default function RunPanel({ onClose }) {
     }
   };
 
-  const hasButtonTriggers = nodes.some(n => n.data?.type === 'button_trigger');
+  const startingButtonTriggers = nodes
+    .filter(n => n.data?.type === 'button_trigger')
+    .filter(n => {
+      // Trace backwards from this button to see if we can reach START/start
+      // without passing through another button or form node.
+      const visited = new Set();
+      let foundStart = false;
+
+      const traverse = (currentId) => {
+        if (currentId === 'START' || currentId === 'start') {
+          foundStart = true;
+          return;
+        }
+        if (visited.has(currentId)) return;
+        visited.add(currentId);
+
+        const incoming = edges ? edges.filter(e => e.target === currentId) : [];
+        for (const edge of incoming) {
+          const parentNode = nodes.find(n => n.id === edge.source);
+          if (parentNode) {
+            const type = parentNode.type || parentNode.data?.type;
+            if (type === 'button_trigger' || type === 'form_node') {
+              continue;
+            }
+          }
+          traverse(edge.source);
+          if (foundStart) return;
+        }
+      };
+
+      traverse(n.id);
+      return foundStart;
+    });
+
+  const hasButtonTriggers = startingButtonTriggers.length > 0;
   const hasOcrNodes = nodes.some(n => n.data?.type === 'ocr_node');
   const isChatStarted = streamEvents.some(e => ['node_start', 'token', 'user_message'].includes(e.type));
   const hideInput = hasButtonTriggers || (hasOcrNodes && !isChatStarted);
@@ -1330,95 +1420,185 @@ export default function RunPanel({ onClose }) {
                 gap: 10,
                 background: '#FFFFFF',
                 padding: 10,
-                borderRadius: 24,
+                borderRadius: 20,
                 border: `1px solid ${THEME_BORDER}`,
-                boxShadow: '0 12px 40px rgba(0,0,0,0.08)',
+                boxShadow: '0 8px 30px rgba(0,0,0,0.04)',
                 opacity: running ? 0.6 : 1,
                 pointerEvents: running ? 'none' : 'auto',
-                transition: 'all 0.4s cubic-bezier(0.19, 1, 0.22, 1)'
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                justifyContent: 'center'
               }}>
-                {(pausedInfo.enabledActions || ['approve', 'rework', 'reject']).includes('approve') && (
-                  <button
-                    onClick={() => onResume('approve')}
-                    style={{
-                      flex: 1,
-                      padding: '14px',
-                      borderRadius: 16,
-                      background: THEME_ACCENT,
-                      color: '#FFFFFF',
-                      border: 'none',
-                      fontWeight: 800,
-                      fontSize: 12,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 8,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.08em',
-                      transition: 'all 0.3s cubic-bezier(0.19, 1, 0.22, 1)',
-                      boxShadow: '0 4px 12px rgba(142, 119, 187, 0.2)'
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(142, 119, 187, 0.3)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(142, 119, 187, 0.2)'; }}
-                  >
-                    <FiCheck size={18} /> Approve
-                  </button>
-                )}
-                {(pausedInfo.enabledActions || ['approve', 'rework', 'reject']).includes('rework') && (
-                  <button
-                    onClick={() => setPausedInfo({ ...pausedInfo, showReworkForm: !pausedInfo.showReworkForm })}
-                    style={{
-                      flex: 1,
-                      padding: '14px',
-                      borderRadius: 16,
-                      background: pausedInfo.showReworkForm ? '#1C1C1E' : '#F3F4F6',
-                      color: pausedInfo.showReworkForm ? '#FFFFFF' : '#475569',
-                      border: 'none',
-                      fontWeight: 700,
-                      fontSize: 12,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 8,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.08em',
-                      transition: 'all 0.3s cubic-bezier(0.19, 1, 0.22, 1)'
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = pausedInfo.showReworkForm ? '#000000' : '#E5E7EB'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = pausedInfo.showReworkForm ? '#1C1C1E' : '#F3F4F6'; }}
-                  >
-                    <FiEdit size={16} /> {pausedInfo.showReworkForm ? 'Collapse' : 'Edit'}
-                  </button>
-                )}
-                {(pausedInfo.enabledActions || ['approve', 'rework', 'reject']).includes('reject') && (
-                  <button
-                    onClick={() => window.confirm('Terminate orchestration?') && onResume('reject')}
-                    style={{
-                      flex: 1,
-                      padding: '14px',
-                      borderRadius: 16,
-                      background: '#FFFFFF',
-                      color: '#F87171',
-                      border: '1px solid #FEE2E2',
-                      fontWeight: 700,
-                      fontSize: 12,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 8,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.08em',
-                      transition: 'all 0.3s cubic-bezier(0.19, 1, 0.22, 1)'
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#FEF2F2'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = '#FFFFFF'; }}
-                  >
-                    <FiTrash size={16} /> Stop
-                  </button>
-                )}
+                {(() => {
+                  const nextNodeId = pausedInfo.nextNode;
+                  const outgoingEdges = edges ? edges.filter(e => e.source === nextNodeId) : [];
+                  const choiceButtons = outgoingEdges
+                    .map(e => nodes.find(n => n.id === e.target || (n.data && n.data.id === e.target)))
+                    .filter(n => n && (n.type === 'button_trigger' || n.data?.type === 'button_trigger'));
+
+                  if (choiceButtons.length > 0) {
+                    return choiceButtons.map((btn) => {
+                      const catStyles = getButtonCategoryStyles(btn.data?.button_category || btn.button_category || btn.data?.category || btn.category);
+                      return (
+                        <motion.button
+                          key={btn.id}
+                          whileHover={{ y: -1, scale: 1.01 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => onResume('approve', { clicked_button_id: btn.id })}
+                          style={{
+                            flex: 1,
+                            maxWidth: '200px',
+                            padding: '10px 18px',
+                            borderRadius: '10px',
+                            background: catStyles.bg,
+                            color: catStyles.color,
+                            border: `1px solid ${catStyles.border}`,
+                            fontWeight: '600',
+                            fontSize: '12.5px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = catStyles.bgHover;
+                            e.currentTarget.style.borderColor = catStyles.borderHover;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = catStyles.bg;
+                            e.currentTarget.style.borderColor = catStyles.border;
+                          }}
+                        >
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: catStyles.dotColor, opacity: 0.8 }} />
+                          {btn.data?.button_label || btn.button_label || btn.label || btn.data?.label || 'Proceed'}
+                        </motion.button>
+                      );
+                    });
+                  }
+
+                  if (pausedInfo.nodeType === 'button_trigger') {
+                    const catStyles = getButtonCategoryStyles(pausedInfo.nodeConfig?.data?.button_category || pausedInfo.nodeConfig?.button_category);
+                    return (
+                      <motion.button
+                        whileHover={{ y: -1, scale: 1.01 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => onResume('approve')}
+                        style={{
+                          flex: 1,
+                          maxWidth: '200px',
+                          padding: '10px 18px',
+                          borderRadius: '10px',
+                          background: catStyles.bg,
+                          color: catStyles.color,
+                          border: `1px solid ${catStyles.border}`,
+                          fontWeight: '600',
+                          fontSize: '12.5px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = catStyles.bgHover;
+                          e.currentTarget.style.borderColor = catStyles.borderHover;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = catStyles.bg;
+                          e.currentTarget.style.borderColor = catStyles.border;
+                        }}
+                      >
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: catStyles.dotColor, opacity: 0.8 }} />
+                        {pausedInfo.nodeConfig?.data?.button_label || pausedInfo.nodeConfig?.button_label || 'Proceed'}
+                      </motion.button>
+                    );
+                  }
+
+                  return (
+                    <>
+                      {(pausedInfo.enabledActions || ['approve', 'rework', 'reject']).includes('approve') && (
+                        <button
+                          onClick={() => onResume('approve')}
+                          style={{
+                            flex: 1,
+                            maxWidth: '200px',
+                            padding: '12px 20px',
+                            borderRadius: 10,
+                            background: THEME_ACCENT,
+                            color: '#FFFFFF',
+                            border: 'none',
+                            fontWeight: 600,
+                            fontSize: 12.5,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.9'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                        >
+                          <FiCheck size={16} /> Approve
+                        </button>
+                      )}
+                      {(pausedInfo.enabledActions || ['approve', 'rework', 'reject']).includes('rework') && (
+                        <button
+                          onClick={() => setPausedInfo({ ...pausedInfo, showReworkForm: !pausedInfo.showReworkForm })}
+                          style={{
+                            flex: 1,
+                            maxWidth: '200px',
+                            padding: '12px 20px',
+                            borderRadius: 10,
+                            background: pausedInfo.showReworkForm ? '#18181B' : 'rgba(0, 0, 0, 0.03)',
+                            color: pausedInfo.showReworkForm ? '#FFFFFF' : '#4b5563',
+                            border: '1px solid rgba(0, 0, 0, 0.06)',
+                            fontWeight: 600,
+                            fontSize: 12.5,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = pausedInfo.showReworkForm ? '#27272A' : 'rgba(0, 0, 0, 0.06)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = pausedInfo.showReworkForm ? '#18181B' : 'rgba(0, 0, 0, 0.03)'; }}
+                        >
+                          <FiEdit size={14} /> Rework
+                        </button>
+                      )}
+                      {(pausedInfo.enabledActions || ['approve', 'rework', 'reject']).includes('reject') && (
+                        <button
+                          onClick={() => onResume('reject')}
+                          style={{
+                            flex: 1,
+                            maxWidth: '200px',
+                            padding: '12px 20px',
+                            borderRadius: 10,
+                            background: 'rgba(239, 68, 68, 0.04)',
+                            color: '#EF4444',
+                            border: '1px solid rgba(239, 68, 68, 0.12)',
+                            fontWeight: 600,
+                            fontSize: 12.5,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.25)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.04)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.12)'; }}
+                        >
+                          <FiTrash size={14} /> Stop
+                        </button>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
             </div>
@@ -1434,34 +1614,50 @@ export default function RunPanel({ onClose }) {
                   padding: '0 4px',
                   justifyContent: hideInput ? 'center' : 'flex-start'
                 }}>
-                  {nodes
-                    .filter(n => n.data?.type === 'button_trigger')
-                    .map(btnNode => (
-                      <motion.button
-                        key={btnNode.id}
-                        whileHover={{ scale: 1.05, translateY: -2 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => onSend(btnNode.data?.button_input || 'Start')}
-                        style={{
-                          padding: hideInput ? '14px 28px' : '6px 14px',
-                          borderRadius: hideInput ? 16 : 20,
-                          background: hideInput ? THEME_ACCENT : 'rgba(142, 119, 187, 0.08)',
-                          border: hideInput ? `1px solid ${THEME_ACCENT}` : '1px solid rgba(142, 119, 187, 0.2)',
-                          color: hideInput ? '#FFFFFF' : '#554488',
-                          fontSize: hideInput ? 13 : 11,
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 10,
-                          transition: 'all 0.2s',
-                          boxShadow: hideInput ? '0 10px 20px rgba(142, 119, 187, 0.3)' : 'none'
-                        }}
-                      >
-                        <FiZap size={hideInput ? 14 : 12} color={hideInput ? '#FFFFFF' : 'inherit'} />
-                        {btnNode.data?.button_label || btnNode.data?.label || 'Run'}
-                      </motion.button>
-                    ))}
+                  {startingButtonTriggers.map(btnNode => {
+                      const catStyles = getButtonCategoryStyles(btnNode.data?.button_category || btnNode.button_category || btnNode.data?.category || btnNode.category);
+                      return (
+                        <motion.button
+                          key={btnNode.id}
+                          whileHover={{ scale: 1.01, translateY: -1 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => onSend(btnNode.data?.button_input || 'Start')}
+                          style={{
+                            padding: hideInput ? '10px 20px' : '6px 14px',
+                            borderRadius: hideInput ? 10 : 8,
+                            background: hideInput ? (btnNode.data?.button_category ? catStyles.color : 'var(--theme-primary, #6366F1)') : catStyles.bg,
+                            border: hideInput ? 'none' : `1px solid ${catStyles.border}`,
+                            color: hideInput ? '#FFFFFF' : catStyles.color,
+                            fontSize: hideInput ? 12.5 : 11,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!hideInput) {
+                              e.currentTarget.style.background = catStyles.bgHover;
+                              e.currentTarget.style.borderColor = catStyles.borderHover;
+                            } else {
+                              e.currentTarget.style.opacity = '0.9';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!hideInput) {
+                              e.currentTarget.style.background = catStyles.bg;
+                              e.currentTarget.style.borderColor = catStyles.border;
+                            } else {
+                              e.currentTarget.style.opacity = '1';
+                            }
+                          }}
+                        >
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: hideInput ? '#FFFFFF' : catStyles.dotColor, opacity: 0.8 }} />
+                          {btnNode.data?.button_label || btnNode.data?.label || 'Run'}
+                        </motion.button>
+                      );
+                    })}
 
                     {hasOcrNodes && (
                       <motion.label

@@ -510,8 +510,8 @@ export const useWorkflowStore = create((set, get) => ({
           'response_status', 'response_headers', 'response_body_key',
           'direct_tool_name', 'tool_arguments', 'destination_key',
           'classification_classes', 'classification_summary', 'classification_engine', 'classification_input_field',
-          'engine_mode', 'custom_entities', 'output_format',
-          'template_content', 'template_output_key', 'template_data_key', 'template_file_path'
+          'template_content', 'template_output_key', 'template_data_key', 'template_file_path',
+          'button_label', 'button_input', 'button_category'
         ];
 
         const nodeConfig = {};
