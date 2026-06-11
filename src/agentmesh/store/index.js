@@ -505,6 +505,7 @@ export const useWorkflowStore = create((set, get) => ({
           'pii_engine', 'pii_target', 'pii_entities', 'pii_custom_regex',
           'data_cleaning_rules', 'data_cleaning_target', 'data_cleaning_input_key', 'data_cleaning_output_key',
           'graph_target_key', 'graph_neo4j_uri', 'graph_neo4j_user', 'graph_neo4j_password',
+          'graph_collection', 'graph_sender_key', 'graph_receiver_key', 'graph_txn_id_key', 'graph_amount_key', 'graph_timestamp_key',
           'ocr_input_key', 'ocr_prompt', 'ocr_engine', 'ocr_standard_model',
           'on_error',
           'response_status', 'response_headers', 'response_body_key',
