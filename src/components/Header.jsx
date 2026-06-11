@@ -18,7 +18,7 @@ const Header = ({ activeSection }) => {
 
   const dropdownRef = useRef(null);
 
-  const { decodedToken, logout } = useAuth();
+  const { decodedToken, logout, changePassword } = useAuth();
   const userId = decodedToken?.sub;
   const { data: user, isLoading } = useFetchUser(userId);
   const { personaStatuses } = usePersonaStatuses()
@@ -189,6 +189,12 @@ const Header = ({ activeSection }) => {
                     <HelpCircle size={16} className="mr-3 text-gray-500" /> Help & Support
                   </button>
                 </div> */}
+
+                <div className="py-1 border-t border-gray-100">
+                  <button className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 w-full text-left" onClick={changePassword}>
+                    <Settings size={16} className="mr-3 text-gray-500" /> Change Password
+                  </button>
+                </div>
 
                 <div className="py-1 border-t border-gray-100 bg-gray-50">
                   {isLoading ? (
