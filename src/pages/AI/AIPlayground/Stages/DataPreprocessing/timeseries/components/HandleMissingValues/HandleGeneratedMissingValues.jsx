@@ -3,7 +3,7 @@ import InfoButton from '../../../../../components/InfoButton';
 import ColumnSearchableDropdown from './ColumnSearchableDropdown';
 import ToggleSwitch from './ToggleSwitch';
 import MethodParameterField from './MethodParameterField';
-
+import { Info } from 'lucide-react';
 /* Simple chevron icon used for expand/collapse actions */
 const ChevronSVG = () => (
   <svg
@@ -263,7 +263,15 @@ const categoricalSeasonalPeriodError =
           </button>
         </div>
       </div>
+<div className="mx-4 mb-3 flex items-center gap-2 rounded-md border border-[#B69AD9] bg-[#F8F5FC] px-3 py-2 text-xs text-[#8C6BB1]">
+  <Info size={14} className="flex-shrink-0" />
 
+  <span>
+    {isGeneratedMissingMandatory
+      ? 'Handle Generated Missing Values is required because generated missing values were detected.'
+      : 'Handle Generated Missing Values is not required because no generated missing values were detected.'}
+  </span>
+</div>
      {/* Expandable content section - only rendered if toggle is on and section is expanded */}
       {expandedSections.handleGeneratedMissing &&
         toggles.handleGeneratedMissing && (

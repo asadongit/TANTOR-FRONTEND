@@ -3,7 +3,7 @@ import InfoButton from '../../../../../components/InfoButton';
 import ToggleSwitch from './ToggleSwitch';
 import MethodParameterField from './MethodParameterField';
 import { dataPreprocessingDescriptions } from '../../../../../../../../hooks/AI/datapreprocessing/descriptions';
-
+import { Info } from 'lucide-react';
  //Chevron icon used for expand / collapse
 const ChevronSVG = () => (
   <svg
@@ -138,7 +138,15 @@ function HandleHighMissingValues({
           </button>
         </div>
       </div>
+<div className="mx-4 mb-3 flex items-center gap-2 rounded-md border border-[#B69AD9] bg-[#F8F5FC] px-3 py-2 text-xs text-[#8C6BB1]">
+  <Info size={14} className="flex-shrink-0" />
 
+  <span>
+    {hasNumericalColumns
+      ? 'Handle High Missing Values is required because numerical columns were detected.'
+      : 'Handle High Missing Values is not required because no numerical columns were detected.'}
+  </span>
+</div>
       {/* body */}
       {expandedSections.handleHighMissing &&
         toggles.handleHighMissing && (
@@ -147,7 +155,7 @@ function HandleHighMissingValues({
             <div className="max-w-sm">
               <MethodParameterField
                 label="Missing Value Threshold (%)"
-                value={highMissingConfig.threshold ?? ''}
+                value={highMissingConfig.threshold}
                 min={0}
                 max={100}
                 hasError={!!thresholdError}

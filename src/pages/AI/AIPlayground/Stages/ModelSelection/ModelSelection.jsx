@@ -3,7 +3,8 @@ import { AIPlaygroundLayout } from '../../AIPlaygroundLayout';
 import { Search } from 'lucide-react';
 import classificationAlgorithmsData from '../../../../../components/classification_models_hyperparameters.json';
 import regressionAlgorithmsData from '../../../../../components/regression_models_hyperparameters.json';
-import timeseriesAlgorithmsData from '../../../../../components/timeseries_models_hyperparameters.json';
+import univariateAlgorithmsData from '../../../../../components/univariate_models_hyperparameter.json';
+import multivariateAlgorithmsData from '../../../../../components/multivariate_models_hyperparameter.json';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 import AlgorithmCard from './AlgorithmCard';
@@ -40,6 +41,9 @@ const CLASSIFICATION_REVERSE_METRIC_MAPPING = {
     "f1": "F1 Score",
     "log_loss": "Log Loss"
 };
+
+
+
 const REGRESSION_METRIC_FULL_FORM = {
     "MAE": "Mean Absolute Error",
     "MSE": "Mean Squared Error",
@@ -127,15 +131,33 @@ function ModelSelection() {
     const predictionType =
     modelGenesisConfig?.prediction_type ||
     modelGenesisConfig?.predictionType ||'';
+    const timeseriesType = modelGenesisConfig?.timeseries_type || modelGenesisConfig?.timeSeriesType || '';
     const isTimeSeries =
     String(predictionType).trim().toLowerCase() === 'time series' ||
     String(predictionType).trim().toLowerCase() === 'timeseries' ||
     String(predictionType).trim().toLowerCase() === 'univariate_timeseries' ||
     String(predictionType).trim().toLowerCase() === 'multivariate_timeseries';
+
+    const isUnivariate =
+    String(timeseriesType).trim().toLowerCase() ===
+    'Univariate' || String(timeseriesType).trim().toLowerCase() === 'univariate';
+
+    const isMultivariate =
+        String(timeseriesType).trim().toLowerCase() ===
+        'Multivariate' || String(timeseriesType).trim().toLowerCase() === 'multivariate';
     let algorithmData;
-    if (isTimeSeries) {algorithmData = timeseriesAlgorithmsData;} 
-    else if (isRegression) { algorithmData = regressionAlgorithmsData;}
-    else {algorithmData = classificationAlgorithmsData;}
+    if (isUnivariate) {
+    algorithmData = univariateAlgorithmsData;
+}
+else if (isMultivariate) {
+    algorithmData = multivariateAlgorithmsData;
+}
+else if (isRegression) {
+    algorithmData = regressionAlgorithmsData;
+}
+else {
+    algorithmData = classificationAlgorithmsData;
+}
     
 
 
@@ -224,6 +246,7 @@ const REVERSE_METRIC_MAPPING = isTimeSeries
     });
 
     const [normalizeData, setNormalizeData] = useState(false);
+    const [forecastHorizon, setForecastHorizon] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const isInteractionLocked = readonly || isSubmitting;
 
@@ -287,25 +310,27 @@ const REVERSE_METRIC_MAPPING = isTimeSeries
 
     useEffect(() => {
         const savedConfig = workflowState?.modelSelection?.config;
-
         if (!savedConfig) return;
-
         if (savedConfig.normalize !== undefined) {
             setNormalizeData(savedConfig.normalize);
         }
-
+        if (savedConfig.forecast_horizon) {
+                setForecastHorizon(
+                    String(savedConfig.forecast_horizon)
+                );
+            }
         if (savedConfig.performance_metrics && Array.isArray(savedConfig.performance_metrics)) {
             const reverseMap = isTimeSeries
-    ? TIMESERIES_REVERSE_METRIC_MAPPING
-    : isRegression
-        ? REGRESSION_REVERSE_METRIC_MAPPING
-        : CLASSIFICATION_REVERSE_METRIC_MAPPING;
+                ? TIMESERIES_REVERSE_METRIC_MAPPING
+                : isRegression
+                    ? REGRESSION_REVERSE_METRIC_MAPPING
+                    : CLASSIFICATION_REVERSE_METRIC_MAPPING;
 
-const nameMap = isTimeSeries
-    ? TIMESERIES_METRIC_NAME_MAPPING
-    : isRegression
-        ? REGRESSION_METRIC_NAME_MAPPING
-        : CLASSIFICATION_METRIC_NAME_MAPPING;
+            const nameMap = isTimeSeries
+                ? TIMESERIES_METRIC_NAME_MAPPING
+                : isRegression
+                    ? REGRESSION_METRIC_NAME_MAPPING
+                    : CLASSIFICATION_METRIC_NAME_MAPPING;
             const initialMetrics = getInitialMetrics();
             const byName = new Map(initialMetrics.map(metric => [metric.name, metric]));
 
@@ -683,12 +708,14 @@ const defaultPerformanceMetrics = isTimeSeries
             hyperparameter_modes: hyperparameterMode,
             param_grid: finalParamGrid,
             normalize: normalizeData,
+            forecast: Number(forecastHorizon),
             return_metrics: true,
             scoring: defaultScoringMetric,
             performance_metrics: finalPerformanceMetrics.length > 0 ? finalPerformanceMetrics : defaultPerformanceMetrics,
             test_size: 0.2,
             random_state: 42,
             shuffle: true
+            
         };
 
         if (!payload.ensemble_id || !payload.workflow_id) {
@@ -700,19 +727,53 @@ const defaultPerformanceMetrics = isTimeSeries
 
     // Validate the whole form — returns true if all good
     const isFormValid = () => {
-        const enabledAlgos = Object.values(allAlgorithmsState).filter(algo => algo.enabled);
-        const hasEnabledMetrics = metrics.some(m => m.enabled);
-        if (enabledAlgos.length === 0 || !hasEnabledMetrics) return false;
-        return enabledAlgos.every(algo => validateAlgorithm(algo));
-    };
+            const enabledAlgos = Object.values(allAlgorithmsState).filter(algo => algo.enabled);
+            const hasEnabledMetrics = metrics.some(m => m.enabled);
+
+            if (enabledAlgos.length === 0 || !hasEnabledMetrics) return false;
+
+            if (isTimeSeries) {
+                const forecastValue = Number(forecastHorizon);
+
+                if (
+                    !forecastHorizon ||
+                    forecastValue < 1 ||
+                    forecastValue > 15
+                ) {
+                    return false;
+                }
+            }
+
+            return enabledAlgos.every(algo => validateAlgorithm(algo));
+        };
 
     const handleNextClick = async () => {
         if (readonly) return true;
         if (isSubmitting) return false;
 
         if (!isFormValid()) {
-            // Trigger inline validation display only on failure
-            setShowValidation(true);
+
+    setShowValidation(true);
+
+    const forecastValue = Number(forecastHorizon);
+
+        if (
+            isTimeSeries &&
+            (
+                !forecastHorizon ||
+                forecastValue < 1 ||
+                forecastValue > 15
+            )
+        ) {
+            toast.error(
+                'Forecast horizon must be between 1 and 15.',
+                {
+                    duration: 3000,
+                    position: 'top-right',
+                }
+            );
+            return false;
+}
 
             const enabledAlgos = Object.values(allAlgorithmsState).filter(algo => algo.enabled);
             const invalidAlgo = enabledAlgos.find(algo => !validateAlgorithm(algo));
@@ -781,7 +842,8 @@ const defaultPerformanceMetrics = isTimeSeries
                     normalize: normalizeData,
                     performance_metrics: payload.performance_metrics,
                     hyperparameter_modes: payload.hyperparameter_modes,
-                    param_grid: payload.param_grid
+                    param_grid: payload.param_grid,
+                    forecast_horizon: Number(forecastHorizon),
                 },
                 apiResponse: result
             });
@@ -946,6 +1008,10 @@ const defaultPerformanceMetrics = isTimeSeries
                     hasEnabledMetrics={hasEnabledMetrics}
                     showValidation={showValidation}
                     metricFullFormMap={isRegression ? REGRESSION_METRIC_FULL_FORM : {}}
+
+                    forecastHorizon={forecastHorizon}
+                    setForecastHorizon={setForecastHorizon}
+                    isTimeSeries={isTimeSeries}
                 />
             </div>
         </AIPlaygroundLayout>

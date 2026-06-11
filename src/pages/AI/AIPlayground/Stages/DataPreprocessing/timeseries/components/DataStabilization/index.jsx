@@ -75,28 +75,20 @@ const seasonalPeriodMethods = [
                       });
         }
   }, [workflowState?.dataPreprocessing?.step4?.config, mode]);
-
-  useEffect(() => {
-    if (!showFieldErrors) return;
-    const outlierError =toggles.outlierTreatment &&!outlierConfig.method;
-    if (!outlierError) {
-      setShowFieldErrors(false);
-    }
-  }, [outlierConfig, toggles, showFieldErrors]);
-
-  const methodError = showFieldErrors && toggles.outlierTreatment &&!outlierConfig.method
-    ? 'Please select an outlier treatment method'
-    : '';
-  // Rolling window error is shown if the selected method requires a rolling window and the value is invalid
+// Rolling window error is shown if the selected method requires a rolling window and the value is invalid
   const rollingWindowError =
   showFieldErrors &&
   toggles.outlierTreatment &&
   rollingWindowMethods.includes(outlierConfig.method) &&
-  (
-    !Number(outlierConfig.rollingWindow) ||
-    Number(outlierConfig.rollingWindow) < 3 ||
-    Number(outlierConfig.rollingWindow) > 365
-  )
+  !outlierConfig.rollingWindow
+    ? 'Rolling Window is required'
+    : showFieldErrors &&
+      toggles.outlierTreatment &&
+      rollingWindowMethods.includes(outlierConfig.method) &&
+      (
+        Number(outlierConfig.rollingWindow) < 3 ||
+        Number(outlierConfig.rollingWindow) > 365
+      )
     ? 'Value must be between 3 and 365'
     : '';
     
@@ -105,15 +97,42 @@ const seasonalPeriodMethods = [
   showFieldErrors &&
   toggles.outlierTreatment &&
   seasonalPeriodMethods.includes(outlierConfig.method) &&
-  (
-    !Number(outlierConfig.seasonalPeriod) ||
-    Number(outlierConfig.seasonalPeriod) < 2 ||
-    Number(outlierConfig.seasonalPeriod) > 365
-  )
+  !outlierConfig.seasonalPeriod
+    ? 'Seasonal Period is required'
+    : showFieldErrors &&
+      toggles.outlierTreatment &&
+      seasonalPeriodMethods.includes(outlierConfig.method) &&
+      (
+        Number(outlierConfig.seasonalPeriod) < 2 ||
+        Number(outlierConfig.seasonalPeriod) > 365
+      )
     ? 'Value must be between 2 and 365'
     : '';
-    
-    
+  useEffect(() => {
+  if (!showFieldErrors) return;
+
+  const outlierError =
+    toggles.outlierTreatment &&
+    (
+      !outlierConfig.method ||
+      rollingWindowError ||
+      seasonalPeriodError
+    );
+
+  if (!outlierError) {
+    setShowFieldErrors(false);
+  }
+}, [
+  outlierConfig,
+  toggles,
+  showFieldErrors,
+  rollingWindowError,
+  seasonalPeriodError,
+]);
+
+  const methodError = showFieldErrors && toggles.outlierTreatment &&!outlierConfig.method
+    ? 'Please select an outlier treatment method'
+    : '';
 
   const toggleSection = (section) => {
     setExpandedSections({
@@ -135,17 +154,31 @@ const seasonalPeriodMethods = [
       }));
 
       if (newToggleState) {
-        setExpandedSections({
-          outlierTreatment: true,
-          seasonalityAnalysis: false
-        });
-      } else {
-        setExpandedSections((previousState) => ({
-          ...previousState,
-          outlierTreatment: false
-        }));
-        setShowFieldErrors(false);
-      }
+  setExpandedSections({
+    outlierTreatment: true,
+    seasonalityAnalysis: false
+  });
+
+  setOutlierConfig((prev) => ({
+    ...prev,
+    method: availableOutlierOptions?.[0]?.value || '',
+    rollingWindow: '',
+    seasonalPeriod: '',
+  }));
+} else {
+  setExpandedSections((previousState) => ({
+    ...previousState,
+    outlierTreatment: false
+  }));
+
+  setOutlierConfig({
+    method: '',
+    rollingWindow: '',
+    seasonalPeriod: '',
+  });
+
+  setShowFieldErrors(false);
+}
     }
 
     if (key === 'seasonalityAnalysis') {
@@ -169,21 +202,41 @@ const seasonalPeriodMethods = [
       }
     }
   };
+const requiresRollingWindow =
+  rollingWindowMethods.includes(outlierConfig.method);
+
+const requiresSeasonalPeriod =
+  seasonalPeriodMethods.includes(outlierConfig.method);
 
   const handleApiCall = async () => {
     if (readonly) return true;
 
-    if (
-    toggles.outlierTreatment &&
+    const hasValidationError =
+  !outlierConfig.method ||
+  (
+    requiresRollingWindow &&
     (
-      !outlierConfig.method ||
-      rollingWindowError ||
-      seasonalPeriodError
+      !outlierConfig.rollingWindow ||
+      Number(outlierConfig.rollingWindow) < 3 ||
+      Number(outlierConfig.rollingWindow) > 365
     )
-  ) {
-    setShowFieldErrors(true);
-    return false;
-  }
+  ) ||
+  (
+    requiresSeasonalPeriod &&
+    (
+      !outlierConfig.seasonalPeriod ||
+      Number(outlierConfig.seasonalPeriod) < 2 ||
+      Number(outlierConfig.seasonalPeriod) > 365
+    )
+  );
+
+if (
+  toggles.outlierTreatment &&
+  hasValidationError
+) {
+  setShowFieldErrors(true);
+  return false;
+}
     try {
       setIsLoading(true);
 
@@ -233,26 +286,17 @@ const seasonalPeriodMethods = [
 
   return (
     <div className="space-y-4">
-      {outliersDetectedCount > 0 && (
-    <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-      <span className="font-medium">
-        {outliersDetectedCount} outlier{outliersDetectedCount !== 1 ? 's' : ''} were detected.
-      </span>
-    </div>
-  )}
+      
       <OutlierTreatment
         isToggled={toggles.outlierTreatment}
         isExpanded={expandedSections.outlierTreatment}
         onToggle={() => toggleSwitch('outlierTreatment')}
         onExpand={() => toggleSection('outlierTreatment')}
+        outlierCount={outliersDetectedCount}
         readonly={readonly}
         sectionKey="outlierTreatment"
 
-        hasError={
-          !!methodError ||
-          !!rollingWindowError ||
-          !!seasonalPeriodError
-        }
+        hasError={!!methodError}
 
         outlierConfig={outlierConfig}
         setOutlierConfig={setOutlierConfig}

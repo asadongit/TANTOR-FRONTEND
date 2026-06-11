@@ -240,6 +240,11 @@ function SeasonalityAnalysisComponent({readonly,onValidationChange,onApiCall,pre
         isLoading={isLoading}
         seasonalityReport={seasonalityAnalysisReport}
         sectionDescriptions={sectionDescriptions}
+        blockedMessage={
+        !wasSeasonalityAnalysisEnabledInStep4
+          ? 'Seasonality Treatment is unavailable because Seasonality Analysis was not enabled in the previous step.'
+          : ''
+      }
       />
       )}  
 

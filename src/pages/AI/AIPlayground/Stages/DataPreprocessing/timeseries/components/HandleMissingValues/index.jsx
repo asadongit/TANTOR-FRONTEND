@@ -83,7 +83,7 @@ function HandleMissingValues({
   hasGeneratedMissingCategorical ||
   hasGeneratedMissingDatetime;
   const isGeneratedMissingMandatory = hasAnyGeneratedMissing;
-
+  
 
 
   // Local UI state for the step cards and dropdown controls.
@@ -95,7 +95,7 @@ function HandleMissingValues({
   
 });
 const [highMissingConfig, setHighMissingConfig] = useState({
-  threshold: '',
+  threshold: 70,
 });
 
   const [originalMissingConfig, setOriginalMissingConfig] = useState({
@@ -145,7 +145,7 @@ const [highMissingConfig, setHighMissingConfig] = useState({
       handleOriginalMissing: isUnivariateTimeseries ? false : (savedConfig.original_missing_value_active || false),
       handleGeneratedMissing:savedConfig.generated_missing_value_active || false, });
     setHighMissingConfig({threshold:
-    savedConfig.high_missing_value_threshold ?? '',
+    savedConfig.high_missing_value_threshold ?? 70,
     });
     setOriginalMissingConfig({
       numeric:savedConfig.original_missing_value_numeric_method || '',
@@ -414,6 +414,7 @@ useEffect(() => {
   return (
     <div className="space-y-4 p-4">
       {/*High missing values card.*/}
+      {!isUnivariateTimeseries && (
       <HandleHighMissingValues
        readonly={readonly}
       toggles={toggles}
@@ -423,6 +424,7 @@ useEffect(() => {
      numericColumns={numericColumns}
      showFieldErrors={showFieldErrors}
      />
+      )}
       {/* Original missing-values card. */}
       {!isUnivariateTimeseries && (
         <HandleOriginalMissingValues

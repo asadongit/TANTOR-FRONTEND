@@ -362,6 +362,7 @@ function StationarityTreatmentComponent({readonly,onValidationChange,onApiCall, 
         isLoading={isLoading}
         stationarityReport={stationarityAnalysisReport}
         sectionDescriptions={sectionDescriptions}
+        stationarityAnalysisEnabled={wasStationarityAnalysisEnabledInStep5}
       />
     </div>
   );

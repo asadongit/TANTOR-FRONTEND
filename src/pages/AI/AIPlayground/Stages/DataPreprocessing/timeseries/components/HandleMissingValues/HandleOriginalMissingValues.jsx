@@ -4,7 +4,7 @@ import { dataPreprocessingDescriptions } from '../../../../../../../../hooks/AI/
 import ColumnSearchableDropdown from './ColumnSearchableDropdown';
 import ToggleSwitch from './ToggleSwitch';
 import MethodParameterField from './MethodParameterField';
-
+import { Info } from 'lucide-react';
 /* Reusable chevron icon used for expand/collapse actions. */
 const ChevronSVG = () => (
   <svg
@@ -211,7 +211,15 @@ function HandleOriginalMissingValues({
           </button>
         </div>
       </div>
+<div className="mx-4 mb-3 flex items-center gap-2 rounded-md border border-[#B69AD9] bg-[#F8F5FC] px-3 py-2 text-xs text-[#8C6BB1]">
+  <Info size={14} className="flex-shrink-0" />
 
+  <span>
+    {checked
+      ? 'Handle Original Missing Values is required because missing values were detected in the dataset.'
+      : 'Handle Original Missing Values is not required because no missing values were detected in the dataset.'}
+  </span>
+</div>
       {/* ==================== CARD BODY ==================== */}
       {/* Render only when the section is expanded and enabled. */}
       {expanded && checked && (
