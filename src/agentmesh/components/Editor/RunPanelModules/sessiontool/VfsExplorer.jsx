@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiFolder, FiFile, FiDownload, FiX, FiRefreshCw, FiSearch, FiCode, FiType, FiClock, FiActivity, FiDatabase, FiTrendingUp, FiFileText, FiBarChart } from 'react-icons/fi';
-import { listVfsFiles, readVfsFile } from '../../api/agentmesh';
-import { formatMessage } from '../Common/messageFormatting';
+import { listVfsFiles, readVfsFile } from '../../../../api/agentmesh';
+import { formatMessage } from '../../../Common/messageFormatting';
 
 const THEME_ACCENT = '#8E77BB';
 const THEME_SECONDARY = '#4F46E5';
@@ -71,37 +71,32 @@ export default function VfsExplorer({ rootDir, threadId, isOpen, onClose }) {
     if (lines.length === 0) return { headers: [], rows: [] };
     const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
     const rows = lines.slice(1).map(line => {
-      // Basic CSV split that handles quotes if necessary (simplified)
       return line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
     });
     return { headers, rows };
   };
 
   const getBadgeColor = (category) => {
-    if (category === 'Knowledge') return { bg: '#EEF2FF', text: '#4F46E5', border: '#C7D2FE' }; // Indigo
-    if (category === 'Artifact') return { bg: '#ECFDF5', text: '#059669', border: '#A7F3D0' }; // Emerald
+    if (category === 'Knowledge') return { bg: '#EEF2FF', text: '#4F46E5', border: '#C7D2FE' };
+    if (category === 'Artifact') return { bg: '#ECFDF5', text: '#059669', border: '#A7F3D0' };
     return { bg: '#F9FAFB', text: '#6B7280', border: '#E5E7EB' };
   };
 
   const getFileIcon = (filename) => {
     const ext = filename.split('.').pop().toLowerCase();
     
-    // 📊 Data/Analysis Files
     if (['csv', 'xlsx', 'xls'].includes(ext)) {
       return <FiBarChart size={18} style={{ color: '#059669' }} />; 
     }
     
-    // 📄 Protected Documents
     if (ext === 'pdf') {
       return <FiFileText size={18} style={{ color: '#DC2626' }} />; 
     }
     
-    // 📝 Text/Documentation
     if (['md', 'markdown', 'txt'].includes(ext)) {
       return <FiType size={18} style={{ color: '#4F46E5' }} />;
     }
 
-    // 💻 Logic/System Files
     if (['json', 'py', 'js'].includes(ext)) {
       return <FiCode size={18} style={{ color: '#D97706' }} />;
     }
@@ -128,8 +123,6 @@ export default function VfsExplorer({ rootDir, threadId, isOpen, onClose }) {
           border: '1px solid rgba(0,0,0,0.05)'
         }}
       >
-        {/* ── Header Area ── */}
-        {/* ── Header Area ── */}
         <div style={{
           padding: '16px 40px', 
           borderBottom: `1px solid ${THEME_BORDER}`,
@@ -178,15 +171,11 @@ export default function VfsExplorer({ rootDir, threadId, isOpen, onClose }) {
           </div>
         </div>
 
-        {/* ── Main Workspace ── */}
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-          
-          {/* Sidebar / File Tree */}
           <div style={{ 
             width: 380, borderRight: `1px solid ${THEME_BORDER}`, 
             display: 'flex', flexDirection: 'column', background: '#FCFCFB' 
           }}>
-            {/* Search Sub-header */}
             <div style={{ padding: '20px 24px', position: 'relative' }}>
                <FiSearch style={{ position: 'absolute', left: 40, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
                <input 
@@ -263,8 +252,8 @@ export default function VfsExplorer({ rootDir, threadId, isOpen, onClose }) {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                              <div style={{ 
-                               fontSize: 13, fontWeight: 700, color: isActive ? '#111827' : '#4B5563', 
-                               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' 
+                                fontSize: 13, fontWeight: 700, color: isActive ? '#111827' : '#4B5563', 
+                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' 
                              }}>
                                {file.name}
                              </div>
@@ -277,7 +266,7 @@ export default function VfsExplorer({ rootDir, threadId, isOpen, onClose }) {
                                  textTransform: 'uppercase', letterSpacing: '0.05em'
                                }}>
                                  {file.category}
-                               </div>
+                                </div>
                              )}
                           </div>
                           <div style={{ fontSize: 10, color: '#94A3B8', marginTop: 2, fontWeight: 600 }}>
@@ -292,11 +281,9 @@ export default function VfsExplorer({ rootDir, threadId, isOpen, onClose }) {
             </div>
           </div>
 
-          {/* Main Content Area */}
           <div style={{ flex: 1, background: 'white', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             {selectedFile ? (
               <>
-                {/* File Header / Breadcrumbs */}
                 <div style={{ 
                   padding: '18px 32px', borderBottom: `1px solid ${THEME_BORDER}`, 
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
@@ -335,9 +322,8 @@ export default function VfsExplorer({ rootDir, threadId, isOpen, onClose }) {
                        <FiDownload size={14} /> EXPORT
                      </button>
                    </div>
-                </div>
+                 </div>
 
-                {/* Content Scroller */}
                 <div style={{ flex: 1, overflow: 'auto', padding: (isMarkdown(selectedFile.name) || isCSV(selectedFile.name)) ? '32px 50px' : '20px' }}>
                    {isMarkdown(selectedFile.name) ? (
                       <div style={{ maxWidth: 800, margin: '0 auto' }}>
@@ -395,7 +381,6 @@ export default function VfsExplorer({ rootDir, threadId, isOpen, onClose }) {
           </div>
         </div>
 
-        {/* ── Minimalist Footer ── */}
         <div style={{ 
           padding: '16px 40px', background: '#FCFCFB', borderTop: `1px solid ${THEME_BORDER}`, 
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
