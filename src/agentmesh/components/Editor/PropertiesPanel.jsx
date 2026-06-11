@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useWorkflowStore, useUIStore } from '../../store';
-import { listTools, fixGrammar } from '../../api/agentmesh';
+import { useWorkflowStore, useUIStore, useRunStore } from '../../store';
+import { listTools, fixGrammar, chatArchitect } from '../../api/agentmesh';
 import SkillGallery from './SkillGallery';
 import SaveTemplateModal from './SaveTemplateModal';
 import { FiMinus, FiTrash2, FiMousePointer, FiInfo, FiLayers, FiSettings, FiCpu, FiTool, FiGitMerge, FiTarget, FiShare2, FiUser, FiBookOpen, FiLink, FiPlus, FiX, FiGlobe, FiClock, FiCopy, FiCheck, FiSearch, FiChevronDown, FiRepeat, FiFileText, FiZap, FiLoader, FiAlertTriangle, FiGitBranch, FiActivity, FiEdit, FiFilter, FiShield, FiCamera, FiBox, FiSave, FiTerminal, FiDatabase, FiUploadCloud, FiDownload, FiAlignLeft, FiKey, FiLock, FiMessageSquare, FiPlay } from 'react-icons/fi';
@@ -2063,6 +2063,600 @@ function ReportGeneratorConfig({ data, update }) {
 
 
 const ClassificationClassesEditor = ({value, onChange}) => <div style={{padding:10, border:"1px solid var(--border)"}}>Classes Editor (Placeholder)</div>;
+
+function VisualOperationsEditor({ value = [], onChange }) {
+  const latestContext = useRunStore(s => s.latestContext) || {};
+  const [aiOpen, setAiOpen] = React.useState(false);
+  const [aiPrompt, setAiPrompt] = React.useState('');
+  const [aiLoading, setAiLoading] = React.useState(false);
+
+  const handleAiGenerate = async () => {
+    if (!aiPrompt.trim()) return;
+    setAiLoading(true);
+    try {
+      const activeWorkflow = useWorkflowStore.getState();
+      const currentWorkflow = {
+        id: activeWorkflow.workflowId,
+        name: activeWorkflow.name,
+        nodes: activeWorkflow.nodes,
+        edges: activeWorkflow.edges
+      };
+
+      const systemPrompt = `You are the Workflow Architect AI. The user wants to configure a JSON Transform Visual Operations list.
+We have the following runtime context:
+${JSON.stringify(latestContext, null, 2)}
+
+And the user wants to perform this operation:
+"${aiPrompt}"
+
+Please respond with ONLY a raw JSON array (enclosed in a \`\`\`json block) representing the list of visual operations matching the user's request.
+Each operation in the array must follow the structure:
+- Extract Field: { "type": "extract_field", "source_path": "nested.path", "field": "field_name", "destination": "dest_key" }
+- Filter: { "type": "filter", "source_path": "list.path", "filter_field": "field_name", "filter_operator": "==", "filter_value": "value", "destination": "dest_key" }
+- Map List: { "type": "map", "source_path": "list.path", "field": "field_to_extract", "destination": "dest_key" }
+- Object Projection Map List: { "type": "map", "source_path": "list.path", "use_projection": true, "projections": [ { "target_path": "dest.path", "source_field": "relative.source.path" } ], "destination": "dest_key" }
+- Rename: { "type": "rename", "source_path": "old_key", "destination": "new_key" }
+- Set Value: { "type": "set_value", "destination": "dest.path", "static_value": "val" }
+- Delete Field: { "type": "delete_field", "field": "field_name" }
+- Flatten List: { "type": "flatten", "source_path": "list.path", "destination": "dest_key" }
+
+Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
+
+      const response = await chatArchitect(
+        currentWorkflow,
+        latestContext,
+        [{ role: 'user', content: systemPrompt }],
+        { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0.1 }
+      );
+
+      if (response && response.status === 'success' && response.reply) {
+        const match = response.reply.match(/```json\s*([\s\S]*?)\s*```/) || response.reply.match(/\[\s*\{[\s\S]*?\}\s*\]/);
+        const jsonStr = match ? match[1] || match[0] : response.reply;
+        const parsed = JSON.parse(jsonStr.trim());
+        if (Array.isArray(parsed)) {
+          onChange([...value, ...parsed]);
+          toast.success("Operations configured by Architect Bot!");
+          setAiOpen(false);
+          setAiPrompt('');
+        } else {
+          throw new Error("Response was not a list of operations.");
+        }
+      } else {
+        throw new Error(response.message || "Failed to generate response.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Architect Bot failed: " + err.message);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const contextKeys = React.useMemo(() => {
+    const keys = [];
+    const recurse = (obj, prefix = '') => {
+      if (!obj || typeof obj !== 'object') return;
+      Object.keys(obj).forEach(k => {
+        const path = prefix ? `${prefix}.${k}` : k;
+        keys.push(path);
+        if (typeof obj[k] === 'object' && obj[k] !== null && keys.length < 300) {
+          recurse(obj[k], path);
+        }
+      });
+    };
+    recurse(latestContext);
+    return keys;
+  }, [latestContext]);
+
+  const addOperation = () => {
+    onChange([...value, { type: 'extract_field', source_path: '', field: '', destination: '' }]);
+  };
+
+  const updateOperation = (index, patch) => {
+    const next = [...value];
+    next[index] = { ...next[index], ...patch };
+    onChange(next);
+  };
+
+  const removeOperation = (index) => {
+    onChange(value.filter((_, i) => i !== index));
+  };
+
+  const moveOperation = (index, direction) => {
+    const next = [...value];
+    const target = index + direction;
+    if (target >= 0 && target < next.length) {
+      const temp = next[index];
+      next[index] = next[target];
+      next[target] = temp;
+      onChange(next);
+    }
+  };
+
+  const opTypes = [
+    { value: 'extract_field', label: 'Extract Field (Nested to Key)' },
+    { value: 'filter', label: 'Filter List (Condition)' },
+    { value: 'map', label: 'Map List (Extract from items)' },
+    { value: 'rename', label: 'Rename Key' },
+    { value: 'set_value', label: 'Set Static Value' },
+    { value: 'delete_field', label: 'Delete Key' },
+    { value: 'flatten', label: 'Flatten Nested Lists' }
+  ];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 10, marginBottom: 18 }}>
+      {/* Architect Bot Assistant box */}
+      <div style={{
+        background: 'var(--bg-card-purple, #F5F3FF)',
+        border: '1.5px solid rgba(139, 92, 246, 0.2)',
+        borderRadius: 12,
+        padding: 12,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10
+      }}>
+        <div 
+          onClick={() => setAiOpen(!aiOpen)}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+        >
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#7C3AED', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <FiZap size={12} /> ASK ARCHITECT BOT (AI WIZARD)
+          </span>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{aiOpen ? 'Collapse' : 'Expand'}</span>
+        </div>
+
+        {aiOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
+            <textarea
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              placeholder="Explain what you want to extract or modify in plain English... (e.g. 'Get run_name and test accuracy from job_status.tasks')"
+              rows={3}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                fontSize: 11,
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                outline: 'none',
+                resize: 'none',
+                fontFamily: 'inherit',
+                background: 'white',
+                color: 'var(--text-primary)'
+              }}
+            />
+            <button
+              onClick={handleAiGenerate}
+              disabled={aiLoading || !aiPrompt.trim()}
+              style={{
+                padding: '8px 12px',
+                background: '#7C3AED',
+                color: 'white',
+                border: 'none',
+                borderRadius: 8,
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: (aiLoading || !aiPrompt.trim()) ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6
+              }}
+            >
+              {aiLoading ? <FiLoader className="animate-spin" size={12} /> : <FiZap size={12} />}
+              {aiLoading ? 'Architect Bot Thinking...' : 'Generate Steps'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <datalist id="jt-context-keys">
+        {contextKeys.map(k => <option key={k} value={k} />)}
+      </datalist>
+
+      {value.map((op, idx) => (
+        <div key={idx} style={{
+          padding: 14,
+          background: 'var(--bg-card-neutral, #F8FAFC)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+          position: 'relative',
+          opacity: op.disabled ? 0.55 : 1,
+          transition: 'all 0.2s'
+        }}>
+          {/* Card Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: op.disabled ? 'var(--text-muted, #94A3B8)' : 'var(--theme-primary)', letterSpacing: '0.05em' }}>
+                STEP {idx + 1} {op.disabled && '(DISABLED)'}
+              </span>
+              <div
+                onClick={() => updateOperation(idx, { disabled: !op.disabled })}
+                style={{
+                  width: 32, height: 18, borderRadius: 9, cursor: 'pointer', position: 'relative',
+                  background: !op.disabled ? 'var(--accent-btn, #4285F4)' : 'var(--border, #e2e8f0)',
+                  transition: 'all 0.2s', flexShrink: 0, display: 'inline-block'
+                }}
+                title={op.disabled ? "Enable Step" : "Disable Step"}
+              >
+                <div style={{
+                  position: 'absolute', top: 2, left: !op.disabled ? 16 : 2, width: 14, height: 14,
+                  borderRadius: '50%', background: '#fff', transition: 'left 0.2s ease',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                }} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button
+                disabled={idx === 0}
+                onClick={() => moveOperation(idx, -1)}
+                style={{ background: 'none', border: 'none', padding: 4, cursor: idx === 0 ? 'not-allowed' : 'pointer', color: 'var(--text-muted)' }}
+                title="Move Up"
+              >
+                ▲
+              </button>
+              <button
+                disabled={idx === value.length - 1}
+                onClick={() => moveOperation(idx, 1)}
+                style={{ background: 'none', border: 'none', padding: 4, cursor: idx === value.length - 1 ? 'not-allowed' : 'pointer', color: 'var(--text-muted)' }}
+                title="Move Down"
+              >
+                ▼
+              </button>
+              <button
+                onClick={() => removeOperation(idx)}
+                style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4 }}
+                title="Remove Operation"
+              >
+                <FiTrash2 size={12} />
+              </button>
+            </div>
+          </div>
+
+          {/* Operation Type Selector */}
+          <div>
+            <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>OPERATION TYPE</label>
+            <select
+              value={op.type}
+              onChange={(e) => updateOperation(idx, { type: e.target.value })}
+              style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+            >
+              {opTypes.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+
+          {/* Dynamic Configuration Fields */}
+          {op.type === 'extract_field' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>SOURCE PATH (NESTED DICT/LIST)</label>
+                <input
+                  list="jt-context-keys"
+                  value={op.source_path ?? ''}
+                  onChange={(e) => updateOperation(idx, { source_path: e.target.value })}
+                  placeholder="e.g. data.results"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>TARGET FIELD</label>
+                  <input
+                    value={op.field ?? ''}
+                    onChange={(e) => updateOperation(idx, { field: e.target.value })}
+                    placeholder="e.g. status"
+                    style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DESTINATION KEY (ROOT)</label>
+                  <input
+                    value={op.destination ?? ''}
+                    onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                    placeholder="e.g. job_status"
+                    style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {op.type === 'filter' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>SOURCE LIST PATH</label>
+                <input
+                  list="jt-context-keys"
+                  value={op.source_path ?? ''}
+                  onChange={(e) => updateOperation(idx, { source_path: e.target.value })}
+                  placeholder="e.g. data.items"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
+                <div style={{ flex: 1.5 }}>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>FILTER FIELD</label>
+                  <input
+                    value={op.filter_field ?? ''}
+                    onChange={(e) => updateOperation(idx, { filter_field: e.target.value })}
+                    placeholder="e.g. status"
+                    style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>OP</label>
+                  <select
+                    value={op.filter_operator ?? '=='}
+                    onChange={(e) => updateOperation(idx, { filter_operator: e.target.value })}
+                    style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                  >
+                    <option value="==">==</option>
+                    <option value="!=">!=</option>
+                    <option value="contains">contains</option>
+                    <option value=">">&gt;</option>
+                    <option value="<">&lt;</option>
+                  </select>
+                </div>
+                <div style={{ flex: 1.5 }}>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>VALUE</label>
+                  <input
+                    value={op.filter_value ?? ''}
+                    onChange={(e) => updateOperation(idx, { filter_value: e.target.value })}
+                    placeholder="e.g. active"
+                    style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                  />
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DESTINATION KEY (OPTIONAL)</label>
+                <input
+                  value={op.destination ?? ''}
+                  onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                  placeholder="e.g. filtered_items"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+            </div>
+          )}
+
+          {op.type === 'map' && (() => {
+            const projections = op.projections || [];
+            const isProjection = projections.length > 0 || op.use_projection;
+
+            const addProj = () => {
+              const nextProj = [...projections, { target_path: '', source_field: '' }];
+              updateOperation(idx, { projections: nextProj, use_projection: true });
+            };
+
+            const updateProj = (pIdx, patch) => {
+              const nextProj = [...projections];
+              nextProj[pIdx] = { ...nextProj[pIdx], ...patch };
+              updateOperation(idx, { projections: nextProj });
+            };
+
+            const removeProj = (pIdx) => {
+              const nextProj = projections.filter((_, i) => i !== pIdx);
+              updateOperation(idx, { projections: nextProj });
+            };
+
+            const toggleProjection = (checked) => {
+              if (checked) {
+                updateOperation(idx, { use_projection: true, projections: projections.length > 0 ? projections : [{ target_path: '', source_field: '' }] });
+              } else {
+                updateOperation(idx, { use_projection: false, projections: [] });
+              }
+            };
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>SOURCE LIST PATH</label>
+                  <input
+                    list="jt-context-keys"
+                    value={op.source_path ?? ''}
+                    onChange={(e) => updateOperation(idx, { source_path: e.target.value })}
+                    placeholder="e.g. job_status.tasks"
+                    style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '4px 0' }}>
+                  <input
+                    type="checkbox"
+                    id={`jt-map-proj-${idx}`}
+                    checked={isProjection}
+                    onChange={(e) => toggleProjection(e.target.checked)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <label htmlFor={`jt-map-proj-${idx}`} style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}>
+                    Construct custom objects (Object Projection)
+                  </label>
+                </div>
+
+                {isProjection ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'rgba(0,0,0,0.02)', padding: 10, borderRadius: 8, border: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>FIELD MAPPINGS</div>
+                    {projections.map((proj, pIdx) => (
+                      <div key={pIdx} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <input
+                          value={proj.target_path}
+                          onChange={(e) => updateProj(pIdx, { target_path: e.target.value })}
+                          placeholder="Target path (e.g. train.accuracy)"
+                          style={{ ...inputStyle, padding: '5px 8px', fontSize: 11, flex: 1 }}
+                        />
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>&larr;</span>
+                        <input
+                          value={proj.source_field}
+                          onChange={(e) => updateProj(pIdx, { source_field: e.target.value })}
+                          placeholder="Source path (relative to item)"
+                          style={{ ...inputStyle, padding: '5px 8px', fontSize: 11, flex: 1 }}
+                        />
+                        <button
+                          onClick={() => removeProj(pIdx)}
+                          style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4 }}
+                        >
+                          <FiTrash2 size={11} />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={addProj}
+                      style={{
+                        padding: '6px',
+                        background: 'white',
+                        border: '1px dashed var(--border)',
+                        borderRadius: 6,
+                        fontSize: 10,
+                        color: 'var(--accent-btn)',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        marginTop: 4
+                      }}
+                    >
+                      + Add Field Mapping
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>FIELD TO EXTRACT</label>
+                      <input
+                        value={op.field ?? ''}
+                        onChange={(e) => updateOperation(idx, { field: e.target.value })}
+                        placeholder="e.g. email"
+                        style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DESTINATION KEY</label>
+                  <input
+                    value={op.destination ?? ''}
+                    onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                    placeholder="e.g. user_emails"
+                    style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                  />
+                </div>
+              </div>
+            );
+          })()}
+
+          {op.type === 'rename' && (
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>SOURCE KEY</label>
+                <input
+                  list="jt-context-keys"
+                  value={op.source_path ?? ''}
+                  onChange={(e) => updateOperation(idx, { source_path: e.target.value })}
+                  placeholder="e.g. old_name"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>NEW KEY NAME</label>
+                <input
+                  value={op.destination ?? ''}
+                  onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                  placeholder="e.g. new_name"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+            </div>
+          )}
+
+          {op.type === 'set_value' && (
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DESTINATION PATH</label>
+                <input
+                  value={op.destination ?? ''}
+                  onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                  placeholder="e.g. config.debug"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>STATIC VALUE</label>
+                <input
+                  value={op.static_value ?? ''}
+                  onChange={(e) => updateOperation(idx, { static_value: e.target.value })}
+                  placeholder="e.g. true"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+            </div>
+          )}
+
+          {op.type === 'delete_field' && (
+            <div>
+              <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>FIELD TO DELETE (ROOT)</label>
+              <input
+                list="jt-context-keys"
+                value={op.field ?? ''}
+                onChange={(e) => updateOperation(idx, { field: e.target.value })}
+                placeholder="e.g. sensitive_field"
+                style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+              />
+            </div>
+          )}
+
+          {op.type === 'flatten' && (
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>SOURCE LIST OF LISTS</label>
+                <input
+                  list="jt-context-keys"
+                  value={op.source_path ?? ''}
+                  onChange={(e) => updateOperation(idx, { source_path: e.target.value })}
+                  placeholder="e.g. nested_arrays"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DESTINATION KEY</label>
+                <input
+                  value={op.destination ?? ''}
+                  onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                  placeholder="e.g. flat_array"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+
+      <button
+        onClick={addOperation}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+          padding: '10px',
+          background: 'none',
+          border: '1.5px dashed var(--border)',
+          borderRadius: 10,
+          color: 'var(--accent-btn)',
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: 'pointer',
+          transition: 'all 0.15s'
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-btn)'; e.currentTarget.style.background = 'var(--accent-glow)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'none'; }}
+      >
+        <FiPlus size={13} /> Add Transform Operation
+      </button>
+    </div>
+  );
+}
 
 export default function PropertiesPanel() {
   const selectedNodeId = useUIStore((s) => s.selectedNodeId);
@@ -4568,9 +5162,10 @@ export default function PropertiesPanel() {
             )}
 
             {data.jt_mode === 'operations' && (
-              <div style={{ padding: 12, background: 'var(--bg-card-warning, #FEF3C7)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-warning, #92400E)', border: '1px solid var(--border-card-warning, #FDE68A)', marginBottom: 18 }}>
-                Visual Operations configuration is managed via JSON config or dynamic backend rules. Mode selected: <strong>operations</strong>.
-              </div>
+              <VisualOperationsEditor
+                value={data.jt_operations || []}
+                onChange={(ops) => update({ jt_operations: ops })}
+              />
             )}
 
             <Toggle
