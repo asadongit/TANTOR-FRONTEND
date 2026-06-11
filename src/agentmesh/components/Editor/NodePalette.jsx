@@ -3,7 +3,8 @@ import { useWorkflowStore, useUIStore } from '../../store';
 import {
   FiPlay, FiSquare, FiCpu, FiBox, FiGitMerge,
   FiTarget, FiShare2, FiBookOpen, FiLink,
-  FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiAlertTriangle, FiZap, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiLayers, FiInbox, FiDatabase, FiServer, FiDownload
+  FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiAlertTriangle, FiZap, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiLayers, FiInbox, FiDatabase, FiServer, FiDownload,
+  FiHelpCircle, FiCode
 } from 'react-icons/fi';
 
 export const NODE_TYPES = [
@@ -35,7 +36,7 @@ export const NODE_TYPES = [
   
   // Logic & Routing
   { type: 'router',     icon: FiGitMerge,  label: 'Router',       desc: 'Conditional flow logic',    bg: '#E5D9FF', color: '#7C3AED', category: 'Logic & Routing' },
-  { type: 'condition',  icon: FiActivity,  label: 'Condition (If)', desc: 'Binary If/Else gate',       bg: '#FEF3C7', color: '#D97706', category: 'Logic & Routing' },
+  { type: 'condition',  icon: FiHelpCircle, label: 'Condition (If)', desc: 'Binary If/Else gate',       bg: '#FEF3C7', color: '#D97706', category: 'Logic & Routing' },
   { type: 'switch',     icon: FiGitBranch, label: 'Switch',         desc: 'Multi-branch router',       bg: '#E0F2FE', color: '#0369A1', category: 'Logic & Routing' },
   
   // Flow Control
@@ -53,7 +54,7 @@ export const NODE_TYPES = [
   // Data & Storage
   { type: 'set_data',   icon: FiEdit,      label: 'Set Message',    desc: 'Static data/response',      bg: '#F5F3FF', color: '#7C3AED', category: 'Data & Storage' },
   { type: 'output_parser', icon: FiFilter,  label: 'Output Parser',  desc: 'Auto-fix malformed JSON',   bg: '#FEF3C7', color: '#D97706', category: 'Data & Storage' },
-  { type: 'json_transform', icon: FiFilter, label: 'JSON Transform', desc: 'Reshape data via JMESPath/Python', bg: '#F5F3FF', color: '#7C3AED', category: 'Data & Storage' },
+  { type: 'json_transform', icon: FiCode,   label: 'JSON Transform', desc: 'Reshape data via JMESPath/Python', bg: '#F5F3FF', color: '#7C3AED', category: 'Data & Storage' },
   { type: 'data_cleaning', icon: FiFilter,  label: 'Data Cleaning',  desc: 'Clean dataset and run Pandas scripts', bg: '#ECFDF5', color: '#059669', category: 'Data & Storage' },
   { type: 'network_graph', icon: FiDatabase, label: 'Network Graph', desc: 'Ingest into Neo4j graph database', bg: '#EFF6FF', color: '#1D4ED8', category: 'Data & Storage' },
   { type: 'file_store', icon: FiFileText,  label: 'File Store',   desc: 'Save data to CSV/Excel',    bg: '#ECFDF5', color: '#059669', category: 'Data & Storage' },
@@ -95,7 +96,6 @@ export default function NodePalette({ onClose }) {
     n.desc.toLowerCase().includes(search.toLowerCase())
   );
   const CATEGORY_ORDER = [
-    'Banking',
     'Events & Triggers', 
     'Visual Organizers',
     'Autonomous Agents', 
@@ -107,7 +107,8 @@ export default function NodePalette({ onClose }) {
     'Data & Storage', 
     'Security & Privacy',
     'Media Services',
-    'System & Debug'
+    'System & Debug',
+    'Banking'
   ];
   const categories = CATEGORY_ORDER.filter(cat => 
     filteredNodes.some(n => n.category === cat)

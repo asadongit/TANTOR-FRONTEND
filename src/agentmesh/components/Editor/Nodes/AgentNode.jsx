@@ -5,7 +5,8 @@ import {
   FiPlay, FiSquare, FiCpu, FiBox, FiGitMerge,
   FiTarget, FiShare2, FiBookOpen, FiLink, FiZap,
   FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiUser, FiAlertTriangle,
-  FiLayers, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiDownload, FiDatabase, FiInbox, FiServer
+  FiLayers, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiDownload, FiDatabase, FiInbox, FiServer,
+  FiHelpCircle, FiCode
 } from 'react-icons/fi';
 
 const NODE_CONFIGS = {
@@ -34,7 +35,7 @@ const NODE_CONFIGS = {
   cron: { bg: '#FEF3C7', color: '#B45309', icon: FiClock, round: 14 },
   polling: { bg: '#FDF2F8', color: '#DB2777', icon: FiClock, round: 14 },
   api_node: { bg: '#E0F2FE', color: '#0EA5E9', icon: FiGlobe, round: 14 },
-  condition: { bg: '#FFFBEB', color: '#D97706', icon: FiActivity, round: 14 },
+  condition: { bg: '#FFFBEB', color: '#D97706', icon: FiHelpCircle, round: 14 },
   switch: { bg: '#E0F2FE', color: '#0369A1', icon: FiGitBranch, round: 14 },
   wait: { bg: '#F1F5F9', color: '#475569', icon: FiClock, round: 14 },
   join: { bg: '#ECFDF5', color: '#059669', icon: FiCheck, round: 14 },
@@ -47,7 +48,7 @@ const NODE_CONFIGS = {
   report_generator: { bg: '#E0E7FF', color: '#4338CA', icon: FiFileText, round: 14 },
   error_router: { bg: '#FEF2F2', color: '#DC2626', icon: FiAlertTriangle, round: 14 },
   output_parser: { bg: '#FEF3C7', color: '#D97706', icon: FiFilter, round: 14 },
-  json_transform: { bg: '#F5F3FF', color: '#7C3AED', icon: FiFilter, round: 14 },
+  json_transform: { bg: '#F5F3FF', color: '#7C3AED', icon: FiCode, round: 14 },
   pii_node: { bg: '#FFEBEE', color: '#D32F2F', icon: FiShield, round: 14 },
   data_cleaning: { bg: '#ECFDF5', color: '#059669', icon: FiFilter, round: 14 },
   network_graph: { bg: '#EFF6FF', color: '#1D4ED8', icon: FiDatabase, round: 14 },
