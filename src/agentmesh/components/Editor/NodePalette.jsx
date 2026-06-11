@@ -13,6 +13,7 @@ export const NODE_TYPES = [
   { type: 'cron',       icon: FiClock,     label: 'Cron',         desc: 'Scheduled Trigger',         bg: '#FEF3C7', color: '#B45309', category: 'Events & Triggers' },
   { type: 'polling',    icon: FiClock,     label: 'Polling Trigger', desc: 'Interval Poller Trigger',   bg: '#FDF2F8', color: '#DB2777', category: 'Events & Triggers' },
   { type: 'button_trigger', icon: FiZap,     label: 'Button',       desc: 'Manual UI Trigger',         bg: '#D1FAE5', color: '#059669', category: 'Events & Triggers' },
+  { type: 'auto_trigger',   icon: FiPlay,    label: 'Auto Trigger', desc: 'Runs instantly on launch', bg: '#D1FAE5', color: '#059669', category: 'Events & Triggers' },
 
   
   // Autonomous Agents
@@ -52,6 +53,7 @@ export const NODE_TYPES = [
   // Data & Storage
   { type: 'set_data',   icon: FiEdit,      label: 'Set Message',    desc: 'Static data/response',      bg: '#F5F3FF', color: '#7C3AED', category: 'Data & Storage' },
   { type: 'output_parser', icon: FiFilter,  label: 'Output Parser',  desc: 'Auto-fix malformed JSON',   bg: '#FEF3C7', color: '#D97706', category: 'Data & Storage' },
+  { type: 'json_transform', icon: FiFilter, label: 'JSON Transform', desc: 'Reshape data via JMESPath/Python', bg: '#F5F3FF', color: '#7C3AED', category: 'Data & Storage' },
   { type: 'data_cleaning', icon: FiFilter,  label: 'Data Cleaning',  desc: 'Clean dataset and run Pandas scripts', bg: '#ECFDF5', color: '#059669', category: 'Data & Storage' },
   { type: 'network_graph', icon: FiDatabase, label: 'Network Graph', desc: 'Ingest into Neo4j graph database', bg: '#EFF6FF', color: '#1D4ED8', category: 'Data & Storage' },
   { type: 'file_store', icon: FiFileText,  label: 'File Store',   desc: 'Save data to CSV/Excel',    bg: '#ECFDF5', color: '#059669', category: 'Data & Storage' },
