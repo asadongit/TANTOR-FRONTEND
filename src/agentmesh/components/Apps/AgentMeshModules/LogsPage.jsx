@@ -4,6 +4,7 @@ import { getExecutionLogs } from '../../../api/agentmesh';
 import { useWorkflowStore, useUIStore } from '../../../store';
 import { FiChevronDown, FiChevronRight, FiBarChart2, FiCopy, FiCheck, FiSearch, FiRefreshCw } from 'react-icons/fi';
 import Pagination from '../../Common/Pagination';
+import PageHeader from '../../Common/PageHeader';
 
 const EVENT_COLORS = {
   success: { color: '#059669', dot: '#10B981' },
@@ -343,7 +344,10 @@ export default function LogsPage() {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-primary)', fontFamily: "'Google Sans', 'Roboto', sans-serif" }}>
       {/* ── Standard Header ── */}
       <div style={{ padding: '16px 32px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white' }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Execution Logs</h1>
+        <PageHeader 
+          title="Execution Logs" 
+          description="Analyze run outputs, token counters, LLM latency, and step-by-step traces for executed meshes." 
+        />
         
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Search bar collapsible (AgentsPage Style) */}

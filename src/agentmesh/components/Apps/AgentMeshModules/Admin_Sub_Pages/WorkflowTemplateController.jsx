@@ -16,6 +16,7 @@ import {
   deleteWorkflowTemplate 
 } from '../../../../api/agentmesh';
 import Pagination from '../../../Common/Pagination';
+import PageHeader from '../../../Common/PageHeader';
 
 // Visual preview rendering showing flow structure
 function WorkflowMinimap({ nodes = [], edges = [] }) {
@@ -431,10 +432,11 @@ export default function WorkflowTemplateController() {
         justifyContent: 'space-between',
         zIndex: 10
       }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.5px' }}>Template Approval Queue</h1>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0 0' }}>Review and approve submitted agent-mesh templates for the global marketplace.</p>
-        </div>
+        <PageHeader 
+          title="Template Approval Queue" 
+          description="Review and manage submissions for shared custom workflow templates." 
+          letterSpacing="-0.5px"
+        />
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Search bar */}
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', transition: 'all 0.2s', width: (searchOpen || search) ? 260 : 36 }}>

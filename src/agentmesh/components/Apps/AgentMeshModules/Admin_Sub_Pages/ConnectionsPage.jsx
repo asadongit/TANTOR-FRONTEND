@@ -4,6 +4,7 @@ import { FiPlus, FiTrash2, FiEdit2, FiKey, FiX, FiCheck, FiEye, FiEyeOff, FiData
 import { listConnections, saveConnection, deleteConnection } from '../../../../api/agentmesh';
 import ConfirmationModal from '../../../Common/ConfirmationModal';
 import { useWorkflowStore } from '../../../../store';
+import PageHeader from '../../../Common/PageHeader';
 
 export default function ConnectionsPage() {
   const [connections, setConnections] = useState([]);
@@ -139,7 +140,11 @@ export default function ConnectionsPage() {
         alignItems: 'center',
         zIndex: 10
       }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.5px' }}>Enterprise Vault</h1>
+        <PageHeader 
+          title="Enterprise Vault" 
+          description="Securely store and manage API keys, database credentials, and service tokens." 
+          letterSpacing="-0.5px"
+        />
         <button 
           onClick={() => openModal()}
           style={{

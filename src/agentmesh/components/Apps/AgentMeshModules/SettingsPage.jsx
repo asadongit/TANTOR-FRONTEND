@@ -6,6 +6,7 @@ import {
 } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { useUIStore } from '../../../store';
+import PageHeader from '../../Common/PageHeader';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('architect');
@@ -123,7 +124,11 @@ export default function SettingsPage() {
         alignItems: 'center',
         zIndex: 10
       }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.5px' }}>Global Settings</h1>
+        <PageHeader 
+          title="Global Settings" 
+          description="Configure system preferences, default LLM providers, canvas interaction parameters, and theme settings." 
+          letterSpacing="-0.5px"
+        />
       </div>
 
       {/* Main Settings Panel */}

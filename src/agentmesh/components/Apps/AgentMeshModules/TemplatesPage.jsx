@@ -10,6 +10,7 @@ import CardboardNode from '../../Editor/Nodes/CardboardNode';
 import { useWorkflowStore, useUIStore } from '../../../store';
 import { listWorkflowTemplates, cloneWorkflowTemplate, getWorkflow, getWorkflowTemplate } from '../../../api/agentmesh';
 import Pagination from '../../Common/Pagination';
+import PageHeader from '../../Common/PageHeader';
 
 // Optimized SVG Minimap rendering to show actual flow structure on each card
 function WorkflowMinimap({ nodes = [], edges = [] }) {
@@ -481,7 +482,11 @@ export default function TemplatesPage() {
         zIndex: 10
       }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.5px' }}>Workflow Templates</h1>
+          <PageHeader 
+            title="Workflow Templates" 
+            description="Browse and clone standardized templates to quickly bootstrap new multi-agent pipeline architectures." 
+            letterSpacing="-0.5px"
+          />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Search bar collapsible */}

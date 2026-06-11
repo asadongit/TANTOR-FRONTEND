@@ -9,6 +9,7 @@ import { listAvailableSkills, createSkill, deleteSkill, generateSkillSop } from 
 import AddSkillModal from './addSkillModal';
 import ConfirmationModal from '../../Common/ConfirmationModal';
 import { motion, AnimatePresence } from 'framer-motion';
+import PageHeader from '../../Common/PageHeader';
 
 function ActionDropdown({ actions, isOpen, onClose }) {
   if (!isOpen) return null;
@@ -662,14 +663,10 @@ export default function SkillsPage() {
         justifyContent: 'space-between',
         boxShadow: 'var(--shadow-xs)'
       }}>
-        <h1 style={{
-          fontSize: 24,
-          fontWeight: 700,
-          color: 'var(--text-primary)',
-          margin: 0
-        }}>
-          Skills
-        </h1>
+        <PageHeader 
+          title="Skills" 
+          description="Define and refine Standard Operating Procedures (SOPs) that guide agent execution behaviors." 
+        />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Search bar collapsible (Standard Layout) */}

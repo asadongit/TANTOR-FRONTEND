@@ -100,6 +100,8 @@ export default function Navbar() {
 
   const [showPublishModal, setShowPublishModal] = React.useState(false);
   const [showSaveTemplateModal, setShowSaveTemplateModal] = React.useState(false);
+  const [showPublishConfirm, setShowPublishConfirm] = React.useState(false);
+  const [successAlert, setSuccessAlert] = React.useState(null);
   const [publishTags, setPublishTags] = React.useState('');
   const [publishing, setPublishing] = React.useState(false);
   const [useWorkflowMeta, setUseWorkflowMeta] = React.useState(true);
@@ -144,9 +146,13 @@ export default function Navbar() {
       setStatus('compiled');
       setShowPublishModal(false);
       setPublishTags('');
-      alert('Workflow successfully published to Marketplace!');
+      setSuccessAlert({
+        title: "Workflow Published",
+        message: "Workflow successfully published to Marketplace!"
+      });
     } catch (e) {
       alert('Failed to publish workflow: ' + e.message);
+      throw e;
     } finally {
       setPublishing(false);
     }
@@ -1180,6 +1186,27 @@ export default function Navbar() {
         variant="danger"
       />
 
+      <ConfirmationModal
+        isOpen={showPublishConfirm}
+        onClose={() => setShowPublishConfirm(false)}
+        onConfirm={handlePublish}
+        title="Publish Usecase"
+        message={`Are you sure you want to publish the workflow **${workflowName}** to the Marketplace?`}
+        confirmText="Publish"
+        variant="success"
+      />
+
+      <ConfirmationModal
+        isOpen={!!successAlert}
+        onClose={() => setSuccessAlert(null)}
+        onConfirm={async () => setSuccessAlert(null)}
+        title={successAlert?.title || "Success"}
+        message={successAlert?.message || ""}
+        confirmText="OK"
+        cancelText={null}
+        variant="success"
+      />
+
       {/* Import Modal */}
       {showImport && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1472,7 +1499,7 @@ export default function Navbar() {
                 Cancel
               </button>
               <button
-                onClick={handlePublish}
+                onClick={() => setShowPublishConfirm(true)}
                 disabled={publishing}
                 style={{
                   padding: '10px 24px',

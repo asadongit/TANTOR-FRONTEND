@@ -10,6 +10,7 @@ import {
   deleteMarketplaceUsecase 
 } from '../../../../api/agentmesh';
 import Pagination from '../../../Common/Pagination';
+import PageHeader from '../../../Common/PageHeader';
 
 export default function WorkflowPublishController() {
   const [activeTab, setActiveTab] = useState('pending'); // pending, approved, rejected, all
@@ -160,10 +161,11 @@ export default function WorkflowPublishController() {
         justifyContent: 'space-between',
         zIndex: 10
       }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.5px' }}>Publish Approval Queue</h1>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0 0' }}>Review and authorize production deployment requests for workflows to the marketplace.</p>
-        </div>
+        <PageHeader 
+          title="Publish Approval Queue" 
+          description="Review, approve, or reject deployment requests for workflows submitted to the workspace." 
+          letterSpacing="-0.5px"
+        />
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Search bar */}
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', transition: 'all 0.2s', width: (searchOpen || search) ? 260 : 36 }}>

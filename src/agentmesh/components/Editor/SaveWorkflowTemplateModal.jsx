@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FiX, FiSave, FiTag, FiLayers, FiFileText, FiEye, FiEyeOff, FiUsers, FiGlobe } from 'react-icons/fi';
 import { saveWorkflowTemplate } from '../../api/agentmesh';
+import ConfirmationModal from '../Common/ConfirmationModal';
 
 const FONT = "'Google Sans','Roboto',sans-serif";
 
@@ -103,6 +104,8 @@ export default function SaveWorkflowTemplateModal({ workflowConfig, onClose, onS
   const [scope, setScope] = useState('private'); // 'private', 'member', 'public'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [successAlert, setSuccessAlert] = useState(null);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -120,11 +123,13 @@ export default function SaveWorkflowTemplateModal({ workflowConfig, onClose, onS
         config: workflowConfig,
         scope
       });
-      onSaved();
-      onClose();
-      alert('Workflow saved as Template successfully!');
+      setSuccessAlert({
+        title: "Template Saved",
+        message: "Workflow saved as Template successfully!"
+      });
     } catch (e) {
       setError(e.message);
+      throw e;
     } finally {
       setLoading(false);
     }
@@ -266,14 +271,20 @@ export default function SaveWorkflowTemplateModal({ workflowConfig, onClose, onS
             Cancel
           </button>
           <button
-            onClick={handleSave}
+            onClick={() => {
+              if (!name.trim()) {
+                setError('Please enter a template name');
+                return;
+              }
+              setShowConfirm(true);
+            }}
             disabled={loading}
             style={{
               padding: '10px 22px', background: 'var(--theme-primary)', color: 'white', 
               border: 'none', borderRadius: 10,
               fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
               boxShadow: '0 4px 12px rgba(124, 58, 237, 0.15)',
-              opacity: loading ? 0.7 : 1, transition: 'all 0.2s', fontFamily: 'inherit'
+              opacity: loading ? 0.7 : 1, transition: 'all 0.2s', fontFamily: FONT
             }}
             onMouseEnter={e => { if(!loading) e.currentTarget.style.opacity = '0.9'; }}
             onMouseLeave={e => { if(!loading) e.currentTarget.style.opacity = '1'; }}
@@ -282,6 +293,35 @@ export default function SaveWorkflowTemplateModal({ workflowConfig, onClose, onS
           </button>
         </div>
       </div>
+
+      <ConfirmationModal
+        isOpen={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={handleSave}
+        title="Save Template"
+        message={`Are you sure you want to save this workflow as a template named **${name}**?`}
+        confirmText="Save"
+        variant="success"
+      />
+
+      <ConfirmationModal
+        isOpen={!!successAlert}
+        onClose={() => {
+          setSuccessAlert(null);
+          onSaved();
+          onClose();
+        }}
+        onConfirm={async () => {
+          setSuccessAlert(null);
+          onSaved();
+          onClose();
+        }}
+        title={successAlert?.title || "Success"}
+        message={successAlert?.message || ""}
+        confirmText="OK"
+        cancelText={null}
+        variant="success"
+      />
     </div>
   );
 }

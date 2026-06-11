@@ -9,6 +9,7 @@ import {
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import bannerImage from '../../../assets/data/Stack-p-2000.png';
 import Pagination from '../../Common/Pagination';
+import PageHeader from '../../Common/PageHeader';
 
 const PURPLE_THEME = {
   primary: 'var(--theme-primary)',
@@ -543,7 +544,10 @@ export default function AgentsPage() {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', overflow: 'hidden' }}>
       <div style={{ padding: '16px 32px', borderBottom: '1px solid var(--border-light)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Agent Library</h1>
+        <PageHeader 
+          title="Agent Library" 
+          description="Manage and customize autonomous agent blueprints, persona prompts, and underlying LLM configurations." 
+        />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Search bar collapsible (Matching Marketplace) */}

@@ -6,6 +6,7 @@ import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import bannerImage from '../../../assets/data/Stack-p-2000.png';
 import Pagination from '../../Common/Pagination';
 import SwaggerUI from 'swagger-ui-react';
+import PageHeader from '../../Common/PageHeader';
 import 'swagger-ui-react/swagger-ui.css';
 
 const PURPLE_THEME = {
@@ -745,7 +746,10 @@ export default function MarketplacePage() {
         )}
       </AnimatePresence>
       <div style={{ padding: '16px 32px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white' }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Marketplace</h1>
+        <PageHeader 
+          title="Marketplace" 
+          description="Explore community-built agents, tools, and workflows ready to deploy directly into your workspace." 
+        />
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Search bar collapsible */}
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', transition: 'width 0.2s', width: (searchOpen || search) ? 320 : 36 }}>
