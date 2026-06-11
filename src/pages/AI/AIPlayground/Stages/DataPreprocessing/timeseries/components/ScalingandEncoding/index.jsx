@@ -135,6 +135,20 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview }) 
   const categoricalColumns = step6Response?.categorical_columns || [];
   const hasCategoricalColumns = Array.isArray(categoricalColumns) && categoricalColumns.length > 0;
 
+  useEffect(() => {
+  if (hasCategoricalColumns) {
+    setToggles(prev => ({
+      ...prev,
+      encoding: true
+    }));
+
+    setExpandedSections(prev => ({
+      ...prev,
+      encoding: true
+    }));
+  }
+}, [hasCategoricalColumns]);
+
   /**
    * Get numerical columns from step 7 (Feature Dependency)
    */
@@ -233,7 +247,13 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview }) 
     /**
      * Prevent toggling encoding if no categorical columns
      */
-    if (key === 'encoding' && !hasCategoricalColumns) return;
+    if (
+  key === 'encoding' &&
+  hasCategoricalColumns &&
+  toggles.encoding
+) {
+  return;
+}
 
     /**
      * Prevent toggling scaling if no numerical columns
@@ -497,6 +517,7 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview }) 
         readonly={isReadonly || !hasCategoricalColumns}
         hasError={encodingError}
         sectionDescriptions={dataPreprocessingDescriptions}
+        hasCategoricalColumns={hasCategoricalColumns}
       />
 
       {/* Feature Scaling Section */}

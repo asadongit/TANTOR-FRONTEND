@@ -47,7 +47,8 @@ function CategoricalEncoding({
     onEncodingChange,
     readonly,
     hasError,
-    sectionDescriptions
+    sectionDescriptions,
+    hasCategoricalColumns
 }) {
     const [hoveredOption, setHoveredOption] = React.useState(null);
 
@@ -78,7 +79,19 @@ function CategoricalEncoding({
                     )}
                 </div>
             </div>
+            <div className="px-4 pb-4">
+  <div className="flex items-center gap-2 px-3 py-2 border border-[#8E77BB] bg-[#FAF8FF] rounded-lg">
+    <Info size={14} className="text-[#8E77BB]" />
 
+    <p className="text-sm text-[#8E77BB]">
+      {!hasCategoricalColumns
+        ? 'Categorical encoding is not available because your dataset does not contain categorical columns'
+        : isToggled
+        ? 'Categorical encoding is required because your dataset contains categorical columns'
+        : 'Categorical encoding is available because your dataset contains categorical columns'}
+    </p>
+  </div>
+</div>
             {isToggled && isExpanded && (
                 <div className="px-4 pb-4">
                     <div className="mt-4">

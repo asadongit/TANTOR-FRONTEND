@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp, Info } from 'lucide-react';
 
 import InfoButton from '../../../../../components/InfoButton';
 import ToggleSwitch from './ToggleSwitch';
-import ColumnSearchableDropdown from './ColumnSearchableDropdown';
+
 import MethodParameterField from './MethodParameterField';
 
 import { featureSelectionDescriptions } from '../../../../../../../../hooks/AI/datapreprocessing/descriptions';
@@ -36,21 +36,10 @@ const OutlierDetection = ({
 
   hasError,
 }) => {
-  const [searchValues, setSearchValues] = useState({
-    outlierMethod: '',
-  });
-
-  const [showDropdowns, setShowDropdowns] = useState({
-    outlierMethod: false,
-  });
+  const [hoveredOption, setHoveredOption] = useState(null);
 
   const selectedMethod = outlierConfig?.method || '';
 
-  const showRollingWindow =
-    ROLLING_WINDOW_METHODS.includes(selectedMethod);
-
-  const showSeasonalPeriod =
-    SEASONAL_PERIOD_METHODS.includes(selectedMethod);
 
   return (
     <div
@@ -63,22 +52,16 @@ const OutlierDetection = ({
       <div className="p-4 flex items-center justify-between">
         <div className="flex-1 flex items-center gap-2">
           <div className="flex-1">
-            <div className="flex flex-row items-center">
-              <h4
-                className={`text-sm font-medium mr-2 ${
-                  hasError
-                    ? 'text-red-700'
-                    : 'text-gray-700'
-                }`}
-              >
-                Detect Outliers
-              </h4>
+            <div className="flex flex-row items-center gap-1">
+            <h4 className="text-sm font-medium text-gray-900">
+              Detect Outliers
+            </h4>
 
-              <InfoButton
-                sectionDescriptions={featureSelectionDescriptions}
-                section="detectOutliers"
-              />
-            </div>
+            <InfoButton
+              sectionDescriptions={featureSelectionDescriptions}
+              section="detectOutliers"
+            />
+          </div>
           </div>
         </div>
 
@@ -107,79 +90,140 @@ const OutlierDetection = ({
 
       {isToggled && isExpanded && (
         <div className="px-4 pb-4 border-t border-gray-100">
-          <div className="max-w-md">
-            <label className="block text-sm text-gray-600 mb-2">
-              Outlier Method
-            </label>
 
-            <ColumnSearchableDropdown
-              value={selectedMethod}
-              onChange={(value) =>
+<div className="mt-4 grid grid-cols-2 gap-x-8 gap-y-3">
+  {availableOutlierOptions.map((option) => {
+    const isSelected =
+      selectedMethod === option.value;
+
+    return (
+      <div
+        key={option.value}
+        className="relative"
+        onMouseEnter={() =>
+          setHoveredOption(option.value)
+        }
+        onMouseLeave={() =>
+          setHoveredOption(null)
+        }
+      >
+        <label
+          className={`flex flex-col p-3 rounded-lg transition-all ${
+            isSelected
+              ? 'bg-[#FAF8FF] border border-[#8e78b7]'
+              : 'bg-white border border-transparent'
+          } ${
+            readonly
+              ? 'cursor-not-allowed opacity-60'
+              : 'cursor-pointer'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <input
+              type="radio"
+              name="outlierMethod"
+              value={option.value}
+              checked={isSelected}
+              onChange={(e) =>
                 setOutlierConfig((prev) => ({
                   ...prev,
-                  method: value,
+                  method: e.target.value,
                   rollingWindow: '',
                   seasonalPeriod: '',
                 }))
               }
-              options={availableOutlierOptions}
-              placeholder="Select Method"
               disabled={readonly}
-              searchValue={searchValues}
-              setSearchValue={setSearchValues}
-              showDropdown={showDropdowns}
-              setShowDropdown={setShowDropdowns}
-              id="outlierMethod"
-              hasError={!!methodError}
-			  showDescription={true}
+              className="w-4 h-4 accent-[#8e78b7]"
             />
 
-            {methodError && (
-              <p className="mt-1 text-xs text-red-500">
-                {methodError}
-              </p>
-            )}
+            <span
+              className={`text-sm font-medium ${
+                isSelected
+                  ? 'text-[#8e78b7]'
+                  : 'text-gray-700'
+              }`}
+            >
+              {option.label}
+            </span>
+          </div>
 
-            {showRollingWindow && (
+          {isSelected &&
+            option.subMethod ===
+              'rolling_window' && (
               <div className="mt-4">
                 <MethodParameterField
                   label="Rolling Window"
-                  value={outlierConfig?.rollingWindow ?? ''}
+                  value={
+                    outlierConfig?.rollingWindow ??
+                    ''
+                  }
                   min={3}
                   max={365}
                   hasError={!!rollingWindowError}
-                  errorMessage={rollingWindowError}
+                  errorMessage={
+                    rollingWindowError
+                  }
                   disabled={readonly}
                   onChange={(value) =>
-                    setOutlierConfig((prev) => ({
-                      ...prev,
-                      rollingWindow: value,
-                    }))
+                    setOutlierConfig(
+                      (prev) => ({
+                        ...prev,
+                        rollingWindow: value,
+                      })
+                    )
                   }
                 />
               </div>
             )}
 
-            {showSeasonalPeriod && (
+          {isSelected &&
+            option.subMethod ===
+              'seasonal_period' && (
               <div className="mt-4">
                 <MethodParameterField
                   label="Seasonal Period"
-                  value={outlierConfig?.seasonalPeriod ?? ''}
+                  value={
+                    outlierConfig?.seasonalPeriod ??
+                    ''
+                  }
                   min={2}
                   max={365}
                   hasError={!!seasonalPeriodError}
-                  errorMessage={seasonalPeriodError}
+                  errorMessage={
+                    seasonalPeriodError
+                  }
                   disabled={readonly}
                   onChange={(value) =>
-                    setOutlierConfig((prev) => ({
-                      ...prev,
-                      seasonalPeriod: value,
-                    }))
+                    setOutlierConfig(
+                      (prev) => ({
+                        ...prev,
+                        seasonalPeriod: value,
+                      })
+                    )
                   }
                 />
               </div>
             )}
+        </label>
+
+        {hoveredOption === option.value && (
+          <div className="absolute left-0 top-full mt-2 z-50 w-80 p-3 bg-[#332849] text-white text-xs rounded-lg shadow-lg">
+            <div className="absolute -top-1 left-4 w-2 h-2 bg-[#332849] rotate-45"></div>
+            <p className="leading-relaxed">
+              {option.description}
+            </p>
           </div>
+        )}
+      </div>
+    );
+  })}
+</div>
+
+{methodError && (
+  <p className="text-xs text-red-500 mt-2">
+    {methodError}
+  </p>
+)}
         </div>
       )}
     </div>

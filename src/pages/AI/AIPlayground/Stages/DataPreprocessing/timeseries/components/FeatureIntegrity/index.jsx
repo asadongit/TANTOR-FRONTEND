@@ -18,8 +18,8 @@ function FeatureIntegrity({ readonly: readonlyProp, onApiCall ,predictionType,})
 
   const columnAndUniqueness = 
     workflowState?.dataPreprocessing?.step2?.apiResponse?.uniqueness_ratio_report?.map((item) => ({
-      name: item.column,
-      uniqueness: `${(item.uniqueness_ratio * 100).toFixed(2)}%`,
+    name: item.column,
+    uniqueness: `${(item.uniqueness_ratio * 100).toFixed(2)}%`,
     })) || [];
 
   const lowVarianceColumnsDropped =workflowState?.dataPreprocessing?.step2?.apiResponse?.low_variance_columns_dropped || [];
@@ -76,16 +76,29 @@ function FeatureIntegrity({ readonly: readonlyProp, onApiCall ,predictionType,})
   const dropLowValueError = showFieldErrors ? getDropLowValueError() : '';
   const validateStep = () => {
   if (getDropLowValueError()) return false;
+
+  if (!toggles.detectOutliers) {
+    return true;
+  }
+
+  if (!outlierConfig.method) {
+    return false;
+  }
+
   if (
-    toggles.detectOutliers &&
-    (
-      !outlierConfig.method ||
-      rollingWindowError ||
-      seasonalPeriodError
-    )
+    rollingWindowMethods.includes(outlierConfig.method) &&
+    !outlierConfig.rollingWindow
   ) {
     return false;
   }
+
+  if (
+    seasonalPeriodMethods.includes(outlierConfig.method) &&
+    !outlierConfig.seasonalPeriod
+  ) {
+    return false;
+  }
+
   return true;
 };
   const methodError =showFieldErrors &&toggles.detectOutliers &&!outlierConfig.method? 'Please select an outlier detection method': '';
@@ -93,11 +106,15 @@ function FeatureIntegrity({ readonly: readonlyProp, onApiCall ,predictionType,})
   showFieldErrors &&
   toggles.detectOutliers &&
   rollingWindowMethods.includes(outlierConfig.method) &&
-  (
-    !Number(outlierConfig.rollingWindow) ||
-    Number(outlierConfig.rollingWindow) < 3 ||
-    Number(outlierConfig.rollingWindow) > 365
-  )
+  !outlierConfig.rollingWindow
+    ? 'Rolling Window is required'
+    : showFieldErrors &&
+      toggles.detectOutliers &&
+      rollingWindowMethods.includes(outlierConfig.method) &&
+      (
+        Number(outlierConfig.rollingWindow) < 3 ||
+        Number(outlierConfig.rollingWindow) > 365
+      )
     ? 'Value must be between 3 and 365'
     : '';
 
@@ -105,26 +122,28 @@ function FeatureIntegrity({ readonly: readonlyProp, onApiCall ,predictionType,})
   showFieldErrors &&
   toggles.detectOutliers &&
   seasonalPeriodMethods.includes(outlierConfig.method) &&
-  (
-    !Number(outlierConfig.seasonalPeriod) ||
-    Number(outlierConfig.seasonalPeriod) < 2 ||
-    Number(outlierConfig.seasonalPeriod) > 365
-  )
-    ? 'Value must be between 2 and 365'
-    : '';  
+  !outlierConfig.seasonalPeriod
+    ? 'Seasonal Period is required'
+    : showFieldErrors &&
+      toggles.detectOutliers &&
+      seasonalPeriodMethods.includes(outlierConfig.method) &&
+      (Number(outlierConfig.seasonalPeriod) < 2 ||
+      Number(outlierConfig.seasonalPeriod) > 365)
+      ? 'Value must be between 2 and 365'
+      : '';
 
   useEffect(() => {
   if (!showFieldErrors) return;
 
   const outlierError =
     toggles.detectOutliers &&
-    (
-      !outlierConfig.method ||
+    (!outlierConfig.method ||
       rollingWindowError ||
-      seasonalPeriodError
-    );
+      seasonalPeriodError);
 
-  if (!outlierError) {
+  const hasDropLowValueError = !!getDropLowValueError();
+
+  if (!outlierError && !hasDropLowValueError) {
     setShowFieldErrors(false);
   }
 }, [outlierConfig,toggles,showFieldErrors,rollingWindowError, seasonalPeriodError,]);  
@@ -135,13 +154,7 @@ function FeatureIntegrity({ readonly: readonlyProp, onApiCall ,predictionType,})
       setShowFieldErrors(true);
       setExpandedSections({
   dropLowValue: !!getDropLowValueError(),
-  detectOutliers:
-    toggles.detectOutliers &&
-    (
-      !outlierConfig.method ||
-      rollingWindowError ||
-      seasonalPeriodError
-    ),
+  detectOutliers: toggles.detectOutliers,
 });
       return false;
     }
@@ -189,6 +202,23 @@ function FeatureIntegrity({ readonly: readonlyProp, onApiCall ,predictionType,})
     if (readonly) return;
     const newToggleState = !toggles[key];
     setToggles((prev) => ({ ...prev, [key]: newToggleState }));
+    if (key === 'detectOutliers' && newToggleState) {
+  setOutlierConfig((prev) => ({
+    ...prev,
+    method: availableOutlierOptions?.[0]?.value || '',
+    rollingWindow: '',
+    seasonalPeriod: '',
+  }));
+}
+
+if (key === 'detectOutliers' && !newToggleState) {
+    setOutlierConfig((prev) => ({
+      ...prev,
+      method: '',
+      rollingWindow: '',
+      seasonalPeriod: '',
+    }));
+  }
     if (newToggleState) setExpandedSections({ dropLowValue: false, [key]: true });
     if (!newToggleState) setExpandedSections((prev) => ({ ...prev, [key]: false }));
   };
@@ -248,10 +278,7 @@ function FeatureIntegrity({ readonly: readonlyProp, onApiCall ,predictionType,})
       rollingWindowError={rollingWindowError}
       seasonalPeriodError={seasonalPeriodError}
       hasError={
-        !!methodError ||
-        !!rollingWindowError ||
-        !!seasonalPeriodError
-      }
+        !!methodError  }
      />
     </div>
   );

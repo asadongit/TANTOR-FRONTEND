@@ -1,31 +1,16 @@
 import React from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp ,Info} from 'lucide-react';
 
 import ToggleSwitch from '../TimeSeriesDataCleaning/ToggleSwitch';
 import InfoButton from '../../../../../components/InfoButton';
 import DataTable from '../../../../../../../../components/DataTable';
 
 /**
- * =========================================================
- * SeasonalityAnalysisTable
- * =========================================================
- *
  * Responsibilities:
  * ---------------------------------------------------------
  * - Display seasonality toggle switch
  * - Manage expand/collapse for report display
  * - Display seasonality analysis report table
- *
- * Props:
- * ---------------------------------------------------------
- * - isToggled: boolean - whether seasonality analysis is active
- * - isExpanded: boolean - whether section is expanded
- * - onToggle: function - callback for toggle change
- * - onExpand: function - callback for expand/collapse
- * - readonly: boolean - whether in readonly mode
- * - isLoading: boolean - API loading state
- * - seasonalityReport: array - report data from API response
- * - sectionDescriptions: object - descriptions for info tooltip
  * =========================================================
  */
 
@@ -38,7 +23,8 @@ function SeasonalityAnalysisTable({
   readonly,
   isLoading,
   seasonalityReport,
-  sectionDescriptions
+  sectionDescriptions,
+  blockedMessage
 }) {
 
   /**
@@ -119,7 +105,20 @@ function SeasonalityAnalysisTable({
               section="seasonalityAnalysis"
             />
           </div>
+
+        {blockedMessage && (
+        <div className="mt-3 mr-8 flex items-start gap-2 bg-[#FAF8FF] border border-[#8e78b7] rounded-md p-3">
+          <Info
+            size={14}
+            className="text-[#8e78b7] mt-0.5 flex-shrink-0"
+          />
+          <p className="text-xs text-[#8e78b7]">
+            {blockedMessage}
+          </p>
         </div>
+      )}
+    </div>
+        
 
         {/* Right Side */}
         <div className="flex items-center gap-3">

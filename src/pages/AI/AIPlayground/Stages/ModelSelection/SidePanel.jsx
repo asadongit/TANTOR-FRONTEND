@@ -2,7 +2,18 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
 import { tw } from '../../../../../components/themeContext';
 
-function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, readonly, disabled, hasEnabledMetrics, showValidation, metricFullFormMap }) {
+function SidePanel({ normalizeData,
+    setNormalizeData,
+    metrics,
+    setMetrics,
+    readonly,
+    disabled,
+    hasEnabledMetrics,
+    showValidation,
+    metricFullFormMap,
+    forecastHorizon,
+    setForecastHorizon,
+    isTimeSeries }) {
     const [metricsExpanded, setMetricsExpanded] = useState(true);
     const [draggedItem, setDraggedItem] = useState(null);
 
@@ -44,7 +55,16 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
 
     // Show error state only when validation is triggered and no metric is selected
     const metricsHasError = showValidation && !hasEnabledMetrics;
+    const forecastValue = Number(forecastHorizon);
 
+    const forecastHorizonError =
+    showValidation &&
+    isTimeSeries &&
+    (
+        !forecastHorizon ||
+        forecastValue < 1 ||
+        forecastValue > 15
+    );
     return (
         <div className="space-y-6">
             {/* Normalise Data toggle */}
@@ -69,6 +89,51 @@ function SidePanel({ normalizeData, setNormalizeData, metrics, setMetrics, reado
                     </p>
                 </div>
             </div>
+
+            {isTimeSeries && (
+                <div
+                    className={`bg-[#FAFAFA] rounded-xl p-4 ${
+                    forecastHorizonError
+                        ? 'border border-red-400 ring-1 ring-red-400'
+                        : ''
+                }`}
+                >
+                    <div className="mb-2">
+                        <h3
+                            className={`${tw.sectionHeading} ${
+                                forecastHorizonError ? 'text-red-700' : ''
+                            }`}
+                        >
+                            Forecast Horizon
+                        </h3>
+
+                        <p className="text-sm text-gray-600">
+                            Number of future periods to forecast.
+                        </p>
+
+                        {forecastHorizonError && (
+                            <p className="text-xs text-red-600 mt-1">
+                                Please select a forecast horizon
+                            </p>
+                        )}
+                    </div>
+
+                    <input
+                        type="number"
+                        min={1}
+                        max={15}
+                        value={forecastHorizon}
+                        onChange={(e) =>
+                            setForecastHorizon(e.target.value)
+                        }
+                        disabled={readonly || disabled}
+                        placeholder="1 - 15"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    />
+
+                    
+                </div>
+            )}
 
             {/* Metrics section — red border applied when validation fails */}
             <div className={`bg-[#FAFAFA] rounded-xl p-4 ${metricsHasError ? ' border border-red-400 ring-1 ring-red-400' : ''}`}>

@@ -12,11 +12,6 @@ import ChangeDataType from './ChangeDataType';
 // import AggregateFeatures from './AggregateFeatures';
 
 /**
- * =========================================================
- * TimeSeriesDataCleaning
- * =========================================================
- * Parent Component for Time Series Data Cleaning
- *
  * Responsibilities:
  * ---------------------------------------------------------
  * - Holds ALL states
@@ -25,13 +20,7 @@ import ChangeDataType from './ChangeDataType';
  * - Handles validation
  * - Controls section expand/collapse
  * - Passes props to child components
- *
- * Child Components:
- * ---------------------------------------------------------
- * - ChangeDataType.jsx
- * - AggregateFeatures.jsx
- * - ToggleSwitch.jsx
- *
+
  * =========================================================
  */
 
@@ -42,11 +31,6 @@ function TimeSeriesDataCleaning({
   predictionType
 }) {
 
-  /**
-   * =======================================================
-   * Context Data
-   * =======================================================
-   */
 
   const {
     datasetState,
@@ -55,65 +39,32 @@ function TimeSeriesDataCleaning({
     updatePreprocessingStep
   } = useAIPlayground();
 
-  /**
-   * Check if univariate timeseries
-   */
   const isUnivariateTimeseries =
     predictionType === 'univariate_timeseries';
 
-  /**
-   * Get current workflow state
-   */
   const workflowState = activeWorkflowId
     ? workflowsState?.[activeWorkflowId]
     : null;
 
-  /**
-   * =======================================================
-   * Backend Data
-   * =======================================================
-   */
-
-  /**
-   * Existing column datatypes
-   */
   const columnsDataTypes =
     workflowState?.modelGenesis?.apiResponse
       ?.columns_data_types?.manual || {};
 
-  /**
-   * Duplicate rows data
-   */
+
   const duplicateRows =
     workflowState?.modelGenesis?.apiResponse
       ?.duplicate_timestamp_report?.duplicate_rows || {};
-
-  /**
-   * Extract column names
-   */
   const columnNames = Object.keys(columnsDataTypes);
 
-  /**
-   * Check if duplicate rows exist
-   */
+
   const hasDuplicateRows =
     duplicateRows &&
     Object.keys(duplicateRows).length > 0;
 
-  /**
-   * =======================================================
-   * Section Descriptions
-   * =======================================================
-   */
 
   const sectionDescriptions =
     dataPreprocessingDescriptions;
 
-  /**
-   * =======================================================
-   * Available Datatype Options
-   * =======================================================
-   */
 
   const dataTypeOptions = [
     'datetime',
@@ -123,21 +74,12 @@ function TimeSeriesDataCleaning({
     'string'
   ];
 
-  /**
-   * =======================================================
-   * Component States
-   * =======================================================
-   */
 
-  /**
-   * Toggle for datatype modification
-   */
+
   const [modifyDataTypes, setModifyDataTypes] =
     useState(false);
 
-  /**
-   * Datatype conversion rows
-   */
+
   const [dataTypeColumns, setDataTypeColumns] =
     useState([
       {
@@ -147,30 +89,19 @@ function TimeSeriesDataCleaning({
       }
     ]);
 
-  /**
-   * Expanded/collapsed section state
-   */
+
   const [expandedSections, setExpandedSections] =
     useState({
       changeDataType: false,
       aggregation: false
     });
 
-  /**
-   * Validation error state
-   */
   const [showFieldErrors, setShowFieldErrors] =
     useState(false);
 
-  /**
-   * Aggregation toggle
-   */
   const [aggregation, setAggregation] =
   useState(hasDuplicateRows);
 
-  /**
-   * Aggregation method
-   */
   const [aggregationMethod, setAggregationMethod] =
     useState('mean');
 
@@ -180,17 +111,11 @@ function TimeSeriesDataCleaning({
   const [isLoading, setIsLoading] =
     useState(false);
 
-  /**
-   * API error state
-   */
+
   const [error, setError] =
     useState(null);
 
-  /**
-   * =======================================================
-   * Toggle Expand / Collapse Section
-   * =======================================================
-   */
+  
 
   const toggleSection = (section) => {
 
@@ -200,11 +125,7 @@ function TimeSeriesDataCleaning({
     }));
   };
 
-  /**
-   * =======================================================
-   * Toggle Feature Switches
-   * =======================================================
-   */
+
 
   useEffect(() => {
   setAggregation(hasDuplicateRows);
@@ -214,11 +135,7 @@ function TimeSeriesDataCleaning({
 
     if (readonly || isLoading) return;
 
-    /**
-     * -----------------------------------------------------
-     * Change Data Type Toggle
-     * -----------------------------------------------------
-     */
+    
 
     if (key === 'changeDataType') {
 
@@ -251,12 +168,22 @@ function TimeSeriesDataCleaning({
         }));
 
         setShowFieldErrors(false);
+
+        // Reset all selected values
+        setDataTypeColumns([
+          {
+            columnName: '',
+            oldDataType: '',
+            newDataType: ''
+          }
+        ]);
       }
 
       /**
        * Open section if enabled
        */
       if (newState) {
+        setShowFieldErrors(false);
 
         setExpandedSections({
           changeDataType: true,
@@ -552,6 +479,30 @@ function TimeSeriesDataCleaning({
           ] = col.newDataType;
         }
       });
+
+      /**
+       * Validate Change Data Type
+       */
+      if (modifyDataTypes) {
+        const hasSelectedFeature = Object.keys(
+          modifyDataTypesMap
+        ).length > 0;
+
+        if (!hasSelectedFeature) {
+          setShowFieldErrors(true);
+
+          toast.error(
+            'Please select at least one feature.',
+            {
+              duration: 4000,
+              position: 'top-right'
+            }
+          );
+
+          setIsLoading(false);
+          return false;
+        }
+      }
 
       /**
        * ---------------------------------------------------
