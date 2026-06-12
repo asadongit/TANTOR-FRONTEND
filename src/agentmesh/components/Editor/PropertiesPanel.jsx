@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useWorkflowStore, useUIStore } from '../../store';
+import { useWorkflowStore, useUIStore, useVariablesStore } from '../../store';
 import { listTools, fixGrammar, listAvailableModels, testConnection } from '../../api/agentmesh';
 import SkillGallery from './SkillGallery';
 import SaveTemplateModal from './SaveTemplateModal';
@@ -10,6 +10,370 @@ import {
   FiGlobe, FiClock, FiCopy, FiCheck, FiSearch, FiChevronDown, FiRepeat, FiFileText,
   FiZap, FiLoader, FiAlertTriangle, FiGitBranch, FiActivity, FiEdit, FiFilter, FiShield, FiCamera, FiBox, FiSave, FiUploadCloud
 } from 'react-icons/fi';
+
+function VariableLinker({ targetType, onSelect, tooltip }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [pickerVar, setPickerVar] = useState(null);
+  const [pickerSearch, setPickerSearch] = useState('');
+  const [checkedKeys, setCheckedKeys] = useState(new Set());
+  const { variables } = useVariablesStore();
+  const containerRef = useRef(null);
+  
+  const relevantVars = variables.filter(v => Array.isArray(targetType) ? targetType.includes(v.var_type) : v.var_type === targetType);
+
+  // Close on outside click
+  // Close dropdown on outside click (picker modal has its own backdrop)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [isOpen]);
+
+  const handleVarClick = (v) => {
+    // Show checkbox picker only for arrays of primitive strings (like json_keys with 67 key paths)
+    // schema_list has array of objects ({name, description}) — those should use direct select
+    const isStringArray = Array.isArray(v.value) && v.value.length > 1 && typeof v.value[0] === 'string';
+    if (isStringArray) {
+      setPickerVar(v);
+      setPickerSearch('');
+      setCheckedKeys(new Set());
+      setIsOpen(false);
+    } else {
+      // For schema_list, list of objects, or single-value vars → direct select
+      onSelect(v);
+      setIsOpen(false);
+    }
+  };
+
+  const toggleKey = (key) => {
+    setCheckedKeys(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const handleAddSelected = () => {
+    if (checkedKeys.size === 0) return;
+    // Create a synthetic variable with only the selected keys
+    onSelect({ ...pickerVar, value: Array.from(checkedKeys) });
+    setPickerVar(null);
+    setPickerSearch('');
+    setCheckedKeys(new Set());
+  };
+
+  const filteredKeys = pickerVar
+    ? pickerVar.value.filter(k => String(k).toLowerCase().includes(pickerSearch.toLowerCase()))
+    : [];
+
+  const handleSelectAll = () => {
+    if (checkedKeys.size === filteredKeys.length) {
+      // Deselect all visible
+      setCheckedKeys(prev => {
+        const next = new Set(prev);
+        filteredKeys.forEach(k => next.delete(k));
+        return next;
+      });
+    } else {
+      // Select all visible
+      setCheckedKeys(prev => {
+        const next = new Set(prev);
+        filteredKeys.forEach(k => next.add(k));
+        return next;
+      });
+    }
+  };
+  
+  return (
+    <div style={{ position: 'relative', display: 'inline-block' }} ref={containerRef}>
+      <button 
+        type="button"
+        title={tooltip || "Link to variable"}
+        onClick={(e) => { e.preventDefault(); setIsOpen(!isOpen); setPickerVar(null); }}
+        style={{
+          background: 'none', border: 'none', padding: '4px', cursor: 'pointer',
+          color: 'var(--accent-btn, #3b82f6)', display: 'flex', alignItems: 'center'
+        }}
+      >
+        <FiZap size={14} />
+      </button>
+      
+      {/* Step 1: Variable selector dropdown */}
+      {isOpen && (
+        <div style={{
+          position: 'absolute', top: '100%', right: 0, zIndex: 100,
+          background: 'white', border: '1px solid var(--border)', borderRadius: 8,
+          boxShadow: 'var(--shadow-md)', minWidth: 200, padding: 8, marginTop: 4
+        }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6, padding: '0 4px' }}>
+            Variables ({Array.isArray(targetType) ? targetType.join(', ') : targetType})
+          </div>
+          {relevantVars.length === 0 ? (
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', padding: '4px', fontStyle: 'italic' }}>No variables found</div>
+          ) : (
+            <div style={{ maxHeight: 150, overflowY: 'auto' }}>
+              {relevantVars.map(v => (
+                <div 
+                  key={v.key}
+                  onClick={() => handleVarClick(v)}
+                  style={{
+                    padding: '6px 8px', fontSize: 12, cursor: 'pointer',
+                    borderRadius: 4, fontFamily: 'monospace',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <span>{v.key}</span>
+                  {Array.isArray(v.value) && v.value.length > 1 && (
+                    <span style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600 }}>{v.value.length} items</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Step 2: Key picker with checkboxes (for array variables like json_keys) */}
+      {pickerVar && (
+        <div style={{
+          position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+          zIndex: 10001, background: 'white', borderRadius: 16,
+          boxShadow: '0 25px 60px rgba(0,0,0,0.25)', width: 640, maxWidth: '90vw', maxHeight: '70vh',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          border: '1px solid var(--border, #e2e8f0)',
+          fontFamily: "'Google Sans','Roboto',sans-serif",
+        }}>
+          {/* Header */}
+          <div style={{ 
+            padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            background: '#FAFBFC'
+          }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary, #1e293b)' }}>
+                Select Keys from <code style={{ background: '#EEF2FF', padding: '2px 6px', borderRadius: 4, fontSize: 12, color: '#4338CA' }}>{pickerVar.key}</code>
+              </div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                {checkedKeys.size} of {pickerVar.value.length} selected
+              </div>
+            </div>
+            <button 
+              onClick={() => { setPickerVar(null); setPickerSearch(''); setCheckedKeys(new Set()); }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 4 }}
+            >
+              <FiX size={18} />
+            </button>
+          </div>
+
+          {/* Search + Select All */}
+          <div style={{ padding: '12px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <FiSearch style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} size={13} />
+              <input
+                value={pickerSearch}
+                onChange={e => setPickerSearch(e.target.value)}
+                placeholder={`Search ${pickerVar.value.length} keys...`}
+                autoFocus
+                style={{
+                  width: '100%', padding: '8px 10px 8px 32px', borderRadius: 8,
+                  border: '1px solid var(--border, #e2e8f0)', outline: 'none',
+                  fontSize: 12, color: 'var(--text-primary)', background: 'white',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            <button
+              onClick={handleSelectAll}
+              style={{
+                border: '1px solid var(--border, #e2e8f0)', background: 'white',
+                padding: '7px 12px', borderRadius: 8, cursor: 'pointer',
+                fontSize: 11, fontWeight: 600, color: '#64748b', whiteSpace: 'nowrap',
+              }}
+            >
+              {checkedKeys.size === filteredKeys.length && filteredKeys.length > 0 ? 'Deselect All' : 'Select All'}
+            </button>
+          </div>
+
+          {/* Key list with checkboxes */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '4px 12px' }}>
+            {filteredKeys.map((key, i) => {
+              const isChecked = checkedKeys.has(key);
+              return (
+                <label
+                  key={i}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '7px 8px',
+                    borderRadius: 6, cursor: 'pointer', fontSize: 12, fontFamily: 'monospace',
+                    color: isChecked ? '#1e293b' : '#64748b',
+                    background: isChecked ? '#EEF2FF' : 'transparent',
+                    transition: 'background 0.1s',
+                    borderBottom: i < filteredKeys.length - 1 ? '1px solid #f8fafc' : 'none',
+                  }}
+                  onMouseEnter={e => { if (!isChecked) e.currentTarget.style.background = '#f8fafc'; }}
+                  onMouseLeave={e => { if (!isChecked) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => toggleKey(key)}
+                    style={{ 
+                      width: 16, height: 16, cursor: 'pointer', accentColor: '#6366f1',
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span style={{ overflowX: 'auto', whiteSpace: 'nowrap', flex: 1, paddingBottom: 2, scrollbarWidth: 'thin' }}>
+                    {key}
+                  </span>
+                </label>
+              );
+            })}
+            {filteredKeys.length === 0 && (
+              <div style={{ padding: 20, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>
+                No keys match "{pickerSearch}"
+              </div>
+            )}
+          </div>
+
+          {/* Footer with Add button */}
+          <div style={{
+            padding: '12px 20px', borderTop: '1px solid var(--border, #e2e8f0)',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            background: '#FAFBFC',
+          }}>
+            <span style={{ fontSize: 11, color: '#94a3b8' }}>
+              {checkedKeys.size > 0 ? `${checkedKeys.size} key${checkedKeys.size > 1 ? 's' : ''} selected` : 'Check the keys you need'}
+            </span>
+            <button
+              onClick={handleAddSelected}
+              disabled={checkedKeys.size === 0}
+              style={{
+                border: 'none', 
+                background: checkedKeys.size > 0 ? 'var(--theme-primary, #6366f1)' : '#e2e8f0',
+                color: checkedKeys.size > 0 ? 'white' : '#94a3b8',
+                padding: '8px 20px', borderRadius: 8, fontWeight: 700, fontSize: 12,
+                cursor: checkedKeys.size > 0 ? 'pointer' : 'not-allowed',
+                display: 'flex', alignItems: 'center', gap: 6,
+                transition: 'all 0.2s',
+              }}
+            >
+              <FiCheck size={14} /> Add Selected
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Backdrop for picker */}
+      {pickerVar && (
+        <div 
+          style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(2px)' }}
+          onClick={() => { setPickerVar(null); setPickerSearch(''); setCheckedKeys(new Set()); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function VariableDropdown({ value, onChange, placeholder, style, id }) {
+  const { variables } = useVariablesStore();
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+  
+  const targetClasses = variables
+    .filter(v => v.var_type === 'schema_list' || v.var_type === 'list')
+    .flatMap(v => v.var_type === 'list' ? v.value : v.value.map(i => i.name));
+    
+  const uniqueClasses = [...new Set(targetClasses)];
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [isOpen]);
+
+  const filtered = uniqueClasses.filter(c => c.toLowerCase().includes((value || '').toLowerCase()));
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative', width: style?.width || '100%', minWidth: style?.minWidth }}>
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+        <input 
+          value={value ?? ''}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+          placeholder={placeholder}
+          style={{ 
+            ...inputStyle, 
+            ...style, 
+            width: '100%', 
+            paddingRight: 30,
+            outline: isOpen ? '2px solid var(--accent-btn)' : 'none',
+            outlineOffset: -1
+          }}
+        />
+        <div 
+          onClick={() => setIsOpen(!isOpen)}
+          style={{ 
+            position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', 
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'var(--text-muted)'
+          }}
+        >
+          <FiChevronDown style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+        </div>
+      </div>
+      
+      {isOpen && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
+          background: 'white', border: '1px solid var(--border)', borderRadius: 8,
+          boxShadow: 'var(--shadow-xl)', zIndex: 10000, maxHeight: 250, overflowY: 'auto',
+          padding: '4px'
+        }}>
+          {uniqueClasses.length === 0 && (
+            <div style={{ padding: '8px 12px', fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
+              No classes found in variables
+            </div>
+          )}
+          {filtered.map(c => (
+            <div 
+              key={c}
+              onClick={() => { onChange(c); setIsOpen(false); }}
+              style={{
+                padding: '8px 12px', cursor: 'pointer', fontSize: 12, borderRadius: 6,
+                background: value === c ? '#F0F4FF' : 'transparent',
+                color: value === c ? 'var(--accent-btn)' : 'var(--text-primary)',
+                fontWeight: value === c ? 600 : 400
+              }}
+              onMouseEnter={(e) => { if (value !== c) e.currentTarget.style.background = '#F8FAFC'; }}
+              onMouseLeave={(e) => { if (value !== c) e.currentTarget.style.background = 'transparent'; }}
+            >
+              {c}
+            </div>
+          ))}
+          {filtered.length === 0 && uniqueClasses.length > 0 && (
+             <div style={{ padding: '8px 12px', fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+               Press Enter to use custom value
+             </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const FONT = "'Google Sans','Roboto',sans-serif";
 
@@ -127,6 +491,28 @@ function Textarea({ value, onChange, placeholder, rows = 4 }) {
       onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
     />
   );
+}
+
+function CommaArrayEditor({ value = [], onChange, placeholder, isTextarea = false, rows = 3, style }) {
+  const [localValue, setLocalValue] = useState((value || []).join(', '));
+
+  useEffect(() => {
+    const valArr = (value || []).filter(Boolean);
+    const localArr = localValue.split(',').map(s => s.trim()).filter(Boolean);
+    if (localArr.join(',') !== valArr.join(',')) {
+      setLocalValue(valArr.join(', '));
+    }
+  }, [value, localValue]);
+
+  const handleChange = (v) => {
+    setLocalValue(v);
+    onChange(v.split(',').map(s => s.trim()).filter(Boolean));
+  };
+
+  if (isTextarea) {
+    return <Textarea value={localValue} onChange={handleChange} placeholder={placeholder} rows={rows} />;
+  }
+  return <Input value={localValue} onChange={handleChange} placeholder={placeholder} style={style} />;
 }
 
 function VariablePicker({ onSelect }) {
@@ -4764,35 +5150,138 @@ export default function PropertiesPanel() {
           </>
         )}
 
-        {/* ── PII Masking Node ── */}
+        {/* ── PII Masking Node (Enterprise) ── */}
         {data.type === 'pii_node' && (
           <>
-            <Field label="Masking Engine" hint="Choose the detection algorithm. Regex is fast (pattern-based), GLiNER is smart (semantic context).">
+            {/* ─── Engine Selection (HOW to mask) ─── */}
+            <Field label="Masking Engine" hint="WHO performs the masking. Local is fast but destructive; DocBot is enterprise-grade with encrypted vault and reversible tokens.">
               <Select
-                value={data.pii_engine || 'regex'}
+                value={data.pii_engine || 'local'}
                 onChange={(v) => update({ pii_engine: v })}
                 options={[
-                  { value: 'regex', label: 'Regex (Fast, Pattern-based)' },
-                  { value: 'gliner', label: 'GLiNER (Advanced, Context-aware)' }
+                  { value: 'local', label: 'Local (DataFog — Fast, In-Process)' },
+                  { value: 'docbot', label: 'External (DocBot — Vaulted, Reversible)' }
                 ]}
               />
             </Field>
 
-            <Field label="Redaction Target" hint="Choose which part of the workflow flow to sanitize.">
+            {/* Local engine sub-option: DataFog algorithm */}
+            {(data.pii_engine || 'local') === 'local' && (
+              <>
+                <Field label="Detection Algorithm" hint="Regex is fast (pattern-matching). GLiNER uses NLP for context-aware detection.">
+                  <Select
+                    value={data.datafog_engine || 'regex'}
+                    onChange={(v) => update({ datafog_engine: v })}
+                    options={[
+                      { value: 'regex', label: 'Regex (Fast, Pattern-based)' },
+                      { value: 'gliner', label: 'GLiNER (NLP, Context-aware)' }
+                    ]}
+                  />
+                </Field>
+                <div style={{
+                  padding: '10px 12px', background: '#FEF3C7', borderRadius: 8,
+                  fontSize: 10, color: '#92400E', border: '1px solid #FDE68A',
+                  lineHeight: 1.5, display: 'flex', alignItems: 'flex-start', gap: 8
+                }}>
+                  <FiAlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                  <span><strong>Destructive masking:</strong> Original data is permanently replaced with placeholders (e.g., [PERSON]). Not reversible. For reversible masking with a secure vault, use the DocBot engine.</span>
+                </div>
+              </>
+            )}
+
+            {/* DocBot engine settings */}
+            {data.pii_engine === 'docbot' && (
+              <>
+                <Field label="DocBot API URL" hint="Base URL of the DocBot PII service.">
+                  <Input
+                    value={data.docbot_url || 'http://localhost:8000'}
+                    onChange={(v) => update({ docbot_url: v })}
+                    placeholder="http://localhost:8000"
+                  />
+                </Field>
+                <Field label="DocBot Method" hint="Local = regex only (fast). Hybrid = regex + LLM verification (more accurate, slower).">
+                  <Select
+                    value={data.docbot_method || 'local'}
+                    onChange={(v) => update({ docbot_method: v })}
+                    options={[
+                      { value: 'local', label: 'Local (Regex — Fast)' },
+                      { value: 'hybrid', label: 'Hybrid (Regex + LLM — Accurate)' }
+                    ]}
+                  />
+                </Field>
+                <div style={{
+                  padding: '10px 12px', background: '#ECFDF5', borderRadius: 8,
+                  fontSize: 10, color: '#065F46', border: '1px solid #A7F3D0',
+                  lineHeight: 1.5, display: 'flex', alignItems: 'flex-start', gap: 8
+                }}>
+                  <FiShield size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                  <span><strong>Enterprise vault:</strong> Original PII is encrypted and stored in DocBot's secure vault. Masked tokens (e.g., [PAN_a3f82b1c]) are reversible via the /pii/reveal endpoint.</span>
+                </div>
+              </>
+            )}
+
+            <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0', opacity: 0.4 }} />
+
+            {/* ─── Target Selection (WHAT to mask) ─── */}
+            <Field label="Redaction Target" hint="WHAT data should be scanned and masked. Works with any engine.">
               <Select
                 value={data.pii_target || 'latest_message'}
                 onChange={(v) => update({ pii_target: v })}
                 options={[
-                  { value: 'latest_message', label: 'Redact Latest Message' },
-                  { value: 'all_messages', label: 'Redact All Messages (History)' },
-                  { value: 'context_data', label: 'Redact Workflow Context (JSON-safe)' }
+                  { value: 'latest_message', label: 'Latest Message' },
+                  { value: 'context_variable', label: 'Context Variable (JSON-safe)' },
+                  { value: 'targeted_replacement', label: 'Targeted Replacement (Precision)' }
                 ]}
               />
             </Field>
 
+            {/* Context Variable target: key input */}
+            {data.pii_target === 'context_variable' && (
+              <Field label="Context Key" hint="Specific context variable to mask. Leave empty to mask entire context.">
+                <Input
+                  value={data.context_variable_key || ''}
+                  onChange={(v) => update({ context_variable_key: v })}
+                  placeholder="e.g. user_input or leave empty for all"
+                />
+              </Field>
+            )}
 
-            <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '20px 0', opacity: 0.5 }} />
+            {/* Targeted Replacement: identifier + rendered key inputs */}
+            {data.pii_target === 'targeted_replacement' && (
+              <>
+                <div style={{
+                  padding: '10px 12px', background: '#EFF6FF', borderRadius: 8,
+                  fontSize: 10, color: '#1E40AF', border: '1px solid #BFDBFE',
+                  lineHeight: 1.5, marginBottom: 8
+                }}>
+                  <strong>Precision mode:</strong> Takes known sensitive values (from an upstream Extract Identifiers node) and does an exact find-and-replace in the rendered text. Zero false positives — only masks what you explicitly extracted.
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <div style={{ flex: 1 }}>
+                    <Field label="Identifiers Input Key" hint="Context key containing extracted identifiers array.">
+                      <Input
+                        value={data.identifiers_input_key || 'extracted_identifiers'}
+                        onChange={(v) => update({ identifiers_input_key: v })}
+                        placeholder="extracted_identifiers"
+                      />
+                    </Field>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Field label="Rendered Text Key" hint="Context key containing the text/summaries where values will be masked.">
+                      <Input
+                        value={data.rendered_input_key || 'ocr_like_results'}
+                        onChange={(v) => update({ rendered_input_key: v })}
+                        placeholder="ocr_like_results"
+                      />
+                    </Field>
+                  </div>
+                </div>
+              </>
+            )}
 
+            <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0', opacity: 0.4 }} />
+
+            {/* ─── Custom Regex Patterns (pre-processing layer) ─── */}
             <CustomRegexEditor
               value={data.pii_custom_regex || []}
               onChange={(v) => update({ pii_custom_regex: v })}
@@ -4813,7 +5302,7 @@ export default function PropertiesPanel() {
               justifyContent: 'space-between'
             }}>
               <span style={{ flex: 1, fontWeight: 500 }}>
-                Privacy Guard: Sensitive data is masked and replaced with placeholders (e.g., [PERSON]) to ensure compliance before data leaves this step.
+                Privacy Guard: Custom regex patterns run as a pre-processing step before the main engine. This ensures matching data never reaches the engine at all.
               </span>
             </div>
           </>
@@ -4851,6 +5340,22 @@ export default function PropertiesPanel() {
             )}
 
             {/* 3. Classes & Descriptions/Patterns Editor */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                Classification Classes
+              </label>
+              <VariableLinker 
+                targetType={['schema_list', 'list']} 
+                onSelect={(variable) => {
+                  if (variable.var_type === 'schema_list') {
+                    update({ classification_classes: variable.value.map(item => ({ class: item.name, description: item.description || '' })) });
+                  } else if (variable.var_type === 'list') {
+                    update({ classification_classes: variable.value.map(name => ({ class: name, description: '' })) });
+                  }
+                }}
+                tooltip="Load from Variable"
+              />
+            </div>
             <ClassificationClassesEditor
               value={data.classification_classes || []}
               onChange={(v) => update({ classification_classes: v })}
@@ -5268,11 +5773,27 @@ export default function PropertiesPanel() {
             )}
 
             {(data.transform_operation) === 'pick' && (
-              <Field label="Fields to Pick" hint="Comma-separated list of field paths to keep (e.g., name,address.city).">
-                <Textarea
-                  value={(data.transform_pick_fields || []).join(', ')}
-                  onChange={(v) => update({ transform_pick_fields: v.split(',').map(s => s.trim()).filter(Boolean) })}
+              <Field 
+                label={
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    Fields to Pick
+                    <VariableLinker 
+                      targetType="json_keys"
+                      onSelect={(variable) => {
+                        const current = data.transform_pick_fields || [];
+                        update({ transform_pick_fields: [...new Set([...current, ...variable.value])] });
+                      }}
+                      tooltip="Pick from JSON Keys"
+                    />
+                  </div>
+                } 
+                hint="Comma-separated list of field paths to keep (e.g., name,address.city)."
+              >
+                <CommaArrayEditor
+                  value={data.transform_pick_fields}
+                  onChange={(v) => update({ transform_pick_fields: v })}
                   placeholder="name, age, address.city"
+                  isTextarea={true}
                   rows={3}
                 />
               </Field>
@@ -5280,7 +5801,23 @@ export default function PropertiesPanel() {
 
             {(data.transform_operation) === 'rename' && (
               <KeyValueEditor
-                label="Rename Map (Old Key → New Key)"
+                label={
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    Rename Map (Old Key → New Key)
+                    <VariableLinker 
+                      targetType="json_keys"
+                      onSelect={(variable) => {
+                        const current = data.transform_rename_map || {};
+                        const next = { ...current };
+                        variable.value.forEach(k => {
+                          if (!(k in next)) next[k] = '';
+                        });
+                        update({ transform_rename_map: next });
+                      }}
+                      tooltip="Pick from JSON Keys"
+                    />
+                  </div>
+                }
                 value={data.transform_rename_map || {}}
                 onChange={(v) => update({ transform_rename_map: v })}
                 hint="Left = original key name, Right = new key name"
@@ -5288,11 +5825,27 @@ export default function PropertiesPanel() {
             )}
 
             {(data.transform_operation) === 'omit' && (
-              <Field label="Keys to Omit" hint="Comma-separated list of keys to remove.">
-                <Textarea
-                  value={(data.transform_omit_keys || []).join(', ')}
-                  onChange={(v) => update({ transform_omit_keys: v.split(',').map(s => s.trim()).filter(Boolean) })}
+              <Field 
+                label={
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    Keys to Omit
+                    <VariableLinker 
+                      targetType="json_keys"
+                      onSelect={(variable) => {
+                        const current = data.transform_omit_keys || [];
+                        update({ transform_omit_keys: [...new Set([...current, ...variable.value])] });
+                      }}
+                      tooltip="Pick from JSON Keys"
+                    />
+                  </div>
+                }
+                hint="Comma-separated list of keys to remove."
+              >
+                <CommaArrayEditor
+                  value={data.transform_omit_keys}
+                  onChange={(v) => update({ transform_omit_keys: v })}
                   placeholder="ssn, password, internal_id"
+                  isTextarea={true}
                   rows={3}
                 />
               </Field>
@@ -5318,8 +5871,9 @@ export default function PropertiesPanel() {
                 value={data.extract_mode || 'identifier'}
                 onChange={(v) => update({ extract_mode: v })}
                 options={[
-                  { value: 'identifier', label: 'Identifier (PAN, Name, Account No.)' },
-                  { value: 'field_mapper', label: 'Field Mapper (group by agent class)' }
+                  { value: 'identifier', label: 'Identifier (ID, Name, Account No.)' },
+                  { value: 'field_mapper', label: 'Field Mapper (group by agent class)' },
+                  { value: 'text_renderer', label: 'Text Renderer (Generate ocr_like_results)' }
                 ]}
               />
             </Field>
@@ -5329,145 +5883,215 @@ export default function PropertiesPanel() {
             </Field>
 
             <Field label="Output Key" hint="Context variable where extraction results are stored.">
-              <Input value={data.extract_output_key || ((data.extract_mode || 'identifier') === 'identifier' ? 'extracted_identifiers' : 'mapped_fields')} onChange={(v) => update({ extract_output_key: v })} placeholder="extracted_identifiers" />
+              <Input value={data.extract_output_key || ((data.extract_mode || 'identifier') === 'identifier' ? 'extracted_identifiers' : (data.extract_mode === 'text_renderer' ? 'ocr_like_results' : 'mapped_fields'))} onChange={(v) => update({ extract_output_key: v })} placeholder="extracted_identifiers" />
             </Field>
 
+            {data.extract_mode === 'text_renderer' && (
+              <Field label="Identifiers Input Key" hint="Context variable containing previously extracted identifiers (for merging).">
+                <Input value={data.identifiers_input_key || 'extracted_identifiers'} onChange={(v) => update({ identifiers_input_key: v })} placeholder="extracted_identifiers" />
+              </Field>
+            )}
+
             {/* Pattern list editor */}
+            {data.extract_mode !== 'text_renderer' && (
             <div style={{ marginTop: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Patterns ({(data.extract_patterns || []).length})
                 </label>
-                <button
-                  onClick={() => update({
-                    extract_patterns: [
-                      ...(data.extract_patterns || []),
-                      {
-                        concept: '',
-                        display_label: '',
-                        search_keywords: [],
-                        match_strategy: 'contains',
-                        is_required: false,
-                        target_class: (data.extract_mode || 'identifier') === 'field_mapper' ? '' : undefined
-                      }
-                    ]
-                  })}
-                  style={{
-                    background: 'none', border: 'none', color: 'var(--accent-btn)',
-                    cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center',
-                    borderRadius: 4
-                  }}
-                >
-                  <FiPlus size={16} strokeWidth={3} />
-                </button>
+                {data.extract_mode !== 'field_mapper' && (
+                  <button
+                    onClick={() => update({
+                      extract_patterns: [
+                        ...(data.extract_patterns || []),
+                        {
+                          concept: '',
+                          display_label: '',
+                          search_keywords: [],
+                          match_strategy: 'contains',
+                          is_required: false,
+                          target_class: (data.extract_mode || 'identifier') === 'field_mapper' ? '' : undefined
+                        }
+                      ]
+                    })}
+                    style={{
+                      background: 'none', border: 'none', color: 'var(--accent-btn)',
+                      cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center',
+                      borderRadius: 4
+                    }}
+                  >
+                    <FiPlus size={16} strokeWidth={3} />
+                  </button>
+                )}
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {(data.extract_patterns || []).map((pattern, idx) => (
-                  <div key={idx} style={{ padding: 10, background: '#F8FAFC', borderRadius: 8, border: '1px solid var(--border)', position: 'relative' }}>
-                    <button
-                      onClick={() => {
-                        const next = [...(data.extract_patterns || [])];
-                        next.splice(idx, 1);
-                        update({ extract_patterns: next });
-                      }}
-                      style={{ position: 'absolute', top: 6, right: 6, background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}
-                    >
-                      <FiX size={12} />
-                    </button>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
-                      <div>
-                        <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>CONCEPT</label>
-                        <Input
-                          value={pattern.concept || ''}
-                          onChange={(v) => {
-                            const next = [...(data.extract_patterns || [])];
-                            next[idx] = { ...next[idx], concept: v, display_label: next[idx].display_label || v };
-                            update({ extract_patterns: next });
-                          }}
-                          placeholder="e.g. PAN"
-                          style={{ padding: '4px 8px', fontSize: 11 }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DISPLAY LABEL</label>
-                        <Input
-                          value={pattern.display_label || ''}
-                          onChange={(v) => {
-                            const next = [...(data.extract_patterns || [])];
-                            next[idx] = { ...next[idx], display_label: v };
-                            update({ extract_patterns: next });
-                          }}
-                          placeholder="e.g. PAN Number"
-                          style={{ padding: '4px 8px', fontSize: 11 }}
-                        />
-                      </div>
-                    </div>
-
-                    <div style={{ marginBottom: 6 }}>
-                      <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>SEARCH KEYWORDS (comma-separated)</label>
-                      <Input
-                        value={(pattern.search_keywords || []).join(', ')}
-                        onChange={(v) => {
+                {(() => {
+                  const renderPatternRow = (pattern, idx) => (
+                    <div key={idx} style={{ padding: 10, background: '#F8FAFC', borderRadius: 8, border: '1px solid var(--border)', position: 'relative' }}>
+                      <button
+                        onClick={() => {
                           const next = [...(data.extract_patterns || [])];
-                          next[idx] = { ...next[idx], search_keywords: v.split(',').map(s => s.trim()).filter(Boolean) };
+                          next.splice(idx, 1);
                           update({ extract_patterns: next });
                         }}
-                        placeholder="pan, pan_number, permanent_account"
-                        style={{ padding: '4px 8px', fontSize: 11 }}
-                      />
-                    </div>
+                        style={{ position: 'absolute', top: 6, right: 6, background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}
+                      >
+                        <FiX size={12} />
+                      </button>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                      <div>
-                        <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>STRATEGY</label>
-                        <Select
-                          value={pattern.match_strategy || 'contains'}
-                          onChange={(v) => {
-                            const next = [...(data.extract_patterns || [])];
-                            next[idx] = { ...next[idx], match_strategy: v };
-                            update({ extract_patterns: next });
-                          }}
-                          options={[
-                            { value: 'contains', label: 'Contains' },
-                            { value: 'exact', label: 'Exact Match' },
-                            { value: 'starts_with', label: 'Starts With' },
-                            { value: 'ends_with', label: 'Ends With' },
-                            { value: 'regex', label: 'Regex' }
-                          ]}
-                        />
-                      </div>
-                      {(data.extract_mode || 'identifier') === 'field_mapper' ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
                         <div>
-                          <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>TARGET CLASS</label>
+                          <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>CONCEPT</label>
                           <Input
-                            value={pattern.target_class || ''}
+                            value={pattern.concept || ''}
                             onChange={(v) => {
                               const next = [...(data.extract_patterns || [])];
-                              next[idx] = { ...next[idx], target_class: v };
+                              next[idx] = { ...next[idx], concept: v, display_label: next[idx].display_label || v };
                               update({ extract_patterns: next });
                             }}
-                            placeholder="e.g. FA, LOAN"
+                            placeholder="e.g. ID_Number"
                             style={{ padding: '4px 8px', fontSize: 11 }}
                           />
                         </div>
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 4 }}>
-                          <Toggle
-                            checked={pattern.is_required || false}
+                        <div>
+                          <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DISPLAY LABEL</label>
+                          <Input
+                            value={pattern.display_label || ''}
                             onChange={(v) => {
                               const next = [...(data.extract_patterns || [])];
-                              next[idx] = { ...next[idx], is_required: v };
+                              next[idx] = { ...next[idx], display_label: v };
                               update({ extract_patterns: next });
                             }}
-                            label="Required"
+                            placeholder="e.g. ID Number"
+                            style={{ padding: '4px 8px', fontSize: 11 }}
                           />
                         </div>
-                      )}
+                      </div>
+
+                      <div style={{ marginBottom: 6 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                          <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block' }}>SEARCH KEYWORDS (comma-separated)</label>
+                          <VariableLinker 
+                            targetType="json_keys" 
+                            onSelect={(variable) => {
+                              const next = [...(data.extract_patterns || [])];
+                              const current = next[idx].search_keywords || [];
+                              next[idx] = { ...next[idx], search_keywords: [...new Set([...current, ...variable.value])] };
+                              update({ extract_patterns: next });
+                            }}
+                            tooltip="Pick from JSON Keys"
+                          />
+                        </div>
+                        <CommaArrayEditor
+                          value={pattern.search_keywords}
+                          onChange={(v) => {
+                            const next = [...(data.extract_patterns || [])];
+                            next[idx] = { ...next[idx], search_keywords: v };
+                            update({ extract_patterns: next });
+                          }}
+                          placeholder="id, id_number, account"
+                          style={{ padding: '4px 8px', fontSize: 11 }}
+                        />
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                        <div>
+                          <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>STRATEGY</label>
+                          <Select
+                            value={pattern.match_strategy || 'contains'}
+                            onChange={(v) => {
+                              const next = [...(data.extract_patterns || [])];
+                              next[idx] = { ...next[idx], match_strategy: v };
+                              update({ extract_patterns: next });
+                            }}
+                            options={[
+                              { value: 'contains', label: 'Contains' },
+                              { value: 'exact', label: 'Exact Match' },
+                              { value: 'starts_with', label: 'Starts With' },
+                              { value: 'ends_with', label: 'Ends With' },
+                              { value: 'regex', label: 'Regex' }
+                            ]}
+                          />
+                        </div>
+                        {data.extract_mode !== 'field_mapper' && (
+                          <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 4 }}>
+                            <Toggle
+                              checked={pattern.is_required || false}
+                              onChange={(v) => {
+                                const next = [...(data.extract_patterns || [])];
+                                next[idx] = { ...next[idx], is_required: v };
+                                update({ extract_patterns: next });
+                              }}
+                              label="Required"
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+
+                  if (data.extract_mode === 'field_mapper') {
+                    const grouped = (data.extract_patterns || []).reduce((acc, p, idx) => {
+                      const tc = p.target_class || 'Unassigned';
+                      if (!acc[tc]) acc[tc] = [];
+                      acc[tc].push({ ...p, originalIndex: idx });
+                      return acc;
+                    }, {});
+
+                    return (
+                      <>
+                        {Object.entries(grouped).map(([tc, groupPatterns]) => (
+                          <div key={tc} style={{ padding: 12, background: 'white', borderRadius: 8, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8, boxShadow: 'var(--shadow-sm)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: 8, marginBottom: 4 }}>
+                              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>CLASS:</span>
+                                <VariableDropdown
+                                  value={tc === 'Unassigned' ? '' : tc}
+                                  onChange={(newClass) => {
+                                    const next = [...(data.extract_patterns || [])];
+                                    groupPatterns.forEach(p => {
+                                      next[p.originalIndex].target_class = newClass;
+                                    });
+                                    update({ extract_patterns: next });
+                                  }}
+                                  placeholder="Select Target Class"
+                                  style={{ padding: '4px 8px', fontSize: 12, fontWeight: 600, border: 'none', background: 'transparent', color: 'var(--theme-primary)', minWidth: 200, outline: 'none' }}
+                                />
+                              </div>
+                              <button
+                                onClick={() => {
+                                  const next = [...(data.extract_patterns || [])];
+                                  next.push({
+                                    concept: '', display_label: '', search_keywords: [],
+                                    match_strategy: 'contains', is_required: false, target_class: tc !== 'Unassigned' ? tc : ''
+                                  });
+                                  update({ extract_patterns: next });
+                                }}
+                                style={{ background: 'none', border: 'none', color: 'var(--accent-btn)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700 }}
+                              >
+                                <FiPlus size={12} /> ADD FIELD
+                              </button>
+                            </div>
+                            {groupPatterns.map(p => renderPatternRow(p, p.originalIndex))}
+                          </div>
+                        ))}
+                        <button
+                          onClick={() => {
+                            const next = [...(data.extract_patterns || [])];
+                            next.push({ concept: '', display_label: '', search_keywords: [], match_strategy: 'contains', is_required: false, target_class: '' });
+                            update({ extract_patterns: next });
+                          }}
+                          style={{ padding: '8px', background: 'var(--bg-hover)', border: '1px dashed var(--border)', borderRadius: 8, color: 'var(--text-primary)', fontWeight: 600, fontSize: 11, cursor: 'pointer', marginTop: 4, width: '100%' }}
+                        >
+                          + ADD TARGET CLASS GROUP
+                        </button>
+                      </>
+                    );
+                  }
+
+                  return (data.extract_patterns || []).map((pattern, idx) => renderPatternRow(pattern, idx));
+                })()}
                 {(data.extract_patterns || []).length === 0 && (
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', padding: '4px 0' }}>
                     No patterns defined. Click the plus button above to add patterns.
@@ -5475,6 +6099,7 @@ export default function PropertiesPanel() {
                 )}
               </div>
             </div>
+            )}
 
             <div style={{
               padding: '12px 14px', background: '#FDF2F8', borderRadius: 10, fontSize: 11, color: '#DB2777',
@@ -5483,8 +6108,8 @@ export default function PropertiesPanel() {
               <FiSearch size={14} style={{ flexShrink: 0 }} />
               <span style={{ flex: 1, fontWeight: 500 }}>
                 {(data.extract_mode || 'identifier') === 'identifier'
-                  ? 'Identifier mode finds labeled values (PAN, Name, etc.) from flat JSON keys. Connect after a JSON Transform node.'
-                  : 'Field Mapper mode groups extracted values by target class (FA, LOAN, etc.) for routing to specialist agents.'
+                  ? 'Identifier mode finds labeled values (ID, Name, etc.) from flat JSON keys. Connect after a JSON Transform node.'
+                  : 'Field Mapper mode groups extracted values by target class (class_1, class_2, etc.) for routing.'
                 }
               </span>
             </div>
@@ -5638,9 +6263,9 @@ export default function PropertiesPanel() {
             </Field>
 
             <Field label="File Filters" hint="Comma-separated extensions for bulk directory scanning (e.g. .pdf, .jpg)">
-              <Input
-                value={(data.file_filters || ['.pdf', '.jpg', '.png', '.jpeg']).join(', ')}
-                onChange={(v) => update({ file_filters: v.split(',').map(s => s.trim()).filter(Boolean) })}
+              <CommaArrayEditor
+                value={data.file_filters || ['.pdf', '.jpg', '.png', '.jpeg']}
+                onChange={(v) => update({ file_filters: v })}
                 placeholder=".pdf, .jpg, .png"
               />
             </Field>

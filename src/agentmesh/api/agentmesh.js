@@ -285,4 +285,15 @@ export const updateWorkflowTemplateStatus = (id, status) =>
 export const deleteWorkflowTemplate = (id) =>
   request(`/workflow-template/${id}`, { method: 'DELETE' });
 
-
+// ─── Workflow Variables ───────────────────────────────────────────────────────
+export const listWorkflowVariables = (workflowId) => request(`/workflow/${workflowId}/variables`);
+export const getWorkflowVariable = (workflowId, key) => request(`/workflow/${workflowId}/variables/${key}`);
+export const setWorkflowVariable = (workflowId, payload) => request(`/workflow/${workflowId}/variables`, { method: 'POST', body: JSON.stringify(payload) });
+export const deleteWorkflowVariable = (workflowId, key) => request(`/workflow/${workflowId}/variables/${key}`, { method: 'DELETE' });
+export const uploadJsonVariable = (workflowId, formData) => fetch(`${BASE}/workflow/${workflowId}/variables/extract-json-keys`, { method: 'POST', body: formData }).then(async (res) => {
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Upload failed');
+  }
+  return res.json();
+});

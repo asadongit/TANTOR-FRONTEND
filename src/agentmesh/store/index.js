@@ -27,8 +27,10 @@ const NODE_DEFAULTS = {
   error_router: { label: 'Error Router', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 } },
   set_data: { label: 'Set Data', message: '' },
   output_parser: { label: 'Output Parser', parse_mode: 'auto', fallback_to_raw: true, output_context_key: 'parsed_output' },
-  pii_node: { label: 'PII Masking', pii_engine: 'regex', pii_target: 'latest_message', pii_entities: ['EMAIL_ADDRESS', 'PHONE_NUMBER', 'PERSON'], pii_custom_regex: [] },
+  pii_node: { label: 'PII Masking', pii_engine: 'regex', pii_target: 'latest_message', pii_entities: ['EMAIL_ADDRESS', 'PHONE_NUMBER', 'PERSON'], pii_custom_regex: [], docbot_url: 'http://localhost:8000', docbot_method: 'hybrid', hitl_enabled: false, identifiers_input_key: 'extracted_identifiers', rendered_input_key: 'ocr_like_results' },
   ocr_node: { label: 'OCR Node', ocr_input_key: 'latest_file_path', ocr_prompt: 'Please perform OCR on this document and return the full text accurately.', llm: { provider: 'groq', model: 'llama-3.2-90b-vision-preview', temperature: 0 }, interrupt_before: false, interrupt_after: false, pii_verification: false },
+  json_transform: { label: 'JSON Transform', transform_operation: 'flatten', transform_separator: '_', transform_pick_fields: '', transform_rename_map: '', transform_omit_keys: '', transform_input_key: 'api_response', transform_output_key: 'flattened_json' },
+  pattern_extract: { label: 'Pattern Extractor', extract_mode: 'identifier', extract_patterns: [], extract_input_key: 'flattened_json', extract_output_key: 'extracted_identifiers', identifiers_input_key: 'extracted_identifiers' },
   api_node: { label: 'API Request', method: 'GET', url: '', headers: {}, params: {}, body: '', auth_method: 'none', api_auth_config: {} },
   ingestion_node: { label: 'Ingestion', vector_store: 'chroma', vector_collection: 'default', chunk_size: 1000, chunk_overlap: 100, chunking_strategy: 'recursive', ingestion_source_key: 'latest_ocr_output' },
   classification: { label: 'Classification Agent', classification_classes: [{ class: 'Class A', description: 'Description for Class A' }], classification_summary: false, classification_engine: 'llm', classification_input_field: '', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 } },
@@ -423,6 +425,7 @@ export const useWorkflowStore = create((set, get) => ({
     });
     // ✅ VARIABLE EXPLORER: Clear data explorer when starting a new workflow
     useRunStore.getState().reset();
+    useVariablesStore.getState().reset();
   },
 
   loadWorkflowIntoEditor: async (w) => {
@@ -467,6 +470,7 @@ export const useWorkflowStore = create((set, get) => ({
     });
     // ✅ VARIABLE EXPLORER: Clear data explorer when loading an existing workflow
     useRunStore.getState().reset();
+    useVariablesStore.getState().reset();
   },
 
   buildConfig: () => {
@@ -496,7 +500,7 @@ export const useWorkflowStore = create((set, get) => ({
           'api_method', 'api_url', 'api_headers', 'api_params', 'api_body', 'api_auth_type', 'api_auth_config', 'api_response_format', 'connection_id', 'api_protocol', 'graphql_query',
           'notification_title', 'notification_message', 'notification_type', 'mute_notification_message', 'show_chat_button',
           'form_title', 'form_description', 'form_fields', 'form_submit_label', 'form_use_context_schema',
-          'pii_engine', 'pii_target', 'pii_entities', 'pii_custom_regex',
+          'pii_engine', 'datafog_engine', 'pii_target', 'pii_entities', 'pii_custom_regex', 'docbot_url', 'docbot_method', 'hitl_enabled', 'identifiers_input_key', 'rendered_input_key', 'context_variable_key',
           'ocr_input_key', 'ocr_prompt', 'ocr_engine', 'ocr_standard_model', 'pii_verification',
           'scan_mode', 'file_filters', 'concurrency_limit', 'webhook_url',
           'on_error',
@@ -512,7 +516,7 @@ export const useWorkflowStore = create((set, get) => ({
           'classification_input_key', 'classification_output_key',
           'destination_field', 'action', 'field_to_aggregate', 'separator',
           'show_citations',
-          'extract_mode', 'extract_patterns', 'extract_input_key', 'extract_output_key',
+          'extract_mode', 'extract_patterns', 'extract_input_key', 'extract_output_key', 'identifiers_input_key',
           'debug_scope', 'debug_key',
           'subscription_filters', 'subscription_input_key', 'subscription_output_key',
           'payload_template', 'payload_destination_key',
@@ -891,4 +895,70 @@ export const useRunStore = create((set) => ({
       injectFeedback: true
     }
   }),
+}));
+
+export const useVariablesStore = create((set, get) => ({
+  variables: [],
+  isLoading: false,
+  error: null,
+  showVariablesPanel: false,
+  setShowVariablesPanel: (show) => set({ showVariablesPanel: show }),
+  setVariables: (variables) => set({ variables, error: null }),
+  setLoading: (isLoading) => set({ isLoading }),
+  setError: (error) => set({ error, isLoading: false }),
+  addVariable: (variable) => set((state) => {
+    // Prevent duplicates by updating if key exists
+    const idx = state.variables.findIndex(v => v.key === variable.key);
+    if (idx >= 0) {
+      const next = [...state.variables];
+      next[idx] = variable;
+      return { variables: next };
+    }
+    return { variables: [...state.variables, variable] };
+  }),
+  removeVariable: (key) => set((state) => ({
+    variables: state.variables.filter(v => v.key !== key)
+  })),
+  reset: () => set({ variables: [], isLoading: false, error: null, showVariablesPanel: false }),
+
+  // Async API wrappers
+  fetchVariables: async (workflowId) => {
+    set({ isLoading: true, error: null });
+    try {
+      const api = await import('../api/agentmesh');
+      const res = await api.listWorkflowVariables(workflowId);
+      set({ variables: res.variables || [], isLoading: false });
+    } catch (err) {
+      set({ error: err.message, isLoading: false });
+    }
+  },
+  upsertVariable: async (workflowId, payload) => {
+    const api = await import('../api/agentmesh');
+    const res = await api.setWorkflowVariable(workflowId, payload);
+    if (res.status === 'success') {
+      get().addVariable(res.variable);
+      return res.variable;
+    }
+    throw new Error(res.message || 'Failed to save variable');
+  },
+  deleteVariable: async (workflowId, key) => {
+    const api = await import('../api/agentmesh');
+    const res = await api.deleteWorkflowVariable(workflowId, key);
+    if (res.status === 'success') {
+      get().removeVariable(key);
+      return true;
+    }
+    throw new Error(res.message || 'Failed to delete variable');
+  },
+  uploadJsonFile: async (workflowId, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const api = await import('../api/agentmesh');
+    const res = await api.uploadJsonVariable(workflowId, formData);
+    if (res.status === 'success') {
+      await get().fetchVariables(workflowId);
+      return res;
+    }
+    throw new Error(res.message || 'Failed to upload JSON');
+  }
 }));

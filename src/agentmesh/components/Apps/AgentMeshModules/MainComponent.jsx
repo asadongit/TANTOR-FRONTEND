@@ -15,6 +15,7 @@ const Navbar             = lazyWithRetry(() => import('../../Editor/Navbar'));
 const WorkflowCanvas     = lazyWithRetry(() => import('../../Editor/WorkflowCanvas'));
 const RunPanel           = lazyWithRetry(() => import('../../Editor/RunPanel'));
 const WorkflowNotesModal = lazyWithRetry(() => import('../../Editor/WorkflowNotesModal'));
+const WorkflowVariablesPanel = lazyWithRetry(() => import('../../Editor/WorkflowVariablesPanel'));
 const NotificationsModal = lazyWithRetry(() => import('../../Editor/NotificationsModal'));
 const DashboardPage      = lazyWithRetry(() => import('./DashboardPage'));
 const WorkflowsPage      = lazyWithRetry(() => import('./WorkflowsPage'));
@@ -134,7 +135,12 @@ export default function MainComponent() {
 
       {/* Modals */}
       <Suspense fallback={null}>
-        {activePage === 'canvas' && <WorkflowNotesModal />}
+        {activePage === 'canvas' && (
+          <>
+            <WorkflowNotesModal />
+            <WorkflowVariablesPanel />
+          </>
+        )}
         <NotificationsModal />
       </Suspense>
 
