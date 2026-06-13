@@ -4,7 +4,7 @@ import {
   FiPlay, FiSquare, FiCpu, FiBox, FiGitMerge,
   FiTarget, FiShare2, FiBookOpen, FiLink,
   FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiAlertTriangle, FiZap, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiLayers, FiInbox, FiDatabase, FiServer, FiDownload,
-  FiHelpCircle, FiCode
+  FiHelpCircle, FiCode, FiSliders
 } from 'react-icons/fi';
 
 export const NODE_TYPES = [
@@ -77,6 +77,7 @@ export const NODE_TYPES = [
   { type: 'banking_enrichment', icon: FiServer,   label: 'Banking Pre-Enrichment Node', desc: 'Orchestrates external & internal API data gathering.', bg: '#F5F3FF', color: '#7C3AED', category: 'Banking' },
   { type: 'beneficiary_risk', icon: FiGitBranch,   label: 'Beneficiary Risk Router', desc: 'Evaluates beneficiary (Mule, Age, Velocity) and routes workflow', bg: '#F5F3FF', color: '#7C3AED', category: 'Banking' },
   { type: 'rule_engine', icon: FiShield,    label: 'Rule Engine',    desc: 'Custom Python Rules & Scorecards', bg: '#FEE2E2', color: '#DC2626', category: 'Banking' },
+  { type: 'weightage', icon: FiSliders,    label: 'Weightage System', desc: 'Multi-field dynamic scoring & weights', bg: '#E0F2FE', color: '#0369A1', category: 'Banking' },
 ];
 
 export default function NodePalette({ onClose }) {

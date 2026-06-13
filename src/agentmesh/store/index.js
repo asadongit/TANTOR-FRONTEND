@@ -125,6 +125,8 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           jt_operations: n.jt_operations || n.data?.jt_operations || [],
           jt_expression: n.jt_expression || n.data?.jt_expression || '',
           jt_pass_through: n.jt_pass_through ?? n.data?.jt_pass_through ?? false,
+          weightage_categories: n.weightage_categories || n.data?.weightage_categories || [],
+          weightage_output_key: n.weightage_output_key || n.data?.weightage_output_key || 'weightage_result',
         },
       };
     });
@@ -540,7 +542,8 @@ export const useWorkflowStore = create((set, get) => ({
           'classification_classes', 'classification_summary', 'classification_engine', 'classification_input_field',
           'template_content', 'template_output_key', 'template_data_key', 'template_file_path',
           'button_label', 'button_input', 'button_category',
-          'jt_input_key', 'jt_output_key', 'jt_mode', 'jt_query', 'jt_operations', 'jt_expression', 'jt_pass_through'
+          'jt_input_key', 'jt_output_key', 'jt_mode', 'jt_query', 'jt_operations', 'jt_expression', 'jt_pass_through',
+          'weightage_categories', 'weightage_output_key'
         ];
 
         const nodeConfig = {};

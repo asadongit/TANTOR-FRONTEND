@@ -3,7 +3,7 @@ import { useWorkflowStore, useUIStore, useRunStore } from '../../store';
 import { listTools, fixGrammar, chatArchitect } from '../../api/agentmesh';
 import SkillGallery from './SkillGallery';
 import SaveTemplateModal from './SaveTemplateModal';
-import { FiMinus, FiTrash2, FiMousePointer, FiInfo, FiLayers, FiSettings, FiCpu, FiTool, FiGitMerge, FiTarget, FiShare2, FiUser, FiBookOpen, FiLink, FiPlus, FiX, FiGlobe, FiClock, FiCopy, FiCheck, FiSearch, FiChevronDown, FiRepeat, FiFileText, FiZap, FiLoader, FiAlertTriangle, FiGitBranch, FiActivity, FiEdit, FiFilter, FiShield, FiCamera, FiBox, FiSave, FiTerminal, FiDatabase, FiUploadCloud, FiDownload, FiAlignLeft, FiKey, FiLock, FiMessageSquare, FiPlay, FiHelpCircle, FiCode } from 'react-icons/fi';
+import { FiMinus, FiTrash2, FiMousePointer, FiInfo, FiLayers, FiSettings, FiCpu, FiTool, FiGitMerge, FiTarget, FiShare2, FiUser, FiBookOpen, FiLink, FiPlus, FiX, FiGlobe, FiClock, FiCopy, FiCheck, FiSearch, FiChevronDown, FiRepeat, FiFileText, FiZap, FiLoader, FiAlertTriangle, FiGitBranch, FiActivity, FiEdit, FiFilter, FiShield, FiCamera, FiBox, FiSave, FiTerminal, FiDatabase, FiUploadCloud, FiDownload, FiAlignLeft, FiKey, FiLock, FiMessageSquare, FiPlay, FiHelpCircle, FiCode, FiSliders } from 'react-icons/fi';
 import ConnectionsDropdown from './ConnectionsDropdown';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import jsonLang from 'react-syntax-highlighter/dist/esm/languages/hljs/json';
@@ -1058,6 +1058,348 @@ function FormFieldsEditor({ fields = [], onChange }) {
           onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
         >
           <FiPlus size={14} /> Add Form Field
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const MiniatureToggle = ({ checked, onChange }) => (
+  <div
+    onClick={() => onChange(!checked)}
+    style={{
+      width: 28,
+      height: 16,
+      borderRadius: 8,
+      cursor: 'pointer',
+      position: 'relative',
+      background: checked ? 'var(--theme-primary, #8B5CF6)' : '#E2E8F0',
+      transition: 'all 0.2s',
+      flexShrink: 0
+    }}
+  >
+    <div style={{
+      position: 'absolute',
+      top: 2,
+      left: checked ? 14 : 2,
+      width: 12,
+      height: 12,
+      borderRadius: '50%',
+      background: '#fff',
+      transition: 'left 0.2s ease',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+    }} />
+  </div>
+);
+
+function WeightageCategoriesEditor({ categories = [], onChange }) {
+  const [collapsedCategories, setCollapsedCategories] = useState({});
+  const [collapsedFields, setCollapsedFields] = useState({});
+
+  const sanitizeName = (val) => {
+    // lowercase, replace spaces with underscores, remove any other invalid special characters
+    return val.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+  };
+
+  const addCategory = () => {
+    const nextName = sanitizeName(`category_${categories.length + 1}`);
+    const next = [...categories, { name: nextName, fields: [], enabled: true }];
+    onChange(next);
+  };
+
+  const updateCategory = (catIdx, patch) => {
+    const next = [...categories];
+    if (patch.name !== undefined) {
+      patch.name = sanitizeName(patch.name);
+    }
+    next[catIdx] = { ...next[catIdx], ...patch };
+    onChange(next);
+  };
+
+  const removeCategory = (catIdx) => {
+    const next = categories.filter((_, i) => i !== catIdx);
+    onChange(next);
+  };
+
+  const addField = (catIdx) => {
+    const cat = categories[catIdx];
+    const newField = { name: `new_field`, match_strategy: 'first_match', default_weight: 0.0, conditions: [], enabled: true };
+    const nextFields = [...(cat.fields || []), newField];
+    updateCategory(catIdx, { fields: nextFields });
+  };
+
+  const updateField = (catIdx, fieldIdx, patch) => {
+    const cat = categories[catIdx];
+    const nextFields = [...(cat.fields || [])];
+    if (patch.name !== undefined) {
+      patch.name = sanitizeName(patch.name);
+    }
+    nextFields[fieldIdx] = { ...nextFields[fieldIdx], ...patch };
+    updateCategory(catIdx, { fields: nextFields });
+  };
+
+  const removeField = (catIdx, fieldIdx) => {
+    const cat = categories[catIdx];
+    const nextFields = (cat.fields || []).filter((_, i) => i !== fieldIdx);
+    updateCategory(catIdx, { fields: nextFields });
+  };
+
+  const addCondition = (catIdx, fieldIdx) => {
+    const field = categories[catIdx].fields[fieldIdx];
+    const newCondition = { condition: 'variable > 10', weight: 10.0, enabled: true };
+    const nextConditions = [...(field.conditions || []), newCondition];
+    updateField(catIdx, fieldIdx, { conditions: nextConditions });
+  };
+
+  const updateCondition = (catIdx, fieldIdx, condIdx, patch) => {
+    const field = categories[catIdx].fields[fieldIdx];
+    const nextConditions = [...(field.conditions || [])];
+    nextConditions[condIdx] = { ...nextConditions[condIdx], ...patch };
+    updateField(catIdx, fieldIdx, { conditions: nextConditions });
+  };
+
+  const removeCondition = (catIdx, fieldIdx, condIdx) => {
+    const field = categories[catIdx].fields[fieldIdx];
+    const nextConditions = (field.conditions || []).filter((_, i) => i !== condIdx);
+    updateField(catIdx, fieldIdx, { conditions: nextConditions });
+  };
+
+  const toggleCategoryCollapse = (catIdx) => {
+    setCollapsedCategories(prev => ({ ...prev, [catIdx]: !prev[catIdx] }));
+  };
+
+  const toggleFieldCollapse = (catIdx, fieldIdx) => {
+    const key = `${catIdx}_${fieldIdx}`;
+    setCollapsedFields(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <FiSliders size={12} color="var(--accent-btn)" /> Categories & Rules
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {categories.map((cat, catIdx) => {
+          const isCatCollapsed = collapsedCategories[catIdx];
+          const isCatEnabled = cat.enabled !== false;
+          return (
+            <div key={catIdx} style={{ padding: 14, background: '#F8FAFC', borderRadius: 12, border: '1px solid var(--border)', position: 'relative', opacity: isCatEnabled ? 1 : 0.6, boxShadow: '0 2px 8px rgba(124, 58, 237, 0.04)' }}>
+              
+              {/* Category Header Controls */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, position: 'absolute', top: 12, right: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center' }} title="Toggle Category Enabled">
+                  <MiniatureToggle
+                    checked={isCatEnabled}
+                    onChange={(v) => updateCategory(catIdx, { enabled: v })}
+                  />
+                </div>
+                <button
+                  onClick={() => toggleCategoryCollapse(catIdx)}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  title={isCatCollapsed ? "Expand Category" : "Collapse Category"}
+                >
+                  <FiChevronDown size={16} style={{ transform: isCatCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }} />
+                </button>
+                <button
+                  onClick={() => removeCategory(catIdx)}
+                  style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  title="Delete Category"
+                >
+                  <FiTrash2 size={14} />
+                </button>
+              </div>
+
+              {/* Category Name Input */}
+              <div style={{ marginRight: 100 }}>
+                <Field label="Category Name" hint="Lowercase & underscores only. spaces auto-replaced by _">
+                  <Input
+                    value={cat.name}
+                    onChange={(v) => updateCategory(catIdx, { name: v })}
+                    placeholder="e.g. loan_scoring"
+                    disabled={!isCatEnabled}
+                  />
+                </Field>
+              </div>
+
+              {/* Fields List (collapsible) */}
+              {!isCatCollapsed && (
+                <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fields in {cat.name}</div>
+                  
+                  {(cat.fields || []).map((field, fieldIdx) => {
+                    const fieldKey = `${catIdx}_${fieldIdx}`;
+                    const isFieldCollapsed = collapsedFields[fieldKey];
+                    const isFieldEnabled = field.enabled !== false;
+                    return (
+                      <div key={fieldIdx} style={{ padding: 12, background: 'white', borderRadius: 10, border: '1px solid #E2E8F0', opacity: isFieldEnabled && isCatEnabled ? 1 : 0.6, boxShadow: '0 1px 4px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        
+                        {/* Field Header Controls (Responsive layout) */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F1F5F9', paddingBottom: 6 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>Field Config</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ display: 'flex', alignItems: 'center' }} title="Toggle Field Enabled">
+                              <MiniatureToggle
+                                checked={isFieldEnabled}
+                                onChange={(v) => updateField(catIdx, fieldIdx, { enabled: v })}
+                              />
+                            </div>
+                            <button
+                              onClick={() => toggleFieldCollapse(catIdx, fieldIdx)}
+                              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                              title={isFieldCollapsed ? "Expand Field" : "Collapse Field"}
+                            >
+                              <FiChevronDown size={14} style={{ transform: isFieldCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }} />
+                            </button>
+                            <button
+                              onClick={() => removeField(catIdx, fieldIdx)}
+                              style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                              title="Delete Field"
+                            >
+                              <FiTrash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Field Config Area */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          <div>
+                            <Field label="Field / JSON Path" hint="Lowercase & underscores only.">
+                              <Input
+                                value={field.name}
+                                onChange={(v) => updateField(catIdx, fieldIdx, { name: v })}
+                                placeholder="e.g. loan_amount"
+                                disabled={!isFieldEnabled || !isCatEnabled}
+                              />
+                            </Field>
+                          </div>
+                          
+                          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                            <div style={{ flex: '1 1 120px' }}>
+                              <Field label="Strategy">
+                                <Select
+                                  value={field.match_strategy || 'first_match'}
+                                  onChange={(v) => updateField(catIdx, fieldIdx, { match_strategy: v })}
+                                  options={[
+                                    { value: 'first_match', label: 'First Match' },
+                                    { value: 'sum_all', label: 'Sum All' }
+                                  ]}
+                                  disabled={!isFieldEnabled || !isCatEnabled}
+                                />
+                              </Field>
+                            </div>
+                            <div style={{ flex: '1 1 80px' }}>
+                              <Field label="Fallback Wt">
+                                <Input
+                                  type="number"
+                                  value={field.default_weight ?? 0}
+                                  onChange={(v) => updateField(catIdx, fieldIdx, { default_weight: parseFloat(v) || 0 })}
+                                  placeholder="0"
+                                  disabled={!isFieldEnabled || !isCatEnabled}
+                                />
+                              </Field>
+                            </div>
+                          </div>
+
+                          {/* Conditions (collapsible) */}
+                          {!isFieldCollapsed && (
+                            <div style={{ borderTop: '1px dashed #E2E8F0', paddingTop: 10 }}>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>Conditions & Weights</div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                {(field.conditions || []).map((cond, condIdx) => {
+                                  const isCondEnabled = cond.enabled !== false;
+                                  return (
+                                    <div key={condIdx} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', padding: '6px 8px', background: '#F8FAFC', borderRadius: 8, border: '1px solid #F1F5F9', opacity: isCondEnabled && isFieldEnabled && isCatEnabled ? 1 : 0.6 }}>
+                                      <div style={{ flex: '1 1 140px' }}>
+                                        <Input
+                                          value={cond.condition}
+                                          onChange={(v) => updateCondition(catIdx, fieldIdx, condIdx, { condition: v })}
+                                          placeholder="Condition (e.g. loan_amount > 5000)"
+                                          disabled={!isCondEnabled || !isFieldEnabled || !isCatEnabled}
+                                        />
+                                      </div>
+                                      <div style={{ flex: '1 1 80px', display: 'flex', gap: 4, alignItems: 'center' }}>
+                                        <Input
+                                          value={cond.weight}
+                                          onChange={(v) => {
+                                            const parsed = parseFloat(v);
+                                            const val = isNaN(parsed) ? v : parsed;
+                                            updateCondition(catIdx, fieldIdx, condIdx, { weight: val });
+                                          }}
+                                          placeholder="Weight"
+                                          disabled={!isCondEnabled || !isFieldEnabled || !isCatEnabled}
+                                        />
+                                      </div>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+                                        <div title="Toggle Condition Enabled" style={{ display: 'flex', alignItems: 'center' }}>
+                                          <MiniatureToggle
+                                            checked={isCondEnabled}
+                                            onChange={(v) => updateCondition(catIdx, fieldIdx, condIdx, { enabled: v })}
+                                          />
+                                        </div>
+                                        <button
+                                          onClick={() => removeCondition(catIdx, fieldIdx, condIdx)}
+                                          style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4 }}
+                                        >
+                                          <FiTrash2 size={12} />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+
+                                <button
+                                  onClick={() => addCondition(catIdx, fieldIdx)}
+                                  disabled={!isFieldEnabled || !isCatEnabled}
+                                  style={{
+                                    alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 4,
+                                    padding: '6px 10px', borderRadius: 6, border: '1px dashed var(--border)',
+                                    background: '#F8FAFC', color: 'var(--text-secondary)', fontSize: 10, fontWeight: 600,
+                                    cursor: isFieldEnabled && isCatEnabled ? 'pointer' : 'not-allowed',
+                                    opacity: isFieldEnabled && isCatEnabled ? 1 : 0.5
+                                  }}
+                                >
+                                  <FiPlus size={10} /> Add Condition
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  <button
+                    onClick={() => addField(catIdx)}
+                    style={{
+                      alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '8px 12px', borderRadius: 8, border: '1px dashed var(--border)',
+                      background: 'white', color: 'var(--text-secondary)', fontSize: 11, fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <FiPlus size={12} /> Add Field
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        <button
+          onClick={addCategory}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            padding: '12px', borderRadius: 10, border: '1px dashed var(--border)',
+            background: 'white', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 600,
+            cursor: 'pointer', transition: 'all 0.2s'
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-btn)'; e.currentTarget.style.color = 'var(--accent-btn)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+        >
+          <FiPlus size={14} /> Add Category
         </button>
       </div>
     </div>
@@ -5688,6 +6030,43 @@ export default function PropertiesPanel() {
             </>
           );
         })()}
+
+        {/* ── Weightage System Node ── */}
+        {data.type === 'weightage' && (
+          <>
+            <Field label="Output Context Key" hint="The context key where the final weightage scoring JSON breakdown is saved. Defaults to weightage_result.">
+              <Input
+                value={data.weightage_output_key ?? 'weightage_result'}
+                onChange={(v) => update({ weightage_output_key: v })}
+                placeholder="weightage_result"
+              />
+            </Field>
+
+            <WeightageCategoriesEditor
+              categories={data.weightage_categories || []}
+              onChange={(cats) => update({ weightage_categories: cats })}
+            />
+
+            <div style={{
+              padding: '12px 14px',
+              background: 'var(--bg-card-info, #F0F9FF)',
+              borderRadius: 10,
+              fontSize: 11,
+              color: 'var(--text-card-info, #0369A1)',
+              border: '1px solid var(--border-card-info, #BAE6FD)',
+              lineHeight: 1.5,
+              marginTop: 18,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}>
+              <FiInfo size={14} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, fontWeight: 500 }}>
+                Weightage Scoring: Evaluates dynamic conditions across categories and fields. Calculates total raw scores, maximum possible scores, and normalized percentages (0-100%). Supports Jinja2 variables (e.g. <code>{`{{anualcredit}}`}</code>).
+              </span>
+            </div>
+          </>
+        )}
 
         {/* ── Beneficiary Risk Router ── */}
         {data.type === 'beneficiary_risk' && (() => {
