@@ -428,8 +428,10 @@ export default function WorkflowCanvas() {
           <ReactFlow
             nodes={nodes}
             edges={renderedEdges}
+            selectionKeyCode="Control"
             onNodesChange={(changes) => {
               let hasDirtyChange = false;
+              let hasDimensionsChange = false;
               
               // Check changes to see if a cardboard node is being manually resized
               changes.forEach(change => {
@@ -444,6 +446,7 @@ export default function WorkflowCanvas() {
                     if (newWidth !== undefined && newHeight !== undefined && 
                         (newWidth !== currentWidth || newHeight !== currentHeight)) {
                       hasDirtyChange = true;
+                      hasDimensionsChange = true;
                     }
                   }
                 } else if (!NON_DIRTY_CHANGE_TYPES.has(change.type)) {
@@ -453,31 +456,33 @@ export default function WorkflowCanvas() {
 
               let updated = applyNodeChanges(changes, nodes);
 
-              // Sync cardboard node dimensions to style width/height so it's persisted correctly
-              updated = updated.map(node => {
-                if (node.type === 'cardboardNode' || node.data?.type === 'cardboard') {
-                  const width = node.width ?? node.measured?.width;
-                  const height = node.height ?? node.measured?.height;
-                  if (width !== undefined && height !== undefined) {
-                    return {
-                      ...node,
-                      style: {
-                        ...node.style,
-                        width,
-                        height
-                      }
-                    };
+              if (hasDimensionsChange) {
+                // Sync cardboard node dimensions to style width/height so it's persisted correctly
+                updated = updated.map(node => {
+                  if (node.type === 'cardboardNode' || node.data?.type === 'cardboard') {
+                    const width = node.width ?? node.measured?.width;
+                    const height = node.height ?? node.measured?.height;
+                    if (width !== undefined && height !== undefined) {
+                      return {
+                        ...node,
+                        style: {
+                          ...node.style,
+                          width,
+                          height
+                        }
+                      };
+                    }
                   }
-                }
-                return node;
-              });
+                  return node;
+                });
+              }
 
-            if (hasDirtyChange) {
-              setNodesDirty(updated);
-            } else {
-              setNodes(updated);
-            }
-          }}
+              if (hasDirtyChange) {
+                setNodesDirty(updated);
+              } else {
+                setNodes(updated);
+              }
+            }}
           onEdgesChange={(changes) => {
             const updated = applyEdgeChanges(changes, edges);
             const hasDirtyChange = changes.some(c => c.type !== 'select');
@@ -653,6 +658,12 @@ export default function WorkflowCanvas() {
       </AnimatePresence>
 
       <style>{`
+        .react-flow__selection {
+          background: rgba(142, 119, 187, 0.06) !important;
+          border: 1.5px dashed var(--theme-primary, #8e77bb) !important;
+          border-radius: 6px !important;
+          box-shadow: 0 0 10px rgba(142, 119, 187, 0.15) !important;
+        }
         @keyframes paletteIn {
           from { opacity: 0; transform: translateX(-20px); }
           to { opacity: 1; transform: translateX(0); }

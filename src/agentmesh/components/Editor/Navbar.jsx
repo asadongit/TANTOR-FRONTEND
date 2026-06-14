@@ -2,7 +2,7 @@ import React from 'react';
 import toast from 'react-hot-toast';
 import { useWorkflowStore, useUIStore, useRunStore } from '../../store';
 import { compileWorkflow, saveWorkflow, listWorkflowCategories, deleteWorkflow, explainWorkflow, getWorkflow, cloneWorkflow, fixGrammar, publishWorkflow, getMarketplaceUsecase } from '../../api/agentmesh';
-import { FiUpload, FiDownload, FiPlus, FiX, FiCheck, FiAlertTriangle, FiCopy, FiChevronDown, FiChevronUp, FiBookOpen, FiZap, FiLoader, FiTrash2, FiInfo, FiMaximize2, FiMinimize2, FiShare2, FiSave, FiSend, FiRotateCcw } from 'react-icons/fi';
+import { FiUpload, FiDownload, FiPlus, FiX, FiCheck, FiAlertTriangle, FiCopy, FiChevronDown, FiChevronUp, FiBookOpen, FiZap, FiLoader, FiTrash2, FiInfo, FiMaximize2, FiMinimize2, FiShare2, FiSave, FiSend, FiRotateCcw, FiCpu } from 'react-icons/fi';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { AiMagicIcon } from '@hugeicons/core-free-icons';
 import { formatMessage } from '../Common/messageFormatting';
@@ -10,6 +10,7 @@ import ConfirmationModal from '../Common/ConfirmationModal';
 import SaveWorkflowTemplateModal from './SaveWorkflowTemplateModal';
 import { copyToClipboard } from '../../utils/copyToClipboard';
 import ArchitectBot from './ArchitectBot';
+import ShortcutKeysCanvasModal from './shortcutKeysCanvasModal';
 
 function TooltipWrapper({ text, children }) {
   const [visible, setVisible] = React.useState(false);
@@ -116,6 +117,7 @@ export default function Navbar() {
   const [promptGroup, setPromptGroup] = React.useState('Default');
   const [promptCategory, setPromptCategory] = React.useState('General');
   const [validationError, setValidationError] = React.useState(null);
+  const [showShortcutsModal, setShowShortcutsModal] = React.useState(false);
 
   React.useEffect(() => {
     if (showMetadataPrompt) {
@@ -742,6 +744,30 @@ export default function Navbar() {
                       onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
                     >
                       <FiShare2 size={14} /> Publish Usecase
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowShortcutsModal(true);
+                        setIoDropdownOpen(false);
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        background: 'none',
+                        border: 'none',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        fontSize: 13,
+                        color: 'var(--text-primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        transition: 'background 0.15s',
+                        width: '100%'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                    >
+                      <FiCpu size={14} /> Shortcut Keys
                     </button>
                   </div>
                 )}
@@ -1675,6 +1701,7 @@ export default function Navbar() {
           </div>
         </div>
       )}
+      <ShortcutKeysCanvasModal isOpen={showShortcutsModal} onClose={() => setShowShortcutsModal(false)} />
     </>
   );
 }
