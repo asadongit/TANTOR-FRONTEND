@@ -38,7 +38,7 @@ const NODE_DEFAULTS = {
   cd_document_router: { label: 'CD Document Router' },
   cd_postprocessor: { label: 'CD Postprocessor' },
   ingestion_router: { label: 'Ingestion Router', scan_mode: 'auto', file_filters: ['.pdf', '.jpg', '.png', '.jpeg'], concurrency_limit: 5 },
-  event_emitter: { label: 'Event Emitter', webhook_url: 'http://localhost:8000/documents/mesh-status-sync' },
+  event_emitter: { label: 'Event Emitter', webhook_url: 'http://localhost:8000/documents/mesh-status-sync', emit_status: '', interrupt_before: false, interrupt_after: false },
   cardboard: { label: 'Sticky Note', color: 'slate' }
 };
 
@@ -502,7 +502,7 @@ export const useWorkflowStore = create((set, get) => ({
           'form_title', 'form_description', 'form_fields', 'form_submit_label', 'form_use_context_schema',
           'pii_engine', 'datafog_engine', 'pii_target', 'pii_entities', 'pii_custom_regex', 'docbot_url', 'docbot_method', 'hitl_enabled', 'identifiers_input_key', 'rendered_input_key', 'context_variable_key',
           'ocr_input_key', 'ocr_prompt', 'ocr_engine', 'ocr_standard_model', 'pii_verification',
-          'scan_mode', 'file_filters', 'concurrency_limit', 'webhook_url',
+          'scan_mode', 'file_filters', 'concurrency_limit', 'webhook_url', 'emit_status',
           'on_error',
           'response_status', 'response_headers', 'response_body_key',
           'direct_tool_name', 'tool_arguments', 'destination_key',

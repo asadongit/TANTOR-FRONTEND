@@ -6289,6 +6289,36 @@ export default function PropertiesPanel() {
                 placeholder="http://localhost:8000/documents/mesh-status-sync"
               />
             </Field>
+            
+            <Field label="Emit Status" hint="Optional status to send in the payload (e.g., awaiting_classification_review)">
+              <Input
+                value={data.emit_status || ''}
+                onChange={(v) => update({ emit_status: v })}
+                placeholder="awaiting_classification_review"
+              />
+            </Field>
+
+            <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />
+            
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Human-in-the-Loop</div>
+              <Toggle
+                checked={data.interrupt_before === true}
+                onChange={(v) => update({ interrupt_before: v, ...(v ? { interrupt_after: false } : {}) })}
+                label="Pause BEFORE this node runs"
+              />
+              <div style={{ fontSize: 10, color: '#64748B', marginTop: 2, marginLeft: 28, marginBottom: 12 }}>
+                Pauses the workflow before the webhook fires. Use when you want human approval before any notification is sent.
+              </div>
+              <Toggle
+                checked={data.interrupt_after === true}
+                onChange={(v) => update({ interrupt_after: v, ...(v ? { interrupt_before: false } : {}) })}
+                label="Pause AFTER this node runs (Recommended for HITL Review)"
+              />
+              <div style={{ fontSize: 10, color: '#059669', marginTop: 2, marginLeft: 28 }}>
+                Fires the webhook first (updates dashboard status), then pauses for human review. Best for classification verification workflows.
+              </div>
+            </div>
           </>
         )}
 
