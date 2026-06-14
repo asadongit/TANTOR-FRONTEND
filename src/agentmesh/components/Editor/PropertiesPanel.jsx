@@ -186,7 +186,7 @@ function Input({ value, onChange, placeholder, type = 'text', style: extra, disa
   );
 }
 
-function Textarea({ value, onChange, placeholder, rows = 4 }) {
+function Textarea({ value, onChange, placeholder, rows = 4, disabled, style: extra }) {
   const onDragOver = (e) => {
     if (e.dataTransfer.types.includes('application/agentmesh-var')) e.preventDefault();
   };
@@ -201,8 +201,9 @@ function Textarea({ value, onChange, placeholder, rows = 4 }) {
   return (
     <textarea value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={rows}
       onDragOver={onDragOver} onDrop={onDrop}
-      style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
-      onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent-btn)')}
+      disabled={disabled}
+      style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6, opacity: disabled ? 0.6 : 1, ...extra }}
+      onFocus={(e) => !disabled && (e.currentTarget.style.borderColor = 'var(--accent-btn)')}
       onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
     />
   );
@@ -1095,6 +1096,36 @@ const MiniatureToggle = ({ checked, onChange }) => (
 function WeightageCategoriesEditor({ categories = [], onChange }) {
   const [collapsedCategories, setCollapsedCategories] = useState({});
   const [collapsedFields, setCollapsedFields] = useState({});
+  const [conditionWidthPct, setConditionWidthPct] = useState(65);
+  const dragStartRef = useRef({ x: 0, pct: 65 });
+
+  const handleMouseDown = (e, container) => {
+    e.preventDefault();
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    dragStartRef.current = {
+      startX: e.clientX,
+      startPct: conditionWidthPct,
+      width: rect.width
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleMouseMove = (e) => {
+    const { startX, startPct, width } = dragStartRef.current;
+    if (!width) return;
+    const deltaX = e.clientX - startX;
+    const deltaPct = (deltaX / width) * 100;
+    let newPct = startPct + deltaPct;
+    newPct = Math.max(20, Math.min(80, newPct));
+    setConditionWidthPct(newPct);
+  };
+
+  const handleMouseUp = () => {
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  };
 
   const sanitizeName = (val) => {
     // lowercase, replace spaces with underscores, remove any other invalid special characters
@@ -1311,16 +1342,38 @@ function WeightageCategoriesEditor({ categories = [], onChange }) {
                                 {(field.conditions || []).map((cond, condIdx) => {
                                   const isCondEnabled = cond.enabled !== false;
                                   return (
-                                    <div key={condIdx} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', padding: '6px 8px', background: '#F8FAFC', borderRadius: 8, border: '1px solid #F1F5F9', opacity: isCondEnabled && isFieldEnabled && isCatEnabled ? 1 : 0.6 }}>
-                                      <div style={{ flex: '1 1 140px' }}>
-                                        <Input
+                                    <div key={condIdx} style={{ display: 'flex', gap: 0, alignItems: 'center', padding: '6px 8px', background: '#F8FAFC', borderRadius: 8, border: '1px solid #F1F5F9', opacity: isCondEnabled && isFieldEnabled && isCatEnabled ? 1 : 0.6 }}>
+                                      <div style={{ width: `${conditionWidthPct}%`, flexShrink: 0, paddingRight: 4, boxSizing: 'border-box' }}>
+                                        <Textarea
                                           value={cond.condition}
                                           onChange={(v) => updateCondition(catIdx, fieldIdx, condIdx, { condition: v })}
                                           placeholder="Condition (e.g. loan_amount > 5000)"
                                           disabled={!isCondEnabled || !isFieldEnabled || !isCatEnabled}
+                                          rows={1}
+                                          style={{ minHeight: '34px', padding: '6px 10px' }}
                                         />
                                       </div>
-                                      <div style={{ flex: '1 1 80px', display: 'flex', gap: 4, alignItems: 'center' }}>
+                                      
+                                      {/* Drag Handle */}
+                                      <div
+                                        onMouseDown={(e) => handleMouseDown(e, e.currentTarget.parentNode)}
+                                        style={{
+                                          width: 12,
+                                          cursor: 'col-resize',
+                                          display: 'flex',
+                                          justifyContent: 'center',
+                                          alignItems: 'center',
+                                          alignSelf: 'stretch',
+                                          userSelect: 'none',
+                                          margin: '0 4px',
+                                          position: 'relative'
+                                        }}
+                                        title="Drag to resize horizontally"
+                                      >
+                                        <div style={{ width: 2, height: '85%', background: '#CBD5E1', borderRadius: 1 }} />
+                                      </div>
+
+                                      <div style={{ flex: 1, paddingRight: 8, boxSizing: 'border-box' }}>
                                         <Input
                                           value={cond.weight}
                                           onChange={(v) => {
@@ -1332,7 +1385,7 @@ function WeightageCategoriesEditor({ categories = [], onChange }) {
                                           disabled={!isCondEnabled || !isFieldEnabled || !isCatEnabled}
                                         />
                                       </div>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                                         <div title="Toggle Condition Enabled" style={{ display: 'flex', alignItems: 'center' }}>
                                           <MiniatureToggle
                                             checked={isCondEnabled}
@@ -6063,6 +6116,69 @@ export default function PropertiesPanel() {
               <FiInfo size={14} style={{ flexShrink: 0 }} />
               <span style={{ flex: 1, fontWeight: 500 }}>
                 Weightage Scoring: Evaluates dynamic conditions across categories and fields. Calculates total raw scores, maximum possible scores, and normalized percentages (0-100%). Supports Jinja2 variables (e.g. <code>{`{{anualcredit}}`}</code>).
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* ── Template Engine Node ── */}
+        {data.type === 'template_node' && (
+          <>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <FiFileText color="#3B82F6" size={14} /> Template Engine Settings
+              </div>
+
+              <Field label="Template Content" hint="Define your Jinja2/Markdown template. Use Jinja2 formatting (e.g., {{ latest_message }}, {{ user_input }}).">
+                <Textarea
+                  value={data.template_content ?? ''}
+                  onChange={(v) => update({ template_content: v })}
+                  placeholder="Hello {{ latest_message }},\n\nYour score is {{ total_score }} out of {{ max_possible_score }}."
+                  rows={8}
+                />
+              </Field>
+
+              <Field label="Template File Path (Optional)" hint="Provide an absolute path to a template file on the server. If set and file exists, its content overrides the Template Content text field above.">
+                <Input
+                  value={data.template_file_path ?? ''}
+                  onChange={(v) => update({ template_file_path: v })}
+                  placeholder="e.g. C:/templates/my_template.txt"
+                />
+              </Field>
+
+              <Field label="Input Variable Data Key (Optional)" hint="Specify the context key (e.g., enriched_transaction) from which to extract variables to inject into the template context. If it points to a dictionary, those fields are merged into the template variables.">
+                <Input
+                  value={data.template_data_key ?? ''}
+                  onChange={(v) => update({ template_data_key: v })}
+                  placeholder="e.g. enriched_transaction"
+                />
+              </Field>
+
+              <Field label="Output Context Key" hint="Context key to save the final rendered string output. Defaults to rendered_template.">
+                <Input
+                  value={data.template_output_key ?? 'rendered_template'}
+                  onChange={(v) => update({ template_output_key: v })}
+                  placeholder="rendered_template"
+                />
+              </Field>
+            </div>
+
+            <div style={{
+              padding: '12px 14px',
+              background: 'var(--bg-card-info, #F0F9FF)',
+              borderRadius: 10,
+              fontSize: 11,
+              color: 'var(--text-card-info, #0369A1)',
+              border: '1px solid var(--border-card-info, #BAE6FD)',
+              lineHeight: 1.5,
+              marginTop: 18,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}>
+              <FiInfo size={14} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, fontWeight: 500 }}>
+                Template Engine Node: Renders dynamic text or markdown using Jinja2 formatting. The global context, <code>latest_message</code>, and values under the selected <code>Input Data Key</code> are all exposed to your template variables automatically.
               </span>
             </div>
           </>

@@ -137,8 +137,7 @@ export function UnifiedAgentTurn({ finalAgent, intermediateSteps, isLast, runnin
                     textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.02em',
                     display: 'flex', alignItems: 'center', gap: 6
                   }}>
-                    {resolveLabel(step.node)}
-                    <span style={{ fontSize: 9, color: '#9CA3AF', fontWeight: 500 }}>• INTERNAL TURN</span>
+                    {resolveLabel(step.node) || 'Internal Processing'}
                   </div>
                   <div style={{
                     fontSize: 14, color: THEME_TEXT, lineHeight: 1.6,
