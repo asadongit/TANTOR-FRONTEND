@@ -17,6 +17,70 @@ import NodeSearch from './NodeSearch';
 
 const NON_DIRTY_CHANGE_TYPES = new Set(['select', 'dimensions', 'reset']);
 
+// Helper to calculate distance from point p to line segment ab
+const getDistanceToSegment = (p, a, b) => {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  if (dx === 0 && dy === 0) {
+    return { distance: Math.hypot(p.x - a.x, p.y - a.y), t: 0 };
+  }
+  
+  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy);
+  t = Math.max(0, Math.min(1, t));
+  
+  const closestX = a.x + t * dx;
+  const closestY = a.y + t * dy;
+  
+  return {
+    distance: Math.hypot(p.x - closestX, p.y - closestY),
+    t
+  };
+};
+
+const findClosestEdge = (p, currentNodes, currentEdges, draggedNodeId = null) => {
+  let closestEdgeId = null;
+  let minDistance = Infinity;
+
+  // Filter out edges connected to the node being dragged
+  const candidateEdges = currentEdges.filter(e => 
+    e.source !== draggedNodeId && e.target !== draggedNodeId
+  );
+
+  for (const edge of candidateEdges) {
+    const sourceNode = currentNodes.find(n => n.id === edge.source);
+    const targetNode = currentNodes.find(n => n.id === edge.target);
+    if (!sourceNode || !targetNode) continue;
+
+    if (sourceNode.type === 'cardboardNode' || targetNode.type === 'cardboardNode') continue;
+
+    const widthA = sourceNode.measured?.width || 180;
+    const heightA = sourceNode.measured?.height || 80;
+    const widthB = targetNode.measured?.width || 180;
+    const heightB = targetNode.measured?.height || 80;
+
+    const a = {
+      x: sourceNode.position.x + widthA / 2,
+      y: sourceNode.position.y + heightA / 2
+    };
+    const b = {
+      x: targetNode.position.x + widthB / 2,
+      y: targetNode.position.y + heightB / 2
+    };
+
+    const { distance, t } = getDistanceToSegment(p, a, b);
+
+    // Limit detection to 60px proximity and ensure projection point is well inside the segment (t between 0.05 and 0.95)
+    if (distance < 60 && t > 0.05 && t < 0.95) {
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestEdgeId = edge.id;
+      }
+    }
+  }
+
+  return closestEdgeId;
+};
+
 export default function WorkflowCanvas() {
   const nodeTypes = React.useMemo(() => ({ 
     agentNode: AgentNode,
@@ -118,6 +182,10 @@ export default function WorkflowCanvas() {
   const hasNodes = nodes.some(n => n.id !== '__start__' && n.id !== '__end__');
 
 
+  const [hoveredEdgeId, setHoveredEdgeId] = useState(null);
+  const [isDraggingSoloNode, setIsDraggingSoloNode] = useState(false);
+  const [draggedNodeId, setDraggedNodeId] = useState(null);
+
   const onConnect = useCallback(
     (params) => {
       const { source, target } = params;
@@ -157,16 +225,124 @@ export default function WorkflowCanvas() {
 
   const edgeType = canvasWireStyle === 'curve' ? 'default' : 'smoothstep';
   const renderedEdges = React.useMemo(() => {
-    return edges.map(edge => ({
-      ...edge,
-      type: edgeType
-    }));
-  }, [edges, edgeType]);
+    const baseEdges = edges.map(edge => {
+      const isHovered = edge.id === hoveredEdgeId;
+      let edgeStyle = edge.style || { stroke: '#CBD5E1', strokeWidth: 1.5 };
+      if (isHovered) {
+        if (draggedNodeId) {
+          edgeStyle = { stroke: '#EF4444', strokeWidth: 2, strokeDasharray: '3,3', opacity: 0.6 };
+        } else {
+          edgeStyle = { stroke: 'var(--theme-primary, #8e77bb)', strokeWidth: 3, strokeDasharray: '5,5' };
+        }
+      }
+
+      return {
+        ...edge,
+        type: edgeType,
+        animated: isHovered ? true : edge.animated,
+        style: edgeStyle
+      };
+    });
+
+    if (hoveredEdgeId && draggedNodeId) {
+      const edgeToSplit = edges.find(e => e.id === hoveredEdgeId);
+      if (edgeToSplit) {
+        const previewEdges = [
+          {
+            id: `preview-edge-1-${edgeToSplit.source}-${draggedNodeId}`,
+            source: edgeToSplit.source,
+            target: draggedNodeId,
+            sourceHandle: edgeToSplit.sourceHandle,
+            targetHandle: null,
+            type: edgeType,
+            animated: true,
+            style: { stroke: 'var(--theme-primary, #8e77bb)', strokeWidth: 2, strokeDasharray: '5,5' }
+          },
+          {
+            id: `preview-edge-2-${draggedNodeId}-${edgeToSplit.target}`,
+            source: draggedNodeId,
+            target: edgeToSplit.target,
+            sourceHandle: null,
+            targetHandle: edgeToSplit.targetHandle,
+            type: edgeType,
+            animated: true,
+            style: { stroke: 'var(--theme-primary, #8e77bb)', strokeWidth: 2, strokeDasharray: '5,5' }
+          }
+        ];
+        return [...baseEdges, ...previewEdges];
+      }
+    }
+
+    return baseEdges;
+  }, [edges, edgeType, hoveredEdgeId, draggedNodeId]);
+
+  const onNodeDragStart = useCallback((event, node) => {
+    const hasIncoming = edges.some(e => e.target === node.id);
+    const hasOutgoing = edges.some(e => e.source === node.id);
+    const isSolo = !hasIncoming && !hasOutgoing;
+    const isCardboard = node.type === 'cardboardNode' || node.data?.type === 'cardboard';
+    
+    if (isSolo && !isCardboard) {
+      setIsDraggingSoloNode(true);
+      setDraggedNodeId(node.id);
+    }
+  }, [edges]);
+
+  const onNodeDrag = useCallback((event, node) => {
+    if (!isDraggingSoloNode) return;
+    const width = node.measured?.width || 180;
+    const height = node.measured?.height || 80;
+    const p = {
+      x: node.position.x + width / 2,
+      y: node.position.y + height / 2
+    };
+    const closestEdgeId = findClosestEdge(p, nodes, edges, node.id);
+    setHoveredEdgeId(closestEdgeId);
+  }, [isDraggingSoloNode, nodes, edges]);
+
+  const onNodeDragStop = useCallback((event, node) => {
+    if (isDraggingSoloNode && hoveredEdgeId) {
+      const edgeToSplit = edges.find(e => e.id === hoveredEdgeId);
+      if (edgeToSplit) {
+        const { source, target, sourceHandle, targetHandle } = edgeToSplit;
+        const nextEdges = edges.filter(e => e.id !== hoveredEdgeId);
+        const edgeType = canvasWireStyle === 'curve' ? 'default' : 'smoothstep';
+        const newEdges = [
+          ...nextEdges,
+          {
+            id: `e_${source}_to_${node.id}_${Date.now()}`,
+            source,
+            target: node.id,
+            sourceHandle,
+            targetHandle: null,
+            type: edgeType,
+            style: { stroke: '#CBD5E1', strokeWidth: 1.5 }
+          },
+          {
+            id: `e_${node.id}_to_${target}_${Date.now()}`,
+            source: node.id,
+            target,
+            sourceHandle: null,
+            targetHandle,
+            type: edgeType,
+            style: { stroke: '#CBD5E1', strokeWidth: 1.5 }
+          }
+        ];
+        setEdgesDirty(newEdges);
+      }
+    }
+    setHoveredEdgeId(null);
+    setIsDraggingSoloNode(false);
+    setDraggedNodeId(null);
+  }, [isDraggingSoloNode, hoveredEdgeId, edges, setEdgesDirty, canvasWireStyle]);
 
   const onDrop = useCallback((e) => {
     e.preventDefault();
     const type = e.dataTransfer.getData('application/agentmesh-node');
-    if (!type || !reactFlowInstance) return;
+    if (!type || !reactFlowInstance) {
+      setHoveredEdgeId(null);
+      return;
+    }
     const position = reactFlowInstance.screenToFlowPosition({
       x: e.clientX,
       y: e.clientY,
@@ -184,11 +360,54 @@ export default function WorkflowCanvas() {
         console.error("Failed to parse dropped template config:", err);
       }
     }
-  }, [reactFlowInstance, addNode, setNodeData]);
+
+    if (hoveredEdgeId && id) {
+      const edgeToSplit = edges.find(e => e.id === hoveredEdgeId);
+      if (edgeToSplit) {
+        const { source, target, sourceHandle, targetHandle } = edgeToSplit;
+        const nextEdges = edges.filter(e => e.id !== hoveredEdgeId);
+        const edgeType = canvasWireStyle === 'curve' ? 'default' : 'smoothstep';
+        const newEdges = [
+          ...nextEdges,
+          {
+            id: `e_${source}_to_${id}_${Date.now()}`,
+            source,
+            target: id,
+            sourceHandle,
+            targetHandle: null,
+            type: edgeType,
+            style: { stroke: '#CBD5E1', strokeWidth: 1.5 }
+          },
+          {
+            id: `e_${id}_to_${target}_${Date.now()}`,
+            source: id,
+            target,
+            sourceHandle: null,
+            targetHandle,
+            type: edgeType,
+            style: { stroke: '#CBD5E1', strokeWidth: 1.5 }
+          }
+        ];
+        setEdgesDirty(newEdges);
+      }
+    }
+    setHoveredEdgeId(null);
+  }, [reactFlowInstance, addNode, setNodeData, hoveredEdgeId, edges, setEdgesDirty, canvasWireStyle]);
 
   const onDragOver = useCallback((e) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+    if (!reactFlowInstance) return;
+    const flowPosition = reactFlowInstance.screenToFlowPosition({
+      x: e.clientX,
+      y: e.clientY,
+    });
+    const closestEdgeId = findClosestEdge(flowPosition, nodes, edges);
+    setHoveredEdgeId(closestEdgeId);
+  }, [reactFlowInstance, nodes, edges]);
+
+  const onDragLeave = useCallback(() => {
+    setHoveredEdgeId(null);
   }, []);
 
   const onNodeClick = useCallback((_, node) => {
@@ -217,13 +436,13 @@ export default function WorkflowCanvas() {
     // 🛡️ Strict Tool Node Validation
     const isSourceTool = sourceNode.data?.type === 'tool_node';
     const isTargetTool = targetNode.data?.type === 'tool_node';
-    const agentTypes = ['llm_agent', 'deep_agent', 'supervisor', 'swarm'];
+    const agentTypes = new Set(['llm_agent', 'deep_agent', 'supervisor', 'swarm']);
 
     if (isSourceTool) {
-      if (!agentTypes.includes(targetNode.data?.type)) return false;
+      if (!agentTypes.has(targetNode.data?.type)) return false;
     }
     if (isTargetTool) {
-      if (!agentTypes.includes(sourceNode.data?.type)) return false;
+      if (!agentTypes.has(sourceNode.data?.type)) return false;
     }
 
     return true;
@@ -498,6 +717,10 @@ export default function WorkflowCanvas() {
           onInit={setReactFlowInstance}
           onDrop={onDrop}
           onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          onNodeDragStart={onNodeDragStart}
+          onNodeDrag={onNodeDrag}
+          onNodeDragStop={onNodeDragStop}
           onNodeClick={onNodeClick}
           onNodeContextMenu={onNodeContextMenu}
           onEdgeClick={onEdgeClick}
