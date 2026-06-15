@@ -233,6 +233,15 @@ function AgentDetailsModal({ template, onClose, onUse }) {
               </div>
             ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {template.description && (
+                <section>
+                  <h4 style={{ fontSize: 12, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 10 }}>Description</h4>
+                  <div style={{ padding: 16, background: '#F8FAFC', borderRadius: 12, border: '1px solid #F1F5F9', fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                    {template.description}
+                  </div>
+                </section>
+              )}
+
               <section>
                 <h4 style={{ fontSize: 12, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 10 }}>Instructions</h4>
                 <div style={{ padding: 16, background: '#F8FAFC', borderRadius: 12, border: '1px solid #F1F5F9', fontSize: 13, color: '#334155', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
