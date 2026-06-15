@@ -12,16 +12,16 @@ const labelClass =
     'text-sm font-medium text-[#332849] font-[Satoshi,sans-serif] leading-none mb-1.5 block';
 
 const CARDINALITY_OPTIONS = [
-    { value: '1:N', label: '1:N' },
-    { value: 'N:1', label: 'N:1' },
+    // { value: '1:N', label: '1:N' },
+    // { value: 'N:1', label: 'N:1' },
     { value: '1:1', label: '1:1' },
-    { value: 'M:N', label: 'M:N' },
+    // { value: 'M:N', label: 'M:N' },
 ];
 
-const MANDATORY_OPTIONS = [
-    { value: 'true',  label: 'Yes' },
-    { value: 'false', label: 'No'  },
-];
+// const MANDATORY_OPTIONS = [
+//     { value: 'true',  label: 'Yes' },
+//     { value: 'false', label: 'No'  },
+// ];
 
 const CreateRelationshipTypeModal = ({ isOpen, onClose, onSuccess }) => {
     const { decodedToken } = useAuth();
@@ -33,7 +33,7 @@ const CreateRelationshipTypeModal = ({ isOpen, onClose, onSuccess }) => {
         source_domain_id: '',
         target_domain_id: '',
         cardinality:      '',
-        is_mandatory:     '',
+        // is_mandatory:     '',
     });
 
     const { isSubmitting, create } = useCreateRelationshipType((data) => {
@@ -53,7 +53,7 @@ const CreateRelationshipTypeModal = ({ isOpen, onClose, onSuccess }) => {
             source_domain_id: '',
             target_domain_id: '',
             cardinality:      '',
-            is_mandatory:     '',
+            // is_mandatory:     '',
         });
         onClose();
     };
@@ -65,7 +65,7 @@ const CreateRelationshipTypeModal = ({ isOpen, onClose, onSuccess }) => {
             source_domain_id: formData.source_domain_id,
             target_domain_id: formData.target_domain_id,
             cardinality:      formData.cardinality,
-            is_mandatory:     formData.is_mandatory === 'true',
+            // is_mandatory:     formData.is_mandatory === 'true',
             created_by:       decodedToken?.preferred_username || 'admin',
         });
         if (!result.ok) toast.error(result.message || 'Something went wrong');
@@ -78,8 +78,8 @@ const CreateRelationshipTypeModal = ({ isOpen, onClose, onSuccess }) => {
         formData.description.trim() &&
         formData.source_domain_id &&
         formData.target_domain_id &&
-        formData.cardinality &&
-        formData.is_mandatory !== '';
+        formData.cardinality ;
+        //&& formData.is_mandatory !== '';
 
     if (!isOpen) return null;
 
@@ -117,20 +117,37 @@ const CreateRelationshipTypeModal = ({ isOpen, onClose, onSuccess }) => {
                     </div>
 
                     {/* Type Code */}
-                    <div className="flex flex-col gap-1.5 w-[313px]">
-                        <label className={labelClass}>
-                            Type Code <span className="text-[#E05252]">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            placeholder="Enter Type Code"
-                            value={formData.type_code}
-                            onChange={e => setFormData(prev => ({ ...prev, type_code: e.target.value }))}
-                            className={inputClass}
-                        />
-                        <span className="text-xs text-[#818181] font-[Satoshi,sans-serif]">
-                            Unique identifier for this type
-                        </span>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1.5">
+                            <label className={labelClass}>
+                                Type Code <span className="text-[#E05252]">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="Enter Type Code"
+                                value={formData.type_code}
+                                onChange={e => setFormData(prev => ({ ...prev, type_code: e.target.value }))}
+                                className={inputClass}
+                            />
+                            <span className="text-xs text-[#818181] font-[Satoshi,sans-serif]">
+                                Unique identifier for this type
+                            </span>
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                            <label className={labelClass}>
+                                Cardinality <span className="text-[#E05252]">*</span>
+                            </label>
+                            <SearchableDropdown
+                                value={formData.cardinality}
+                                onChange={set('cardinality')}
+                                options={CARDINALITY_OPTIONS}
+                                placeholder="Select"
+                            />
+                            <span className="text-xs text-[#818181] font-[Satoshi,sans-serif]">
+                                How many records on each side
+                            </span>
+                        </div>
                     </div>
 
                     {/* Description */}
@@ -174,7 +191,7 @@ const CreateRelationshipTypeModal = ({ isOpen, onClose, onSuccess }) => {
                     </div>
 
                     {/* Cardinality / Is Mandatory */}
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* <div className="grid grid-cols-2 gap-4">
                         <div className="flex flex-col gap-1.5">
                             <label className={labelClass}>
                                 Cardinality <span className="text-[#E05252]">*</span>
@@ -198,7 +215,7 @@ const CreateRelationshipTypeModal = ({ isOpen, onClose, onSuccess }) => {
                                 placeholder="Select"
                             />
                         </div>
-                    </div>
+                    </div> */}
                 </div>
 
                 {/* Footer */}

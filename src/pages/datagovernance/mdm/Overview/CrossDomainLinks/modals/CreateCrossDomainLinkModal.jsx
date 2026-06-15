@@ -10,17 +10,11 @@ import {
     useCreateCrossDomainLink,
 } from '../../../../../../hooks/mdm/crossDomainLink';
 
+
 const ROLE_OPTIONS = [
-    { value: 'Primary Holder',           label: 'Primary Holder' },
-    { value: 'Joint Holder',             label: 'Joint Holder' },
-    { value: 'Nominee',                  label: 'Nominee' },
-    { value: 'Guarantor',                label: 'Guarantor' },
-    { value: 'Beneficiary',              label: 'Beneficiary' },
-    { value: 'Authorized Signatory',     label: 'Authorized Signatory' },
-    { value: 'Power of Attorney Holder', label: 'Power of Attorney Holder' },
-    { value: 'Guardian (Minor Account)', label: 'Guardian (Minor Account)' },
-    { value: 'Account Operator',         label: 'Account Operator' },
-    { value: 'Introducer',               label: 'Introducer' },
+    { value: 'HAS',   label: 'HAS' },
+    { value: 'HOLDS', label: 'HOLDS' },
+    { value: 'USES',  label: 'USES' },
 ];
 
 const STATUS_OPTIONS = [
@@ -159,6 +153,8 @@ const CreateCrossDomainLinkModal = ({ isOpen, onClose, onSuccess, relTypes = [] 
         fromGoldenId && toGoldenId &&
         role && status &&
         effectiveFrom && effectiveTo;
+
+    const today = new Date().toISOString().split('T')[0];
 
     const handleSubmit = async () => {
         const rel = relTypes.find(r => r.type_code === selectedTypeCode);
@@ -377,6 +373,7 @@ const CreateCrossDomainLinkModal = ({ isOpen, onClose, onSuccess, relTypes = [] 
                                     </label>
                                     <input
                                         type="date"
+                                        min={today}
                                         value={effectiveFrom}
                                         onChange={e => setEffectiveFrom(e.target.value)}
                                         className={`w-full border border-[#CCCCCC] rounded-lg px-3 py-[9px] text-sm font-[Satoshi,sans-serif] outline-none box-border ${effectiveFrom ? 'text-[#282F49]' : 'text-[#9CA3AF]'}`}
@@ -388,6 +385,7 @@ const CreateCrossDomainLinkModal = ({ isOpen, onClose, onSuccess, relTypes = [] 
                                     </label>
                                     <input
                                         type="date"
+                                        min={effectiveFrom || today}
                                         value={effectiveTo}
                                         onChange={e => setEffectiveTo(e.target.value)}
                                         className={`w-full border border-[#CCCCCC] rounded-lg px-3 py-[9px] text-sm font-[Satoshi,sans-serif] outline-none box-border ${effectiveTo ? 'text-[#282F49]' : 'text-[#9CA3AF]'}`}

@@ -24,8 +24,8 @@ const STATUS_OPTIONS = [
 const TYPE_OPTIONS = [
     { value: 'All Types',      label: 'All Types' },
     { value: 'Match Review',   label: 'Match Review' },
-    { value: 'Data Quality',   label: 'Data Quality' },
-    { value: 'Merge Approval', label: 'Merge Approval' },
+    // { value: 'Data Quality',   label: 'Data Quality' },
+    // { value: 'Merge Approval', label: 'Merge Approval' },
 ];
 
 const PRIORITY_STYLES = {

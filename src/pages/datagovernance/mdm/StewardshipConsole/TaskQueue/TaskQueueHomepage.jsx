@@ -27,8 +27,8 @@ const STATUS_OPTIONS = [
 const TYPE_OPTIONS = [
     { value: 'All Types', label: 'All Types' },
     { value: 'Match Review', label: 'Match Review' },
-    { value: 'Data Quality', label: 'Data Quality' },
-    { value: 'Merge Approval', label: 'Merge Approval' },
+    // { value: 'Data Quality', label: 'Data Quality' },
+    // { value: 'Merge Approval', label: 'Merge Approval' },
 ];
 
 const PRIORITY_STYLES = {
@@ -186,7 +186,7 @@ const RowActions = ({ row, onCompare, onReassign }) => {
         },
         {
             icon: ReassignIcon,
-            label: 'Reassign',
+            label: 'Assign',
             color: '#332849',
             bg: '#FFFFFF',
             hoverBg: '#F2EBFF',
@@ -471,7 +471,7 @@ const TaskQueueHomepage = () => {
                                     className="flex items-center justify-center px-4 bg-[#8E77BB] text-white rounded-lg hover:bg-[#7a67a0] transition-colors font-[Satoshi] font-medium text-sm whitespace-nowrap flex-shrink-0"
                                     style={{ height: '40px' }}
                                 >
-                                    Bulk Reassign
+                                    Bulk Assign
                                 </button>
                             </>
                         ) : (

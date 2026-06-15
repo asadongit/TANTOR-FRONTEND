@@ -98,10 +98,19 @@ const emptyAttribute = () => ({
     expanded: true,
 });
 
-const isAttrValid = (attr) =>
-    attr.attributeName.trim() && attr.displayName.trim() && attr.sourceAttributeName.trim() &&
-    attr.sourceDisplayName.trim() && attr.dataType &&
-    isLengthValid(attr.dataType, attr.lengthPrecision);
+const isAttrValid = (attr) => {
+    if (!attr.attributeName.trim() || !attr.displayName.trim() || !attr.sourceAttributeName.trim() ||
+        !attr.sourceDisplayName.trim() || !attr.dataType ||
+        !isLengthValid(attr.dataType, attr.lengthPrecision)) {
+        return false;
+    }
+    // If DQ Dimension is selected, DQ Rule must be selected
+    const hasDimension = attr.dqDimension?.length > 0;
+    if (hasDimension && (!attr.dqRuleIds || attr.dqRuleIds.length === 0)) {
+        return false;
+    }
+    return true;
+};
 
 
 const AttributeRuleFields = ({ attr, onUpdate }) => {
@@ -140,28 +149,26 @@ const AttributeRuleFields = ({ attr, onUpdate }) => {
                     placeholder={dimsLoading ? 'Loading...' : 'Select Dimension'}
                 />
             </div>
-            <div>
-                <label className={labelClass}>DQ Rule</label>
-                <MultiSelectDropdown
-                    options={rules.map(r => ({ rule_id: r.rule_id, rule_name: r.rule_name }))}
-                    selectedIds={attr.dqRuleIds}
-                    onToggle={(id) => {
-                        const next = attr.dqRuleIds.includes(id)
-                            ? attr.dqRuleIds.filter(v => v !== id)
-                            : [...attr.dqRuleIds, id];
-                        onUpdate(attr.id, 'dqRuleIds', next);
-                    }}
-                    onSelectAll={(currentIds) => {
-                        const allIds = rules.map(r => r.rule_id);
-                        onUpdate(attr.id, 'dqRuleIds', currentIds.length === allIds.length ? [] : allIds);
-                    }}
-                    placeholder={
-                        rulesLoading ? 'Loading rules...'
-                        : !attr.dqDimension?.length ? 'Select dimension first'
-                        : 'Select Rules'
-                    }
-                />
-            </div>
+            {attr.dqDimension?.length > 0 && (
+                <div>
+                    <label className={labelClass}>DQ Rule <span className="text-[#E05252]">*</span></label>
+                    <MultiSelectDropdown
+                        options={rules.map(r => ({ rule_id: r.rule_id, rule_name: r.rule_name }))}
+                        selectedIds={attr.dqRuleIds}
+                        onToggle={(id) => {
+                            const next = attr.dqRuleIds.includes(id)
+                                ? attr.dqRuleIds.filter(v => v !== id)
+                                : [...attr.dqRuleIds, id];
+                            onUpdate(attr.id, 'dqRuleIds', next);
+                        }}
+                        onSelectAll={(currentIds) => {
+                            const allIds = rules.map(r => r.rule_id);
+                            onUpdate(attr.id, 'dqRuleIds', currentIds.length === allIds.length ? [] : allIds);
+                        }}
+                        placeholder={rulesLoading ? 'Loading rules...' : 'Select Rules'}
+                    />
+                </div>
+            )}
         </>
     );
 };
