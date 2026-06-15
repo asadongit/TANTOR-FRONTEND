@@ -58,7 +58,6 @@ export const NODE_TYPES = [
   { type: 'json_transform', icon: FiFilter, label: 'JSON Transform', desc: 'Flatten, pick, rename JSON keys', bg: '#E0F2FE', color: '#0284C7', category: 'Data & Storage' },
   { type: 'pattern_extract', icon: FiSearch, label: 'Pattern Extractor', desc: 'Extract values via keyword/regex patterns', bg: '#FDF2F8', color: '#DB2777', category: 'Data & Storage' },
   { type: 'db_node',    icon: FiBox,       label: 'MongoDB',        desc: 'Read/Write MongoDB collections', bg: '#D1FAE5', color: '#065F46', category: 'Data & Storage' },
-  { type: 'cd_postprocessor', icon: FiLayers, label: 'CD Post-Processor', desc: 'Write to Credit Decisioning DB', bg: '#E9D5FF', color: '#6B21A8', category: 'Data & Storage' },
   { type: 'file_store', icon: FiFileText,  label: 'File Store',   desc: 'Save data to CSV/Excel',    bg: '#ECFDF5', color: '#059669', category: 'Data & Storage' },
   { type: 'notification', icon: FiBell,     label: 'Notification', desc: 'In-app alert storage',      bg: '#F0F4FF', color: '#6366F1', category: 'Data & Storage' },
   
@@ -70,9 +69,6 @@ export const NODE_TYPES = [
 
   // Media Services
   { type: 'textToAudio', icon: FiVolume2,   label: 'Text to Audio', desc: 'Converts text to speech',   bg: '#FFE4E1', color: '#C71585', category: 'Media Services' },
-
-  // Credit Decisioning
-  { type: 'cd_document_router', icon: FiGitMerge, label: 'CD Document Router', desc: 'Route docs to agents by type', bg: '#ECFDF5', color: '#059669', category: 'Credit Decisioning' },
 
   // Visual Organizers
   { type: 'cardboard',   icon: FiLayers,    label: 'Sticky Note',     desc: 'Visual container for canvas organization and notes', bg: '#F1F5F9', color: '#64748B', category: 'Visual Organizers' },
@@ -106,7 +102,6 @@ export default function NodePalette({ onClose }) {
     'Data & Storage', 
     'Security & Privacy',
     'Media Services',
-    'Credit Decisioning',
     'System & Debug'
   ];
   const categories = CATEGORY_ORDER.filter(cat => 

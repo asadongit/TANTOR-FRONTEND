@@ -3743,6 +3743,19 @@ export default function PropertiesPanel() {
                     />
                   </Field>
                 </div>
+
+                <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />
+
+                {/* 6e. Data Serialization Options */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Data Serialization Options</div>
+                  <Field label="Agent Input Prefix" hint="Prefix for context keys to inject into the agent prompt (default: 'agent_input_').">
+                    <Input value={data.agent_input_prefix !== undefined ? data.agent_input_prefix : 'agent_input_'} onChange={(v) => update({ agent_input_prefix: v })} placeholder="agent_input_" />
+                  </Field>
+                  <Field label="Output Key Prefix" hint="Prefix used when saving the agent's output back to context (default: 'cd_output_').">
+                    <Input value={data.output_key_prefix !== undefined ? data.output_key_prefix : 'cd_output_'} onChange={(v) => update({ output_key_prefix: v })} placeholder="cd_output_" />
+                  </Field>
+                </div>
               </div>
             </div>
 
@@ -4701,6 +4714,14 @@ export default function PropertiesPanel() {
             <Field label="Destination Field" hint="The context key where the current item will be stored (default: 'item').">
               <Input value={data.destination_field || 'item'} onChange={(v) => update({ destination_field: v })} placeholder="item" />
             </Field>
+
+            <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Global Discovery Options</div>
+              <Field label="Discovery Keys (Optional)" hint="Comma-separated prefix patterns (e.g. 'cd_output_') to gather extra keys from state and inject them into each split iteration's context.">
+                <Input value={data.discovery_keys || ''} onChange={(v) => update({ discovery_keys: v })} placeholder="cd_output_, ocr_like_results" />
+              </Field>
+            </div>
+
             <div style={{ padding: 12, background: '#FFF7ED', borderRadius: 10, fontSize: 11, color: '#9A3412', border: '1px solid #FED7AA', lineHeight: 1.5 }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               Iterates through a list. Each iteration puts the current item into <strong>context.{data.destination_field || 'item'}</strong>.
@@ -4768,6 +4789,16 @@ export default function PropertiesPanel() {
                 placeholder="webhook_payload"
               />
             </Field>
+
+            <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Auto-Collection Options</div>
+              <Field label="Auto Collect Prefix" hint="Automatically merge all context keys matching this prefix into the payload (e.g., 'cd_output_').">
+                <Input value={data.auto_collect_prefix || ''} onChange={(v) => update({ auto_collect_prefix: v })} placeholder="cd_output_" />
+              </Field>
+              <Field label="Clean Binary Fields" hint="Comma-separated paths to remove from auto-collected items before final payload generation (e.g. 'binary_image, raw_pdf').">
+                <Input value={data.clean_binary_from || ''} onChange={(v) => update({ clean_binary_from: v })} placeholder="binary_data, image_bytes" />
+              </Field>
+            </div>
           </>
         )}
 
@@ -4948,6 +4979,20 @@ export default function PropertiesPanel() {
                 ]}
               />
             </Field>
+
+            <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />
+            
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Human-in-the-Loop</div>
+              <Toggle
+                checked={data.interrupt_after === true}
+                onChange={(v) => update({ interrupt_after: v })}
+                label="Pause AFTER API execution (interrupt_after)"
+              />
+              <div style={{ fontSize: 10, color: '#059669', marginTop: 2, marginLeft: 28 }}>
+                Halts the workflow after sending the payload. The workflow will wait until an external system resumes it.
+              </div>
+            </div>
 
             <div style={{ marginTop: 20, padding: 12, background: '#F0F9FF', borderRadius: 10, fontSize: 11, color: '#0369A1', lineHeight: 1.5, border: '1px solid #BAE6FD' }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
@@ -5706,12 +5751,22 @@ export default function PropertiesPanel() {
                 <Toggle
                   checked={data.pii_verification === true}
                   onChange={(v) => update({ pii_verification: v })}
-                  label="Enable PII Verification Gate (HITL)"
+                  label="Legacy PII Verification Gate (Deprecated)"
                 />
                 <div style={{ fontSize: 10, color: '#059669', marginTop: 4, marginLeft: 28 }}>
-                  Pauses the workflow and saves a draft to User_Data for human review.
+                  [Legacy CD workflows only]. Use the dedicated PII Gate Node instead.
                 </div>
               </div>
+
+            <div style={{ marginTop: 16 }}>
+              <Field label="Destination Key" hint="The context key where OCR results are saved. Defaults to 'latest_ocr_output'.">
+                <Input
+                  value={data.destination_key || 'latest_ocr_output'}
+                  onChange={(v) => update({ destination_key: v })}
+                  placeholder="latest_ocr_output"
+                />
+              </Field>
+            </div>
 
             <div style={{
               padding: '12px 14px', background: '#F8FAFC', borderRadius: 10, fontSize: 11, color: 'var(--text-secondary)',
@@ -6201,52 +6256,42 @@ export default function PropertiesPanel() {
           </>
         )}
 
-        {/* ── CD Post-Processor Node ── */}
-        {data.type === 'cd_postprocessor' && (
+        {/* ── PII Verification Gate ── */}
+        {data.type === 'pii_gate_node' && (
           <>
             <div style={{
-              padding: '14px 16px', background: '#F5F3FF', borderRadius: 12, fontSize: 12, color: '#6B21A8',
-              border: '1px solid #DDD6FE', lineHeight: 1.6, marginTop: 8
+              padding: '14px 16px', background: '#F0FDF4', borderRadius: 12, fontSize: 12, color: '#166534',
+              border: '1px solid #BBF7D0', lineHeight: 1.6, marginTop: 8, marginBottom: 16
             }}>
-              <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 13 }}>📋 Credit Decisioning Post-Processor</div>
-              <div style={{ color: '#44337A', fontSize: 11 }}>
-                Writes pipeline results to all legacy CD MongoDB collections so the 
-                Decision Workbench and Dashboard work without changes.
+              <div style={{ fontWeight: 700, marginBottom: 4, fontSize: 13 }}>🛡️ PII Verification Gate</div>
+              <div style={{ color: '#14532D', fontSize: 11 }}>
+                Pauses the workflow and saves a draft of the OCR results to the database for human review before allowing the pipeline to continue.
               </div>
             </div>
 
-            <div style={{ marginTop: 12, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.7 }}>
-              <div style={{ fontWeight: 600, marginBottom: 6, color: 'var(--text-primary)' }}>Collections Written:</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div>✅ <b>User_Data</b> — Customer profile + orchestration decision</div>
-                <div>✅ <b>Ocr_Data</b> — OCR extraction results</div>
-                <div>✅ <b>Upload_Batches</b> — Pipeline tracking</div>
-                <div>✅ <b>Governance_Workflow</b> — Workflow-level timing</div>
-                <div>✅ <b>Governance_Workflow_Stages</b> — Per-stage metrics</div>
-              </div>
-            </div>
+            <Field label="Input Key" hint="Context key containing the OCR extraction results.">
+              <Input
+                value={data.input_key || 'latest_ocr_output'}
+                onChange={(v) => update({ input_key: v })}
+                placeholder="latest_ocr_output"
+              />
+            </Field>
 
-            <div style={{ marginTop: 12, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.7 }}>
-              <div style={{ fontWeight: 600, marginBottom: 6, color: 'var(--text-primary)' }}>Context Keys Read:</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <div>📄 <code style={{fontSize: 10, background: '#F1F5F9', padding: '1px 4px', borderRadius: 3}}>latest_ocr_output</code> — OCR results from OCR node</div>
-                <div>📊 <code style={{fontSize: 10, background: '#F1F5F9', padding: '1px 4px', borderRadius: 3}}>aggregated_results</code> — Classified agent outputs</div>
-                <div>📋 <code style={{fontSize: 10, background: '#F1F5F9', padding: '1px 4px', borderRadius: 3}}>items</code> — LLM agent outputs (orchestrator)</div>
-                <div>📂 <code style={{fontSize: 10, background: '#F1F5F9', padding: '1px 4px', borderRadius: 3}}>payload.uploaded_files</code> — File metadata</div>
+            <div style={{ marginTop: 24, padding: 16, border: '1px solid #E2E8F0', borderRadius: 12, background: '#F8FAFC' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>Execution Control</div>
+              <Toggle
+                checked={data.interrupt_after !== false}
+                onChange={(v) => update({ interrupt_after: v })}
+                label="Pause Workflow For Human Review (interrupt_after)"
+              />
+              <div style={{ fontSize: 10, color: '#64748B', marginTop: 4, marginLeft: 28 }}>
+                Essential for Human-in-the-Loop. The workflow will halt until the verification is completed in the dashboard.
               </div>
-            </div>
-
-            <div style={{
-              padding: '12px 14px', background: '#ECFDF5', borderRadius: 10, fontSize: 11, color: '#065F46',
-              border: '1px solid #A7F3D0', lineHeight: 1.5, marginTop: 12, display: 'flex', alignItems: 'center', gap: 10
-            }}>
-              <span style={{ fontSize: 16 }}>⚙️</span>
-              <span style={{ flex: 1, fontWeight: 500 }}>
-                No configuration needed — reads database connection from environment variables (Cd_Host, Cd_Username, etc.)
-              </span>
             </div>
           </>
         )}
+
+
 
         {data.type === 'ingestion_router' && (
           <>
@@ -6261,6 +6306,22 @@ export default function PropertiesPanel() {
                 ]}
               />
             </Field>
+
+            <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Payload Keys Setup</div>
+              
+              <Field label="Parent Folder Key" hint="Key for macro-bulk processing (default: 'parent_folder_path').">
+                <Input value={data.parent_folder_key || 'parent_folder_path'} onChange={(v) => update({ parent_folder_key: v })} placeholder="parent_folder_path" />
+              </Field>
+              
+              <Field label="Folder / Item Identifier Key" hint="Key used to pass the item's name to the child workflow (default: 'customer_folder_name').">
+                <Input value={data.folder_identifier_key || 'customer_folder_name'} onChange={(v) => update({ folder_identifier_key: v })} placeholder="customer_folder_name" />
+              </Field>
+
+              <Field label="cURL Command Key" hint="Key containing a cURL command string to execute for JSON endpoints (default: 'curl_command').">
+                <Input value={data.curl_command_key || 'curl_command'} onChange={(v) => update({ curl_command_key: v })} placeholder="curl_command" />
+              </Field>
+            </div>
 
             <Field label="File Filters" hint="Comma-separated extensions for bulk directory scanning (e.g. .pdf, .jpg)">
               <CommaArrayEditor

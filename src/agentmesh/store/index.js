@@ -7,7 +7,7 @@ const NODE_DEFAULTS = {
   end: { label: 'END' },
   chat_model: { label: 'Chat Model', provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 },
   memory: { label: 'Memory', type_name: 'buffer_memory', window_size: 10 },
-  llm_agent: { label: 'LLM Agent', task: '', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 }, iteration_policy: { enabled: false, max_iterations: 3, target_score: 0.8, evaluator_task: '', inject_feedback_as: 'human' }, memory: null, tools: [], tool_configs: {}, return_direct: false, interrupt_before: false, interrupt_after: false, allowed_transitions: null },
+  llm_agent: { label: 'LLM Agent', task: '', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 }, iteration_policy: { enabled: false, max_iterations: 3, target_score: 0.8, evaluator_task: '', inject_feedback_as: 'human' }, memory: null, tools: [], tool_configs: {}, return_direct: false, interrupt_before: false, interrupt_after: false, allowed_transitions: null, agent_input_prefix: 'agent_input_', output_key_prefix: 'cd_output_' },
   deep_agent: { label: 'Deep Agent', task: '', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 }, tools: [], tool_configs: {}, skills: [], deep_agent_backend: 'postgres', deep_agent_root_dir: './mnt/deep_agents', interrupt_before: false, interrupt_after: false },
   tool_node: { label: 'Tool Node', tools: [], tool_configs: {}, return_direct: false, interrupt_before: false, interrupt_after: false },
   direct_tool: { label: 'Direct Tool', direct_tool_name: '', tool_arguments: {}, destination_key: '', return_direct: false, interrupt_before: false, interrupt_after: false },
@@ -20,7 +20,7 @@ const NODE_DEFAULTS = {
   webhook_response: { label: 'Webhook Response', response_status: 200, response_headers: {}, response_body_key: '' },
   cron: { label: 'Cron Schedule', enabled: true, cron_expression: '0 9 * * *', timezone: 'UTC' },
   polling: { label: 'Polling Trigger', enabled: true, poller_tool: '', tool_arguments: {}, destination_key: 'payload', cron_expression: '*/5 * * * *', timezone: 'UTC' },
-  splitter: { label: 'Splitter', split_field: 'items', batch_size: 1, destination_field: 'item' },
+  splitter: { label: 'Splitter', split_field: 'items', batch_size: 1, destination_field: 'item', discovery_keys: '' },
   aggregator: { label: 'Aggregator', action: 'append', field_to_aggregate: 'item', destination_field: 'aggregated_results' },
   form_node: { label: 'Form Submission', form_title: 'Information Required', form_description: 'Please fill out the following form.', form_fields: [{ id: 'feedback', label: 'Your Feedback', type: 'text', required: true }], form_submit_label: 'Submit' },
   notification: { label: 'Notification', notification_title: 'Workflow Alert', notification_message: 'The workflow has reached this point.', notification_type: 'info' },
@@ -35,9 +35,8 @@ const NODE_DEFAULTS = {
   ingestion_node: { label: 'Ingestion', vector_store: 'chroma', vector_collection: 'default', chunk_size: 1000, chunk_overlap: 100, chunking_strategy: 'recursive', ingestion_source_key: 'latest_ocr_output' },
   classification: { label: 'Classification Agent', classification_classes: [{ class: 'Class A', description: 'Description for Class A' }], classification_summary: false, classification_engine: 'llm', classification_input_field: '', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 } },
   sensitivity_classifier: { label: 'Sensitivity Classifier', classification_input_key: 'latest_ocr_output', classification_output_key: '', engine_mode: 'both', custom_entities: '', output_format: 'markdown' },
-  cd_document_router: { label: 'CD Document Router' },
-  cd_postprocessor: { label: 'CD Postprocessor' },
-  ingestion_router: { label: 'Ingestion Router', scan_mode: 'auto', file_filters: ['.pdf', '.jpg', '.png', '.jpeg'], concurrency_limit: 5 },
+  pii_gate_node: { label: 'PII Verification Gate', input_key: 'latest_ocr_output', interrupt_after: true },
+  ingestion_router: { label: 'Ingestion Router', scan_mode: 'auto', file_filters: ['.pdf', '.jpg', '.png', '.jpeg'], concurrency_limit: 5, parent_folder_key: 'parent_folder_path', folder_identifier_key: 'customer_folder_name', curl_command_key: 'curl_command' },
   event_emitter: { label: 'Event Emitter', webhook_url: 'http://localhost:8000/documents/mesh-status-sync', emit_status: '', interrupt_before: false, interrupt_after: false },
   cardboard: { label: 'Sticky Note', color: 'slate' }
 };
@@ -519,8 +518,9 @@ export const useWorkflowStore = create((set, get) => ({
           'extract_mode', 'extract_patterns', 'extract_input_key', 'extract_output_key', 'identifiers_input_key',
           'debug_scope', 'debug_key',
           'subscription_filters', 'subscription_input_key', 'subscription_output_key',
-          'payload_template', 'payload_destination_key',
-          'classification_extract_identifiers'
+          'payload_template', 'payload_destination_key', 'auto_collect_prefix', 'clean_binary_from',
+          'classification_extract_identifiers', 'discovery_keys', 'agent_input_prefix', 'output_key_prefix', 'input_key',
+          'parent_folder_key', 'folder_identifier_key', 'curl_command_key'
         ];
 
         const nodeConfig = {};
