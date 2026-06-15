@@ -96,6 +96,8 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           llm: n.llm || n.data?.llm || { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 },
           wait_seconds: n.wait_seconds || n.data?.wait_seconds || 0,
           skills: n.skills || n.data?.skills || [],
+          custom_python_rules: n.custom_python_rules || n.data?.custom_python_rules || '',
+          python_rules: n.python_rules || n.data?.python_rules || [],
           deep_agent_backend: n.deep_agent_backend || n.data?.deep_agent_backend || 'postgres',
           deep_agent_root_dir: n.deep_agent_root_dir || n.data?.deep_agent_root_dir || './mnt/deep_agents',
           allowed_transitions: n.allowed_transitions ?? n.data?.allowed_transitions ?? null,
@@ -517,7 +519,7 @@ export const useWorkflowStore = create((set, get) => ({
         const validFields = [
           'id', 'type', 'label', 'position', 'task', 'llm', 'memory', 'iteration_policy',
           'tools', 'tool_configs', 'return_direct', 'routing_key', 'workflow_id', 'member_ids', 'allowed_transitions',
-          'branches', 'condition', 'message', 'wait_seconds', 'skills',
+          'branches', 'condition', 'message', 'wait_seconds', 'skills', 'custom_python_rules', 'python_rules',
           'subagents', 'harness_profile', 'code_interpreter', 'max_iterations', 'timeout_seconds', 'context_schema',
           'parse_mode', 'fallback_to_raw', 'output_context_key',
           'deep_agent_backend', 'deep_agent_root_dir',

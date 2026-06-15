@@ -251,6 +251,250 @@ function VariablePicker({ onSelect }) {
   );
 }
 
+function ApiConfigSection({ data, update, prefix = 'api_', urlKey }) {
+  const [activeTab, setActiveTab] = useState('endpoint');
+  const scrollRef = useRef(null);
+
+  const tabs = [
+    { id: 'endpoint', label: 'Endpoint' },
+    { id: 'headers', label: 'Headers' },
+    { id: 'auth', label: 'Auth' },
+    { id: 'body', label: 'Body' }
+  ];
+
+  const method = data[`${prefix}method`] || 'POST';
+  const actualUrlKey = urlKey || `${prefix}url`;
+
+  const scrollTabs = (dir) => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: dir * 80, behavior: 'smooth' });
+    }
+  };
+
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', marginBottom: 20, background: '#fff' }}>
+      <style>{`.hide-scroll::-webkit-scrollbar { display: none; }`}</style>
+      <div style={{ display: 'flex', alignItems: 'center', background: '#F8FAFC', borderBottom: '1px solid var(--border)' }}>
+        <button onClick={() => scrollTabs(-1)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '10px 8px', color: 'var(--text-muted)', fontSize: 10 }}>◀</button>
+        <div ref={scrollRef} className="hide-scroll" style={{ display: 'flex', flex: 1, overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+          {tabs.map(t => (
+            <div
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              style={{
+                padding: '10px 16px', fontSize: 12, fontWeight: activeTab === t.id ? 700 : 500,
+                color: activeTab === t.id ? 'var(--accent-btn)' : 'var(--text-muted)',
+                borderBottom: activeTab === t.id ? '2px solid var(--accent-btn)' : '2px solid transparent',
+                cursor: 'pointer', flexShrink: 0, flexGrow: 1, textAlign: 'center', transition: 'all 0.2s'
+              }}
+            >
+              {t.label}
+            </div>
+          ))}
+        </div>
+        <button onClick={() => scrollTabs(1)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '10px 8px', color: 'var(--text-muted)', fontSize: 10 }}>▶</button>
+      </div>
+      
+      <div style={{ padding: 16 }}>
+        {activeTab === 'endpoint' && (
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ width: '120px' }}>
+              <Field label="Method">
+                <Select
+                  value={method}
+                  onChange={(v) => update({ [`${prefix}method`]: v })}
+                  options={['GET', 'POST', 'PUT', 'DELETE', 'PATCH']}
+                />
+              </Field>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Field label="Endpoint URL" hint="Supports {{key}} interpolation">
+                <Input
+                  value={data[actualUrlKey] || ''}
+                  onChange={(v) => update({ [actualUrlKey]: v })}
+                  placeholder="https://api.example.com/..."
+                />
+              </Field>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'headers' && (
+          <>
+            <KeyValueEditor
+              label="Headers"
+              value={data[`${prefix}headers`] || {}}
+              onChange={(v) => update({ [`${prefix}headers`]: v })}
+              hint="e.g. Content-Type: application/json"
+            />
+            <KeyValueEditor
+              label="Query Params"
+              value={data[`${prefix}params`] || {}}
+              onChange={(v) => update({ [`${prefix}params`]: v })}
+              hint="Appended to the URL"
+            />
+          </>
+        )}
+
+        {activeTab === 'auth' && (
+          <>
+            {data.connection_id ? (
+              <div style={{ padding: 12, background: '#F1F5F9', borderRadius: 8, fontSize: 12, color: '#64748B', textAlign: 'center' }}>
+                Authentication is automatically handled by the Enterprise Connector (<strong>{data.connection_id}</strong>).
+              </div>
+            ) : (
+              <>
+                <Field label="Auth Type">
+                  <Select
+                    value={data[`${prefix}auth_type`] || 'None'}
+                    onChange={(v) => update({ [`${prefix}auth_type`]: v })}
+                    options={['None', 'Basic', 'Bearer']}
+                  />
+                </Field>
+
+                {data[`${prefix}auth_type`] === 'Basic' && (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Field label="Username">
+                      <Input value={data[`${prefix}auth_config`]?.username} onChange={(v) => update({ [`${prefix}auth_config`]: { ...data[`${prefix}auth_config`], username: v } })} placeholder="user" />
+                    </Field>
+                    <Field label="Password">
+                      <Input value={data[`${prefix}auth_config`]?.password} onChange={(v) => update({ [`${prefix}auth_config`]: { ...data[`${prefix}auth_config`], password: v } })} placeholder="pass" type="password" />
+                    </Field>
+                  </div>
+                )}
+
+                {data[`${prefix}auth_type`] === 'Bearer' && (
+                  <Field label="Token">
+                    <Input value={data[`${prefix}auth_config`]?.token} onChange={(v) => update({ [`${prefix}auth_config`]: { ...data[`${prefix}auth_config`], token: v } })} placeholder="Bearer token…" type="password" />
+                  </Field>
+                )}
+              </>
+            )}
+          </>
+        )}
+
+        {activeTab === 'body' && (
+          <>
+            {!['POST', 'PUT', 'PATCH'].includes(method) && (
+              <div style={{ padding: 12, background: '#F1F5F9', borderRadius: 8, fontSize: 12, color: '#64748B', textAlign: 'center' }}>
+                Request Body is typically not used with {method} requests.
+              </div>
+            )}
+            {['POST', 'PUT', 'PATCH'].includes(method) && (
+              <Field label="Request Body" hint="JSON or raw text. Supports {{interpolation}}.">
+                <Textarea
+                  value={data[`${prefix}body`] || ''}
+                  onChange={(v) => update({ [`${prefix}body`]: v })}
+                  placeholder='{"id": "{{item.id}}"}'
+                  rows={6}
+                />
+              </Field>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CollapsibleApiConfig({ data, update, idx, onRemove }) {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  return (
+    <div style={{ marginBottom: 16, border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden', background: '#fff' }}>
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        style={{ padding: '12px 14px', background: isOpen ? '#F8FAFC' : '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', borderBottom: isOpen ? '1px solid var(--border)' : 'none', transition: 'background 0.2s' }}
+      >
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>{isOpen ? '▼' : '▶'}</span>
+          Additional API #{idx + 1}
+          {data.url && <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>- {data.url}</span>}
+        </div>
+        <div 
+          onClick={(e) => { e.stopPropagation(); onRemove(); }} 
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '4px', cursor: 'pointer', transition: 'background 0.2s' }}
+          onMouseEnter={(e) => e.currentTarget.style.background = '#FEE2E2'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+        >
+          <FiTrash2 size={14} color="#EF4444" />
+        </div>
+      </div>
+      {isOpen && (
+        <div style={{ padding: '14px' }}>
+          <ApiConfigSection data={data} update={update} prefix="" urlKey="url" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CustomCollapsibleApiConfig({ apiDef, index, list, keyName, update, providerOptions = [] }) {
+  const [isOpen, setIsOpen] = useState(true);
+
+  const localUpdate = (changes) => {
+    const next = [...list];
+    next[index] = { ...next[index], ...changes };
+    update({ [keyName]: next });
+  };
+
+  const isCustom = apiDef.provider === 'custom' || !apiDef.provider;
+
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', background: '#fff', marginTop: 12 }}>
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        style={{ padding: '12px 16px', background: isOpen ? '#F8FAFC' : '#F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: isOpen ? '1px solid var(--border)' : 'none', cursor: 'pointer', transition: 'background 0.2s' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }} onClick={(e) => e.stopPropagation()}>
+          <span style={{ color: 'var(--text-muted)', fontSize: 10, marginRight: 4, cursor: 'pointer' }} onClick={() => setIsOpen(!isOpen)}>{isOpen ? '▼' : '▶'}</span>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: isCustom ? '#8B5CF6' : '#10B981' }}></div>
+          
+          <select
+            value={apiDef.provider || 'custom'}
+            onChange={(e) => localUpdate({ provider: e.target.value })}
+            style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border)', background: '#fff', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', outline: 'none', cursor: 'pointer', minWidth: 160 }}
+          >
+            {providerOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+          </select>
+
+          {isCustom && (
+            <input 
+              placeholder="API Name..."
+              value={apiDef.name || ''}
+              onChange={(e) => localUpdate({ name: e.target.value })}
+              style={{ border: 'none', background: 'transparent', fontWeight: 500, fontSize: 13, outline: 'none', color: 'var(--text-primary)', flex: 1, marginLeft: 8 }}
+            />
+          )}
+        </div>
+        <div 
+          onClick={(e) => {
+            e.stopPropagation();
+            const next = list.filter((_, i) => i !== index);
+            update({ [keyName]: next });
+          }} 
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: '6px', cursor: 'pointer', transition: 'background 0.2s' }}
+          onMouseEnter={(e) => e.currentTarget.style.background = '#FEE2E2'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+        >
+          <FiTrash2 size={15} color="#EF4444" />
+        </div>
+      </div>
+      {isOpen && (
+        <div style={{ padding: 16 }}>
+          {isCustom ? (
+            <ApiConfigSection data={apiDef} update={localUpdate} prefix="" urlKey="url" />
+          ) : (
+            <div style={{ padding: '12px 16px', background: '#F0FDF4', border: '1px dashed #86EFAC', borderRadius: 8, color: '#166534', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 16 }}>✨</span> Built-in Mock Integration. Simulated JSON response will be automatically injected.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LogicHelper() {
   const [isOpen, setIsOpen] = useState(false);
   const examples = [
@@ -6295,6 +6539,423 @@ export default function PropertiesPanel() {
                   <Input value={data.context_key ?? 'enriched_transaction'} onChange={(v) => update({ context_key: v })} placeholder="enriched_transaction" />
                 </Field>
               </div>
+        {data.type === 'template_node' && (
+          <>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <FiFileText color="#3B82F6" size={14} /> Template Engine Settings
+              </div>
+
+              <Field label="Template Content" hint="Define your Jinja2/Markdown template. Use Jinja2 formatting (e.g., {{ latest_message }}, {{ user_input }}).">
+                <Textarea
+                  value={data.template_content ?? ''}
+                  onChange={(v) => update({ template_content: v })}
+                  placeholder="Hello {{ latest_message }},\n\nYour score is {{ total_score }} out of {{ max_possible_score }}."
+                  rows={8}
+                />
+              </Field>
+
+              <Field label="Template File Path (Optional)" hint="Provide an absolute path to a template file on the server. If set and file exists, its content overrides the Template Content text field above.">
+                <Input
+                  value={data.template_file_path ?? ''}
+                  onChange={(v) => update({ template_file_path: v })}
+                  placeholder="e.g. C:/templates/my_template.txt"
+                />
+              </Field>
+
+              <Field label="Input Variable Data Key (Optional)" hint="Specify the context key (e.g., enriched_transaction) from which to extract variables to inject into the template context. If it points to a dictionary, those fields are merged into the template variables.">
+                <Input
+                  value={data.template_data_key ?? ''}
+                  onChange={(v) => update({ template_data_key: v })}
+                  placeholder="e.g. enriched_transaction"
+                />
+              </Field>
+
+              <Field label="Output Context Key" hint="Context key to save the final rendered string output. Defaults to rendered_template.">
+                <Input
+                  value={data.template_output_key ?? 'rendered_template'}
+                  onChange={(v) => update({ template_output_key: v })}
+                  placeholder="rendered_template"
+                />
+              </Field>
+            </div>
+
+            <div style={{
+              padding: '12px 14px',
+              background: 'var(--bg-card-info, #F0F9FF)',
+              borderRadius: 10,
+              fontSize: 11,
+              color: 'var(--text-card-info, #0369A1)',
+              border: '1px solid var(--border-card-info, #BAE6FD)',
+              lineHeight: 1.5,
+              marginTop: 18,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}>
+              <FiInfo size={14} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, fontWeight: 500 }}>
+                Template Engine Node: Renders dynamic text or markdown using Jinja2 formatting. The global context, <code>latest_message</code>, and values under the selected <code>Input Data Key</code> are all exposed to your template variables automatically.
+              </span>
+            </div>
+          </>
+        )}
+        {data.type === 'report_generator' && (
+          <ReportGeneratorConfig data={data} update={update} />
+        )}
+        {data.type === 'ingestion_adapter' && (
+          <>
+            <div style={{
+              padding: 16,
+              background: 'var(--bg-card-purple, #F5F3FF)',
+              borderRadius: 12,
+              border: '1px solid var(--border-card-purple, #DDD6FE)',
+              marginBottom: 24,
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg, #F3E8FF 0%, #E0E7FF 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7C3AED', boxShadow: '0 2px 10px rgba(124, 58, 237, 0.1)' }}>
+                  <FiInbox size={16} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#1E293B', letterSpacing: '-0.3px' }}>Ingestion Configuration</div>
+                  <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>Banking schema normalization</div>
+                </div>
+              </div>
+              
+              <Field label="Source Format" hint="Define how the incoming stream format will be identified.">
+                <Select
+                  value={data.source_format || 'Auto-Detect'}
+                  onChange={(v) => update({ source_format: v })}
+                  options={[
+                    { value: 'Auto-Detect', label: 'Auto-Detect Format (Dynamic)' },
+                    { value: 'JSON', label: 'JSON' },
+                    { value: 'XML', label: 'XML / SOAP' },
+                    { value: 'CSV', label: 'CSV / Delimited' },
+                    { value: 'ISO_8583', label: 'ISO 8583 (Card Switch)' }
+                  ]}
+                />
+              </Field>
+
+              <Field label="Target Serialization" hint="Downstream message serialization target format.">
+                <Select
+                  value={data.target_serialization || 'Canonical JSON'}
+                  onChange={(v) => update({ target_serialization: v })}
+                  options={[
+                    { value: 'Canonical JSON', label: 'Canonical JSON' },
+                    { value: 'CSV String', label: 'CSV String (MDM Flatfile)' },
+                    { value: 'Raw Dictionary', label: 'Raw Dict Map' }
+                  ]}
+                />
+              </Field>
+
+              <Field label="Destination Key" hint="The context field where the validated canonical payload will be saved.">
+                <Input
+                  value={data.destination_key || 'canonical_transaction'}
+                  onChange={(v) => update({ destination_key: v })}
+                  placeholder="e.g. canonical_transaction"
+                />
+              </Field>
+
+              <div style={{ padding: '12px 16px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: 12, fontSize: 11, color: '#0369A1', border: '1px dashed rgba(59, 130, 246, 0.2)', lineHeight: 1.6, marginTop: 4 }}>
+                <strong>Auto-Normalization:</strong> Transaction streams, custom columns, and up to 200 dynamic fields are preserved automatically via the Pydantic pass-through schema config.
+              </div>
+            </div>
+          </>
+        )}
+        {data.type === 'banking_enrichment' && (() => {
+          const customExtList = data.custom_external_apis || [];
+          const customIntList = data.custom_internal_apis || [];
+
+          const extOptions = [
+            { value: 'custom', label: 'Custom HTTP API' },
+            { value: 'cibil_experian', label: 'CIBIL / Experian Bureau' },
+            { value: 'npci_registry', label: 'NPCI Fraud Registry' },
+            { value: 'sanctions_lists', label: 'OFAC / RBI Sanctions' },
+            { value: 'ip_geolocation', label: 'MaxMind IP Geolocation' },
+            { value: 'threat_metrix', label: 'ThreatMetrix Device ID' },
+            { value: 'telecom_data', label: 'Telecom Carrier API' }
+          ];
+
+          const intOptions = [
+            { value: 'custom', label: 'Custom HTTP API' },
+            { value: 'core_banking', label: 'Core Banking (CBS)' },
+            { value: 'card_management', label: 'Card Management (CMS)' },
+            { value: 'mobile_app_logs', label: 'Mobile App Session logs' },
+            { value: 'kyc_repository', label: 'KYC Registry' },
+            { value: 'crm_system', label: 'CRM System' }
+          ];
+
+          return (
+            <>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiGlobe color="var(--theme-primary)" size={14} /> 1. External Third-Party Sources
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {customExtList.map((apiDef, idx) => (
+                    <CustomCollapsibleApiConfig key={idx} apiDef={apiDef} index={idx} list={customExtList} keyName="custom_external_apis" update={update} providerOptions={extOptions} />
+                  ))}
+
+                  <div
+                    onClick={() => {
+                      const next = [...customExtList, { provider: 'custom', method: 'GET' }];
+                      update({ custom_external_apis: next });
+                    }}
+                    style={{ marginTop: 10, padding: '10px 12px', background: 'rgba(124, 58, 237, 0.05)', border: '1px dashed var(--theme-primary)', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--theme-primary)', fontSize: 12, fontWeight: 600 }}
+                  >
+                    <FiPlus size={14} /> Add Source
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiLayers color="var(--theme-primary)" size={14} /> 2. Internal Bank Systems
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {customIntList.map((apiDef, idx) => (
+                    <CustomCollapsibleApiConfig key={idx} apiDef={apiDef} index={idx} list={customIntList} keyName="custom_internal_apis" update={update} providerOptions={intOptions} />
+                  ))}
+
+                  <div
+                    onClick={() => {
+                      const next = [...customIntList, { provider: 'custom', method: 'GET' }];
+                      update({ custom_internal_apis: next });
+                    }}
+                    style={{ marginTop: 10, padding: '10px 12px', background: 'rgba(124, 58, 237, 0.05)', border: '1px dashed var(--theme-primary)', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--theme-primary)', fontSize: 12, fontWeight: 600 }}
+                  >
+                    <FiPlus size={14} /> Add Source
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Data Keys</div>
+                <Field label="Source Context Key" hint="Key where canonical transaction data resides.">
+                  <Input value={data.source_key ?? 'canonical_transaction'} onChange={(v) => update({ source_key: v })} placeholder="canonical_transaction" />
+                </Field>
+                <Field label="Destination Context Key" hint="Key to store the resulting enriched payload.">
+                  <Input value={data.destination_key ?? 'enriched_transaction'} onChange={(v) => update({ destination_key: v })} placeholder="enriched_transaction" />
+                </Field>
+              </div>
+            </>
+          );
+        })()}
+        {data.type === 'rule_engine' && (() => {
+          const rules = data.python_rules || [];
+          
+          const addRule = () => {
+            const newRule = { id: Math.random().toString(36).substr(2, 9), name: `Rule ${rules.length + 1}`, code: '', enabled: true };
+            update({ python_rules: [...rules, newRule] });
+          };
+          
+          const updateRule = (index, key, val) => {
+            const next = [...rules];
+            next[index] = { ...next[index], [key]: val };
+            update({ python_rules: next });
+          };
+          
+          const removeRule = (index) => {
+            const next = [...rules];
+            next.splice(index, 1);
+            update({ python_rules: next });
+          };
+          
+          const moveRule = (index, dir) => {
+            if (index + dir < 0 || index + dir >= rules.length) return;
+            const next = [...rules];
+            const temp = next[index];
+            next[index] = next[index + dir];
+            next[index + dir] = temp;
+            update({ python_rules: next });
+          };
+
+          return (
+            <>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <FiShield color="#DC2626" size={14} /> Rule Engine Configuration
+                  </div>
+                  <button onClick={addRule} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#7C3AED', color: 'white', border: 'none', padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                    <FiPlus size={12} /> Add Rule
+                  </button>
+                </div>
+                
+                {rules.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '20px', border: '1px dashed var(--border)', borderRadius: 8, color: 'var(--text-tertiary)', fontSize: 12 }}>
+                    No rules defined. Click "Add Rule" to create one.
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {rules.map((rule, idx) => (
+                    <RuleAccordionItem 
+                      key={rule.id}
+                      rule={rule}
+                      idx={idx}
+                      totalRules={rules.length}
+                      updateRule={updateRule}
+                      removeRule={removeRule}
+                      moveRule={moveRule}
+                    />
+                  ))}
+                </div>
+
+                <div style={{ background: 'var(--bg-card-info, #F0F9FF)', padding: 12, borderRadius: 8, border: '1px solid var(--border-card-info, #BAE6FD)', fontSize: 12, color: 'var(--text-card-info, #0369A1)', lineHeight: 1.5, marginTop: 12 }}>
+                  <strong>Note:</strong> Rules execute sequentially. If an enabled rule sets <code>intent = 'block'</code>, execution stops instantly.
+                </div>
+              </div>
+            </>
+          );
+        })()}
+        {data.type === 'beneficiary_risk' && (() => {
+          const checks = data.risk_checks || ['mule_detection', 'account_age', 'sanctions_list', 'relationship_graph'];
+          
+          const toggleCheck = (key) => {
+            const next = checks.includes(key) ? checks.filter(k => k !== key) : [...checks, key];
+            update({ risk_checks: next });
+          };
+
+          const checkList = [
+            { key: 'mule_detection', label: 'Mule Velocity Check', desc: 'Checks inbound velocity / mule indicators' },
+            { key: 'account_age', label: 'Account Age Registry', desc: 'Checks if recipient account is new' },
+            { key: 'sanctions_list', label: 'Sanctions Check', desc: 'Screens against OFAC & local blacklists' },
+            { key: 'relationship_graph', label: 'Relationship Graph', desc: 'Checks history between sender and receiver' },
+          ];
+
+          return (
+            <>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiShield color="var(--theme-primary)" size={14} /> Risk Evaluator Checks
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {checkList.map((chk) => (
+                    <div
+                      key={chk.key}
+                      onClick={() => toggleCheck(chk.key)}
+                      style={{
+                        padding: '10px 12px',
+                        background: checks.includes(chk.key) ? 'rgba(142, 119, 187, 0.05)' : '#F8FAFC',
+                        border: checks.includes(chk.key) ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
+                        borderRadius: 10,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginRight: 8 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: checks.includes(chk.key) ? 'var(--theme-primary)' : 'var(--text-primary)' }}>{chk.label}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{chk.desc}</span>
+                      </div>
+                      <div style={{
+                        width: 32, height: 18, borderRadius: 9, position: 'relative',
+                        background: checks.includes(chk.key) ? 'var(--theme-primary)' : '#cbd5e1',
+                        transition: 'all 0.2s', flexShrink: 0
+                      }}>
+                        <div style={{
+                          position: 'absolute', top: 2, left: checks.includes(chk.key) ? 16 : 2, width: 14, height: 14,
+                          borderRadius: '50%', background: '#fff', transition: 'left 0.2s ease'
+                        }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: '#EF4444' }}>🔴</span> Known Fraudster Branch
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.4 }}>
+                  Triggered only if deterministic check (Sanctions hit) matches 100%. Executes real-time block and raises alert.
+                </p>
+                <Field label="Alert Severity Level" hint="Level of severity logged downstream.">
+                  <Select
+                    value={data.fraud_alert_level ?? 'CRITICAL'}
+                    onChange={(v) => update({ fraud_alert_level: v })}
+                    options={[
+                      { value: 'CRITICAL', label: 'Critical' },
+                      { value: 'HIGH', label: 'High' },
+                      { value: 'MEDIUM', label: 'Medium' }
+                    ]}
+                  />
+                </Field>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, textTransform: 'uppercase' }}>Primary Fraud Alert API</div>
+                <ApiConfigSection data={data} update={update} prefix="fraud_api_" urlKey="fraud_api_endpoint" />
+                
+                <div style={{ marginTop: 20 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, textTransform: 'uppercase' }}>Additional APIs</div>
+                  {data.fraud_additional_apis?.map((apiConf, idx) => {
+                    const localUpdate = (changes) => {
+                       const newArr = [...(data.fraud_additional_apis || [])];
+                       newArr[idx] = { ...newArr[idx], ...changes };
+                       update({ fraud_additional_apis: newArr });
+                    };
+                    return (
+                      <CollapsibleApiConfig 
+                        key={idx} 
+                        data={apiConf} 
+                        update={localUpdate} 
+                        idx={idx} 
+                        onRemove={() => {
+                          const newArr = [...data.fraud_additional_apis];
+                          newArr.splice(idx, 1);
+                          update({ fraud_additional_apis: newArr });
+                        }} 
+                      />
+                    );
+                  })}
+                  <button 
+                    onClick={() => {
+                      const newArr = [...(data.fraud_additional_apis || []), { url: '', method: 'POST' }];
+                      update({ fraud_additional_apis: newArr });
+                    }}
+                    style={{ width: '100%', padding: '8px', background: '#F1F5F9', border: '1px dashed #CBD5E1', borderRadius: '8px', color: '#475569', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    + Add Another API
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: '#F59E0B' }}>🟡</span> New Beneficiary Branch
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, margin: 0 }}>
+                  <strong>Privacy Sandbox Active:</strong> This node strips private sender data and passes only recipient details (Name, Account, Bank) down the yellow wire for KYC/registration.
+                </p>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: '#10B981' }}>🟢</span> Safe / Continue Branch
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, margin: 0 }}>
+                  Payload passes untouched. Mule check scores and geo-velocity metrics are injected into `risk_profile` for downstream scoring engines.
+                </p>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Data Configuration</div>
+                <Field label="Input Context Key" hint="Context key that holds the transaction payload.">
+                  <Input value={data.context_key ?? 'enriched_transaction'} onChange={(v) => update({ context_key: v })} placeholder="enriched_transaction" />
+                </Field>
+                <Field label="Target Entity Field" hint="Which field in the data represents the beneficiary?">
+                  <Input value={data.beneficiary_field ?? 'beneficiary_id'} onChange={(v) => update({ beneficiary_field: v })} placeholder="e.g., beneficiary_id" />
+                </Field>
+                <Field label="New Beneficiary Rule" hint="Logical condition to define what a 'new' beneficiary is.">
+                  <Input value={data.new_beneficiary_rule ?? 'account_age_days < 1'} onChange={(v) => update({ new_beneficiary_rule: v })} placeholder="e.g., account_age_days < 1" />
+                </Field>
+              </div>
+            </>
+          );
+        })()}
             </>
           );
         })()}
