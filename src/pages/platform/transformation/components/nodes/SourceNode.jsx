@@ -1119,6 +1119,17 @@ export const SourceNode = ({ id, data }) => {
     data.enableCountLogging
   ]);
 
+  useEffect(() => {
+    if (selectedConnection.type?.toLowerCase() === "mongodb" && schemas.length > 0 && !selectedSchema) {
+      const defaultSchema = schemas[0]?.table_schema || "";
+      setSelectedSchema(defaultSchema);
+      fetchTablesAndColumns(selectedConnection.name, defaultSchema);
+      if (!selectedObjectType || selectedObjectType === "") {
+        setSelectedObjectType("tables");
+      }
+    }
+  }, [schemas, selectedConnection, selectedSchema, setSelectedSchema, fetchTablesAndColumns, selectedObjectType, setSelectedObjectType]);
+
   const hasInitializedSelectedColumns = useRef(false);
   const hasFetchedColumns = useRef(false);
 
