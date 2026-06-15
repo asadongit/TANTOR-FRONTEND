@@ -29,7 +29,7 @@ const ScorePill = ({ score }) => {
 
 // ─── Main Sidebar ─────────────────────────────────────────────────────────────
 
-const CompareSidebar = ({ row, onClose, onResolved }) => {
+const CompareSidebar = ({ row, onClose, onResolved, readOnly = false }) => {
     const { decodedToken } = useAuth();
     const { data, isLoading, isError, fetchCompare } = useCompare(row.pairId);
     const { submitting, resolve } = useMergeResponse();
@@ -148,28 +148,32 @@ const CompareSidebar = ({ row, onClose, onResolved }) => {
 
                 {/* ── Footer ── */}
                 <div className="flex items-center justify-end gap-2.5 px-6 py-4 border-t border-[#EBEBEB] shrink-0">
-                    <button
-                        onClick={onClose}
-                        disabled={submitting}
-                        className="px-5 py-2 rounded-lg border border-[#D1D5DB] bg-white text-sm font-medium text-[#374151] hover:bg-gray-50 transition-colors disabled:opacity-50"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={() => handleResolution('REJECTED')}
-                        disabled={submitting || isLoading}
-                        className="px-5 py-2 rounded-lg border border-[#EF4D5F] bg-white text-sm font-medium text-[#EF4D5F] hover:bg-[#FFF5F5] transition-colors disabled:opacity-50 disabled:cursor-wait"
-                    >
-                        Reject Match
-                    </button>
-                    <button
-                        onClick={() => handleResolution('MERGED')}
-                        disabled={submitting || isLoading}
-                        className="px-5 py-2 rounded-lg border-none bg-[#8E77BB] text-sm font-medium text-white hover:bg-[#7a67a0] transition-colors disabled:opacity-50 disabled:cursor-wait"
-                    >
-                        {submitting ? 'Processing…' : 'Confirm Match'}
-                    </button>
-                </div>
+                <button
+                    onClick={onClose}
+                    disabled={submitting}
+                    className="px-5 py-2 rounded-lg border border-[#D1D5DB] bg-white text-sm font-medium text-[#374151] hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                    Cancel
+                </button>
+                {!readOnly && (
+                    <>
+                        <button
+                            onClick={() => handleResolution('REJECTED')}
+                            disabled={submitting || isLoading}
+                            className="px-5 py-2 rounded-lg border border-[#EF4D5F] bg-white text-sm font-medium text-[#EF4D5F] hover:bg-[#FFF5F5] transition-colors disabled:opacity-50 disabled:cursor-wait"
+                        >
+                            Reject Match
+                        </button>
+                        <button
+                            onClick={() => handleResolution('MERGED')}
+                            disabled={submitting || isLoading}
+                            className="px-5 py-2 rounded-lg border-none bg-[#8E77BB] text-sm font-medium text-white hover:bg-[#7a67a0] transition-colors disabled:opacity-50 disabled:cursor-wait"
+                        >
+                            {submitting ? 'Processing…' : 'Confirm Match'}
+                        </button>
+                    </>
+                )}
+            </div>
             </div>
         </>
     );

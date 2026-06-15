@@ -17,8 +17,8 @@ const labelBase =
 
 const TASK_TYPE_OPTIONS = [
     { value: 'Match Review',   label: 'Match Review',   apiValue: 'MATCH_REVIEW'   },
-    { value: 'Data Quality',   label: 'Data Quality',   apiValue: 'DATA_QUALITY'   },
-    { value: 'Merge Approval', label: 'Merge Approval', apiValue: 'MERGE_APPROVAL' },
+    // { value: 'Data Quality',   label: 'Data Quality',   apiValue: 'DATA_QUALITY'   },
+    // { value: 'Merge Approval', label: 'Merge Approval', apiValue: 'MERGE_APPROVAL' },
 ];
 
 const PRIORITY_OPTIONS = [

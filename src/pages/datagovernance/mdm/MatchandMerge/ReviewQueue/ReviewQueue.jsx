@@ -372,6 +372,7 @@ const ReviewQueue = () => {
                     row={compareRow}
                     onClose={() => setCompareRow(null)}
                     onResolved={fetchData}
+                    readOnly
                 />
             )}
             {assignRow && (

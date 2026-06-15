@@ -293,7 +293,7 @@ const AttributeCard = ({ attr, index, total, onUpdate, onRemove }) => {
 
                     {/* DQ Dimension */}
                     <div>
-                        <label className={labelClass}>DQ Dimension <span className="text-[#E05252]">*</span></label>
+                        <label className={labelClass}>DQ Dimension</label>
                         <MultiSelectDropdown
                             options={dimensionOptions.map(d => ({ rule_id: d.value, rule_name: d.label }))}
                             selectedIds={Array.isArray(attr.dqDimension) ? attr.dqDimension : attr.dqDimension ? [attr.dqDimension] : []}
@@ -316,30 +316,33 @@ const AttributeCard = ({ attr, index, total, onUpdate, onRemove }) => {
                     </div>
 
                     {/* DQ Rule */}
-                    <div>
-                        <label className={labelClass}>DQ Rule <span className="text-[#E05252]">*</span></label>
-                        <MultiSelectDropdown
-                            options={ruleOptions}
-                            selectedIds={attr.dqRule}
-                            onToggle={(id) => {
-                                const next = attr.dqRule.includes(id)
-                                    ? attr.dqRule.filter(v => v !== id)
-                                    : [...attr.dqRule, id];
-                                upd("dqRule", next);
-                            }}
-                            onSelectAll={(currentIds) => {
-                                const allIds = ruleOptions.map(r => r.rule_id);
-                                upd("dqRule", currentIds.length === allIds.length ? [] : allIds);
-                            }}
-                            placeholder={
-                                rulesLoading
-                                    ? "Loading rules..."
-                                    : (!attr.dqDimension || (Array.isArray(attr.dqDimension) && attr.dqDimension.length === 0))
-                                        ? "Select dimension first"
+                    {(Array.isArray(attr.dqDimension) ? attr.dqDimension.length > 0 : !!attr.dqDimension) && (
+                        <div>
+                            <label className={labelClass}>
+                                DQ Rule
+                                <span className="text-[#E05252]"> *</span>
+                            </label>
+                            <MultiSelectDropdown
+                                options={ruleOptions}
+                                selectedIds={attr.dqRule}
+                                onToggle={(id) => {
+                                    const next = attr.dqRule.includes(id)
+                                        ? attr.dqRule.filter(v => v !== id)
+                                        : [...attr.dqRule, id];
+                                    upd("dqRule", next);
+                                }}
+                                onSelectAll={(currentIds) => {
+                                    const allIds = ruleOptions.map(r => r.rule_id);
+                                    upd("dqRule", currentIds.length === allIds.length ? [] : allIds);
+                                }}
+                                placeholder={
+                                    rulesLoading
+                                        ? "Loading rules..."
                                         : "Select Rules"
-                            }
-                        />
-                    </div>
+                                }
+                            />
+                        </div>
+                    )}
                 </div>
             )}
         </div>
@@ -619,12 +622,15 @@ export default function AddDomainWizard() {
         if (!a.attributeName.trim() || !a.displayName.trim() || !a.dataType) return false;
         const mode = getLengthMode(a.dataType);
         if (mode === "length") {
-            return !!a.lengthPrecision.toString().trim();
+            if (!a.lengthPrecision.toString().trim()) return false;
         }
         if (mode === "precision_scale") {
             const parts = (a.lengthPrecision || "").split("/");
-            return !!(parts[0]?.trim() && parts[1]?.trim());
+            if (!(parts[0]?.trim() && parts[1]?.trim())) return false;
         }
+        // If DQ Dimension is selected, DQ Rule must be selected
+        const hasDimension = Array.isArray(a.dqDimension) ? a.dqDimension.length > 0 : !!a.dqDimension;
+        if (hasDimension && (!a.dqRule || a.dqRule.length === 0)) return false;
         return true;
     };
     const step2Valid = attributes.every(isAttrValid);

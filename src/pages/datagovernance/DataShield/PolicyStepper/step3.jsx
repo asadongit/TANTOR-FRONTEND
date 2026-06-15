@@ -41,7 +41,9 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
       selectedViews
     };
 
-    onDataChange(stepData);
+     const isValid = selectedConnections.length === 0 || selectedColumns.length > 0;
+
+    onDataChange(stepData, isValid);
 
     if (policyData && typeof setIsStep3Modified === 'function') {
       const connections = processConnectionData(
@@ -303,7 +305,7 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
   const renderSearchableSelect = (label, options, selectedValues, searchValue, setSearchValue, loading, resetList = [], dataSetters = []) => {
     const allFilteredSelected = options.length > 0 && options.every(option => selectedValues.includes(option));
     const someFilteredSelected = options.some(option => selectedValues.includes(option)) && !allFilteredSelected;
-
+    const isMandatory = ['Schema', 'Table', 'Column'].includes(label) && selectedConnections.length > 0;
     const handleItemClick = (option) => {
       let selectionHandler;
       switch (label) {
@@ -354,7 +356,10 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
 
     return (
       <div className="relative" ref={openDropdown === label ? dropdownRef : null}>
-        <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {label}
+          {isMandatory && <span className="text-red-500 ml-1">*</span>}
+        </label>
         <div
           className="w-full p-2 border border-gray-300 rounded-md bg-white cursor-pointer h-10 flex items-center overflow-x-auto no-scrollbar"
           onClick={() => toggleDropdown(label)}

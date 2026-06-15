@@ -6,7 +6,8 @@ import {
     useAddRule,
     useValidationTypes,
     useAttributesByDomain,
-    useDQDimensions
+    useDQDimensions,
+    useExpressionExample   
 } from '../../../../../../hooks/mdm/domainManagement';
 import SearchableDropdown from '../../../components/SearchableDropdown';
 
@@ -86,6 +87,7 @@ export const AddRuleModal = ({ isOpen, onClose, domainId, onComplete }) => {
         rule_name: '', rule_type: '', expression: '', severity: '', status: '',
         rule_weight: 1, support_partial: '', partial_formula: '', threshold_days: '',
     });
+    const { example: expressionExample } = useExpressionExample(form.rule_type);
     const [selectedAttrs, setSelectedAttrs] = useState([]);
     const [error, setError]         = useState('');
 
@@ -193,7 +195,13 @@ export const AddRuleModal = ({ isOpen, onClose, domainId, onComplete }) => {
                     {/* Expression */}
                     <div className="flex flex-col gap-1.5">
                         <label className={`${labelClass} mb-0`}>Expression</label>
-                        <input type="text" placeholder="Enter Expression" value={form.expression} onChange={(e) => handleChange('expression', e.target.value)} className={inputClass} />
+                        <input
+                            type="text"
+                            placeholder={expressionExample ? `e.g. ${expressionExample}` : 'Enter Expression'}
+                            value={form.expression}
+                            onChange={(e) => handleChange('expression', e.target.value)}
+                            className={inputClass}
+                        />
                     </div>
 
                     {/* Rule Weight */}
