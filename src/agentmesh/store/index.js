@@ -32,7 +32,7 @@ const NODE_DEFAULTS = {
   network_graph: { label: 'Network Graph', graph_target_key: 'latest_message', graph_neo4j_uri: '', graph_neo4j_user: '', graph_neo4j_password: '' },
   ocr_node: { label: 'OCR Node', ocr_input_key: 'latest_file_path', ocr_prompt: 'Please perform OCR on this document and return the full text accurately.', llm: { provider: 'groq', model: 'llama-3.2-90b-vision-preview', temperature: 0 }, interrupt_before: false, interrupt_after: false, pii_verification: false },
   pattern_extract: { label: 'Pattern Extractor', extract_mode: 'identifier', extract_patterns: [], extract_input_key: 'flattened_json', extract_output_key: 'extracted_identifiers', identifiers_input_key: 'extracted_identifiers' },
-  api_node: { label: 'API Request', method: 'GET', url: '', headers: {}, params: {}, body: '', auth_method: 'none', api_auth_config: {} },
+  api_node: { label: 'API Request', method: 'GET', url: '', headers: {}, params: {}, body: '', auth_method: 'none', api_auth_config: {}, use_curl: false, curl_command: '' },
   ingestion_node: { label: 'Ingestion', vector_store: 'chroma', vector_collection: 'default', chunk_size: 1000, chunk_overlap: 100, chunking_strategy: 'recursive', ingestion_source_key: 'latest_ocr_output' },
   classification: { label: 'Classification Agent', classification_classes: [{ class: 'Class A', description: 'Description for Class A' }], classification_summary: false, classification_engine: 'llm', classification_input_field: '', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 } },
   sensitivity_classifier: { label: 'Sensitivity Classifier', classification_input_key: 'latest_ocr_output', classification_output_key: '', engine_mode: 'both', custom_entities: '', output_format: 'markdown' },
@@ -50,6 +50,10 @@ const NODE_DEFAULTS = {
     jt_operations: [],
     jt_expression: '',
     jt_pass_through: false
+  },
+  json_transform_va: {
+    label: 'Flatten JSON (VA)',
+    transform_operation: 'flatten', transform_separator: '/', transform_pick_fields: [], transform_rename_map: {}, transform_omit_keys: [], transform_input_key: 'payload', transform_output_key: 'transformed_json'
   },
   button_trigger: {
     label: 'Button Trigger',
@@ -125,6 +129,8 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           classification_summary: n.classification_summary ?? n.data?.classification_summary ?? false,
           classification_engine: n.classification_engine || n.data?.classification_engine || 'llm',
           classification_input_field: n.classification_input_field || n.data?.classification_input_field || '',
+          use_curl: n.use_curl ?? n.data?.use_curl ?? false,
+          curl_command: n.curl_command || n.data?.curl_command || '',
           jt_input_key: n.jt_input_key || n.data?.jt_input_key || 'latest_api_result',
           jt_output_key: n.jt_output_key || n.data?.jt_output_key || 'transformed_data',
           jt_mode: n.jt_mode || n.data?.jt_mode || 'jmespath',
@@ -537,7 +543,7 @@ export const useWorkflowStore = create((set, get) => ({
           'audio_voice', 'mute_audio',
           'split_field', 'batch_size',
           'file_format', 'file_name', 'file_data_key', 'file_overwrite',
-          'api_method', 'api_url', 'api_headers', 'api_params', 'api_body', 'api_auth_type', 'api_auth_config', 'api_response_format', 'connection_id', 'api_protocol', 'graphql_query',
+          'api_method', 'api_url', 'api_headers', 'api_params', 'api_body', 'api_auth_type', 'api_auth_config', 'api_response_format', 'connection_id', 'api_protocol', 'graphql_query', 'use_curl', 'curl_command',
           'notification_title', 'notification_message', 'notification_type', 'mute_notification_message', 'show_chat_button',
           'form_title', 'form_description', 'form_fields', 'form_submit_label', 'form_use_context_schema',
           'pii_engine', 'datafog_engine', 'pii_target', 'pii_entities', 'pii_custom_regex', 'docbot_url', 'docbot_method', 'hitl_enabled', 'identifiers_input_key', 'rendered_input_key', 'context_variable_key',

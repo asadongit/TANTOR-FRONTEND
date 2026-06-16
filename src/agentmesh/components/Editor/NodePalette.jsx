@@ -60,6 +60,7 @@ export const NODE_TYPES = [
   { type: 'pattern_extract', icon: FiSearch, label: 'Pattern Extractor', desc: 'Extract values via keyword/regex patterns', bg: '#FDF2F8', color: '#DB2777', category: 'Data & Storage' },
   { type: 'db_node',    icon: FiBox,       label: 'MongoDB',        desc: 'Read/Write MongoDB collections', bg: '#D1FAE5', color: '#065F46', category: 'Data & Storage' },
   { type: 'json_transform', icon: FiCode,   label: 'JSON Transform', desc: 'Reshape data via JMESPath/Python', bg: '#F5F3FF', color: '#7C3AED', category: 'Data & Storage' },
+  { type: 'json_transform_va', icon: FiCode,   label: 'Flatten JSON (VA)', desc: 'Flatten/Pick/Rename/Omit JSON', bg: '#E0F2FE', color: '#0369A1', category: 'Data & Storage' },
   { type: 'data_cleaning', icon: FiFilter,  label: 'Data Cleaning',  desc: 'Clean dataset and run Pandas scripts', bg: '#ECFDF5', color: '#059669', category: 'Data & Storage' },
   { type: 'network_graph', icon: FiDatabase, label: 'Network Graph', desc: 'Ingest into Neo4j graph database', bg: '#EFF6FF', color: '#1D4ED8', category: 'Data & Storage' },
   { type: 'file_store', icon: FiFileText,  label: 'File Store',   desc: 'Save data to CSV/Excel',    bg: '#ECFDF5', color: '#059669', category: 'Data & Storage' },

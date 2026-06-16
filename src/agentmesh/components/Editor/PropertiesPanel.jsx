@@ -2259,6 +2259,102 @@ function CustomRegexEditor({ value = [], onChange }) {
   );
 }
 
+function ClassificationClassesEditor({ value = [], onChange, engine }) {
+  const add = () => {
+    if (engine === 'regex') {
+      onChange([...value, { class: '', regex_patterns: '' }]);
+    } else {
+      onChange([...value, { class: '', description: '' }]);
+    }
+  };
+  const updateItem = (idx, patch) => {
+    const next = [...value];
+    next[idx] = { ...next[idx], ...patch };
+    onChange(next);
+  };
+  const remove = (idx) => onChange(value.filter((_, i) => i !== idx));
+
+  const autoPopulate = () => {
+    try {
+      const vars = window.globalVars?.classes || useWorkflowStore.getState().globalVariables?.classes || [];
+      if (vars && Array.isArray(vars) && vars.length > 0) {
+        onChange([...value, ...vars.map(c => ({ class: c.name || c, description: c.description || c.desc || '' }))]);
+        toast.success('Classes populated from global vars!');
+      } else {
+        toast.error('No classes found in global vars.');
+      }
+    } catch(e) {
+      toast.error('Failed to populate from global vars.');
+    }
+  };
+
+  return (
+    <div style={{ marginTop: 15 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          {engine === 'regex' ? 'Classes & Regex Patterns' : 'Classes & Descriptions'}
+        </label>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={autoPopulate}
+            title="Auto-Populate from Global Vars"
+            style={{
+              background: 'none', border: 'none', color: '#8B5CF6',
+              cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center',
+              borderRadius: 4, transition: 'background 0.2s', gap: 4, fontSize: 11, fontWeight: 600
+            }}
+          >
+            <FiZap size={14} /> Auto
+          </button>
+          <button
+            onClick={add}
+            style={{
+              background: 'none', border: 'none', color: 'var(--accent-btn)',
+              cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center',
+              borderRadius: 4, transition: 'background 0.2s'
+            }}
+          >
+            <FiPlus size={16} strokeWidth={3} />
+          </button>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {value.map((item, idx) => (
+          <div key={idx} style={{ padding: 10, background: '#F8FAFC', borderRadius: 8, border: '1px solid var(--border)', position: 'relative' }}>
+            <button
+              onClick={() => remove(idx)}
+              style={{ position: 'absolute', top: 6, right: 6, background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}
+            >
+              <FiX size={12} />
+            </button>
+            <div style={{ marginBottom: 6 }}>
+              <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>CLASS NAME</label>
+              <Input value={item.class} onChange={(v) => updateItem(idx, { class: v })} placeholder="e.g. Support" style={{ padding: '4px 8px', fontSize: 11 }} />
+            </div>
+            {engine === 'regex' ? (
+              <div>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>REGEX PATTERNS (comma-separated)</label>
+                <Input value={item.regex_patterns || ''} onChange={(v) => updateItem(idx, { regex_patterns: v })} placeholder="e.g. help,support,login" style={{ padding: '4px 8px', fontSize: 11 }} />
+              </div>
+            ) : (
+              <div>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DESCRIPTION</label>
+                <Input value={item.description || ''} onChange={(v) => updateItem(idx, { description: v })} placeholder="e.g. User asking for tech help" style={{ padding: '4px 8px', fontSize: 11 }} />
+              </div>
+            )}
+          </div>
+        ))}
+        {value.length === 0 && (
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', padding: '4px 0' }}>
+            No classes defined. Click the plus button above to add classes.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Inline node ID list editor (for supervisor/swarm member_ids)
 function NodeIdList({ value = [], onChange, placeholder, allNodes = [] }) {
   const [input, setInput] = useState('');
@@ -3110,7 +3206,7 @@ function ReportGeneratorConfig({ data, update }) {
 
 
 
-const ClassificationClassesEditor = ({value, onChange}) => <div style={{padding:10, border:"1px solid var(--border)"}}>Classes Editor (Placeholder)</div>;
+
 
 function VisualOperationsEditor({ value = [], onChange }) {
   const latestContext = useRunStore(s => s.latestContext) || {};
@@ -3935,6 +4031,7 @@ export default function PropertiesPanel() {
     pattern_extract: FiSearch,
     db_node: FiBox,
     json_transform: FiCode,
+    json_transform_va: FiCode,
     condition: FiHelpCircle,
   };
   const Icon = nodeIcons[data.type] || FiLayers;
@@ -5781,7 +5878,28 @@ export default function PropertiesPanel() {
         {/* ── API Node ── */}
         {data.type === 'api_node' && (
           <>
+            <div style={{ marginBottom: 18 }}>
+              <Toggle
+                checked={data.use_curl}
+                onChange={(v) => update({ use_curl: v })}
+                label="Parse from cURL"
+              />
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: -8, marginLeft: 50, marginBottom: 20 }}>
+                If enabled, standard config is ignored and request is built entirely from the cURL string.
+              </div>
+            </div>
 
+            {data.use_curl ? (
+              <Field label="cURL String" hint="Raw cURL command. Supports {{variables}} and multiline.">
+                <Textarea
+                  value={data.curl_command || ''}
+                  onChange={(v) => update({ curl_command: v })}
+                  placeholder={'curl -X POST "http://..." -d "{\\"key\\": \\"value\\"}"'}
+                  rows={8}
+                />
+              </Field>
+            ) : (
+              <>
             <div style={{ padding: 16, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 12, border: '1px solid var(--border-card-info, #BAE6FD)', marginBottom: 20 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-card-info, #0369A1)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Enterprise Connector</div>
               
@@ -5901,6 +6019,8 @@ export default function PropertiesPanel() {
                 ]}
               />
             </Field>
+            </>
+            )}
 
             <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />
             
@@ -6563,6 +6683,96 @@ export default function PropertiesPanel() {
 
         {/* ── OCR Node ── */}
         {/* ── Ingestion Node ── */}
+        {/* ── Classification Node ── */}
+        {data.type === 'classification' && (
+          <>
+            {/* 1. Classification Engine Selection */}
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'block', marginBottom: 6 }}>
+                Classification Engine
+              </label>
+              <Select
+                value={data.classification_engine || 'llm'}
+                onChange={(v) => update({ classification_engine: v })}
+                options={[
+                  { value: 'llm', label: 'LLM (AI Classifier)' },
+                  { value: 'regex', label: 'Regex Patterns (Static Classifier)' }
+                ]}
+              />
+            </div>
+
+            {/* 2. LLM Model Selection (only if LLM engine is selected) */}
+            {data.classification_engine !== 'regex' && (
+              <div style={{ marginBottom: 22 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiCpu size={12} /> Model Settings
+                </div>
+                <LLMConfigSection
+                  llm={data.llm || { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 }}
+                  onChange={(llm) => update({ llm })}
+                />
+              </div>
+            )}
+
+            {/* 3. Classes & Descriptions/Patterns Editor */}
+            <ClassificationClassesEditor
+              value={data.classification_classes || []}
+              onChange={(v) => update({ classification_classes: v })}
+              engine={data.classification_engine || 'llm'}
+            />
+
+            <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '20px 0', opacity: 0.5 }} />
+
+            {/* 4. Summary toggle (only for LLM engine) */}
+            {data.classification_engine !== 'regex' && (
+              <div style={{ marginBottom: 18 }}>
+                <Toggle
+                  checked={data.classification_summary === true}
+                  onChange={(v) => update({ classification_summary: v })}
+                  label="Summarize Classified Content"
+                />
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, marginLeft: 28, marginBottom: 20 }}>
+                  If enabled, the node will return a summary of the input data instead of the original raw data.
+                </div>
+              </div>
+            )}
+
+            {/* 5. Optional Input Field Path */}
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'block', marginBottom: 6 }}>
+                Input Field Path (Optional)
+              </label>
+              <Input
+                value={data.classification_input_field || ''}
+                onChange={(v) => update({ classification_input_field: v })}
+                placeholder="e.g. context.customer_query"
+              />
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
+                Variables path to classify. If empty, falls back to latest message or payload.
+              </div>
+            </div>
+
+            <div style={{
+              padding: '12px 14px',
+              background: '#F0F9FF',
+              borderRadius: 10,
+              fontSize: 11,
+              color: '#0369A1',
+              border: '1px solid #BAE6FD',
+              lineHeight: 1.5,
+              marginTop: 18,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}>
+              <FiInfo size={14} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, fontWeight: 500 }}>
+                Classification Agent: Classifies the incoming message or payload into one of your custom classes using {data.classification_engine === 'regex' ? 'Regex rules' : 'the configured LLM'}. Returns a JSON object with keys <strong>class</strong> and either <strong>original_data</strong> or <strong>summary</strong>.
+              </span>
+            </div>
+          </>
+        )}
+
         {data.type === 'ingestion_node' && (
           <>
             <Field label="Vector Store" hint="Target database for indexing.">
@@ -6887,7 +7097,7 @@ export default function PropertiesPanel() {
         )}
 
         {/* ── JSON Transform ── */}
-        {data.type === 'json_transform' && (
+        {data.type === 'json_transform_va' && (
           <>
             <Field label="Operation" hint="Choose how to transform the JSON data.">
               <Select
