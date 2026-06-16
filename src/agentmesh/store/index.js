@@ -873,6 +873,10 @@ export const useUIStore = create((set) => ({
   unreadCount: 0,
   activeLibraryTab: 'agents', // agents | tools | apis
   setActiveLibraryTab: (tab) => set({ activeLibraryTab: tab }),
+  suggestionSource: null, // { nodeId, handleId }
+  setSuggestionSource: (v) => set({ suggestionSource: v }),
+  searchOpen: false,
+  setSearchOpen: (v) => set({ searchOpen: v }),
 
   // ─── Initialization guard (Strict Mode safe) ───────────────────────────────
   // Static class property (MainComponent._initialized) is NOT safe in React
@@ -932,6 +936,10 @@ export const useUIStore = create((set) => ({
   canvasWireStyle: (typeof window !== 'undefined' ? localStorage.getItem('canvas_wire_style') : 'square') || 'square',
   canvasBackgroundStyle: (typeof window !== 'undefined' ? localStorage.getItem('canvas_background_style') : 'dots') || 'dots',
   canvasNodeTheme: (typeof window !== 'undefined' ? localStorage.getItem('canvas_node_theme') : 'modern') || 'modern',
+  canvasDotSize: parseFloat((typeof window !== 'undefined' ? localStorage.getItem('canvas_dot_size') : '1.5') || '1.5'),
+  canvasEdgeWidth: parseFloat((typeof window !== 'undefined' ? localStorage.getItem('canvas_edge_width') : '3.5') || '3.5'),
+  canvasHandleSize: parseInt((typeof window !== 'undefined' ? localStorage.getItem('canvas_handle_size') : '10') || '10', 10),
+  canvasConnectionRadius: parseInt((typeof window !== 'undefined' ? localStorage.getItem('canvas_connection_radius') : '20') || '20', 10),
   setCanvasWireStyle: (v) => {
     if (typeof window !== 'undefined') localStorage.setItem('canvas_wire_style', v);
     set({ canvasWireStyle: v });
@@ -943,6 +951,22 @@ export const useUIStore = create((set) => ({
   setCanvasNodeTheme: (v) => {
     if (typeof window !== 'undefined') localStorage.setItem('canvas_node_theme', v);
     set({ canvasNodeTheme: v });
+  },
+  setCanvasDotSize: (v) => {
+    if (typeof window !== 'undefined') localStorage.setItem('canvas_dot_size', v.toString());
+    set({ canvasDotSize: v });
+  },
+  setCanvasEdgeWidth: (v) => {
+    if (typeof window !== 'undefined') localStorage.setItem('canvas_edge_width', v.toString());
+    set({ canvasEdgeWidth: v });
+  },
+  setCanvasHandleSize: (v) => {
+    if (typeof window !== 'undefined') localStorage.setItem('canvas_handle_size', v.toString());
+    set({ canvasHandleSize: v });
+  },
+  setCanvasConnectionRadius: (v) => {
+    if (typeof window !== 'undefined') localStorage.setItem('canvas_connection_radius', v.toString());
+    set({ canvasConnectionRadius: v });
   },
 }));
 

@@ -74,23 +74,90 @@ const logicRowStyle = {
   transition: 'all 0.2s ease'
 };
 
-const logicHandleStyle = (color) => ({
-  width: 10,
-  height: 10,
+const logicHandleStyle = (color, size = 10) => ({
+  width: size,
+  height: size,
   border: '2.5px solid white',
   background: color,
   position: 'absolute',
-  right: -17,
+  right: - (size / 2 + 12),
   top: '50%',
   transform: 'translateY(-50%)',
   boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
   zIndex: 100
 });
 
+const SuggestionButton = ({ nodeId, handleId, color, hovered, isLogic = false }) => {
+  const setSuggestionSource = useUIStore((s) => s.setSuggestionSource);
+  const setSearchOpen = useUIStore((s) => s.setSearchOpen);
+  if (!hovered) return null;
+  return (
+    <div 
+      style={{
+        position: 'absolute',
+        left: isLogic ? 'calc(100% + 12px)' : '100%',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        display: 'flex',
+        alignItems: 'center',
+        pointerEvents: 'auto',
+        zIndex: 1000,
+        padding: '10px 0',
+      }}
+    >
+      <div style={{ width: isLogic ? 18 : 28, height: 20, display: 'flex', alignItems: 'center', background: 'transparent', cursor: 'default' }}>
+        <div style={{ width: '100%', height: 1.5, backgroundColor: '#CBD5E1' }} />
+      </div>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setSuggestionSource({ nodeId, handleId });
+          setSearchOpen(true);
+        }}
+        style={{
+          width: isLogic ? 18 : 20,
+          height: isLogic ? 18 : 20,
+          borderRadius: '50%',
+          border: '1.5px solid #CBD5E1',
+          background: '#FFFFFF',
+          color: '#64748B',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          fontSize: isLogic ? 12 : 14,
+          fontWeight: 600,
+          pointerEvents: 'auto',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          transition: 'all 0.15s ease',
+          padding: 0,
+          lineHeight: 1
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'scale(1.1)';
+          e.currentTarget.style.borderColor = color || 'var(--theme-primary, #8e77bb)';
+          e.currentTarget.style.color = color || 'var(--theme-primary, #8e77bb)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.borderColor = '#CBD5E1';
+          e.currentTarget.style.color = '#64748B';
+        }}
+      >
+        +
+      </button>
+    </div>
+  );
+};
+
 function AgentNode({ id, data, selected }) {
   const actualType = data.type || 'llm_agent';
   const config = NODE_CONFIGS[actualType] || NODE_CONFIGS.llm_agent;
   const setSelectedNode = useUIStore((s) => s.setSelectedNode);
+  const setSuggestionSource = useUIStore((s) => s.setSuggestionSource);
+  const setSearchOpen = useUIStore((s) => s.setSearchOpen);
+  const canvasHandleSize = useUIStore((s) => s.canvasHandleSize || 10);
+  const canvasNodeTheme = useUIStore((s) => s.canvasNodeTheme || 'modern');
   const { nodes, edges } = useWorkflowStore();
   const { updateNodeData } = useReactFlow();
   const [hovered, setHovered] = useState(false);
@@ -128,6 +195,19 @@ function AgentNode({ id, data, selected }) {
 
   const isLogicNode = ['condition', 'switch', 'splitter', 'error_router', 'beneficiary_risk'].includes(actualType);
 
+  const getLogicRowStyle = (isActive, activeType) => {
+    if (isActive) {
+      if (activeType === 'known_fraudster') return { ...logicRowStyle, cursor: 'pointer', background: '#FEF2F2', border: '1px solid #FECACA' };
+      if (activeType === 'new_beneficiary') return { ...logicRowStyle, cursor: 'pointer', background: '#FEFCE8', border: '1px solid #FEF08A' };
+      if (activeType === 'safe') return { ...logicRowStyle, cursor: 'pointer', background: '#ECFDF5', border: '1px solid #A7F3D0' };
+    }
+    return {
+      ...logicRowStyle,
+      background: canvasNodeTheme === 'flat' ? 'white' : '#F9FAFB',
+      border: canvasNodeTheme === 'flat' ? '1px solid rgba(0,0,0,0.05)' : '1px solid #F1F5F9'
+    };
+  };
+
   return (
     <div
       onClick={(e) => { e.stopPropagation(); setSelectedNode(id); updateNodeData(id, { active_branch_selection: null }); }}
@@ -136,14 +216,20 @@ function AgentNode({ id, data, selected }) {
       className={data.isRunning ? "node-active-running" : ""}
       style={{
         minWidth: isLogicNode ? 220 : config.small ? 100 : 180,
-        background: 'white',
-        border: selected ? '1.5px solid var(--theme-primary, #3B82F6)' : '1.5px solid rgba(0,0,0,0.04)',
+        background: canvasNodeTheme === 'flat' ? config.bg : 'white',
+        border: canvasNodeTheme === 'border'
+          ? (selected ? '2.5px solid var(--theme-primary, #8e77bb)' : hovered ? '1.5px solid var(--theme-primary, #8e77bb)' : '1.5px solid #CBD5E1')
+          : canvasNodeTheme === 'flat'
+            ? (selected ? `2.5px solid ${config.color}` : `1px solid ${config.color}50`)
+            : (selected ? '1.5px solid var(--theme-primary, #3B82F6)' : '1px solid rgba(0,0,0,0.08)'),
         borderRadius: config.round,
-        boxShadow: selected
-          ? '0 0 0 3px rgba(59, 130, 246, 0.25), 0 10px 20px -5px rgba(0, 0, 0, 0.15)'
-          : hovered ? '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)'
-            : '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.025)',
-        transform: hovered ? 'translateY(-2px)' : 'none',
+        boxShadow: canvasNodeTheme === 'flat' || canvasNodeTheme === 'border'
+          ? 'none'
+          : selected
+            ? '0 0 0 3px rgba(59, 130, 246, 0.25), 0 10px 20px -5px rgba(0, 0, 0, 0.15)'
+            : hovered ? '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)'
+              : '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.025)',
+        transform: (canvasNodeTheme === 'flat' || canvasNodeTheme === 'border') ? 'none' : (hovered ? 'translateY(-2px)' : 'none'),
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         cursor: 'pointer',
         padding: isLogicNode ? 0 : '10px 14px',
@@ -165,7 +251,7 @@ function AgentNode({ id, data, selected }) {
           display: 'flex',
           alignItems: 'center',
           gap: 10,
-          borderBottom: '1px solid #F1F5F9',
+          borderBottom: canvasNodeTheme === 'border' ? `1.5px solid #CBD5E1` : '1px solid #F1F5F9',
           borderTopLeftRadius: config.round - 1,
           borderTopRightRadius: config.round - 1
         }}>
@@ -187,7 +273,7 @@ function AgentNode({ id, data, selected }) {
         <Handle
           type="target"
           position={Position.Left}
-          style={{ width: 10, height: 10, border: '2px solid white', background: '#94A3B8', left: -5, top: isLogicNode ? 62 : '50%', transform: 'translateY(-50%)', zIndex: 100 }}
+          style={{ width: canvasHandleSize, height: canvasHandleSize, border: '2px solid white', background: '#94A3B8', left: -(canvasHandleSize / 2), top: isLogicNode ? 62 : '50%', transform: 'translateY(-50%)', zIndex: 100 }}
         />
       )}
 
@@ -199,13 +285,19 @@ function AgentNode({ id, data, selected }) {
             width: config.small ? 32 : 40,
             height: config.small ? 32 : 40,
             borderRadius: config.round - 4,
-            background: config.bg,
+            background: (canvasNodeTheme === 'border' || canvasNodeTheme === 'flat') ? 'white' : config.bg,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
-            boxShadow: 'inset 0 2px 4px rgba(255, 255, 255, 0.5), inset 0 -2px 4px rgba(0,0,0,0.02), 0 2px 5px rgba(0,0,0,0.05)',
-            border: '1px solid rgba(0,0,0,0.03)'
+            boxShadow: (canvasNodeTheme === 'flat' || canvasNodeTheme === 'border')
+              ? 'none'
+              : 'inset 0 2px 4px rgba(255, 255, 255, 0.5), inset 0 -2px 4px rgba(0,0,0,0.02), 0 2px 5px rgba(0,0,0,0.05)',
+            border: canvasNodeTheme === 'border'
+              ? `1.5px solid ${config.color}`
+              : canvasNodeTheme === 'flat'
+                ? `1px solid ${config.color}30`
+                : '1px solid rgba(0,0,0,0.03)'
           }}>
             <Icon size={config.small ? 14 : 20} color={config.color} />
           </div>
@@ -226,7 +318,7 @@ function AgentNode({ id, data, selected }) {
               <span style={{
                 fontSize: 10,
                 fontWeight: 600,
-                color: '#64748B',
+                color: canvasNodeTheme === 'flat' ? `${config.color}ee` : '#64748B',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 marginTop: 2
@@ -236,13 +328,15 @@ function AgentNode({ id, data, selected }) {
             )}
           </div>
 
-          {/* Standard source for agents - Hidden for tool nodes to keep canvas clean */}
           {!isEnd && actualType !== 'tool_node' && (
-            <Handle
-              type="source"
-              position={Position.Right}
-              style={{ width: 10, height: 10, border: '2px solid white', background: config.color, right: -5, top: '50%', transform: 'translateY(-50%)', zIndex: 100 }}
-            />
+            <>
+              <Handle
+                type="source"
+                position={Position.Right}
+                style={{ width: canvasHandleSize, height: canvasHandleSize, border: '2px solid white', background: config.color, right: -(canvasHandleSize / 2), top: '50%', transform: 'translateY(-50%)', zIndex: 100 }}
+              />
+              <SuggestionButton nodeId={id} handleId={null} color={config.color} hovered={hovered} isLogic={false} />
+            </>
           )}
         </>
       ) : (
@@ -252,38 +346,43 @@ function AgentNode({ id, data, selected }) {
             {actualType === 'beneficiary_risk' && (
               <>
                 <div
-                  style={{ ...logicRowStyle, cursor: 'pointer', background: data.active_branch_selection === 'known_fraudster' ? '#FEF2F2' : logicRowStyle.background, border: data.active_branch_selection === 'known_fraudster' ? '1px solid #FECACA' : logicRowStyle.border }}
+                  style={getLogicRowStyle(data.active_branch_selection === 'known_fraudster', 'known_fraudster')}
                   onClick={(e) => { e.stopPropagation(); setSelectedNode(id); updateNodeData(id, { active_branch_selection: 'known_fraudster' }); }}
                 >
                   <span style={{ fontSize: 10, fontWeight: 800, color: '#EF4444', marginRight: 4 }}>KNOWN FRAUDSTER</span>
-                  <Handle type="source" position={Position.Right} id="known_fraudster" style={logicHandleStyle('#EF4444')} />
+                  <Handle type="source" position={Position.Right} id="known_fraudster" style={logicHandleStyle('#EF4444', canvasHandleSize)} />
+                  <SuggestionButton nodeId={id} handleId="known_fraudster" color="#EF4444" hovered={hovered} isLogic={true} />
                 </div>
                 <div
-                  style={{ ...logicRowStyle, cursor: 'pointer', background: data.active_branch_selection === 'new_beneficiary' ? '#FEFCE8' : logicRowStyle.background, border: data.active_branch_selection === 'new_beneficiary' ? '1px solid #FEF08A' : logicRowStyle.border }}
+                  style={getLogicRowStyle(data.active_branch_selection === 'new_beneficiary', 'new_beneficiary')}
                   onClick={(e) => { e.stopPropagation(); setSelectedNode(id); updateNodeData(id, { active_branch_selection: 'new_beneficiary' }); }}
                 >
                   <span style={{ fontSize: 10, fontWeight: 800, color: '#EAB308', marginRight: 4 }}>NEW BENEFICIARY</span>
-                  <Handle type="source" position={Position.Right} id="new_beneficiary" style={logicHandleStyle('#EAB308')} />
+                  <Handle type="source" position={Position.Right} id="new_beneficiary" style={logicHandleStyle('#EAB308', canvasHandleSize)} />
+                  <SuggestionButton nodeId={id} handleId="new_beneficiary" color="#EAB308" hovered={hovered} isLogic={true} />
                 </div>
                 <div
-                  style={{ ...logicRowStyle, cursor: 'pointer', background: data.active_branch_selection === 'safe' ? '#ECFDF5' : logicRowStyle.background, border: data.active_branch_selection === 'safe' ? '1px solid #A7F3D0' : logicRowStyle.border }}
+                  style={getLogicRowStyle(data.active_branch_selection === 'safe', 'safe')}
                   onClick={(e) => { e.stopPropagation(); setSelectedNode(id); updateNodeData(id, { active_branch_selection: 'safe' }); }}
                 >
                   <span style={{ fontSize: 10, fontWeight: 800, color: '#10B981', marginRight: 4 }}>SAFE / TRUSTED</span>
-                  <Handle type="source" position={Position.Right} id="safe" style={logicHandleStyle('#10B981')} />
+                  <Handle type="source" position={Position.Right} id="safe" style={logicHandleStyle('#10B981', canvasHandleSize)} />
+                  <SuggestionButton nodeId={id} handleId="safe" color="#10B981" hovered={hovered} isLogic={true} />
                 </div>
               </>
             )}
 
             {actualType === 'condition' && (
               <>
-                <div style={logicRowStyle}>
+                <div style={getLogicRowStyle(false)}>
                   <span style={{ fontSize: 10, fontWeight: 800, color: '#94A3B8', marginRight: 4 }}>PASS</span>
-                  <Handle type="source" position={Position.Right} id="true" style={logicHandleStyle('#10B981')} />
+                  <Handle type="source" position={Position.Right} id="true" style={logicHandleStyle('#10B981', canvasHandleSize)} />
+                  <SuggestionButton nodeId={id} handleId="true" color="#10B981" hovered={hovered} isLogic={true} />
                 </div>
-                <div style={logicRowStyle}>
+                <div style={getLogicRowStyle(false)}>
                   <span style={{ fontSize: 10, fontWeight: 800, color: '#94A3B8', marginRight: 4 }}>FAIL</span>
-                  <Handle type="source" position={Position.Right} id="false" style={logicHandleStyle('#EF4444')} />
+                  <Handle type="source" position={Position.Right} id="false" style={logicHandleStyle('#EF4444', canvasHandleSize)} />
+                  <SuggestionButton nodeId={id} handleId="false" color="#EF4444" hovered={hovered} isLogic={true} />
                 </div>
               </>
             )}
@@ -291,27 +390,31 @@ function AgentNode({ id, data, selected }) {
             {actualType === 'switch' && (
               <>
                 {(data.branches || []).map((b, i) => (
-                  <div key={i} style={logicRowStyle}>
+                  <div key={i} style={getLogicRowStyle(false)}>
                     <span style={{ fontSize: 10, fontWeight: 800, color: '#64748B', marginRight: 4 }}>{b.name?.toUpperCase() || `PATH ${i + 1}`}</span>
-                    <Handle type="source" position={Position.Right} id={b.name || `path-${i}`} style={logicHandleStyle('#3B82F6')} />
+                    <Handle type="source" position={Position.Right} id={b.name || `path-${i}`} style={logicHandleStyle('#3B82F6', canvasHandleSize)} />
+                    <SuggestionButton nodeId={id} handleId={b.name || `path-${i}`} color="#3B82F6" hovered={hovered} isLogic={true} />
                   </div>
                 ))}
-                <div style={{ ...logicRowStyle, background: '#F9FAFB' }}>
+                <div style={getLogicRowStyle(false)}>
                   <span style={{ fontSize: 10, fontWeight: 800, color: '#CBD5E1', marginRight: 4 }}>ELSE</span>
-                  <Handle type="source" position={Position.Right} id="else" style={logicHandleStyle('#CBD5E1')} />
+                  <Handle type="source" position={Position.Right} id="else" style={logicHandleStyle('#CBD5E1', canvasHandleSize)} />
+                  <SuggestionButton nodeId={id} handleId="else" color="#CBD5E1" hovered={hovered} isLogic={true} />
                 </div>
               </>
             )}
 
             {actualType === 'splitter' && (
               <>
-                <div style={logicRowStyle}>
+                <div style={getLogicRowStyle(false)}>
                   <span style={{ fontSize: 10, fontWeight: 800, color: '#EA580C', marginRight: 4 }}>LOOP (ITEM)</span>
-                  <Handle type="source" position={Position.Right} id="loop" style={logicHandleStyle('#EA580C')} />
+                  <Handle type="source" position={Position.Right} id="loop" style={logicHandleStyle('#EA580C', canvasHandleSize)} />
+                  <SuggestionButton nodeId={id} handleId="loop" color="#EA580C" hovered={hovered} isLogic={true} />
                 </div>
-                <div style={logicRowStyle}>
+                <div style={getLogicRowStyle(false)}>
                   <span style={{ fontSize: 10, fontWeight: 800, color: '#94A3B8', marginRight: 4 }}>DONE</span>
-                  <Handle type="source" position={Position.Right} id="done" style={logicHandleStyle('#94A3B8')} />
+                  <Handle type="source" position={Position.Right} id="done" style={logicHandleStyle('#94A3B8', canvasHandleSize)} />
+                  <SuggestionButton nodeId={id} handleId="done" color="#94A3B8" hovered={hovered} isLogic={true} />
                 </div>
               </>
             )}
