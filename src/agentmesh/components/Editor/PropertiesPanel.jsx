@@ -3,7 +3,7 @@ import { useWorkflowStore, useUIStore, useRunStore } from '../../store';
 import { listTools, fixGrammar, chatArchitect } from '../../api/agentmesh';
 import SkillGallery from './SkillGallery';
 import SaveTemplateModal from './SaveTemplateModal';
-import { FiMinus, FiTrash2, FiMousePointer, FiInfo, FiLayers, FiSettings, FiCpu, FiTool, FiGitMerge, FiTarget, FiShare2, FiUser, FiBookOpen, FiLink, FiPlus, FiX, FiGlobe, FiClock, FiCopy, FiCheck, FiSearch, FiChevronDown, FiRepeat, FiFileText, FiZap, FiLoader, FiAlertTriangle, FiGitBranch, FiActivity, FiEdit, FiFilter, FiShield, FiCamera, FiBox, FiSave, FiTerminal, FiDatabase, FiUploadCloud, FiDownload, FiAlignLeft, FiKey, FiLock, FiMessageSquare, FiPlay, FiHelpCircle, FiCode, FiSliders } from 'react-icons/fi';
+import { FiMinus, FiTrash2, FiMousePointer, FiInfo, FiLayers, FiSettings, FiCpu, FiTool, FiGitMerge, FiTarget, FiShare2, FiUser, FiBookOpen, FiLink, FiPlus, FiX, FiGlobe, FiClock, FiCopy, FiCheck, FiSearch, FiChevronDown, FiRepeat, FiFileText, FiZap, FiLoader, FiAlertTriangle, FiGitBranch, FiActivity, FiEdit, FiFilter, FiShield, FiCamera, FiBox, FiSave, FiTerminal, FiDatabase, FiUploadCloud, FiDownload, FiAlignLeft, FiKey, FiLock, FiMessageSquare, FiPlay, FiHelpCircle, FiCode, FiSliders, FiInbox } from 'react-icons/fi';
 import ConnectionsDropdown from './ConnectionsDropdown';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import jsonLang from 'react-syntax-highlighter/dist/esm/languages/hljs/json';
@@ -413,6 +413,192 @@ function CustomCollapsibleApiConfig({ apiDef, index, list, keyName, update, prov
   );
 }
 
+
+
+function RuleAccordionItem({ rule, idx, totalRules, updateRule, removeRule, moveRule }) {
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleGenerateCode = async () => {
+    if (!rule.code || !rule.code.trim()) return;
+    setIsGenerating(true);
+    try {
+      const res = await fetch("http://localhost:8000/api/v1/agentmesh/utils/action", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'generate_python_rule',
+          payload: { prompt: rule.code, existing_code: "" }
+        })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        updateRule(idx, 'code', data.code);
+      } else {
+        alert(data.message || "Failed to generate rule.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network error.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <div 
+      style={{ 
+        border: '1px solid var(--border)', 
+        borderRadius: 8, 
+        background: 'var(--bg-card)', 
+        overflow: 'hidden',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        marginBottom: 12
+      }}
+    >
+      {/* Header (Accordion Toggle) */}
+      <div 
+        style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between', 
+          padding: '8px 12px', 
+          background: 'var(--bg-canvas)', 
+          borderBottom: isExpanded ? '1px solid var(--border)' : 'none',
+          cursor: 'pointer'
+        }}
+        onClick={(e) => {
+          // Prevent accordion toggle when interacting with inputs/buttons
+          if (['INPUT', 'BUTTON', 'SVG', 'PATH', 'DIV'].includes(e.target.tagName?.toUpperCase()) && e.target.getAttribute('data-prevent-toggle')) return;
+          setIsExpanded(!isExpanded);
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
+          <div data-prevent-toggle="true" style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingRight: 4, borderRight: '1px solid var(--border)' }}>
+            <button data-prevent-toggle="true" onClick={(e) => { e.stopPropagation(); moveRule(idx, -1); }} disabled={idx === 0} style={{ background: 'none', border: 'none', padding: 0, cursor: idx === 0 ? 'default' : 'pointer', color: idx === 0 ? 'var(--border)' : 'var(--text-secondary)' }}><FiChevronDown data-prevent-toggle="true" style={{ transform: 'rotate(180deg)' }} size={12}/></button>
+            <button data-prevent-toggle="true" onClick={(e) => { e.stopPropagation(); moveRule(idx, 1); }} disabled={idx === totalRules - 1} style={{ background: 'none', border: 'none', padding: 0, cursor: idx === totalRules - 1 ? 'default' : 'pointer', color: idx === totalRules - 1 ? 'var(--border)' : 'var(--text-secondary)' }}><FiChevronDown data-prevent-toggle="true" size={12}/></button>
+          </div>
+          <FiChevronDown 
+            size={14} 
+            color="var(--text-secondary)" 
+            style={{ 
+              flexShrink: 0, 
+              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', 
+              transition: 'transform 0.2s' 
+            }} 
+          />
+          <input 
+            type="text" 
+            value={rule.name} 
+            data-prevent-toggle="true"
+            onChange={(e) => updateRule(idx, 'name', e.target.value)}
+            style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', width: '100%', minWidth: '60px', marginLeft: 4 }}
+            placeholder="Rule Name"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+          {/* Custom Toggle Switch */}
+          <div 
+            onClick={(e) => { e.stopPropagation(); updateRule(idx, 'enabled', !rule.enabled); }}
+            data-prevent-toggle="true"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+          >
+            <div data-prevent-toggle="true" style={{
+              width: 28,
+              height: 16,
+              background: rule.enabled ? '#10B981' : '#CBD5E1',
+              borderRadius: 16,
+              position: 'relative',
+              transition: 'background 0.2s'
+            }}>
+              <div data-prevent-toggle="true" style={{
+                width: 12,
+                height: 12,
+                background: 'white',
+                borderRadius: '50%',
+                position: 'absolute',
+                top: 2,
+                left: rule.enabled ? 14 : 2,
+                transition: 'left 0.2s',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+              }} />
+            </div>
+            <span data-prevent-toggle="true" style={{ fontSize: 11, fontWeight: 600, color: rule.enabled ? '#059669' : 'var(--text-secondary)' }}>
+              {rule.enabled ? 'Active' : 'Disabled'}
+            </span>
+          </div>
+          <button data-prevent-toggle="true" onClick={(e) => { e.stopPropagation(); removeRule(idx); }} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', padding: 4 }} title="Delete Rule">
+            <FiTrash2 data-prevent-toggle="true" size={13} />
+          </button>
+        </div>
+      </div>
+
+      {/* Body (Code Editor) */}
+      {isExpanded && (
+        <div style={{ padding: '12px' }}>
+          
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <button 
+              onClick={handleGenerateCode}
+              disabled={isGenerating || !rule.code || !rule.code.trim()}
+              style={{
+                background: '#F1F5F9',
+                color: '#64748B',
+                border: '1px solid #E2E8F0',
+                padding: '4px 10px',
+                borderRadius: 6,
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: (isGenerating || !rule.code || !rule.code.trim()) ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                opacity: (isGenerating || !rule.code || !rule.code.trim()) ? 0.6 : 1,
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => { if(!isGenerating) { e.currentTarget.style.opacity = '0.9'; } }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+            >
+              {isGenerating ? <FiLoader className="animate-spin" size={12} /> : <span style={{fontSize: 12}}>✨</span>} 
+              {isGenerating ? 'Generating...' : 'AI Wizard'}
+            </button>
+          </div>
+
+          <textarea
+            value={rule.code}
+            onChange={(e) => updateRule(idx, 'code', e.target.value)}
+            placeholder="# e.g.&#10;if txn.get('amount', 0) > 1000:&#10;    intent = 'block'"
+            rows={6}
+            style={{ 
+              width: '100%', 
+              padding: '10px', 
+              borderRadius: 6, 
+              border: '1px solid var(--border)', 
+              background: 'var(--bg-canvas, #F8FAFC)', 
+              color: 'var(--text-main)', 
+              fontFamily: '"JetBrains Mono", monospace', 
+              fontSize: 12, 
+              lineHeight: 1.5, 
+              boxSizing: 'border-box', 
+              resize: 'vertical',
+              outline: 'none',
+              transition: 'all 0.2s ease'
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = '#7C3AED';
+              e.target.style.boxShadow = '0 0 0 3px rgba(124, 58, 237, 0.15)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'var(--border)';
+              e.target.style.boxShadow = 'none';
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 function LogicHelper() {
   const [isOpen, setIsOpen] = useState(false);
   const examples = [
@@ -4729,9 +4915,25 @@ export default function PropertiesPanel() {
         {/* ── Ingestion Adapter Node ── */}
         {data.type === 'ingestion_adapter' && (
           <>
-            <div style={{ padding: 16, background: 'var(--bg-card-purple, #F5F3FF)', borderRadius: 12, border: '1px solid var(--border-card-purple, #DDD6FE)', marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-card-purple, #7C3AED)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Banking Ingestion Configuration</div>
-
+            <div style={{
+              padding: 16,
+              background: 'var(--bg-card-purple, #F5F3FF)',
+              borderRadius: 12,
+              border: '1px solid var(--border-card-purple, #DDD6FE)',
+              marginBottom: 24,
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg, #F3E8FF 0%, #E0E7FF 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7C3AED', boxShadow: '0 2px 10px rgba(124, 58, 237, 0.1)' }}>
+                  <FiInbox size={16} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#1E293B', letterSpacing: '-0.3px' }}>Ingestion Configuration</div>
+                  <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>Banking schema normalization</div>
+                </div>
+              </div>
+              
               <Field label="Source Format" hint="Define how the incoming stream format will be identified.">
                 <Select
                   value={data.source_format || 'Auto-Detect'}
@@ -4746,44 +4948,438 @@ export default function PropertiesPanel() {
                 />
               </Field>
 
-              <Field label="Validation Mode" hint="Strict enforces complete schema validity, Lax appends defaults.">
+              <Field label="Target Serialization" hint="Downstream message serialization target format.">
                 <Select
-                  value={data.validation_mode || 'Strict'}
-                  onChange={(v) => update({ validation_mode: v })}
+                  value={data.target_serialization || 'Canonical JSON'}
+                  onChange={(v) => update({ target_serialization: v })}
                   options={[
-                    { value: 'Strict', label: 'Strict (Error Router on fail)' },
-                    { value: 'Lax', label: 'Lax (Use fallback default values)' }
+                    { value: 'Canonical JSON', label: 'Canonical JSON' },
+                    { value: 'CSV String', label: 'CSV String (MDM Flatfile)' },
+                    { value: 'Raw Dictionary', label: 'Raw Dict Map' }
                   ]}
+                />
+              </Field>
+
+              <Field label="Destination Key" hint="The context field where the validated canonical payload will be saved.">
+                <Input
+                  value={data.destination_key || 'canonical_transaction'}
+                  onChange={(v) => update({ destination_key: v })}
+                  placeholder="e.g. canonical_transaction"
+                />
+              </Field>
+
+              <div style={{ padding: '12px 16px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: 12, fontSize: 11, color: '#0369A1', border: '1px dashed rgba(59, 130, 246, 0.2)', lineHeight: 1.6, marginTop: 4 }}>
+                <strong>Auto-Normalization:</strong> Transaction streams, custom columns, and up to 200 dynamic fields are preserved automatically via the Pydantic pass-through schema config.
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ΓöÇΓöÇ Banking Pre-Enrichment Node ΓöÇΓöÇ */}
+        
+        {/* ΓöÇΓöÇ Text to Audio ΓöÇΓöÇ */}
+        {data.type === 'banking_enrichment' && (() => {
+          const customExtList = data.custom_external_apis || [];
+          const customIntList = data.custom_internal_apis || [];
+
+          const extOptions = [
+            { value: 'custom', label: 'Custom HTTP API' },
+            { value: 'cibil_experian', label: 'CIBIL / Experian Bureau' },
+            { value: 'npci_registry', label: 'NPCI Fraud Registry' },
+            { value: 'sanctions_lists', label: 'OFAC / RBI Sanctions' },
+            { value: 'ip_geolocation', label: 'MaxMind IP Geolocation' },
+            { value: 'threat_metrix', label: 'ThreatMetrix Device ID' },
+            { value: 'telecom_data', label: 'Telecom Carrier API' }
+          ];
+
+          const intOptions = [
+            { value: 'custom', label: 'Custom HTTP API' },
+            { value: 'core_banking', label: 'Core Banking (CBS)' },
+            { value: 'card_management', label: 'Card Management (CMS)' },
+            { value: 'mobile_app_logs', label: 'Mobile App Session logs' },
+            { value: 'kyc_repository', label: 'KYC Registry' },
+            { value: 'crm_system', label: 'CRM System' }
+          ];
+
+          return (
+            <>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiGlobe color="var(--theme-primary)" size={14} /> 1. External Third-Party Sources
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {customExtList.map((apiDef, idx) => (
+                    <CustomCollapsibleApiConfig key={idx} apiDef={apiDef} index={idx} list={customExtList} keyName="custom_external_apis" update={update} providerOptions={extOptions} />
+                  ))}
+
+                  <div
+                    onClick={() => {
+                      const next = [...customExtList, { provider: 'custom', method: 'GET' }];
+                      update({ custom_external_apis: next });
+                    }}
+                    style={{ marginTop: 10, padding: '10px 12px', background: 'rgba(124, 58, 237, 0.05)', border: '1px dashed var(--theme-primary)', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--theme-primary)', fontSize: 12, fontWeight: 600 }}
+                  >
+                    <FiPlus size={14} /> Add Source
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiLayers color="var(--theme-primary)" size={14} /> 2. Internal Bank Systems
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {customIntList.map((apiDef, idx) => (
+                    <CustomCollapsibleApiConfig key={idx} apiDef={apiDef} index={idx} list={customIntList} keyName="custom_internal_apis" update={update} providerOptions={intOptions} />
+                  ))}
+
+                  <div
+                    onClick={() => {
+                      const next = [...customIntList, { provider: 'custom', method: 'GET' }];
+                      update({ custom_internal_apis: next });
+                    }}
+                    style={{ marginTop: 10, padding: '10px 12px', background: 'rgba(124, 58, 237, 0.05)', border: '1px dashed var(--theme-primary)', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--theme-primary)', fontSize: 12, fontWeight: 600 }}
+                  >
+                    <FiPlus size={14} /> Add Source
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Data Keys</div>
+                <Field label="Source Context Key" hint="Key where canonical transaction data resides.">
+                  <Input value={data.source_key ?? 'canonical_transaction'} onChange={(v) => update({ source_key: v })} placeholder="canonical_transaction" />
+                </Field>
+                <Field label="Destination Context Key" hint="Key to store the resulting enriched payload.">
+                  <Input value={data.destination_key ?? 'enriched_transaction'} onChange={(v) => update({ destination_key: v })} placeholder="enriched_transaction" />
+                </Field>
+              </div>
+            </>
+          );
+        })()}
+
+        {/* ≡ƒ¢í∩╕Å Rule Engine Node ≡ƒ¢í∩╕Å */}
+        {data.type === 'rule_engine' && (() => {
+          const rules = data.python_rules || [];
+          
+          const addRule = () => {
+            const newRule = { id: Math.random().toString(36).substr(2, 9), name: `Rule ${rules.length + 1}`, code: '', enabled: true };
+            update({ python_rules: [...rules, newRule] });
+          };
+          
+          const updateRule = (index, key, val) => {
+            const next = [...rules];
+            next[index] = { ...next[index], [key]: val };
+            update({ python_rules: next });
+          };
+          
+          const removeRule = (index) => {
+            const next = [...rules];
+            next.splice(index, 1);
+            update({ python_rules: next });
+          };
+          
+          const moveRule = (index, dir) => {
+            if (index + dir < 0 || index + dir >= rules.length) return;
+            const next = [...rules];
+            const temp = next[index];
+            next[index] = next[index + dir];
+            next[index + dir] = temp;
+            update({ python_rules: next });
+          };
+
+          return (
+            <>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <FiShield color="#DC2626" size={14} /> Rule Engine Configuration
+                  </div>
+                  <button onClick={addRule} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#7C3AED', color: 'white', border: 'none', padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                    <FiPlus size={12} /> Add Rule
+                  </button>
+                </div>
+                
+                {rules.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '20px', border: '1px dashed var(--border)', borderRadius: 8, color: 'var(--text-tertiary)', fontSize: 12 }}>
+                    No rules defined. Click "Add Rule" to create one.
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {rules.map((rule, idx) => (
+                    <RuleAccordionItem 
+                      key={rule.id}
+                      rule={rule}
+                      idx={idx}
+                      totalRules={rules.length}
+                      updateRule={updateRule}
+                      removeRule={removeRule}
+                      moveRule={moveRule}
+                    />
+                  ))}
+                </div>
+
+                <div style={{ background: 'var(--bg-card-info, #F0F9FF)', padding: 12, borderRadius: 8, border: '1px solid var(--border-card-info, #BAE6FD)', fontSize: 12, color: 'var(--text-card-info, #0369A1)', lineHeight: 1.5, marginTop: 12 }}>
+                  <strong>Note:</strong> Rules execute sequentially. If an enabled rule sets <code>intent = 'block'</code>, execution stops instantly.
+                </div>
+              </div>
+            </>
+          );
+        })()}
+
+        {/* ΓöÇΓöÇ Weightage System Node ΓöÇΓöÇ */}
+        {data.type === 'weightage' && (
+          <>
+            <Field label="Output Context Key" hint="The context key where the final weightage scoring JSON breakdown is saved. Defaults to weightage_result.">
+              <Input
+                value={data.weightage_output_key ?? 'weightage_result'}
+                onChange={(v) => update({ weightage_output_key: v })}
+                placeholder="weightage_result"
+              />
+            </Field>
+
+            <WeightageCategoriesEditor
+              categories={data.weightage_categories || []}
+              onChange={(cats) => update({ weightage_categories: cats })}
+            />
+
+            <div style={{
+              padding: '12px 14px',
+              background: 'var(--bg-card-info, #F0F9FF)',
+              borderRadius: 10,
+              fontSize: 11,
+              color: 'var(--text-card-info, #0369A1)',
+              border: '1px solid var(--border-card-info, #BAE6FD)',
+              lineHeight: 1.5,
+              marginTop: 18,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}>
+              <FiInfo size={14} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, fontWeight: 500 }}>
+                Weightage Scoring: Evaluates dynamic conditions across categories and fields. Calculates total raw scores, maximum possible scores, and normalized percentages (0-100%). Supports Jinja2 variables (e.g. <code>{`{{anualcredit}}`}</code>).
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* ΓöÇΓöÇ Template Engine Node ΓöÇΓöÇ */}
+        {data.type === 'template_node' && (
+          <>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <FiFileText color="#3B82F6" size={14} /> Template Engine Settings
+              </div>
+
+              <Field label="Template Content" hint="Define your Jinja2/Markdown template. Use Jinja2 formatting (e.g., {{ latest_message }}, {{ user_input }}).">
+                <Textarea
+                  value={data.template_content ?? ''}
+                  onChange={(v) => update({ template_content: v })}
+                  placeholder="Hello {{ latest_message }},\n\nYour score is {{ total_score }} out of {{ max_possible_score }}."
+                  rows={8}
+                />
+              </Field>
+
+              <Field label="Template File Path (Optional)" hint="Provide an absolute path to a template file on the server. If set and file exists, its content overrides the Template Content text field above.">
+                <Input
+                  value={data.template_file_path ?? ''}
+                  onChange={(v) => update({ template_file_path: v })}
+                  placeholder="e.g. C:/templates/my_template.txt"
+                />
+              </Field>
+
+              <Field label="Input Variable Data Key (Optional)" hint="Specify the context key (e.g., enriched_transaction) from which to extract variables to inject into the template context. If it points to a dictionary, those fields are merged into the template variables.">
+                <Input
+                  value={data.template_data_key ?? ''}
+                  onChange={(v) => update({ template_data_key: v })}
+                  placeholder="e.g. enriched_transaction"
+                />
+              </Field>
+
+              <Field label="Output Context Key" hint="Context key to save the final rendered string output. Defaults to rendered_template.">
+                <Input
+                  value={data.template_output_key ?? 'rendered_template'}
+                  onChange={(v) => update({ template_output_key: v })}
+                  placeholder="rendered_template"
                 />
               </Field>
             </div>
 
-            <Field label="Target Serialization" hint="Downstream message serialization target format.">
-              <Select
-                value={data.target_serialization || 'Canonical JSON'}
-                onChange={(v) => update({ target_serialization: v })}
-                options={[
-                  { value: 'Canonical JSON', label: 'Canonical JSON' },
-                  { value: 'CSV String', label: 'CSV String (MDM Flatfile)' },
-                  { value: 'Raw Dictionary', label: 'Raw Dict Map' }
-                ]}
-              />
-            </Field>
-
-            <Field label="Destination Key" hint="The context field where the validated canonical payload will be saved.">
-              <Input
-                value={data.destination_key || 'canonical_transaction'}
-                onChange={(v) => update({ destination_key: v })}
-                placeholder="e.g. canonical_transaction"
-              />
-            </Field>
-
-            <div style={{ padding: 12, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', border: '1px solid var(--border-card-info, #BAE6FD)', lineHeight: 1.5 }}>
-              <FiDownload size={12} style={{ marginRight: 6 }} />
-              Normalizes transaction streams. Custom columns and up to 200 dynamic fields are preserved automatically using the Pydantic pass-through schema config.
+            <div style={{
+              padding: '12px 14px',
+              background: 'var(--bg-card-info, #F0F9FF)',
+              borderRadius: 10,
+              fontSize: 11,
+              color: 'var(--text-card-info, #0369A1)',
+              border: '1px solid var(--border-card-info, #BAE6FD)',
+              lineHeight: 1.5,
+              marginTop: 18,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}>
+              <FiInfo size={14} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, fontWeight: 500 }}>
+                Template Engine Node: Renders dynamic text or markdown using Jinja2 formatting. The global context, <code>latest_message</code>, and values under the selected <code>Input Data Key</code> are all exposed to your template variables automatically.
+              </span>
             </div>
           </>
         )}
+
+        {/* ΓöÇΓöÇ Report Generator Node ΓöÇΓöÇ */}
+        {data.type === 'report_generator' && (
+          <ReportGeneratorConfig data={data} update={update} />
+        )}
+
+        {/* ΓöÇΓöÇ Beneficiary Risk Router ΓöÇΓöÇ */}
+        {data.type === 'beneficiary_risk' && (() => {
+          const checks = data.risk_checks || ['mule_detection', 'account_age', 'sanctions_list', 'relationship_graph'];
+          
+          const toggleCheck = (key) => {
+            const next = checks.includes(key) ? checks.filter(k => k !== key) : [...checks, key];
+            update({ risk_checks: next });
+          };
+
+          const checkList = [
+            { key: 'mule_detection', label: 'Mule Velocity Check', desc: 'Checks inbound velocity / mule indicators' },
+            { key: 'account_age', label: 'Account Age Registry', desc: 'Checks if recipient account is new' },
+            { key: 'sanctions_list', label: 'Sanctions Check', desc: 'Screens against OFAC & local blacklists' },
+            { key: 'relationship_graph', label: 'Relationship Graph', desc: 'Checks history between sender and receiver' },
+          ];
+
+          return (
+            <>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiShield color="var(--theme-primary)" size={14} /> Risk Evaluator Checks
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {checkList.map((chk) => (
+                    <div
+                      key={chk.key}
+                      onClick={() => toggleCheck(chk.key)}
+                      style={{
+                        padding: '10px 12px',
+                        background: checks.includes(chk.key) ? 'rgba(142, 119, 187, 0.05)' : '#F8FAFC',
+                        border: checks.includes(chk.key) ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
+                        borderRadius: 10,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginRight: 8 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: checks.includes(chk.key) ? 'var(--theme-primary)' : 'var(--text-primary)' }}>{chk.label}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{chk.desc}</span>
+                      </div>
+                      <div style={{
+                        width: 32, height: 18, borderRadius: 9, position: 'relative',
+                        background: checks.includes(chk.key) ? 'var(--theme-primary)' : '#cbd5e1',
+                        transition: 'all 0.2s', flexShrink: 0
+                      }}>
+                        <div style={{
+                          position: 'absolute', top: 2, left: checks.includes(chk.key) ? 16 : 2, width: 14, height: 14,
+                          borderRadius: '50%', background: '#fff', transition: 'left 0.2s ease'
+                        }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiGitBranch color="#EF4444" size={14} /> Known Fraudster Branch
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.4 }}>
+                  Triggered only if deterministic check (Sanctions hit) matches 100%. Executes real-time block and raises alert.
+                </p>
+                <Field label="Alert Severity Level" hint="Level of severity logged downstream.">
+                  <Select
+                    value={data.fraud_alert_level ?? 'CRITICAL'}
+                    onChange={(v) => update({ fraud_alert_level: v })}
+                    options={[
+                      { value: 'CRITICAL', label: 'Critical' },
+                      { value: 'HIGH', label: 'High' },
+                      { value: 'MEDIUM', label: 'Medium' }
+                    ]}
+                  />
+                </Field>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, textTransform: 'uppercase' }}>Primary Fraud Alert API</div>
+                <ApiConfigSection data={data} update={update} prefix="fraud_api_" urlKey="fraud_api_endpoint" />
+                
+                <div style={{ marginTop: 20 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, textTransform: 'uppercase' }}>Additional APIs</div>
+                  {data.fraud_additional_apis?.map((apiConf, idx) => {
+                    const localUpdate = (changes) => {
+                       const newArr = [...(data.fraud_additional_apis || [])];
+                       newArr[idx] = { ...newArr[idx], ...changes };
+                       update({ fraud_additional_apis: newArr });
+                    };
+                    return (
+                      <CollapsibleApiConfig 
+                        key={idx} 
+                        data={apiConf} 
+                        update={localUpdate} 
+                        idx={idx} 
+                        onRemove={() => {
+                          const newArr = [...data.fraud_additional_apis];
+                          newArr.splice(idx, 1);
+                          update({ fraud_additional_apis: newArr });
+                        }} 
+                      />
+                    );
+                  })}
+                  <button 
+                    onClick={() => {
+                      const newArr = [...(data.fraud_additional_apis || []), { url: '', method: 'POST' }];
+                      update({ fraud_additional_apis: newArr });
+                    }}
+                    style={{ width: '100%', padding: '8px', background: '#F1F5F9', border: '1px dashed #CBD5E1', borderRadius: '8px', color: '#475569', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    + Add Another API
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiGitBranch color="#F59E0B" size={14} /> New Beneficiary Branch
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, margin: 0 }}>
+                  <strong>Privacy Sandbox Active:</strong> This node strips private sender data and passes only recipient details (Name, Account, Bank) down the yellow wire for KYC/registration.
+                </p>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiGitBranch color="#10B981" size={14} /> Safe / Continue Branch
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, margin: 0 }}>
+                  Payload passes untouched. Mule check scores and geo-velocity metrics are injected into `risk_profile` for downstream scoring engines.
+                </p>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Data Configuration</div>
+                <Field label="Input Context Key" hint="Context key that holds the transaction payload.">
+                  <Input value={data.context_key ?? 'enriched_transaction'} onChange={(v) => update({ context_key: v })} placeholder="enriched_transaction" />
+                </Field>
+                <Field label="Target Entity Field" hint="Which field in the data represents the beneficiary?">
+                  <Input value={data.beneficiary_field ?? 'beneficiary_id'} onChange={(v) => update({ beneficiary_field: v })} placeholder="e.g., beneficiary_id" />
+                </Field>
+                <Field label="New Beneficiary Rule" hint="Logical condition to define what a 'new' beneficiary is.">
+                  <Input value={data.new_beneficiary_rule ?? 'account_age_days < 1'} onChange={(v) => update({ new_beneficiary_rule: v })} placeholder="e.g., account_age_days < 1" />
+                </Field>
+              </div>
+            </>
+          );
+        })()}
+
 
         {/* ── Banking Pre-Enrichment Node ── */}
         {data.type === 'banking_enrichment' && (
@@ -5722,183 +6318,8 @@ export default function PropertiesPanel() {
 
 
         {/* ── Banking Data Enrichment Orchestrator ── */}
-        {data.type === 'banking_enrichment' && (() => {
-          const extList = data.external_integrations || [];
-          const intList = data.internal_integrations || [];
-
-          const toggleExternal = (key) => {
-            const next = extList.includes(key) ? extList.filter(k => k !== key) : [...extList, key];
-            update({ external_integrations: next });
-          };
-
-          const toggleInternal = (key) => {
-            const next = intList.includes(key) ? intList.filter(k => k !== key) : [...intList, key];
-            update({ internal_integrations: next });
-          };
-
-          const externals = [
-            { key: 'cibil_experian', label: 'CIBIL / Experian Bureau', desc: 'Credit profile checks' },
-            { key: 'npci_registry', label: 'NPCI Fraud Registry', desc: 'Mule bank account blacklist' },
-            { key: 'sanctions_lists', label: 'OFAC / RBI Sanctions', desc: 'PEP & Global sanctions check' },
-            { key: 'ip_geolocation', label: 'MaxMind IP Geolocation', desc: 'IP network & location metadata' },
-            { key: 'threat_metrix', label: 'ThreatMetrix Device ID', desc: 'Device fingerprinting' },
-            { key: 'telecom_data', label: 'Telecom Carrier API', desc: 'SIM swap & porting status' },
-          ];
-
-          const internals = [
-            { key: 'core_banking', label: 'Core Banking (CBS)', desc: 'Account age & transaction history' },
-            { key: 'card_management', label: 'Card Management (CMS)', desc: 'Card status & pin errors' },
-            { key: 'mobile_app_logs', label: 'Mobile App Session logs', desc: 'Biometric & active session metadata' },
-            { key: 'kyc_repository', label: 'KYC Registry', desc: 'Identity verification & documents' },
-            { key: 'crm_system', label: 'CRM System', desc: 'Customer value tiering' },
-          ];
-
-          return (
-            <>
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <FiGlobe color="var(--theme-primary)" size={14} /> 1. External Third-Party Sources
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {externals.map((source) => (
-                    <div
-                      key={source.key}
-                      onClick={() => toggleExternal(source.key)}
-                      style={{
-                        padding: '10px 12px',
-                        background: extList.includes(source.key) ? 'rgba(142, 119, 187, 0.05)' : '#F8FAFC',
-                        border: extList.includes(source.key) ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
-                        borderRadius: 10,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        transition: 'all 0.15s'
-                      }}
-                    >
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginRight: 8 }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: extList.includes(source.key) ? 'var(--theme-primary)' : 'var(--text-primary)' }}>{source.label}</span>
-                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{source.desc}</span>
-                      </div>
-                      <div style={{
-                        width: 32, height: 18, borderRadius: 9, position: 'relative',
-                        background: extList.includes(source.key) ? 'var(--theme-primary)' : '#cbd5e1',
-                        transition: 'all 0.2s', flexShrink: 0
-                      }}>
-                        <div style={{
-                          position: 'absolute', top: 2, left: extList.includes(source.key) ? 16 : 2, width: 14, height: 14,
-                          borderRadius: '50%', background: '#fff', transition: 'left 0.2s ease'
-                        }} />
-                      </div>
-                    </div>
-                  ))}
-
-                  <div
-                    onClick={() => {
-                      const name = prompt("Enter custom external source name:");
-                      if (name) {
-                        const next = [...extList, name];
-                        update({ external_integrations: next });
-                      }
-                    }}
-                    style={{ padding: '10px 12px', background: 'rgba(124, 58, 237, 0.05)', border: '1px dashed var(--theme-primary)', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--theme-primary)', fontSize: 12, fontWeight: 600 }}
-                  >
-                    <FiPlus size={14} /> Add Source
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <FiLayers color="var(--theme-primary)" size={14} /> 2. Internal Bank Systems
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {internals.map((source) => (
-                    <div
-                      key={source.key}
-                      onClick={() => toggleInternal(source.key)}
-                      style={{
-                        padding: '10px 12px',
-                        background: intList.includes(source.key) ? 'rgba(142, 119, 187, 0.05)' : '#F8FAFC',
-                        border: intList.includes(source.key) ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
-                        borderRadius: 10,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        transition: 'all 0.15s'
-                      }}
-                    >
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginRight: 8 }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: intList.includes(source.key) ? 'var(--theme-primary)' : 'var(--text-primary)' }}>{source.label}</span>
-                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{source.desc}</span>
-                      </div>
-                      <div style={{
-                        width: 32, height: 18, borderRadius: 9, position: 'relative',
-                        background: intList.includes(source.key) ? 'var(--theme-primary)' : '#cbd5e1',
-                        transition: 'all 0.2s', flexShrink: 0
-                      }}>
-                        <div style={{
-                          position: 'absolute', top: 2, left: intList.includes(source.key) ? 16 : 2, width: 14, height: 14,
-                          borderRadius: '50%', background: '#fff', transition: 'left 0.2s ease'
-                        }} />
-                      </div>
-                    </div>
-                  ))}
-
-                  <div
-                    onClick={() => {
-                      const name = prompt("Enter custom internal source name:");
-                      if (name) {
-                        const next = [...intList, name];
-                        update({ internal_integrations: next });
-                      }
-                    }}
-                    style={{ padding: '10px 12px', background: 'rgba(124, 58, 237, 0.05)', border: '1px dashed var(--theme-primary)', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--theme-primary)', fontSize: 12, fontWeight: 600 }}
-                  >
-                    <FiPlus size={14} /> Add Source
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Data Keys</div>
-                <Field label="Source Context Key" hint="Key where canonical transaction data resides.">
-                  <Input value={data.source_key ?? 'canonical_transaction'} onChange={(v) => update({ source_key: v })} placeholder="canonical_transaction" />
-                </Field>
-                <Field label="Destination Context Key" hint="Key to store the resulting enriched payload.">
-                  <Input value={data.destination_key ?? 'enriched_transaction'} onChange={(v) => update({ destination_key: v })} placeholder="enriched_transaction" />
-                </Field>
-              </div>
-            </>
-          );
-        })()}
 
         {/* ── Rule Engine Node ── */}
-        {data.type === 'rule_engine' && (() => {
-          return (
-            <>
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <FiShield color="#DC2626" size={14} /> Rule Engine Configuration
-                </div>
-                <Field label="Rule Set Selection" hint="Choose which Python rule logic to execute for this node.">
-                  <Select
-                    value={data.routing_key || 'fast_path'}
-                    onChange={(v) => update({ routing_key: v })}
-                    options={[
-                      { label: 'Fast-Path (Instant P1 Block rules)', value: 'fast_path' },
-                      { label: 'ML Fallback (Scorecard logic)', value: 'ml_fallback' }
-                    ]}
-                  />
-                </Field>
-                <div style={{ background: '#F8F9FB', padding: 12, borderRadius: 8, border: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                  <strong>Note:</strong> The exact rules for each set are coded dynamically in the backend Python node ('fast_path_rules.py' and 'ml_fallback_rules.py').
-                </div>
-              </div>
-            </>
-          );
-        })()}
 
         {/* ── Weightage System Node ── */}
         {data.type === 'weightage' && (
