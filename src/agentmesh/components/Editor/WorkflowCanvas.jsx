@@ -86,7 +86,7 @@ export default function WorkflowCanvas() {
     agentNode: AgentNode,
     cardboardNode: CardboardNode
   }), []);
-  const { nodes, edges, setNodes, setEdges, setNodesDirty, setEdgesDirty, addNode, setNodeData, workflowName } = useWorkflowStore();
+  const { nodes, edges, setNodes, setEdges, setNodesDirty, setEdgesDirty, addNode, setNodeData, workflowName, undo, redo } = useWorkflowStore();
   const { selectedNodeId, selectedEdgeId, setSelectedNode, setSelectedEdge, canvasWireStyle, canvasBackgroundStyle, isDarkCanvas } = useUIStore();
 
   const reactFlowWrapper = useRef(null);
@@ -188,6 +188,8 @@ export default function WorkflowCanvas() {
 
   const onConnect = useCallback(
     (params) => {
+      // Take snapshot before connection modifications
+      useWorkflowStore.getState().takeHistorySnapshot();
       const { source, target } = params;
       const sourceNode = nodes.find(n => n.id === source);
       const targetNode = nodes.find(n => n.id === target);
@@ -277,6 +279,9 @@ export default function WorkflowCanvas() {
   }, [edges, edgeType, hoveredEdgeId, draggedNodeId]);
 
   const onNodeDragStart = useCallback((event, node) => {
+    // Take snapshot before dragging moves the node
+    useWorkflowStore.getState().takeHistorySnapshot();
+
     const hasIncoming = edges.some(e => e.target === node.id);
     const hasOutgoing = edges.some(e => e.source === node.id);
     const isSolo = !hasIncoming && !hasOutgoing;
@@ -304,6 +309,8 @@ export default function WorkflowCanvas() {
     if (isDraggingSoloNode && hoveredEdgeId) {
       const edgeToSplit = edges.find(e => e.id === hoveredEdgeId);
       if (edgeToSplit) {
+        // Take snapshot before edge split modification
+        useWorkflowStore.getState().takeHistorySnapshot();
         const { source, target, sourceHandle, targetHandle } = edgeToSplit;
         const nextEdges = edges.filter(e => e.id !== hoveredEdgeId);
         const edgeType = canvasWireStyle === 'curve' ? 'default' : 'smoothstep';
@@ -364,6 +371,8 @@ export default function WorkflowCanvas() {
     if (hoveredEdgeId && id) {
       const edgeToSplit = edges.find(e => e.id === hoveredEdgeId);
       if (edgeToSplit) {
+        // Take snapshot before edge split drop modification
+        useWorkflowStore.getState().takeHistorySnapshot();
         const { source, target, sourceHandle, targetHandle } = edgeToSplit;
         const nextEdges = edges.filter(e => e.id !== hoveredEdgeId);
         const edgeType = canvasWireStyle === 'curve' ? 'default' : 'smoothstep';
@@ -503,6 +512,24 @@ export default function WorkflowCanvas() {
         return;
       }
 
+      // Undo/Redo Shortcuts
+      const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+      if (isCmdOrCtrl) {
+        if (e.key === 'z' || e.key === 'Z') {
+          e.preventDefault();
+          if (e.shiftKey) {
+            redo();
+          } else {
+            undo();
+          }
+          return;
+        } else if (e.key === 'y' || e.key === 'Y') {
+          e.preventDefault();
+          redo();
+          return;
+        }
+      }
+
       if ((e.key === 's' || e.key === 'S') && !selectedNodeId && !searchOpen) {
         e.preventDefault();
         setSearchOpen(true);
@@ -527,7 +554,7 @@ export default function WorkflowCanvas() {
 
     globalThis.addEventListener('keydown', handleKeyDown);
     return () => globalThis.removeEventListener('keydown', handleKeyDown);
-  }, [selectedNodeId, searchOpen, reactFlowInstance, addNode]);
+  }, [selectedNodeId, searchOpen, reactFlowInstance, addNode, undo, redo]);
 
   const handleSearchSelectNode = useCallback((type) => {
     setSearchOpen(false);
@@ -649,6 +676,10 @@ export default function WorkflowCanvas() {
             edges={renderedEdges}
             selectionKeyCode="Control"
             onNodesChange={(changes) => {
+              const isDelete = changes.some(c => c.type === 'remove');
+              if (isDelete) {
+                useWorkflowStore.getState().takeHistorySnapshot();
+              }
               let hasDirtyChange = false;
               let hasDimensionsChange = false;
               
@@ -703,6 +734,10 @@ export default function WorkflowCanvas() {
               }
             }}
           onEdgesChange={(changes) => {
+            const isDelete = changes.some(c => c.type === 'remove');
+            if (isDelete) {
+              useWorkflowStore.getState().takeHistorySnapshot();
+            }
             const updated = applyEdgeChanges(changes, edges);
             const hasDirtyChange = changes.some(c => c.type !== 'select');
             if (hasDirtyChange) {
