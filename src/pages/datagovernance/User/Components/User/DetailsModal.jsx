@@ -306,15 +306,30 @@ const renderConnectionDetails = (connectionData) => {
   );
 };
 
+const escapeHtml = (text) => {
+  if (!text) return "";
+  return text
+    .toString()
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
+
 const highlightMatches = (text, searchTerm) => {
-  if (!searchTerm || !text) return text;
+  if (!text) return "";
+  const escapedText = escapeHtml(text);
+  if (!searchTerm) return escapedText;
   
-  const regex = new RegExp(`(${escapeRegExp(searchTerm)})`, 'gi');
-  return text.toString().replace(regex, '<span class="bg-yellow-200">$1</span>');
+  const escapedSearchTerm = escapeHtml(searchTerm);
+  const regex = new RegExp(`(${escapeRegExp(escapedSearchTerm)})`, 'gi');
+  return escapedText.replace(regex, '<span class="bg-yellow-200">$1</span>');
 };
 
 const escapeRegExp = (string) => {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (!string) return "";
+  return string.toString().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 };
 
 const renderRolesDetails = (userSelections) => {
@@ -379,7 +394,7 @@ const renderPermissionsDetails = (permissions) => {
 
 const DetailsModal = ({ isOpen, onClose, title, items, type }) => {
     if (!isOpen) return null;
-
+    
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-2xl p-6 w-[60%] max-h-[90vh] overflow-y-auto">

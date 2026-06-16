@@ -11,25 +11,47 @@ export const getActionConfigurations = ({ token, project, hostnameV2, hostnameV1
     // Create modal element
     const confirmModal = document.createElement("div");
     confirmModal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
-    confirmModal.innerHTML = `
-      <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-        <h3 class="text-lg font-semibold mb-4">Confirm Deletion</h3>
-        <p class="mb-6">Are you sure you want to delete this ${name}?</p>
-        <div class="flex justify-end gap-3">
-          <button id="cancel-btn" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
-          <button id="confirm-btn" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Delete</button>
-        </div>
-      </div>
-    `;
 
+    const modalBox = document.createElement("div");
+    modalBox.className = "bg-white p-6 rounded-lg shadow-lg max-w-md w-full";
+
+    const title = document.createElement("h3");
+    title.className = "text-lg font-semibold mb-4";
+    title.textContent = "Confirm Deletion";
+
+    const text = document.createElement("p");
+    text.className = "mb-6";
+    text.textContent = `Are you sure you want to delete this ${name}?`;
+
+    const btnContainer = document.createElement("div");
+    btnContainer.className = "flex justify-end gap-3";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.id = "cancel-btn";
+    cancelBtn.className = "px-4 py-2 bg-gray-200 rounded hover:bg-gray-300";
+    cancelBtn.textContent = "Cancel";
+
+    const confirmBtn = document.createElement("button");
+    confirmBtn.id = "confirm-btn";
+    confirmBtn.className = "px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700";
+    confirmBtn.textContent = "Delete";
+
+    btnContainer.appendChild(cancelBtn);
+    btnContainer.appendChild(confirmBtn);
+
+    modalBox.appendChild(title);
+    modalBox.appendChild(text);
+    modalBox.appendChild(btnContainer);
+
+    confirmModal.appendChild(modalBox);
     document.body.appendChild(confirmModal);
 
     // Add event listeners
-    document.getElementById("cancel-btn").addEventListener("click", () => {
+    cancelBtn.addEventListener("click", () => {
       document.body.removeChild(confirmModal);
     });
 
-    document.getElementById("confirm-btn").addEventListener("click", () => {
+    confirmBtn.addEventListener("click", () => {
       onConfirm();
       document.body.removeChild(confirmModal);
     });
