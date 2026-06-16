@@ -2,14 +2,305 @@ import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiGitBranch, FiClock, FiCheckCircle, FiSearch, FiRefreshCw, FiTag, 
-  FiFilter, FiX, FiCheck, FiTrash2, FiMessageSquare, FiGrid, FiList 
+  FiFilter, FiX, FiCheck, FiTrash2, FiMessageSquare, FiGrid, FiList,
+  FiPlay, FiPause, FiArrowRight, FiInfo, FiMoreHorizontal, FiFolder
 } from 'react-icons/fi';
 import { 
   listMarketplaceUsecases, 
   updateMarketplaceUsecaseStatus, 
-  deleteMarketplaceUsecase 
+  deleteMarketplaceUsecase,
+  getWorkflow,
+  dispatchScheduleAction
 } from '../../../../api/agentmesh';
+import { useWorkflowStore, useUIStore } from '../../../../store';
 import Pagination from '../../../Common/Pagination';
+import PageHeader from '../../../Common/PageHeader';
+
+function ActionDropdown({ actions, isOpen, onClose }) {
+  if (!isOpen) return null;
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9, y: -10 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      style={{
+        position: 'absolute', bottom: '100%', right: 0, marginBottom: 8,
+        background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
+        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', zIndex: 50,
+        minWidth: 140, padding: '6px'
+      }}
+    >
+      {actions.map((a, i) => (
+        <button
+          key={i}
+          onClick={(e) => { e.stopPropagation(); a.onClick(); onClose(); }}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+            padding: '8px 10px', borderRadius: 8, border: 'none', background: 'none',
+            fontSize: 12, fontWeight: 500, color: a.variant === 'danger' ? '#EF4444' : '#374151',
+            cursor: 'pointer', transition: 'all 0.15s'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = a.variant === 'danger' ? '#FEF2F2' : '#F3F4F6'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+        >
+          {a.icon} {a.label}
+        </button>
+      ))}
+    </motion.div>
+  );
+}
+
+function PublishRequestCard({ u, idx, handlePause, handleResume, handleOpenWorkflow, handleUpdateStatus, setShowRemarksModal, setShowDetailsModal, handleDelete, actionInProgress, getStatusBadge }) {
+  const [showMore, setShowMore] = useState(false);
+
+  const moreActions = [
+    { label: 'Details', icon: <FiInfo size={14} />, onClick: () => setShowDetailsModal(u) },
+    { label: 'Delete', icon: <FiTrash2 size={14} />, onClick: () => handleDelete(u.id), variant: 'danger' },
+  ];
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: idx * 0.05, ease: [0.23, 1, 0.32, 1] }}
+      style={{
+        background: 'white',
+        border: '1px solid #F0F0EE',
+        borderRadius: 24,
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.02)',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        overflow: 'hidden',
+        transition: 'all 0.2s ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05)';
+        e.currentTarget.style.borderColor = '#E5E7EB';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.02)';
+        e.currentTarget.style.borderColor = '#F0F0EE';
+      }}
+      onClick={() => setShowDetailsModal(u)}
+    >
+      <div style={{ padding: '24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* Header Row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 14 }}>
+          <div style={{
+            width: 48,
+            height: 48,
+            borderRadius: 12,
+            background: u.is_active ? 'var(--theme-primary-glow)' : '#F3F4F6',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            color: u.is_active ? 'var(--theme-primary)' : '#6B7280'
+          }}>
+            <FiGitBranch size={24} strokeWidth={1.5} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+              <h3 style={{
+                fontSize: 17,
+                fontWeight: 600,
+                color: '#111827',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                letterSpacing: '-0.02em',
+                margin: 0,
+                flex: 1
+              }}>
+                {u.name}
+              </h3>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span title={`Group: ${u.group || 'Default'}`} style={{ fontSize: 10, color: '#6B7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <FiFolder size={10} /> {u.group || 'Default'}
+              </span>
+              <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#D1D5DB' }} />
+              <span style={{ fontSize: 10, color: '#6B7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <FiTag size={10} /> {u.category || 'General'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Description */}
+        <p style={{
+          fontSize: 14,
+          color: '#4B5563',
+          lineHeight: 1.6,
+          marginBottom: 16,
+          minHeight: '2.8em',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+          margin: 0
+        }}>
+          {u.description || 'No description provided.'}
+        </p>
+
+        {/* Rating, Status, and Approval Fields */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderTop: '1px solid #F3F4F6', borderBottom: '1px solid #F3F4F6',
+          padding: '12px 0', margin: '12px 0'
+        }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Rating</span>
+            <span style={{ fontSize: 13, color: '#4B5563', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ color: '#D97706' }}>★</span> {u.rating !== undefined && u.rating !== null ? u.rating.toFixed(1) : '0.0'}
+            </span>
+          </div>
+          <div style={{ color: '#E5E7EB', fontWeight: 300 }}>|</div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Status</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{
+                display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
+                background: u.is_active ? '#10B981' : '#EF4444',
+              }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#4B5563' }}>
+                {u.is_active ? 'Active' : 'Paused'}
+              </span>
+            </div>
+          </div>
+          <div style={{ color: '#E5E7EB', fontWeight: 300 }}>|</div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Approval</span>
+            {getStatusBadge(u.admin_status)}
+          </div>
+        </div>
+
+        {/* Additional Metadata */}
+        <div style={{ fontSize: 11, color: '#6B7280', display: 'flex', flexDirection: 'column', gap: 4, marginTop: 'auto' }}>
+          <div><strong>Workflow ID:</strong> {u.id}</div>
+          <div><strong>Version:</strong> v{u.version}</div>
+        </div>
+      </div>
+
+      {/* Footer Actions */}
+      <div style={{
+        padding: '12px 16px',
+        background: '#F9FAFB',
+        borderTop: '1px solid #F3F4F6',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        position: 'relative'
+      }} onClick={e => e.stopPropagation()}>
+        {/* Play/Pause */}
+        {u.is_active ? (
+          <button
+            onClick={() => handlePause(u.id)}
+            title="Pause Workflow"
+            disabled={actionInProgress === u.id}
+            style={{
+              width: 36, height: 36, borderRadius: 8, border: '1px solid #E5E7EB',
+              background: 'white', color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#F3F4F6'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+          >
+            <FiPause size={16} />
+          </button>
+        ) : (
+          <button
+            onClick={() => handleResume(u.id)}
+            title="Resume Workflow"
+            disabled={actionInProgress === u.id}
+            style={{
+              width: 36, height: 36, borderRadius: 8, border: '1px solid #A7F3D0',
+              background: '#ECFDF5', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#A7F3D0'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#ECFDF5'}
+          >
+            <FiPlay size={16} />
+          </button>
+        )}
+
+        {/* Open Workflow */}
+        <button
+          onClick={() => handleOpenWorkflow(u.id)}
+          title="Open in Editor"
+          style={{
+            width: 36, height: 36, borderRadius: 8, border: '1px solid #E5E7EB',
+            background: 'white', color: '#111827', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', transition: 'all 0.2s'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = '#F3F4F6'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+        >
+          <FiArrowRight size={18} />
+        </button>
+
+        <div style={{ flex: 1 }} />
+
+        {/* Approve Button */}
+        {u.admin_status !== 'approved' && (
+          <button
+            onClick={() => handleUpdateStatus(u.id, 'approved')}
+            disabled={actionInProgress === u.id}
+            style={{
+              padding: '8px 14px', borderRadius: 8, border: '1px solid #A7F3D0',
+              background: '#ECFDF5', color: '#10B981', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700,
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#A7F3D0'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#ECFDF5'; }}
+          >
+            <FiCheck /> Approve
+          </button>
+        )}
+
+        {/* Reject Button */}
+        {u.admin_status !== 'rejected' && (
+          <button
+            onClick={() => setShowRemarksModal(u)}
+            disabled={actionInProgress === u.id}
+            style={{
+              padding: '8px 14px', borderRadius: 8, border: '1px solid #FCA5A5',
+              background: '#FEF2F2', color: '#EF4444', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700,
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#FCA5A5'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#FEF2F2'; }}
+          >
+            <FiX /> Reject
+          </button>
+        )}
+
+        {/* More Options */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowMore(!showMore); }}
+            title="More Options"
+            style={{
+              width: 36, height: 36, borderRadius: 8, border: '1px solid #E5E7EB',
+              background: 'white', color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#F3F4F6'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+          >
+            <FiMoreHorizontal size={18} />
+          </button>
+          <ActionDropdown actions={moreActions} isOpen={showMore} onClose={() => setShowMore(false)} />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
 
 export default function WorkflowPublishController() {
   const [activeTab, setActiveTab] = useState('pending'); // pending, approved, rejected, all
@@ -27,6 +318,45 @@ export default function WorkflowPublishController() {
   // Remarks state for rejection
   const [remarksInput, setRemarksInput] = useState('');
   const [showRemarksModal, setShowRemarksModal] = useState(null); // holds usecase object
+  const [showDetailsModal, setShowDetailsModal] = useState(null); // holds usecase object for details modal
+
+  const handlePause = async (id) => {
+    setActionInProgress(id);
+    try {
+      await dispatchScheduleAction(id, 'pause');
+      loadUsecases();
+    } catch (err) { 
+      alert('Pause failed: ' + err.message); 
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  const handleResume = async (id) => {
+    setActionInProgress(id);
+    try {
+      await dispatchScheduleAction(id, 'resume');
+      loadUsecases();
+    } catch (err) { 
+      alert('Resume failed: ' + err.message); 
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  const handleOpenWorkflow = async (workflowId) => {
+    try {
+      const full = await getWorkflow(workflowId);
+      if (full && full.config) {
+        useWorkflowStore.getState().loadWorkflowIntoEditor(full.config);
+        useUIStore.getState().setActivePage('canvas');
+      } else {
+        alert("Workflow details could not be loaded.");
+      }
+    } catch (err) {
+      alert("Error opening workflow: " + err.message);
+    }
+  };
 
   const [filterOpen, setFilterOpen] = useState(false);
   const filterPanelRef = useRef(null);
@@ -134,9 +464,9 @@ export default function WorkflowPublishController() {
   const getStatusBadge = (status) => {
     let bg = '#FEF3C7', text = '#D97706', label = 'Pending';
     if (status === 'approved') {
-      bg = '#D1FAE5'; text = '#059669'; label = 'Approved';
+      bg = '#ECFDF5'; text = '#10B981'; label = 'Approved';
     } else if (status === 'rejected') {
-      bg = '#FEE2E2'; text = '#DC2626'; label = 'Rejected';
+      bg = '#FEF2F2'; text = '#EF4444'; label = 'Rejected';
     }
     return (
       <span style={{ 
@@ -160,10 +490,11 @@ export default function WorkflowPublishController() {
         justifyContent: 'space-between',
         zIndex: 10
       }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.5px' }}>Publish Approval Queue</h1>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0 0' }}>Review and authorize production deployment requests for workflows to the marketplace.</p>
-        </div>
+        <PageHeader 
+          title="Publish Approval Queue" 
+          description="Review, approve, or reject deployment requests for workflows submitted to the workspace." 
+          letterSpacing="-0.5px"
+        />
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Search bar */}
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', transition: 'all 0.2s', width: (searchOpen || search) ? 260 : 36 }}>
@@ -256,13 +587,13 @@ export default function WorkflowPublishController() {
             </AnimatePresence>
           </div>
 
-          <div style={{ display: 'flex', border: '1px solid #E5E7EB', borderRadius: 8, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', gap: 2, background: 'var(--bg-canvas)', border: '1px solid var(--border)', borderRadius: 10, padding: '4px' }}>
             <button 
               onClick={() => setViewMode('card')}
               style={{
-                background: viewMode === 'card' ? '#111827' : 'white',
+                background: viewMode === 'card' ? 'var(--theme-primary)' : 'transparent',
                 color: viewMode === 'card' ? 'white' : '#6B7280',
-                border: 'none', padding: '8px 12px', display: 'flex', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s'
+                border: 'none', borderRadius: 6, padding: '6px 10px', display: 'flex', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s'
               }}
               title="Card View"
             >
@@ -271,9 +602,9 @@ export default function WorkflowPublishController() {
             <button 
               onClick={() => setViewMode('list')}
               style={{
-                background: viewMode === 'list' ? '#111827' : 'white',
+                background: viewMode === 'list' ? 'var(--theme-primary)' : 'transparent',
                 color: viewMode === 'list' ? 'white' : '#6B7280',
-                border: 'none', padding: '8px 12px', display: 'flex', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s'
+                border: 'none', borderRadius: 6, padding: '6px 10px', display: 'flex', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s'
               }}
               title="List View"
             >
@@ -321,97 +652,38 @@ export default function WorkflowPublishController() {
         )}
 
         {!loading && !error && usecases.length === 0 ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <motion.div 
-              initial={{ opacity: 0, y: 15 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              style={{ textAlign: 'center', background: 'white', padding: '48px 32px', borderRadius: 20, border: '1px dashed #CBD5E1', maxWidth: 440 }}
-            >
-              <div style={{ width: 54, height: 54, borderRadius: '50%', background: 'var(--theme-primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: 'var(--theme-primary)' }}>
-                <FiGitBranch size={26} />
-              </div>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1E1B4B', margin: '0 0 8px 0' }}>No Requests Found</h2>
-              <p style={{ fontSize: 13, color: '#64748B', margin: 0, lineHeight: 1.5 }}>
-                There are no workflow publish requests matching the current status tab.
-              </p>
-            </motion.div>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            minHeight: '300px',
+            gap: 16,
+            color: '#64748B'
+          }}>
+            <FiGitBranch size={48} strokeWidth={1} />
+            <div style={{ fontSize: 14, fontWeight: 500 }}>No requests found</div>
           </div>
         ) : (
           !loading && (
             viewMode === 'card' ? (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24, marginBottom: 24 }}>
                 {usecases.map((u, idx) => (
-                  <motion.div
+                  <PublishRequestCard
                     key={u.id}
-                    initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: idx * 0.04 }}
-                    style={{
-                      background: 'white', border: '1px solid #EAEAEA', borderRadius: 16,
-                      boxShadow: '0 4px 6px -1px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column',
-                      padding: 20, gap: 14, transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.boxShadow = '0 12px 20px -3px rgba(0, 0, 0, 0.08)';
-                      e.currentTarget.style.borderColor = '#CBD5E1';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.03)';
-                      e.currentTarget.style.borderColor = '#EAEAEA';
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <FiTag size={10} /> {u.category}
-                      </span>
-                      {getStatusBadge(u.admin_status)}
-                    </div>
-
-                    <div>
-                      <h3 style={{ fontSize: 15, fontWeight: 700, color: '#111827', margin: '0 0 4px 0' }}>{u.name}</h3>
-                      <p style={{ fontSize: 12, color: '#4B5563', lineHeight: 1.4, margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        {u.description || 'No description provided.'}
-                      </p>
-                    </div>
-
-                    <div style={{ fontSize: 11, color: '#6B7280', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <div><strong>Workflow ID:</strong> {u.id}</div>
-                      <div><strong>Version:</strong> v{u.version}</div>
-                      {u.remarks && (
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4, background: '#F8FAFC', padding: '6px 10px', borderRadius: 8, borderLeft: '3px solid #64748B', marginTop: 4 }}>
-                          <FiMessageSquare size={12} style={{ marginTop: 2, flexShrink: 0 }} />
-                          <div><strong>Remarks:</strong> {u.remarks}</div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, borderTop: '1px solid #F3F4F6', paddingTop: 14, marginTop: 'auto' }}>
-                      {u.admin_status !== 'approved' && (
-                        <button
-                          onClick={() => handleUpdateStatus(u.id, 'approved')}
-                          disabled={actionInProgress === u.id}
-                          style={{ padding: '6px 10px', borderRadius: 6, background: '#D1FAE5', color: '#059669', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700 }}
-                        >
-                          <FiCheck /> Approve
-                        </button>
-                      )}
-                      {u.admin_status !== 'rejected' && (
-                        <button
-                          onClick={() => setShowRemarksModal(u)}
-                          disabled={actionInProgress === u.id}
-                          style={{ padding: '6px 10px', borderRadius: 6, background: '#FEE2E2', color: '#DC2626', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700 }}
-                        >
-                          <FiX /> Reject
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDelete(u.id)}
-                        disabled={actionInProgress === u.id}
-                        style={{ padding: '6px 8px', borderRadius: 6, background: '#F1F5F9', color: '#64748B', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700 }}
-                      >
-                        <FiTrash2 />
-                      </button>
-                    </div>
-                  </motion.div>
+                    u={u}
+                    idx={idx}
+                    handlePause={handlePause}
+                    handleResume={handleResume}
+                    handleOpenWorkflow={handleOpenWorkflow}
+                    handleUpdateStatus={handleUpdateStatus}
+                    setShowRemarksModal={setShowRemarksModal}
+                    setShowDetailsModal={setShowDetailsModal}
+                    handleDelete={handleDelete}
+                    actionInProgress={actionInProgress}
+                    getStatusBadge={getStatusBadge}
+                  />
                 ))}
               </div>
             ) : (
@@ -455,7 +727,46 @@ export default function WorkflowPublishController() {
                       )}
                     </div>
 
-                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                      {/* Play/Pause */}
+                      {u.is_active ? (
+                        <button
+                          onClick={() => handlePause(u.id)}
+                          title="Pause Workflow"
+                          disabled={actionInProgress === u.id}
+                          style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #E5E7EB', background: 'white', color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                        >
+                          <FiPause size={12} />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleResume(u.id)}
+                          title="Resume Workflow"
+                          disabled={actionInProgress === u.id}
+                          style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #DCFCE7', background: '#F0FDF4', color: '#16A34A', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                        >
+                          <FiPlay size={12} />
+                        </button>
+                      )}
+
+                      {/* Open Workflow */}
+                      <button
+                        onClick={() => handleOpenWorkflow(u.id)}
+                        title="Open in Editor"
+                        style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #E5E7EB', background: 'white', color: '#111827', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                      >
+                        <FiArrowRight size={12} />
+                      </button>
+
+                      {/* View details */}
+                      <button
+                        onClick={() => setShowDetailsModal(u)}
+                        title="View Details"
+                        style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #E5E7EB', background: 'white', color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                      >
+                        <FiInfo size={12} />
+                      </button>
+
                       {u.admin_status !== 'approved' && (
                         <button
                           onClick={() => handleUpdateStatus(u.id, 'approved')}
@@ -538,6 +849,129 @@ export default function WorkflowPublishController() {
                   style={{ padding: '8px 14px', background: '#EF4444', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                 >
                   Confirm Reject
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Workflow Details Modal */}
+      <AnimatePresence>
+        {showDetailsModal && (
+          <div 
+            style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100,
+              padding: 20
+            }}
+            onClick={() => setShowDetailsModal(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              style={{
+                width: '100%', maxWidth: 500, background: 'white', borderRadius: 20,
+                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', overflow: 'hidden',
+                fontFamily: "'Google Sans','Roboto',sans-serif"
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ padding: '24px 32px', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#111827' }}>
+                  Workflow Details
+                </h3>
+                <button onClick={() => setShowDetailsModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#9CA3AF' }}><FiX size={20} /></button>
+              </div>
+
+              <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Name</span>
+                  <span style={{ fontSize: 15, fontWeight: 600, color: '#111827' }}>{showDetailsModal.name}</span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</span>
+                  <span style={{ fontSize: 14, color: '#4B5563', lineHeight: 1.6 }}>{showDetailsModal.description || 'No description provided.'}</span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Group</span>
+                    <span style={{ fontSize: 14, color: '#4B5563' }}>{showDetailsModal.group || 'Default'}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Category</span>
+                    <span style={{ fontSize: 14, color: '#4B5563' }}>{showDetailsModal.category || 'General'}</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Rating</span>
+                    <span style={{ fontSize: 14, color: '#D97706', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      ★ {showDetailsModal.rating !== undefined && showDetailsModal.rating !== null ? showDetailsModal.rating.toFixed(1) : '0.0'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{
+                        display: 'inline-block', width: 7, height: 7, borderRadius: '50%',
+                        background: showDetailsModal.is_active ? '#34C759' : '#D4D4CC',
+                        boxShadow: showDetailsModal.is_active ? '0 0 0 2px rgba(52,199,89,0.2)' : 'none',
+                        flexShrink: 0,
+                      }} />
+                      <span style={{ fontSize: 13, color: '#4B5563' }}>{showDetailsModal.is_active ? 'Active' : 'Paused'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {showDetailsModal.remarks && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#EF4444', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Rejection Remarks</span>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, background: '#FEF2F2', padding: '10px 14px', borderRadius: 10, borderLeft: '3px solid #EF4444', color: '#EF4444', fontSize: 13, lineHeight: 1.5 }}>
+                      <FiMessageSquare size={14} style={{ marginTop: 2, flexShrink: 0 }} />
+                      <span>{showDetailsModal.remarks}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Internal ID */}
+                <div style={{
+                  marginTop: 12, padding: '16px', background: '#F8F9FA', borderRadius: 12, border: '1px solid #F1F1F1',
+                  display: 'flex', flexDirection: 'column', gap: 8
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase' }}>Workflow ID</span>
+                    <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#6B7280' }}>{showDetailsModal.id}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase' }}>Version</span>
+                    <span style={{ fontSize: 12, color: '#4B5563' }}>v{showDetailsModal.version}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ padding: '24px 32px', background: '#F9FAFB', borderTop: '1px solid #F3F4F6', display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setShowDetailsModal(null)}
+                  style={{ padding: '10px 20px', borderRadius: 10, border: '1px solid #E5E7EB', background: 'white', fontSize: 14, fontWeight: 600, color: '#4B5563', cursor: 'pointer' }}
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDetailsModal(null);
+                    handleOpenWorkflow(showDetailsModal.id);
+                  }}
+                  style={{ padding: '10px 24px', borderRadius: 10, border: 'none', background: 'var(--theme-primary)', fontSize: 14, fontWeight: 600, color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                >
+                  <FiArrowRight size={14} /> Open in Editor
                 </button>
               </div>
             </motion.div>

@@ -1,8 +1,7 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useWorkflowStore, useUIStore } from '../../store';
 import { FiSettings, FiCopy, FiTrash2, FiLink, FiXCircle } from 'react-icons/fi';
 import ConfirmationModal from '../Common/ConfirmationModal';
-import { useState } from 'react';
 
 export default function ContextMenu({ id, top, left, right, bottom, onMouseLeave, ...props }) {
     const { removeNode, duplicateNode, clearNodeData, unlinkNode, nodes } = useWorkflowStore();
@@ -17,6 +16,44 @@ export default function ContextMenu({ id, top, left, right, bottom, onMouseLeave
         setSelectedNode(id);
         onMouseLeave();
     }, [id, setSelectedNode, onMouseLeave]);
+
+    const onCopyProperties = useCallback(() => {
+        const data = node?.data;
+        if (!data) return;
+
+        const { id: node_id, type, label, ...configs } = data;
+        let text = `--- Node Properties ---\n`;
+        text += `ID: ${node_id}\n`;
+        text += `Type: ${type || 'unknown'}\n`;
+        text += `Label: ${label || node_id}\n\n`;
+
+        Object.entries(configs).forEach(([key, value]) => {
+            if (value === null || value === undefined || value === '') return;
+            
+            if (typeof value === 'object') {
+                try {
+                    // Filter out empty arrays or empty objects to keep it clean
+                    if (Array.isArray(value) && value.length === 0) return;
+                    if (!Array.isArray(value) && Object.keys(value).length === 0) return;
+                    
+                    text += `${key}:\n${JSON.stringify(value, null, 2)}\n\n`;
+                } catch {
+                    text += `${key}: ${value}\n\n`;
+                }
+            } else {
+                text += `${key}: ${value}\n`;
+            }
+        });
+
+        navigator.clipboard.writeText(text.trim())
+            .then(() => {
+                alert(`Properties for "${label || node_id}" copied to clipboard!`);
+            })
+            .catch(err => {
+                console.error("Clipboard copy failed: ", err);
+            });
+        onMouseLeave();
+    }, [node, onMouseLeave]);
 
     const onDuplicate = useCallback(() => {
         duplicateNode(id);
@@ -81,6 +118,7 @@ export default function ContextMenu({ id, top, left, right, bottom, onMouseLeave
             </div>
             
             <ContextItem icon={<FiSettings />} label="Open Settings" onClick={onOpen} />
+            <ContextItem icon={<FiCopy />} label="Copy Properties" onClick={onCopyProperties} />
             
             {!isSystemNode && (
                 <>

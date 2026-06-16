@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
   ReactFlow, Background, Controls, MiniMap, addEdge,
-  applyNodeChanges, applyEdgeChanges,
+  applyNodeChanges, applyEdgeChanges, ReactFlowProvider
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useWorkflowStore, useUIStore } from '../../store';
@@ -17,13 +17,77 @@ import NodeSearch from './NodeSearch';
 
 const NON_DIRTY_CHANGE_TYPES = new Set(['select', 'dimensions', 'reset']);
 
+// Helper to calculate distance from point p to line segment ab
+const getDistanceToSegment = (p, a, b) => {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  if (dx === 0 && dy === 0) {
+    return { distance: Math.hypot(p.x - a.x, p.y - a.y), t: 0 };
+  }
+  
+  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy);
+  t = Math.max(0, Math.min(1, t));
+  
+  const closestX = a.x + t * dx;
+  const closestY = a.y + t * dy;
+  
+  return {
+    distance: Math.hypot(p.x - closestX, p.y - closestY),
+    t
+  };
+};
+
+const findClosestEdge = (p, currentNodes, currentEdges, draggedNodeId = null) => {
+  let closestEdgeId = null;
+  let minDistance = Infinity;
+
+  // Filter out edges connected to the node being dragged
+  const candidateEdges = currentEdges.filter(e => 
+    e.source !== draggedNodeId && e.target !== draggedNodeId
+  );
+
+  for (const edge of candidateEdges) {
+    const sourceNode = currentNodes.find(n => n.id === edge.source);
+    const targetNode = currentNodes.find(n => n.id === edge.target);
+    if (!sourceNode || !targetNode) continue;
+
+    if (sourceNode.type === 'cardboardNode' || targetNode.type === 'cardboardNode') continue;
+
+    const widthA = sourceNode.measured?.width || 180;
+    const heightA = sourceNode.measured?.height || 80;
+    const widthB = targetNode.measured?.width || 180;
+    const heightB = targetNode.measured?.height || 80;
+
+    const a = {
+      x: sourceNode.position.x + widthA / 2,
+      y: sourceNode.position.y + heightA / 2
+    };
+    const b = {
+      x: targetNode.position.x + widthB / 2,
+      y: targetNode.position.y + heightB / 2
+    };
+
+    const { distance, t } = getDistanceToSegment(p, a, b);
+
+    // Limit detection to 60px proximity and ensure projection point is well inside the segment (t between 0.05 and 0.95)
+    if (distance < 60 && t > 0.05 && t < 0.95) {
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestEdgeId = edge.id;
+      }
+    }
+  }
+
+  return closestEdgeId;
+};
+
 export default function WorkflowCanvas() {
   const nodeTypes = React.useMemo(() => ({ 
     agentNode: AgentNode,
     cardboardNode: CardboardNode
   }), []);
   const { nodes, edges, setNodes, setEdges, setNodesDirty, setEdgesDirty, addNode, setNodeData, workflowName } = useWorkflowStore();
-  const { selectedNodeId, selectedEdgeId, setSelectedNode, setSelectedEdge, canvasWireStyle, canvasBackgroundStyle } = useUIStore();
+  const { selectedNodeId, selectedEdgeId, setSelectedNode, setSelectedEdge, canvasWireStyle, canvasBackgroundStyle, isDarkCanvas } = useUIStore();
 
   const reactFlowWrapper = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
@@ -32,23 +96,80 @@ export default function WorkflowCanvas() {
   const [menu, setMenu] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
 
+  // Poll for active background runs (e.g. Cron/Webhook) to show live status
+  React.useEffect(() => {
+    const poll = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/v1/agentmesh/active-runs');
+        const data = await res.json();
+        if (data.status === 'success') {
+          const currentWfId = useWorkflowStore.getState().workflowId;
+          const activeNodeIds = new Set();
+
+          Object.values(data.active_runs).forEach(run => {
+            if (run.workflow_id === currentWfId) {
+              run.active_nodes.forEach(id => activeNodeIds.add(id));
+            }
+          });
+
+          // Check if anything actually changed to avoid unnecessary re-renders
+          const anyChange = nodes.some(n => !!n.data.isRunning !== activeNodeIds.has(n.id));
+          if (anyChange) {
+            setNodes(nodes.map(n => ({
+              ...n,
+              data: { ...n.data, isRunning: activeNodeIds.has(n.id) }
+            })));
+          }
+        }
+      } catch {
+        // Silently fail polling
+      }
+    };
+    const interval = setInterval(poll, 2500);
+    return () => clearInterval(interval);
+  }, [nodes, setNodes]);
+  // Variable/Data Explorer resizing state and mouse drag handlers
+  const [explorerWidth, setExplorerWidth] = useState(320);
+  const [isResizingExplorer, setIsResizingExplorer] = useState(false);
+
+  const startResizingExplorer = useCallback((mouseDownEvent) => {
+    setIsResizingExplorer(true);
+    const startX = mouseDownEvent.clientX;
+    const startWidth = explorerWidth;
+
+    const doDrag = (mouseMoveEvent) => {
+      const deltaX = startX - mouseMoveEvent.clientX;
+      const newWidth = Math.max(280, Math.min(600, startWidth + deltaX));
+      setExplorerWidth(newWidth);
+    };
+
+    const stopDrag = () => {
+      setIsResizingExplorer(false);
+      document.removeEventListener('mousemove', doDrag);
+      document.removeEventListener('mouseup', stopDrag);
+    };
+
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('mouseup', stopDrag);
+  }, [explorerWidth]);
+
   // Properties Panel resizing state and mouse drag handlers
   const [propertiesWidth, setPropertiesWidth] = useState(320);
-  const [isResizing, setIsResizing] = useState(false);
+  const [isResizingProperties, setIsResizingProperties] = useState(false);
 
-  const startResizing = useCallback((mouseDownEvent) => {
-    setIsResizing(true);
+  const startResizingProperties = useCallback((mouseDownEvent) => {
+    setIsResizingProperties(true);
     const startX = mouseDownEvent.clientX;
     const startWidth = propertiesWidth;
 
     const doDrag = (mouseMoveEvent) => {
       const deltaX = startX - mouseMoveEvent.clientX;
-      const newWidth = Math.max(280, Math.min(600, startWidth + deltaX));
+      const newWidth = Math.max(280, Math.min(800, startWidth + deltaX)); // Max width extended to 800 for prompts/SOP edits
       setPropertiesWidth(newWidth);
     };
 
     const stopDrag = () => {
-      setIsResizing(false);
+      setIsResizingProperties(false);
       document.removeEventListener('mousemove', doDrag);
       document.removeEventListener('mouseup', stopDrag);
     };
@@ -60,6 +181,10 @@ export default function WorkflowCanvas() {
 
   const hasNodes = nodes.some(n => n.id !== '__start__' && n.id !== '__end__');
 
+
+  const [hoveredEdgeId, setHoveredEdgeId] = useState(null);
+  const [isDraggingSoloNode, setIsDraggingSoloNode] = useState(false);
+  const [draggedNodeId, setDraggedNodeId] = useState(null);
 
   const onConnect = useCallback(
     (params) => {
@@ -100,16 +225,124 @@ export default function WorkflowCanvas() {
 
   const edgeType = canvasWireStyle === 'curve' ? 'default' : 'smoothstep';
   const renderedEdges = React.useMemo(() => {
-    return edges.map(edge => ({
-      ...edge,
-      type: edgeType
-    }));
-  }, [edges, edgeType]);
+    const baseEdges = edges.map(edge => {
+      const isHovered = edge.id === hoveredEdgeId;
+      let edgeStyle = edge.style || { stroke: '#CBD5E1', strokeWidth: 1.5 };
+      if (isHovered) {
+        if (draggedNodeId) {
+          edgeStyle = { stroke: '#EF4444', strokeWidth: 2, strokeDasharray: '3,3', opacity: 0.6 };
+        } else {
+          edgeStyle = { stroke: 'var(--theme-primary, #8e77bb)', strokeWidth: 3, strokeDasharray: '5,5' };
+        }
+      }
+
+      return {
+        ...edge,
+        type: edgeType,
+        animated: isHovered ? true : edge.animated,
+        style: edgeStyle
+      };
+    });
+
+    if (hoveredEdgeId && draggedNodeId) {
+      const edgeToSplit = edges.find(e => e.id === hoveredEdgeId);
+      if (edgeToSplit) {
+        const previewEdges = [
+          {
+            id: `preview-edge-1-${edgeToSplit.source}-${draggedNodeId}`,
+            source: edgeToSplit.source,
+            target: draggedNodeId,
+            sourceHandle: edgeToSplit.sourceHandle,
+            targetHandle: null,
+            type: edgeType,
+            animated: true,
+            style: { stroke: 'var(--theme-primary, #8e77bb)', strokeWidth: 2, strokeDasharray: '5,5' }
+          },
+          {
+            id: `preview-edge-2-${draggedNodeId}-${edgeToSplit.target}`,
+            source: draggedNodeId,
+            target: edgeToSplit.target,
+            sourceHandle: null,
+            targetHandle: edgeToSplit.targetHandle,
+            type: edgeType,
+            animated: true,
+            style: { stroke: 'var(--theme-primary, #8e77bb)', strokeWidth: 2, strokeDasharray: '5,5' }
+          }
+        ];
+        return [...baseEdges, ...previewEdges];
+      }
+    }
+
+    return baseEdges;
+  }, [edges, edgeType, hoveredEdgeId, draggedNodeId]);
+
+  const onNodeDragStart = useCallback((event, node) => {
+    const hasIncoming = edges.some(e => e.target === node.id);
+    const hasOutgoing = edges.some(e => e.source === node.id);
+    const isSolo = !hasIncoming && !hasOutgoing;
+    const isCardboard = node.type === 'cardboardNode' || node.data?.type === 'cardboard';
+    
+    if (isSolo && !isCardboard) {
+      setIsDraggingSoloNode(true);
+      setDraggedNodeId(node.id);
+    }
+  }, [edges]);
+
+  const onNodeDrag = useCallback((event, node) => {
+    if (!isDraggingSoloNode) return;
+    const width = node.measured?.width || 180;
+    const height = node.measured?.height || 80;
+    const p = {
+      x: node.position.x + width / 2,
+      y: node.position.y + height / 2
+    };
+    const closestEdgeId = findClosestEdge(p, nodes, edges, node.id);
+    setHoveredEdgeId(closestEdgeId);
+  }, [isDraggingSoloNode, nodes, edges]);
+
+  const onNodeDragStop = useCallback((event, node) => {
+    if (isDraggingSoloNode && hoveredEdgeId) {
+      const edgeToSplit = edges.find(e => e.id === hoveredEdgeId);
+      if (edgeToSplit) {
+        const { source, target, sourceHandle, targetHandle } = edgeToSplit;
+        const nextEdges = edges.filter(e => e.id !== hoveredEdgeId);
+        const edgeType = canvasWireStyle === 'curve' ? 'default' : 'smoothstep';
+        const newEdges = [
+          ...nextEdges,
+          {
+            id: `e_${source}_to_${node.id}_${Date.now()}`,
+            source,
+            target: node.id,
+            sourceHandle,
+            targetHandle: null,
+            type: edgeType,
+            style: { stroke: '#CBD5E1', strokeWidth: 1.5 }
+          },
+          {
+            id: `e_${node.id}_to_${target}_${Date.now()}`,
+            source: node.id,
+            target,
+            sourceHandle: null,
+            targetHandle,
+            type: edgeType,
+            style: { stroke: '#CBD5E1', strokeWidth: 1.5 }
+          }
+        ];
+        setEdgesDirty(newEdges);
+      }
+    }
+    setHoveredEdgeId(null);
+    setIsDraggingSoloNode(false);
+    setDraggedNodeId(null);
+  }, [isDraggingSoloNode, hoveredEdgeId, edges, setEdgesDirty, canvasWireStyle]);
 
   const onDrop = useCallback((e) => {
     e.preventDefault();
     const type = e.dataTransfer.getData('application/agentmesh-node');
-    if (!type || !reactFlowInstance) return;
+    if (!type || !reactFlowInstance) {
+      setHoveredEdgeId(null);
+      return;
+    }
     const position = reactFlowInstance.screenToFlowPosition({
       x: e.clientX,
       y: e.clientY,
@@ -127,11 +360,54 @@ export default function WorkflowCanvas() {
         console.error("Failed to parse dropped template config:", err);
       }
     }
-  }, [reactFlowInstance, addNode, setNodeData]);
+
+    if (hoveredEdgeId && id) {
+      const edgeToSplit = edges.find(e => e.id === hoveredEdgeId);
+      if (edgeToSplit) {
+        const { source, target, sourceHandle, targetHandle } = edgeToSplit;
+        const nextEdges = edges.filter(e => e.id !== hoveredEdgeId);
+        const edgeType = canvasWireStyle === 'curve' ? 'default' : 'smoothstep';
+        const newEdges = [
+          ...nextEdges,
+          {
+            id: `e_${source}_to_${id}_${Date.now()}`,
+            source,
+            target: id,
+            sourceHandle,
+            targetHandle: null,
+            type: edgeType,
+            style: { stroke: '#CBD5E1', strokeWidth: 1.5 }
+          },
+          {
+            id: `e_${id}_to_${target}_${Date.now()}`,
+            source: id,
+            target,
+            sourceHandle: null,
+            targetHandle,
+            type: edgeType,
+            style: { stroke: '#CBD5E1', strokeWidth: 1.5 }
+          }
+        ];
+        setEdgesDirty(newEdges);
+      }
+    }
+    setHoveredEdgeId(null);
+  }, [reactFlowInstance, addNode, setNodeData, hoveredEdgeId, edges, setEdgesDirty, canvasWireStyle]);
 
   const onDragOver = useCallback((e) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+    if (!reactFlowInstance) return;
+    const flowPosition = reactFlowInstance.screenToFlowPosition({
+      x: e.clientX,
+      y: e.clientY,
+    });
+    const closestEdgeId = findClosestEdge(flowPosition, nodes, edges);
+    setHoveredEdgeId(closestEdgeId);
+  }, [reactFlowInstance, nodes, edges]);
+
+  const onDragLeave = useCallback(() => {
+    setHoveredEdgeId(null);
   }, []);
 
   const onNodeClick = useCallback((_, node) => {
@@ -160,13 +436,13 @@ export default function WorkflowCanvas() {
     // 🛡️ Strict Tool Node Validation
     const isSourceTool = sourceNode.data?.type === 'tool_node';
     const isTargetTool = targetNode.data?.type === 'tool_node';
-    const agentTypes = ['llm_agent', 'deep_agent', 'supervisor', 'swarm'];
+    const agentTypes = new Set(['llm_agent', 'deep_agent', 'supervisor', 'swarm']);
 
     if (isSourceTool) {
-      if (!agentTypes.includes(targetNode.data?.type)) return false;
+      if (!agentTypes.has(targetNode.data?.type)) return false;
     }
     if (isTargetTool) {
-      if (!agentTypes.includes(sourceNode.data?.type)) return false;
+      if (!agentTypes.has(sourceNode.data?.type)) return false;
     }
 
     return true;
@@ -297,7 +573,7 @@ export default function WorkflowCanvas() {
             onClick={() => { setPaletteOpen((v) => !v); setSelectedNode(null); }}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px',
-              background: paletteOpen ? 'var(--theme-primary-glow)' : 'white',
+              background: paletteOpen ? 'var(--theme-primary-glow)' : 'var(--bg-secondary, white)',
               border: paletteOpen ? '1px solid var(--theme-primary)' : '1px solid var(--border)', 
               borderRadius: 12,
               color: paletteOpen ? 'var(--theme-primary)' : 'var(--text-primary)',
@@ -317,7 +593,7 @@ export default function WorkflowCanvas() {
             onClick={() => useUIStore.getState().setShowVariableExplorer(!useUIStore.getState().showVariableExplorer)}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px',
-              background: useUIStore((s) => s.showVariableExplorer) ? 'var(--theme-primary-glow)' : 'white',
+              background: useUIStore((s) => s.showVariableExplorer) ? 'var(--theme-primary-glow)' : 'var(--bg-secondary, white)',
               border: useUIStore((s) => s.showVariableExplorer) ? '1px solid var(--theme-primary)' : '1px solid var(--border)', 
               borderRadius: 12,
               color: useUIStore((s) => s.showVariableExplorer) ? 'var(--theme-primary)' : 'var(--text-primary)',
@@ -335,10 +611,10 @@ export default function WorkflowCanvas() {
             disabled={!hasNodes}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px',
-              background: hasNodes ? 'var(--theme-primary-glow)' : '#E5E7EB',
-              border: hasNodes ? '1px solid var(--theme-primary-glow)' : '1px solid #E5E7EB', 
+              background: hasNodes ? 'var(--theme-primary-glow)' : 'var(--border-light, #E5E7EB)',
+              border: hasNodes ? '1px solid var(--theme-primary-glow)' : '1px solid var(--border-light, #E5E7EB)', 
               borderRadius: 12,
-              color: hasNodes ? 'var(--theme-primary)' : '#9CA3AF',
+              color: hasNodes ? 'var(--theme-primary)' : 'var(--text-muted, #9CA3AF)',
               cursor: hasNodes ? 'pointer' : 'not-allowed',
               boxShadow: hasNodes ? '0 2px 8px rgba(142, 119, 187, 0.1)' : 'none',
               transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -367,60 +643,65 @@ export default function WorkflowCanvas() {
           </button>
         </div>
 
-        {/* React Flow */}
-        <ReactFlow
-          nodes={nodes}
-          edges={renderedEdges}
-          onNodesChange={(changes) => {
-            let hasDirtyChange = false;
-            
-            // Check changes to see if a cardboard node is being manually resized
-            changes.forEach(change => {
-              if (change.type === 'dimensions' && change.dimensions) {
-                const node = nodes.find(n => n.id === change.id);
-                if (node && (node.type === 'cardboardNode' || node.data?.type === 'cardboard')) {
-                  const currentWidth = node.style?.width;
-                  const currentHeight = node.style?.height;
-                  const newWidth = change.dimensions.width;
-                  const newHeight = change.dimensions.height;
-                  
-                  if (newWidth !== undefined && newHeight !== undefined && 
-                      (newWidth !== currentWidth || newHeight !== currentHeight)) {
-                    hasDirtyChange = true;
-                  }
-                }
-              } else if (!NON_DIRTY_CHANGE_TYPES.has(change.type)) {
-                hasDirtyChange = true;
-              }
-            });
-
-            let updated = applyNodeChanges(changes, nodes);
-
-            // Sync cardboard node dimensions to style width/height so it's persisted correctly
-            updated = updated.map(node => {
-              if (node.type === 'cardboardNode' || node.data?.type === 'cardboard') {
-                const width = node.width ?? node.measured?.width;
-                const height = node.height ?? node.measured?.height;
-                if (width !== undefined && height !== undefined) {
-                  return {
-                    ...node,
-                    style: {
-                      ...node.style,
-                      width,
-                      height
+        <ReactFlowProvider>
+          <ReactFlow
+            nodes={nodes}
+            edges={renderedEdges}
+            selectionKeyCode="Control"
+            onNodesChange={(changes) => {
+              let hasDirtyChange = false;
+              let hasDimensionsChange = false;
+              
+              // Check changes to see if a cardboard node is being manually resized
+              changes.forEach(change => {
+                if (change.type === 'dimensions' && change.dimensions) {
+                  const node = nodes.find(n => n.id === change.id);
+                  if (node && (node.type === 'cardboardNode' || node.data?.type === 'cardboard')) {
+                    const currentWidth = node.style?.width;
+                    const currentHeight = node.style?.height;
+                    const newWidth = change.dimensions.width;
+                    const newHeight = change.dimensions.height;
+                    
+                    if (newWidth !== undefined && newHeight !== undefined && 
+                        (newWidth !== currentWidth || newHeight !== currentHeight)) {
+                      hasDirtyChange = true;
+                      hasDimensionsChange = true;
                     }
-                  };
+                  }
+                } else if (!NON_DIRTY_CHANGE_TYPES.has(change.type)) {
+                  hasDirtyChange = true;
                 }
-              }
-              return node;
-            });
+              });
 
-            if (hasDirtyChange) {
-              setNodesDirty(updated);
-            } else {
-              setNodes(updated);
-            }
-          }}
+              let updated = applyNodeChanges(changes, nodes);
+
+              if (hasDimensionsChange) {
+                // Sync cardboard node dimensions to style width/height so it's persisted correctly
+                updated = updated.map(node => {
+                  if (node.type === 'cardboardNode' || node.data?.type === 'cardboard') {
+                    const width = node.width ?? node.measured?.width;
+                    const height = node.height ?? node.measured?.height;
+                    if (width !== undefined && height !== undefined) {
+                      return {
+                        ...node,
+                        style: {
+                          ...node.style,
+                          width,
+                          height
+                        }
+                      };
+                    }
+                  }
+                  return node;
+                });
+              }
+
+              if (hasDirtyChange) {
+                setNodesDirty(updated);
+              } else {
+                setNodes(updated);
+              }
+            }}
           onEdgesChange={(changes) => {
             const updated = applyEdgeChanges(changes, edges);
             const hasDirtyChange = changes.some(c => c.type !== 'select');
@@ -436,10 +717,14 @@ export default function WorkflowCanvas() {
           onInit={setReactFlowInstance}
           onDrop={onDrop}
           onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          onNodeDragStart={onNodeDragStart}
+          onNodeDrag={onNodeDrag}
+          onNodeDragStop={onNodeDragStop}
           onNodeClick={onNodeClick}
           onNodeContextMenu={onNodeContextMenu}
           onEdgeClick={onEdgeClick}
-          onPaneClick={(e) => { onPaneClick(); onPaneClickCloseMenu(); }}
+          onPaneClick={() => { onPaneClick(); onPaneClickCloseMenu(); }}
           onPaneContextMenu={onPaneContextMenu}
           nodeTypes={nodeTypes}
           defaultEdgeOptions={{
@@ -452,7 +737,8 @@ export default function WorkflowCanvas() {
           snapToGrid={true}
           snapGrid={[20, 20]}
           deleteKeyCode={['Backspace', 'Delete']}
-          style={{ background: '#F8F9FB' }}
+          className={isDarkCanvas ? 'is-dark-theme' : ''}
+          style={{ background: isDarkCanvas ? '#1D1D1F' : '#F8F9FB' }}
         >
           {canvasBackgroundStyle !== 'clean' && (
             <Background 
@@ -461,7 +747,7 @@ export default function WorkflowCanvas() {
               gap={20} 
               size={canvasBackgroundStyle === 'cross' ? 6 : canvasBackgroundStyle === 'dots' ? 1.5 : undefined} 
               lineWidth={canvasBackgroundStyle === 'lines' ? 1 : undefined}
-              color="#CBD5E1" 
+              color={isDarkCanvas ? '#4C4B53' : '#CBD5E1'} 
             />
           )}
           <Controls />
@@ -475,8 +761,13 @@ export default function WorkflowCanvas() {
               };
               return colors[n.data?.type] || '#E8E8E5';
             }}
-            maskColor="rgba(248, 249, 251, 0.7)"
-            style={{ borderRadius: 10, border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
+            maskColor={isDarkCanvas ? 'rgba(15, 23, 42, 0.7)' : 'rgba(248, 249, 251, 0.7)'}
+            style={{ 
+              borderRadius: 10, 
+              border: isDarkCanvas ? '1px solid #334155' : '1px solid var(--border)', 
+              boxShadow: 'var(--shadow-sm)',
+              background: isDarkCanvas ? '#1E293B' : 'white'
+            }}
           />
         </ReactFlow>
 
@@ -509,6 +800,7 @@ export default function WorkflowCanvas() {
             </div>
           </div>
         )}
+        </ReactFlowProvider>
       </div>
 
       {/* ── Right side panels ── */}
@@ -519,7 +811,7 @@ export default function WorkflowCanvas() {
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: propertiesWidth, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
-            transition={isResizing ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
+            transition={isResizingProperties ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
             style={{
               borderLeft: '1px solid var(--border)',
               background: 'white',
@@ -531,7 +823,7 @@ export default function WorkflowCanvas() {
           >
             {/* Resizable drag handle on the left edge */}
             <div
-              onMouseDown={startResizing}
+              onMouseDown={startResizingProperties}
               style={{
                 position: 'absolute',
                 left: 0,
@@ -540,11 +832,11 @@ export default function WorkflowCanvas() {
                 width: '6px',
                 cursor: 'col-resize',
                 zIndex: 100,
-                background: isResizing ? 'var(--theme-primary, #4285F4)' : 'transparent',
+                background: isResizingProperties ? 'var(--theme-primary, #4285F4)' : 'transparent',
                 transition: 'background 0.2s',
               }}
-              onMouseEnter={(e) => { if (!isResizing) e.currentTarget.style.background = 'rgba(66, 133, 244, 0.3)'; }}
-              onMouseLeave={(e) => { if (!isResizing) e.currentTarget.style.background = 'transparent'; }}
+              onMouseEnter={(e) => { if (!isResizingProperties) e.currentTarget.style.background = 'rgba(66, 133, 244, 0.3)'; }}
+              onMouseLeave={(e) => { if (!isResizingProperties) e.currentTarget.style.background = 'transparent'; }}
             />
             <PropertiesPanel />
           </motion.div>
@@ -554,23 +846,47 @@ export default function WorkflowCanvas() {
           <motion.div 
             key="variable-explorer"
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 320, opacity: 1 }}
+            animate={{ width: explorerWidth, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            transition={isResizingExplorer ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
             style={{
               borderLeft: '1px solid var(--border)',
               background: 'white',
               flexShrink: 0,
               overflow: 'hidden',
-              height: '100%'
+              height: '100%',
+              position: 'relative'
             }}
           >
+            {/* Resizable drag handle on the left edge */}
+            <div
+              onMouseDown={startResizingExplorer}
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: '6px',
+                cursor: 'col-resize',
+                zIndex: 100,
+                background: isResizingExplorer ? 'var(--theme-primary, #4285F4)' : 'transparent',
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={(e) => { if (!isResizingExplorer) e.currentTarget.style.background = 'rgba(66, 133, 244, 0.3)'; }}
+              onMouseLeave={(e) => { if (!isResizingExplorer) e.currentTarget.style.background = 'transparent'; }}
+            />
             <VariableExplorer onClose={() => useUIStore.getState().setShowVariableExplorer(false)} />
           </motion.div>
         )}
       </AnimatePresence>
 
       <style>{`
+        .react-flow__selection {
+          background: rgba(142, 119, 187, 0.06) !important;
+          border: 1.5px dashed var(--theme-primary, #8e77bb) !important;
+          border-radius: 6px !important;
+          box-shadow: 0 0 10px rgba(142, 119, 187, 0.15) !important;
+        }
         @keyframes paletteIn {
           from { opacity: 0; transform: translateX(-20px); }
           to { opacity: 1; transform: translateX(0); }

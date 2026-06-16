@@ -18,6 +18,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import MCPConnectorModal from './mcpConnectorModal';
 import AddToolModal from './addToolModal';
+import PageHeader from '../../Common/PageHeader';
 
 const TOOL_COLORS = ['#C9DEFF', '#FFE4B8', '#E5D9FF', '#C9F5E0', '#FFD9EE', '#FFF3B8', '#C9F5F5', '#FFE4E6'];
 const TOOL_TEXT = ['#1A56DB', '#B45309', '#7C3AED', '#065F46', '#9D174D', '#92400E', '#065555', '#BE123C'];
@@ -562,7 +563,10 @@ export default function ToolsPage() {
 
       {/* ── Standard Header ── */}
       <div style={{ padding: '16px 40px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white' }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Tools</h1>
+        <PageHeader 
+          title="Tools" 
+          description="Register local tools and MCP (Model Context Protocol) server connections to extend agent capabilities." 
+        />
         
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Search bar collapsible (AgentsPage Style) */}

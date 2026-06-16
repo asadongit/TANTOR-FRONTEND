@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ingestData, listAvailableModels } from '../../../api/agentmesh';
 import { FiBookOpen, FiType, FiUpload, FiCheck, FiAlertCircle, FiInfo, FiFileText, FiX, FiLayers, FiDatabase, FiScissors, FiMic, FiActivity, FiVideo, FiShare2 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
+import PageHeader from '../../Common/PageHeader';
 
 const scrollableSelectInputClass = {
   width: '100%', padding: '10px 12px', background: 'white',
@@ -370,7 +371,10 @@ export default function RAGPage() {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-primary)', fontFamily: "'Google Sans','Roboto',sans-serif" }}>
       {/* ── Standard Header ── */}
       <div style={{ padding: '16px 40px 8px 40px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white' }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Knowledge Base</h1>
+        <PageHeader 
+          title="Knowledge Base" 
+          description="Manage and index documents, PDFs, web contents, and vectors for semantic retrieval (RAG) during execution." 
+        />
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative' }}>
           <div 
             onMouseEnter={() => setShowRagInfo(true)}

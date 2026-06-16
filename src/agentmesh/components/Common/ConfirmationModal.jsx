@@ -103,14 +103,16 @@ export default function ConfirmationModal({
         </div>
 
         <div style={inlineStyles.footer}>
-          <button
-            onClick={onClose}
-            disabled={isLoading}
-            style={inlineStyles.cancelBtn}
-            className="neo-confirm-cancel"
-          >
-            {cancelText}
-          </button>
+          {cancelText && (
+            <button
+              onClick={onClose}
+              disabled={isLoading}
+              style={inlineStyles.cancelBtn}
+              className="neo-confirm-cancel"
+            >
+              {cancelText}
+            </button>
+          )}
 
           <button
             onClick={handleConfirm}

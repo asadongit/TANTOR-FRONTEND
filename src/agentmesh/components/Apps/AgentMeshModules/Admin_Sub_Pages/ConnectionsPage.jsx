@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiPlus, FiTrash2, FiEdit2, FiKey, FiX, FiCheck, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiEdit2, FiKey, FiX, FiCheck, FiEye, FiEyeOff, FiDatabase } from 'react-icons/fi';
 import { listConnections, saveConnection, deleteConnection } from '../../../../api/agentmesh';
 import ConfirmationModal from '../../../Common/ConfirmationModal';
 import { useWorkflowStore } from '../../../../store';
+import PageHeader from '../../../Common/PageHeader';
 
 export default function ConnectionsPage() {
   const [connections, setConnections] = useState([]);
@@ -139,7 +140,11 @@ export default function ConnectionsPage() {
         alignItems: 'center',
         zIndex: 10
       }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.5px' }}>Enterprise Vault</h1>
+        <PageHeader 
+          title="Enterprise Vault" 
+          description="Securely store and manage API keys, database credentials, and service tokens." 
+          letterSpacing="-0.5px"
+        />
         <button 
           onClick={() => openModal()}
           style={{
@@ -161,10 +166,18 @@ export default function ConnectionsPage() {
         ) : error ? (
           <div style={{ color: '#ef4444', padding: 20, background: '#fee2e2', borderRadius: 8 }}>{error}</div>
         ) : connections.length === 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
-            <FiDatabase size={48} style={{ opacity: 0.2, marginBottom: 16 }} />
-            <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: 18 }}>Vault is Empty</h3>
-            <p style={{ marginTop: 8 }}>Add a connection profile to securely authenticate your API nodes.</p>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            minHeight: '300px',
+            gap: 16,
+            color: '#64748B'
+          }}>
+            <FiDatabase size={48} strokeWidth={1} />
+            <div style={{ fontSize: 14, fontWeight: 500 }}>No connections found</div>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: 24 }}>

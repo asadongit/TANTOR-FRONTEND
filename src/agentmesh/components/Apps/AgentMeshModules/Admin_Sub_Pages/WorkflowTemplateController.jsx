@@ -16,6 +16,7 @@ import {
   deleteWorkflowTemplate 
 } from '../../../../api/agentmesh';
 import Pagination from '../../../Common/Pagination';
+import PageHeader from '../../../Common/PageHeader';
 
 // Visual preview rendering showing flow structure
 function WorkflowMinimap({ nodes = [], edges = [] }) {
@@ -431,10 +432,11 @@ export default function WorkflowTemplateController() {
         justifyContent: 'space-between',
         zIndex: 10
       }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.5px' }}>Template Approval Queue</h1>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0 0' }}>Review and approve submitted agent-mesh templates for the global marketplace.</p>
-        </div>
+        <PageHeader 
+          title="Template Approval Queue" 
+          description="Review and manage submissions for shared custom workflow templates." 
+          letterSpacing="-0.5px"
+        />
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Search bar */}
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', transition: 'all 0.2s', width: (searchOpen || search) ? 260 : 36 }}>
@@ -541,13 +543,13 @@ export default function WorkflowTemplateController() {
             </AnimatePresence>
           </div>
 
-          <div style={{ display: 'flex', border: '1px solid #E5E7EB', borderRadius: 8, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', gap: 2, background: 'var(--bg-canvas)', border: '1px solid var(--border)', borderRadius: 10, padding: '4px' }}>
             <button 
               onClick={() => setViewMode('card')}
               style={{
-                background: viewMode === 'card' ? '#111827' : 'white',
+                background: viewMode === 'card' ? 'var(--theme-primary)' : 'transparent',
                 color: viewMode === 'card' ? 'white' : '#6B7280',
-                border: 'none', padding: '8px 12px', display: 'flex', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s'
+                border: 'none', borderRadius: 6, padding: '6px 10px', display: 'flex', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s'
               }}
               title="Card View"
             >
@@ -556,9 +558,9 @@ export default function WorkflowTemplateController() {
             <button 
               onClick={() => setViewMode('list')}
               style={{
-                background: viewMode === 'list' ? '#111827' : 'white',
+                background: viewMode === 'list' ? 'var(--theme-primary)' : 'transparent',
                 color: viewMode === 'list' ? 'white' : '#6B7280',
-                border: 'none', padding: '8px 12px', display: 'flex', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s'
+                border: 'none', borderRadius: 6, padding: '6px 10px', display: 'flex', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s'
               }}
               title="List View"
             >
@@ -606,20 +608,18 @@ export default function WorkflowTemplateController() {
         )}
 
         {!loading && !error && templates.length === 0 ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <motion.div 
-              initial={{ opacity: 0, y: 15 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              style={{ textAlign: 'center', background: 'white', padding: '48px 32px', borderRadius: 20, border: '1px dashed #CBD5E1', maxWidth: 440 }}
-            >
-              <div style={{ width: 54, height: 54, borderRadius: '50%', background: 'var(--theme-primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: 'var(--theme-primary)' }}>
-                <FiFileText size={26} />
-              </div>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1E1B4B', margin: '0 0 8px 0' }}>No Requests Found</h2>
-              <p style={{ fontSize: 13, color: '#64748B', margin: 0, lineHeight: 1.5 }}>
-                There are no workflow templates matching the current filter criteria.
-              </p>
-            </motion.div>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            minHeight: '300px',
+            gap: 16,
+            color: '#64748B'
+          }}>
+            <FiFileText size={48} strokeWidth={1} />
+            <div style={{ fontSize: 14, fontWeight: 500 }}>No templates found</div>
           </div>
         ) : (
           !loading && (

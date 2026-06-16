@@ -3,7 +3,7 @@
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 import React, { useState, useEffect, useRef } from 'react';
 import { FiSearch, FiX } from 'react-icons/fi';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { NODE_TYPES } from './NodePalette';
 
 export default function NodeSearch({ onClose, onSelect }) {
@@ -70,8 +70,8 @@ export default function NodeSearch({ onClose, onSelect }) {
       style={{
         position: 'absolute',
         inset: 0,
-        backgroundColor: 'rgba(15, 23, 42, 0.18)',
-        backdropFilter: 'blur(12px)',
+        backgroundColor: 'rgba(0, 0, 0, 0.25)',
+        backdropFilter: 'blur(20px)',
         zIndex: 1000,
         display: 'flex',
         flexDirection: 'column',
@@ -100,15 +100,15 @@ export default function NodeSearch({ onClose, onSelect }) {
           style={{
             display: 'flex',
             alignItems: 'center',
-            background: 'rgba(255, 255, 255, 0.95)',
-            border: '1px solid rgba(226, 232, 240, 0.8)',
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border)',
             borderRadius: '16px',
             padding: '14px 20px',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05), inset 0 2px 4px rgba(255,255,255,1)',
+            boxShadow: 'var(--shadow-lg)',
             position: 'relative',
           }}
         >
-          <FiSearch size={20} style={{ color: 'var(--theme-primary)', marginRight: '14px', filter: 'drop-shadow(0 2px 4px rgba(142, 119, 187, 0.25))' }} />
+          <FiSearch size={20} style={{ color: 'var(--theme-primary)', marginRight: '14px', filter: 'drop-shadow(0 2px 4px var(--theme-primary-glow))' }} />
           <input
             ref={inputRef}
             type="text"
@@ -155,8 +155,8 @@ export default function NodeSearch({ onClose, onSelect }) {
                 fontSize: '10px',
                 fontWeight: 700,
                 color: 'var(--text-muted)',
-                background: '#F1F5F9',
-                border: '1px solid #E2E8F0',
+                background: 'var(--bg-primary)',
+                border: '1px solid var(--border)',
                 padding: '3px 7px',
                 borderRadius: '6px',
                 letterSpacing: '0.02em',
@@ -174,12 +174,12 @@ export default function NodeSearch({ onClose, onSelect }) {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
           style={{
-            background: 'rgba(255, 255, 255, 0.95)',
-            border: '1px solid rgba(226, 232, 240, 0.8)',
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border)',
             borderRadius: '16px',
             maxHeight: '400px',
             overflowY: 'auto',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.01)',
+            boxShadow: 'var(--shadow-lg)',
             display: 'flex',
             flexDirection: 'column',
             padding: '8px',
@@ -203,14 +203,10 @@ export default function NodeSearch({ onClose, onSelect }) {
                       padding: '11px 16px',
                       borderRadius: '12px',
                       cursor: 'pointer',
-                      background: isSelected 
-                        ? 'linear-gradient(90deg, var(--bg-hover) 0%, rgba(245, 245, 243, 0.4) 100%)' 
-                        : 'transparent',
-                      border: isSelected 
-                        ? '1px solid rgba(142, 119, 187, 0.15)' 
-                        : '1px solid transparent',
+                      background: isSelected ? 'var(--bg-hover)' : 'transparent',
+                      border: isSelected ? '1px solid var(--border)' : '1px solid transparent',
                       boxShadow: isSelected 
-                        ? '0 4px 12px rgba(142, 119, 187, 0.05)' 
+                        ? '0 4px 12px var(--theme-primary-glow)' 
                         : 'none',
                       transition: 'all 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
                       transform: isSelected ? 'translateX(2px)' : 'none',
@@ -296,14 +292,14 @@ export default function NodeSearch({ onClose, onSelect }) {
                             fontSize: '10px',
                             color: 'var(--theme-primary)',
                             fontWeight: 600,
-                            background: 'white',
-                            border: '1px solid var(--theme-primary-light)',
+                            background: 'var(--bg-secondary)',
+                            border: '1px solid var(--border)',
                             padding: '3px 8px',
                             borderRadius: '6px',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '4px',
-                            boxShadow: '0 2px 5px rgba(142, 119, 187, 0.1)',
+                            boxShadow: 'var(--shadow-sm)',
                             userSelect: 'none',
                           }}
                         >

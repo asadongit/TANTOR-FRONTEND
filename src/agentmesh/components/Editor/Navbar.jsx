@@ -1,8 +1,8 @@
 import React from 'react';
 import toast from 'react-hot-toast';
-import { useWorkflowStore, useUIStore, useVariablesStore } from '../../store';
+import { useWorkflowStore, useUIStore, useVariablesStore, useRunStore } from '../../store';
 import { compileWorkflow, saveWorkflow, listWorkflowCategories, deleteWorkflow, explainWorkflow, getWorkflow, cloneWorkflow, fixGrammar, publishWorkflow, getMarketplaceUsecase } from '../../api/agentmesh';
-import { FiUpload, FiDownload, FiPlus, FiX, FiCheck, FiAlertTriangle, FiCopy, FiChevronDown, FiChevronUp, FiBookOpen, FiZap, FiLoader, FiTrash2, FiInfo, FiMaximize2, FiMinimize2, FiShare2, FiSave, FiCode, FiDatabase } from 'react-icons/fi';
+import { FiUpload, FiDownload, FiPlus, FiX, FiCheck, FiAlertTriangle, FiCopy, FiChevronDown, FiChevronUp, FiBookOpen, FiZap, FiLoader, FiTrash2, FiInfo, FiMaximize2, FiMinimize2, FiShare2, FiSave, FiCode, FiDatabase, FiSend, FiRotateCcw, FiCpu } from 'react-icons/fi';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { AiMagicIcon } from '@hugeicons/core-free-icons';
 import { formatMessage } from '../Common/messageFormatting';
@@ -10,6 +10,8 @@ import ConfirmationModal from '../Common/ConfirmationModal';
 import SaveWorkflowTemplateModal from './SaveWorkflowTemplateModal';
 import { copyToClipboard } from '../../utils/copyToClipboard';
 import WorkflowAPIConsole from './WorkflowAPIConsole';
+import ArchitectBot from './ArchitectBot';
+import ShortcutKeysCanvasModal from './shortcutKeysCanvasModal';
 
 function TooltipWrapper({ text, children }) {
   const [visible, setVisible] = React.useState(false);
@@ -72,7 +74,8 @@ export default function Navbar() {
     showManagementModal, setShowManagementModal,
     isSyncing, setIsSyncing,
     showNotes, toggleNotes,
-    showNotifications, setShowNotifications, unreadCount
+    showNotifications, setShowNotifications, unreadCount,
+    canvasNodeTheme
   } = useUIStore();
   const workflows = useWorkflowStore(s => s.workflows);
   const { showVariablesPanel, setShowVariablesPanel, variables } = useVariablesStore();
@@ -101,6 +104,8 @@ export default function Navbar() {
 
   const [showPublishModal, setShowPublishModal] = React.useState(false);
   const [showSaveTemplateModal, setShowSaveTemplateModal] = React.useState(false);
+  const [showPublishConfirm, setShowPublishConfirm] = React.useState(false);
+  const [successAlert, setSuccessAlert] = React.useState(null);
   const [publishTags, setPublishTags] = React.useState('');
   const [publishing, setPublishing] = React.useState(false);
   const [useWorkflowMeta, setUseWorkflowMeta] = React.useState(true);
@@ -115,6 +120,7 @@ export default function Navbar() {
   const [promptGroup, setPromptGroup] = React.useState('Default');
   const [promptCategory, setPromptCategory] = React.useState('General');
   const [validationError, setValidationError] = React.useState(null);
+  const [showShortcutsModal, setShowShortcutsModal] = React.useState(false);
 
   React.useEffect(() => {
     if (showMetadataPrompt) {
@@ -145,9 +151,13 @@ export default function Navbar() {
       setStatus('compiled');
       setShowPublishModal(false);
       setPublishTags('');
-      alert('Workflow successfully published to Marketplace!');
+      setSuccessAlert({
+        title: "Workflow Published",
+        message: "Workflow successfully published to Marketplace!"
+      });
     } catch (e) {
       alert('Failed to publish workflow: ' + e.message);
+      throw e;
     } finally {
       setPublishing(false);
     }
@@ -155,95 +165,6 @@ export default function Navbar() {
 
   // --- AI Workflow Architect States ---
   const [showArchitect, setShowArchitect] = React.useState(false);
-  const [architectExpanded, setArchitectExpanded] = React.useState(false);
-  const [architectExplanation, setArchitectExplanation] = React.useState('');
-  const [explaining, setExplaining] = React.useState(false);
-  const [architectError, setArchitectError] = React.useState('');
-  const [copiedExplanation, setCopiedExplanation] = React.useState(false);
-  const [savedToNotes, setSavedToNotes] = React.useState(false);
-  const [savingNote, setSavingNote] = React.useState(false);
-
-  React.useEffect(() => {
-    setArchitectExplanation('');
-    setArchitectError('');
-  }, [workflowId]);
-
-  const handleGenerateExplanation = async () => {
-    setExplaining(true);
-    setArchitectError('');
-    setArchitectExplanation('');
-    setSavedToNotes(false);
-    
-    // Prepare optimized workflow data
-    const workflowPayload = {
-      id: workflowId,
-      name: workflowName,
-      description: workflowDescription,
-      nodes: nodes.map(n => ({
-        id: n.id,
-        type: n.type,
-        data: {
-          type: n.data?.type,
-          label: n.data?.label,
-          task: n.data?.task,
-          description: n.data?.description,
-          tools: n.data?.tools,
-          poller_tool: n.data?.poller_tool,
-          cron_expression: n.data?.cron_expression,
-          webhook_path: n.data?.webhook_path
-        }
-      })),
-      edges: (edges || []).map(e => ({
-        source: e.source,
-        target: e.target,
-        data: {
-          condition: e.data?.condition
-        }
-      }))
-    };
-
-    try {
-      const cachedProvider = localStorage.getItem('architect_provider') || 'groq';
-      const cachedModel = localStorage.getItem('architect_model') || 'llama-3.3-70b-versatile';
-      const cachedTemp = localStorage.getItem('architect_temperature') || '0.2';
-      const cachedKey = localStorage.getItem('architect_api_key') || '';
-      const activeLlm = {
-        provider: cachedProvider,
-        model: cachedModel,
-        temperature: parseFloat(cachedTemp),
-        api_key_override: cachedKey
-      };
-      const res = await explainWorkflow(workflowPayload, activeLlm);
-      if (res.status === 'success') {
-        setArchitectExplanation(res.explanation);
-      } else {
-        setArchitectError(res.message || 'Failed to generate summary.');
-      }
-    } catch (err) {
-      setArchitectError(err.message || 'Failed to connect to backend.');
-    } finally {
-      setExplaining(false);
-    }
-  };
-
-  const handleCopyExplanation = () => {
-    copyToClipboard(architectExplanation);
-    setCopiedExplanation(true);
-    setTimeout(() => setCopiedExplanation(false), 2000);
-  };
-
-  const handleSaveToNotes = async () => {
-    setSavingNote(true);
-    try {
-      const { createWorkflowNote } = await import('../../api/agentmesh');
-      await createWorkflowNote(workflowId, architectExplanation, 'Architect');
-      setSavedToNotes(true);
-    } catch (err) {
-      alert('Failed to save to notes: ' + err.message);
-    } finally {
-      setSavingNote(false);
-    }
-  };
 
   React.useEffect(() => {
     listWorkflowCategories().then(res => {
@@ -806,6 +727,7 @@ export default function Navbar() {
                     </button>
                     <button
                       onClick={async () => {
+                        if (!isCompiled || isDirty) return;
                         setIoDropdownOpen(false);
                         try {
                           const res = await getMarketplaceUsecase(workflowId);
@@ -814,8 +736,8 @@ export default function Navbar() {
                             setCustomMarketplaceName(res.marketplace_name || workflowName);
                             setCustomMarketplaceDesc(res.marketplace_description || workflowDescription);
                             setPublishTags(res.tags ? res.tags.join(', ') : '');
-                            setLaunchMode(res.launch_url ? 'custom' : 'default');
-                            setCustomLaunchUrl(res.launch_url || '');
+                            setLaunchMode(res.launch_url && res.launch_url !== 'swagger' ? 'custom' : 'default');
+                            setCustomLaunchUrl(res.launch_url && res.launch_url !== 'swagger' ? res.launch_url : '');
                             setCurrentVersion(res.version);
                           } else {
                             setUseWorkflowMeta(true);
@@ -830,6 +752,33 @@ export default function Navbar() {
                           console.error("Failed to fetch marketplace details:", err);
                         }
                         setShowPublishModal(true);
+                      }}
+                      disabled={!isCompiled || isDirty}
+                      title={!isCompiled ? "Compile the workflow before publishing" : isDirty ? "Save changes before publishing" : "Publish Usecase"}
+                      style={{
+                        padding: '8px 12px',
+                        background: 'none',
+                        border: 'none',
+                        textAlign: 'left',
+                        cursor: (!isCompiled || isDirty) ? 'not-allowed' : 'pointer',
+                        fontSize: 13,
+                        color: (!isCompiled || isDirty) ? '#9CA3AF' : 'var(--text-primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        transition: 'background 0.15s',
+                        width: '100%',
+                        opacity: (!isCompiled || isDirty) ? 0.6 : 1
+                      }}
+                      onMouseEnter={(e) => { if (isCompiled && !isDirty) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                    >
+                      <FiShare2 size={14} /> Publish Usecase
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowShortcutsModal(true);
+                        setIoDropdownOpen(false);
                       }}
                       style={{
                         padding: '8px 12px',
@@ -848,7 +797,7 @@ export default function Navbar() {
                       onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
                     >
-                      <FiShare2 size={14} /> Publish Usecase
+                      <FiCpu size={14} /> Shortcut Keys
                     </button>
                   </div>
                 )}
@@ -1029,7 +978,10 @@ export default function Navbar() {
                         <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'block' }}>Group</label>
                         <input
                           value={workflowGroup}
-                          onChange={(e) => setWorkflowMeta(workflowId, workflowName, workflowDescription, e.target.value, workflowCategory, globalErrorNode, dynamicResumption, warmup, autoNewSession)}
+                          onChange={(e) => {
+                            const validatedVal = e.target.value.toLowerCase().replace(/ /g, '_').replace(/[^a-z_]/g, '');
+                            setWorkflowMeta(workflowId, workflowName, workflowDescription, validatedVal, workflowCategory, globalErrorNode, dynamicResumption, warmup, autoNewSession);
+                          }}
                           placeholder="Default"
                           style={{
                             width: '100%', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', fontSize: 13, color: 'var(--text-primary)', outline: 'none', fontFamily: 'inherit', background: '#F8FAFC'
@@ -1309,6 +1261,27 @@ export default function Navbar() {
         variant="danger"
       />
 
+      <ConfirmationModal
+        isOpen={showPublishConfirm}
+        onClose={() => setShowPublishConfirm(false)}
+        onConfirm={handlePublish}
+        title="Publish Usecase"
+        message={`Are you sure you want to publish the workflow **${workflowName}** to the Marketplace?`}
+        confirmText="Publish"
+        variant="success"
+      />
+
+      <ConfirmationModal
+        isOpen={!!successAlert}
+        onClose={() => setSuccessAlert(null)}
+        onConfirm={async () => setSuccessAlert(null)}
+        title={successAlert?.title || "Success"}
+        message={successAlert?.message || ""}
+        confirmText="OK"
+        cancelText={null}
+        variant="success"
+      />
+
       {/* Import Modal */}
       {showImport && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1516,7 +1489,7 @@ export default function Navbar() {
               {/* Launch URL Selector */}
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Launch Mode</label>
-                <div style={{ display: 'flex', background: 'var(--bg-canvas)', borderRadius: 12, padding: 4, gap: 4, border: '1px solid var(--border)', marginBottom: 12 }}>
+                 <div style={{ display: 'flex', background: 'var(--bg-canvas)', borderRadius: 12, padding: 4, gap: 4, border: '1px solid var(--border)', marginBottom: 12 }}>
                   <button 
                     type="button"
                     onClick={() => setLaunchMode('default')}
@@ -1528,7 +1501,7 @@ export default function Navbar() {
                       cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit'
                     }}
                   >
-                    Default Chat Panel
+                    Default Chat
                   </button>
                   <button 
                     type="button"
@@ -1541,7 +1514,7 @@ export default function Navbar() {
                       cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit'
                     }}
                   >
-                    Custom Launch URL
+                    Custom URL
                   </button>
                 </div>
                 {launchMode === 'custom' && (
@@ -1601,7 +1574,7 @@ export default function Navbar() {
                 Cancel
               </button>
               <button
-                onClick={handlePublish}
+                onClick={() => setShowPublishConfirm(true)}
                 disabled={publishing}
                 style={{
                   padding: '10px 24px',
@@ -1638,272 +1611,7 @@ export default function Navbar() {
       )}
 
       {/* AI Workflow Architect Floating Bubble */}
-      {showArchitect && (
-        <div style={{
-          position: 'fixed',
-          bottom: 24,
-          right: 24,
-          zIndex: 10000,
-          fontFamily: 'inherit',
-          width: architectExpanded ? 750 : 550,
-          maxWidth: '90vw',
-          height: architectExpanded ? '88vh' : 'auto',
-          maxHeight: architectExpanded ? '88vh' : '82vh',
-          background: 'rgba(255, 255, 255, 0.9)',
-          backdropFilter: 'blur(20px)',
-          borderRadius: 24,
-          border: '1px solid var(--theme-primary-light)',
-          boxShadow: '0 20px 40px rgba(142, 119, 187, 0.15), 0 0 30px rgba(142, 119, 187, 0.1)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          transition: 'all 0.3s cubic-bezier(0.19, 1, 0.22, 1)'
-        }}>
-          <style>{`
-            @keyframes architect-pulse {
-              0% { transform: scale(0.95); box-shadow: 0 0 0 0 var(--theme-primary-glow), 0 0 0 0 rgba(142, 119, 187, 0.2); }
-              70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(142, 119, 187, 0), 0 0 0 25px rgba(142, 119, 187, 0); }
-              100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(142, 119, 187, 0), 0 0 0 0 rgba(142, 119, 187, 0); }
-            }
-            @keyframes architect-wave {
-              0%, 100% { transform: translateY(0); }
-              50% { transform: translateY(-8px); }
-            }
-            .architect-orb {
-              width: 48px;
-              height: 48px;
-              border-radius: 50%;
-              background: radial-gradient(circle, var(--theme-primary-light) 0%, var(--theme-primary) 100%);
-              animation: architect-pulse 2s infinite ease-in-out;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              color: white;
-            }
-            .architect-wave-container {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              gap: 4px;
-              height: 40px;
-            }
-            .architect-bar {
-              width: 3px;
-              height: 16px;
-              background: linear-gradient(to top, var(--theme-primary-light), var(--theme-primary));
-              border-radius: 99px;
-              animation: architect-wave 1.2s infinite ease-in-out;
-            }
-            .architect-bar-1 { animation-delay: -0.4s; height: 18px; }
-            .architect-bar-2 { animation-delay: -0.2s; height: 26px; }
-            .architect-bar-3 { animation-delay: 0s; height: 32px; }
-            .architect-bar-4 { animation-delay: -0.6s; height: 22px; }
-            .architect-bar-5 { animation-delay: -0.8s; height: 14px; }
-          `}</style>
-
-          {/* Architect Bubble Header */}
-          <div style={{
-            padding: '16px 20px',
-            borderBottom: '1px solid rgba(241, 245, 249, 0.6)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            background: 'linear-gradient(135deg, var(--theme-primary-glow), rgba(255, 255, 255, 0.8))'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div className="architect-orb" style={{ width: 32, height: 32, fontSize: 14 }}>
-                <HugeiconsIcon icon={AiMagicIcon} size={16} color="white" />
-              </div>
-              <div>
-                <h3 style={{ fontSize: 15, fontWeight: 800, color: '#1E1B4B', margin: 0 }}>Workflow Architect</h3>
-                <p style={{ fontSize: 10, color: 'var(--theme-primary)', margin: '2px 0 0', fontWeight: 650 }}>Explain workflow walkthrough and node details</p>
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button
-                onClick={() => setArchitectExpanded(!architectExpanded)}
-                title={architectExpanded ? 'Collapse' : 'Expand'}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#64748B',
-                  cursor: 'pointer',
-                  padding: 6,
-                  borderRadius: 8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'background 0.2s'
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--theme-primary-glow)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'none'}
-              >
-                {architectExpanded ? <FiMinimize2 size={18} /> : <FiMaximize2 size={18} />}
-              </button>
-              <button
-                onClick={() => setShowArchitect(false)}
-                title="Minimize"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#64748B',
-                  cursor: 'pointer',
-                  padding: 6,
-                  borderRadius: 8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'background 0.2s'
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--theme-primary-glow)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'none'}
-              >
-                <FiX size={18} />
-              </button>
-            </div>
-          </div>
-
-          {/* Architect Bubble Content */}
-          <div style={{
-            padding: '20px',
-            overflowY: 'auto',
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 16
-          }} className="msg-scrollbar">
-
-            {/* Error Message */}
-            {architectError && (
-              <div style={{
-                padding: 12, background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 12,
-                color: '#991B1B', fontSize: 12, fontWeight: 550, display: 'flex', alignItems: 'center', gap: 8
-              }}>
-                <FiAlertTriangle size={16} /> {architectError}
-              </div>
-            )}
-
-            {/* Thinking Visualizer */}
-            {explaining && (
-              <div style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                padding: '40px 20px', gap: 16, background: 'rgba(255,255,255,0.4)', borderRadius: 16
-              }}>
-                <div className="architect-wave-container">
-                  <div className="architect-bar architect-bar-1" />
-                  <div className="architect-bar architect-bar-2" />
-                  <div className="architect-bar architect-bar-3" />
-                  <div className="architect-bar architect-bar-4" />
-                  <div className="architect-bar architect-bar-5" />
-                </div>
-                <span style={{ fontSize: 12, color: 'var(--theme-primary)', fontWeight: 700, letterSpacing: '0.05em' }}>
-                  Architect is analyzing your workflow...
-                </span>
-              </div>
-            )}
-
-            {/* Markdown Formatted Explanation Viewport */}
-            {architectExplanation && !explaining && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 11, fontWeight: 750, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Walkthrough Result</span>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button
-                      onClick={handleCopyExplanation}
-                      style={{
-                        background: 'white', border: '1px solid #E2E8F0', borderRadius: 6,
-                        padding: '4px 8px', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                        color: '#475569', fontWeight: 650, transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'white'}
-                    >
-                      {copiedExplanation ? <FiCheck color="#16A34A" size={12} /> : <FiCopy size={12} />}
-                      {copiedExplanation ? 'Copied' : 'Copy'}
-                    </button>
-                    <button
-                      onClick={handleSaveToNotes}
-                      disabled={savingNote}
-                      style={{
-                        background: 'white', border: '1px solid #E2E8F0', borderRadius: 6,
-                        padding: '4px 8px', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                        color: 'var(--theme-primary)', fontWeight: 650, transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--theme-primary-glow)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'white'}
-                    >
-                      {savedToNotes ? <FiCheck color="#16A34A" size={12} /> : <FiBookOpen size={12} />}
-                      {savedToNotes ? 'Saved!' : 'Save Notes'}
-                    </button>
-                  </div>
-                </div>
-
-                <div style={{
-                  flex: 1, minHeight: 200, maxHeight: architectExpanded ? '70vh' : '42vh', padding: '16px', background: 'white', border: '1px solid rgba(226, 232, 240, 0.8)',
-                  borderRadius: 16, overflowY: 'auto', fontSize: 13.5, color: '#334155', lineHeight: 1.6,
-                  fontFamily: 'inherit', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.01)'
-                }} className="msg-scrollbar">
-                  {formatMessage(architectExplanation)}
-                </div>
-              </div>
-            )}
-
-            {!architectExplanation && !explaining && (
-              <div style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                padding: '40px 20px', gap: 12, textAlign: 'center', color: '#94A3B8'
-              }}>
-                <div style={{
-                  width: 56, height: 56, borderRadius: '50%',
-                  background: 'var(--theme-primary-glow)', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', color: 'var(--theme-primary)'
-                }}>
-                  <HugeiconsIcon icon={AiMagicIcon} size={24} />
-                </div>
-                <div>
-                  <h4 style={{ fontSize: 14, fontWeight: 700, color: '#1E293B', margin: '0 0 4px' }}>Ready to Explain</h4>
-                  <p style={{ fontSize: 11, margin: 0 }}>Click the button below to generate a detailed architectural walkthrough of this pipeline.</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Bubble Action Footer */}
-          <div style={{
-            padding: '16px 20px',
-            borderTop: '1px solid rgba(241, 245, 249, 0.6)',
-            background: 'white',
-            display: 'flex',
-            justifyContent: 'center'
-          }}>
-            <button
-               onClick={handleGenerateExplanation}
-               disabled={explaining || !hasNodes}
-               style={{
-                 background: 'var(--theme-primary)',
-                 color: 'var(--theme-primary-text)',
-                 border: 'none',
-                 padding: '10px 20px',
-                 borderRadius: 12,
-                 fontSize: 13,
-                 fontWeight: 700,
-                 cursor: explaining || !hasNodes ? 'not-allowed' : 'pointer',
-                 display: 'flex',
-                 alignItems: 'center',
-                 gap: 8,
-                 transition: 'all 0.2s',
-                 opacity: !hasNodes ? 0.6 : 1,
-                 boxShadow: '0 4px 12px var(--theme-primary-glow)'
-               }}
-               onMouseEnter={e => { if (!explaining && hasNodes) e.currentTarget.style.background = 'var(--theme-primary-light)'; }}
-               onMouseLeave={e => { if (!explaining && hasNodes) e.currentTarget.style.background = 'var(--theme-primary)'; }}
-             >
-               <FiZap size={14} />
-               {explaining ? 'Analyzing...' : architectExplanation ? 'Regenerate Walkthrough' : 'Explain Workflow'}
-             </button>
-           </div>
-         </div>
-       )}
+      <ArchitectBot isOpen={showArchitect} onClose={() => setShowArchitect(false)} />
       
       {/* Workflow Metadata Prompt Modal */}
       {showMetadataPrompt && (
@@ -1991,7 +1699,10 @@ export default function Navbar() {
                       fontSize: 13, outline: 'none', boxSizing: 'border-box'
                     }}
                     value={promptGroup}
-                    onChange={(e) => setPromptGroup(e.target.value)}
+                    onChange={(e) => {
+                      const validatedVal = e.target.value.toLowerCase().replace(/ /g, '_').replace(/[^a-z_]/g, '');
+                      setPromptGroup(validatedVal);
+                    }}
                     placeholder="Default"
                   />
                 </div>
@@ -2046,6 +1757,7 @@ export default function Navbar() {
           onClose={() => setShowApiConsole(false)}
         />
       )}
+      <ShortcutKeysCanvasModal isOpen={showShortcutsModal} onClose={() => setShowShortcutsModal(false)} />
     </>
   );
 }

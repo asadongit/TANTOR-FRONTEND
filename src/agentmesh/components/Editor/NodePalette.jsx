@@ -3,7 +3,8 @@ import { useWorkflowStore, useUIStore } from '../../store';
 import {
   FiPlay, FiSquare, FiCpu, FiBox, FiGitMerge,
   FiTarget, FiShare2, FiBookOpen, FiLink,
-  FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiAlertTriangle, FiZap, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiLayers, FiDownload
+  FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiAlertTriangle, FiZap, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiLayers, FiInbox, FiDatabase, FiServer, FiDownload,
+  FiHelpCircle, FiCode, FiSliders
 } from 'react-icons/fi';
 
 export const NODE_TYPES = [
@@ -14,6 +15,7 @@ export const NODE_TYPES = [
   { type: 'cron',       icon: FiClock,     label: 'Cron',         desc: 'Scheduled Trigger',         bg: '#FEF3C7', color: '#B45309', category: 'Events & Triggers' },
   { type: 'polling',    icon: FiClock,     label: 'Polling Trigger', desc: 'Interval Poller Trigger',   bg: '#FDF2F8', color: '#DB2777', category: 'Events & Triggers' },
   { type: 'button_trigger', icon: FiZap,     label: 'Button',       desc: 'Manual UI Trigger',         bg: '#D1FAE5', color: '#059669', category: 'Events & Triggers' },
+  { type: 'auto_trigger',   icon: FiPlay,    label: 'Auto Trigger', desc: 'Runs instantly on launch', bg: '#D1FAE5', color: '#059669', category: 'Events & Triggers' },
 
   
   // Autonomous Agents
@@ -49,15 +51,17 @@ export const NODE_TYPES = [
 
   // Document Processing
   { type: 'template_node', icon: FiFileText,  label: 'Template Engine',   desc: 'Render Jinja/Markdown Templates',    bg: '#FDF2F8', color: '#DB2777', category: 'Document Processing' },
-  { type: 'report_generator', icon: FiDownload,  label: 'Report Generator',   desc: 'Export data to PDF/Docx/Excel',    bg: '#E0E7FF', color: '#4338CA', category: 'Document Processing' },
+  { type: 'report_generator', icon: FiFileText,  label: 'Report Generator',   desc: 'Export data to PDF/Docx/Excel',    bg: '#E0E7FF', color: '#4338CA', category: 'Document Processing' },
 
   // Data & Storage
   { type: 'set_data',   icon: FiEdit,      label: 'Set Message',    desc: 'Static data/response',      bg: '#F5F3FF', color: '#7C3AED', category: 'Data & Storage' },
   { type: 'output_parser', icon: FiFilter,  label: 'Output Parser',  desc: 'Auto-fix malformed JSON',   bg: '#FEF3C7', color: '#D97706', category: 'Data & Storage' },
   { type: 'payload_builder', icon: FiBox,  label: 'Payload Builder',  desc: 'Build JSON payloads from templates', bg: '#E0F2FE', color: '#0369A1', category: 'Data & Storage' },
-  { type: 'json_transform', icon: FiFilter, label: 'JSON Transform', desc: 'Flatten, pick, rename JSON keys', bg: '#E0F2FE', color: '#0284C7', category: 'Data & Storage' },
   { type: 'pattern_extract', icon: FiSearch, label: 'Pattern Extractor', desc: 'Extract values via keyword/regex patterns', bg: '#FDF2F8', color: '#DB2777', category: 'Data & Storage' },
   { type: 'db_node',    icon: FiBox,       label: 'MongoDB',        desc: 'Read/Write MongoDB collections', bg: '#D1FAE5', color: '#065F46', category: 'Data & Storage' },
+  { type: 'json_transform', icon: FiCode,   label: 'JSON Transform', desc: 'Reshape data via JMESPath/Python', bg: '#F5F3FF', color: '#7C3AED', category: 'Data & Storage' },
+  { type: 'data_cleaning', icon: FiFilter,  label: 'Data Cleaning',  desc: 'Clean dataset and run Pandas scripts', bg: '#ECFDF5', color: '#059669', category: 'Data & Storage' },
+  { type: 'network_graph', icon: FiDatabase, label: 'Network Graph', desc: 'Ingest into Neo4j graph database', bg: '#EFF6FF', color: '#1D4ED8', category: 'Data & Storage' },
   { type: 'file_store', icon: FiFileText,  label: 'File Store',   desc: 'Save data to CSV/Excel',    bg: '#ECFDF5', color: '#059669', category: 'Data & Storage' },
   { type: 'notification', icon: FiBell,     label: 'Notification', desc: 'In-app alert storage',      bg: '#F0F4FF', color: '#6366F1', category: 'Data & Storage' },
   
@@ -72,6 +76,13 @@ export const NODE_TYPES = [
 
   // Visual Organizers
   { type: 'cardboard',   icon: FiLayers,    label: 'Sticky Note',     desc: 'Visual container for canvas organization and notes', bg: '#F1F5F9', color: '#64748B', category: 'Visual Organizers' },
+
+  // Banking
+  { type: 'ingestion_adapter', icon: FiDownload,  label: 'Ingestion Adapter', desc: 'Converts raw inputs (ISO8583/XML/CSV/JSON) to Canonical Transaction Schema', bg: '#F5F3FF', color: '#7C3AED', category: 'Banking' },
+  { type: 'banking_enrichment', icon: FiServer,   label: 'Banking Pre-Enrichment Node', desc: 'Orchestrates external & internal API data gathering.', bg: '#F5F3FF', color: '#7C3AED', category: 'Banking' },
+  { type: 'beneficiary_risk', icon: FiGitBranch,   label: 'Beneficiary Risk Router', desc: 'Evaluates beneficiary (Mule, Age, Velocity) and routes workflow', bg: '#F5F3FF', color: '#7C3AED', category: 'Banking' },
+  { type: 'rule_engine', icon: FiShield,    label: 'Rule Engine',    desc: 'Custom Python Rules & Scorecards', bg: '#FEE2E2', color: '#DC2626', category: 'Banking' },
+  { type: 'weightage', icon: FiSliders,    label: 'Weightage System', desc: 'Multi-field dynamic scoring & weights', bg: '#E0F2FE', color: '#0369A1', category: 'Banking' },
 ];
 
 export default function NodePalette({ onClose }) {
@@ -102,7 +113,8 @@ export default function NodePalette({ onClose }) {
     'Data & Storage', 
     'Security & Privacy',
     'Media Services',
-    'System & Debug'
+    'System & Debug',
+    'Banking'
   ];
   const categories = CATEGORY_ORDER.filter(cat => 
     filteredNodes.some(n => n.category === cat)

@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useWorkflowStore, useUIStore, useVariablesStore } from '../../store';
-import { listTools, fixGrammar, listAvailableModels, testConnection } from '../../api/agentmesh';
+import { useWorkflowStore, useUIStore, useVariablesStore, useRunStore } from '../../store';
+import { listTools, fixGrammar, listAvailableModels, testConnection, chatArchitect } from '../../api/agentmesh';
 import SkillGallery from './SkillGallery';
 import SaveTemplateModal from './SaveTemplateModal';
+import { FiMinus, FiTrash2, FiMousePointer, FiInfo, FiLayers, FiSettings, FiCpu, FiTool, FiGitMerge, FiTarget, FiShare2, FiUser, FiBookOpen, FiLink, FiPlus, FiX, FiGlobe, FiClock, FiCopy, FiCheck, FiSearch, FiChevronDown, FiRepeat, FiFileText, FiZap, FiLoader, FiAlertTriangle, FiGitBranch, FiActivity, FiEdit, FiFilter, FiShield, FiCamera, FiBox, FiSave, FiTerminal, FiDatabase, FiUploadCloud, FiDownload, FiAlignLeft, FiKey, FiLock, FiMessageSquare, FiPlay, FiHelpCircle, FiCode, FiSliders, FiInbox } from 'react-icons/fi';
 import ConnectionsDropdown from './ConnectionsDropdown';
-import {
-  FiTrash2, FiMousePointer, FiInfo, FiLayers, FiSettings, FiCpu, FiTool,
-  FiGitMerge, FiTarget, FiShare2, FiUser, FiBookOpen, FiLink, FiPlus, FiX,
-  FiGlobe, FiClock, FiCopy, FiCheck, FiSearch, FiChevronDown, FiRepeat, FiFileText,
-  FiZap, FiLoader, FiAlertTriangle, FiGitBranch, FiActivity, FiEdit, FiFilter, FiShield, FiCamera, FiBox, FiSave, FiUploadCloud
-} from 'react-icons/fi';
+import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
+import jsonLang from 'react-syntax-highlighter/dist/esm/languages/hljs/json';
+import { vs2015 } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import toast from 'react-hot-toast';
 
 function VariableLinker({ targetType, onSelect, tooltip }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -377,33 +376,136 @@ function VariableDropdown({ value, onChange, placeholder, style, id }) {
 
 const FONT = "'Google Sans','Roboto',sans-serif";
 
-// Dynamic model lists - populated from backend API on mount, with static fallbacks
-const PROVIDERS = [
-  'groq', 'openai', 'anthropic', 'google', 'ollama', 'together', 'mistral', 'huggingface',
-  'deepseek', 'cohere', 'perplexity', 'openrouter', 'azure', 'bedrock', 'vllm'
-];
+SyntaxHighlighter.registerLanguage('json', jsonLang);
+
+function RuleAccordionItem({ rule, idx, totalRules, updateRule, removeRule, moveRule }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 8, marginBottom: 8, overflow: 'hidden' }}>
+      <div 
+        style={{ padding: '10px 12px', background: 'var(--bg-card-neutral, #F8FAFC)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div style={{ fontWeight: 600, fontSize: 12 }}>Rule {idx + 1}: {rule.name || 'Unnamed Rule'}</div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button onClick={(e) => { e.stopPropagation(); removeRule(rule.id); }} style={{ background: 'transparent', border: 'none', color: '#EF4444', cursor: 'pointer' }}><FiTrash2 size={12} /></button>
+        </div>
+      </div>
+      {expanded && (
+        <div style={{ padding: 12, background: 'white' }}>
+          <Field label="Rule Name"><Input value={rule.name || ''} onChange={(v) => updateRule(rule.id, { name: v })} /></Field>
+          <Field label="Condition"><Input value={rule.condition || ''} onChange={(v) => updateRule(rule.id, { condition: v })} /></Field>
+          <Field label="Action"><Input value={rule.action || ''} onChange={(v) => updateRule(rule.id, { action: v })} /></Field>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GlobalRuleModal({ onClose }) {
+  const [pattern, setPattern] = useState("");
+  const [entityType, setEntityType] = useState("");
+  const [category, setCategory] = useState("CUSTOM");
+  const [criticality, setCriticality] = useState("HIGH");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSave = async () => {
+    if (!pattern || !entityType) {
+      setError("Pattern and Entity Type are required.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      // 1. Fetch current rules
+      const res = await fetch('http://localhost:8000/api/v1/agentmesh/sensitivity_rules');
+      if (!res.ok) throw new Error("Failed to fetch global rules");
+      const data = await res.json();
+      
+      // 2. Append new rule
+      const newRule = { pattern, category, entity_type: entityType, criticality };
+      
+      // 3. Save rules
+      const saveRes = await fetch('http://localhost:8000/api/v1/agentmesh/sensitivity_rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRule)
+      });
+      if (!saveRes.ok) throw new Error("Failed to save global rule");
+      
+      toast.success("Global Rule added successfully!");
+      onClose();
+    } catch (e) {
+      toast.error(e.message);
+      setError(e.message);
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: 'white', padding: 24, borderRadius: 12, width: 400, fontFamily: FONT, boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+        <h3 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}><FiShield color="#B45309" /> Add Global Rule</h3>
+        <p style={{ fontSize: 13, color: '#666', marginBottom: 20 }}>This rule will apply globally across all Sensitivity Classifier nodes on the server.</p>
+        
+        {error && <div style={{ color: 'red', fontSize: 12, marginBottom: 12 }}>{error}</div>}
+
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Regex Pattern *</label>
+          <input value={pattern} onChange={e => setPattern(e.target.value)} placeholder="e.g. \bPRJ-\d{4}\b" style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, boxSizing: 'border-box' }} />
+        </div>
+        
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Entity Type Name *</label>
+          <input value={entityType} onChange={e => setEntityType(e.target.value)} placeholder="e.g. PROJECT_CODE" style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, boxSizing: 'border-box' }} />
+        </div>
+
+        <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Category</label>
+            <input value={category} onChange={e => setCategory(e.target.value)} placeholder="e.g. PII, CUSTOM" style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Risk Level</label>
+            <select value={criticality} onChange={e => setCriticality(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, boxSizing: 'border-box' }}>
+              <option value="HIGH">HIGH</option>
+              <option value="MEDIUM">MEDIUM</option>
+              <option value="LOW">LOW</option>
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+          <button onClick={onClose} style={{ padding: '8px 16px', background: '#eee', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+          <button onClick={handleSave} disabled={saving} style={{ padding: '8px 16px', background: '#059669', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
+            {saving ? 'Saving...' : 'Save Global Rule'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const PROVIDERS = ['groq', 'openai', 'anthropic', 'google', 'ollama'];
 const MODELS = {
-  groq: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'],
-  openai: ['gpt-4o', 'gpt-4o-mini'],
-  anthropic: ['claude-3-5-sonnet-20241022'],
-  google: ['gemini-2.0-flash'],
-  ollama: [],
-  together: [],
-  mistral: [],
-  huggingface: [],
-  deepseek: ['deepseek-chat', 'deepseek-coder'],
-  cohere: ['command-r', 'command-r-plus'],
-  perplexity: ['sonar', 'sonar-pro'],
-  openrouter: ['auto'],
-  azure: ['gpt-4o', 'gpt-4o-mini', 'o1'],
-  bedrock: ['claude-3-5-sonnet', 'meta-llama-3-8b'],
-  vllm: [],
+  groq: [
+    'openai/gpt-oss-120b',
+    'meta-llama/llama-4-scout-17b-16e-instruct',
+    'llama-3.3-70b-versatile',
+    'llama-3.1-8b-instant',
+    'qwen/qwen3-32b',
+    'moonshotai/kimi-k2-instruct-0905',
+    'openai/gpt-oss-20b'
+  ],
+  openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'o1-preview', 'o1-mini'],
+  anthropic: ['claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307', 'claude-opus-4'],
+  google: ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
+  ollama: ['gemma3:1b', 'granite4:1b', 'deepseek-coder-v2:16b', 'qwen2.5:7b', 'gemma4:e2b'],
 };
-// Labels map: "provider::model" -> "model (Provider)" - populated from backend API
-const MODEL_LABELS = {};
 
 const inputStyle = {
-  width: '100%', padding: '9px 12px', background: 'white',
+  width: '100%', padding: '9px 12px', background: 'var(--bg-primary, white)',
   border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)',
   fontSize: 13, outline: 'none', fontFamily: FONT, transition: 'border-color 0.15s',
   boxSizing: 'border-box',
@@ -471,7 +573,7 @@ function Input({ value, onChange, placeholder, type = 'text', style: extra, disa
   );
 }
 
-function Textarea({ value, onChange, placeholder, rows = 4 }) {
+function Textarea({ value, onChange, placeholder, rows = 4, disabled, style: extra }) {
   const onDragOver = (e) => {
     if (e.dataTransfer.types.includes('application/agentmesh-var')) e.preventDefault();
   };
@@ -486,8 +588,9 @@ function Textarea({ value, onChange, placeholder, rows = 4 }) {
   return (
     <textarea value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={rows}
       onDragOver={onDragOver} onDrop={onDrop}
-      style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
-      onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent-btn)')}
+      disabled={disabled}
+      style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6, opacity: disabled ? 0.6 : 1, ...extra }}
+      onFocus={(e) => !disabled && (e.currentTarget.style.borderColor = 'var(--accent-btn)')}
       onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
     />
   );
@@ -557,6 +660,250 @@ function VariablePicker({ onSelect }) {
   );
 }
 
+function ApiConfigSection({ data, update, prefix = 'api_', urlKey }) {
+  const [activeTab, setActiveTab] = useState('endpoint');
+  const scrollRef = useRef(null);
+
+  const tabs = [
+    { id: 'endpoint', label: 'Endpoint' },
+    { id: 'headers', label: 'Headers' },
+    { id: 'auth', label: 'Auth' },
+    { id: 'body', label: 'Body' }
+  ];
+
+  const method = data[`${prefix}method`] || 'POST';
+  const actualUrlKey = urlKey || `${prefix}url`;
+
+  const scrollTabs = (dir) => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: dir * 80, behavior: 'smooth' });
+    }
+  };
+
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', marginBottom: 20, background: '#fff' }}>
+      <style>{`.hide-scroll::-webkit-scrollbar { display: none; }`}</style>
+      <div style={{ display: 'flex', alignItems: 'center', background: '#F8FAFC', borderBottom: '1px solid var(--border)' }}>
+        <button onClick={() => scrollTabs(-1)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '10px 8px', color: 'var(--text-muted)', fontSize: 10 }}>◀</button>
+        <div ref={scrollRef} className="hide-scroll" style={{ display: 'flex', flex: 1, overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+          {tabs.map(t => (
+            <div
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              style={{
+                padding: '10px 16px', fontSize: 12, fontWeight: activeTab === t.id ? 700 : 500,
+                color: activeTab === t.id ? 'var(--accent-btn)' : 'var(--text-muted)',
+                borderBottom: activeTab === t.id ? '2px solid var(--accent-btn)' : '2px solid transparent',
+                cursor: 'pointer', flexShrink: 0, flexGrow: 1, textAlign: 'center', transition: 'all 0.2s'
+              }}
+            >
+              {t.label}
+            </div>
+          ))}
+        </div>
+        <button onClick={() => scrollTabs(1)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '10px 8px', color: 'var(--text-muted)', fontSize: 10 }}>▶</button>
+      </div>
+      
+      <div style={{ padding: 16 }}>
+        {activeTab === 'endpoint' && (
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ width: '120px' }}>
+              <Field label="Method">
+                <Select
+                  value={method}
+                  onChange={(v) => update({ [`${prefix}method`]: v })}
+                  options={['GET', 'POST', 'PUT', 'DELETE', 'PATCH']}
+                />
+              </Field>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Field label="Endpoint URL" hint="Supports {{key}} interpolation">
+                <Input
+                  value={data[actualUrlKey] || ''}
+                  onChange={(v) => update({ [actualUrlKey]: v })}
+                  placeholder="https://api.example.com/..."
+                />
+              </Field>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'headers' && (
+          <>
+            <KeyValueEditor
+              label="Headers"
+              value={data[`${prefix}headers`] || {}}
+              onChange={(v) => update({ [`${prefix}headers`]: v })}
+              hint="e.g. Content-Type: application/json"
+            />
+            <KeyValueEditor
+              label="Query Params"
+              value={data[`${prefix}params`] || {}}
+              onChange={(v) => update({ [`${prefix}params`]: v })}
+              hint="Appended to the URL"
+            />
+          </>
+        )}
+
+        {activeTab === 'auth' && (
+          <>
+            {data.connection_id ? (
+              <div style={{ padding: 12, background: '#F1F5F9', borderRadius: 8, fontSize: 12, color: '#64748B', textAlign: 'center' }}>
+                Authentication is automatically handled by the Enterprise Connector (<strong>{data.connection_id}</strong>).
+              </div>
+            ) : (
+              <>
+                <Field label="Auth Type">
+                  <Select
+                    value={data[`${prefix}auth_type`] || 'None'}
+                    onChange={(v) => update({ [`${prefix}auth_type`]: v })}
+                    options={['None', 'Basic', 'Bearer']}
+                  />
+                </Field>
+
+                {data[`${prefix}auth_type`] === 'Basic' && (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Field label="Username">
+                      <Input value={data[`${prefix}auth_config`]?.username} onChange={(v) => update({ [`${prefix}auth_config`]: { ...data[`${prefix}auth_config`], username: v } })} placeholder="user" />
+                    </Field>
+                    <Field label="Password">
+                      <Input value={data[`${prefix}auth_config`]?.password} onChange={(v) => update({ [`${prefix}auth_config`]: { ...data[`${prefix}auth_config`], password: v } })} placeholder="pass" type="password" />
+                    </Field>
+                  </div>
+                )}
+
+                {data[`${prefix}auth_type`] === 'Bearer' && (
+                  <Field label="Token">
+                    <Input value={data[`${prefix}auth_config`]?.token} onChange={(v) => update({ [`${prefix}auth_config`]: { ...data[`${prefix}auth_config`], token: v } })} placeholder="Bearer token…" type="password" />
+                  </Field>
+                )}
+              </>
+            )}
+          </>
+        )}
+
+        {activeTab === 'body' && (
+          <>
+            {!['POST', 'PUT', 'PATCH'].includes(method) && (
+              <div style={{ padding: 12, background: '#F1F5F9', borderRadius: 8, fontSize: 12, color: '#64748B', textAlign: 'center' }}>
+                Request Body is typically not used with {method} requests.
+              </div>
+            )}
+            {['POST', 'PUT', 'PATCH'].includes(method) && (
+              <Field label="Request Body" hint="JSON or raw text. Supports {{interpolation}}.">
+                <Textarea
+                  value={data[`${prefix}body`] || ''}
+                  onChange={(v) => update({ [`${prefix}body`]: v })}
+                  placeholder='{"id": "{{item.id}}"}'
+                  rows={6}
+                />
+              </Field>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CollapsibleApiConfig({ data, update, idx, onRemove }) {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  return (
+    <div style={{ marginBottom: 16, border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden', background: '#fff' }}>
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        style={{ padding: '12px 14px', background: isOpen ? '#F8FAFC' : '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', borderBottom: isOpen ? '1px solid var(--border)' : 'none', transition: 'background 0.2s' }}
+      >
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>{isOpen ? '▼' : '▶'}</span>
+          Additional API #{idx + 1}
+          {data.url && <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>- {data.url}</span>}
+        </div>
+        <div 
+          onClick={(e) => { e.stopPropagation(); onRemove(); }} 
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '4px', cursor: 'pointer', transition: 'background 0.2s' }}
+          onMouseEnter={(e) => e.currentTarget.style.background = '#FEE2E2'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+        >
+          <FiTrash2 size={14} color="#EF4444" />
+        </div>
+      </div>
+      {isOpen && (
+        <div style={{ padding: '14px' }}>
+          <ApiConfigSection data={data} update={update} prefix="" urlKey="url" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CustomCollapsibleApiConfig({ apiDef, index, list, keyName, update, providerOptions = [] }) {
+  const [isOpen, setIsOpen] = useState(true);
+
+  const localUpdate = (changes) => {
+    const next = [...list];
+    next[index] = { ...next[index], ...changes };
+    update({ [keyName]: next });
+  };
+
+  const isCustom = apiDef.provider === 'custom' || !apiDef.provider;
+
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', background: '#fff', marginTop: 12 }}>
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        style={{ padding: '12px 16px', background: isOpen ? '#F8FAFC' : '#F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: isOpen ? '1px solid var(--border)' : 'none', cursor: 'pointer', transition: 'background 0.2s' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }} onClick={(e) => e.stopPropagation()}>
+          <span style={{ color: 'var(--text-muted)', fontSize: 10, marginRight: 4, cursor: 'pointer' }} onClick={() => setIsOpen(!isOpen)}>{isOpen ? '▼' : '▶'}</span>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: isCustom ? '#8B5CF6' : '#10B981' }}></div>
+          
+          <select
+            value={apiDef.provider || 'custom'}
+            onChange={(e) => localUpdate({ provider: e.target.value })}
+            style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border)', background: '#fff', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', outline: 'none', cursor: 'pointer', minWidth: 160 }}
+          >
+            {providerOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+          </select>
+
+          {isCustom && (
+            <input 
+              placeholder="API Name..."
+              value={apiDef.name || ''}
+              onChange={(e) => localUpdate({ name: e.target.value })}
+              style={{ border: 'none', background: 'transparent', fontWeight: 500, fontSize: 13, outline: 'none', color: 'var(--text-primary)', flex: 1, marginLeft: 8 }}
+            />
+          )}
+        </div>
+        <div 
+          onClick={(e) => {
+            e.stopPropagation();
+            const next = list.filter((_, i) => i !== index);
+            update({ [keyName]: next });
+          }} 
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: '6px', cursor: 'pointer', transition: 'background 0.2s' }}
+          onMouseEnter={(e) => e.currentTarget.style.background = '#FEE2E2'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+        >
+          <FiTrash2 size={15} color="#EF4444" />
+        </div>
+      </div>
+      {isOpen && (
+        <div style={{ padding: 16 }}>
+          {isCustom ? (
+            <ApiConfigSection data={apiDef} update={localUpdate} prefix="" urlKey="url" />
+          ) : (
+            <div style={{ padding: '12px 16px', background: '#F0FDF4', border: '1px dashed #86EFAC', borderRadius: 8, color: '#166534', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 16 }}>✨</span> Built-in Mock Integration. Simulated JSON response will be automatically injected.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LogicHelper() {
   const [isOpen, setIsOpen] = useState(false);
   const examples = [
@@ -581,10 +928,10 @@ function LogicHelper() {
   ];
 
   return (
-    <div style={{ marginTop: 15, borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden', background: '#F8FAFC' }}>
+    <div style={{ marginTop: 15, borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden', background: 'var(--bg-card-neutral, #F8FAFC)' }}>
       <div
         onClick={() => setIsOpen(!isOpen)}
-        style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F1F5F9' }}
+        style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-hover, #F1F5F9)' }}
       >
         <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <FiBookOpen size={12} color="var(--accent-btn)" /> LOGIC EXAMPLES GUIDE
@@ -627,7 +974,7 @@ function Select({ value, onChange, options, disabled }) {
   );
 }
 
-function SearchableSelect({ value, onChange, options, placeholder = "Search...", disabled }) {
+function SearchableSelect({ value, onChange, options, placeholder = "Search...", disabled, showSearch = true }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const containerRef = useRef(null);
@@ -663,7 +1010,7 @@ function SearchableSelect({ value, onChange, options, placeholder = "Search...",
           alignItems: 'center',
           justifyContent: 'space-between',
           cursor: disabled ? 'not-allowed' : 'pointer',
-          background: disabled ? '#F1F5F9' : 'white',
+          background: disabled ? 'var(--bg-primary, #F1F5F9)' : 'var(--bg-secondary, white)',
           borderColor: isOpen ? 'var(--accent-btn)' : 'var(--border)',
           opacity: disabled ? 0.7 : 1
         }}
@@ -682,24 +1029,26 @@ function SearchableSelect({ value, onChange, options, placeholder = "Search...",
       {isOpen && (
         <div style={{
           position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
-          background: 'white', border: '1px solid var(--border)', borderRadius: 10,
+          background: 'var(--bg-secondary, white)', border: '1px solid var(--border)', borderRadius: 10,
           boxShadow: 'var(--shadow-xl)', zIndex: 1000, overflow: 'hidden'
         }}>
-          <div style={{ padding: '8px', borderBottom: '1px solid var(--border-light)', background: '#F8FAFC' }}>
-            <div style={{ position: 'relative' }}>
-              <FiSearch size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <input
-                ref={inputRef}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Type to filter..."
-                style={{
-                  width: '100%', padding: '7px 10px 7px 32px', borderRadius: 6, border: '1px solid var(--border)',
-                  fontSize: 12, outline: 'none', background: 'white'
-                }}
-              />
+          {showSearch && (
+            <div style={{ padding: '8px', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-card-neutral, #F8FAFC)' }}>
+              <div style={{ position: 'relative' }}>
+                <FiSearch size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input
+                  ref={inputRef}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Type to filter..."
+                  style={{
+                    width: '100%', padding: '7px 10px 7px 32px', borderRadius: 6, border: '1px solid var(--border)',
+                    fontSize: 12, outline: 'none', background: 'var(--bg-secondary, white)'
+                  }}
+                />
+              </div>
             </div>
-          </div>
+          )}
           <div style={{ maxHeight: 220, overflowY: 'auto', padding: '4px' }}>
             {filtered.length === 0 ? (
               <div style={{ padding: '12px', fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>No results found</div>
@@ -710,13 +1059,30 @@ function SearchableSelect({ value, onChange, options, placeholder = "Search...",
                   onClick={() => { onChange(o.value); setIsOpen(false); }}
                   style={{
                     padding: '8px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 13,
-                    background: value === o.value ? '#F0F4FF' : 'transparent',
+                    background: value === o.value ? 'var(--bg-card-info, #F0F4FF)' : 'transparent',
                     color: value === o.value ? 'var(--accent-btn)' : 'var(--text-primary)',
                     fontWeight: value === o.value ? 600 : 400,
-                    transition: 'all 0.15s'
+                    transition: 'all 0.15s',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                   }}
-                  onMouseEnter={(e) => { if (value !== o.value) e.currentTarget.style.background = '#F8FAFC'; }}
-                  onMouseLeave={(e) => { if (value !== o.value) e.currentTarget.style.background = 'transparent'; }}
+                  onMouseEnter={(e) => {
+                    if (value !== o.value) {
+                      e.currentTarget.style.background = '#F8FAFC';
+                      e.currentTarget.style.color = 'var(--text-primary)';
+                    } else {
+                      e.currentTarget.style.background = 'var(--bg-card-info, #F0F4FF)';
+                      e.currentTarget.style.color = 'var(--accent-btn)';
+                    }
+                  }}
+                  onMouseLeave={(e) => { 
+                    if (value !== o.value) {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = 'var(--text-primary)';
+                    } else {
+                      e.currentTarget.style.background = 'var(--bg-card-info, #F0F4FF)';
+                      e.currentTarget.style.color = 'var(--accent-btn)';
+                    }
+                  }}
                 >
                   {o.label}
                   {o.sublabel && <div style={{ fontSize: 10, opacity: 0.6, marginTop: 1 }}>{o.sublabel}</div>}
@@ -737,7 +1103,7 @@ function Toggle({ checked, onChange, label }) {
         onClick={() => onChange(!checked)}
         style={{
           width: 40, height: 22, borderRadius: 11, cursor: 'pointer', position: 'relative',
-          background: checked ? 'var(--accent-btn)' : '#e2e8f0',
+          background: checked ? 'var(--accent-btn)' : 'var(--border, #e2e8f0)',
           transition: 'all 0.2s',
           flexShrink: 0,
         }}
@@ -804,7 +1170,7 @@ function KeyValueEditor({ value = {}, onChange, label, hint }) {
         <button
           onClick={() => onChange({ ...value, [`key_${entries.length + 1}`]: '' })}
           style={{
-            padding: '8px', background: '#F8FAFC', border: '1px dashed var(--border)',
+            padding: '8px', background: 'var(--bg-card-neutral, #F8FAFC)', border: '1px dashed var(--border)',
             borderRadius: 8, fontSize: 11, color: 'var(--accent-btn)', cursor: 'pointer',
             fontWeight: 600, marginTop: 4
           }}
@@ -817,7 +1183,7 @@ function KeyValueEditor({ value = {}, onChange, label, hint }) {
   );
 }
 
-function ToolConfigModal({ toolName, config = {}, onChange, onClose, onRemove, availableTools = [] }) {
+function ToolConfigModal({ toolName, config = {}, onChange, onClose, availableTools = [] }) {
   const toolInfo = availableTools.find(t => t.name === toolName) || { name: toolName };
 
   // Helper to update a single config key
@@ -871,65 +1237,39 @@ function ToolConfigModal({ toolName, config = {}, onChange, onClose, onRemove, a
           <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Parameter Overrides (Human-Only)</div>
 
-           {fields.length > 0 ? (
+          {fields.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {fields.map(f => {
-                if (f.type === 'boolean') {
-                  return (
-                    <Field key={f.name} label={f.name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} hint={f.description}>
-                      <Toggle
-                        checked={config[f.name] ?? f.default ?? false}
-                        onChange={(v) => set(f.name, v)}
-                        label=""
-                      />
-                    </Field>
-                  );
-                }
-                return (
-                  <Field key={f.name} label={f.name.replace(/_/g, ' ')} hint={f.description}>
-                    {f.options && f.options.length > 0 ? (
-                      <Select
-                        value={config[f.name] || f.default}
-                        onChange={(v) => set(f.name, f.type === 'number' ? parseFloat(v) : v)}
-                        options={f.options.map(o => ({ value: o, label: o }))}
-                      />
-                    ) : (
-                      <Input
-                        type={
-                          f.type === 'number' ? 'number' :
-                            (f.type === 'password' || f.name.toLowerCase().includes('password') || f.name.toLowerCase().includes('key')) ? 'password' :
-                              'text'
-                        }
-                        value={config[f.name]}
-                        onChange={(v) => set(f.name, f.type === 'number' ? parseFloat(v) : v)}
-                        placeholder={f.name === 'collection_name' ? 'default' : ''}
-                      />
-                    )}
-                  </Field>
-                );
-              })}
+              {fields.map(f => (
+                <Field key={f.name} label={f.name.replace(/_/g, ' ')} hint={f.description}>
+                  {f.options && f.options.length > 0 ? (
+                    <Select
+                      value={config[f.name] || f.default}
+                      onChange={(v) => set(f.name, f.type === 'number' ? parseFloat(v) : v)}
+                      options={f.options.map(o => ({ value: o, label: o }))}
+                    />
+                  ) : (
+                    <Input
+                      type={
+                        f.type === 'number' ? 'number' :
+                          (f.type === 'password' || f.name.toLowerCase().includes('password') || f.name.toLowerCase().includes('key')) ? 'password' :
+                            'text'
+                      }
+                      value={config[f.name]}
+                      onChange={(v) => set(f.name, f.type === 'number' ? parseFloat(v) : v)}
+                      placeholder={f.name === 'collection_name' ? 'default' : ''}
+                    />
+                  )}
+                </Field>
+              ))}
             </div>
           ) : (
-            <div style={{ padding: 12, background: '#F1F5F9', borderRadius: 8, fontSize: 12, color: '#475569', textAlign: 'center' }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-neutral, #F1F5F9)', borderRadius: 8, fontSize: 12, color: 'var(--text-secondary, #475569)', textAlign: 'center' }}>
               No specific parameter overrides defined for this tool.
             </div>
           )}
         </div>
 
-        <div style={{ padding: '16px 20px', background: '#F8FAFC', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {onRemove && (
-            <button
-              onClick={() => {
-                onRemove(toolName);
-                onClose();
-              }}
-              style={{ padding: '8px 14px', background: '#F87171', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-              title="Remove this tool from the agent"
-            >
-              <FiTrash2 size={14} />
-              Remove Tool
-            </button>
-          )}
+        <div style={{ padding: '16px 20px', background: '#F8FAFC', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
           <button
             onClick={onClose}
             style={{ padding: '8px 16px', background: 'var(--accent-btn)', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
@@ -1029,7 +1369,7 @@ function ToolTagInput({ value = [], configs = {}, onUpdate, availableTools = [] 
                 alignItems: 'center',
                 gap: 6,
                 padding: '5px 10px',
-                background: 'white',
+                background: 'var(--bg-secondary, white)',
                 border: '1px solid var(--border)',
                 borderRadius: 20,
                 fontSize: 11,
@@ -1042,7 +1382,7 @@ function ToolTagInput({ value = [], configs = {}, onUpdate, availableTools = [] 
               {t}
               <button
                 onClick={() => setConfigTool(t)}
-                style={{ background: 'none', border: 'none', color: '#4285F4', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
+                style={{ background: 'none', border: 'none', color: 'var(--accent-btn, #4285F4)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
                 title="Configure parameters"
               >
                 <FiSettings size={12} />
@@ -1063,18 +1403,18 @@ function ToolTagInput({ value = [], configs = {}, onUpdate, availableTools = [] 
             height: 26,
             borderRadius: 8,
             border: '1px solid var(--border)',
-            background: 'white',
+            background: 'var(--bg-secondary, white)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            color: isOpen ? 'var(--accent-btn)' : '#64748B',
+            color: isOpen ? 'var(--accent-btn)' : 'var(--text-secondary, #64748B)',
             boxShadow: 'var(--shadow-sm)',
             transition: 'all 0.2s',
             zIndex: 5
           }}
           onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-btn)'; e.currentTarget.style.color = 'var(--accent-btn)'; }}
-          onMouseLeave={(e) => { if (!isOpen) { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = '#64748B'; } }}
+          onMouseLeave={(e) => { if (!isOpen) { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; } }}
         >
           {isOpen ? <FiX size={14} /> : <FiPlus size={14} />}
         </button>
@@ -1087,13 +1427,6 @@ function ToolTagInput({ value = [], configs = {}, onUpdate, availableTools = [] 
           availableTools={availableTools}
           onClose={() => setConfigTool(null)}
           onChange={(newConf) => onUpdate(value, { ...configs, [configTool]: newConf })}
-          onRemove={(tName) => {
-            const nextTools = value.filter((x) => x !== tName);
-            const nextConfigs = { ...configs };
-            delete nextConfigs[tName];
-            onUpdate(nextTools, nextConfigs);
-            setConfigTool(null);
-          }}
         />
       )}
 
@@ -1104,7 +1437,7 @@ function ToolTagInput({ value = [], configs = {}, onUpdate, availableTools = [] 
           left: 0,
           right: 0,
           zIndex: 110,
-          background: 'white',
+          background: 'var(--bg-secondary, white)',
           border: '1px solid var(--border)',
           borderRadius: 12,
           boxShadow: 'var(--shadow-2xl)',
@@ -1112,7 +1445,7 @@ function ToolTagInput({ value = [], configs = {}, onUpdate, availableTools = [] 
           overflow: 'hidden'
         }}>
           {/* Tool Search Bar */}
-          <div style={{ padding: '10px', borderBottom: '1px solid var(--border-light)', background: '#F8FAFC' }}>
+          <div style={{ padding: '10px', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-card-neutral, #F8FAFC)' }}>
             <div style={{ position: 'relative' }}>
               <FiSearch size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input
@@ -1127,7 +1460,7 @@ function ToolTagInput({ value = [], configs = {}, onUpdate, availableTools = [] 
                   border: '1px solid var(--border)',
                   fontSize: 12,
                   outline: 'none',
-                  background: 'white',
+                  background: 'var(--bg-primary, white)',
                   fontFamily: FONT
                 }}
               />
@@ -1152,7 +1485,7 @@ function ToolTagInput({ value = [], configs = {}, onUpdate, availableTools = [] 
                     transition: 'all 0.15s',
                     margin: '2px'
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = '#F0F4FF'; e.currentTarget.style.transform = 'translateX(4px)'; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-card-info, #F0F4FF)'; e.currentTarget.style.transform = 'translateX(4px)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.transform = 'translateX(0)'; }}
                 >
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1205,7 +1538,7 @@ function FormFieldsEditor({ fields = [], onChange }) {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {fields.map((f, i) => (
-          <div key={i} style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, border: '1px solid var(--border)', position: 'relative' }}>
+          <div key={i} style={{ padding: 12, background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 10, border: '1px solid var(--border)', position: 'relative' }}>
             <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 4 }}>
               <button onClick={() => moveField(i, -1)} disabled={i === 0} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', opacity: i === 0 ? 0.3 : 1 }}><FiChevronDown size={14} style={{ transform: 'rotate(180deg)' }} /></button>
               <button onClick={() => moveField(i, 1)} disabled={i === fields.length - 1} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', opacity: i === fields.length - 1 ? 0.3 : 1 }}><FiChevronDown size={14} /></button>
@@ -1240,7 +1573,6 @@ function FormFieldsEditor({ fields = [], onChange }) {
                       { value: 'multiselect', label: 'Multi-Select' },
                       { value: 'date', label: 'Date Picker' },
                       { value: 'boolean', label: 'Checkbox/Toggle' },
-                      { value: 'rating', label: 'Star Rating (1-5)' },
                       { value: 'file', label: 'File Upload' },
                       { value: 'remark', label: 'Info / Remark (Static Text)' },
                     ]}
@@ -1263,6 +1595,75 @@ function FormFieldsEditor({ fields = [], onChange }) {
               )}
             </div>
 
+            {f.type === 'file' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12, borderTop: '1px solid var(--border-light, #e2e8f0)', paddingTop: 12 }}>
+                <div>
+                  <Field label="Storage Mode" hint="Choose whether to save the file in context as a Base64 binary string or as a path reference.">
+                    <Select
+                      value={f.fileStorageMode || 'path'}
+                      onChange={(v) => updateField(i, { fileStorageMode: v })}
+                      options={[
+                        { value: 'path', label: 'File Path Reference (Recommended)' },
+                        { value: 'binary', label: 'Direct Binary (Base64)' },
+                      ]}
+                    />
+                  </Field>
+                </div>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <Field label="Max Size (MB)">
+                      <Input
+                        type="number"
+                        value={f.maxSizeMB || 10}
+                        onChange={(v) => updateField(i, { maxSizeMB: parseFloat(v) || 10 })}
+                        placeholder="10"
+                      />
+                    </Field>
+                  </div>
+                  <div style={{ flex: 1, paddingTop: 10 }}>
+                    <Toggle
+                      checked={f.allowMultiple || false}
+                      onChange={(v) => updateField(i, { allowMultiple: v })}
+                      label="Allow Multiple Files"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Allowed Formats</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, background: 'var(--bg-canvas, #F1F5F9)', padding: 10, borderRadius: 8 }}>
+                    {[
+                      { key: 'pdf', label: 'PDF Documents (.pdf)' },
+                      { key: 'csv', label: 'CSV (.csv)' },
+                      { key: 'excel', label: 'Excel (.xlsx, .xls)' },
+                      { key: 'word', label: 'Word (.docx, .doc)' },
+                      { key: 'image', label: 'Images (PNG, JPG, etc.)' },
+                      { key: 'video', label: 'Videos (MP4, etc.)' },
+                      { key: 'zip', label: 'ZIP Archives (.zip)' },
+                      { key: 'json', label: 'JSON Data (.json)' },
+                    ].map(format => {
+                      const allowed = f.allowedTypes || [];
+                      const isChecked = allowed.includes(format.key);
+                      return (
+                        <label key={format.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', color: 'var(--text-primary)' }}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              const nextAllowed = e.target.checked
+                                ? [...allowed, format.key]
+                                : allowed.filter(x => x !== format.key);
+                              updateField(i, { allowedTypes: nextAllowed });
+                            }}
+                          />
+                          {format.label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {(f.type === 'select' || f.type === 'multiselect') && (
               <div style={{ marginTop: 8 }}>
                 <Field label="Options (One per line)" hint="Enter each option on a separate line. Use {{variable}} (e.g. {{techniques}}) to load a list from context.">
@@ -1272,7 +1673,7 @@ function FormFieldsEditor({ fields = [], onChange }) {
                     placeholder={"First Option\nSecond Option\n{{techniques}}"}
                     style={{
                       width: '100%', minHeight: 80, padding: '12px 14px', borderRadius: 10,
-                      border: '1px solid var(--border)', background: '#F9FAFB', fontSize: 13,
+                      border: '1px solid var(--border)', background: 'var(--bg-primary, #F9FAFB)', color: 'var(--text-primary)',
                       fontFamily: 'inherit', outline: 'none', resize: 'vertical', boxSizing: 'border-box'
                     }}
                   />
@@ -1289,7 +1690,7 @@ function FormFieldsEditor({ fields = [], onChange }) {
                     placeholder={"General Terms:\n1. Non-refundable\n2. Requires ID verification"}
                     style={{
                       width: '100%', minHeight: 100, padding: '12px 14px', borderRadius: 10,
-                      border: '1px solid var(--border)', background: '#F9FAFB', fontSize: 13,
+                      border: '1px solid var(--border)', background: 'var(--bg-primary, #F9FAFB)', color: 'var(--text-primary)',
                       fontFamily: 'inherit', outline: 'none', resize: 'vertical', boxSizing: 'border-box'
                     }}
                   />
@@ -1303,14 +1704,408 @@ function FormFieldsEditor({ fields = [], onChange }) {
           onClick={addField}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            padding: '12px', borderRadius: 10, border: '1px dashed #CBD5E1',
-            background: 'white', color: '#64748B', fontSize: 12, fontWeight: 600,
+            padding: '12px', borderRadius: 10, border: '1px dashed var(--border)',
+            background: 'var(--bg-card-neutral, white)', color: 'var(--text-secondary, #64748B)', fontSize: 12, fontWeight: 600,
             cursor: 'pointer', transition: 'all 0.2s'
           }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-btn)'; e.currentTarget.style.color = 'var(--accent-btn)'; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#64748B'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
         >
           <FiPlus size={14} /> Add Form Field
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const MiniatureToggle = ({ checked, onChange }) => (
+  <div
+    onClick={() => onChange(!checked)}
+    style={{
+      width: 28,
+      height: 16,
+      borderRadius: 8,
+      cursor: 'pointer',
+      position: 'relative',
+      background: checked ? 'var(--theme-primary, #8B5CF6)' : '#E2E8F0',
+      transition: 'all 0.2s',
+      flexShrink: 0
+    }}
+  >
+    <div style={{
+      position: 'absolute',
+      top: 2,
+      left: checked ? 14 : 2,
+      width: 12,
+      height: 12,
+      borderRadius: '50%',
+      background: '#fff',
+      transition: 'left 0.2s ease',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+    }} />
+  </div>
+);
+
+function WeightageCategoriesEditor({ categories = [], onChange }) {
+  const [collapsedCategories, setCollapsedCategories] = useState({});
+  const [collapsedFields, setCollapsedFields] = useState({});
+  const [conditionWidthPct, setConditionWidthPct] = useState(65);
+  const dragStartRef = useRef({ x: 0, pct: 65 });
+
+  const handleMouseDown = (e, container) => {
+    e.preventDefault();
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    dragStartRef.current = {
+      startX: e.clientX,
+      startPct: conditionWidthPct,
+      width: rect.width
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleMouseMove = (e) => {
+    const { startX, startPct, width } = dragStartRef.current;
+    if (!width) return;
+    const deltaX = e.clientX - startX;
+    const deltaPct = (deltaX / width) * 100;
+    let newPct = startPct + deltaPct;
+    newPct = Math.max(20, Math.min(80, newPct));
+    setConditionWidthPct(newPct);
+  };
+
+  const handleMouseUp = () => {
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  };
+
+  const sanitizeName = (val) => {
+    // lowercase, replace spaces with underscores, remove any other invalid special characters
+    return val.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+  };
+
+  const addCategory = () => {
+    const nextName = sanitizeName(`category_${categories.length + 1}`);
+    const next = [...categories, { name: nextName, fields: [], enabled: true }];
+    onChange(next);
+  };
+
+  const updateCategory = (catIdx, patch) => {
+    const next = [...categories];
+    if (patch.name !== undefined) {
+      patch.name = sanitizeName(patch.name);
+    }
+    next[catIdx] = { ...next[catIdx], ...patch };
+    onChange(next);
+  };
+
+  const removeCategory = (catIdx) => {
+    const next = categories.filter((_, i) => i !== catIdx);
+    onChange(next);
+  };
+
+  const addField = (catIdx) => {
+    const cat = categories[catIdx];
+    const newField = { name: `new_field`, match_strategy: 'first_match', default_weight: 0.0, conditions: [], enabled: true };
+    const nextFields = [...(cat.fields || []), newField];
+    updateCategory(catIdx, { fields: nextFields });
+  };
+
+  const updateField = (catIdx, fieldIdx, patch) => {
+    const cat = categories[catIdx];
+    const nextFields = [...(cat.fields || [])];
+    if (patch.name !== undefined) {
+      patch.name = sanitizeName(patch.name);
+    }
+    nextFields[fieldIdx] = { ...nextFields[fieldIdx], ...patch };
+    updateCategory(catIdx, { fields: nextFields });
+  };
+
+  const removeField = (catIdx, fieldIdx) => {
+    const cat = categories[catIdx];
+    const nextFields = (cat.fields || []).filter((_, i) => i !== fieldIdx);
+    updateCategory(catIdx, { fields: nextFields });
+  };
+
+  const addCondition = (catIdx, fieldIdx) => {
+    const field = categories[catIdx].fields[fieldIdx];
+    const newCondition = { condition: 'variable > 10', weight: 10.0, enabled: true };
+    const nextConditions = [...(field.conditions || []), newCondition];
+    updateField(catIdx, fieldIdx, { conditions: nextConditions });
+  };
+
+  const updateCondition = (catIdx, fieldIdx, condIdx, patch) => {
+    const field = categories[catIdx].fields[fieldIdx];
+    const nextConditions = [...(field.conditions || [])];
+    nextConditions[condIdx] = { ...nextConditions[condIdx], ...patch };
+    updateField(catIdx, fieldIdx, { conditions: nextConditions });
+  };
+
+  const removeCondition = (catIdx, fieldIdx, condIdx) => {
+    const field = categories[catIdx].fields[fieldIdx];
+    const nextConditions = (field.conditions || []).filter((_, i) => i !== condIdx);
+    updateField(catIdx, fieldIdx, { conditions: nextConditions });
+  };
+
+  const toggleCategoryCollapse = (catIdx) => {
+    setCollapsedCategories(prev => ({ ...prev, [catIdx]: !prev[catIdx] }));
+  };
+
+  const toggleFieldCollapse = (catIdx, fieldIdx) => {
+    const key = `${catIdx}_${fieldIdx}`;
+    setCollapsedFields(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <FiSliders size={12} color="var(--accent-btn)" /> Categories & Rules
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {categories.map((cat, catIdx) => {
+          const isCatCollapsed = collapsedCategories[catIdx];
+          const isCatEnabled = cat.enabled !== false;
+          return (
+            <div key={catIdx} style={{ padding: 14, background: '#F8FAFC', borderRadius: 12, border: '1px solid var(--border)', position: 'relative', opacity: isCatEnabled ? 1 : 0.6, boxShadow: '0 2px 8px rgba(124, 58, 237, 0.04)' }}>
+              
+              {/* Category Header Controls */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, position: 'absolute', top: 12, right: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center' }} title="Toggle Category Enabled">
+                  <MiniatureToggle
+                    checked={isCatEnabled}
+                    onChange={(v) => updateCategory(catIdx, { enabled: v })}
+                  />
+                </div>
+                <button
+                  onClick={() => toggleCategoryCollapse(catIdx)}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  title={isCatCollapsed ? "Expand Category" : "Collapse Category"}
+                >
+                  <FiChevronDown size={16} style={{ transform: isCatCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }} />
+                </button>
+                <button
+                  onClick={() => removeCategory(catIdx)}
+                  style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  title="Delete Category"
+                >
+                  <FiTrash2 size={14} />
+                </button>
+              </div>
+
+              {/* Category Name Input */}
+              <div style={{ marginRight: 100 }}>
+                <Field label="Category Name" hint="Lowercase & underscores only. spaces auto-replaced by _">
+                  <Input
+                    value={cat.name}
+                    onChange={(v) => updateCategory(catIdx, { name: v })}
+                    placeholder="e.g. loan_scoring"
+                    disabled={!isCatEnabled}
+                  />
+                </Field>
+              </div>
+
+              {/* Fields List (collapsible) */}
+              {!isCatCollapsed && (
+                <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fields in {cat.name}</div>
+                  
+                  {(cat.fields || []).map((field, fieldIdx) => {
+                    const fieldKey = `${catIdx}_${fieldIdx}`;
+                    const isFieldCollapsed = collapsedFields[fieldKey];
+                    const isFieldEnabled = field.enabled !== false;
+                    return (
+                      <div key={fieldIdx} style={{ padding: 12, background: 'white', borderRadius: 10, border: '1px solid #E2E8F0', opacity: isFieldEnabled && isCatEnabled ? 1 : 0.6, boxShadow: '0 1px 4px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        
+                        {/* Field Header Controls (Responsive layout) */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F1F5F9', paddingBottom: 6 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>Field Config</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ display: 'flex', alignItems: 'center' }} title="Toggle Field Enabled">
+                              <MiniatureToggle
+                                checked={isFieldEnabled}
+                                onChange={(v) => updateField(catIdx, fieldIdx, { enabled: v })}
+                              />
+                            </div>
+                            <button
+                              onClick={() => toggleFieldCollapse(catIdx, fieldIdx)}
+                              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                              title={isFieldCollapsed ? "Expand Field" : "Collapse Field"}
+                            >
+                              <FiChevronDown size={14} style={{ transform: isFieldCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }} />
+                            </button>
+                            <button
+                              onClick={() => removeField(catIdx, fieldIdx)}
+                              style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                              title="Delete Field"
+                            >
+                              <FiTrash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Field Config Area */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          <div>
+                            <Field label="Field / JSON Path" hint="Lowercase & underscores only.">
+                              <Input
+                                value={field.name}
+                                onChange={(v) => updateField(catIdx, fieldIdx, { name: v })}
+                                placeholder="e.g. loan_amount"
+                                disabled={!isFieldEnabled || !isCatEnabled}
+                              />
+                            </Field>
+                          </div>
+                          
+                          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                            <div style={{ flex: '1 1 120px' }}>
+                              <Field label="Strategy">
+                                <Select
+                                  value={field.match_strategy || 'first_match'}
+                                  onChange={(v) => updateField(catIdx, fieldIdx, { match_strategy: v })}
+                                  options={[
+                                    { value: 'first_match', label: 'First Match' },
+                                    { value: 'sum_all', label: 'Sum All' }
+                                  ]}
+                                  disabled={!isFieldEnabled || !isCatEnabled}
+                                />
+                              </Field>
+                            </div>
+                            <div style={{ flex: '1 1 80px' }}>
+                              <Field label="Fallback Wt">
+                                <Input
+                                  type="number"
+                                  value={field.default_weight ?? 0}
+                                  onChange={(v) => updateField(catIdx, fieldIdx, { default_weight: parseFloat(v) || 0 })}
+                                  placeholder="0"
+                                  disabled={!isFieldEnabled || !isCatEnabled}
+                                />
+                              </Field>
+                            </div>
+                          </div>
+
+                          {/* Conditions (collapsible) */}
+                          {!isFieldCollapsed && (
+                            <div style={{ borderTop: '1px dashed #E2E8F0', paddingTop: 10 }}>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>Conditions & Weights</div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                {(field.conditions || []).map((cond, condIdx) => {
+                                  const isCondEnabled = cond.enabled !== false;
+                                  return (
+                                    <div key={condIdx} style={{ display: 'flex', gap: 0, alignItems: 'center', padding: '6px 8px', background: '#F8FAFC', borderRadius: 8, border: '1px solid #F1F5F9', opacity: isCondEnabled && isFieldEnabled && isCatEnabled ? 1 : 0.6 }}>
+                                      <div style={{ width: `${conditionWidthPct}%`, flexShrink: 0, paddingRight: 4, boxSizing: 'border-box' }}>
+                                        <Textarea
+                                          value={cond.condition}
+                                          onChange={(v) => updateCondition(catIdx, fieldIdx, condIdx, { condition: v })}
+                                          placeholder="Condition (e.g. loan_amount > 5000)"
+                                          disabled={!isCondEnabled || !isFieldEnabled || !isCatEnabled}
+                                          rows={1}
+                                          style={{ minHeight: '34px', padding: '6px 10px' }}
+                                        />
+                                      </div>
+                                      
+                                      {/* Drag Handle */}
+                                      <div
+                                        onMouseDown={(e) => handleMouseDown(e, e.currentTarget.parentNode)}
+                                        style={{
+                                          width: 12,
+                                          cursor: 'col-resize',
+                                          display: 'flex',
+                                          justifyContent: 'center',
+                                          alignItems: 'center',
+                                          alignSelf: 'stretch',
+                                          userSelect: 'none',
+                                          margin: '0 4px',
+                                          position: 'relative'
+                                        }}
+                                        title="Drag to resize horizontally"
+                                      >
+                                        <div style={{ width: 2, height: '85%', background: '#CBD5E1', borderRadius: 1 }} />
+                                      </div>
+
+                                      <div style={{ flex: 1, paddingRight: 8, boxSizing: 'border-box' }}>
+                                        <Input
+                                          value={cond.weight}
+                                          onChange={(v) => {
+                                            const parsed = parseFloat(v);
+                                            const val = isNaN(parsed) ? v : parsed;
+                                            updateCondition(catIdx, fieldIdx, condIdx, { weight: val });
+                                          }}
+                                          placeholder="Weight"
+                                          disabled={!isCondEnabled || !isFieldEnabled || !isCatEnabled}
+                                        />
+                                      </div>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                        <div title="Toggle Condition Enabled" style={{ display: 'flex', alignItems: 'center' }}>
+                                          <MiniatureToggle
+                                            checked={isCondEnabled}
+                                            onChange={(v) => updateCondition(catIdx, fieldIdx, condIdx, { enabled: v })}
+                                          />
+                                        </div>
+                                        <button
+                                          onClick={() => removeCondition(catIdx, fieldIdx, condIdx)}
+                                          style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4 }}
+                                        >
+                                          <FiTrash2 size={12} />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+
+                                <button
+                                  onClick={() => addCondition(catIdx, fieldIdx)}
+                                  disabled={!isFieldEnabled || !isCatEnabled}
+                                  style={{
+                                    alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 4,
+                                    padding: '6px 10px', borderRadius: 6, border: '1px dashed var(--border)',
+                                    background: '#F8FAFC', color: 'var(--text-secondary)', fontSize: 10, fontWeight: 600,
+                                    cursor: isFieldEnabled && isCatEnabled ? 'pointer' : 'not-allowed',
+                                    opacity: isFieldEnabled && isCatEnabled ? 1 : 0.5
+                                  }}
+                                >
+                                  <FiPlus size={10} /> Add Condition
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  <button
+                    onClick={() => addField(catIdx)}
+                    style={{
+                      alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '8px 12px', borderRadius: 8, border: '1px dashed var(--border)',
+                      background: 'white', color: 'var(--text-secondary)', fontSize: 11, fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <FiPlus size={12} /> Add Field
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        <button
+          onClick={addCategory}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            padding: '12px', borderRadius: 10, border: '1px dashed var(--border)',
+            background: 'white', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 600,
+            cursor: 'pointer', transition: 'all 0.2s'
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-btn)'; e.currentTarget.style.color = 'var(--accent-btn)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+        >
+          <FiPlus size={14} /> Add Category
         </button>
       </div>
     </div>
@@ -1397,7 +2192,7 @@ function CustomRegexEditor({ value = [], onChange }) {
             ...inputStyle,
             padding: '7px 10px 7px 32px',
             fontSize: 12,
-            background: '#F8FAFC'
+            background: 'var(--bg-card-neutral, #F8FAFC)'
           }}
         />
       </div>
@@ -1417,13 +2212,13 @@ function CustomRegexEditor({ value = [], onChange }) {
               }}
               style={{
                 padding: '5px 12px',
-                background: isSelected ? '#F5F3FF' : '#F1F5F9',
+                background: isSelected ? 'var(--bg-card-purple, #F5F3FF)' : 'var(--bg-primary, #F1F5F9)',
                 border: '1px solid',
-                borderColor: isSelected ? '#DDD6FE' : 'var(--border)',
+                borderColor: isSelected ? 'var(--border-card-purple, #DDD6FE)' : 'var(--border)',
                 borderRadius: 8,
                 fontSize: 10,
                 cursor: 'pointer',
-                color: isSelected ? '#7C3AED' : 'var(--text-secondary)',
+                color: isSelected ? 'var(--text-card-purple, #7C3AED)' : 'var(--text-secondary)',
                 fontWeight: isSelected ? 600 : 400,
                 transition: 'all 0.2s',
                 display: 'flex',
@@ -1440,10 +2235,10 @@ function CustomRegexEditor({ value = [], onChange }) {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {filteredValue.map((item) => (
-          <div key={item.originalIdx} style={{ padding: 10, background: '#F8FAFC', borderRadius: 8, border: '1px solid var(--border)', position: 'relative' }}>
+          <div key={item.originalIdx} style={{ padding: 10, background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 8, border: '1px solid var(--border)', position: 'relative' }}>
             <button
               onClick={() => remove(item.originalIdx)}
-              style={{ position: 'absolute', top: 6, right: 6, background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}
+              style={{ position: 'absolute', top: 6, right: 6, background: 'none', border: 'none', color: 'var(--text-card-danger, #EF4444)', cursor: 'pointer' }}
             >
               <FiX size={12} />
             </button>
@@ -1459,75 +2254,6 @@ function CustomRegexEditor({ value = [], onChange }) {
             </div>
           </div>
         ))}
-      </div>
-    </div>
-  );
-}
-
-function ClassificationClassesEditor({ value = [], onChange, engine }) {
-  const add = () => {
-    if (engine === 'regex') {
-      onChange([...value, { class: '', regex_patterns: '' }]);
-    } else {
-      onChange([...value, { class: '', description: '' }]);
-    }
-  };
-  const updateItem = (idx, patch) => {
-    const next = [...value];
-    next[idx] = { ...next[idx], ...patch };
-    onChange(next);
-  };
-  const remove = (idx) => onChange(value.filter((_, i) => i !== idx));
-
-  return (
-    <div style={{ marginTop: 15 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-          {engine === 'regex' ? 'Classes & Regex Patterns' : 'Classes & Descriptions'}
-        </label>
-        <button
-          onClick={add}
-          style={{
-            background: 'none', border: 'none', color: 'var(--accent-btn)',
-            cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center',
-            borderRadius: 4, transition: 'background 0.2s'
-          }}
-        >
-          <FiPlus size={16} strokeWidth={3} />
-        </button>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {value.map((item, idx) => (
-          <div key={idx} style={{ padding: 10, background: '#F8FAFC', borderRadius: 8, border: '1px solid var(--border)', position: 'relative' }}>
-            <button
-              onClick={() => remove(idx)}
-              style={{ position: 'absolute', top: 6, right: 6, background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}
-            >
-              <FiX size={12} />
-            </button>
-            <div style={{ marginBottom: 6 }}>
-              <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>CLASS NAME</label>
-              <Input value={item.class} onChange={(v) => updateItem(idx, { class: v })} placeholder="e.g. Support" style={{ padding: '4px 8px', fontSize: 11 }} />
-            </div>
-            {engine === 'regex' ? (
-              <div>
-                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>REGEX PATTERNS (comma-separated)</label>
-                <Input value={item.regex_patterns || ''} onChange={(v) => updateItem(idx, { regex_patterns: v })} placeholder="e.g. help,support,login" style={{ padding: '4px 8px', fontSize: 11 }} />
-              </div>
-            ) : (
-              <div>
-                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DESCRIPTION</label>
-                <Input value={item.description || ''} onChange={(v) => updateItem(idx, { description: v })} placeholder="e.g. User asking for tech help" style={{ padding: '4px 8px', fontSize: 11 }} />
-              </div>
-            )}
-          </div>
-        ))}
-        {value.length === 0 && (
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', padding: '4px 0' }}>
-            No classes defined. Click the plus button above to add classes.
-          </div>
-        )}
       </div>
     </div>
   );
@@ -1568,9 +2294,9 @@ function NodeIdList({ value = [], onChange, placeholder, allNodes = [] }) {
         {value.filter(id => allNodes.some(n => n.id === id)).map((id) => {
           const targetNode = allNodes.find(n => n.id === id);
           return (
-            <span key={id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: '#EEF2FF', border: '1px solid #C7D2FE', borderRadius: 20, fontSize: 11, color: '#4338CA', fontWeight: 600 }}>
+            <span key={id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: 'var(--bg-card-info, #EEF2FF)', border: '1px solid var(--border-card-info, #C7D2FE)', borderRadius: 20, fontSize: 11, color: 'var(--text-card-info, #4338CA)', fontWeight: 600 }}>
               {targetNode?.data?.label || id}
-              <button onClick={() => remove(id)} style={{ background: 'none', border: 'none', color: '#6366F1', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>&times;</button>
+              <button onClick={() => remove(id)} style={{ background: 'none', border: 'none', color: 'var(--text-card-info, #6366F1)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>&times;</button>
             </span>
           );
         })}
@@ -1584,121 +2310,26 @@ function LLMConfigSection({ llm, onChange }) {
   const models = MODELS[provider] || [];
   const isOllama = provider === 'ollama';
 
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState(null); // 'success' | 'error' | null
-  const [errorMessage, setErrorMessage] = useState('');
-
-  const handleTestConnection = async () => {
-    if (!llm?.api_key_override) return;
-    try {
-      setTesting(true);
-      setTestResult(null);
-      setErrorMessage('');
-      const res = await testConnection({
-        provider,
-        api_key: llm.api_key_override,
-        base_url: llm.base_url
-      });
-      if (res && res.status === 'success') {
-        setTestResult('success');
-        if (Array.isArray(res.models) && res.models.length > 0) {
-          const newModels = [];
-          res.models.forEach(m => {
-            newModels.push(m.model);
-            MODEL_LABELS[`${provider}::${m.model}`] = m.label || `${m.model} (${provider})`;
-          });
-          MODELS[provider] = newModels;
-          if (!llm.model || !newModels.includes(llm.model)) {
-            onChange({ ...llm, model: newModels[0] });
-          } else {
-            onChange({ ...llm });
-          }
-        }
-      } else {
-        setTestResult('error');
-        setErrorMessage(res.message || 'Connection failed.');
-      }
-    } catch (e) {
-      console.error(e);
-      setTestResult('error');
-      setErrorMessage(e.message || 'Connection failed.');
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  // Build model options with labels from backend
-  const modelOptions = [
-    ...models.map(m => {
-      const labelKey = `${provider}::${m}`;
-      return { value: m, label: MODEL_LABELS[labelKey] || `${m} (${provider.charAt(0).toUpperCase() + provider.slice(1)})` };
-    }),
-    // Include current model even if not in the dynamic list (backward compat)
-    ...(llm?.model && !models.includes(llm.model) ? [{ value: llm.model, label: llm.model }] : [])
-  ];
-
   return (
     <>
       <Field label="Provider">
         <Select value={provider} onChange={(v) => onChange({ ...llm, provider: v, model: MODELS[v]?.[0] || '' })} options={PROVIDERS} />
       </Field>
       <Field label="Model">
-        <SearchableSelect
-          value={llm?.model || ''}
-          onChange={(v) => onChange({ ...llm, model: v })}
-          options={modelOptions}
-          placeholder="Search models..."
-        />
+        <Select value={llm?.model || ''} onChange={(v) => onChange({ ...llm, model: v })} options={[...(models), ...(llm?.model && !models.includes(llm.model) ? [llm.model] : [])]} />
       </Field>
       <Field label="Temperature">
         <Input type="number" value={llm?.temperature ?? 0} onChange={(v) => onChange({ ...llm, temperature: parseFloat(v) || 0 })} placeholder="0.0" style={{ width: '100%' }} />
       </Field>
-      {isOllama && (
-        <Field label="Ollama Base URL" hint="e.g., http://192.168.1.100:11434 or http://localhost:11434">
+      {isOllama ? (
+        <Field label="Ollama Base URL" hint="e.g., http://73.245.233.186:31059 or http://localhost:11434">
           <Input value={llm?.base_url || ''} onChange={(v) => onChange({ ...llm, base_url: v || null })} placeholder="http://localhost:11434" />
         </Field>
+      ) : (
+        <Field label="API Key Override" hint="Leave blank to use the backend's default key.">
+          <Input value={llm?.api_key_override || ''} onChange={(v) => onChange({ ...llm, api_key_override: v || null })} placeholder="sk-..." type="password" />
+        </Field>
       )}
-      <Field label="API Key Override" hint="Leave blank to use the backend's default key from .env">
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <div style={{ flex: 1 }}>
-            <Input value={llm?.api_key_override || ''} onChange={(v) => onChange({ ...llm, api_key_override: v || null })} placeholder="sk-... or custom key" type="password" />
-          </div>
-          {llm?.api_key_override && (
-            <button
-              onClick={handleTestConnection}
-              disabled={testing}
-              style={{
-                padding: '8px 12px',
-                background: testing ? '#F1F5F9' : testResult === 'success' ? '#10B981' : testResult === 'error' ? '#EF4444' : 'var(--accent-btn)',
-                color: 'white',
-                border: 'none',
-                borderRadius: 10,
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: testing ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                boxShadow: 'var(--shadow-sm)'
-              }}
-            >
-              {testing ? <FiLoader className="animate-spin" size={14} /> : testResult === 'success' ? <FiCheck size={14} /> : testResult === 'error' ? <FiAlertTriangle size={14} /> : null}
-              {testing ? 'Testing...' : testResult === 'success' ? 'Connected' : testResult === 'error' ? 'Failed' : 'Test'}
-            </button>
-          )}
-        </div>
-        {testResult === 'error' && (
-          <div style={{ color: '#EF4444', fontSize: 11, marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <FiAlertTriangle size={12} /> {errorMessage}
-          </div>
-        )}
-        {testResult === 'success' && (
-          <div style={{ color: '#10B981', fontSize: 11, marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <FiCheck size={12} /> Connection verified! Dynamic model listings updated.
-          </div>
-        )}
-      </Field>
     </>
   );
 }
@@ -1787,7 +2418,7 @@ function CronHelper({ value, onChange }) {
     let min = '00';
     let days = ['1', '2', '3', '4', '5'];
 
-    if (!value || value === '* * * * *' || value === '*/1 * * * *' || value.startsWith('*/')) {
+    if (!value || value === '* * * * *' || value === '*/1 * * * *') {
       return { mode, freq: 'minute', hour, min, days };
     }
 
@@ -1868,13 +2499,13 @@ function CronHelper({ value, onChange }) {
 
   const btnStyle = (active) => ({
     padding: '6px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
-    background: active ? 'var(--accent-btn)' : '#F1F5F9', color: active ? 'var(--accent-btn-text)' : '#475569',
-    border: '1px solid', borderColor: active ? 'var(--accent-btn)' : '#E2E8F0', transition: 'all 0.15s'
+    background: active ? 'var(--accent-btn)' : 'var(--bg-primary, #F1F5F9)', color: active ? 'var(--accent-btn-text)' : 'var(--text-secondary, #475569)',
+    border: '1px solid', borderColor: active ? 'var(--accent-btn)' : 'var(--border)', transition: 'all 0.15s'
   });
 
   return (
-    <div style={{ background: '#F8F9FA', padding: 12, borderRadius: 10, border: '1px solid var(--border)' }}>
-      <div style={{ display: 'flex', gap: 4, marginBottom: 12, background: '#F1F5F9', padding: 3, borderRadius: 8 }}>
+    <div style={{ background: 'var(--bg-card-neutral, #F8F9FA)', padding: 12, borderRadius: 10, border: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 12, background: 'var(--bg-primary, #F1F5F9)', padding: 3, borderRadius: 8 }}>
         <button onClick={() => setMode('simple')} style={{ ...btnStyle(mode === 'simple'), flex: 1, border: 'none' }}>Simple</button>
         <button onClick={() => setMode('advanced')} style={{ ...btnStyle(mode === 'advanced'), flex: 1, border: 'none' }}>Advanced</button>
       </div>
@@ -1917,8 +2548,8 @@ function CronHelper({ value, onChange }) {
             </Field>
           )}
 
-          <div style={{ fontSize: 11, color: '#64748B', marginTop: 8, fontStyle: 'italic', fontWeight: 500 }}>
-            Generated Cron: <code style={{ color: '#0F172A', background: '#E2E8F0', padding: '2px 4px', borderRadius: 4 }}>{value}</code>
+          <div style={{ fontSize: 11, color: 'var(--text-secondary, #64748B)', marginTop: 8, fontStyle: 'italic', fontWeight: 500 }}>
+            Generated Cron: <code style={{ color: 'var(--text-primary, #0F172A)', background: 'var(--bg-primary, #E2E8F0)', padding: '2px 4px', borderRadius: 4 }}>{value}</code>
           </div>
         </>
       )}
@@ -1926,90 +2557,8 @@ function CronHelper({ value, onChange }) {
   );
 }
 
-function GlobalRuleModal({ onClose }) {
-  const [pattern, setPattern] = useState("");
-  const [entityType, setEntityType] = useState("");
-  const [category, setCategory] = useState("CUSTOM");
-  const [criticality, setCriticality] = useState("HIGH");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
 
-  const handleSave = async () => {
-    if (!pattern || !entityType) {
-      setError("Pattern and Entity Type are required.");
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      // 1. Fetch current rules
-      const res = await fetch('http://localhost:8000/api/v1/agentmesh/sensitivity_rules');
-      if (!res.ok) throw new Error("Failed to fetch global rules");
-      const data = await res.json();
-      
-      // 2. Append new rule
-      const newRule = { pattern, category, entity_type: entityType, criticality };
-      
-      // 3. Save rules
-      const saveRes = await fetch('http://localhost:8000/api/v1/agentmesh/sensitivity_rules', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newRule)
-      });
-      if (!saveRes.ok) throw new Error("Failed to save global rule");
-      
-      toast.success("Global Rule added successfully!");
-      onClose();
-    } catch (e) {
-      toast.error(e.message);
-      setError(e.message);
-      setSaving(false);
-    }
-  };
 
-  return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: 'white', padding: 24, borderRadius: 12, width: 400, fontFamily: FONT, boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
-        <h3 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}><FiShield color="#B45309" /> Add Global Rule</h3>
-        <p style={{ fontSize: 13, color: '#666', marginBottom: 20 }}>This rule will apply globally across all Sensitivity Classifier nodes on the server.</p>
-        
-        {error && <div style={{ color: 'red', fontSize: 12, marginBottom: 12 }}>{error}</div>}
-
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Regex Pattern *</label>
-          <input value={pattern} onChange={e => setPattern(e.target.value)} placeholder="e.g. \bPRJ-\d{4}\b" style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, boxSizing: 'border-box' }} />
-        </div>
-        
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Entity Type Name *</label>
-          <input value={entityType} onChange={e => setEntityType(e.target.value)} placeholder="e.g. PROJECT_CODE" style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, boxSizing: 'border-box' }} />
-        </div>
-
-        <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-          <div style={{ flex: 1 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Category</label>
-            <input value={category} onChange={e => setCategory(e.target.value)} placeholder="e.g. PII, CUSTOM" style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, boxSizing: 'border-box' }} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Risk Level</label>
-            <select value={criticality} onChange={e => setCriticality(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, boxSizing: 'border-box' }}>
-              <option value="HIGH">HIGH</option>
-              <option value="MEDIUM">MEDIUM</option>
-              <option value="LOW">LOW</option>
-            </select>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-          <button onClick={onClose} style={{ padding: '8px 16px', background: '#eee', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
-          <button onClick={handleSave} disabled={saving} style={{ padding: '8px 16px', background: '#059669', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
-            {saving ? 'Saving...' : 'Save Global Rule'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 
 function SensitivityClassifierConfig({ data, update, setShowGlobalRuleModal }) {
@@ -2193,22 +2742,24 @@ const DOC_TYPE_CATEGORIES = {
 };
 
 function ReportGeneratorConfig({ data, update }) {
-  const [templates, setTemplates]         = useState([]);
-  const [category, setCategory]           = useState(data.template_category || '');
-  const [format, setFormat]               = useState(data.report_format || data.file_format || '');
-  const [deletingId, setDeletingId]       = useState(null);
-  // Dynamic category list — derived from templates already in DB + doc-type suggestions
-  const [allCategories, setAllCategories] = useState(['General']);
+  const [templates, setTemplates]           = useState([]);
+  const [category, setCategory]             = useState(data.template_category || '');
+  const [format, setFormat]                 = useState(data.report_format || data.file_format || '');
+  const [deletingId, setDeletingId]         = useState(null);
+  const [allCategories, setAllCategories]   = useState(['General']);
   const [customCatInput, setCustomCatInput] = useState('');
   const [showCustomCatInput, setShowCustomCatInput] = useState(false);
+  const [advancedOpen, setAdvancedOpen]     = useState(false);
+  const [filtersOpen, setFiltersOpen]       = useState(false);
+  const [llmMode, setLlmMode]               = useState(data.llm_generation_mode || false);
 
   // Upload State
-  const [showUpload, setShowUpload]       = useState(false);
-  const [uploadName, setUploadName]       = useState('');
+  const [showUpload, setShowUpload]         = useState(false);
+  const [uploadName, setUploadName]         = useState('');
   const [uploadCategory, setUploadCategory] = useState('General');
-  const [uploadCatCustom, setUploadCatCustom] = useState(false); // typing a new category
-  const [uploadFiles, setUploadFiles]     = useState([]);
-  const [uploading, setUploading]         = useState(false);
+  const [uploadCatCustom, setUploadCatCustom] = useState(false);
+  const [uploadFiles, setUploadFiles]       = useState([]);
+  const [uploading, setUploading]           = useState(false);
 
   const fetchTemplates = async () => {
     try {
@@ -2219,9 +2770,7 @@ function ReportGeneratorConfig({ data, update }) {
       if (res.ok) {
         const json = await res.json();
         setTemplates(json);
-        // ── Derive dynamic category list from DB templates ──────────────
         const dbCats = [...new Set((json).map(t => t.category).filter(Boolean))];
-        // Merge: DB cats + doc-type suggestions for current format + always keep General
         const docTypeSuggestions = format ? (DOC_TYPE_CATEGORIES[format] || []) : [];
         const merged = [...new Set(['General', ...dbCats, ...docTypeSuggestions])];
         setAllCategories(merged);
@@ -2242,26 +2791,14 @@ function ReportGeneratorConfig({ data, update }) {
       const formData = new FormData();
       formData.append('name', uploadName);
       formData.append('category', uploadCategory);
-
       const ext = '.' + uploadFiles[0].name.split('.').pop().toLowerCase();
       formData.append('format_type', ext);
-
-      Array.from(uploadFiles).forEach(file => {
-        formData.append('files', file);
-      });
-
-      const res = await fetch('http://localhost:8000/api/v1/agentmesh/report-templates/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
+      Array.from(uploadFiles).forEach(file => { formData.append('files', file); });
+      const res = await fetch('http://localhost:8000/api/v1/agentmesh/report-templates/upload', { method: 'POST', body: formData });
       if (res.ok) {
         const resData = await res.json();
-        setShowUpload(false);
-        setUploadName('');
-        setUploadFiles([]);
+        setShowUpload(false); setUploadName(''); setUploadFiles([]);
         fetchTemplates();
-
         if (resData.template_ids && resData.template_ids.length > 0) {
           update({ template_id: resData.template_ids[0] });
         }
@@ -2270,23 +2807,17 @@ function ReportGeneratorConfig({ data, update }) {
         alert(`Failed to upload: ${errorData.detail}`);
       }
     } catch (err) {
-      console.error(err);
-      alert("Network error while uploading.");
+      console.error(err); alert("Network error while uploading.");
     }
     setUploading(false);
   };
 
-  // CHANGE 2: delete handler — calls the new DELETE /{id} endpoint
   const handleDeleteTemplate = async (templateId) => {
     if (!window.confirm("Delete this template? This cannot be undone.")) return;
     setDeletingId(templateId);
     try {
-      const res = await fetch(
-        `http://localhost:8000/api/v1/agentmesh/report-templates/${templateId}`,
-        { method: 'DELETE' }
-      );
+      const res = await fetch(`http://localhost:8000/api/v1/agentmesh/report-templates/${templateId}`, { method: 'DELETE' });
       if (res.ok) {
-        // If the deleted template was selected, clear the selection
         if (data.template_id === templateId) update({ template_id: '' });
         fetchTemplates();
       } else {
@@ -2294,559 +2825,883 @@ function ReportGeneratorConfig({ data, update }) {
         alert(`Failed to delete: ${err.detail}`);
       }
     } catch (err) {
-      console.error(err);
-      alert("Network error while deleting.");
+      console.error(err); alert("Network error while deleting.");
     }
     setDeletingId(null);
   };
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* ── CATEGORY FILTER — dynamic, sourced from DB + doc-type suggestions ── */}
-      <div style={{ marginBottom: 4 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Category</div>
-          <button
-            onClick={() => setShowCustomCatInput(v => !v)}
-            style={{
-              fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
-              border: '1px dashed var(--border)', background: 'transparent',
-              cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4,
-            }}
-          >
-            <FiPlus size={10} /> Custom
-          </button>
-        </div>
+  const selectedTemplate = Array.isArray(templates) ? templates.find(t => t.id === data.template_id) : null;
 
-        {/* Custom category input */}
-        {showCustomCatInput && (
-          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-            <input
-              value={customCatInput}
-              onChange={e => setCustomCatInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && customCatInput.trim()) {
-                  const newCat = customCatInput.trim();
-                  setAllCategories(prev => prev.includes(newCat) ? prev : [...prev, newCat]);
-                  setCategory(newCat);
-                  update({ template_category: newCat });
-                  setCustomCatInput('');
-                  setShowCustomCatInput(false);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+      {/* ── LLM MODE TOGGLE ── */}
+      <div style={{
+        padding: '0px 2px',
+        marginBottom: 24,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: 8,
+              background: 'transparent',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--text-muted)',
+            }}>
+              <FiCpu size={18} />
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+              LLM Generation Mode
+            </div>
+          </div>
+          <div style={{ marginBottom: -12 }}>
+            <Toggle
+              checked={llmMode}
+              onChange={v => { 
+                setLlmMode(v); 
+                const updates = { llm_generation_mode: v };
+                if (v && (!data.output_file_name || data.output_file_name === 'generated_report')) {
+                  updates.output_file_name = 'llm_generated_report';
                 }
-              }}
-              placeholder="Type new category + Enter"
-              autoFocus
-              style={{
-                flex: 1, padding: '6px 10px', fontSize: 12, borderRadius: 7,
-                border: '1.5px solid var(--theme-primary)', outline: 'none',
-                fontFamily: 'inherit',
+                update(updates); 
               }}
             />
-            <button
-              onClick={() => {
-                if (customCatInput.trim()) {
-                  const newCat = customCatInput.trim();
-                  setAllCategories(prev => prev.includes(newCat) ? prev : [...prev, newCat]);
-                  setCategory(newCat);
-                  update({ template_category: newCat });
-                  setCustomCatInput('');
-                  setShowCustomCatInput(false);
-                }
-              }}
-              style={{
-                padding: '6px 12px', borderRadius: 7, border: 'none',
-                background: 'var(--theme-primary)', color: 'white',
-                fontSize: 11, fontWeight: 700, cursor: 'pointer',
-              }}
-            >Add</button>
+          </div>
+        </div>
+        {llmMode && (
+          <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5, paddingLeft: 38 }}>
+            The AI will write and generate the entire document from scratch based on the context data.
           </div>
         )}
-
-        {/* Dynamic category chips */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-          {/* "All" chip */}
-          {(() => {
-            const active = category === '';
-            return (
-              <button
-                key="__all__"
-                onClick={() => { setCategory(''); update({ template_category: '' }); }}
-                style={{
-                  padding: '5px 11px', borderRadius: 99, fontSize: 11, fontWeight: 700,
-                  border: active ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
-                  background: active ? 'rgba(142,119,187,0.12)' : 'white',
-                  color: active ? 'var(--theme-primary)' : 'var(--text-muted)',
-                  cursor: 'pointer', transition: 'all 0.15s',
-                }}
-              >All</button>
-            );
-          })()}
-          {allCategories.map(cat => {
-            const active = category === cat;
-            return (
-              <button
-                key={cat}
-                onClick={() => { setCategory(active ? '' : cat); update({ template_category: active ? '' : cat }); }}
-                style={{
-                  padding: '5px 11px', borderRadius: 99, fontSize: 11, fontWeight: 700,
-                  border: active ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
-                  background: active ? 'rgba(142,119,187,0.12)' : 'white',
-                  color: active ? 'var(--theme-primary)' : 'var(--text-primary)',
-                  cursor: 'pointer', transition: 'all 0.15s',
-                }}
-              >{cat}</button>
-            );
-          })}
-        </div>
       </div>
 
-      {/* ── FORMAT FILTER — includes .md, writes to report_format ── */}
-      <div style={{ marginBottom: 4 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
-          Format
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5 }}>
-          {[
-            { value: '',      label: 'All',   icon: '📁' },
-            { value: '.docx', label: 'Word',  icon: '📄' },
-            { value: '.xlsx', label: 'Excel', icon: '📊' },
-            { value: '.pdf',  label: 'PDF',   icon: '📕' },
-            { value: '.csv',  label: 'CSV',   icon: '📋' },
-            { value: '.json', label: 'JSON',  icon: '{ }' },
-            { value: '.md',   label: 'MD',    icon: '📝' },
-          ].map(opt => {
-            const active = format === opt.value;
-            return (
-              <button
-                key={opt.label}
-                onClick={() => {
-                  setFormat(opt.value);
-                  // Use report_format (not file_format) to avoid bleeding into other nodes
-                  update({ report_format: opt.value });
-                }}
-                style={{
-                  padding: '8px 4px',
-                  borderRadius: 8,
-                  border: active ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
-                  background: active ? 'rgba(142,119,187,0.10)' : 'white',
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                  transition: 'all 0.15s',
-                }}
-              >
-                <div style={{ fontSize: 13, marginBottom: 2 }}>{opt.icon}</div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: active ? 'var(--theme-primary)' : 'var(--text-primary)' }}>
-                  {opt.label}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── TEMPLATE SELECT — now with inline delete buttons ── */}
-      <Field
-        label="Select Template"
-        hint="The exact template to use for rendering the report."
-        action={
-          <button
-            onClick={() => setShowUpload(true)}
-            style={{
-              fontSize: 11,
-              padding: '6px 14px',
-              background: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)',
-              color: 'white',
-              border: '1px solid #5B21B6',
-              borderRadius: 8,
-              cursor: 'pointer',
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-              boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-1.5px)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(139, 92, 246, 0.4)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(139, 92, 246, 0.3)';
-            }}
-          >
-            <FiUploadCloud size={14} /> Upload New
-          </button>
-        }
-      >
-        {/* CHANGE 2: replaced native <select> with a custom list so each
-            row can have its own delete button. Behaviour is identical —
-            clicking a row selects it, clicking 🗑 deletes it. */}
-        <div style={{
-          border: '1px solid var(--border)',
-          borderRadius: 8,
-          overflow: 'hidden',
-          maxHeight: 220,
-          overflowY: 'auto',
-          background: 'var(--bg-canvas)',
-        }}>
-          {/* "No template" option */}
-          <div
-            onClick={() => update({ template_id: '' })}
-            style={{
-              padding: '9px 12px',
-              fontSize: 13,
-              cursor: 'pointer',
-              background: !data.template_id ? 'rgba(59,130,246,0.08)' : 'transparent',
-              color: !data.template_id ? 'var(--theme-primary)' : 'var(--text-muted)',
-              fontWeight: !data.template_id ? 600 : 400,
-              borderBottom: '1px solid var(--border)',
-              transition: 'background 0.12s',
-            }}
-            onMouseEnter={(e) => { if (data.template_id) e.currentTarget.style.background = 'var(--bg-hover)'; }}
-            onMouseLeave={(e) => { if (data.template_id) e.currentTarget.style.background = 'transparent'; }}
-          >
-            — No Template (Blank File) —
-          </div>
-
-          {/* Deep Nested Grouping (Group -> Format -> Category) */}
-          {(() => {
-            const rawTemplates = Array.isArray(templates) ? templates : [];
-            const tree = {};
-
-            // 1. Build the tree
-            rawTemplates.forEach(t => {
-              let catRaw = t.category || 'General';
-              let group = 'General';
-              let subcategory = catRaw;
-
-              if (catRaw.includes('/')) {
-                const parts = catRaw.split('/');
-                group = parts[0].trim();
-                subcategory = parts.slice(1).join('/').trim();
-              }
-
-              // Normalize format for display
-              let fmt = (t.format_type || 'Unknown').toUpperCase();
-              if (fmt.startsWith('.')) fmt = fmt.substring(1);
-              if (fmt === 'DOCX' || fmt === 'DOTX') fmt = 'WORD (.docx)';
-              if (fmt === 'PDF') fmt = 'PDF (.pdf)';
-              if (fmt === 'XLSX') fmt = 'EXCEL (.xlsx)';
-              if (fmt === 'CSV') fmt = 'CSV (.csv)';
-              if (fmt === 'MD') fmt = 'MARKDOWN (.md)';
-
-              if (!tree[group]) tree[group] = {};
-              if (!tree[group][fmt]) tree[group][fmt] = {};
-              if (!tree[group][fmt][subcategory]) tree[group][fmt][subcategory] = [];
-
-              tree[group][fmt][subcategory].push(t);
-            });
-
-            // 2. Render the tree
-            return Object.entries(tree).sort(([a], [b]) => a.localeCompare(b)).map(([groupName, formats]) => (
-              <div key={groupName} style={{ marginBottom: 16 }}>
-                {/* ── GROUP HEADER ── */}
-                <div style={{
-                  padding: '6px 12px',
-                  fontSize: 12,
-                  fontWeight: 800,
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
-                  color: 'var(--theme-primary)',
-                  background: 'rgba(59,130,246,0.06)',
-                  borderBottom: '2px solid rgba(59,130,246,0.2)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6
-                }}>
-                  <FiBox size={14} /> {groupName}
-                </div>
-
-                {Object.entries(formats).sort(([a], [b]) => a.localeCompare(b)).map(([fmtName, categories]) => (
-                  <div key={fmtName} style={{ paddingLeft: 12, borderLeft: '2px solid rgba(0,0,0,0.04)', marginLeft: 6 }}>
-                    {/* ── FORMAT HEADER ── */}
-                    <div style={{
-                      padding: '8px 12px 4px 0',
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: 'var(--text-muted)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 4
-                    }}>
-                      <FiFileText size={12} /> {fmtName}
-                    </div>
-
-                    {Object.entries(categories).sort(([a], [b]) => a.localeCompare(b)).map(([subcatName, list]) => (
-                      <div key={subcatName} style={{ marginBottom: 8 }}>
-                        {/* ── SUBCATEGORY LABEL ── */}
-                        <div style={{
-                          padding: '4px 8px',
-                          fontSize: 10,
-                          fontWeight: 700,
-                          color: '#475569',
-                          background: '#F1F5F9',
-                          borderRadius: 4,
-                          marginLeft: 8,
-                          marginRight: 8,
-                          marginTop: 4,
-                          display: 'inline-block'
-                        }}>
-                          {subcatName.toUpperCase()}
-                        </div>
-
-                        {/* ── TEMPLATE ROWS ── */}
-                        {list.map(t => {
-                          const selected = data.template_id === t.id;
-                          const isDeleting = deletingId === t.id;
-                          return (
-                            <div
-                              key={t.id}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                padding: '8px 10px 8px 12px',
-                                background: selected ? 'rgba(59,130,246,0.08)' : 'transparent',
-                                borderBottom: '1px solid var(--border)',
-                                transition: 'background 0.12s',
-                                gap: 8,
-                              }}
-                              onMouseEnter={(e) => { if (!selected) e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                              onMouseLeave={(e) => { if (!selected) e.currentTarget.style.background = 'transparent'; }}
-                            >
-                              <div
-                                onClick={() => update({ template_id: t.id })}
-                                style={{ flex: 1, cursor: 'pointer', minWidth: 0, overflow: 'hidden' }}
-                              >
-                                <div style={{ 
-                                  fontSize: 13, 
-                                  fontWeight: selected ? 600 : 400, 
-                                  color: selected ? 'var(--theme-primary)' : 'var(--text-primary)',
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis'
-                                }}>
-                                  {t.name}
-                                </div>
-                              </div>
-
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(t.id); }}
-                                disabled={isDeleting}
-                                title="Delete template"
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  padding: '4px 6px',
-                                  borderRadius: 6,
-                                  cursor: isDeleting ? 'not-allowed' : 'pointer',
-                                  color: isDeleting ? 'var(--text-muted)' : '#EF4444',
-                                  opacity: isDeleting ? 0.4 : 0.6,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  transition: 'opacity 0.15s',
-                                  flexShrink: 0,
-                                }}
-                                onMouseEnter={(e) => { if (!isDeleting) e.currentTarget.style.opacity = '1'; }}
-                                onMouseLeave={(e) => { if (!isDeleting) e.currentTarget.style.opacity = '0.6'; }}
-                              >
-                                <FiTrash2 size={13} />
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            ));
-          })()}
-
-          {templates.length === 0 && (
-            <div style={{ padding: '20px', textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
-              No templates found. Upload one above.
+      {/* ── TEMPLATE LIBRARY ── */}
+        <>
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginTop: 4, marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <FiFileText size={12} color="var(--accent-btn)" /> Template Selection
             </div>
-          )}
-        </div>
-      </Field>
+          </div>
+          {/* Format dropdown */}
+          <Field label="Format Filter" hint="Filter the template list by file format.">
+            <SearchableSelect
+              showSearch={false}
+              value={format}
+              onChange={v => { setFormat(v); update({ report_format: v }); }}
+              options={[
+                { value: '',      label: 'All Formats' },
+                { value: '.docx', label: 'Word (.docx)' },
+                { value: '.xlsx', label: 'Excel (.xlsx)' },
+                { value: '.pdf',  label: 'PDF (.pdf)' },
+                { value: '.csv',  label: 'CSV (.csv)' },
+                { value: '.json', label: 'JSON (.json)' },
+                { value: '.md',   label: 'Markdown (.md)' },
+              ]}
+              placeholder="All Formats"
+            />
+          </Field>
 
-      {/* ── UPLOAD MODAL — unchanged from original ── */}
+          {/* Category dropdown */}
+          <Field label="Category Filter" hint="Filter templates by category." action={
+            <button
+              onClick={() => setShowCustomCatInput(v => !v)}
+              style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}
+            >
+              <FiPlus size={11} /> New
+            </button>
+          }>
+            {showCustomCatInput && (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                <input
+                  value={customCatInput} onChange={e => setCustomCatInput(e.target.value)} autoFocus
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && customCatInput.trim()) {
+                      const newCat = customCatInput.trim();
+                      setAllCategories(prev => prev.includes(newCat) ? prev : [...prev, newCat]);
+                      setCategory(newCat); update({ template_category: newCat });
+                      setCustomCatInput(''); setShowCustomCatInput(false);
+                    }
+                  }}
+                  placeholder="New category name + Enter"
+                  style={{ flex: 1, padding: '8px 12px', fontSize: 12, borderRadius: 8, border: '1px solid var(--accent-btn)', outline: 'none', fontFamily: 'inherit' }}
+                />
+                <button
+                  onClick={() => {
+                    if (customCatInput.trim()) {
+                      const newCat = customCatInput.trim();
+                      setAllCategories(prev => prev.includes(newCat) ? prev : [...prev, newCat]);
+                      setCategory(newCat); update({ template_category: newCat });
+                      setCustomCatInput(''); setShowCustomCatInput(false);
+                    }
+                  }}
+                  style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: 'var(--accent-btn)', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                >Add</button>
+              </div>
+            )}
+            <SearchableSelect
+              showSearch={false}
+              value={category}
+              onChange={v => { setCategory(v); update({ template_category: v }); }}
+              options={[
+                { value: '', label: 'All Categories' },
+                ...allCategories.map(c => ({ value: c, label: c })),
+              ]}
+              placeholder="All Categories"
+            />
+          </Field>
+
+          {/* Template list */}
+          <Field label="Select Template" hint="Choose a template layout to generate into." action={
+            <button
+              onClick={() => setShowUpload(true)}
+              style={{ fontSize: 11, padding: '5px 12px', background: 'var(--accent-btn)', color: 'white', border: 'none', borderRadius: 7, cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            >
+              <FiUploadCloud size={13} /> Upload
+            </button>
+          }>
+              <SearchableSelect
+                value={data.template_id || ''}
+                onChange={v => {
+                  if (v === '' || v === 'auto') {
+                    update({ template_id: v, output_file_name: v === 'auto' ? 'auto_generated_report' : 'generated_report' });
+                  } else {
+                    const t = (Array.isArray(templates) ? templates : []).find(temp => temp.id === v);
+                    if (t) {
+                      const baseName = t.name.split('.')[0].replace(/[^a-zA-Z0-9_-]/g, '_');
+                      update({ template_id: t.id, report_format: t.format_type, output_file_name: baseName });
+                      setFormat(t.format_type);
+                    }
+                  }
+                }}
+                options={[
+                  { value: '', label: '📄 Blank Document (No Template)' },
+                  { value: 'auto', label: '✨ Auto-Select Template via AI' },
+                  ...(Array.isArray(templates) ? templates.map(t => ({
+                    value: t.id,
+                    label: t.name,
+                    sublabel: `${(t.category || 'General').toUpperCase()} › ${t.format_type}`,
+                    onDelete: () => handleDeleteTemplate(t.id)
+                  })) : [])
+                ]}
+                placeholder="Select a template..."
+              />
+            </Field>
+        </>
+      {/* ── I/O ROUTING (collapsible) ── */}
+      <div style={{ borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden', marginBottom: 18 }}>
+        <div onClick={() => setAdvancedOpen(o => !o)} style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-card-neutral, #F8FAFC)' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <FiBox size={12} color="var(--text-muted)" /> ADVANCED — I/O ROUTING
+          </span>
+          <FiChevronDown size={14} style={{ color: 'var(--text-muted)', transform: advancedOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+        </div>
+        {advancedOpen && (
+          <div style={{ padding: '14px 14px 2px' }}>
+            <Field label="Input Data Key" hint="Context key containing the JSON data to map into the template.">
+              <Input value={data.input_data_key || 'report_data'} onChange={v => update({ input_data_key: v })} placeholder="e.g. report_data" />
+            </Field>
+            <Field label="Output File Base Name" hint="Base name for the generated file (no extension needed).">
+              <Input value={data.output_file_name || 'generated_report'} onChange={v => update({ output_file_name: v })} placeholder="e.g. generated_report" />
+            </Field>
+          </div>
+        )}
+        {!advancedOpen && (
+          <div style={{ padding: '8px 14px', fontSize: 11, color: 'var(--text-muted)' }}>
+            Key: <strong>{data.input_data_key || 'report_data'}</strong> → File: <strong>{data.output_file_name || 'generated_report'}</strong>
+          </div>
+        )}
+      </div>
+
+      {/* ── AI SUBSTITUTION MODEL ── */}
+      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <FiZap size={12} color="var(--accent-btn)" /> AI Substitution Model
+        </div>
+        <div style={{ padding: '8px 12px', background: 'var(--bg-canvas)', borderRadius: 8, fontSize: 11, color: 'var(--text-muted)', border: '1px solid var(--border)', marginBottom: 12 }}>
+          {llmMode
+            ? 'LLM Mode — The AI generates the entire document from scratch using the VFS.'
+            : 'Used when your template has no {{placeholders}} — the AI figures out what to replace.'}
+        </div>
+        <LLMConfigSection llm={data.llm} onChange={v => update({ llm: v })} />
+      </div>
+
+      {/* ── UPLOAD MODAL ── */}
       {showUpload && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: 20 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: 20 }}>
           <div style={{ width: 440, background: 'white', borderRadius: 24, padding: 32, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', position: 'relative', border: '1px solid #E2E8F0' }}>
-            <button onClick={() => setShowUpload(false)} style={{ position: 'absolute', top: 20, right: 20, background: '#F1F5F9', border: 'none', width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748B', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E8F0'; e.currentTarget.style.color = '#0F172A'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F1F5F9'; e.currentTarget.style.color = '#64748B'; }}>
+            <button onClick={() => setShowUpload(false)} style={{ position: 'absolute', top: 20, right: 20, background: '#F1F5F9', border: 'none', width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748B' }}>
               <FiX size={16} strokeWidth={3} />
             </button>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 30 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #E0F2FE 0%, #BAE6FD 100%)', color: '#0284C7', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(2, 132, 199, 0.15)' }}>
-                <FiFileText size={24} strokeWidth={2.5} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--bg-hover)', color: 'var(--accent-btn)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FiUploadCloud size={22} strokeWidth={2} />
               </div>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em' }}>Upload Template</div>
-                <div style={{ fontSize: 13, color: '#64748B', marginTop: 2 }}>Securely add a new document to the database</div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: '#0F172A' }}>Upload Template</div>
+                <div style={{ fontSize: 13, color: '#64748B', marginTop: 2 }}>Add a new document to the library</div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Template Name</label>
-                <Input value={uploadName} onChange={setUploadName} placeholder="e.g. Monthly Finance Report" style={{ padding: '12px 16px', fontSize: 14, borderRadius: 12, background: '#F8FAFC', border: '2px solid #E2E8F0', width: '100%' }} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Category</label>
-                {uploadCatCustom ? (
-                  <div style={{ display: 'flex', gap: 5 }}>
-                    <input
-                      autoFocus
-                      value={uploadCategory}
-                      onChange={e => setUploadCategory(e.target.value)}
-                      placeholder="Type category name"
-                      style={{
-                        flex: 1, padding: '12px 14px', fontSize: 13, borderRadius: 12,
-                        background: '#F8FAFC', border: '2px solid #8B5CF6',
-                        outline: 'none', fontFamily: 'inherit',
-                      }}
-                    />
-                    <button
-                      onClick={() => setUploadCatCustom(false)}
-                      style={{
-                        padding: '8px 10px', borderRadius: 10, border: '1px solid #E2E8F0',
-                        background: '#F1F5F9', cursor: 'pointer', fontSize: 11,
-                        fontWeight: 600, color: '#64748B',
-                      }}
-                    >List</button>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', gap: 5 }}>
-                    <select
-                      value={uploadCategory}
-                      onChange={(e) => setUploadCategory(e.target.value)}
-                      style={{
-                        flex: 1, padding: '12px 14px', fontSize: 13, borderRadius: 12,
-                        background: '#F8FAFC', border: '2px solid #E2E8F0',
-                        color: '#0F172A', outline: 'none', fontFamily: 'inherit',
-                      }}
-                    >
-                      {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                    <button
-                      onClick={() => { setUploadCatCustom(true); setUploadCategory(''); }}
-                      title="Type a new category"
-                      style={{
-                        padding: '8px 10px', borderRadius: 10,
-                        border: '1.5px dashed #C4B5FD',
-                        background: '#F5F3FF', cursor: 'pointer', fontSize: 11,
-                        fontWeight: 700, color: '#7C3AED',
-                      }}
-                    ><FiPlus size={13} /></button>
-                  </div>
-                )}
-              </div>
-              <div style={{ marginTop: 8, fontSize: 11, color: '#94A3B8', lineHeight: 1.4 }}>
-                <strong>Tip:</strong> Use <code style={{ background: '#F1F5F9', padding: '1px 4px', borderRadius: 4 }}>/</code> to create subcategories (e.g., <em>HR / Offer Letters</em>). Categories are automatically deleted when all templates inside them are removed.
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Template Name</label>
+              <Input value={uploadName} onChange={setUploadName} placeholder="e.g. Monthly Finance Report" />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Category</label>
+              {uploadCatCustom ? (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input autoFocus value={uploadCategory} onChange={e => setUploadCategory(e.target.value)} placeholder="Type category name" style={{ flex: 1, ...{ width: '100%', padding: '9px 12px', background: 'white', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, outline: 'none', fontFamily: 'inherit' } }} onFocus={e => e.currentTarget.style.borderColor = 'var(--accent-btn)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border)'} />
+                  <button onClick={() => setUploadCatCustom(false)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: '#F1F5F9', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#64748B' }}>List</button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <select value={uploadCategory} onChange={e => setUploadCategory(e.target.value)} style={{ flex: 1, padding: '9px 12px', fontSize: 13, borderRadius: 8, background: 'white', border: '1px solid var(--border)', color: '#0F172A', outline: 'none', fontFamily: 'inherit' }}>
+                    {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <button onClick={() => { setUploadCatCustom(true); setUploadCategory(''); }} title="Type a new category" style={{ padding: '8px 12px', borderRadius: 8, border: '1px dashed var(--border)', background: '#F8FAFC', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--accent-btn)' }}><FiPlus size={13} /></button>
+                </div>
+              )}
+              <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-muted)' }}>
+                Tip: Use <code style={{ background: '#F1F5F9', padding: '1px 4px', borderRadius: 4 }}>/</code> for subcategories (e.g. <em>HR / Offer Letters</em>).
               </div>
             </div>
 
-            <div style={{ marginBottom: 32 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Select File(s)</label>
-              <div style={{
-                border: '2px dashed #CBD5E1', borderRadius: 16, padding: '40px 20px', textAlign: 'center',
-                background: uploadFiles.length > 0 ? '#F0FDF4' : '#F8FAFC', cursor: 'pointer', position: 'relative', transition: 'all 0.2s',
-                borderColor: uploadFiles.length > 0 ? '#22C55E' : '#CBD5E1'
-              }}
-                onMouseEnter={(e) => { if (uploadFiles.length === 0) e.currentTarget.style.borderColor = '#0EA5E9'; e.currentTarget.style.background = uploadFiles.length > 0 ? '#F0FDF4' : '#F1F5F9'; }}
-                onMouseLeave={(e) => { if (uploadFiles.length === 0) e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.background = uploadFiles.length > 0 ? '#F0FDF4' : '#F8FAFC'; }}
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Select File(s)</label>
+              <div style={{ border: '2px dashed var(--border)', borderRadius: 12, padding: '32px 20px', textAlign: 'center', background: uploadFiles.length > 0 ? '#F0FDF4' : '#F8FAFC', cursor: 'pointer', position: 'relative', transition: 'all 0.2s', borderColor: uploadFiles.length > 0 ? '#22C55E' : 'var(--border)' }}
+                onMouseEnter={e => { if (uploadFiles.length === 0) { e.currentTarget.style.borderColor = 'var(--accent-btn)'; e.currentTarget.style.background = '#F0F4FF'; } }}
+                onMouseLeave={e => { if (uploadFiles.length === 0) { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = '#F8FAFC'; } }}
               >
-                <input type="file" multiple onChange={(e) => { if (e.target.files.length > 0) { setUploadFiles(Array.from(e.target.files)); if (!uploadName) setUploadName(e.target.files[0].name.split('.')[0]); } }} style={{ opacity: 0, position: 'absolute', inset: 0, width: '100%', cursor: 'pointer', zIndex: 10 }} />
+                <input type="file" multiple onChange={e => { if (e.target.files.length > 0) { setUploadFiles(Array.from(e.target.files)); if (!uploadName) setUploadName(e.target.files[0].name.split('.')[0]); } }} style={{ opacity: 0, position: 'absolute', inset: 0, width: '100%', cursor: 'pointer', zIndex: 10 }} />
                 {uploadFiles.length > 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 20, background: '#DCFCE7', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <FiCheck size={20} strokeWidth={3} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: '#166534' }}>{uploadFiles.length} file(s) selected</div>
-                      <div style={{ fontSize: 12, color: '#22C55E', marginTop: 2 }}>Ready to upload</div>
-                    </div>
+                    <div style={{ width: 36, height: 36, borderRadius: 18, background: '#DCFCE7', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FiCheck size={18} strokeWidth={3} /></div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#166534' }}>{uploadFiles.length} file(s) selected — Ready to upload</div>
                   </div>
                 ) : (
                   <>
-                    <FiPlus size={28} color="#94A3B8" style={{ marginBottom: 12 }} />
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#334155' }}>Click or drag files to upload</div>
-                    <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 6, fontWeight: 500 }}>Supports .docx, .xlsx, .pdf, .json, .md</div>
+                    <FiUploadCloud size={26} color="var(--text-muted)" style={{ marginBottom: 8 }} />
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Click or drag files here</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Supports .docx, .xlsx, .pdf, .json, .md</div>
                   </>
                 )}
               </div>
             </div>
 
             <button
-              onClick={handleUpload}
-              disabled={uploading || !uploadName || uploadFiles.length === 0}
-              style={{
-                width: '100%', padding: '14px',
-                background: (uploading || !uploadName || uploadFiles.length === 0) ? '#E2E8F0' : 'linear-gradient(135deg, #0EA5E9 0%, #2563EB 100%)',
-                color: (uploading || !uploadName || uploadFiles.length === 0) ? '#94A3B8' : 'white',
-                border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 700,
-                cursor: (uploading || !uploadName || uploadFiles.length === 0) ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: (uploading || !uploadName || uploadFiles.length === 0) ? 'none' : '0 10px 20px -10px rgba(37, 99, 235, 0.5)'
-              }}
-              onMouseEnter={(e) => { if (!uploading && uploadName && uploadFiles.length > 0) e.currentTarget.style.transform = 'translateY(-2px)'; }}
-              onMouseLeave={(e) => { if (!uploading && uploadName && uploadFiles.length > 0) e.currentTarget.style.transform = 'translateY(0)'; }}
+              onClick={handleUpload} disabled={uploading || !uploadName || uploadFiles.length === 0}
+              style={{ width: '100%', padding: '12px', background: (uploading || !uploadName || uploadFiles.length === 0) ? '#E2E8F0' : 'var(--accent-btn)', color: (uploading || !uploadName || uploadFiles.length === 0) ? '#94A3B8' : 'white', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: (uploading || !uploadName || uploadFiles.length === 0) ? 'not-allowed' : 'pointer', transition: 'opacity 0.2s' }}
+              onMouseEnter={e => { if (!uploading && uploadName && uploadFiles.length > 0) e.currentTarget.style.opacity = '0.85'; }}
+              onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
             >
               {uploading ? 'Uploading...' : 'Confirm & Save Template'}
             </button>
           </div>
         </div>
       )}
+    </div>
+  );
+}
 
-      <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }} />
 
-      {/* ── INPUT DATA KEY + OUTPUT FILE NAME — unchanged ── */}
-      <Field label="Input Data Key" hint="Context key containing the JSON data to map into the template.">
-        <Input
-          value={data.input_data_key || 'report_data'}
-          onChange={(v) => update({ input_data_key: v })}
-          placeholder="e.g. report_data"
-        />
-      </Field>
 
-      <Field label="Output File Base Name" hint="Base name for the generated file.">
-        <Input
-          value={data.output_file_name || 'generated_report'}
-          onChange={(v) => update({ output_file_name: v })}
-          placeholder="e.g. generated_report"
-        />
-      </Field>
 
-      {/* ── CHANGE 1: LLM Config for AI Semantic Substitution ──────────────
-          Only shown when no template is selected OR when the user wants to
-          control which model handles no-placeholder substitution.
-          Uses the existing LLMConfigSection component already in the file. */}
-      <div style={{ marginTop: 4, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-        <div style={{
-          fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
-          textTransform: 'uppercase', letterSpacing: '0.8px',
-          marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6
-        }}>
-          <FiZap size={12} color="var(--accent-btn)" />
-          AI Substitution Model
+
+const ClassificationClassesEditor = ({value, onChange}) => <div style={{padding:10, border:"1px solid var(--border)"}}>Classes Editor (Placeholder)</div>;
+
+function VisualOperationsEditor({ value = [], onChange }) {
+  const latestContext = useRunStore(s => s.latestContext) || {};
+  const [aiOpen, setAiOpen] = React.useState(false);
+  const [aiPrompt, setAiPrompt] = React.useState('');
+  const [aiLoading, setAiLoading] = React.useState(false);
+
+  const handleAiGenerate = async () => {
+    if (!aiPrompt.trim()) return;
+    setAiLoading(true);
+    try {
+      const activeWorkflow = useWorkflowStore.getState();
+      const currentWorkflow = {
+        id: activeWorkflow.workflowId,
+        name: activeWorkflow.name,
+        nodes: activeWorkflow.nodes,
+        edges: activeWorkflow.edges
+      };
+
+      const systemPrompt = `You are the Workflow Architect AI. The user wants to configure a JSON Transform Visual Operations list.
+We have the following runtime context:
+${JSON.stringify(latestContext, null, 2)}
+
+And the user wants to perform this operation:
+"${aiPrompt}"
+
+Please respond with ONLY a raw JSON array (enclosed in a \`\`\`json block) representing the list of visual operations matching the user's request.
+Each operation in the array must follow the structure:
+- Extract Field: { "type": "extract_field", "source_path": "nested.path", "field": "field_name", "destination": "dest_key" }
+- Filter: { "type": "filter", "source_path": "list.path", "filter_field": "field_name", "filter_operator": "==", "filter_value": "value", "destination": "dest_key" }
+- Map List: { "type": "map", "source_path": "list.path", "field": "field_to_extract", "destination": "dest_key" }
+- Object Projection Map List: { "type": "map", "source_path": "list.path", "use_projection": true, "projections": [ { "target_path": "dest.path", "source_field": "relative.source.path" } ], "destination": "dest_key" }
+- Rename: { "type": "rename", "source_path": "old_key", "destination": "new_key" }
+- Set Value: { "type": "set_value", "destination": "dest.path", "static_value": "val" }
+- Delete Field: { "type": "delete_field", "field": "field_name" }
+- Flatten List: { "type": "flatten", "source_path": "list.path", "destination": "dest_key" }
+
+Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
+
+      const response = await chatArchitect(
+        currentWorkflow,
+        latestContext,
+        [{ role: 'user', content: systemPrompt }],
+        { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0.1 }
+      );
+
+      if (response && response.status === 'success' && response.reply) {
+        const match = response.reply.match(/```json\s*([\s\S]*?)\s*```/) || response.reply.match(/\[\s*\{[\s\S]*?\}\s*\]/);
+        const jsonStr = match ? match[1] || match[0] : response.reply;
+        const parsed = JSON.parse(jsonStr.trim());
+        if (Array.isArray(parsed)) {
+          onChange([...value, ...parsed]);
+          toast.success("Operations configured by Architect Bot!");
+          setAiOpen(false);
+          setAiPrompt('');
+        } else {
+          throw new Error("Response was not a list of operations.");
+        }
+      } else {
+        throw new Error(response.message || "Failed to generate response.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Architect Bot failed: " + err.message);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const contextKeys = React.useMemo(() => {
+    const keys = [];
+    const recurse = (obj, prefix = '') => {
+      if (!obj || typeof obj !== 'object') return;
+      Object.keys(obj).forEach(k => {
+        const path = prefix ? `${prefix}.${k}` : k;
+        keys.push(path);
+        if (typeof obj[k] === 'object' && obj[k] !== null && keys.length < 300) {
+          recurse(obj[k], path);
+        }
+      });
+    };
+    recurse(latestContext);
+    return keys;
+  }, [latestContext]);
+
+  const addOperation = () => {
+    onChange([...value, { type: 'extract_field', source_path: '', field: '', destination: '' }]);
+  };
+
+  const updateOperation = (index, patch) => {
+    const next = [...value];
+    next[index] = { ...next[index], ...patch };
+    onChange(next);
+  };
+
+  const removeOperation = (index) => {
+    onChange(value.filter((_, i) => i !== index));
+  };
+
+  const moveOperation = (index, direction) => {
+    const next = [...value];
+    const target = index + direction;
+    if (target >= 0 && target < next.length) {
+      const temp = next[index];
+      next[index] = next[target];
+      next[target] = temp;
+      onChange(next);
+    }
+  };
+
+  const opTypes = [
+    { value: 'extract_field', label: 'Extract Field (Nested to Key)' },
+    { value: 'filter', label: 'Filter List (Condition)' },
+    { value: 'map', label: 'Map List (Extract from items)' },
+    { value: 'rename', label: 'Rename Key' },
+    { value: 'set_value', label: 'Set Static Value' },
+    { value: 'delete_field', label: 'Delete Key' },
+    { value: 'flatten', label: 'Flatten Nested Lists' }
+  ];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 10, marginBottom: 18 }}>
+      {/* Architect Bot Assistant box */}
+      <div style={{
+        background: 'var(--bg-card-purple, #F5F3FF)',
+        border: '1.5px solid rgba(139, 92, 246, 0.2)',
+        borderRadius: 12,
+        padding: 12,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10
+      }}>
+        <div 
+          onClick={() => setAiOpen(!aiOpen)}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+        >
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#7C3AED', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <FiZap size={12} /> ASK ARCHITECT BOT (AI WIZARD)
+          </span>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{aiOpen ? 'Collapse' : 'Expand'}</span>
         </div>
-        <div style={{
-          padding: '10px 12px', background: '#F0F9FF', borderRadius: 8,
-          fontSize: 11, color: '#0369A1', border: '1px solid #BAE6FD', marginBottom: 12
-        }}>
-          Used when your template has no &#123;&#123;placeholders&#125;&#125; — the AI reads the
-          document and figures out what to replace based on your input data.
-        </div>
-        <LLMConfigSection
-          llm={data.llm}
-          onChange={(v) => update({ llm: v })}
-        />
+
+        {aiOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
+            <textarea
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              placeholder="Explain what you want to extract or modify in plain English... (e.g. 'Get run_name and test accuracy from job_status.tasks')"
+              rows={3}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                fontSize: 11,
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                outline: 'none',
+                resize: 'none',
+                fontFamily: 'inherit',
+                background: 'white',
+                color: 'var(--text-primary)'
+              }}
+            />
+            <button
+              onClick={handleAiGenerate}
+              disabled={aiLoading || !aiPrompt.trim()}
+              style={{
+                padding: '8px 12px',
+                background: '#7C3AED',
+                color: 'white',
+                border: 'none',
+                borderRadius: 8,
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: (aiLoading || !aiPrompt.trim()) ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6
+              }}
+            >
+              {aiLoading ? <FiLoader className="animate-spin" size={12} /> : <FiZap size={12} />}
+              {aiLoading ? 'Architect Bot Thinking...' : 'Generate Steps'}
+            </button>
+          </div>
+        )}
       </div>
+
+      <datalist id="jt-context-keys">
+        {contextKeys.map(k => <option key={k} value={k} />)}
+      </datalist>
+
+      {value.map((op, idx) => (
+        <div key={idx} style={{
+          padding: 14,
+          background: 'var(--bg-card-neutral, #F8FAFC)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+          position: 'relative',
+          opacity: op.disabled ? 0.55 : 1,
+          transition: 'all 0.2s'
+        }}>
+          {/* Card Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: op.disabled ? 'var(--text-muted, #94A3B8)' : 'var(--theme-primary)', letterSpacing: '0.05em' }}>
+                STEP {idx + 1} {op.disabled && '(DISABLED)'}
+              </span>
+              <div
+                onClick={() => updateOperation(idx, { disabled: !op.disabled })}
+                style={{
+                  width: 32, height: 18, borderRadius: 9, cursor: 'pointer', position: 'relative',
+                  background: !op.disabled ? 'var(--accent-btn, #4285F4)' : 'var(--border, #e2e8f0)',
+                  transition: 'all 0.2s', flexShrink: 0, display: 'inline-block'
+                }}
+                title={op.disabled ? "Enable Step" : "Disable Step"}
+              >
+                <div style={{
+                  position: 'absolute', top: 2, left: !op.disabled ? 16 : 2, width: 14, height: 14,
+                  borderRadius: '50%', background: '#fff', transition: 'left 0.2s ease',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                }} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button
+                disabled={idx === 0}
+                onClick={() => moveOperation(idx, -1)}
+                style={{ background: 'none', border: 'none', padding: 4, cursor: idx === 0 ? 'not-allowed' : 'pointer', color: 'var(--text-muted)' }}
+                title="Move Up"
+              >
+                ▲
+              </button>
+              <button
+                disabled={idx === value.length - 1}
+                onClick={() => moveOperation(idx, 1)}
+                style={{ background: 'none', border: 'none', padding: 4, cursor: idx === value.length - 1 ? 'not-allowed' : 'pointer', color: 'var(--text-muted)' }}
+                title="Move Down"
+              >
+                ▼
+              </button>
+              <button
+                onClick={() => removeOperation(idx)}
+                style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4 }}
+                title="Remove Operation"
+              >
+                <FiTrash2 size={12} />
+              </button>
+            </div>
+          </div>
+
+          {/* Operation Type Selector */}
+          <div>
+            <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>OPERATION TYPE</label>
+            <select
+              value={op.type}
+              onChange={(e) => updateOperation(idx, { type: e.target.value })}
+              style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+            >
+              {opTypes.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+
+          {/* Dynamic Configuration Fields */}
+          {op.type === 'extract_field' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>SOURCE PATH (NESTED DICT/LIST)</label>
+                <input
+                  list="jt-context-keys"
+                  value={op.source_path ?? ''}
+                  onChange={(e) => updateOperation(idx, { source_path: e.target.value })}
+                  placeholder="e.g. data.results"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>TARGET FIELD</label>
+                  <input
+                    value={op.field ?? ''}
+                    onChange={(e) => updateOperation(idx, { field: e.target.value })}
+                    placeholder="e.g. status"
+                    style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DESTINATION KEY (ROOT)</label>
+                  <input
+                    value={op.destination ?? ''}
+                    onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                    placeholder="e.g. job_status"
+                    style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {op.type === 'filter' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>SOURCE LIST PATH</label>
+                <input
+                  list="jt-context-keys"
+                  value={op.source_path ?? ''}
+                  onChange={(e) => updateOperation(idx, { source_path: e.target.value })}
+                  placeholder="e.g. data.items"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
+                <div style={{ flex: 1.5 }}>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>FILTER FIELD</label>
+                  <input
+                    value={op.filter_field ?? ''}
+                    onChange={(e) => updateOperation(idx, { filter_field: e.target.value })}
+                    placeholder="e.g. status"
+                    style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>OP</label>
+                  <select
+                    value={op.filter_operator ?? '=='}
+                    onChange={(e) => updateOperation(idx, { filter_operator: e.target.value })}
+                    style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                  >
+                    <option value="==">==</option>
+                    <option value="!=">!=</option>
+                    <option value="contains">contains</option>
+                    <option value=">">&gt;</option>
+                    <option value="<">&lt;</option>
+                  </select>
+                </div>
+                <div style={{ flex: 1.5 }}>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>VALUE</label>
+                  <input
+                    value={op.filter_value ?? ''}
+                    onChange={(e) => updateOperation(idx, { filter_value: e.target.value })}
+                    placeholder="e.g. active"
+                    style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                  />
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DESTINATION KEY (OPTIONAL)</label>
+                <input
+                  value={op.destination ?? ''}
+                  onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                  placeholder="e.g. filtered_items"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+            </div>
+          )}
+
+          {op.type === 'map' && (() => {
+            const projections = op.projections || [];
+            const isProjection = projections.length > 0 || op.use_projection;
+
+            const addProj = () => {
+              const nextProj = [...projections, { target_path: '', source_field: '' }];
+              updateOperation(idx, { projections: nextProj, use_projection: true });
+            };
+
+            const updateProj = (pIdx, patch) => {
+              const nextProj = [...projections];
+              nextProj[pIdx] = { ...nextProj[pIdx], ...patch };
+              updateOperation(idx, { projections: nextProj });
+            };
+
+            const removeProj = (pIdx) => {
+              const nextProj = projections.filter((_, i) => i !== pIdx);
+              updateOperation(idx, { projections: nextProj });
+            };
+
+            const toggleProjection = (checked) => {
+              if (checked) {
+                updateOperation(idx, { use_projection: true, projections: projections.length > 0 ? projections : [{ target_path: '', source_field: '' }] });
+              } else {
+                updateOperation(idx, { use_projection: false, projections: [] });
+              }
+            };
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>SOURCE LIST PATH</label>
+                  <input
+                    list="jt-context-keys"
+                    value={op.source_path ?? ''}
+                    onChange={(e) => updateOperation(idx, { source_path: e.target.value })}
+                    placeholder="e.g. job_status.tasks"
+                    style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '4px 0' }}>
+                  <input
+                    type="checkbox"
+                    id={`jt-map-proj-${idx}`}
+                    checked={isProjection}
+                    onChange={(e) => toggleProjection(e.target.checked)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <label htmlFor={`jt-map-proj-${idx}`} style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}>
+                    Construct custom objects (Object Projection)
+                  </label>
+                </div>
+
+                {isProjection ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'rgba(0,0,0,0.02)', padding: 10, borderRadius: 8, border: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>FIELD MAPPINGS</div>
+                    {projections.map((proj, pIdx) => (
+                      <div key={pIdx} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <input
+                          value={proj.target_path}
+                          onChange={(e) => updateProj(pIdx, { target_path: e.target.value })}
+                          placeholder="Target path (e.g. train.accuracy)"
+                          style={{ ...inputStyle, padding: '5px 8px', fontSize: 11, flex: 1 }}
+                        />
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>&larr;</span>
+                        <input
+                          value={proj.source_field}
+                          onChange={(e) => updateProj(pIdx, { source_field: e.target.value })}
+                          placeholder="Source path (relative to item)"
+                          style={{ ...inputStyle, padding: '5px 8px', fontSize: 11, flex: 1 }}
+                        />
+                        <button
+                          onClick={() => removeProj(pIdx)}
+                          style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4 }}
+                        >
+                          <FiTrash2 size={11} />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={addProj}
+                      style={{
+                        padding: '6px',
+                        background: 'white',
+                        border: '1px dashed var(--border)',
+                        borderRadius: 6,
+                        fontSize: 10,
+                        color: 'var(--accent-btn)',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        marginTop: 4
+                      }}
+                    >
+                      + Add Field Mapping
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>FIELD TO EXTRACT</label>
+                      <input
+                        value={op.field ?? ''}
+                        onChange={(e) => updateOperation(idx, { field: e.target.value })}
+                        placeholder="e.g. email"
+                        style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DESTINATION KEY</label>
+                  <input
+                    value={op.destination ?? ''}
+                    onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                    placeholder="e.g. user_emails"
+                    style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                  />
+                </div>
+              </div>
+            );
+          })()}
+
+          {op.type === 'rename' && (
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>SOURCE KEY</label>
+                <input
+                  list="jt-context-keys"
+                  value={op.source_path ?? ''}
+                  onChange={(e) => updateOperation(idx, { source_path: e.target.value })}
+                  placeholder="e.g. old_name"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>NEW KEY NAME</label>
+                <input
+                  value={op.destination ?? ''}
+                  onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                  placeholder="e.g. new_name"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+            </div>
+          )}
+
+          {op.type === 'set_value' && (
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DESTINATION PATH</label>
+                <input
+                  value={op.destination ?? ''}
+                  onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                  placeholder="e.g. config.debug"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>STATIC VALUE</label>
+                <input
+                  value={op.static_value ?? ''}
+                  onChange={(e) => updateOperation(idx, { static_value: e.target.value })}
+                  placeholder="e.g. true"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+            </div>
+          )}
+
+          {op.type === 'delete_field' && (
+            <div>
+              <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>FIELD TO DELETE (ROOT)</label>
+              <input
+                list="jt-context-keys"
+                value={op.field ?? ''}
+                onChange={(e) => updateOperation(idx, { field: e.target.value })}
+                placeholder="e.g. sensitive_field"
+                style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+              />
+            </div>
+          )}
+
+          {op.type === 'flatten' && (
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>SOURCE LIST OF LISTS</label>
+                <input
+                  list="jt-context-keys"
+                  value={op.source_path ?? ''}
+                  onChange={(e) => updateOperation(idx, { source_path: e.target.value })}
+                  placeholder="e.g. nested_arrays"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DESTINATION KEY</label>
+                <input
+                  value={op.destination ?? ''}
+                  onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                  placeholder="e.g. flat_array"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+
+      <button
+        onClick={addOperation}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+          padding: '10px',
+          background: 'none',
+          border: '1.5px dashed var(--border)',
+          borderRadius: 10,
+          color: 'var(--accent-btn)',
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: 'pointer',
+          transition: 'all 0.15s'
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-btn)'; e.currentTarget.style.background = 'var(--accent-glow)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'none'; }}
+      >
+        <FiPlus size={13} /> Add Transform Operation
+      </button>
     </div>
   );
 }
@@ -2869,7 +3724,6 @@ export default function PropertiesPanel() {
   const [skillGalleryOpen, setSkillGalleryOpen] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [showGlobalRuleModal, setShowGlobalRuleModal] = useState(false);
-  const [modelsLoaded, setModelsLoaded] = useState(false);
 
   const handleFixGrammar = async (targetKey) => {
     if (!data[targetKey]) return;
@@ -2890,30 +3744,6 @@ export default function PropertiesPanel() {
     listTools().then(res => {
       setAvailableTools(res.tools || []);
     }).catch(err => console.error('Failed to load tools:', err));
-
-    listAvailableModels().then(res => {
-      if (res && res.status === 'success' && Array.isArray(res.models) && res.models.length > 0) {
-        const grouped = {};
-        const uniqueProviders = new Set();
-        res.models.forEach(m => {
-          const prov = m.provider;
-          uniqueProviders.add(prov);
-          if (!grouped[prov]) grouped[prov] = [];
-          if (!grouped[prov].includes(m.model)) grouped[prov].push(m.model);
-          // Store label mapping
-          MODEL_LABELS[`${prov}::${m.model}`] = m.label || `${m.model} (${prov})`;
-        });
-
-        // Update global mutable arrays
-        PROVIDERS.length = 0;
-        PROVIDERS.push(...Array.from(uniqueProviders));
-
-        Object.keys(MODELS).forEach(k => delete MODELS[k]);
-        Object.assign(MODELS, grouped);
-
-        setModelsLoaded(true);
-      }
-    }).catch(err => console.error('Failed to load dynamic models:', err));
   }, []);
 
   const node = nodes.find((n) => n.id === selectedNodeId);
@@ -3008,10 +3838,10 @@ export default function PropertiesPanel() {
     const removeEdge = () => setEdges(edges.filter(e => e.id !== edge.id));
 
     return (
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'white', fontFamily: FONT }}>
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-panel, white)', fontFamily: FONT }}>
         <div style={{ padding: '16px 16px 14px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7C3AED' }}>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--bg-card-purple, #F5F3FF)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-card-purple, #7C3AED)' }}>
               <FiLink size={15} strokeWidth={1.5} />
             </div>
             <div>
@@ -3028,7 +3858,7 @@ export default function PropertiesPanel() {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-          <div style={{ marginBottom: 20, padding: 12, background: '#F8F9FF', borderRadius: 10, fontSize: 11, color: '#6366F1', lineHeight: 1.5, border: '1px solid #E0E7FF' }}>
+          <div style={{ marginBottom: 20, padding: 12, background: 'var(--bg-card-info, #F8F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #6366F1)', lineHeight: 1.5, border: '1px solid var(--border-card-info, #E0E7FF)' }}>
             <FiInfo size={11} style={{ marginRight: 5 }} />
             Conditional edges are used by <strong>Router</strong> nodes. If a node is not a Router, the edge acts as a standard flow connection.
           </div>
@@ -3064,20 +3894,20 @@ export default function PropertiesPanel() {
           </Field>
 
           {edge.data?.condition?.key && (
-            <div style={{ marginTop: 12, padding: '8px 12px', background: '#F0FDF4', borderRadius: 8, border: '1px solid #BBF7D0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ marginTop: 12, padding: '8px 12px', background: 'var(--bg-card-success, #F0FDF4)', borderRadius: 8, border: '1px solid var(--border-card-success, #BBF7D0)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E' }}></div>
-              <div style={{ fontSize: 11, color: '#166534', fontWeight: 600 }}>Active Condition: {edge.data.condition.key} {edge.data.condition.operator} {edge.data.condition.value}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-card-success, #166534)', fontWeight: 600 }}>Active Condition: {edge.data.condition.key} {edge.data.condition.operator} {edge.data.condition.value}</div>
             </div>
           )}
         </div>
 
-        <div style={{ padding: 16, borderTop: '1px solid var(--border)', background: 'white' }}>
+        <div style={{ padding: 16, borderTop: '1px solid var(--border)', background: 'var(--bg-panel, white)' }}>
           <button
             onClick={() => { removeEdge(); setSelectedEdge(null); }}
             style={{
-              width: '100%', padding: '12px', background: '#FEF2F2',
-              border: '1px solid #FEE2E2', borderRadius: 10,
-              color: '#EF4444', fontSize: 13, fontWeight: 600,
+              width: '100%', padding: '12px', background: 'var(--bg-card-danger, #FEF2F2)',
+              border: '1px solid var(--border-card-danger, #FEE2E2)', borderRadius: 10,
+              color: 'var(--text-card-danger, #EF4444)', fontSize: 13, fontWeight: 600,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               cursor: 'pointer'
             }}
@@ -3092,7 +3922,7 @@ export default function PropertiesPanel() {
   const update = (patch) => setNodeData(selectedNodeId, patch);
 
   const nodeIcons = {
-    llm_agent: FiCpu, classification: FiFilter, tool_node: FiTool, router: FiGitMerge,
+    llm_agent: FiCpu, tool_node: FiTool, router: FiGitMerge,
     supervisor: FiTarget, swarm: FiShare2,
     rag_node: FiBookOpen, subgraph: FiLink,
     chat_model: FiCpu, memory: FiBookOpen,
@@ -3100,19 +3930,19 @@ export default function PropertiesPanel() {
     splitter: FiRepeat,
     api_node: FiGlobe,
     file_store: FiFileText,
-    template_node: FiFileText,
     webhook_response: FiShare2,
     error_router: FiAlertTriangle,
-    json_transform: FiFilter,
     pattern_extract: FiSearch,
     db_node: FiBox,
+    json_transform: FiCode,
+    condition: FiHelpCircle,
   };
   const Icon = nodeIcons[data.type] || FiLayers;
 
   const isSystemNode = ['start', 'end'].includes(data.type);
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'white', fontFamily: FONT }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-panel, white)', fontFamily: FONT }}>
       {/* Header */}
       <div style={{ padding: '16px 16px 14px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -3125,7 +3955,7 @@ export default function PropertiesPanel() {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          {['llm_agent', 'deep_agent', 'supervisor', 'swarm', 'api_node'].includes(data.type) && (
+          {['llm_agent', 'deep_agent', 'supervisor', 'swarm'].includes(data.type) && (
             <button
               onClick={() => setSaveModalOpen(true)}
               style={{ width: 30, height: 30, background: 'none', border: 'none', borderRadius: 6, color: 'var(--accent-btn)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.15s' }}
@@ -3219,7 +4049,7 @@ export default function PropertiesPanel() {
             </Field>
 
             <div style={{
-              background: '#F8FAFC',
+              background: 'var(--bg-card-neutral, #F8FAFC)',
               borderRadius: 12,
               padding: 16,
               border: '1px solid var(--border)',
@@ -3248,7 +4078,7 @@ export default function PropertiesPanel() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <Toggle checked={data.enabled !== false} onChange={(v) => update({ enabled: v })} label="Trigger Enabled" />
 
-              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: '#F8FAFC' }}>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: 'var(--bg-card-neutral, #F8FAFC)' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Authentication</div>
                 <Field label="Auth Method" hint="Header: Uses static secret in X-AgentMesh-Secret. HMAC: Uses SHA256 signature verification.">
                   <Select
@@ -3268,8 +4098,8 @@ export default function PropertiesPanel() {
                 )}
               </div>
 
-              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: '#F0F9FF' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#0369A1', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Response Settings</div>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: 'var(--bg-card-info, #F0F9FF)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-card-info, #0369A1)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Response Settings</div>
                 <Field label="Response Mode" hint="Immediate: Responds 202 Accepted instantly. On Completion: Waits for workflow to finish and returns its output.">
                   <Select
                     value={data.response_mode || 'immediate'}
@@ -3303,7 +4133,7 @@ export default function PropertiesPanel() {
 
               <Field label="Webhook Path" hint="Custom path for the webhook. If empty, uses the Workflow ID.">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', background: '#F1F5F9', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)' }}>/webhook/</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', background: 'var(--bg-card-neutral, #F1F5F9)', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)' }}>/webhook/</div>
                   <Input value={data.path || ''} onChange={(v) => update({ path: v })} placeholder="my-custom-path" />
                 </div>
               </Field>
@@ -3311,7 +4141,7 @@ export default function PropertiesPanel() {
               <div style={{ marginTop: 8 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Webhook Endpoint</div>
                 <div style={{
-                  background: '#F8FAFC',
+                  background: 'var(--bg-card-neutral, #F8FAFC)',
                   border: '1px solid var(--border)',
                   borderRadius: 12,
                   padding: '12px 14px',
@@ -3320,10 +4150,10 @@ export default function PropertiesPanel() {
                   alignItems: 'center'
                 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 10, color: '#64748B', marginBottom: 2, fontWeight: 600 }}>{data.response_mode === 'on_completion' ? 'SYNC' : 'ASYNC'} • POST / GET / PUT</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2, fontWeight: 600 }}>{data.response_mode === 'on_completion' ? 'SYNC' : 'ASYNC'} • POST / GET / PUT</div>
                     <div style={{
                       fontSize: 12,
-                      color: '#1E293B',
+                      color: 'var(--text-primary, #1E293B)',
                       fontFamily: 'monospace',
                       wordBreak: 'break-all',
                       lineHeight: 1.4
@@ -3345,7 +4175,7 @@ export default function PropertiesPanel() {
                     }}
                     id="copy-webhook-btn"
                     style={{
-                      width: 32, height: 32, borderRadius: 8, background: 'white',
+                      width: 32, height: 32, borderRadius: 8, background: 'var(--bg-copy-btn, white)',
                       border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       cursor: 'pointer', color: 'var(--text-muted)', flexShrink: 0
                     }}
@@ -3356,7 +4186,7 @@ export default function PropertiesPanel() {
                 </div>
               </div>
             </div>
-            <div style={{ marginTop: 20, padding: 12, background: '#F0F9FF', borderRadius: 10, fontSize: 11, color: '#0369A1', lineHeight: 1.5, border: '1px solid #BAE6FD' }}>
+            <div style={{ marginTop: 20, padding: 12, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', lineHeight: 1.5, border: '1px solid var(--border-card-info, #BAE6FD)' }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               {data.response_mode === 'on_completion'
                 ? "Synchronous Mode: Caller waits for result. Use a 'Webhook Response' node to customize the output."
@@ -3388,7 +4218,7 @@ export default function PropertiesPanel() {
               />
             </Field>
 
-            <div style={{ padding: 12, background: '#ECFDF5', borderRadius: 10, fontSize: 11, color: '#059669', lineHeight: 1.5, border: '1px solid #A7F3D0', marginTop: 10 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-success, #ECFDF5)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-success, #059669)', lineHeight: 1.5, border: '1px solid var(--border-card-success, #A7F3D0)', marginTop: 10 }}>
               <FiShare2 size={12} style={{ marginRight: 6 }} />
               This node only has an effect if the Webhook Trigger is set to <strong>On Completion</strong> mode. It captures specific data and prepares the final HTTP response for the caller.
             </div>
@@ -3410,7 +4240,7 @@ export default function PropertiesPanel() {
                 options={['UTC', 'local', 'America/New_York', 'Europe/London', 'Asia/Tokyo']}
               />
             </Field>
-            <div style={{ marginTop: 20, padding: 12, background: '#FFFBEB', borderRadius: 10, fontSize: 11, color: '#92400E', lineHeight: 1.5, border: '1px solid #FDE68A' }}>
+            <div style={{ marginTop: 20, padding: 12, background: 'var(--bg-card-warning, #FFFBEB)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-warning, #92400E)', lineHeight: 1.5, border: '1px solid var(--border-card-warning, #FDE68A)' }}>
               <FiClock size={12} style={{ marginRight: 6 }} />
               The Cron trigger automatically executes the workflow at specified intervals using the backend scheduler.
             </div>
@@ -3459,7 +4289,7 @@ export default function PropertiesPanel() {
                 <div style={{
                   marginBottom: 18,
                   padding: '14px 16px',
-                  background: '#F8FAFC',
+                  background: 'var(--bg-card-neutral, #F8FAFC)',
                   border: '1px solid var(--border)',
                   borderRadius: 12,
                 }}>
@@ -3479,18 +4309,18 @@ export default function PropertiesPanel() {
                         {Object.entries(properties).map(([argName, argMeta]) => {
                           const isRequired = requiredFields.includes(argName) || argMeta.required;
                           return (
-                            <div key={argName} style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 10px', background: 'white', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                            <div key={argName} style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 10px', background: 'var(--bg-panel, white)', borderRadius: 8, border: '1px solid var(--border, #E2E8F0)' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: '#0F172A' }}>{argName}</span>
-                                <span style={{ fontSize: 9, color: '#6366F1', background: '#EEF2FF', padding: '1px 5px', borderRadius: 4, fontWeight: 600 }}>
+                                <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: 'var(--text-primary, #0F172A)' }}>{argName}</span>
+                                <span style={{ fontSize: 9, color: 'var(--text-card-purple, #6366F1)', background: 'var(--bg-card-purple, #EEF2FF)', padding: '1px 5px', borderRadius: 4, fontWeight: 600 }}>
                                   {argMeta.type || 'any'}
                                 </span>
                                 {isRequired && (
-                                  <span style={{ fontSize: 9, color: '#EF4444', fontWeight: 600 }}>required</span>
+                                  <span style={{ fontSize: 9, color: 'var(--text-card-danger, #EF4444)', fontWeight: 600 }}>required</span>
                                 )}
                               </div>
                               {argMeta.description && (
-                                <div style={{ fontSize: 10, color: '#64748B', lineHeight: 1.4, marginTop: 2 }}>
+                                <div style={{ fontSize: 10, color: 'var(--text-muted, #64748B)', lineHeight: 1.4, marginTop: 2 }}>
                                   {argMeta.description}
                                 </div>
                               )}
@@ -3500,7 +4330,7 @@ export default function PropertiesPanel() {
                       </div>
                     </div>
                   ) : (
-                    <div style={{ fontSize: 11, color: '#64748B', fontStyle: 'italic' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted, #64748B)', fontStyle: 'italic' }}>
                       This tool does not accept any arguments.
                     </div>
                   )}
@@ -3523,7 +4353,7 @@ export default function PropertiesPanel() {
               hint="Key-value arguments to supply to the poller tool on every execution."
             />
 
-            <div style={{ marginTop: 20, padding: 12, background: '#FFFDF5', borderRadius: 10, fontSize: 11, color: '#854D0E', lineHeight: 1.5, border: '1px solid #FEF08A' }}>
+            <div style={{ marginTop: 20, padding: 12, background: 'var(--bg-card-amber, #FFFDF5)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-amber, #854D0E)', lineHeight: 1.5, border: '1px solid var(--border-card-amber, #FEF08A)' }}>
               <FiClock size={12} style={{ marginRight: 6 }} />
               The Polling trigger runs the selected tool on a scheduled interval without an LLM. If new items are returned, it starts a workflow run.
             </div>
@@ -3622,7 +4452,7 @@ export default function PropertiesPanel() {
                   }
                 }}
                 style={{
-                  padding: '12px 16px', background: '#F8FAFC', cursor: 'pointer',
+                  padding: '12px 16px', background: 'var(--bg-card-neutral, #F8FAFC)', cursor: 'pointer',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   borderBottom: '1px solid var(--border)'
                 }}
@@ -3633,7 +4463,7 @@ export default function PropertiesPanel() {
                 <FiChevronDown id="advanced-arrow-agent" size={14} style={{ color: 'var(--text-muted)', transition: 'transform 0.2s' }} />
               </div>
 
-              <div id="advanced-options-agent" style={{ display: 'none', padding: '16px', background: 'white' }}>
+              <div id="advanced-options-agent" style={{ display: 'none', padding: '16px', background: 'var(--bg-panel, white)' }}>
                 {/* 6a. Data Subscriptions (Pub/Sub) */}
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Data Subscriptions (Pub/Sub)</div>
@@ -3761,8 +4591,8 @@ export default function PropertiesPanel() {
 
             {/* Swarm membership info (Special Context) */}
             {nodes.some(n => n.data?.type === 'swarm' && (n.data?.member_ids || []).includes(selectedNodeId)) && (
-              <div style={{ marginTop: 8, marginBottom: 20, padding: 14, background: '#FDF2F8', borderRadius: 12, border: '1px solid #FBCFE8' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#9D174D', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Swarm Handoff Rules</div>
+              <div style={{ marginTop: 8, marginBottom: 20, padding: 14, background: 'var(--bg-card-pink, #FDF2F8)', borderRadius: 12, border: '1px solid var(--border-card-pink, #FBCFE8)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-card-pink, #9D174D)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Swarm Handoff Rules</div>
                 <Field label="Allowed Handoffs" hint="Restrict which other swarm members this agent can transfer control to.">
                   <NodeIdList
                     value={data.allowed_transitions || []}
@@ -3826,7 +4656,7 @@ export default function PropertiesPanel() {
                 <button
                   onClick={() => setSkillGalleryOpen(true)}
                   style={{
-                    padding: '4px 10px', background: '#F5F3FF', color: '#8B5CF6',
+                    padding: '4px 10px', background: 'var(--bg-card-purple, #F5F3FF)', color: 'var(--text-card-purple, #8B5CF6)',
                     borderRadius: 6, fontSize: 10, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, border: 'none'
                   }}
@@ -3840,12 +4670,12 @@ export default function PropertiesPanel() {
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', padding: '4px 0' }}>No skills applied yet.</div>
                 )}
                 {/* Multi-skill support */}
-                {(data.skills || []).filter(s => typeof s === 'string' && s).map(skillPath => {
+                {(data.skills || []).map(skillPath => {
                   const label = skillPath.split('/').pop().replace(/-/g, ' ').toUpperCase();
                   return (
                     <div key={skillPath} style={{
                       display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px',
-                      background: 'white', border: '1px solid var(--border)', borderRadius: 20,
+                      background: 'var(--bg-panel, white)', border: '1px solid var(--border)', borderRadius: 20,
                       fontSize: 10, fontWeight: 700, color: 'var(--text-primary)'
                     }}>
                       <FiZap size={10} color="#8B5CF6" />
@@ -3883,7 +4713,7 @@ export default function PropertiesPanel() {
                   }
                 }}
                 style={{
-                  padding: '12px 16px', background: '#F8FAFC', cursor: 'pointer',
+                  padding: '12px 16px', background: 'var(--bg-card-neutral, #F8FAFC)', cursor: 'pointer',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   borderBottom: '1px solid var(--border)'
                 }}
@@ -3894,7 +4724,7 @@ export default function PropertiesPanel() {
                 <FiChevronDown id="advanced-arrow-deep" size={14} style={{ color: 'var(--text-muted)', transition: 'transform 0.2s' }} />
               </div>
 
-              <div id="advanced-options-deep" style={{ display: 'none', padding: '16px', background: 'white' }}>
+              <div id="advanced-options-deep" style={{ display: 'none', padding: '16px', background: 'var(--bg-panel, white)' }}>
                 <Field label="Max Reasoning Steps" hint="Limits the number of autonomous task updates.">
                   <Input type="number" value={data.max_iterations ?? 10} onChange={(v) => update({ max_iterations: parseInt(v) || 10 })} placeholder="10" />
                 </Field>
@@ -3955,18 +4785,37 @@ export default function PropertiesPanel() {
             </div>
           </>
         )}
-        {/* ── Button Trigger ── */}
-        {data.type === 'button_trigger' && (
+        {(data.type === 'button_trigger' || data.type === 'auto_trigger') && (
           <>
-            <Field label="Button Label" hint="The text displayed on the button in the Run Panel.">
-              <Input value={data.button_label || 'Start Workflow'} onChange={(v) => update({ button_label: v })} placeholder="e.g. Generate Report" />
+            {data.type === 'button_trigger' && (
+              <>
+                <Field label="Button Label" hint="The text displayed on the button in the Run Panel.">
+                  <Input value={data.button_label || 'Start Workflow'} onChange={(v) => update({ button_label: v })} placeholder="e.g. Generate Report" />
+                </Field>
+                <Field label="Button Theme/Style" hint="Determine the color coding of the button.">
+                  <Select
+                    value={data.button_category || 'action'}
+                    onChange={(v) => update({ button_category: v })}
+                    options={[
+                      { value: 'action', label: 'Action (Indigo Theme)' },
+                      { value: 'info', label: 'Info (Blue)' },
+                      { value: 'help', label: 'Help (Purple)' },
+                      { value: 'success', label: 'Success (Green)' },
+                      { value: 'reject', label: 'Reject (Orange)' },
+                      { value: 'delete', label: 'Delete (Red)' }
+                    ]}
+                  />
+                </Field>
+              </>
+            )}
+            <Field label="Initial Input" hint={data.type === 'button_trigger' ? "The text sent to the workflow when the button is clicked." : "The text sent to the workflow when triggered automatically."}>
+              <Textarea value={data.button_input || 'Start'} onChange={(v) => update({ button_input: v })} placeholder={data.type === 'button_trigger' ? "e.g. Please generate the daily report" : "e.g. Auto run workflow"} rows={3} />
             </Field>
-            <Field label="Initial Input" hint="The text sent to the workflow when the button is clicked.">
-              <Textarea value={data.button_input || 'Start'} onChange={(v) => update({ button_input: v })} placeholder="e.g. Please generate the daily report" rows={3} />
-            </Field>
-            <div style={{ padding: 12, background: '#F0F9FF', borderRadius: 10, fontSize: 11, color: '#0369A1', lineHeight: 1.5, border: '1px solid #BAE6FD' }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', lineHeight: 1.5, border: '1px solid var(--border-card-info, #BAE6FD)' }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
-              This node creates a clickable button in the chat interface for quick execution.
+              {data.type === 'button_trigger' 
+                ? 'This node creates a clickable button in the chat interface for quick execution.'
+                : 'This node triggers the workflow automatically as soon as the user launches/opens it.'}
             </div>
           </>
         )}
@@ -3983,7 +4832,7 @@ export default function PropertiesPanel() {
               />
             </Field>
             <LogicHelper />
-            <div style={{ padding: 12, background: '#FFFBEB', borderRadius: 10, fontSize: 11, color: '#92400E', lineHeight: 1.5, border: '1px solid #FDE68A', marginTop: 10 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-warning, #FFFBEB)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-warning, #92400E)', lineHeight: 1.5, border: '1px solid var(--border-card-warning, #FDE68A)', marginTop: 10 }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               Connect two edges from this node. Label one <strong>true</strong> and the other <strong>false</strong>.
             </div>
@@ -4001,7 +4850,7 @@ export default function PropertiesPanel() {
                 placeholder="e.g. 60"
               />
             </Field>
-            <div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, fontSize: 11, color: '#475569', lineHeight: 1.5, border: '1px solid var(--border)', marginTop: 10 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 10, fontSize: 11, color: 'var(--text-secondary, #475569)', lineHeight: 1.5, border: '1px solid var(--border)', marginTop: 10 }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               Useful for rate limiting or waiting for external processes to settle.
             </div>
@@ -4010,7 +4859,7 @@ export default function PropertiesPanel() {
 
         {/* ── Join Node ── */}
         {data.type === 'join' && (
-          <div style={{ padding: 16, background: '#ECFDF5', borderRadius: 12, fontSize: 12, color: '#065F46', border: '1px solid #A7F3D0', lineHeight: 1.6 }}>
+          <div style={{ padding: 16, background: 'var(--bg-card-success, #ECFDF5)', borderRadius: 12, fontSize: 12, color: 'var(--text-card-success, #065F46)', border: '1px solid var(--border-card-success, #A7F3D0)', lineHeight: 1.6 }}>
             <div style={{ fontWeight: 800, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
               <FiShare2 size={14} /> SYNCHRONIZATION POINT
             </div>
@@ -4021,19 +4870,19 @@ export default function PropertiesPanel() {
         {/* ── Switch Node ── */}
         {data.type === 'switch' && (
           <>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 12 }}>Logical Branches</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary, #1E293B)', marginBottom: 12 }}>Logical Branches</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {(data.branches || []).map((branch, idx) => (
-                <div key={idx} style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, border: '1px solid var(--border)' }}>
+                <div key={idx} style={{ padding: 12, background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 10, border: '1px solid var(--border)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: '#64748B' }}>BRANCH {idx + 1}</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted, #64748B)' }}>BRANCH {idx + 1}</div>
                     <button
                       onClick={() => {
                         const newBranches = [...(data.branches || [])];
                         newBranches.splice(idx, 1);
                         update({ branches: newBranches });
                       }}
-                      style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4 }}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-card-danger, #EF4444)', cursor: 'pointer', padding: 4 }}
                     >
                       <FiTrash2 size={12} />
                     </button>
@@ -4073,15 +4922,15 @@ export default function PropertiesPanel() {
                 }}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  padding: '10px', borderRadius: 10, border: '1px dashed #CBD5E1',
-                  background: 'white', color: '#64748B', fontSize: 12, fontWeight: 600,
+                  padding: '10px', borderRadius: 10, border: '1px dashed var(--border, #CBD5E1)',
+                  background: 'var(--bg-panel, white)', color: 'var(--text-muted, #64748B)', fontSize: 12, fontWeight: 600,
                   cursor: 'pointer', marginTop: 8
                 }}
               >
                 <FiPlus size={14} /> Add Branch
               </button>
             </div>
-            <div style={{ padding: 12, background: '#F1F5F9', borderRadius: 10, fontSize: 11, color: '#475569', lineHeight: 1.5, border: '1px solid var(--border)', marginTop: 16 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-neutral, #F1F5F9)', borderRadius: 10, fontSize: 11, color: 'var(--text-secondary, #475569)', lineHeight: 1.5, border: '1px solid var(--border)', marginTop: 16 }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               The workflow routes to the <strong>first</strong> branch that evaluates to True. If none match, it follows the <strong>ELSE</strong> path.
             </div>
@@ -4099,7 +4948,7 @@ export default function PropertiesPanel() {
                 style={{ ...inputStyle, minHeight: 120, resize: 'vertical' }}
               />
             </Field>
-            <div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, fontSize: 11, color: '#64748B', lineHeight: 1.5, border: '1px solid var(--border)', marginTop: 16 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 10, fontSize: 11, color: 'var(--text-muted, #64748B)', lineHeight: 1.5, border: '1px solid var(--border)', marginTop: 16 }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               Use this to inject static responses into the conversation without using an LLM.
             </div>
@@ -4138,7 +4987,7 @@ export default function PropertiesPanel() {
                 placeholder="parsed_output"
               />
             </Field>
-            <div style={{ padding: 12, background: '#FEF3C7', borderRadius: 10, fontSize: 11, color: '#92400E', lineHeight: 1.5, border: '1px solid #FDE68A', marginTop: 16 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-warning, #FEF3C7)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-warning, #92400E)', lineHeight: 1.5, border: '1px solid var(--border-card-warning, #FDE68A)', marginTop: 16 }}>
               <FiFilter size={12} style={{ marginRight: 6, display: 'inline' }} />
               Automatically reads latest message and repairs malformed JSON: fixes missing quotes, trailing commas, unquoted keys, etc. Result stored in context automatically.
             </div>
@@ -4216,7 +5065,7 @@ export default function PropertiesPanel() {
                   }
                 }}
                 style={{
-                  padding: '12px 16px', background: '#F8FAFC', cursor: 'pointer',
+                  padding: '12px 16px', background: 'var(--bg-card-neutral, #F8FAFC)', cursor: 'pointer',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   borderBottom: '1px solid var(--border)'
                 }}
@@ -4227,7 +5076,7 @@ export default function PropertiesPanel() {
                 <FiChevronDown id="advanced-arrow-tool" size={14} style={{ color: 'var(--text-muted)', transition: 'transform 0.2s' }} />
               </div>
 
-              <div id="advanced-options-tool" style={{ display: 'none', padding: '16px', background: 'white' }}>
+              <div id="advanced-options-tool" style={{ display: 'none', padding: '16px', background: 'var(--bg-panel, white)' }}>
                 <Toggle checked={data.return_direct} onChange={(v) => syncToggle('return_direct', v)} label="Return tool result directly to user" />
                 <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />
                 <Field label="Error Target (On Failure)" hint="If this tool execution fails, jump to this error handler.">
@@ -4281,7 +5130,7 @@ export default function PropertiesPanel() {
                 <div style={{
                   marginBottom: 18,
                   padding: '14px 16px',
-                  background: '#F8FAFC',
+                  background: 'var(--bg-card-neutral, #F8FAFC)',
                   border: '1px solid var(--border)',
                   borderRadius: 12,
                 }}>
@@ -4300,19 +5149,53 @@ export default function PropertiesPanel() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {Object.entries(properties).map(([argName, argMeta]) => {
                           const isRequired = requiredFields.includes(argName) || argMeta.required;
+                          const isAdded = data.tool_arguments && data.tool_arguments.hasOwnProperty(argName);
                           return (
-                            <div key={argName} style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 10px', background: 'white', borderRadius: 8, border: '1px solid #E2E8F0' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: '#0F172A' }}>{argName}</span>
-                                <span style={{ fontSize: 9, color: '#6366F1', background: '#EEF2FF', padding: '1px 5px', borderRadius: 4, fontWeight: 600 }}>
-                                  {argMeta.type || 'any'}
-                                </span>
-                                {isRequired && (
-                                  <span style={{ fontSize: 9, color: '#EF4444', fontWeight: 600 }}>required</span>
-                                )}
+                            <div key={argName} style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 10px', background: 'var(--bg-panel, white)', borderRadius: 8, border: '1px solid var(--border, #E2E8F0)' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: 'var(--text-primary, #0F172A)' }}>{argName}</span>
+                                  <span style={{ fontSize: 9, color: 'var(--text-card-purple, #6366F1)', background: 'var(--bg-card-purple, #EEF2FF)', padding: '1px 5px', borderRadius: 4, fontWeight: 600 }}>
+                                    {argMeta.type || 'any'}
+                                  </span>
+                                  {isRequired && (
+                                    <span style={{ fontSize: 9, color: 'var(--text-card-danger, #EF4444)', fontWeight: 600 }}>required</span>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    const next = { ...(data.tool_arguments || {}) };
+                                    if (isAdded) {
+                                      delete next[argName];
+                                    } else {
+                                      next[argName] = '';
+                                    }
+                                    update({ tool_arguments: next });
+                                  }}
+                                  style={{
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '4px 6px',
+                                    borderRadius: 4,
+                                    color: isAdded ? 'var(--text-card-danger, #EF4444)' : 'var(--accent-btn, #3B82F6)',
+                                    background: isAdded ? 'var(--bg-card-danger, #FEF2F2)' : 'var(--bg-card-info, #EFF6FF)',
+                                    fontSize: 10,
+                                    fontWeight: 600,
+                                    gap: 3
+                                  }}
+                                >
+                                  {isAdded ? (
+                                    <FiMinus size={12} />
+                                  ) : (
+                                    <FiPlus size={12} />
+                                  )}
+                                </button>
                               </div>
                               {argMeta.description && (
-                                <div style={{ fontSize: 10, color: '#64748B', lineHeight: 1.4, marginTop: 2 }}>
+                                <div style={{ fontSize: 10, color: 'var(--text-muted, #64748B)', lineHeight: 1.4, marginTop: 2 }}>
                                   {argMeta.description}
                                 </div>
                               )}
@@ -4322,7 +5205,7 @@ export default function PropertiesPanel() {
                       </div>
                     </div>
                   ) : (
-                    <div style={{ fontSize: 11, color: '#64748B', fontStyle: 'italic' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted, #64748B)', fontStyle: 'italic' }}>
                       This tool does not accept any arguments.
                     </div>
                   )}
@@ -4359,7 +5242,7 @@ export default function PropertiesPanel() {
                   }
                 }}
                 style={{
-                  padding: '12px 16px', background: '#F8FAFC', cursor: 'pointer',
+                  padding: '12px 16px', background: 'var(--bg-card-neutral, #F8FAFC)', cursor: 'pointer',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   borderBottom: '1px solid var(--border)'
                 }}
@@ -4370,7 +5253,7 @@ export default function PropertiesPanel() {
                 <FiChevronDown id="advanced-arrow-direct-tool" size={14} style={{ color: 'var(--text-muted)', transition: 'transform 0.2s' }} />
               </div>
 
-              <div id="advanced-options-direct-tool" style={{ display: 'none', padding: '16px', background: 'white' }}>
+              <div id="advanced-options-direct-tool" style={{ display: 'none', padding: '16px', background: 'var(--bg-panel, white)' }}>
                 <Toggle checked={data.interrupt_before || false} onChange={(v) => update({ interrupt_before: v })} label="Pause before execution (HITL)" />
                 <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />
                 <Toggle checked={data.interrupt_after || false} onChange={(v) => update({ interrupt_after: v })} label="Pause after execution (HITL)" />
@@ -4429,7 +5312,7 @@ export default function PropertiesPanel() {
               />
             </div>
             {!data.workflow_id && (
-              <div style={{ padding: 12, background: '#FFFBEB', borderRadius: 10, fontSize: 12, color: '#92400E', border: '1px solid #FDE68A' }}>
+              <div style={{ padding: 12, background: 'var(--bg-card-warning, #FFFBEB)', borderRadius: 10, fontSize: 12, color: 'var(--text-card-warning, #92400E)', border: '1px solid var(--border-card-warning, #FDE68A)' }}>
                 Select a compiled workflow to use as a subgraph.
               </div>
             )}
@@ -4442,7 +5325,7 @@ export default function PropertiesPanel() {
             <Field label="Routing Key" hint="The state key whose value determines which node to route to.">
               <Input value={data.routing_key || 'next'} onChange={(v) => update({ routing_key: v })} placeholder="next" />
             </Field>
-            <div style={{ padding: 12, background: '#F5F3FF', borderRadius: 10, fontSize: 12, color: '#6D28D9', border: '1px solid #DDD6FE', lineHeight: 1.5 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-purple, #F5F3FF)', borderRadius: 10, fontSize: 12, color: 'var(--text-card-purple, #6D28D9)', border: '1px solid var(--border-card-purple, #DDD6FE)', lineHeight: 1.5 }}>
               <FiInfo size={12} style={{ marginRight: 5 }} />
               Connect edges from this router to each possible destination. The routing key value must match the edge condition values.
             </div>
@@ -4505,7 +5388,7 @@ export default function PropertiesPanel() {
                   }
                 }}
                 style={{
-                  padding: '12px 16px', background: '#F8FAFC', cursor: 'pointer',
+                  padding: '12px 16px', background: 'var(--bg-card-neutral, #F8FAFC)', cursor: 'pointer',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   borderBottom: '1px solid var(--border)'
                 }}
@@ -4516,7 +5399,7 @@ export default function PropertiesPanel() {
                 <FiChevronDown id="advanced-arrow-supervisor" size={14} style={{ color: 'var(--text-muted)', transition: 'transform 0.2s' }} />
               </div>
 
-              <div id="advanced-options-supervisor" style={{ display: 'none', padding: '16px', background: 'white' }}>
+              <div id="advanced-options-supervisor" style={{ display: 'none', padding: '16px', background: 'var(--bg-panel, white)' }}>
                 {/* Iteration policy for supervisor */}
                 <div style={{ marginBottom: 20 }}>
                   <IterationConfigSection
@@ -4604,7 +5487,7 @@ export default function PropertiesPanel() {
                   }
                 }}
                 style={{
-                  padding: '12px 16px', background: '#F8FAFC', cursor: 'pointer',
+                  padding: '12px 16px', background: 'var(--bg-card-neutral, #F8FAFC)', cursor: 'pointer',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   borderBottom: '1px solid var(--border)'
                 }}
@@ -4615,7 +5498,7 @@ export default function PropertiesPanel() {
                 <FiChevronDown id="advanced-arrow-swarm" size={14} style={{ color: 'var(--text-muted)', transition: 'transform 0.2s' }} />
               </div>
 
-              <div id="advanced-options-swarm" style={{ display: 'none', padding: '16px', background: 'white' }}>
+              <div id="advanced-options-swarm" style={{ display: 'none', padding: '16px', background: 'var(--bg-panel, white)' }}>
                 {/* Iteration policy for swarm */}
                 <div style={{ marginBottom: 20 }}>
                   <IterationConfigSection
@@ -4677,11 +5560,7 @@ export default function PropertiesPanel() {
                   { value: 'info', label: 'Info (Blue)' },
                   { value: 'success', label: 'Success (Green)' },
                   { value: 'warning', label: 'Warning (Yellow)' },
-                  { value: 'error', label: 'Error (Red)' },
-                  { value: 'important', label: 'Important (Indigo)' },
-                  { value: 'critical', label: 'Critical (Dark Red)' },
-                  { value: 'system', label: 'System (Gray)' },
-                  { value: 'security', label: 'Security (Rose)' }
+                  { value: 'error', label: 'Error (Red)' }
                 ]}
               />
             </Field>
@@ -4695,7 +5574,7 @@ export default function PropertiesPanel() {
               checked={data.show_chat_button || false}
               onChange={(v) => update({ show_chat_button: v })}
             />
-            <div style={{ marginTop: 20, padding: 12, background: '#F0F9FF', borderRadius: 10, fontSize: 11, color: '#0369A1', lineHeight: 1.5, border: '1px solid #BAE6FD' }}>
+            <div style={{ marginTop: 20, padding: 12, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', lineHeight: 1.5, border: '1px solid var(--border-card-info, #BAE6FD)' }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               Triggering this node stores a persistent notification that can be viewed in the notifications center.
             </div>
@@ -4722,7 +5601,7 @@ export default function PropertiesPanel() {
               </Field>
             </div>
 
-            <div style={{ padding: 12, background: '#FFF7ED', borderRadius: 10, fontSize: 11, color: '#9A3412', border: '1px solid #FED7AA', lineHeight: 1.5 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-warning-alt, #FFF7ED)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-warning-alt, #9A3412)', border: '1px solid var(--border-card-warning-alt, #FED7AA)', lineHeight: 1.5 }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               Iterates through a list. Each iteration puts the current item into <strong>context.{data.destination_field || 'item'}</strong>.
               <br /><br />
@@ -4756,7 +5635,7 @@ export default function PropertiesPanel() {
                 <Input value={data.separator || '\\n'} onChange={(v) => update({ separator: v })} placeholder="\\n" />
               </Field>
             )}
-            <div style={{ padding: 12, background: '#F0F9FF', borderRadius: 10, fontSize: 11, color: '#0369A1', border: '1px solid #BAE6FD', lineHeight: 1.5 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', border: '1px solid var(--border-card-info, #BAE6FD)', lineHeight: 1.5 }}>
               <FiLayers size={12} style={{ marginRight: 6 }} />
               Collects data across loop iterations. It will release the full payload to <strong>context.{data.destination_field || 'aggregated_results'}</strong> automatically once the Splitter finishes.
             </div>
@@ -4802,6 +5681,68 @@ export default function PropertiesPanel() {
           </>
         )}
 
+
+        {/* ── Ingestion Adapter Node ── */}
+        {data.type === 'ingestion_adapter' && (
+          <>
+            <div style={{ padding: 16, background: 'var(--bg-card-purple, #F5F3FF)', borderRadius: 12, border: '1px solid var(--border-card-purple, #DDD6FE)', marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-card-purple, #7C3AED)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Banking Ingestion Configuration</div>
+              
+              <Field label="Source Format" hint="Define how the incoming stream format will be identified.">
+                <Select
+                  value={data.source_format || 'Auto-Detect'}
+                  onChange={(v) => update({ source_format: v })}
+                  options={[
+                    { value: 'Auto-Detect', label: 'Auto-Detect Format (Dynamic)' },
+                    { value: 'JSON', label: 'JSON' },
+                    { value: 'XML', label: 'XML / SOAP' },
+                    { value: 'CSV', label: 'CSV / Delimited' },
+                    { value: 'ISO_8583', label: 'ISO 8583 (Card Switch)' }
+                  ]}
+                />
+              </Field>
+ 
+              <Field label="Validation Mode" hint="Strict enforces complete schema validity, Lax appends defaults.">
+                <Select
+                  value={data.validation_mode || 'Strict'}
+                  onChange={(v) => update({ validation_mode: v })}
+                  options={[
+                    { value: 'Strict', label: 'Strict (Error Router on fail)' },
+                    { value: 'Lax', label: 'Lax (Use fallback default values)' }
+                  ]}
+                />
+              </Field>
+            </div>
+
+            <Field label="Target Serialization" hint="Downstream message serialization target format.">
+              <Select
+                value={data.target_serialization || 'Canonical JSON'}
+                onChange={(v) => update({ target_serialization: v })}
+                options={[
+                  { value: 'Canonical JSON', label: 'Canonical JSON' },
+                  { value: 'CSV String', label: 'CSV String (MDM Flatfile)' },
+                  { value: 'Raw Dictionary', label: 'Raw Dict Map' }
+                ]}
+              />
+            </Field>
+
+            <Field label="Destination Key" hint="The context field where the validated canonical payload will be saved.">
+              <Input
+                value={data.destination_key || 'canonical_transaction'}
+                onChange={(v) => update({ destination_key: v })}
+                placeholder="e.g. canonical_transaction"
+              />
+            </Field>
+
+            <div style={{ padding: 12, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', border: '1px solid var(--border-card-info, #BAE6FD)', lineHeight: 1.5 }}>
+              <FiDownload size={12} style={{ marginRight: 6 }} />
+              Normalizes transaction streams. Custom columns and up to 200 dynamic fields are preserved automatically using the Pydantic pass-through schema config.
+            </div>
+          </>
+        )}
+
+        {/* ── Banking Pre-Enrichment Node ── */}
+        
         {/* ── Text to Audio ── */}
         {data.type === 'textToAudio' && (
           <>
@@ -4830,7 +5771,7 @@ export default function PropertiesPanel() {
               />
             </Field>
 
-            <div style={{ marginTop: 20, padding: 12, background: '#FFF7ED', borderRadius: 10, fontSize: 11, color: '#9A3412', lineHeight: 1.5, border: '1px solid #FED7AA' }}>
+            <div style={{ marginTop: 20, padding: 12, background: 'var(--bg-card-warning-alt, #FFF7ED)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-warning-alt, #9A3412)', lineHeight: 1.5, border: '1px solid var(--border-card-warning-alt, #FED7AA)' }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               This node converts the content of the latest message into audio. It automatically manages file storage and deletes old recordings for this thread.
             </div>
@@ -4840,14 +5781,15 @@ export default function PropertiesPanel() {
         {/* ── API Node ── */}
         {data.type === 'api_node' && (
           <>
-            <div style={{ padding: 16, background: '#F0F9FF', borderRadius: 12, border: '1px solid #BAE6FD', marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#0369A1', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Enterprise Connector</div>
+
+            <div style={{ padding: 16, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 12, border: '1px solid var(--border-card-info, #BAE6FD)', marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-card-info, #0369A1)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Enterprise Connector</div>
               
               <Field label="Connection Profile" hint="Select a saved connection from the vault to handle Auth automatically.">
                 <ConnectionsDropdown 
                    value={data.connection_id} 
                    onChange={(v) => update({ connection_id: v })} 
-                />
+                 />
               </Field>
 
               <Field label="API Protocol">
@@ -4863,6 +5805,7 @@ export default function PropertiesPanel() {
               </Field>
             </div>
 
+
             <div style={{ display: 'flex', gap: 10 }}>
               <div style={{ width: '120px' }}>
                 <Field label="Method">
@@ -4870,7 +5813,6 @@ export default function PropertiesPanel() {
                     value={data.api_method || 'GET'}
                     onChange={(v) => update({ api_method: v })}
                     options={['GET', 'POST', 'PUT', 'DELETE', 'PATCH']}
-                    disabled={data.api_protocol === 'SOAP' || data.api_protocol === 'GRAPHQL'}
                   />
                 </Field>
               </div>
@@ -4880,10 +5822,11 @@ export default function PropertiesPanel() {
                     value={data.api_url || ''}
                     onChange={(v) => update({ api_url: v })}
                     placeholder="https://api.example.com/..."
-                    style={(!data.api_url || data.api_url.trim().startsWith('http://') || data.api_url.trim().startsWith('https://') || data.api_url.trim().startsWith('{{')) ? {} : { border: '1px solid #EF4444', background: '#FEF2F2' }}
+
+                    style={(!data.api_url || data.api_url.trim().startsWith('http://') || data.api_url.trim().startsWith('https://') || data.api_url.trim().startsWith('{{')) ? {} : { border: '1px solid var(--border-card-danger, #EF4444)', background: 'var(--bg-card-danger, #FEF2F2)' }}
                   />
                   {data.api_url && !(data.api_url.trim().startsWith('http://') || data.api_url.trim().startsWith('https://') || data.api_url.trim().startsWith('{{')) && (
-                    <div style={{ color: '#EF4444', fontSize: 11, marginTop: 4, fontWeight: 500 }}>
+                    <div style={{ color: 'var(--text-card-danger, #EF4444)', fontSize: 11, marginTop: 4, fontWeight: 500 }}>
                       URL must start with http://, https://, or a variable {'{{...}}'}.
                     </div>
                   )}
@@ -4891,8 +5834,9 @@ export default function PropertiesPanel() {
               </div>
             </div>
 
+
             {!data.connection_id && (
-              <div style={{ padding: 16, background: '#F8F9FA', borderRadius: 12, border: '1px solid var(--border)', marginBottom: 20 }}>
+              <div style={{ padding: 16, background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 12, border: '1px solid var(--border)', marginBottom: 20 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Manual Authentication</div>
                 <Field label="Auth Type">
                   <Select
@@ -4902,23 +5846,23 @@ export default function PropertiesPanel() {
                   />
                 </Field>
 
-                {data.api_auth_type === 'Basic' && (
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <Field label="Username">
-                      <Input value={data.api_auth_config?.username} onChange={(v) => update({ api_auth_config: { ...data.api_auth_config, username: v } })} placeholder="user" />
-                    </Field>
-                    <Field label="Password">
-                      <Input value={data.api_auth_config?.password} onChange={(v) => update({ api_auth_config: { ...data.api_auth_config, password: v } })} placeholder="pass" type="password" />
-                    </Field>
-                  </div>
-                )}
-
-                {data.api_auth_type === 'Bearer' && (
-                  <Field label="Token">
-                    <Input value={data.api_auth_config?.token} onChange={(v) => update({ api_auth_config: { ...data.api_auth_config, token: v } })} placeholder="Bearer token…" type="password" />
+              {data.api_auth_type === 'Basic' && (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Field label="Username">
+                    <Input value={data.api_auth_config?.username} onChange={(v) => update({ api_auth_config: { ...data.api_auth_config, username: v } })} placeholder="user" />
                   </Field>
-                )}
-              </div>
+                  <Field label="Password">
+                    <Input value={data.api_auth_config?.password} onChange={(v) => update({ api_auth_config: { ...data.api_auth_config, password: v } })} placeholder="pass" type="password" />
+                  </Field>
+                </div>
+              )}
+
+              {data.api_auth_type === 'Bearer' && (
+                <Field label="Token">
+                  <Input value={data.api_auth_config?.token} onChange={(v) => update({ api_auth_config: { ...data.api_auth_config, token: v } })} placeholder="Bearer token…" type="password" />
+                </Field>
+              )}
+            </div>
             )}
 
             <KeyValueEditor
@@ -4935,35 +5879,13 @@ export default function PropertiesPanel() {
               hint="Appended to the URL"
             />
 
-            {(data.api_protocol === 'REST' || !data.api_protocol) && ['POST', 'PUT', 'PATCH'].includes(data.api_method || 'GET') && (
-              <Field label="JSON Request Body" hint="JSON or raw text. Supports {{interpolation}}.">
+            {['POST', 'PUT', 'PATCH'].includes(data.api_method) && (
+              <Field label="Request Body" hint="JSON or raw text. Supports {{interpolation}}.">
                 <Textarea
                   value={data.api_body || ''}
                   onChange={(v) => update({ api_body: v })}
                   placeholder='{"id": "{{item.id}}"}'
                   rows={5}
-                />
-              </Field>
-            )}
-
-            {data.api_protocol === 'SOAP' && (
-              <Field label="XML SOAP Envelope" hint="Write standard XML. Supports {{interpolation}}.">
-                <Textarea
-                  value={data.api_body || ''}
-                  onChange={(v) => update({ api_body: v })}
-                  placeholder='<soap:Envelope><soap:Body>...</soap:Body></soap:Envelope>'
-                  rows={7}
-                />
-              </Field>
-            )}
-
-            {data.api_protocol === 'GRAPHQL' && (
-              <Field label="GraphQL Query" hint="Standard GraphQL syntax. Supports {{interpolation}}.">
-                <Textarea
-                  value={data.graphql_query || ''}
-                  onChange={(v) => update({ graphql_query: v })}
-                  placeholder='query { user(id: "{{user_id}}") { name } }'
-                  rows={7}
                 />
               </Field>
             )}
@@ -4994,54 +5916,11 @@ export default function PropertiesPanel() {
               </div>
             </div>
 
-            <div style={{ marginTop: 20, padding: 12, background: '#F0F9FF', borderRadius: 10, fontSize: 11, color: '#0369A1', lineHeight: 1.5, border: '1px solid #BAE6FD' }}>
+            <div style={{ marginTop: 20, padding: 12, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', lineHeight: 1.5, border: '1px solid var(--border-card-info, #BAE6FD)' }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               Result is saved to <strong>context.api_result_{selectedNodeId}</strong>. Use it in prompts as <code>{`{{api_result_${selectedNodeId}.some_field}}`}</code>.
             </div>
           </>
-        )}
-
-        {/* ── Template Engine Node ── */}
-        {data.type === 'template_node' && (
-          <>
-            <Field label="Template Output Key" hint="The context key where the rendered document will be saved (default: rendered_template).">
-              <Input
-                value={data.template_output_key || 'rendered_template'}
-                onChange={(v) => update({ template_output_key: v })}
-                placeholder="e.g. final_report"
-              />
-            </Field>
-            <Field label="Template Data Key (Optional)" hint="A specific context key to pass to the template. Leave blank to pass the entire context.">
-              <Input
-                value={data.template_data_key || ''}
-                onChange={(v) => update({ template_data_key: v })}
-                placeholder="e.g. latest_ocr_output"
-              />
-            </Field>
-            <Field label="Template Content" hint="The Jinja2/Markdown template. Use {{variable}} to inject data.">
-              <div style={{ position: 'relative' }}>
-                <Textarea
-                  value={data.template_content || ''}
-                  onChange={(v) => update({ template_content: v })}
-                  placeholder="# Report\n\nName: {{name}}"
-                  rows={12}
-                  style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 1.5 }}
-                />
-              </div>
-            </Field>
-            <Field label="Or Load from File Path (Optional)" hint="Absolute path to a .md or .html template file on the server.">
-              <Input
-                value={data.template_file_path || ''}
-                onChange={(v) => update({ template_file_path: v })}
-                placeholder="/path/to/template.md"
-              />
-            </Field>
-          </>
-        )}
-
-        {/* ── Report Generator Node ── */}
-        {data.type === 'report_generator' && (
-          <ReportGeneratorConfig data={data} update={update} />
         )}
 
         {/* ── Form Submission Node ── */}
@@ -5082,12 +5961,12 @@ export default function PropertiesPanel() {
               onChange={(v) => update({ form_use_context_schema: v })}
             />
             {data.form_use_context_schema && (
-              <div style={{ padding: 10, background: '#F0F9FF', borderRadius: 10, fontSize: 11, color: '#0369A1', border: '1px solid #BAE6FD', marginTop: -10, marginBottom: 20 }}>
+              <div style={{ padding: 10, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', border: '1px solid var(--border-card-info, #BAE6FD)', marginTop: -10, marginBottom: 20 }}>
                 If enabled, the form will be generated from <code>context.form_schema</code> (must be a JSON array of fields) instead of the static fields above.
               </div>
             )}
 
-            <div style={{ marginTop: 20, padding: 12, background: '#F8F9FA', borderRadius: 10, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5, border: '1px solid var(--border)' }}>
+            <div style={{ marginTop: 20, padding: 12, background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 10, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5, border: '1px solid var(--border)' }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               Workflow will pause and wait for the user to submit this form. Results are merged into the workflow context.
             </div>
@@ -5125,7 +6004,7 @@ export default function PropertiesPanel() {
               />
             </Field>
 
-            <div style={{ padding: 16, background: '#F8F9FA', borderRadius: 12, border: '1px solid var(--border)', marginBottom: 20 }}>
+            <div style={{ padding: 16, background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 12, border: '1px solid var(--border)', marginBottom: 20 }}>
               <Toggle
                 checked={data.file_overwrite !== false}
                 onChange={(v) => update({ file_overwrite: v })}
@@ -5136,7 +6015,7 @@ export default function PropertiesPanel() {
               </div>
             </div>
 
-            <div style={{ padding: 12, background: '#ECFDF5', borderRadius: 10, fontSize: 11, color: '#059669', lineHeight: 1.5, border: '1px solid #A7F3D0' }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-success, #ECFDF5)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-success, #059669)', lineHeight: 1.5, border: '1px solid var(--border-card-success, #A7F3D0)' }}>
               <div style={{ fontWeight: 700, marginBottom: 4 }}>Storage Location:</div>
               Files are saved in <strong>Backend/mnt/exports/</strong> and the full path is saved to <strong>latest_file_path</strong>.
             </div>
@@ -5170,7 +6049,7 @@ export default function PropertiesPanel() {
               </Field>
             )}
 
-            <div style={{ padding: 12, background: '#F8FAFC', borderRadius: 10, fontSize: 11, color: '#475569', lineHeight: 1.5, border: '1px solid var(--border)' }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 10, fontSize: 11, color: 'var(--text-secondary, #475569)', lineHeight: 1.5, border: '1px solid var(--border)' }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               Prints a formatted JSON snapshot of the workflow state directly to the chat interface. Use this to verify data movement between nodes.
             </div>
@@ -5187,10 +6066,139 @@ export default function PropertiesPanel() {
                 onChange={(llm) => update({ llm })}
               />
             </div>
-            <div style={{ padding: 12, background: '#FEF2F2', borderRadius: 10, fontSize: 11, color: '#991B1B', border: '1px solid #FECACA', lineHeight: 1.5 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-danger, #FEF2F2)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-danger, #991B1B)', border: '1px solid var(--border-card-danger, #FECACA)', lineHeight: 1.5 }}>
               <FiInfo size={12} style={{ marginRight: 5 }} />
               Analyzes system failures and decides: <strong>retry</strong>, <strong>abort</strong>, or <strong>human_help</strong>.
               Connect edges with these specific labels to define recovery paths.
+            </div>
+          </>
+        )}
+
+        {/* ── Data Cleaning Node ── */}
+        {data.type === 'data_cleaning' && (
+          <>
+            <Field label="Cleaning Rules" hint="Select the data cleaning rules to apply to the dataset.">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: '#F8FAFC', padding: 12, borderRadius: 10, border: '1px solid var(--border)' }}>
+                {[
+                  { value: 'GEN_TRIM_WHITESPACE', label: 'Trim Whitespace', desc: 'Remove leading and trailing whitespaces' },
+                  { value: 'GEN_PROPER_CASE', label: 'Proper Case', desc: 'Capitalize first letter of each word (Title Case)' },
+                  { value: 'GEN_STRIP_SPECIAL_CHARS', label: 'Strip Special Characters', desc: 'Remove all non-alphanumeric characters except spaces' },
+                  { value: 'GEN_STRIP_CURRENCY', label: 'Strip Currency Symbols', desc: 'Remove currency signs ($, ₹, €, etc.) and parse as numbers' },
+                  { value: 'GEN_NORMALIZE_CATEGORY', label: 'Normalize Category', desc: 'Lowercase, clean, and convert to snake_case' }
+                ].map((rule) => {
+                  const rules = data.data_cleaning_rules || [];
+                  const isChecked = rules.includes(rule.value);
+                  const handleRuleToggle = (checked) => {
+                    const nextRules = checked 
+                      ? [...rules, rule.value] 
+                      : rules.filter(r => r !== rule.value);
+                    update({ data_cleaning_rules: nextRules });
+                  };
+
+                  return (
+                    <div key={rule.value} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                      <input 
+                        type="checkbox" 
+                        checked={isChecked} 
+                        onChange={(e) => handleRuleToggle(e.target.checked)} 
+                        style={{ marginTop: 3, cursor: 'pointer' }}
+                      />
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{rule.label}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{rule.desc}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Field>
+
+            <Field label="Data Source Target" hint="Where is the data coming from?">
+              <Select
+                value={data.data_cleaning_target || 'latest_message'}
+                onChange={(v) => update({ data_cleaning_target: v })}
+                options={[
+                  { value: 'latest_message', label: 'Latest Chat Message' },
+                  { value: 'context_data', label: 'Workflow Context Key' }
+                ]}
+              />
+            </Field>
+
+            {data.data_cleaning_target === 'context_data' && (
+              <Field label="Source Context Key" hint="Specify the context key where the input JSON string/dictionary is stored.">
+                <Input
+                  value={data.data_cleaning_input_key || ''}
+                  onChange={(v) => update({ data_cleaning_input_key: v })}
+                  placeholder="e.g. raw_input_json"
+                />
+              </Field>
+            )}
+
+            <Field label="Output Context Key" hint="The context key where the cleaned dataset (dict or list) and execution metrics will be saved.">
+              <Input
+                value={data.data_cleaning_output_key || 'cleaned_data'}
+                onChange={(v) => update({ data_cleaning_output_key: v })}
+                placeholder="cleaned_data"
+              />
+            </Field>
+
+            <div style={{ marginTop: 20, padding: 12, background: '#ECFDF5', borderRadius: 10, fontSize: 11, color: '#059669', lineHeight: 1.5, border: '1px solid #A7F3D0' }}>
+              <FiInfo size={12} style={{ marginRight: 6 }} />
+              Loads a JSON string/dictionary, runs a Pandas data cleaning script, and outputs the cleaned dataset plus execution metrics (issues found, fixes applied).
+            </div>
+          </>
+        )}
+
+        {/* ── Network Graph Node ── */}
+        {data.type === 'network_graph' && (
+          <>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <FiDatabase color="#10B981" size={14} /> Neo4j Connection Settings
+              </div>
+              <Field label="Target Context Key" hint="Context key containing transaction details to ingest.">
+                <Input value={data.graph_target_key ?? 'latest_message'} onChange={(v) => update({ graph_target_key: v })} placeholder="latest_message" />
+              </Field>
+              <Field label="Neo4j Connection URI" hint="Override default bolt connection string. E.g. bolt://localhost:7687">
+                <Input value={data.graph_neo4j_uri ?? ''} onChange={(v) => update({ graph_neo4j_uri: v })} placeholder="bolt://localhost:7687" />
+              </Field>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <Field label="Username">
+                    <Input value={data.graph_neo4j_user ?? ''} onChange={(v) => update({ graph_neo4j_user: v })} placeholder="neo4j" />
+                  </Field>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Field label="Password">
+                    <Input type="password" value={data.graph_neo4j_password ?? ''} onChange={(v) => update({ graph_neo4j_password: v })} placeholder="••••••••" />
+                  </Field>
+                </div>
+              </div>
+              <Field label="Graph Label / Collection" hint="Dynamic label/collection tag applied to accounts/transactions (e.g. FraudFlow, RetailFlow).">
+                <Input value={data.graph_collection ?? 'FraudFlow'} onChange={(v) => update({ graph_collection: v })} placeholder="FraudFlow" />
+              </Field>
+            </div>
+
+            <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dynamic Data Binding (JSON Mapping)</div>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.4 }}>
+                Map fields from your input transaction JSON to the network graph keys. Leave empty to fallback to standard transactional fraud schema keys.
+              </p>
+              <Field label="Sender Account Key" hint="Path in transaction JSON for sender ID (e.g. account_id or sender.id)">
+                <Input value={data.graph_sender_key ?? ''} onChange={(v) => update({ graph_sender_key: v })} placeholder="account_id" />
+              </Field>
+              <Field label="Beneficiary Account Key" hint="Path in transaction JSON for receiver ID (e.g. beneficiary_id or receiver.id)">
+                <Input value={data.graph_receiver_key ?? ''} onChange={(v) => update({ graph_receiver_key: v })} placeholder="beneficiary_id" />
+              </Field>
+              <Field label="Transaction ID Key" hint="Path in transaction JSON for unique TX identifier (e.g. transaction_id)">
+                <Input value={data.graph_txn_id_key ?? ''} onChange={(v) => update({ graph_txn_id_key: v })} placeholder="transaction_id" />
+              </Field>
+              <Field label="Transaction Amount Key" hint="Path in transaction JSON for amount field (e.g. transaction_amount)">
+                <Input value={data.graph_amount_key ?? ''} onChange={(v) => update({ graph_amount_key: v })} placeholder="transaction_amount" />
+              </Field>
+              <Field label="Transaction Timestamp Key" hint="Path in transaction JSON for timestamp field (e.g. timestamp)">
+                <Input value={data.graph_timestamp_key ?? ''} onChange={(v) => update({ graph_timestamp_key: v })} placeholder="timestamp" />
+              </Field>
             </div>
           </>
         )}
@@ -5334,7 +6342,7 @@ export default function PropertiesPanel() {
 
             <div style={{
               padding: '12px 14px',
-              background: '#F8FAFC',
+              background: 'var(--bg-card-neutral, #F8FAFC)',
               borderRadius: 10,
               fontSize: 11,
               color: 'var(--text-secondary)',
@@ -5352,6 +6360,84 @@ export default function PropertiesPanel() {
             </div>
           </>
         )}
+
+
+        {/* ── JSON Transform Node ── */}
+        {data.type === 'json_transform' && (
+          <>
+            <Field label="Input Context Key" hint="Context key to read data from (supports dot notation, e.g. latest_api_result.data). Defaults to latest_api_result.">
+              <Input
+                value={data.jt_input_key ?? 'latest_api_result'}
+                onChange={(v) => update({ jt_input_key: v })}
+                placeholder="latest_api_result"
+              />
+            </Field>
+
+            <Field label="Output Context Key" hint="Context key where the transformed data will be saved. Defaults to transformed_data.">
+              <Input
+                value={data.jt_output_key ?? 'transformed_data'}
+                onChange={(v) => update({ jt_output_key: v })}
+                placeholder="transformed_data"
+              />
+            </Field>
+
+            <Field label="Transform Mode" hint="JMESPath (declarative queries), Python Expression (custom sandboxed logic), or Operations (visual rules).">
+              <Select
+                value={data.jt_mode ?? 'jmespath'}
+                onChange={(v) => update({ jt_mode: v })}
+                options={[
+                  { value: 'jmespath', label: 'JMESPath (JSON Query)' },
+                  { value: 'python_expr', label: 'Python Expression (Sandboxed)' },
+                  { value: 'operations', label: 'Visual Operations' },
+                ]}
+              />
+            </Field>
+
+            {data.jt_mode === 'jmespath' && (
+              <Field label="JMESPath Query" hint="Query string. E.g. tasks[?status=='SUCCESS'].task_id or job_status.tasks[*].task_id">
+                <Textarea
+                  value={data.jt_query ?? ''}
+                  onChange={(v) => update({ jt_query: v })}
+                  placeholder="job_status.tasks[*].task_id"
+                  rows={4}
+                />
+              </Field>
+            )}
+
+            {data.jt_mode === 'python_expr' && (
+              <Field label="Python Expression" hint="A sandboxed python expression. Use 'data' as the input variable. E.g. [t['task_id'] for t in data['tasks']]">
+                <Textarea
+                  value={data.jt_expression ?? ''}
+                  onChange={(v) => update({ jt_expression: v })}
+                  placeholder="[t['task_id'] for t in data['tasks']]"
+                  rows={4}
+                />
+              </Field>
+            )}
+
+            {data.jt_mode === 'operations' && (
+              <VisualOperationsEditor
+                value={data.jt_operations || []}
+                onChange={(ops) => update({ jt_operations: ops })}
+              />
+            )}
+
+            <Toggle
+              label="Merge / Pass Through Input"
+              checked={data.jt_pass_through || false}
+              onChange={(v) => update({ jt_pass_through: v })}
+            />
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: -8, marginBottom: 20 }}>
+              If enabled, merges the output dictionary into the input dictionary.
+            </div>
+
+            <div style={{ padding: 12, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', border: '1px solid var(--border-card-info, #BAE6FD)' }}>
+              <FiFilter size={12} style={{ marginRight: 6, display: 'inline' }} />
+              Transforms JSON data structure without an LLM. Pure, zero-latency deterministic transformation.
+            </div>
+          </>
+        )}
+
 
         {/* ── Classification Node ── */}
         {data.type === 'classification' && (
@@ -5452,11 +6538,11 @@ export default function PropertiesPanel() {
 
             <div style={{
               padding: '12px 14px',
-              background: '#F0F9FF',
+              background: 'var(--bg-card-info, #F0F9FF)',
               borderRadius: 10,
               fontSize: 11,
-              color: '#0369A1',
-              border: '1px solid #BAE6FD',
+              color: 'var(--text-card-info, #0369A1)',
+              border: '1px solid var(--border-card-info, #BAE6FD)',
               lineHeight: 1.5,
               marginTop: 18,
               display: 'flex',
@@ -5474,6 +6560,7 @@ export default function PropertiesPanel() {
         {data.type === 'sensitivity_classifier' && (
           <SensitivityClassifierConfig data={data} update={update} setShowGlobalRuleModal={setShowGlobalRuleModal} />
         )}
+
         {/* ── OCR Node ── */}
         {/* ── Ingestion Node ── */}
         {data.type === 'ingestion_node' && (
@@ -5534,7 +6621,7 @@ export default function PropertiesPanel() {
               />
             </Field>
 
-            <div style={{ padding: 12, background: '#F0F9FF', borderRadius: 10, fontSize: 11, color: '#0369A1', border: '1px solid #BAE6FD', marginTop: 10 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', border: '1px solid var(--border-card-info, #BAE6FD)', marginTop: 10 }}>
               <FiBox size={12} style={{ marginRight: 6 }} />
               This node automatically splits large text into searchable chunks and saves them in your vector database.
             </div>
@@ -5617,6 +6704,8 @@ export default function PropertiesPanel() {
               </div>
             </div>
 
+
+            <div style={{ padding: 12, background: '#FFF7ED', borderRadius: 10, fontSize: 11, color: '#92400E', border: '1px solid #FED7AA', marginTop: 10 }}>
             <Field label="Show Citations" hint="If enabled, source filenames will be appended to retrieved document chunks.">
               <Toggle
                 checked={data.show_citations || false}
@@ -5624,8 +6713,9 @@ export default function PropertiesPanel() {
                 label=""
               />
             </Field>
+            </div>
 
-            <div style={{ padding: 12, background: '#FFF7ED', borderRadius: 10, fontSize: 11, color: '#92400E', border: '1px solid #FED7AA', marginTop: 10 }}>
+            <div style={{ padding: 12, background: 'var(--bg-card-warning-alt, #FFF7ED)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-warning-alt, #92400E)', border: '1px solid var(--border-card-warning-alt, #FED7AA)', marginTop: 10 }}>
               <FiBookOpen size={12} style={{ marginRight: 6 }} />
               The RAG node searches your vector database for relevant info and uses an LLM to generate an answer based only on those results.
             </div>
@@ -5662,9 +6752,8 @@ export default function PropertiesPanel() {
               </>
             )}
 
-            {/* ── Standard (Local) Engine Config ── */}
             {data.ocr_engine === 'standard' && (
-              <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: 12, border: '1px solid var(--border)', marginTop: 10 }}>
+              <div style={{ padding: '16px', background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 12, border: '1px solid var(--border)', marginTop: 10 }}>
                 <Field label="Local OCR Engine" hint="Select the local model installed on your server.">
                   <Select
                     value={data.ocr_standard_model || 'tesseract'}
@@ -5676,7 +6765,7 @@ export default function PropertiesPanel() {
                     ]}
                   />
                 </Field>
-                <div style={{ fontSize: 11, color: '#64748B', marginTop: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted, #64748B)', marginTop: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <FiSettings size={12} /> Running on local CPU/GPU resources.
                 </div>
               </div>
@@ -5769,8 +6858,8 @@ export default function PropertiesPanel() {
             </div>
 
             <div style={{
-              padding: '12px 14px', background: '#F8FAFC', borderRadius: 10, fontSize: 11, color: 'var(--text-secondary)',
-              border: '1px solid var(--border)', lineHeight: 1.5, marginTop: 18, display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'space-between'
+              padding: '12px 14px', background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 10, fontSize: 11, color: 'var(--text-secondary)',
+              border: '1px solid var(--border)', lineHeight: 1.5, marginTop: 18, display: 'flex', alignItems: 'center', gap: 12, justifycontent: 'space-between'
             }}>
               <span style={{ flex: 1, fontWeight: 500 }}>
                 {data.ocr_engine === 'external'
@@ -6383,10 +7472,832 @@ export default function PropertiesPanel() {
           </>
         )}
 
+
+
+
+        {/* ── Sensitivity Classifier Node ── */}
+        
+
+
+
+
+        {/* ── Banking Data Enrichment Orchestrator ── */}
+        {data.type === 'banking_enrichment' && (() => {
+          const extList = data.external_integrations || [];
+          const intList = data.internal_integrations || [];
+          
+          const toggleExternal = (key) => {
+            const next = extList.includes(key) ? extList.filter(k => k !== key) : [...extList, key];
+            update({ external_integrations: next });
+          };
+
+          const toggleInternal = (key) => {
+            const next = intList.includes(key) ? intList.filter(k => k !== key) : [...intList, key];
+            update({ internal_integrations: next });
+          };
+
+          const externals = [
+            { key: 'cibil_experian', label: 'CIBIL / Experian Bureau', desc: 'Credit profile checks' },
+            { key: 'npci_registry', label: 'NPCI Fraud Registry', desc: 'Mule bank account blacklist' },
+            { key: 'sanctions_lists', label: 'OFAC / RBI Sanctions', desc: 'PEP & Global sanctions check' },
+            { key: 'ip_geolocation', label: 'MaxMind IP Geolocation', desc: 'IP network & location metadata' },
+            { key: 'threat_metrix', label: 'ThreatMetrix Device ID', desc: 'Device fingerprinting' },
+            { key: 'telecom_data', label: 'Telecom Carrier API', desc: 'SIM swap & porting status' },
+          ];
+
+          const internals = [
+            { key: 'core_banking', label: 'Core Banking (CBS)', desc: 'Account age & transaction history' },
+            { key: 'card_management', label: 'Card Management (CMS)', desc: 'Card status & pin errors' },
+            { key: 'mobile_app_logs', label: 'Mobile App Session logs', desc: 'Biometric & active session metadata' },
+            { key: 'kyc_repository', label: 'KYC Registry', desc: 'Identity verification & documents' },
+            { key: 'crm_system', label: 'CRM System', desc: 'Customer value tiering' },
+          ];
+
+          return (
+            <>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiGlobe color="var(--theme-primary)" size={14} /> 1. External Third-Party Sources
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {externals.map((source) => (
+                    <div
+                      key={source.key}
+                      onClick={() => toggleExternal(source.key)}
+                      style={{
+                        padding: '10px 12px',
+                        background: extList.includes(source.key) ? 'rgba(142, 119, 187, 0.05)' : '#F8FAFC',
+                        border: extList.includes(source.key) ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
+                        borderRadius: 10,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginRight: 8 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: extList.includes(source.key) ? 'var(--theme-primary)' : 'var(--text-primary)' }}>{source.label}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{source.desc}</span>
+                      </div>
+                      <div style={{
+                        width: 32, height: 18, borderRadius: 9, position: 'relative',
+                        background: extList.includes(source.key) ? 'var(--theme-primary)' : '#cbd5e1',
+                        transition: 'all 0.2s', flexShrink: 0
+                      }}>
+                        <div style={{
+                          position: 'absolute', top: 2, left: extList.includes(source.key) ? 16 : 2, width: 14, height: 14,
+                          borderRadius: '50%', background: '#fff', transition: 'left 0.2s ease'
+                        }} />
+                      </div>
+                    </div>
+                  ))}
+
+                  <div
+                    onClick={() => {
+                      const name = prompt("Enter custom external source name:");
+                      if(name) {
+                        const next = [...extList, name];
+                        update({ external_integrations: next });
+                      }
+                    }}
+                    style={{ padding: '10px 12px', background: 'rgba(124, 58, 237, 0.05)', border: '1px dashed var(--theme-primary)', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--theme-primary)', fontSize: 12, fontWeight: 600 }}
+                  >
+                    <FiPlus size={14} /> Add Source
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiLayers color="var(--theme-primary)" size={14} /> 2. Internal Bank Systems
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {internals.map((source) => (
+                    <div
+                      key={source.key}
+                      onClick={() => toggleInternal(source.key)}
+                      style={{
+                        padding: '10px 12px',
+                        background: intList.includes(source.key) ? 'rgba(142, 119, 187, 0.05)' : '#F8FAFC',
+                        border: intList.includes(source.key) ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
+                        borderRadius: 10,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginRight: 8 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: intList.includes(source.key) ? 'var(--theme-primary)' : 'var(--text-primary)' }}>{source.label}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{source.desc}</span>
+                      </div>
+                      <div style={{
+                        width: 32, height: 18, borderRadius: 9, position: 'relative',
+                        background: intList.includes(source.key) ? 'var(--theme-primary)' : '#cbd5e1',
+                        transition: 'all 0.2s', flexShrink: 0
+                      }}>
+                        <div style={{
+                          position: 'absolute', top: 2, left: intList.includes(source.key) ? 16 : 2, width: 14, height: 14,
+                          borderRadius: '50%', background: '#fff', transition: 'left 0.2s ease'
+                        }} />
+                      </div>
+                    </div>
+                  ))}
+
+                  <div
+                    onClick={() => {
+                      const name = prompt("Enter custom internal source name:");
+                      if(name) {
+                        const next = [...intList, name];
+                        update({ internal_integrations: next });
+                      }
+                    }}
+                    style={{ padding: '10px 12px', background: 'rgba(124, 58, 237, 0.05)', border: '1px dashed var(--theme-primary)', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--theme-primary)', fontSize: 12, fontWeight: 600 }}
+                  >
+                    <FiPlus size={14} /> Add Source
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Data Keys</div>
+                <Field label="Source Context Key" hint="Key where canonical transaction data resides.">
+                  <Input value={data.source_key ?? 'canonical_transaction'} onChange={(v) => update({ source_key: v })} placeholder="canonical_transaction" />
+                </Field>
+                <Field label="Destination Context Key" hint="Key to store the resulting enriched payload.">
+                  <Input value={data.destination_key ?? 'enriched_transaction'} onChange={(v) => update({ destination_key: v })} placeholder="enriched_transaction" />
+                </Field>
+              </div>
+            </>
+          );
+        })()}
+
+        {/* ── Rule Engine Node ── */}
+        {data.type === 'rule_engine' && (() => {
+          return (
+            <>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiShield color="#DC2626" size={14} /> Rule Engine Configuration
+                </div>
+                <Field label="Rule Set Selection" hint="Choose which Python rule logic to execute for this node.">
+                  <Select
+                    value={data.routing_key || 'fast_path'}
+                    onChange={(v) => update({ routing_key: v })}
+                    options={[
+                      { label: 'Fast-Path (Instant P1 Block rules)', value: 'fast_path' },
+                      { label: 'ML Fallback (Scorecard logic)', value: 'ml_fallback' }
+                    ]}
+                  />
+                </Field>
+                <div style={{ background: '#F8F9FB', padding: 12, borderRadius: 8, border: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  <strong>Note:</strong> The exact rules for each set are coded dynamically in the backend Python node ('fast_path_rules.py' and 'ml_fallback_rules.py').
+                </div>
+              </div>
+            </>
+          );
+        })()}
+
+        {/* ── Weightage System Node ── */}
+        {data.type === 'weightage' && (
+          <>
+            <Field label="Output Context Key" hint="The context key where the final weightage scoring JSON breakdown is saved. Defaults to weightage_result.">
+              <Input
+                value={data.weightage_output_key ?? 'weightage_result'}
+                onChange={(v) => update({ weightage_output_key: v })}
+                placeholder="weightage_result"
+              />
+            </Field>
+
+            <WeightageCategoriesEditor
+              categories={data.weightage_categories || []}
+              onChange={(cats) => update({ weightage_categories: cats })}
+            />
+
+            <div style={{
+              padding: '12px 14px',
+              background: 'var(--bg-card-info, #F0F9FF)',
+              borderRadius: 10,
+              fontSize: 11,
+              color: 'var(--text-card-info, #0369A1)',
+              border: '1px solid var(--border-card-info, #BAE6FD)',
+              lineHeight: 1.5,
+              marginTop: 18,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}>
+              <FiInfo size={14} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, fontWeight: 500 }}>
+                Weightage Scoring: Evaluates dynamic conditions across categories and fields. Calculates total raw scores, maximum possible scores, and normalized percentages (0-100%). Supports Jinja2 variables (e.g. <code>{`{{anualcredit}}`}</code>).
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* ── Template Engine Node ── */}
+        {data.type === 'template_node' && (
+          <>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <FiFileText color="#3B82F6" size={14} /> Template Engine Settings
+              </div>
+
+              <Field label="Template Content" hint="Define your Jinja2/Markdown template. Use Jinja2 formatting (e.g., {{ latest_message }}, {{ user_input }}).">
+                <Textarea
+                  value={data.template_content ?? ''}
+                  onChange={(v) => update({ template_content: v })}
+                  placeholder="Hello {{ latest_message }},\n\nYour score is {{ total_score }} out of {{ max_possible_score }}."
+                  rows={8}
+                />
+              </Field>
+
+              <Field label="Template File Path (Optional)" hint="Provide an absolute path to a template file on the server. If set and file exists, its content overrides the Template Content text field above.">
+                <Input
+                  value={data.template_file_path ?? ''}
+                  onChange={(v) => update({ template_file_path: v })}
+                  placeholder="e.g. C:/templates/my_template.txt"
+                />
+              </Field>
+
+              <Field label="Input Variable Data Key (Optional)" hint="Specify the context key (e.g., enriched_transaction) from which to extract variables to inject into the template context. If it points to a dictionary, those fields are merged into the template variables.">
+                <Input
+                  value={data.template_data_key ?? ''}
+                  onChange={(v) => update({ template_data_key: v })}
+                  placeholder="e.g. enriched_transaction"
+                />
+              </Field>
+
+              <Field label="Output Context Key" hint="Context key to save the final rendered string output. Defaults to rendered_template.">
+                <Input
+                  value={data.template_output_key ?? 'rendered_template'}
+                  onChange={(v) => update({ template_output_key: v })}
+                  placeholder="rendered_template"
+                />
+              </Field>
+            </div>
+
+            <div style={{
+              padding: '12px 14px',
+              background: 'var(--bg-card-info, #F0F9FF)',
+              borderRadius: 10,
+              fontSize: 11,
+              color: 'var(--text-card-info, #0369A1)',
+              border: '1px solid var(--border-card-info, #BAE6FD)',
+              lineHeight: 1.5,
+              marginTop: 18,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}>
+              <FiInfo size={14} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, fontWeight: 500 }}>
+                Template Engine Node: Renders dynamic text or markdown using Jinja2 formatting. The global context, <code>latest_message</code>, and values under the selected <code>Input Data Key</code> are all exposed to your template variables automatically.
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* ── Beneficiary Risk Router ── */}
+        {data.type === 'beneficiary_risk' && (() => {
+          const checks = data.risk_checks || ['mule_detection', 'account_age', 'sanctions_list', 'relationship_graph'];
+          
+          const toggleCheck = (key) => {
+            const next = checks.includes(key) ? checks.filter(k => k !== key) : [...checks, key];
+            update({ risk_checks: next });
+          };
+
+          const checkList = [
+            { key: 'mule_detection', label: 'Mule Velocity Check', desc: 'Checks inbound velocity / mule indicators' },
+            { key: 'account_age', label: 'Account Age Registry', desc: 'Checks if recipient account is new' },
+            { key: 'sanctions_list', label: 'Sanctions Check', desc: 'Screens against OFAC & local blacklists' },
+            { key: 'relationship_graph', label: 'Relationship Graph', desc: 'Checks history between sender and receiver' },
+          ];
+
+          return (
+            <>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiShield color="var(--theme-primary)" size={14} /> Risk Evaluator Checks
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {checkList.map((chk) => (
+                    <div
+                      key={chk.key}
+                      onClick={() => toggleCheck(chk.key)}
+                      style={{
+                        padding: '10px 12px',
+                        background: checks.includes(chk.key) ? 'rgba(142, 119, 187, 0.05)' : '#F8FAFC',
+                        border: checks.includes(chk.key) ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
+                        borderRadius: 10,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginRight: 8 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: checks.includes(chk.key) ? 'var(--theme-primary)' : 'var(--text-primary)' }}>{chk.label}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{chk.desc}</span>
+                      </div>
+                      <div style={{
+                        width: 32, height: 18, borderRadius: 9, position: 'relative',
+                        background: checks.includes(chk.key) ? 'var(--theme-primary)' : '#cbd5e1',
+                        transition: 'all 0.2s', flexShrink: 0
+                      }}>
+                        <div style={{
+                          position: 'absolute', top: 2, left: checks.includes(chk.key) ? 16 : 2, width: 14, height: 14,
+                          borderRadius: '50%', background: '#fff', transition: 'left 0.2s ease'
+                        }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: '#EF4444' }}>🔴</span> Known Fraudster Branch
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.4 }}>
+                  Triggered only if deterministic check (Sanctions hit) matches 100%. Executes real-time block and raises alert.
+                </p>
+                <Field label="Fraud Alert API" hint="API endpoint to push immediate alert details.">
+                  <Input value={data.fraud_api_endpoint ?? ''} onChange={(v) => update({ fraud_api_endpoint: v })} placeholder="https://api.bank.com/v1/fraud-alerts" />
+                </Field>
+                <Field label="Alert Severity Level" hint="Level of severity logged downstream.">
+                  <Select
+                    value={data.fraud_alert_level ?? 'CRITICAL'}
+                    onChange={(v) => update({ fraud_alert_level: v })}
+                    options={[
+                      { value: 'CRITICAL', label: 'Critical' },
+                      { value: 'HIGH', label: 'High' },
+                      { value: 'MEDIUM', label: 'Medium' }
+                    ]}
+                  />
+                </Field>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: '#F59E0B' }}>🟡</span> New Beneficiary Branch
+                </div>
+                <div style={{
+                  padding: 10, background: '#FEF3C7', borderRadius: 8, border: '1px solid #FCD34D',
+                  fontSize: 11, color: '#92400E', lineHeight: 1.4, marginBottom: 12, display: 'flex', gap: 6
+                }}>
+                  <FiShield size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+                  <span>
+                    <strong>Privacy Sandbox Active:</strong> This node strips private sender data and passes only recipient details (Name, Account, Bank) down the yellow wire for KYC/registration.
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: '#10B981' }}>🟢</span> Safe / Continue Branch
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, margin: 0 }}>
+                  Payload passes untouched. Mule check scores and geo-velocity metrics are injected into `risk_profile` for downstream scoring engines.
+                </p>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Data Keys</div>
+                <Field label="Input Context Key" hint="Context key that holds the transaction payload.">
+                  <Input value={data.context_key ?? 'enriched_transaction'} onChange={(v) => update({ context_key: v })} placeholder="enriched_transaction" />
+                </Field>
+              </div>
+        {data.type === 'template_node' && (
+          <>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <FiFileText color="#3B82F6" size={14} /> Template Engine Settings
+              </div>
+
+              <Field label="Template Content" hint="Define your Jinja2/Markdown template. Use Jinja2 formatting (e.g., {{ latest_message }}, {{ user_input }}).">
+                <Textarea
+                  value={data.template_content ?? ''}
+                  onChange={(v) => update({ template_content: v })}
+                  placeholder="Hello {{ latest_message }},\n\nYour score is {{ total_score }} out of {{ max_possible_score }}."
+                  rows={8}
+                />
+              </Field>
+
+              <Field label="Template File Path (Optional)" hint="Provide an absolute path to a template file on the server. If set and file exists, its content overrides the Template Content text field above.">
+                <Input
+                  value={data.template_file_path ?? ''}
+                  onChange={(v) => update({ template_file_path: v })}
+                  placeholder="e.g. C:/templates/my_template.txt"
+                />
+              </Field>
+
+              <Field label="Input Variable Data Key (Optional)" hint="Specify the context key (e.g., enriched_transaction) from which to extract variables to inject into the template context. If it points to a dictionary, those fields are merged into the template variables.">
+                <Input
+                  value={data.template_data_key ?? ''}
+                  onChange={(v) => update({ template_data_key: v })}
+                  placeholder="e.g. enriched_transaction"
+                />
+              </Field>
+
+              <Field label="Output Context Key" hint="Context key to save the final rendered string output. Defaults to rendered_template.">
+                <Input
+                  value={data.template_output_key ?? 'rendered_template'}
+                  onChange={(v) => update({ template_output_key: v })}
+                  placeholder="rendered_template"
+                />
+              </Field>
+            </div>
+
+            <div style={{
+              padding: '12px 14px',
+              background: 'var(--bg-card-info, #F0F9FF)',
+              borderRadius: 10,
+              fontSize: 11,
+              color: 'var(--text-card-info, #0369A1)',
+              border: '1px solid var(--border-card-info, #BAE6FD)',
+              lineHeight: 1.5,
+              marginTop: 18,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}>
+              <FiInfo size={14} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, fontWeight: 500 }}>
+                Template Engine Node: Renders dynamic text or markdown using Jinja2 formatting. The global context, <code>latest_message</code>, and values under the selected <code>Input Data Key</code> are all exposed to your template variables automatically.
+              </span>
+            </div>
+          </>
+        )}
+        {data.type === 'report_generator' && (
+          <ReportGeneratorConfig data={data} update={update} />
+        )}
+        {data.type === 'ingestion_adapter' && (
+          <>
+            <div style={{
+              padding: 16,
+              background: 'var(--bg-card-purple, #F5F3FF)',
+              borderRadius: 12,
+              border: '1px solid var(--border-card-purple, #DDD6FE)',
+              marginBottom: 24,
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg, #F3E8FF 0%, #E0E7FF 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7C3AED', boxShadow: '0 2px 10px rgba(124, 58, 237, 0.1)' }}>
+                  <FiInbox size={16} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#1E293B', letterSpacing: '-0.3px' }}>Ingestion Configuration</div>
+                  <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>Banking schema normalization</div>
+                </div>
+              </div>
+              
+              <Field label="Source Format" hint="Define how the incoming stream format will be identified.">
+                <Select
+                  value={data.source_format || 'Auto-Detect'}
+                  onChange={(v) => update({ source_format: v })}
+                  options={[
+                    { value: 'Auto-Detect', label: 'Auto-Detect Format (Dynamic)' },
+                    { value: 'JSON', label: 'JSON' },
+                    { value: 'XML', label: 'XML / SOAP' },
+                    { value: 'CSV', label: 'CSV / Delimited' },
+                    { value: 'ISO_8583', label: 'ISO 8583 (Card Switch)' }
+                  ]}
+                />
+              </Field>
+
+              <Field label="Target Serialization" hint="Downstream message serialization target format.">
+                <Select
+                  value={data.target_serialization || 'Canonical JSON'}
+                  onChange={(v) => update({ target_serialization: v })}
+                  options={[
+                    { value: 'Canonical JSON', label: 'Canonical JSON' },
+                    { value: 'CSV String', label: 'CSV String (MDM Flatfile)' },
+                    { value: 'Raw Dictionary', label: 'Raw Dict Map' }
+                  ]}
+                />
+              </Field>
+
+              <Field label="Destination Key" hint="The context field where the validated canonical payload will be saved.">
+                <Input
+                  value={data.destination_key || 'canonical_transaction'}
+                  onChange={(v) => update({ destination_key: v })}
+                  placeholder="e.g. canonical_transaction"
+                />
+              </Field>
+
+              <div style={{ padding: '12px 16px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: 12, fontSize: 11, color: '#0369A1', border: '1px dashed rgba(59, 130, 246, 0.2)', lineHeight: 1.6, marginTop: 4 }}>
+                <strong>Auto-Normalization:</strong> Transaction streams, custom columns, and up to 200 dynamic fields are preserved automatically via the Pydantic pass-through schema config.
+              </div>
+            </div>
+          </>
+        )}
+        {data.type === 'banking_enrichment' && (() => {
+          const customExtList = data.custom_external_apis || [];
+          const customIntList = data.custom_internal_apis || [];
+
+          const extOptions = [
+            { value: 'custom', label: 'Custom HTTP API' },
+            { value: 'cibil_experian', label: 'CIBIL / Experian Bureau' },
+            { value: 'npci_registry', label: 'NPCI Fraud Registry' },
+            { value: 'sanctions_lists', label: 'OFAC / RBI Sanctions' },
+            { value: 'ip_geolocation', label: 'MaxMind IP Geolocation' },
+            { value: 'threat_metrix', label: 'ThreatMetrix Device ID' },
+            { value: 'telecom_data', label: 'Telecom Carrier API' }
+          ];
+
+          const intOptions = [
+            { value: 'custom', label: 'Custom HTTP API' },
+            { value: 'core_banking', label: 'Core Banking (CBS)' },
+            { value: 'card_management', label: 'Card Management (CMS)' },
+            { value: 'mobile_app_logs', label: 'Mobile App Session logs' },
+            { value: 'kyc_repository', label: 'KYC Registry' },
+            { value: 'crm_system', label: 'CRM System' }
+          ];
+
+          return (
+            <>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiGlobe color="var(--theme-primary)" size={14} /> 1. External Third-Party Sources
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {customExtList.map((apiDef, idx) => (
+                    <CustomCollapsibleApiConfig key={idx} apiDef={apiDef} index={idx} list={customExtList} keyName="custom_external_apis" update={update} providerOptions={extOptions} />
+                  ))}
+
+                  <div
+                    onClick={() => {
+                      const next = [...customExtList, { provider: 'custom', method: 'GET' }];
+                      update({ custom_external_apis: next });
+                    }}
+                    style={{ marginTop: 10, padding: '10px 12px', background: 'rgba(124, 58, 237, 0.05)', border: '1px dashed var(--theme-primary)', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--theme-primary)', fontSize: 12, fontWeight: 600 }}
+                  >
+                    <FiPlus size={14} /> Add Source
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiLayers color="var(--theme-primary)" size={14} /> 2. Internal Bank Systems
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {customIntList.map((apiDef, idx) => (
+                    <CustomCollapsibleApiConfig key={idx} apiDef={apiDef} index={idx} list={customIntList} keyName="custom_internal_apis" update={update} providerOptions={intOptions} />
+                  ))}
+
+                  <div
+                    onClick={() => {
+                      const next = [...customIntList, { provider: 'custom', method: 'GET' }];
+                      update({ custom_internal_apis: next });
+                    }}
+                    style={{ marginTop: 10, padding: '10px 12px', background: 'rgba(124, 58, 237, 0.05)', border: '1px dashed var(--theme-primary)', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--theme-primary)', fontSize: 12, fontWeight: 600 }}
+                  >
+                    <FiPlus size={14} /> Add Source
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Data Keys</div>
+                <Field label="Source Context Key" hint="Key where canonical transaction data resides.">
+                  <Input value={data.source_key ?? 'canonical_transaction'} onChange={(v) => update({ source_key: v })} placeholder="canonical_transaction" />
+                </Field>
+                <Field label="Destination Context Key" hint="Key to store the resulting enriched payload.">
+                  <Input value={data.destination_key ?? 'enriched_transaction'} onChange={(v) => update({ destination_key: v })} placeholder="enriched_transaction" />
+                </Field>
+              </div>
+            </>
+          );
+        })()}
+        {data.type === 'rule_engine' && (() => {
+          const rules = data.python_rules || [];
+          
+          const addRule = () => {
+            const newRule = { id: Math.random().toString(36).substr(2, 9), name: `Rule ${rules.length + 1}`, code: '', enabled: true };
+            update({ python_rules: [...rules, newRule] });
+          };
+          
+          const updateRule = (index, key, val) => {
+            const next = [...rules];
+            next[index] = { ...next[index], [key]: val };
+            update({ python_rules: next });
+          };
+          
+          const removeRule = (index) => {
+            const next = [...rules];
+            next.splice(index, 1);
+            update({ python_rules: next });
+          };
+          
+          const moveRule = (index, dir) => {
+            if (index + dir < 0 || index + dir >= rules.length) return;
+            const next = [...rules];
+            const temp = next[index];
+            next[index] = next[index + dir];
+            next[index + dir] = temp;
+            update({ python_rules: next });
+          };
+
+          return (
+            <>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <FiShield color="#DC2626" size={14} /> Rule Engine Configuration
+                  </div>
+                  <button onClick={addRule} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#7C3AED', color: 'white', border: 'none', padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                    <FiPlus size={12} /> Add Rule
+                  </button>
+                </div>
+                
+                {rules.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '20px', border: '1px dashed var(--border)', borderRadius: 8, color: 'var(--text-tertiary)', fontSize: 12 }}>
+                    No rules defined. Click "Add Rule" to create one.
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {rules.map((rule, idx) => (
+                    <RuleAccordionItem 
+                      key={rule.id}
+                      rule={rule}
+                      idx={idx}
+                      totalRules={rules.length}
+                      updateRule={updateRule}
+                      removeRule={removeRule}
+                      moveRule={moveRule}
+                    />
+                  ))}
+                </div>
+
+                <div style={{ background: 'var(--bg-card-info, #F0F9FF)', padding: 12, borderRadius: 8, border: '1px solid var(--border-card-info, #BAE6FD)', fontSize: 12, color: 'var(--text-card-info, #0369A1)', lineHeight: 1.5, marginTop: 12 }}>
+                  <strong>Note:</strong> Rules execute sequentially. If an enabled rule sets <code>intent = 'block'</code>, execution stops instantly.
+                </div>
+              </div>
+            </>
+          );
+        })()}
+        {data.type === 'beneficiary_risk' && (() => {
+          const checks = data.risk_checks || ['mule_detection', 'account_age', 'sanctions_list', 'relationship_graph'];
+          
+          const toggleCheck = (key) => {
+            const next = checks.includes(key) ? checks.filter(k => k !== key) : [...checks, key];
+            update({ risk_checks: next });
+          };
+
+          const checkList = [
+            { key: 'mule_detection', label: 'Mule Velocity Check', desc: 'Checks inbound velocity / mule indicators' },
+            { key: 'account_age', label: 'Account Age Registry', desc: 'Checks if recipient account is new' },
+            { key: 'sanctions_list', label: 'Sanctions Check', desc: 'Screens against OFAC & local blacklists' },
+            { key: 'relationship_graph', label: 'Relationship Graph', desc: 'Checks history between sender and receiver' },
+          ];
+
+          return (
+            <>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiShield color="var(--theme-primary)" size={14} /> Risk Evaluator Checks
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {checkList.map((chk) => (
+                    <div
+                      key={chk.key}
+                      onClick={() => toggleCheck(chk.key)}
+                      style={{
+                        padding: '10px 12px',
+                        background: checks.includes(chk.key) ? 'rgba(142, 119, 187, 0.05)' : '#F8FAFC',
+                        border: checks.includes(chk.key) ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
+                        borderRadius: 10,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginRight: 8 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: checks.includes(chk.key) ? 'var(--theme-primary)' : 'var(--text-primary)' }}>{chk.label}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{chk.desc}</span>
+                      </div>
+                      <div style={{
+                        width: 32, height: 18, borderRadius: 9, position: 'relative',
+                        background: checks.includes(chk.key) ? 'var(--theme-primary)' : '#cbd5e1',
+                        transition: 'all 0.2s', flexShrink: 0
+                      }}>
+                        <div style={{
+                          position: 'absolute', top: 2, left: checks.includes(chk.key) ? 16 : 2, width: 14, height: 14,
+                          borderRadius: '50%', background: '#fff', transition: 'left 0.2s ease'
+                        }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: '#EF4444' }}>🔴</span> Known Fraudster Branch
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.4 }}>
+                  Triggered only if deterministic check (Sanctions hit) matches 100%. Executes real-time block and raises alert.
+                </p>
+                <Field label="Alert Severity Level" hint="Level of severity logged downstream.">
+                  <Select
+                    value={data.fraud_alert_level ?? 'CRITICAL'}
+                    onChange={(v) => update({ fraud_alert_level: v })}
+                    options={[
+                      { value: 'CRITICAL', label: 'Critical' },
+                      { value: 'HIGH', label: 'High' },
+                      { value: 'MEDIUM', label: 'Medium' }
+                    ]}
+                  />
+                </Field>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, textTransform: 'uppercase' }}>Primary Fraud Alert API</div>
+                <ApiConfigSection data={data} update={update} prefix="fraud_api_" urlKey="fraud_api_endpoint" />
+                
+                <div style={{ marginTop: 20 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, textTransform: 'uppercase' }}>Additional APIs</div>
+                  {data.fraud_additional_apis?.map((apiConf, idx) => {
+                    const localUpdate = (changes) => {
+                       const newArr = [...(data.fraud_additional_apis || [])];
+                       newArr[idx] = { ...newArr[idx], ...changes };
+                       update({ fraud_additional_apis: newArr });
+                    };
+                    return (
+                      <CollapsibleApiConfig 
+                        key={idx} 
+                        data={apiConf} 
+                        update={localUpdate} 
+                        idx={idx} 
+                        onRemove={() => {
+                          const newArr = [...data.fraud_additional_apis];
+                          newArr.splice(idx, 1);
+                          update({ fraud_additional_apis: newArr });
+                        }} 
+                      />
+                    );
+                  })}
+                  <button 
+                    onClick={() => {
+                      const newArr = [...(data.fraud_additional_apis || []), { url: '', method: 'POST' }];
+                      update({ fraud_additional_apis: newArr });
+                    }}
+                    style={{ width: '100%', padding: '8px', background: '#F1F5F9', border: '1px dashed #CBD5E1', borderRadius: '8px', color: '#475569', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    + Add Another API
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: '#F59E0B' }}>🟡</span> New Beneficiary Branch
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, margin: 0 }}>
+                  <strong>Privacy Sandbox Active:</strong> This node strips private sender data and passes only recipient details (Name, Account, Bank) down the yellow wire for KYC/registration.
+                </p>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: '#10B981' }}>🟢</span> Safe / Continue Branch
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, margin: 0 }}>
+                  Payload passes untouched. Mule check scores and geo-velocity metrics are injected into `risk_profile` for downstream scoring engines.
+                </p>
+              </div>
+
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Data Configuration</div>
+                <Field label="Input Context Key" hint="Context key that holds the transaction payload.">
+                  <Input value={data.context_key ?? 'enriched_transaction'} onChange={(v) => update({ context_key: v })} placeholder="enriched_transaction" />
+                </Field>
+                <Field label="Target Entity Field" hint="Which field in the data represents the beneficiary?">
+                  <Input value={data.beneficiary_field ?? 'beneficiary_id'} onChange={(v) => update({ beneficiary_field: v })} placeholder="e.g., beneficiary_id" />
+                </Field>
+                <Field label="New Beneficiary Rule" hint="Logical condition to define what a 'new' beneficiary is.">
+                  <Input value={data.new_beneficiary_rule ?? 'account_age_days < 1'} onChange={(v) => update({ new_beneficiary_rule: v })} placeholder="e.g., account_age_days < 1" />
+                </Field>
+              </div>
+            </>
+          );
+        })()}
+            </>
+          );
+        })()}
+
         {/* Removed redundant Global Discovery Section */}
+
+
       </div>
-      {showGlobalRuleModal && <GlobalRuleModal onClose={() => setShowGlobalRuleModal(false)} />}
       <SkillGallery isOpen={skillGalleryOpen} onClose={() => setSkillGalleryOpen(false)} />
+      {showGlobalRuleModal && <GlobalRuleModal onClose={() => setShowGlobalRuleModal(false)} />}
       {saveModalOpen && (
         <SaveTemplateModal
           agentConfig={data}

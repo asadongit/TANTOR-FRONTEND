@@ -28,8 +28,9 @@ const NODE_DEFAULTS = {
   set_data: { label: 'Set Data', message: '' },
   output_parser: { label: 'Output Parser', parse_mode: 'auto', fallback_to_raw: true, output_context_key: 'parsed_output' },
   pii_node: { label: 'PII Masking', pii_engine: 'regex', pii_target: 'latest_message', pii_entities: ['EMAIL_ADDRESS', 'PHONE_NUMBER', 'PERSON'], pii_custom_regex: [], docbot_url: 'http://localhost:8000', docbot_method: 'hybrid', hitl_enabled: false, identifiers_input_key: 'extracted_identifiers', rendered_input_key: 'ocr_like_results' },
+  data_cleaning: { label: 'Data Cleaning', data_cleaning_rules: ['GEN_TRIM_WHITESPACE'], data_cleaning_target: 'latest_message', data_cleaning_input_key: '', data_cleaning_output_key: 'cleaned_data' },
+  network_graph: { label: 'Network Graph', graph_target_key: 'latest_message', graph_neo4j_uri: '', graph_neo4j_user: '', graph_neo4j_password: '' },
   ocr_node: { label: 'OCR Node', ocr_input_key: 'latest_file_path', ocr_prompt: 'Please perform OCR on this document and return the full text accurately.', llm: { provider: 'groq', model: 'llama-3.2-90b-vision-preview', temperature: 0 }, interrupt_before: false, interrupt_after: false, pii_verification: false },
-  json_transform: { label: 'JSON Transform', transform_operation: 'flatten', transform_separator: '_', transform_pick_fields: '', transform_rename_map: '', transform_omit_keys: '', transform_input_key: 'api_response', transform_output_key: 'flattened_json' },
   pattern_extract: { label: 'Pattern Extractor', extract_mode: 'identifier', extract_patterns: [], extract_input_key: 'flattened_json', extract_output_key: 'extracted_identifiers', identifiers_input_key: 'extracted_identifiers' },
   api_node: { label: 'API Request', method: 'GET', url: '', headers: {}, params: {}, body: '', auth_method: 'none', api_auth_config: {} },
   ingestion_node: { label: 'Ingestion', vector_store: 'chroma', vector_collection: 'default', chunk_size: 1000, chunk_overlap: 100, chunking_strategy: 'recursive', ingestion_source_key: 'latest_ocr_output' },
@@ -38,7 +39,28 @@ const NODE_DEFAULTS = {
   pii_gate_node: { label: 'PII Verification Gate', input_key: 'latest_ocr_output', interrupt_after: true },
   ingestion_router: { label: 'Ingestion Router', scan_mode: 'auto', file_filters: ['.pdf', '.jpg', '.png', '.jpeg'], concurrency_limit: 5, parent_folder_key: 'parent_folder_path', folder_identifier_key: 'customer_folder_name', curl_command_key: 'curl_command' },
   event_emitter: { label: 'Event Emitter', webhook_url: 'http://localhost:8000/documents/mesh-status-sync', emit_status: '', interrupt_before: false, interrupt_after: false },
-  cardboard: { label: 'Sticky Note', color: 'slate' }
+  cardboard: { label: 'Sticky Note', color: 'slate' },
+  json_transform: {
+    label: 'JSON Transform',
+    transform_operation: 'flatten', transform_separator: '_', transform_pick_fields: '', transform_rename_map: '', transform_omit_keys: '', transform_input_key: 'api_response', transform_output_key: 'flattened_json',
+    jt_input_key: 'latest_api_result',
+    jt_output_key: 'transformed_data',
+    jt_mode: 'jmespath',
+    jt_query: '',
+    jt_operations: [],
+    jt_expression: '',
+    jt_pass_through: false
+  },
+  button_trigger: {
+    label: 'Button Trigger',
+    button_label: 'Start Workflow',
+    button_input: 'Start',
+    button_category: 'action'
+  },
+  auto_trigger: {
+    label: 'Auto Trigger',
+    button_input: 'Auto Start'
+  }
 };
 
 const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
@@ -79,6 +101,8 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           llm: n.llm || n.data?.llm || { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 },
           wait_seconds: n.wait_seconds || n.data?.wait_seconds || 0,
           skills: n.skills || n.data?.skills || [],
+          custom_python_rules: n.custom_python_rules || n.data?.custom_python_rules || '',
+          python_rules: n.python_rules || n.data?.python_rules || [],
           deep_agent_backend: n.deep_agent_backend || n.data?.deep_agent_backend || 'postgres',
           deep_agent_root_dir: n.deep_agent_root_dir || n.data?.deep_agent_root_dir || './mnt/deep_agents',
           allowed_transitions: n.allowed_transitions ?? n.data?.allowed_transitions ?? null,
@@ -86,6 +110,14 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           pii_target: n.pii_target || n.data?.pii_target || 'latest_message',
           pii_entities: n.pii_entities || n.data?.pii_entities || ['EMAIL_ADDRESS', 'PHONE_NUMBER', 'PERSON'],
           pii_custom_regex: n.pii_custom_regex || n.data?.pii_custom_regex || [],
+          data_cleaning_rules: n.data_cleaning_rules || n.data?.data_cleaning_rules || ['GEN_TRIM_WHITESPACE'],
+          data_cleaning_target: n.data_cleaning_target || n.data?.data_cleaning_target || 'latest_message',
+          data_cleaning_input_key: n.data_cleaning_input_key || n.data?.data_cleaning_input_key || '',
+          data_cleaning_output_key: n.data_cleaning_output_key || n.data?.data_cleaning_output_key || 'cleaned_data',
+          graph_target_key: n.graph_target_key || n.data?.graph_target_key || 'latest_message',
+          graph_neo4j_uri: n.graph_neo4j_uri || n.data?.graph_neo4j_uri || '',
+          graph_neo4j_user: n.graph_neo4j_user || n.data?.graph_neo4j_user || '',
+          graph_neo4j_password: n.graph_neo4j_password || n.data?.graph_neo4j_password || '',
           response_status: n.response_status || n.data?.response_status || 200,
           response_headers: n.response_headers || n.data?.response_headers || {},
           response_body_key: n.response_body_key || n.data?.response_body_key || '',
@@ -93,6 +125,15 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           classification_summary: n.classification_summary ?? n.data?.classification_summary ?? false,
           classification_engine: n.classification_engine || n.data?.classification_engine || 'llm',
           classification_input_field: n.classification_input_field || n.data?.classification_input_field || '',
+          jt_input_key: n.jt_input_key || n.data?.jt_input_key || 'latest_api_result',
+          jt_output_key: n.jt_output_key || n.data?.jt_output_key || 'transformed_data',
+          jt_mode: n.jt_mode || n.data?.jt_mode || 'jmespath',
+          jt_query: n.jt_query || n.data?.jt_query || '',
+          jt_operations: n.jt_operations || n.data?.jt_operations || [],
+          jt_expression: n.jt_expression || n.data?.jt_expression || '',
+          jt_pass_through: n.jt_pass_through ?? n.data?.jt_pass_through ?? false,
+          weightage_categories: n.weightage_categories || n.data?.weightage_categories || [],
+          weightage_output_key: n.weightage_output_key || n.data?.weightage_output_key || 'weightage_result',
         },
       };
     });
@@ -485,7 +526,7 @@ export const useWorkflowStore = create((set, get) => ({
         const validFields = [
           'id', 'type', 'label', 'position', 'task', 'llm', 'memory', 'iteration_policy',
           'tools', 'tool_configs', 'return_direct', 'routing_key', 'workflow_id', 'member_ids', 'allowed_transitions',
-          'branches', 'condition', 'message', 'wait_seconds', 'skills',
+          'branches', 'condition', 'message', 'wait_seconds', 'skills', 'custom_python_rules', 'python_rules',
           'subagents', 'harness_profile', 'code_interpreter', 'max_iterations', 'timeout_seconds', 'context_schema',
           'parse_mode', 'fallback_to_raw', 'output_context_key',
           'deep_agent_backend', 'deep_agent_root_dir',
@@ -500,6 +541,9 @@ export const useWorkflowStore = create((set, get) => ({
           'notification_title', 'notification_message', 'notification_type', 'mute_notification_message', 'show_chat_button',
           'form_title', 'form_description', 'form_fields', 'form_submit_label', 'form_use_context_schema',
           'pii_engine', 'datafog_engine', 'pii_target', 'pii_entities', 'pii_custom_regex', 'docbot_url', 'docbot_method', 'hitl_enabled', 'identifiers_input_key', 'rendered_input_key', 'context_variable_key',
+          'data_cleaning_rules', 'data_cleaning_target', 'data_cleaning_input_key', 'data_cleaning_output_key',
+          'graph_target_key', 'graph_neo4j_uri', 'graph_neo4j_user', 'graph_neo4j_password',
+          'graph_collection', 'graph_sender_key', 'graph_receiver_key', 'graph_txn_id_key', 'graph_amount_key', 'graph_timestamp_key',
           'ocr_input_key', 'ocr_prompt', 'ocr_engine', 'ocr_standard_model', 'pii_verification',
           'scan_mode', 'file_filters', 'concurrency_limit', 'webhook_url', 'emit_status',
           'on_error',
@@ -509,6 +553,9 @@ export const useWorkflowStore = create((set, get) => ({
           'engine_mode', 'custom_entities', 'output_format',
           'template_content', 'template_output_key', 'template_data_key', 'template_file_path',
           'template_id', 'input_data_key', 'output_file_name', 'report_format', 'template_category',
+          'button_label', 'button_input', 'button_category',
+          'jt_input_key', 'jt_output_key', 'jt_mode', 'jt_query', 'jt_operations', 'jt_expression', 'jt_pass_through',
+          'weightage_categories', 'weightage_output_key',
           'db_connection_string', 'db_database', 'db_collection', 'db_operation', 'db_document', 'db_query', 'db_output_key', 'db_limit',
           'transform_operation', 'transform_separator', 'transform_pick_fields', 'transform_rename_map', 'transform_omit_keys', 'transform_input_key', 'transform_output_key',
           'ocr_service_url', 'ocr_service_params', 'ocr_service_headers', 'ocr_service_response_type', 'ocr_service_file_field', 'ocr_service_text_path', 'ocr_multi_file_key',
@@ -818,6 +865,7 @@ export const useUIStore = create((set) => ({
   // ─── Canvas Visual Settings (persisted to localStorage) ───────────────────
   canvasWireStyle: (typeof window !== 'undefined' ? localStorage.getItem('canvas_wire_style') : 'square') || 'square',
   canvasBackgroundStyle: (typeof window !== 'undefined' ? localStorage.getItem('canvas_background_style') : 'dots') || 'dots',
+  canvasNodeTheme: (typeof window !== 'undefined' ? localStorage.getItem('canvas_node_theme') : 'modern') || 'modern',
   setCanvasWireStyle: (v) => {
     if (typeof window !== 'undefined') localStorage.setItem('canvas_wire_style', v);
     set({ canvasWireStyle: v });
@@ -825,6 +873,10 @@ export const useUIStore = create((set) => ({
   setCanvasBackgroundStyle: (v) => {
     if (typeof window !== 'undefined') localStorage.setItem('canvas_background_style', v);
     set({ canvasBackgroundStyle: v });
+  },
+  setCanvasNodeTheme: (v) => {
+    if (typeof window !== 'undefined') localStorage.setItem('canvas_node_theme', v);
+    set({ canvasNodeTheme: v });
   },
 }));
 

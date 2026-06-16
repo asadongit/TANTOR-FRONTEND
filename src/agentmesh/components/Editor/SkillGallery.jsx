@@ -96,55 +96,75 @@ export default function SkillGallery({ isOpen, onClose }) {
       </div>
 
       {/* List */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px', display: 'flex', flexDirection: 'column' }}>
         {loading ? (
           <div style={{ textAlign: 'center', padding: 40, color: '#9CA3AF' }}>Loading skills...</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {filteredSkills.map(skill => {
-              const isApplied = (nodes.find(n => n.id === selectedNodeId)?.data?.skills || []).includes(skill.name);
-              return (
-                <motion.div
-                  key={skill.id}
-                  whileHover={{ y: -2 }}
-                  style={{
-                    padding: 20, borderRadius: 16, border: `1px solid ${isApplied ? THEME_ACCENT : THEME_BORDER}`,
-                    background: 'white', cursor: 'pointer', transition: 'all 0.2s',
-                    boxShadow: isApplied ? `0 0 15px ${THEME_ACCENT}20` : '0 4px 6px -1px rgba(0,0,0,0.02)',
-                    position: 'relative'
-                  }}
-                  onClick={() => applySkill(skill)}
-                >
-                  {isApplied && (
-                    <div style={{ position: 'absolute', top: 12, right: 12, color: THEME_ACCENT }}>
-                      <FiCheckCircle size={18} />
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', gap: 14 }}>
-                  <div style={{
-                    width: 40, height: 40, borderRadius: 10, background: '#F5F3FF',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: THEME_ACCENT
-                  }}>
-                    {skill.id.includes('code') ? <FiCode size={20} /> : 
-                     skill.id.includes('arch') ? <FiBriefcase size={20} /> : 
-                     <FiZap size={20} />}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#1F2937' }}>{skill.name}</div>
-                    <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4, lineHeight: 1.4 }}>
-                      {skill.description}
-                    </div>
-                  </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, flex: 1 }}>
+            {filteredSkills.length === 0 ? (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flex: 1,
+                color: '#6B7280',
+                gap: 12,
+                textAlign: 'center',
+                minHeight: '200px'
+              }}>
+                <FiBookOpen size={36} style={{ opacity: 0.3, strokeWidth: 1.5 }} />
+                <div style={{ fontSize: 14, fontWeight: 700 }}>No skills found</div>
+                <div style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.5 }}>
+                  {search ? "No expertise SOPs match your search query." : "There are currently no expertise SOP skills available in your workspace."}
                 </div>
-                <div style={{ 
-                  marginTop: 16, paddingTop: 16, borderTop: '1px solid #F3F4F6',
-                  display: 'flex', justifyContent: 'flex-end', alignItems: 'center'
-                }}>
-                  <FiArrowRight size={14} color={THEME_ACCENT} />
-                </div>
-              </motion.div>
-            );
-          })}
+              </div>
+            ) : (
+              filteredSkills.map(skill => {
+                const isApplied = (nodes.find(n => n.id === selectedNodeId)?.data?.skills || []).includes(skill.name);
+                return (
+                  <motion.div
+                    key={skill.id}
+                    whileHover={{ y: -2 }}
+                    style={{
+                      padding: 20, borderRadius: 16, border: `1px solid ${isApplied ? THEME_ACCENT : THEME_BORDER}`,
+                      background: 'white', cursor: 'pointer', transition: 'all 0.2s',
+                      boxShadow: isApplied ? `0 0 15px ${THEME_ACCENT}20` : '0 4px 6px -1px rgba(0,0,0,0.02)',
+                      position: 'relative'
+                    }}
+                    onClick={() => applySkill(skill)}
+                  >
+                    {isApplied && (
+                      <div style={{ position: 'absolute', top: 12, right: 12, color: THEME_ACCENT }}>
+                        <FiCheckCircle size={18} />
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 14 }}>
+                      <div style={{
+                        width: 40, height: 40, borderRadius: 10, background: '#F5F3FF',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', color: THEME_ACCENT
+                      }}>
+                        {skill.id.includes('code') ? <FiCode size={20} /> : 
+                         skill.id.includes('arch') ? <FiBriefcase size={20} /> : 
+                         <FiZap size={20} />}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1F2937' }}>{skill.name}</div>
+                        <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4, lineHeight: 1.4 }}>
+                          {skill.description}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ 
+                      marginTop: 16, paddingTop: 16, borderTop: '1px solid #F3F4F6',
+                      display: 'flex', justifyContent: 'flex-end', alignItems: 'center'
+                    }}>
+                      <FiArrowRight size={14} color={THEME_ACCENT} />
+                    </div>
+                  </motion.div>
+                );
+              })
+            )}
           </div>
         )}
       </div>

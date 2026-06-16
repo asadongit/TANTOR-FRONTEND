@@ -9,6 +9,7 @@ import {
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import Pagination from '../../Common/Pagination';
 import ConfirmationModal from '../../Common/ConfirmationModal';
+import PageHeader from '../../Common/PageHeader';
 
 // Application purple theme for APIs to match Agents
 const API_THEME = {
@@ -347,7 +348,10 @@ export default function APIsPage() {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', overflow: 'hidden' }}>
       <div style={{ padding: '16px 32px', borderBottom: '1px solid var(--border-light)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>API Library</h1>
+        <PageHeader 
+          title="API Library" 
+          description="Register, configure, and manage external REST and GraphQL APIs for integration into agentic workflows." 
+        />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Search bar */}

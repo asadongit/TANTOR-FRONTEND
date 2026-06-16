@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationModal from '../../Common/ConfirmationModal';
 import Pagination from '../../Common/Pagination';
 import toast from 'react-hot-toast';
+import PageHeader from '../../Common/PageHeader';
 
 const NODE_COLORS = {
   llm_agent: '#C9DEFF', tool_node: '#FFE4B8', router: '#E5D9FF',
@@ -732,7 +733,10 @@ export default function WorkflowsPage() {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-primary)', fontFamily: "'Google Sans','Roboto',sans-serif" }}>
       {/* Header with view toggle and search */}
       <div style={{ padding: '16px 32px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white' }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Workflows</h1>
+        <PageHeader 
+          title="Workflows" 
+          description="Orchestrate and coordinate multi-agent system graphs, state machines, and sequential pipeline flows." 
+        />
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Search bar collapsible (AgentsPage Style) */}
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', transition: 'all 0.2s', width: (searchOpen || search) ? 320 : 36 }}>
