@@ -87,6 +87,7 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           tool_arguments: n.tool_arguments || n.data?.tool_arguments || {},
           destination_key: n.destination_key || n.data?.destination_key || '',
           return_direct: n.return_direct || n.data?.return_direct || false,
+          custom_python_rules: n.custom_python_rules || n.data?.custom_python_rules || '',
           member_ids: n.member_ids || n.data?.member_ids || [],
           iteration_policy: n.iteration_policy || n.data?.iteration_policy || { enabled: false, max_iterations: 3, target_score: 0.8, evaluator_task: '', inject_feedback_as: 'human' },
           branches: n.branches || n.data?.branches || [],
