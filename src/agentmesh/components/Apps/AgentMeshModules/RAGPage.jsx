@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { ingestData, listAvailableModels } from '../../../api/agentmesh';
 import { FiBookOpen, FiType, FiUpload, FiCheck, FiAlertCircle, FiInfo, FiFileText, FiX, FiLayers, FiDatabase, FiScissors, FiMic, FiActivity, FiVideo, FiShare2 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -91,6 +92,16 @@ function ScrollableSelect({ value, onChange, options, placeholder }) {
   );
 }
 
+ScrollableSelect.propTypes = {
+  value: PropTypes.string,
+  onChange: PropTypes.func.isRequired,
+  options: PropTypes.arrayOf(PropTypes.shape({
+    value: PropTypes.string.isRequired,
+    label: PropTypes.string.isRequired,
+  })).isRequired,
+  placeholder: PropTypes.string,
+};
+
 function TooltipLabel({ label, tooltipText }) {
   const [show, setShow] = useState(false);
   return (
@@ -128,6 +139,10 @@ function TooltipLabel({ label, tooltipText }) {
   );
 }
 
+TooltipLabel.propTypes = {
+  label: PropTypes.string.isRequired,
+  tooltipText: PropTypes.string.isRequired,
+};
 
 export default function RAGPage() {
   const [tab, setTab] = useState('text');
@@ -209,7 +224,7 @@ export default function RAGPage() {
     }
 
     // 2. Validate Chunking Parameters
-    if (chunkingStrategy !== 'none') {
+    if (chunkingStrategy !== 'none' && chunkingStrategy !== 'markdown_heading') {
       if (chunkSize < 100 || chunkSize > 10000) {
         setError("Chunk size must be between 100 and 10,000.");
         setLoading(false); return;
@@ -694,6 +709,7 @@ export default function RAGPage() {
                     <option value="recursive">Recursive Character (General Purpose)</option>
                     <option value="token">Token-based (LLM Context Optimized)</option>
                     <option value="json">JSON Object (Structured RAG)</option>
+                    <option value="markdown_heading">Format Markdown Chunk Splitter</option>
                     <option value="none">None (Upload whole document)</option>
                   </select>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, display: 'flex', alignItems: 'flex-start', gap: 6, lineHeight: 1.4 }}>
@@ -702,55 +718,65 @@ export default function RAGPage() {
                       {chunkingStrategy === 'json' && 'Optimized for structured JSON files. Splits only by major objects to preserve data hierarchy.'}
                       {chunkingStrategy === 'recursive' && 'The industry standard. Splits by paragraphs, lines, then spaces to keep semantic meaning.'}
                       {chunkingStrategy === 'token' && 'Calculates chunks based on token counts. Recommended for long contexts in OpenAI/Mistral.'}
+                      {chunkingStrategy === 'markdown_heading' && 'Splits Markdown document dynamically by headings and subheadings with a 2000 character limit.'}
                       {chunkingStrategy === 'none' && 'Doc will be treated as one single block. Use only for very small documents.'}
                     </div>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                      {labelNode('Chunk size')}
-                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-btn)' }}>{chunkSize} chars</span>
+                {chunkingStrategy !== 'none' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        {labelNode('Chunk size')}
+                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-btn)' }}>
+                          {chunkingStrategy === 'markdown_heading' ? 2000 : chunkSize} chars
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                        <input
+                          type="range" min={100} max={10000} step={100}
+                          value={chunkingStrategy === 'markdown_heading' ? 2000 : chunkSize}
+                          onChange={(e) => setChunkSize(Number(e.target.value))}
+                          disabled={chunkingStrategy === 'none' || chunkingStrategy === 'markdown_heading'}
+                          style={{ flex: 1, accentColor: 'var(--accent-btn)', cursor: chunkingStrategy === 'markdown_heading' ? 'not-allowed' : 'pointer', height: 4 }}
+                        />
+                        <input type="number"
+                          value={chunkingStrategy === 'markdown_heading' ? 2000 : chunkSize}
+                          onChange={(e) => setChunkSize(Number(e.target.value))}
+                          disabled={chunkingStrategy === 'none' || chunkingStrategy === 'markdown_heading'}
+                          min={100} max={10000}
+                          style={{ ...inputClass, width: 80, padding: '6px 8px', textAlign: 'center', opacity: (chunkingStrategy === 'none' || chunkingStrategy === 'markdown_heading') ? 0.6 : 1 }}
+                        />
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                      <input
-                        type="range" min={100} max={10000} step={100}
-                        value={chunkSize} onChange={(e) => setChunkSize(Number(e.target.value))}
-                        disabled={chunkingStrategy === 'none'}
-                        style={{ flex: 1, accentColor: 'var(--accent-btn)', cursor: 'pointer', height: 4 }}
-                      />
-                      <input type="number" value={chunkSize} onChange={(e) => setChunkSize(Number(e.target.value))}
-                        disabled={chunkingStrategy === 'none'}
-                        min={100} max={10000}
-                        style={{ ...inputClass, width: 80, padding: '6px 8px', textAlign: 'center', opacity: chunkingStrategy === 'none' ? 0.6 : 1 }}
-                      />
-                    </div>
-                  </div>
 
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                      {labelNode('Overlap (tokens/chars)')}
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#F59E0B' }}>{chunkOverlap} chars</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                      <input
-                        type="range" min={0} max={Math.min(2000, chunkSize)} step={10}
-                        value={chunkOverlap} onChange={(e) => setChunkOverlap(Number(e.target.value))}
-                        disabled={chunkingStrategy === 'none'}
-                        style={{ flex: 1, accentColor: '#F59E0B', cursor: 'pointer', height: 4 }}
-                      />
-                      <input type="number" value={chunkOverlap} onChange={(e) => setChunkOverlap(Number(e.target.value))}
-                        disabled={chunkingStrategy === 'none'}
-                        min={0}
-                        style={{ ...inputClass, width: 80, padding: '6px 8px', textAlign: 'center', opacity: chunkingStrategy === 'none' ? 0.6 : 1 }}
-                      />
-                    </div>
-                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 6 }}>
-                      Overlap should be ~10-15% of chunk size for best context retrieval.
-                    </div>
+                    {chunkingStrategy !== 'markdown_heading' && (
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          {labelNode('Overlap (tokens/chars)')}
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#F59E0B' }}>{chunkOverlap} chars</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                          <input
+                            type="range" min={0} max={Math.min(2000, chunkSize)} step={10}
+                            value={chunkOverlap} onChange={(e) => setChunkOverlap(Number(e.target.value))}
+                            disabled={chunkingStrategy === 'none'}
+                            style={{ flex: 1, accentColor: '#F59E0B', cursor: 'pointer', height: 4 }}
+                          />
+                          <input type="number" value={chunkOverlap} onChange={(e) => setChunkOverlap(Number(e.target.value))}
+                            disabled={chunkingStrategy === 'none'}
+                            min={0}
+                            style={{ ...inputClass, width: 80, padding: '6px 8px', textAlign: 'center', opacity: chunkingStrategy === 'none' ? 0.6 : 1 }}
+                          />
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 6 }}>
+                          Overlap should be ~10-15% of chunk size for best context retrieval.
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
+                )}
               </div>
 
               {/* ── Storage Target Switcher ── */}

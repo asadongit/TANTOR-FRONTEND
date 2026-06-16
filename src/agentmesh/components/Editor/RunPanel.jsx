@@ -56,7 +56,7 @@ export default function RunPanel({ onClose }) {
 
   const hasButtonTriggers = startingButtonTriggers.length > 0;
   const hasAutoTriggers = startingAutoTriggers.length > 0;
-  
+
   const hasOcrNodes = useMemo(() => {
     return nodes.some(n => n.data?.type === 'ocr_node');
   }, [nodes]);
@@ -120,12 +120,12 @@ export default function RunPanel({ onClose }) {
     };
     fetchHistory();
   }, [workflowId, setHistory]);
-  
+
   // ⚡ Auto-Restore History: If we opened via the Dashboard with a threadId
   useEffect(() => {
     if (threadId && streamEvents.length === 0 && !running) {
-        console.log("[RunPanel] Detected external thread reference, restoring history:", threadId);
-        handleOpenThread(threadId);
+      console.log("[RunPanel] Detected external thread reference, restoring history:", threadId);
+      handleOpenThread(threadId);
     }
   }, [threadId]); // Only trigger when threadId is established
 
@@ -231,14 +231,6 @@ export default function RunPanel({ onClose }) {
           lastActiveAgent = nodeId;
         }
 
-        // TOOL EXECUTION LOGS (from ToolMessages)
-        if (msg.type === 'ToolMessage') {
-          if (hasArtifact(msg.content)) {
-            addEvent({ type: 'tool_result', tool: 'chart_generator', content: msg.content });
-            chartCount++;
-          }
-        }
-
         // AGENT OUTPUTS (from AIMessages)
         else if (msg.type === 'AIMessage') {
           if (hasArtifact(msg.content)) {
@@ -273,7 +265,7 @@ export default function RunPanel({ onClose }) {
       finishRun(output || null);
 
       console.log("[WorkflowDebug] Finished run. Result object:", res);
-      
+
       // 🕵️ VARIABLE EXPLORER: Persist context for data discovery
       const { setLatestContext } = useRunStore.getState();
       setLatestContext(res.context || {});
@@ -309,7 +301,7 @@ export default function RunPanel({ onClose }) {
   // 🚀 AUTO-TRIGGER LOGIC: If we arrived here via a "Quick Run" button on a card
   useEffect(() => {
     const currentInitialInput = useUIStore.getState().initialRunInput;
-    
+
     if (currentInitialInput && !running && isCompiled) {
       console.log("[AutoTrigger] Executing initial input:", currentInitialInput);
       const timer = setTimeout(() => {
@@ -432,7 +424,7 @@ export default function RunPanel({ onClose }) {
       } else {
         setPausedInfo({ isPaused: false, nextNode: null, pausedNodeOutput: null, showReworkForm: false });
         setReworkFeedback('');
-        
+
         // 🕵️ VARIABLE EXPLORER: Persist context for data discovery
         const { setLatestContext } = useRunStore.getState();
         setLatestContext(res.context || {});
@@ -452,14 +444,6 @@ export default function RunPanel({ onClose }) {
         if (nodeId && nodeId !== lastActiveAgent) {
           addEvent({ type: 'node_start', node: nodeId });
           lastActiveAgent = nodeId;
-        }
-
-        // TOOL EXECUTION LOGS
-        if (msg.type === 'ToolMessage') {
-          if (hasArtifact(msg.content)) {
-            addEvent({ type: 'tool_result', tool: 'chart_generator', content: msg.content });
-            chartCount++;
-          }
         }
 
         // AGENT OUTPUTS
@@ -542,7 +526,10 @@ export default function RunPanel({ onClose }) {
         if (msg.type === 'HumanMessage') {
           events.push({ type: 'user_message', content: msg.content });
         } else if (msg.type === 'ToolMessage') {
-          events.push({ type: 'tool_result', tool: msg.metadata?.tool_name || 'tool', content: msg.content });
+          const hasArtifact = typeof msg.content === 'string' && (msg.content.includes('```chart') || msg.content.includes('```mermaid'));
+          if (!hasArtifact) {
+            events.push({ type: 'tool_result', tool: msg.metadata?.tool_name || 'tool', content: msg.content });
+          }
         } else if (msg.type === 'AIMessage') {
           if (nodeId && nodeId !== lastActiveAgent) {
             events.push({ type: 'node_start', node: nodeId });
@@ -615,25 +602,18 @@ export default function RunPanel({ onClose }) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const allowedExtensions = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'];
-    const ext = '.' + file.name.split('.').pop().toLowerCase();
-    if (!allowedExtensions.includes(ext)) {
-      setError(`Format not allowed. Only PDF and images (.png, .jpg, .jpeg, .webp) can be uploaded here.`);
-      return;
-    }
-
     try {
       addEvent({ type: 'node_start', node: 'SYSTEM: Uploading Document...' });
       const formData = new FormData();
       formData.append('file', file);
-      
+
       const { ingestData } = await import('../../api/agentmesh');
       const res = await ingestData(formData);
-      
+
       if (res.status === 'success') {
         const filePath = res.file_path;
         addEvent({ type: 'system_log', message: 'UPLOAD SUCCESS', content: `Document ${file.name} uploaded successfully.` });
-        
+
         const ocrNode = nodes.find(n => n.data?.type === 'ocr_node');
         onSend(`Processing uploaded file: ${file.name}`, {
           latest_file_path: filePath,
@@ -1066,7 +1046,7 @@ export default function RunPanel({ onClose }) {
                     <div style={{ fontSize: 11, fontWeight: 900, color: THEME_ACCENT, marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <FiEdit size={14} /> REWORK PARAMETERS
                     </div>
-                    
+
                     <ReworkFormPanel
                       feedback={reworkFeedback}
                       onChange={setReworkFeedback}
@@ -1207,75 +1187,75 @@ export default function RunPanel({ onClose }) {
                   justifyContent: hideInput ? 'center' : 'flex-start'
                 }}>
                   {startingButtonTriggers.map(btnNode => {
-                      const catStyles = getButtonCategoryStyles(btnNode.data?.button_category || btnNode.button_category || btnNode.data?.category || btnNode.category);
-                      return (
-                        <motion.button
-                          key={btnNode.id}
-                          whileHover={{ scale: 1.01, translateY: -1 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => onSend(btnNode.data?.button_input || 'Start')}
-                          style={{
-                            padding: hideInput ? '10px 20px' : '6px 14px',
-                            borderRadius: hideInput ? 10 : 8,
-                            background: hideInput ? (btnNode.data?.button_category ? catStyles.color : 'var(--theme-primary, #6366F1)') : catStyles.bg,
-                            border: hideInput ? 'none' : `1px solid ${catStyles.border}`,
-                            color: hideInput ? '#FFFFFF' : catStyles.color,
-                            fontSize: hideInput ? 12.5 : 11,
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                          }}
-                          onMouseEnter={(e) => {
-                            if (!hideInput) {
-                              e.currentTarget.style.background = catStyles.bgHover;
-                              e.currentTarget.style.borderColor = catStyles.borderHover;
-                            } else {
-                              e.currentTarget.style.opacity = '0.9';
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            if (!hideInput) {
-                              e.currentTarget.style.background = catStyles.bg;
-                              e.currentTarget.style.borderColor = catStyles.border;
-                            } else {
-                              e.currentTarget.style.opacity = '1';
-                            }
-                          }}
-                        >
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: hideInput ? '#FFFFFF' : catStyles.dotColor, opacity: 0.8 }} />
-                          {btnNode.data?.button_label || btnNode.data?.label || 'Run'}
-                        </motion.button>
-                      );
-                    })}
-
-                    {hasOcrNodes && (
-                      <motion.label
-                        whileHover={{ scale: 1.02, y: -2 }}
+                    const catStyles = getButtonCategoryStyles(btnNode.data?.button_category || btnNode.button_category || btnNode.data?.category || btnNode.category);
+                    return (
+                      <motion.button
+                        key={btnNode.id}
+                        whileHover={{ scale: 1.01, translateY: -1 }}
                         whileTap={{ scale: 0.98 }}
-                        htmlFor="run-panel-file-upload"
+                        onClick={() => onSend(btnNode.data?.button_input || 'Start')}
                         style={{
-                          padding: '16px 28px',
-                          borderRadius: 16,
-                          background: THEME_ACCENT,
-                          color: 'white',
-                          border: 'none',
+                          padding: hideInput ? '10px 20px' : '6px 14px',
+                          borderRadius: hideInput ? 10 : 8,
+                          background: hideInput ? (btnNode.data?.button_category ? catStyles.color : 'var(--theme-primary, #6366F1)') : catStyles.bg,
+                          border: hideInput ? 'none' : `1px solid ${catStyles.border}`,
+                          color: hideInput ? '#FFFFFF' : catStyles.color,
+                          fontSize: hideInput ? 12.5 : 11,
+                          fontWeight: 600,
                           cursor: 'pointer',
-                          fontSize: 14,
-                          fontWeight: 800,
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 12,
-                          boxShadow: '0 10px 25px rgba(142, 119, 187, 0.4)',
-                          letterSpacing: '0.02em'
+                          gap: 8,
+                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!hideInput) {
+                            e.currentTarget.style.background = catStyles.bgHover;
+                            e.currentTarget.style.borderColor = catStyles.borderHover;
+                          } else {
+                            e.currentTarget.style.opacity = '0.9';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!hideInput) {
+                            e.currentTarget.style.background = catStyles.bg;
+                            e.currentTarget.style.borderColor = catStyles.border;
+                          } else {
+                            e.currentTarget.style.opacity = '1';
+                          }
                         }}
                       >
-                        <FiPaperclip size={18} strokeWidth={3} />
-                        UPLOAD & PROCESS DOCUMENT
-                      </motion.label>
-                    )}
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: hideInput ? '#FFFFFF' : catStyles.dotColor, opacity: 0.8 }} />
+                        {btnNode.data?.button_label || btnNode.data?.label || 'Run'}
+                      </motion.button>
+                    );
+                  })}
+
+                  {hasOcrNodes && (
+                    <motion.label
+                      whileHover={{ scale: 1.02, y: -2 }}
+                      whileTap={{ scale: 0.98 }}
+                      htmlFor="run-panel-file-upload"
+                      style={{
+                        padding: '16px 28px',
+                        borderRadius: 16,
+                        background: THEME_ACCENT,
+                        color: 'white',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: 14,
+                        fontWeight: 800,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        boxShadow: '0 10px 25px rgba(142, 119, 187, 0.4)',
+                        letterSpacing: '0.02em'
+                      }}
+                    >
+                      <FiPaperclip size={18} strokeWidth={3} />
+                      UPLOAD & PROCESS DOCUMENT
+                    </motion.label>
+                  )}
                 </div>
               )}
 
