@@ -182,7 +182,92 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
   return { allNodes, rfEdges: mappedEdges };
 };
 
+let lastPropertyChangeTime = 0;
+
 export const useWorkflowStore = create((set, get) => ({
+  // Active workflow history
+  history: {
+    past: [],
+    future: [],
+  },
+
+  takeHistorySnapshot: () => {
+    const s = get();
+    const current = {
+      nodes: JSON.parse(JSON.stringify(s.nodes)),
+      edges: JSON.parse(JSON.stringify(s.edges)),
+    };
+    const lastPast = s.history.past[s.history.past.length - 1];
+    if (lastPast && JSON.stringify(lastPast) === JSON.stringify(current)) {
+      return;
+    }
+    const newPast = [...s.history.past, current];
+    if (newPast.length > 50) {
+      newPast.shift();
+    }
+    set({
+      history: {
+        past: newPast,
+        future: [],
+      }
+    });
+  },
+
+  undo: () => {
+    const { past, future } = get().history;
+    if (past.length === 0) return;
+
+    const previous = past[past.length - 1];
+    const newPast = past.slice(0, past.length - 1);
+    const current = {
+      nodes: JSON.parse(JSON.stringify(get().nodes)),
+      edges: JSON.parse(JSON.stringify(get().edges)),
+    };
+    const newFuture = [current, ...future];
+
+    set({
+      nodes: previous.nodes,
+      edges: previous.edges,
+      isDirty: true,
+      history: {
+        past: newPast,
+        future: newFuture,
+      }
+    });
+  },
+
+  redo: () => {
+    const { past, future } = get().history;
+    if (future.length === 0) return;
+
+    const next = future[0];
+    const newFuture = future.slice(1);
+    const current = {
+      nodes: JSON.parse(JSON.stringify(get().nodes)),
+      edges: JSON.parse(JSON.stringify(get().edges)),
+    };
+    const newPast = [...past, current];
+
+    set({
+      nodes: next.nodes,
+      edges: next.edges,
+      isDirty: true,
+      history: {
+        past: newPast,
+        future: newFuture,
+      }
+    });
+  },
+
+  clearHistory: () => {
+    set({
+      history: {
+        past: [],
+        future: [],
+      }
+    });
+  },
+
   // Active workflow being edited
   workflowId: `wf_${genId()}${Date.now().toString(36)}`,
   workflowName: 'Untitled Workflow',
@@ -260,7 +345,12 @@ export const useWorkflowStore = create((set, get) => ({
   setNodesDirty: (nodes) => set({ nodes, isDirty: true, isCompiled: false }),
   setEdgesDirty: (edges) => set({ edges, isDirty: true, isCompiled: false }),
 
-  setNodeData: (nodeId, data) =>
+  setNodeData: (nodeId, data) => {
+    const now = Date.now();
+    if (now - lastPropertyChangeTime > 1500) {
+      get().takeHistorySnapshot();
+    }
+    lastPropertyChangeTime = now;
     set((s) => {
       // 1. Update the target node
       let nextNodes = s.nodes.map((n) => {
@@ -314,9 +404,11 @@ export const useWorkflowStore = create((set, get) => ({
         isDirty: true,
         isCompiled: false,
       };
-    }),
+    });
+  },
 
-  setEdgeData: (edgeId, data) =>
+  setEdgeData: (edgeId, data) => {
+    get().takeHistorySnapshot();
     set((s) => ({
       edges: s.edges.map((e) => {
         if (e.id === edgeId) {
@@ -337,7 +429,8 @@ export const useWorkflowStore = create((set, get) => ({
       }),
       isDirty: true,
       isCompiled: false,
-    })),
+    }));
+  },
 
   addNode: (type, position) => {
     let id = `${type}_${genId()}`;
@@ -359,6 +452,7 @@ export const useWorkflowStore = create((set, get) => ({
         zIndex: -10
       } : {})
     };
+    get().takeHistorySnapshot();
     set((s) => {
       const nextNodes = [...s.nodes, newNode];
       nextNodes.sort((a, b) => {
@@ -387,6 +481,7 @@ export const useWorkflowStore = create((set, get) => ({
       selected: false,
     };
 
+    get().takeHistorySnapshot();
     set((s) => {
       const nextNodes = [...s.nodes, newNode];
       nextNodes.sort((a, b) => {
@@ -402,6 +497,7 @@ export const useWorkflowStore = create((set, get) => ({
   },
 
   clearNodeData: (nodeId) => {
+    get().takeHistorySnapshot();
     set((s) => ({
       nodes: s.nodes.map((n) => {
         if (n.id === nodeId) {
@@ -419,6 +515,7 @@ export const useWorkflowStore = create((set, get) => ({
   },
 
   unlinkNode: (nodeId) => {
+    get().takeHistorySnapshot();
     set((s) => ({
       edges: s.edges.filter((e) => e.source !== nodeId && e.target !== nodeId),
       isDirty: true,
@@ -429,6 +526,7 @@ export const useWorkflowStore = create((set, get) => ({
   removeNode: (nodeId) => {
     // Prevent deletion of system nodes
     if (nodeId === '__start__' || nodeId === '__end__') return;
+    get().takeHistorySnapshot();
     set((s) => ({
       nodes: s.nodes.filter((n) => n.id !== nodeId),
       edges: s.edges.filter((e) => e.source !== nodeId && e.target !== nodeId),
@@ -440,6 +538,7 @@ export const useWorkflowStore = create((set, get) => ({
   newWorkflow: () => {
     const id = `wf_${genId()}${Date.now().toString(36)}`;
     set({
+      history: { past: [], future: [] },
       workflowId: id,
       workflowName: 'Untitled Workflow',
       workflowDescription: '',
@@ -486,6 +585,7 @@ export const useWorkflowStore = create((set, get) => ({
     const { allNodes, rfEdges } = _reconstructRFNodesAndEdges(rawNodes, rawEdges, meta, triggers);
 
     set({
+      history: { past: [], future: [] },
       workflowId: w.id,
       workflowName: w.name,
       workflowDescription: w.description || '',
@@ -675,6 +775,7 @@ export const useWorkflowStore = create((set, get) => ({
     const { allNodes, rfEdges } = _reconstructRFNodesAndEdges(rawNodes, rawEdges, meta, triggers);
 
     set({
+      history: { past: [], future: [] },
       workflowId: newId,
       workflowName: config.name || 'Imported Workflow',
       workflowDescription: config.description || '',
@@ -746,6 +847,7 @@ export const useWorkflowStore = create((set, get) => ({
         };
       });
 
+    get().takeHistorySnapshot();
     // 4. Append to active state
     set((s) => ({
       nodes: [...s.nodes, ...processedNodes],

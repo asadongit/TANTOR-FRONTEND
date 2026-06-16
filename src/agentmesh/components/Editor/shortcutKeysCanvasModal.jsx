@@ -2,7 +2,7 @@
 /* eslint-disable jsx-a11y/no-static-element-interactions */
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 import React from 'react';
-import { FiX, FiMousePointer, FiSearch, FiFileText, FiTrash2 } from 'react-icons/fi';
+import { FiX, FiMousePointer, FiSearch, FiFileText, FiTrash2, FiRotateCcw, FiRotateCw } from 'react-icons/fi';
 
 export default function ShortcutKeysCanvasModal({ isOpen, onClose }) {
   if (!isOpen) return null;
@@ -31,6 +31,18 @@ export default function ShortcutKeysCanvasModal({ isOpen, onClose }) {
       keys: ['Delete', 'Backspace'],
       description: 'Delete the currently selected node(s) or edge(s).',
       icon: <FiTrash2 size={16} />,
+    },
+    {
+      id: 'undo',
+      keys: ['Ctrl', 'Z'],
+      description: 'Undo the last action on the canvas (supports up to 50 steps).',
+      icon: <FiRotateCcw size={16} />,
+    },
+    {
+      id: 'redo',
+      keys: ['Ctrl', 'Y'],
+      description: 'Redo the last undone action.',
+      icon: <FiRotateCw size={16} />,
     },
   ];
 
