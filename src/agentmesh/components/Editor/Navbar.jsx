@@ -803,24 +803,7 @@ export default function Navbar() {
                 )}
               </div>
 
-              {/* API Console */}
-              <button
-                onClick={() => setShowApiConsole(true)}
-                disabled={!workflowId || !isCompiled}
-                title={!isCompiled ? 'Compile the workflow first to see the API' : 'Open API Console'}
-                style={{
-                  padding: '7px 14px', border: '1px solid var(--border)', borderRadius: 8,
-                  background: showApiConsole ? 'var(--theme-primary-glow)' : 'white',
-                  color: (!workflowId || !isCompiled) ? '#9CA3AF' : showApiConsole ? 'var(--theme-primary)' : 'var(--text-secondary)',
-                  fontSize: 13, fontWeight: 500, cursor: (!workflowId || !isCompiled) ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
-                  display: 'flex', alignItems: 'center', gap: 7, transition: 'all 0.15s',
-                  opacity: (!workflowId || !isCompiled) ? 0.6 : 1
-                }}
-                onMouseEnter={(e) => { if (workflowId && isCompiled && !showApiConsole) e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = showApiConsole ? 'var(--theme-primary-glow)' : 'white'; }}
-              >
-                <FiCode size={14} /> API
-              </button>
+
 
               {/* Compile */}
               <button
