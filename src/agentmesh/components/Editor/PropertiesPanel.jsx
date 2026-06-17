@@ -3510,7 +3510,9 @@ function ReportGeneratorConfig({ data, update }) {
           placeholder="e.g. generated_report"
         />
       </Field>
-
+    </>
+  );
+}
 
 
 
