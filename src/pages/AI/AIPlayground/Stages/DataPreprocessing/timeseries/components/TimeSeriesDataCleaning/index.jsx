@@ -9,13 +9,12 @@ import { cleanTimeSeriesData } from '../../../../../../../../hooks/AI/dataprepro
 import { dataPreprocessingDescriptions } from '../../../../../../../../hooks/AI/datapreprocessing/descriptions';
 
 import ChangeDataType from './ChangeDataType';
-import AggregateFeatures from './AggregateFeatures';
+// import AggregateFeatures from './AggregateFeatures';
 
 /**
  * =========================================================
  * TimeSeriesDataCleaning
  * =========================================================
- *
  * Parent Component for Time Series Data Cleaning
  *
  * Responsibilities:
@@ -33,15 +32,6 @@ import AggregateFeatures from './AggregateFeatures';
  * - AggregateFeatures.jsx
  * - ToggleSwitch.jsx
  *
- * Architecture:
- * ---------------------------------------------------------
- * Parent Component:
- *    - Business logic
- *    - API logic
- *    - State management
- *
- * Child Components:
- *    - UI rendering only
  * =========================================================
  */
 
@@ -336,21 +326,31 @@ function TimeSeriesDataCleaning({
    */
 
   const getAvailableColumns = (currentIndex) => {
+  const selected = dataTypeColumns
+    .map((col, idx) =>
+      idx !== currentIndex
+        ? col.columnName
+        : null
+    )
+    .filter(Boolean);
 
-    const selected = dataTypeColumns
+  const dropColumns =
+    workflowState?.modelGenesis?.config?.drop_columns || [];
 
-      .map((col, idx) =>
-        idx !== currentIndex
-          ? col.columnName
-          : null
-      )
+  const targetColumn =
+    workflowState?.modelGenesis?.config?.target_column || '';
 
-      .filter(Boolean);
+  const timeColumn =
+    workflowState?.modelGenesis?.config?.timeColumn || '';
 
-    return columnNames.filter(
-      (name) => !selected.includes(name)
-    );
-  };
+  return columnNames.filter(
+    (name) =>
+      !selected.includes(name) &&
+      !dropColumns.includes(name) &&
+      name !== targetColumn &&
+      name !== timeColumn
+  );
+};
 
   /**
    * =======================================================
@@ -749,7 +749,7 @@ function TimeSeriesDataCleaning({
           Aggregate Features Section
       =================================================== */}
 
-      <AggregateFeatures
+      {/* <AggregateFeatures
 
         aggregation={aggregation}
 
@@ -783,7 +783,7 @@ function TimeSeriesDataCleaning({
         sectionDescriptions={
           sectionDescriptions
         }
-      />
+      /> */}
     </div>
   );
 }

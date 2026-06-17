@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useWorkflowStore, useUIStore, useRunStore } from '../../store';
-import { listTools, fixGrammar, chatArchitect } from '../../api/agentmesh';
+import { useWorkflowStore, useUIStore, useVariablesStore, useRunStore } from '../../store';
+import { listTools, fixGrammar, listAvailableModels, testConnection, chatArchitect } from '../../api/agentmesh';
 import SkillGallery from './SkillGallery';
 import SaveTemplateModal from './SaveTemplateModal';
 import { FiMinus, FiTrash2, FiMousePointer, FiInfo, FiLayers, FiSettings, FiCpu, FiTool, FiGitMerge, FiTarget, FiShare2, FiUser, FiBookOpen, FiLink, FiPlus, FiX, FiGlobe, FiClock, FiCopy, FiCheck, FiSearch, FiChevronDown, FiRepeat, FiFileText, FiZap, FiLoader, FiAlertTriangle, FiGitBranch, FiActivity, FiEdit, FiFilter, FiShield, FiCamera, FiBox, FiSave, FiTerminal, FiDatabase, FiUploadCloud, FiDownload, FiAlignLeft, FiKey, FiLock, FiMessageSquare, FiPlay, FiHelpCircle, FiCode, FiSliders, FiInbox } from 'react-icons/fi';
@@ -10,9 +10,397 @@ import jsonLang from 'react-syntax-highlighter/dist/esm/languages/hljs/json';
 import { vs2015 } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import toast from 'react-hot-toast';
 
-SyntaxHighlighter.registerLanguage('json', jsonLang);
+function VariableLinker({ targetType, onSelect, tooltip }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [pickerVar, setPickerVar] = useState(null);
+  const [pickerSearch, setPickerSearch] = useState('');
+  const [checkedKeys, setCheckedKeys] = useState(new Set());
+  const { variables } = useVariablesStore();
+  const containerRef = useRef(null);
+  
+  const relevantVars = variables.filter(v => Array.isArray(targetType) ? targetType.includes(v.var_type) : v.var_type === targetType);
+
+  // Close on outside click
+  // Close dropdown on outside click (picker modal has its own backdrop)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [isOpen]);
+
+  const handleVarClick = (v) => {
+    // Show checkbox picker only for arrays of primitive strings (like json_keys with 67 key paths)
+    // schema_list has array of objects ({name, description}) — those should use direct select
+    const isStringArray = Array.isArray(v.value) && v.value.length > 1 && typeof v.value[0] === 'string';
+    if (isStringArray) {
+      setPickerVar(v);
+      setPickerSearch('');
+      setCheckedKeys(new Set());
+      setIsOpen(false);
+    } else {
+      // For schema_list, list of objects, or single-value vars → direct select
+      onSelect(v);
+      setIsOpen(false);
+    }
+  };
+
+  const toggleKey = (key) => {
+    setCheckedKeys(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const handleAddSelected = () => {
+    if (checkedKeys.size === 0) return;
+    // Create a synthetic variable with only the selected keys
+    onSelect({ ...pickerVar, value: Array.from(checkedKeys) });
+    setPickerVar(null);
+    setPickerSearch('');
+    setCheckedKeys(new Set());
+  };
+
+  const filteredKeys = pickerVar
+    ? pickerVar.value.filter(k => String(k).toLowerCase().includes(pickerSearch.toLowerCase()))
+    : [];
+
+  const handleSelectAll = () => {
+    if (checkedKeys.size === filteredKeys.length) {
+      // Deselect all visible
+      setCheckedKeys(prev => {
+        const next = new Set(prev);
+        filteredKeys.forEach(k => next.delete(k));
+        return next;
+      });
+    } else {
+      // Select all visible
+      setCheckedKeys(prev => {
+        const next = new Set(prev);
+        filteredKeys.forEach(k => next.add(k));
+        return next;
+      });
+    }
+  };
+  
+  return (
+    <div style={{ position: 'relative', display: 'inline-block' }} ref={containerRef}>
+      <button 
+        type="button"
+        title={tooltip || "Link to variable"}
+        onClick={(e) => { e.preventDefault(); setIsOpen(!isOpen); setPickerVar(null); }}
+        style={{
+          background: 'none', border: 'none', padding: '4px', cursor: 'pointer',
+          color: 'var(--accent-btn, #3b82f6)', display: 'flex', alignItems: 'center'
+        }}
+      >
+        <FiZap size={14} />
+      </button>
+      
+      {/* Step 1: Variable selector dropdown */}
+      {isOpen && (
+        <div style={{
+          position: 'absolute', top: '100%', right: 0, zIndex: 100,
+          background: 'white', border: '1px solid var(--border)', borderRadius: 8,
+          boxShadow: 'var(--shadow-md)', minWidth: 200, padding: 8, marginTop: 4
+        }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6, padding: '0 4px' }}>
+            Variables ({Array.isArray(targetType) ? targetType.join(', ') : targetType})
+          </div>
+          {relevantVars.length === 0 ? (
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', padding: '4px', fontStyle: 'italic' }}>No variables found</div>
+          ) : (
+            <div style={{ maxHeight: 150, overflowY: 'auto' }}>
+              {relevantVars.map(v => (
+                <div 
+                  key={v.key}
+                  onClick={() => handleVarClick(v)}
+                  style={{
+                    padding: '6px 8px', fontSize: 12, cursor: 'pointer',
+                    borderRadius: 4, fontFamily: 'monospace',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <span>{v.key}</span>
+                  {Array.isArray(v.value) && v.value.length > 1 && (
+                    <span style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600 }}>{v.value.length} items</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Step 2: Key picker with checkboxes (for array variables like json_keys) */}
+      {pickerVar && (
+        <div style={{
+          position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+          zIndex: 10001, background: 'white', borderRadius: 16,
+          boxShadow: '0 25px 60px rgba(0,0,0,0.25)', width: 640, maxWidth: '90vw', maxHeight: '70vh',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          border: '1px solid var(--border, #e2e8f0)',
+          fontFamily: "'Google Sans','Roboto',sans-serif",
+        }}>
+          {/* Header */}
+          <div style={{ 
+            padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            background: '#FAFBFC'
+          }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary, #1e293b)' }}>
+                Select Keys from <code style={{ background: '#EEF2FF', padding: '2px 6px', borderRadius: 4, fontSize: 12, color: '#4338CA' }}>{pickerVar.key}</code>
+              </div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                {checkedKeys.size} of {pickerVar.value.length} selected
+              </div>
+            </div>
+            <button 
+              onClick={() => { setPickerVar(null); setPickerSearch(''); setCheckedKeys(new Set()); }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 4 }}
+            >
+              <FiX size={18} />
+            </button>
+          </div>
+
+          {/* Search + Select All */}
+          <div style={{ padding: '12px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <FiSearch style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} size={13} />
+              <input
+                value={pickerSearch}
+                onChange={e => setPickerSearch(e.target.value)}
+                placeholder={`Search ${pickerVar.value.length} keys...`}
+                autoFocus
+                style={{
+                  width: '100%', padding: '8px 10px 8px 32px', borderRadius: 8,
+                  border: '1px solid var(--border, #e2e8f0)', outline: 'none',
+                  fontSize: 12, color: 'var(--text-primary)', background: 'white',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            <button
+              onClick={handleSelectAll}
+              style={{
+                border: '1px solid var(--border, #e2e8f0)', background: 'white',
+                padding: '7px 12px', borderRadius: 8, cursor: 'pointer',
+                fontSize: 11, fontWeight: 600, color: '#64748b', whiteSpace: 'nowrap',
+              }}
+            >
+              {checkedKeys.size === filteredKeys.length && filteredKeys.length > 0 ? 'Deselect All' : 'Select All'}
+            </button>
+          </div>
+
+          {/* Key list with checkboxes */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '4px 12px' }}>
+            {filteredKeys.map((key, i) => {
+              const isChecked = checkedKeys.has(key);
+              return (
+                <label
+                  key={i}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '7px 8px',
+                    borderRadius: 6, cursor: 'pointer', fontSize: 12, fontFamily: 'monospace',
+                    color: isChecked ? '#1e293b' : '#64748b',
+                    background: isChecked ? '#EEF2FF' : 'transparent',
+                    transition: 'background 0.1s',
+                    borderBottom: i < filteredKeys.length - 1 ? '1px solid #f8fafc' : 'none',
+                  }}
+                  onMouseEnter={e => { if (!isChecked) e.currentTarget.style.background = '#f8fafc'; }}
+                  onMouseLeave={e => { if (!isChecked) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => toggleKey(key)}
+                    style={{ 
+                      width: 16, height: 16, cursor: 'pointer', accentColor: '#6366f1',
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span style={{ overflowX: 'auto', whiteSpace: 'nowrap', flex: 1, paddingBottom: 2, scrollbarWidth: 'thin' }}>
+                    {key}
+                  </span>
+                </label>
+              );
+            })}
+            {filteredKeys.length === 0 && (
+              <div style={{ padding: 20, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>
+                No keys match "{pickerSearch}"
+              </div>
+            )}
+          </div>
+
+          {/* Footer with Add button */}
+          <div style={{
+            padding: '12px 20px', borderTop: '1px solid var(--border, #e2e8f0)',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            background: '#FAFBFC',
+          }}>
+            <span style={{ fontSize: 11, color: '#94a3b8' }}>
+              {checkedKeys.size > 0 ? `${checkedKeys.size} key${checkedKeys.size > 1 ? 's' : ''} selected` : 'Check the keys you need'}
+            </span>
+            <button
+              onClick={handleAddSelected}
+              disabled={checkedKeys.size === 0}
+              style={{
+                border: 'none', 
+                background: checkedKeys.size > 0 ? 'var(--theme-primary, #6366f1)' : '#e2e8f0',
+                color: checkedKeys.size > 0 ? 'white' : '#94a3b8',
+                padding: '8px 20px', borderRadius: 8, fontWeight: 700, fontSize: 12,
+                cursor: checkedKeys.size > 0 ? 'pointer' : 'not-allowed',
+                display: 'flex', alignItems: 'center', gap: 6,
+                transition: 'all 0.2s',
+              }}
+            >
+              <FiCheck size={14} /> Add Selected
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Backdrop for picker */}
+      {pickerVar && (
+        <div 
+          style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(2px)' }}
+          onClick={() => { setPickerVar(null); setPickerSearch(''); setCheckedKeys(new Set()); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function VariableDropdown({ value, onChange, placeholder, style, id }) {
+  const { variables } = useVariablesStore();
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+  
+  const targetClasses = variables
+    .filter(v => v.var_type === 'schema_list' || v.var_type === 'list')
+    .flatMap(v => v.var_type === 'list' ? v.value : v.value.map(i => i.name));
+    
+  const uniqueClasses = [...new Set(targetClasses)];
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [isOpen]);
+
+  const filtered = uniqueClasses.filter(c => c.toLowerCase().includes((value || '').toLowerCase()));
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative', width: style?.width || '100%', minWidth: style?.minWidth }}>
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+        <input 
+          value={value ?? ''}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+          placeholder={placeholder}
+          style={{ 
+            ...inputStyle, 
+            ...style, 
+            width: '100%', 
+            paddingRight: 30,
+            outline: isOpen ? '2px solid var(--accent-btn)' : 'none',
+            outlineOffset: -1
+          }}
+        />
+        <div 
+          onClick={() => setIsOpen(!isOpen)}
+          style={{ 
+            position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', 
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'var(--text-muted)'
+          }}
+        >
+          <FiChevronDown style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+        </div>
+      </div>
+      
+      {isOpen && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
+          background: 'white', border: '1px solid var(--border)', borderRadius: 8,
+          boxShadow: 'var(--shadow-xl)', zIndex: 10000, maxHeight: 250, overflowY: 'auto',
+          padding: '4px'
+        }}>
+          {uniqueClasses.length === 0 && (
+            <div style={{ padding: '8px 12px', fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
+              No classes found in variables
+            </div>
+          )}
+          {filtered.map(c => (
+            <div 
+              key={c}
+              onClick={() => { onChange(c); setIsOpen(false); }}
+              style={{
+                padding: '8px 12px', cursor: 'pointer', fontSize: 12, borderRadius: 6,
+                background: value === c ? '#F0F4FF' : 'transparent',
+                color: value === c ? 'var(--accent-btn)' : 'var(--text-primary)',
+                fontWeight: value === c ? 600 : 400
+              }}
+              onMouseEnter={(e) => { if (value !== c) e.currentTarget.style.background = '#F8FAFC'; }}
+              onMouseLeave={(e) => { if (value !== c) e.currentTarget.style.background = 'transparent'; }}
+            >
+              {c}
+            </div>
+          ))}
+          {filtered.length === 0 && uniqueClasses.length > 0 && (
+             <div style={{ padding: '8px 12px', fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+               Press Enter to use custom value
+             </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const FONT = "'Google Sans','Roboto',sans-serif";
+
+SyntaxHighlighter.registerLanguage('json', jsonLang);
+
+function RuleAccordionItem({ rule, idx, totalRules, updateRule, removeRule, moveRule }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 8, marginBottom: 8, overflow: 'hidden' }}>
+      <div 
+        style={{ padding: '10px 12px', background: 'var(--bg-card-neutral, #F8FAFC)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div style={{ fontWeight: 600, fontSize: 12 }}>Rule {idx + 1}: {rule.name || 'Unnamed Rule'}</div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button onClick={(e) => { e.stopPropagation(); removeRule(rule.id); }} style={{ background: 'transparent', border: 'none', color: '#EF4444', cursor: 'pointer' }}><FiTrash2 size={12} /></button>
+        </div>
+      </div>
+      {expanded && (
+        <div style={{ padding: 12, background: 'white' }}>
+          <Field label="Rule Name"><Input value={rule.name || ''} onChange={(v) => updateRule(rule.id, { name: v })} /></Field>
+          <Field label="Condition"><Input value={rule.condition || ''} onChange={(v) => updateRule(rule.id, { condition: v })} /></Field>
+          <Field label="Action"><Input value={rule.action || ''} onChange={(v) => updateRule(rule.id, { action: v })} /></Field>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Dynamic model lists - populated from backend API on mount, with static fallbacks
 const PROVIDERS = [
@@ -125,6 +513,28 @@ function Textarea({ value, onChange, placeholder, rows = 4, disabled, style: ext
       onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
     />
   );
+}
+
+function CommaArrayEditor({ value = [], onChange, placeholder, isTextarea = false, rows = 3, style }) {
+  const [localValue, setLocalValue] = useState((value || []).join(', '));
+
+  useEffect(() => {
+    const valArr = (value || []).filter(Boolean);
+    const localArr = localValue.split(',').map(s => s.trim()).filter(Boolean);
+    if (localArr.join(',') !== valArr.join(',')) {
+      setLocalValue(valArr.join(', '));
+    }
+  }, [value, localValue]);
+
+  const handleChange = (v) => {
+    setLocalValue(v);
+    onChange(v.split(',').map(s => s.trim()).filter(Boolean));
+  };
+
+  if (isTextarea) {
+    return <Textarea value={localValue} onChange={handleChange} placeholder={placeholder} rows={rows} />;
+  }
+  return <Input value={localValue} onChange={handleChange} placeholder={placeholder} style={style} />;
 }
 
 function VariablePicker({ onSelect }) {
@@ -1916,6 +2326,102 @@ function CustomRegexEditor({ value = [], onChange }) {
   );
 }
 
+function ClassificationClassesEditor({ value = [], onChange, engine }) {
+  const add = () => {
+    if (engine === 'regex') {
+      onChange([...value, { class: '', regex_patterns: '' }]);
+    } else {
+      onChange([...value, { class: '', description: '' }]);
+    }
+  };
+  const updateItem = (idx, patch) => {
+    const next = [...value];
+    next[idx] = { ...next[idx], ...patch };
+    onChange(next);
+  };
+  const remove = (idx) => onChange(value.filter((_, i) => i !== idx));
+
+  const autoPopulate = () => {
+    try {
+      const vars = window.globalVars?.classes || useWorkflowStore.getState().globalVariables?.classes || [];
+      if (vars && Array.isArray(vars) && vars.length > 0) {
+        onChange([...value, ...vars.map(c => ({ class: c.name || c, description: c.description || c.desc || '' }))]);
+        toast.success('Classes populated from global vars!');
+      } else {
+        toast.error('No classes found in global vars.');
+      }
+    } catch(e) {
+      toast.error('Failed to populate from global vars.');
+    }
+  };
+
+  return (
+    <div style={{ marginTop: 15 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          {engine === 'regex' ? 'Classes & Regex Patterns' : 'Classes & Descriptions'}
+        </label>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={autoPopulate}
+            title="Auto-Populate from Global Vars"
+            style={{
+              background: 'none', border: 'none', color: '#8B5CF6',
+              cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center',
+              borderRadius: 4, transition: 'background 0.2s', gap: 4, fontSize: 11, fontWeight: 600
+            }}
+          >
+            <FiZap size={14} /> Auto
+          </button>
+          <button
+            onClick={add}
+            style={{
+              background: 'none', border: 'none', color: 'var(--accent-btn)',
+              cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center',
+              borderRadius: 4, transition: 'background 0.2s'
+            }}
+          >
+            <FiPlus size={16} strokeWidth={3} />
+          </button>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {value.map((item, idx) => (
+          <div key={idx} style={{ padding: 10, background: '#F8FAFC', borderRadius: 8, border: '1px solid var(--border)', position: 'relative' }}>
+            <button
+              onClick={() => remove(idx)}
+              style={{ position: 'absolute', top: 6, right: 6, background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}
+            >
+              <FiX size={12} />
+            </button>
+            <div style={{ marginBottom: 6 }}>
+              <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>CLASS NAME</label>
+              <Input value={item.class} onChange={(v) => updateItem(idx, { class: v })} placeholder="e.g. Support" style={{ padding: '4px 8px', fontSize: 11 }} />
+            </div>
+            {engine === 'regex' ? (
+              <div>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>REGEX PATTERNS (comma-separated)</label>
+                <Input value={item.regex_patterns || ''} onChange={(v) => updateItem(idx, { regex_patterns: v })} placeholder="e.g. help,support,login" style={{ padding: '4px 8px', fontSize: 11 }} />
+              </div>
+            ) : (
+              <div>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DESCRIPTION</label>
+                <Input value={item.description || ''} onChange={(v) => updateItem(idx, { description: v })} placeholder="e.g. User asking for tech help" style={{ padding: '4px 8px', fontSize: 11 }} />
+              </div>
+            )}
+          </div>
+        ))}
+        {value.length === 0 && (
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', padding: '4px 0' }}>
+            No classes defined. Click the plus button above to add classes.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Inline node ID list editor (for supervisor/swarm member_ids)
 function NodeIdList({ value = [], onChange, placeholder, allNodes = [] }) {
   const [input, setInput] = useState('');
@@ -3028,15 +3534,211 @@ function ReportGeneratorConfig({ data, update }) {
         />
       </Field>
 
-      {/* ── CHANGE 1: LLM Config for AI Semantic Substitution ──────────────
-          Only shown when no template is selected OR when the user wants to
-          control which model handles no-placeholder substitution.
-          Uses the existing LLMConfigSection component already in the file. */}
-      <div style={{ marginTop: 4, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-        <div style={{
-          fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
-          textTransform: 'uppercase', letterSpacing: '0.8px',
-          marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6
+
+
+
+function VisualOperationsEditor({ value = [], onChange }) {
+  const latestContext = useRunStore(s => s.latestContext) || {};
+  const [aiOpen, setAiOpen] = React.useState(false);
+  const [aiPrompt, setAiPrompt] = React.useState('');
+  const [aiLoading, setAiLoading] = React.useState(false);
+
+  const handleAiGenerate = async () => {
+    if (!aiPrompt.trim()) return;
+    setAiLoading(true);
+    try {
+      const activeWorkflow = useWorkflowStore.getState();
+      const currentWorkflow = {
+        id: activeWorkflow.workflowId,
+        name: activeWorkflow.name,
+        nodes: activeWorkflow.nodes,
+        edges: activeWorkflow.edges
+      };
+
+      const systemPrompt = `You are the Workflow Architect AI. The user wants to configure a JSON Transform Visual Operations list.
+We have the following runtime context:
+${JSON.stringify(latestContext, null, 2)}
+
+And the user wants to perform this operation:
+"${aiPrompt}"
+
+Please respond with ONLY a raw JSON array (enclosed in a \`\`\`json block) representing the list of visual operations matching the user's request.
+Each operation in the array must follow the structure:
+- Extract Field: { "type": "extract_field", "source_path": "nested.path", "field": "field_name", "destination": "dest_key" }
+- Filter: { "type": "filter", "source_path": "list.path", "filter_field": "field_name", "filter_operator": "==", "filter_value": "value", "destination": "dest_key" }
+- Map List: { "type": "map", "source_path": "list.path", "field": "field_to_extract", "destination": "dest_key" }
+- Object Projection Map List: { "type": "map", "source_path": "list.path", "use_projection": true, "projections": [ { "target_path": "dest.path", "source_field": "relative.source.path" } ], "destination": "dest_key" }
+- Rename: { "type": "rename", "source_path": "old_key", "destination": "new_key" }
+- Set Value: { "type": "set_value", "destination": "dest.path", "static_value": "val" }
+- Delete Field: { "type": "delete_field", "field": "field_name" }
+- Flatten List: { "type": "flatten", "source_path": "list.path", "destination": "dest_key" }
+
+Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
+
+      const response = await chatArchitect(
+        currentWorkflow,
+        latestContext,
+        [{ role: 'user', content: systemPrompt }],
+        { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0.1 }
+      );
+
+      if (response && response.status === 'success' && response.reply) {
+        const match = response.reply.match(/```json\s*([\s\S]*?)\s*```/) || response.reply.match(/\[\s*\{[\s\S]*?\}\s*\]/);
+        const jsonStr = match ? match[1] || match[0] : response.reply;
+        const parsed = JSON.parse(jsonStr.trim());
+        if (Array.isArray(parsed)) {
+          onChange([...value, ...parsed]);
+          toast.success("Operations configured by Architect Bot!");
+          setAiOpen(false);
+          setAiPrompt('');
+        } else {
+          throw new Error("Response was not a list of operations.");
+        }
+      } else {
+        throw new Error(response.message || "Failed to generate response.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Architect Bot failed: " + err.message);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const contextKeys = React.useMemo(() => {
+    const keys = [];
+    const recurse = (obj, prefix = '') => {
+      if (!obj || typeof obj !== 'object') return;
+      Object.keys(obj).forEach(k => {
+        const path = prefix ? `${prefix}.${k}` : k;
+        keys.push(path);
+        if (typeof obj[k] === 'object' && obj[k] !== null && keys.length < 300) {
+          recurse(obj[k], path);
+        }
+      });
+    };
+    recurse(latestContext);
+    return keys;
+  }, [latestContext]);
+
+  const addOperation = () => {
+    onChange([...value, { type: 'extract_field', source_path: '', field: '', destination: '' }]);
+  };
+
+  const updateOperation = (index, patch) => {
+    const next = [...value];
+    next[index] = { ...next[index], ...patch };
+    onChange(next);
+  };
+
+  const removeOperation = (index) => {
+    onChange(value.filter((_, i) => i !== index));
+  };
+
+  const moveOperation = (index, direction) => {
+    const next = [...value];
+    const target = index + direction;
+    if (target >= 0 && target < next.length) {
+      const temp = next[index];
+      next[index] = next[target];
+      next[target] = temp;
+      onChange(next);
+    }
+  };
+
+  const opTypes = [
+    { value: 'extract_field', label: 'Extract Field (Nested to Key)' },
+    { value: 'filter', label: 'Filter List (Condition)' },
+    { value: 'map', label: 'Map List (Extract from items)' },
+    { value: 'rename', label: 'Rename Key' },
+    { value: 'set_value', label: 'Set Static Value' },
+    { value: 'delete_field', label: 'Delete Key' },
+    { value: 'flatten', label: 'Flatten Nested Lists' }
+  ];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 10, marginBottom: 18 }}>
+      {/* Architect Bot Assistant box */}
+      <div style={{
+        background: 'var(--bg-card-purple, #F5F3FF)',
+        border: '1.5px solid rgba(139, 92, 246, 0.2)',
+        borderRadius: 12,
+        padding: 12,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10
+      }}>
+        <div 
+          onClick={() => setAiOpen(!aiOpen)}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+        >
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#7C3AED', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <FiZap size={12} /> ASK ARCHITECT BOT (AI WIZARD)
+          </span>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{aiOpen ? 'Collapse' : 'Expand'}</span>
+        </div>
+
+        {aiOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
+            <textarea
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              placeholder="Explain what you want to extract or modify in plain English... (e.g. 'Get run_name and test accuracy from job_status.tasks')"
+              rows={3}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                fontSize: 11,
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                outline: 'none',
+                resize: 'none',
+                fontFamily: 'inherit',
+                background: 'white',
+                color: 'var(--text-primary)'
+              }}
+            />
+            <button
+              onClick={handleAiGenerate}
+              disabled={aiLoading || !aiPrompt.trim()}
+              style={{
+                padding: '8px 12px',
+                background: '#7C3AED',
+                color: 'white',
+                border: 'none',
+                borderRadius: 8,
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: (aiLoading || !aiPrompt.trim()) ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6
+              }}
+            >
+              {aiLoading ? <FiLoader className="animate-spin" size={12} /> : <FiZap size={12} />}
+              {aiLoading ? 'Architect Bot Thinking...' : 'Generate Steps'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <datalist id="jt-context-keys">
+        {contextKeys.map(k => <option key={k} value={k} />)}
+      </datalist>
+
+      {value.map((op, idx) => (
+        <div key={idx} style={{
+          padding: 14,
+          background: 'var(--bg-card-neutral, #F8FAFC)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+          position: 'relative',
+          opacity: op.disabled ? 0.55 : 1,
+          transition: 'all 0.2s'
         }}>
           <FiZap size={12} color="var(--accent-btn)" />
           AI Substitution Model
@@ -3285,7 +3987,11 @@ export default function PropertiesPanel() {
     file_store: FiFileText,
     webhook_response: FiShare2,
     error_router: FiAlertTriangle,
-    report_generator: FiFileText,
+    pattern_extract: FiSearch,
+    db_node: FiBox,
+    json_transform: FiCode,
+    json_transform_va: FiCode,
+    condition: FiHelpCircle,
   };
   const Icon = nodeIcons[data.type] || FiLayers;
 
@@ -3813,8 +4519,35 @@ export default function PropertiesPanel() {
                 <FiChevronDown id="advanced-arrow-agent" size={14} style={{ color: 'var(--text-muted)', transition: 'transform 0.2s' }} />
               </div>
 
-              <div id="advanced-options-agent" style={{ display: 'none', padding: '16px', background: 'white' }}>
-                {/* 6a. Human-in-the-Loop */}
+              <div id="advanced-options-agent" style={{ display: 'none', padding: '16px', background: 'var(--bg-panel, white)' }}>
+                {/* 6a. Data Subscriptions (Pub/Sub) */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Data Subscriptions (Pub/Sub)</div>
+                  <Field label="Subscription Filters (JSON Array/Object)" hint="If provided, the agent will filter the input array and ONLY execute if matches are found.">
+                    <Textarea 
+                      value={typeof data.subscription_filters === 'string' ? data.subscription_filters : data.subscription_filters ? JSON.stringify(data.subscription_filters, null, 2) : ''} 
+                      onChange={(v) => update({ subscription_filters: v })}
+                      placeholder='{\n  "class": ["BALANCE_SHEET"]\n}'
+                      rows={4}
+                    />
+                  </Field>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ flex: 1 }}>
+                      <Field label="Input Array Key" hint="The context key containing the array to filter.">
+                        <Input value={data.subscription_input_key !== undefined ? data.subscription_input_key : 'aggregated_results'} onChange={(v) => update({ subscription_input_key: v })} placeholder="aggregated_results" />
+                      </Field>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <Field label="Output Data Key" hint="Where the matched data is stored for the prompt.">
+                        <Input value={data.subscription_output_key || ''} onChange={(v) => update({ subscription_output_key: v })} placeholder="latest_ocr_output" />
+                      </Field>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />
+
+                {/* 6b. Human-in-the-Loop */}
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Human-in-the-Loop</div>
                   <Toggle
@@ -3894,6 +4627,19 @@ export default function PropertiesPanel() {
                           }))
                       ]}
                     />
+                  </Field>
+                </div>
+
+                <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />
+
+                {/* 6e. Data Serialization Options */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Data Serialization Options</div>
+                  <Field label="Agent Input Prefix" hint="Prefix for context keys to inject into the agent prompt (default: 'agent_input_').">
+                    <Input value={data.agent_input_prefix !== undefined ? data.agent_input_prefix : 'agent_input_'} onChange={(v) => update({ agent_input_prefix: v })} placeholder="agent_input_" />
+                  </Field>
+                  <Field label="Output Key Prefix" hint="Prefix used when saving the agent's output back to context (default: 'cd_output_').">
+                    <Input value={data.output_key_prefix !== undefined ? data.output_key_prefix : 'cd_output_'} onChange={(v) => update({ output_key_prefix: v })} placeholder="cd_output_" />
                   </Field>
                 </div>
               </div>
@@ -4870,7 +5616,15 @@ export default function PropertiesPanel() {
             <Field label="Destination Field" hint="The context key where the current item will be stored (default: 'item').">
               <Input value={data.destination_field || 'item'} onChange={(v) => update({ destination_field: v })} placeholder="item" />
             </Field>
-            <div style={{ padding: 12, background: '#FFF7ED', borderRadius: 10, fontSize: 11, color: '#9A3412', border: '1px solid #FED7AA', lineHeight: 1.5 }}>
+
+            <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Global Discovery Options</div>
+              <Field label="Discovery Keys (Optional)" hint="Comma-separated prefix patterns (e.g. 'cd_output_') to gather extra keys from state and inject them into each split iteration's context.">
+                <Input value={data.discovery_keys || ''} onChange={(v) => update({ discovery_keys: v })} placeholder="cd_output_, ocr_like_results" />
+              </Field>
+            </div>
+
+            <div style={{ padding: 12, background: 'var(--bg-card-warning-alt, #FFF7ED)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-warning-alt, #9A3412)', border: '1px solid var(--border-card-warning-alt, #FED7AA)', lineHeight: 1.5 }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
               Iterates through a list. Each iteration puts the current item into <strong>context.{data.destination_field || 'item'}</strong>.
               <br /><br />
@@ -4912,602 +5666,45 @@ export default function PropertiesPanel() {
         )}
 
 
-        {/* ── Ingestion Adapter Node ── */}
-        {data.type === 'ingestion_adapter' && (
+        {/* ── Payload Builder ── */}
+        {data.type === 'payload_builder' && (
           <>
-            <div style={{
-              padding: 16,
-              background: 'var(--bg-card-purple, #F5F3FF)',
-              borderRadius: 12,
-              border: '1px solid var(--border-card-purple, #DDD6FE)',
-              marginBottom: 24,
-              position: 'relative',
-              overflow: 'hidden'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-                <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg, #F3E8FF 0%, #E0E7FF 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7C3AED', boxShadow: '0 2px 10px rgba(124, 58, 237, 0.1)' }}>
-                  <FiInbox size={16} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#1E293B', letterSpacing: '-0.3px' }}>Ingestion Configuration</div>
-                  <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>Banking schema normalization</div>
-                </div>
-              </div>
-              
-              <Field label="Source Format" hint="Define how the incoming stream format will be identified.">
-                <Select
-                  value={data.source_format || 'Auto-Detect'}
-                  onChange={(v) => update({ source_format: v })}
-                  options={[
-                    { value: 'Auto-Detect', label: 'Auto-Detect Format (Dynamic)' },
-                    { value: 'JSON', label: 'JSON' },
-                    { value: 'XML', label: 'XML / SOAP' },
-                    { value: 'CSV', label: 'CSV / Delimited' },
-                    { value: 'ISO_8583', label: 'ISO 8583 (Card Switch)' }
-                  ]}
-                />
-              </Field>
-
-              <Field label="Target Serialization" hint="Downstream message serialization target format.">
-                <Select
-                  value={data.target_serialization || 'Canonical JSON'}
-                  onChange={(v) => update({ target_serialization: v })}
-                  options={[
-                    { value: 'Canonical JSON', label: 'Canonical JSON' },
-                    { value: 'CSV String', label: 'CSV String (MDM Flatfile)' },
-                    { value: 'Raw Dictionary', label: 'Raw Dict Map' }
-                  ]}
-                />
-              </Field>
-
-              <Field label="Destination Key" hint="The context field where the validated canonical payload will be saved.">
-                <Input
-                  value={data.destination_key || 'canonical_transaction'}
-                  onChange={(v) => update({ destination_key: v })}
-                  placeholder="e.g. canonical_transaction"
-                />
-              </Field>
-
-              <div style={{ padding: '12px 16px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: 12, fontSize: 11, color: '#0369A1', border: '1px dashed rgba(59, 130, 246, 0.2)', lineHeight: 1.6, marginTop: 4 }}>
-                <strong>Auto-Normalization:</strong> Transaction streams, custom columns, and up to 200 dynamic fields are preserved automatically via the Pydantic pass-through schema config.
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* ΓöÇΓöÇ Banking Pre-Enrichment Node ΓöÇΓöÇ */}
-        
-        {/* ΓöÇΓöÇ Text to Audio ΓöÇΓöÇ */}
-        {data.type === 'banking_enrichment' && (() => {
-          const customExtList = data.custom_external_apis || [];
-          const customIntList = data.custom_internal_apis || [];
-
-          const extOptions = [
-            { value: 'custom', label: 'Custom HTTP API' },
-            { value: 'cibil_experian', label: 'CIBIL / Experian Bureau' },
-            { value: 'npci_registry', label: 'NPCI Fraud Registry' },
-            { value: 'sanctions_lists', label: 'OFAC / RBI Sanctions' },
-            { value: 'ip_geolocation', label: 'MaxMind IP Geolocation' },
-            { value: 'threat_metrix', label: 'ThreatMetrix Device ID' },
-            { value: 'telecom_data', label: 'Telecom Carrier API' }
-          ];
-
-          const intOptions = [
-            { value: 'custom', label: 'Custom HTTP API' },
-            { value: 'core_banking', label: 'Core Banking (CBS)' },
-            { value: 'card_management', label: 'Card Management (CMS)' },
-            { value: 'mobile_app_logs', label: 'Mobile App Session logs' },
-            { value: 'kyc_repository', label: 'KYC Registry' },
-            { value: 'crm_system', label: 'CRM System' }
-          ];
-
-          return (
-            <>
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <FiGlobe color="var(--theme-primary)" size={14} /> 1. External Third-Party Sources
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {customExtList.map((apiDef, idx) => (
-                    <CustomCollapsibleApiConfig key={idx} apiDef={apiDef} index={idx} list={customExtList} keyName="custom_external_apis" update={update} providerOptions={extOptions} />
-                  ))}
-
-                  <div
-                    onClick={() => {
-                      const next = [...customExtList, { provider: 'custom', method: 'GET' }];
-                      update({ custom_external_apis: next });
-                    }}
-                    style={{ marginTop: 10, padding: '10px 12px', background: 'rgba(124, 58, 237, 0.05)', border: '1px dashed var(--theme-primary)', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--theme-primary)', fontSize: 12, fontWeight: 600 }}
-                  >
-                    <FiPlus size={14} /> Add Source
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <FiLayers color="var(--theme-primary)" size={14} /> 2. Internal Bank Systems
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {customIntList.map((apiDef, idx) => (
-                    <CustomCollapsibleApiConfig key={idx} apiDef={apiDef} index={idx} list={customIntList} keyName="custom_internal_apis" update={update} providerOptions={intOptions} />
-                  ))}
-
-                  <div
-                    onClick={() => {
-                      const next = [...customIntList, { provider: 'custom', method: 'GET' }];
-                      update({ custom_internal_apis: next });
-                    }}
-                    style={{ marginTop: 10, padding: '10px 12px', background: 'rgba(124, 58, 237, 0.05)', border: '1px dashed var(--theme-primary)', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--theme-primary)', fontSize: 12, fontWeight: 600 }}
-                  >
-                    <FiPlus size={14} /> Add Source
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Data Keys</div>
-                <Field label="Source Context Key" hint="Key where canonical transaction data resides.">
-                  <Input value={data.source_key ?? 'canonical_transaction'} onChange={(v) => update({ source_key: v })} placeholder="canonical_transaction" />
-                </Field>
-                <Field label="Destination Context Key" hint="Key to store the resulting enriched payload.">
-                  <Input value={data.destination_key ?? 'enriched_transaction'} onChange={(v) => update({ destination_key: v })} placeholder="enriched_transaction" />
-                </Field>
-              </div>
-            </>
-          );
-        })()}
-
-        {/* ≡ƒ¢í∩╕Å Rule Engine Node ≡ƒ¢í∩╕Å */}
-        {data.type === 'rule_engine' && (() => {
-          const rules = data.python_rules || [];
-          
-          const addRule = () => {
-            const newRule = { id: Math.random().toString(36).substr(2, 9), name: `Rule ${rules.length + 1}`, code: '', enabled: true };
-            update({ python_rules: [...rules, newRule] });
-          };
-          
-          const updateRule = (index, key, val) => {
-            const next = [...rules];
-            next[index] = { ...next[index], [key]: val };
-            update({ python_rules: next });
-          };
-          
-          const removeRule = (index) => {
-            const next = [...rules];
-            next.splice(index, 1);
-            update({ python_rules: next });
-          };
-          
-          const moveRule = (index, dir) => {
-            if (index + dir < 0 || index + dir >= rules.length) return;
-            const next = [...rules];
-            const temp = next[index];
-            next[index] = next[index + dir];
-            next[index + dir] = temp;
-            update({ python_rules: next });
-          };
-
-          return (
-            <>
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <FiShield color="#DC2626" size={14} /> Rule Engine Configuration
-                  </div>
-                  <button onClick={addRule} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#7C3AED', color: 'white', border: 'none', padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                    <FiPlus size={12} /> Add Rule
-                  </button>
-                </div>
-                
-                {rules.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '20px', border: '1px dashed var(--border)', borderRadius: 8, color: 'var(--text-tertiary)', fontSize: 12 }}>
-                    No rules defined. Click "Add Rule" to create one.
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  {rules.map((rule, idx) => (
-                    <RuleAccordionItem 
-                      key={rule.id}
-                      rule={rule}
-                      idx={idx}
-                      totalRules={rules.length}
-                      updateRule={updateRule}
-                      removeRule={removeRule}
-                      moveRule={moveRule}
-                    />
-                  ))}
-                </div>
-
-                <div style={{ background: 'var(--bg-card-info, #F0F9FF)', padding: 12, borderRadius: 8, border: '1px solid var(--border-card-info, #BAE6FD)', fontSize: 12, color: 'var(--text-card-info, #0369A1)', lineHeight: 1.5, marginTop: 12 }}>
-                  <strong>Note:</strong> Rules execute sequentially. If an enabled rule sets <code>intent = 'block'</code>, execution stops instantly.
-                </div>
-              </div>
-            </>
-          );
-        })()}
-
-        {/* ΓöÇΓöÇ Weightage System Node ΓöÇΓöÇ */}
-        {data.type === 'weightage' && (
-          <>
-            <Field label="Output Context Key" hint="The context key where the final weightage scoring JSON breakdown is saved. Defaults to weightage_result.">
+            <Field label="Payload Template (JSON or String)" hint="Define the template. Supports {{context.var}} interpolation.">
+              <Textarea
+                value={typeof data.payload_template === 'object' && data.payload_template !== null ? JSON.stringify(data.payload_template, null, 2) : data.payload_template || ''}
+                onChange={(v) => {
+                  try {
+                    const parsed = JSON.parse(v);
+                    update({ payload_template: parsed });
+                  } catch (e) {
+                    update({ payload_template: v });
+                  }
+                }}
+                placeholder='{\n  "customer_name": "{{context.customer_name}}"\n}'
+                rows={10}
+              />
+            </Field>
+            <Field label="Destination Key" hint="The context key where the built payload will be stored.">
               <Input
-                value={data.weightage_output_key ?? 'weightage_result'}
-                onChange={(v) => update({ weightage_output_key: v })}
-                placeholder="weightage_result"
+                value={data.payload_destination_key || 'webhook_payload'}
+                onChange={(v) => update({ payload_destination_key: v })}
+                placeholder="webhook_payload"
               />
             </Field>
 
-            <WeightageCategoriesEditor
-              categories={data.weightage_categories || []}
-              onChange={(cats) => update({ weightage_categories: cats })}
-            />
-
-            <div style={{
-              padding: '12px 14px',
-              background: 'var(--bg-card-info, #F0F9FF)',
-              borderRadius: 10,
-              fontSize: 11,
-              color: 'var(--text-card-info, #0369A1)',
-              border: '1px solid var(--border-card-info, #BAE6FD)',
-              lineHeight: 1.5,
-              marginTop: 18,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8
-            }}>
-              <FiInfo size={14} style={{ flexShrink: 0 }} />
-              <span style={{ flex: 1, fontWeight: 500 }}>
-                Weightage Scoring: Evaluates dynamic conditions across categories and fields. Calculates total raw scores, maximum possible scores, and normalized percentages (0-100%). Supports Jinja2 variables (e.g. <code>{`{{anualcredit}}`}</code>).
-              </span>
-            </div>
-          </>
-        )}
-
-        {/* ΓöÇΓöÇ Template Engine Node ΓöÇΓöÇ */}
-        {data.type === 'template_node' && (
-          <>
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <FiFileText color="#3B82F6" size={14} /> Template Engine Settings
-              </div>
-
-              <Field label="Template Content" hint="Define your Jinja2/Markdown template. Use Jinja2 formatting (e.g., {{ latest_message }}, {{ user_input }}).">
-                <Textarea
-                  value={data.template_content ?? ''}
-                  onChange={(v) => update({ template_content: v })}
-                  placeholder="Hello {{ latest_message }},\n\nYour score is {{ total_score }} out of {{ max_possible_score }}."
-                  rows={8}
-                />
+            <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Auto-Collection Options</div>
+              <Field label="Auto Collect Prefix" hint="Automatically merge all context keys matching this prefix into the payload (e.g., 'cd_output_').">
+                <Input value={data.auto_collect_prefix || ''} onChange={(v) => update({ auto_collect_prefix: v })} placeholder="cd_output_" />
               </Field>
-
-              <Field label="Template File Path (Optional)" hint="Provide an absolute path to a template file on the server. If set and file exists, its content overrides the Template Content text field above.">
-                <Input
-                  value={data.template_file_path ?? ''}
-                  onChange={(v) => update({ template_file_path: v })}
-                  placeholder="e.g. C:/templates/my_template.txt"
-                />
+              <Field label="Clean Binary Fields" hint="Comma-separated paths to remove from auto-collected items before final payload generation (e.g. 'binary_image, raw_pdf').">
+                <Input value={data.clean_binary_from || ''} onChange={(v) => update({ clean_binary_from: v })} placeholder="binary_data, image_bytes" />
               </Field>
-
-              <Field label="Input Variable Data Key (Optional)" hint="Specify the context key (e.g., enriched_transaction) from which to extract variables to inject into the template context. If it points to a dictionary, those fields are merged into the template variables.">
-                <Input
-                  value={data.template_data_key ?? ''}
-                  onChange={(v) => update({ template_data_key: v })}
-                  placeholder="e.g. enriched_transaction"
-                />
-              </Field>
-
-              <Field label="Output Context Key" hint="Context key to save the final rendered string output. Defaults to rendered_template.">
-                <Input
-                  value={data.template_output_key ?? 'rendered_template'}
-                  onChange={(v) => update({ template_output_key: v })}
-                  placeholder="rendered_template"
-                />
-              </Field>
-            </div>
-
-            <div style={{
-              padding: '12px 14px',
-              background: 'var(--bg-card-info, #F0F9FF)',
-              borderRadius: 10,
-              fontSize: 11,
-              color: 'var(--text-card-info, #0369A1)',
-              border: '1px solid var(--border-card-info, #BAE6FD)',
-              lineHeight: 1.5,
-              marginTop: 18,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8
-            }}>
-              <FiInfo size={14} style={{ flexShrink: 0 }} />
-              <span style={{ flex: 1, fontWeight: 500 }}>
-                Template Engine Node: Renders dynamic text or markdown using Jinja2 formatting. The global context, <code>latest_message</code>, and values under the selected <code>Input Data Key</code> are all exposed to your template variables automatically.
-              </span>
-            </div>
-          </>
-        )}
-
-        {/* ΓöÇΓöÇ Report Generator Node ΓöÇΓöÇ */}
-        {data.type === 'report_generator' && (
-          <ReportGeneratorConfig data={data} update={update} />
-        )}
-
-        {/* ΓöÇΓöÇ Beneficiary Risk Router ΓöÇΓöÇ */}
-        {data.type === 'beneficiary_risk' && (() => {
-          const checks = data.risk_checks || ['mule_detection', 'account_age', 'sanctions_list', 'relationship_graph'];
-          
-          const toggleCheck = (key) => {
-            const next = checks.includes(key) ? checks.filter(k => k !== key) : [...checks, key];
-            update({ risk_checks: next });
-          };
-
-          const checkList = [
-            { key: 'mule_detection', label: 'Mule Velocity Check', desc: 'Checks inbound velocity / mule indicators' },
-            { key: 'account_age', label: 'Account Age Registry', desc: 'Checks if recipient account is new' },
-            { key: 'sanctions_list', label: 'Sanctions Check', desc: 'Screens against OFAC & local blacklists' },
-            { key: 'relationship_graph', label: 'Relationship Graph', desc: 'Checks history between sender and receiver' },
-          ];
-
-          return (
-            <>
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <FiShield color="var(--theme-primary)" size={14} /> Risk Evaluator Checks
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {checkList.map((chk) => (
-                    <div
-                      key={chk.key}
-                      onClick={() => toggleCheck(chk.key)}
-                      style={{
-                        padding: '10px 12px',
-                        background: checks.includes(chk.key) ? 'rgba(142, 119, 187, 0.05)' : '#F8FAFC',
-                        border: checks.includes(chk.key) ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
-                        borderRadius: 10,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        transition: 'all 0.15s'
-                      }}
-                    >
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginRight: 8 }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: checks.includes(chk.key) ? 'var(--theme-primary)' : 'var(--text-primary)' }}>{chk.label}</span>
-                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{chk.desc}</span>
-                      </div>
-                      <div style={{
-                        width: 32, height: 18, borderRadius: 9, position: 'relative',
-                        background: checks.includes(chk.key) ? 'var(--theme-primary)' : '#cbd5e1',
-                        transition: 'all 0.2s', flexShrink: 0
-                      }}>
-                        <div style={{
-                          position: 'absolute', top: 2, left: checks.includes(chk.key) ? 16 : 2, width: 14, height: 14,
-                          borderRadius: '50%', background: '#fff', transition: 'left 0.2s ease'
-                        }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <FiGitBranch color="#EF4444" size={14} /> Known Fraudster Branch
-                </div>
-                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.4 }}>
-                  Triggered only if deterministic check (Sanctions hit) matches 100%. Executes real-time block and raises alert.
-                </p>
-                <Field label="Alert Severity Level" hint="Level of severity logged downstream.">
-                  <Select
-                    value={data.fraud_alert_level ?? 'CRITICAL'}
-                    onChange={(v) => update({ fraud_alert_level: v })}
-                    options={[
-                      { value: 'CRITICAL', label: 'Critical' },
-                      { value: 'HIGH', label: 'High' },
-                      { value: 'MEDIUM', label: 'Medium' }
-                    ]}
-                  />
-                </Field>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, textTransform: 'uppercase' }}>Primary Fraud Alert API</div>
-                <ApiConfigSection data={data} update={update} prefix="fraud_api_" urlKey="fraud_api_endpoint" />
-                
-                <div style={{ marginTop: 20 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 10, textTransform: 'uppercase' }}>Additional APIs</div>
-                  {data.fraud_additional_apis?.map((apiConf, idx) => {
-                    const localUpdate = (changes) => {
-                       const newArr = [...(data.fraud_additional_apis || [])];
-                       newArr[idx] = { ...newArr[idx], ...changes };
-                       update({ fraud_additional_apis: newArr });
-                    };
-                    return (
-                      <CollapsibleApiConfig 
-                        key={idx} 
-                        data={apiConf} 
-                        update={localUpdate} 
-                        idx={idx} 
-                        onRemove={() => {
-                          const newArr = [...data.fraud_additional_apis];
-                          newArr.splice(idx, 1);
-                          update({ fraud_additional_apis: newArr });
-                        }} 
-                      />
-                    );
-                  })}
-                  <button 
-                    onClick={() => {
-                      const newArr = [...(data.fraud_additional_apis || []), { url: '', method: 'POST' }];
-                      update({ fraud_additional_apis: newArr });
-                    }}
-                    style={{ width: '100%', padding: '8px', background: '#F1F5F9', border: '1px dashed #CBD5E1', borderRadius: '8px', color: '#475569', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    + Add Another API
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <FiGitBranch color="#F59E0B" size={14} /> New Beneficiary Branch
-                </div>
-                <p style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, margin: 0 }}>
-                  <strong>Privacy Sandbox Active:</strong> This node strips private sender data and passes only recipient details (Name, Account, Bank) down the yellow wire for KYC/registration.
-                </p>
-              </div>
-
-              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <FiGitBranch color="#10B981" size={14} /> Safe / Continue Branch
-                </div>
-                <p style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, margin: 0 }}>
-                  Payload passes untouched. Mule check scores and geo-velocity metrics are injected into `risk_profile` for downstream scoring engines.
-                </p>
-              </div>
-
-              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Data Configuration</div>
-                <Field label="Input Context Key" hint="Context key that holds the transaction payload.">
-                  <Input value={data.context_key ?? 'enriched_transaction'} onChange={(v) => update({ context_key: v })} placeholder="enriched_transaction" />
-                </Field>
-                <Field label="Target Entity Field" hint="Which field in the data represents the beneficiary?">
-                  <Input value={data.beneficiary_field ?? 'beneficiary_id'} onChange={(v) => update({ beneficiary_field: v })} placeholder="e.g., beneficiary_id" />
-                </Field>
-                <Field label="New Beneficiary Rule" hint="Logical condition to define what a 'new' beneficiary is.">
-                  <Input value={data.new_beneficiary_rule ?? 'account_age_days < 1'} onChange={(v) => update({ new_beneficiary_rule: v })} placeholder="e.g., account_age_days < 1" />
-                </Field>
-              </div>
-            </>
-          );
-        })()}
-
-
-        {/* ── Banking Pre-Enrichment Node ── */}
-        {data.type === 'banking_enrichment' && (
-          <>
-            <div style={{ padding: 16, background: 'var(--bg-card-purple, #F5F3FF)', borderRadius: 12, border: '1px solid var(--border-card-purple, #DDD6FE)', marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-card-purple, #7C3AED)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Banking Enrichment Setup</div>
-
-              <Field label="Source Context Key" hint="Context key containing the canonical transaction data to enrich.">
-                <Input
-                  value={data.source_key || 'canonical_transaction'}
-                  onChange={(v) => update({ source_key: v })}
-                  placeholder="e.g. canonical_transaction"
-                />
-              </Field>
-              <Field label="Destination Key" hint="Context key to save the highly enriched transaction payload.">
-                <Input
-                  value={data.destination_key || 'enriched_transaction'}
-                  onChange={(v) => update({ destination_key: v })}
-                  placeholder="e.g. enriched_transaction"
-                />
-              </Field>
-            </div>
-
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>External Integrations</div>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 12 }}>Mock external API fetches directly into the workflow memory.</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {[
-                  { id: 'cibil_experian', label: 'Credit Bureaus (Synthetic ID Check)' },
-                  { id: 'npci_registry', label: 'NPCI Registry (Blacklisted VPAs)' },
-                  { id: 'sanctions_lists', label: 'OFAC / RBI Sanctions (Watchlists)' },
-                  { id: 'ip_geolocation', label: 'MaxMind IP (VPN / TOR Check)' },
-                  { id: 'threat_metrix', label: 'ThreatMetrix (Device Rep / Bot)' },
-                  { id: 'telecom_data', label: 'Telecom APIs (SIM Swap Alerts)' }
-                ].map(opt => (
-                  <label key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, cursor: 'pointer', background: 'var(--bg-canvas)', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8 }}>
-                    <input
-                      type="checkbox"
-                      checked={(data.external_integrations || []).includes(opt.id)}
-                      onChange={e => {
-                        const arr = [...(data.external_integrations || [])];
-                        if (e.target.checked) arr.push(opt.id);
-                        else arr.splice(arr.indexOf(opt.id), 1);
-                        update({ external_integrations: arr });
-                      }}
-                      style={{ accentColor: 'var(--theme-primary, #7C3AED)' }}
-                    />
-                    {opt.label}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>Internal Bank Systems</div>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 12 }}>Mock internal DB queries to fetch historical signals.</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {[
-                  { id: 'core_banking', label: 'Core Banking (History & Velocity)' },
-                  { id: 'card_management', label: 'Card Management (PIN/Usage)' },
-                  { id: 'mobile_app_logs', label: 'Mobile App Logs (Biometric Auth)' },
-                  { id: 'kyc_repository', label: 'KYC Repository (Identity)' },
-                  { id: 'crm_system', label: 'CRM System (Customer Value Tier)' }
-                ].map(opt => (
-                  <label key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, cursor: 'pointer', background: 'var(--bg-canvas)', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8 }}>
-                    <input
-                      type="checkbox"
-                      checked={(data.internal_integrations || []).includes(opt.id)}
-                      onChange={e => {
-                        const arr = [...(data.internal_integrations || [])];
-                        if (e.target.checked) arr.push(opt.id);
-                        else arr.splice(arr.indexOf(opt.id), 1);
-                        update({ internal_integrations: arr });
-                      }}
-                      style={{ accentColor: 'var(--theme-primary, #7C3AED)' }}
-                    />
-                    {opt.label}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ padding: 12, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 10, fontSize: 11, color: 'var(--text-card-info, #0369A1)', border: '1px solid var(--border-card-info, #BAE6FD)', lineHeight: 1.5 }}>
-              <FiDatabase size={12} style={{ marginRight: 6 }} />
-              High-speed orchestration node. API calls run concurrently using Python <strong>asyncio.gather</strong> to prevent blocking, enforcing graceful degradation on timeout.
             </div>
           </>
         )}
 
 
-        {/* ── Text to Audio ── */}
-        {data.type === 'textToAudio' && (
-          <>
-            <div style={{ marginBottom: 18 }}>
-              <Toggle
-                checked={data.mute_audio}
-                onChange={(v) => update({ mute_audio: v })}
-                label="Mute Audio Generation"
-              />
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: -8, marginLeft: 50, marginBottom: 20 }}>
-                If enabled, the node will skip generating speech for this step.
-              </div>
-            </div>
-
-            <Field label="Voice Selection" hint="Choose the voice for speech synthesis.">
-              <Select
-                value={data.audio_voice || 'en_US-amy'}
-                onChange={(v) => update({ audio_voice: v })}
-                options={[
-                  { value: 'en_US-amy', label: 'English (US) - Female' },
-                  { value: 'en_GB-alba', label: 'English (UK) - Female' },
-                  { value: 'zh_CN-huayan', label: 'Chinese (CN) - Female' },
-                  { value: 'ru_RU-dmitri', label: 'Russian (RU) - Male' },
-                  { value: 'hi_IN-priyamvada', label: 'Hindi (IN) - Female' },
-                ]}
-              />
-            </Field>
-
-            <div style={{ marginTop: 20, padding: 12, background: '#FFF7ED', borderRadius: 10, fontSize: 11, color: '#9A3412', lineHeight: 1.5, border: '1px solid #FED7AA' }}>
-              <FiInfo size={12} style={{ marginRight: 6 }} />
-              This node converts the content of the latest message into audio. It automatically manages file storage and deletes old recordings for this thread.
-            </div>
-          </>
-        )}
-
-        {/* ── API Node ── */}
-        {data.type === 'api_node' && (
-          <>
             <div style={{ padding: 16, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 12, border: '1px solid var(--border-card-info, #BAE6FD)', marginBottom: 20 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-card-info, #0369A1)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Enterprise Connector</div>
 
@@ -5626,6 +5823,22 @@ export default function PropertiesPanel() {
                 ]}
               />
             </Field>
+            </>
+            )}
+
+            <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />
+            
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Human-in-the-Loop</div>
+              <Toggle
+                checked={data.interrupt_after === true}
+                onChange={(v) => update({ interrupt_after: v })}
+                label="Pause AFTER API execution (interrupt_after)"
+              />
+              <div style={{ fontSize: 10, color: '#059669', marginTop: 2, marginLeft: 28 }}>
+                Halts the workflow after sending the payload. The workflow will wait until an external system resumes it.
+              </div>
+            </div>
 
             <div style={{ marginTop: 20, padding: 12, background: '#F0F9FF', borderRadius: 10, fontSize: 11, color: '#0369A1', lineHeight: 1.5, border: '1px solid #BAE6FD' }}>
               <FiInfo size={12} style={{ marginRight: 6 }} />
@@ -5860,35 +6073,192 @@ export default function PropertiesPanel() {
           </>
         )}
 
-        {/* ── PII Masking Node ── */}
+        {/* ── Network Graph Node ── */}
+        {data.type === 'network_graph' && (
+          <>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <FiDatabase color="#10B981" size={14} /> Neo4j Connection Settings
+              </div>
+              <Field label="Target Context Key" hint="Context key containing transaction details to ingest.">
+                <Input value={data.graph_target_key ?? 'latest_message'} onChange={(v) => update({ graph_target_key: v })} placeholder="latest_message" />
+              </Field>
+              <Field label="Neo4j Connection URI" hint="Override default bolt connection string. E.g. bolt://localhost:7687">
+                <Input value={data.graph_neo4j_uri ?? ''} onChange={(v) => update({ graph_neo4j_uri: v })} placeholder="bolt://localhost:7687" />
+              </Field>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <Field label="Username">
+                    <Input value={data.graph_neo4j_user ?? ''} onChange={(v) => update({ graph_neo4j_user: v })} placeholder="neo4j" />
+                  </Field>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Field label="Password">
+                    <Input type="password" value={data.graph_neo4j_password ?? ''} onChange={(v) => update({ graph_neo4j_password: v })} placeholder="••••••••" />
+                  </Field>
+                </div>
+              </div>
+              <Field label="Graph Label / Collection" hint="Dynamic label/collection tag applied to accounts/transactions (e.g. FraudFlow, RetailFlow).">
+                <Input value={data.graph_collection ?? 'FraudFlow'} onChange={(v) => update({ graph_collection: v })} placeholder="FraudFlow" />
+              </Field>
+            </div>
+
+            <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dynamic Data Binding (JSON Mapping)</div>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.4 }}>
+                Map fields from your input transaction JSON to the network graph keys. Leave empty to fallback to standard transactional fraud schema keys.
+              </p>
+              <Field label="Sender Account Key" hint="Path in transaction JSON for sender ID (e.g. account_id or sender.id)">
+                <Input value={data.graph_sender_key ?? ''} onChange={(v) => update({ graph_sender_key: v })} placeholder="account_id" />
+              </Field>
+              <Field label="Beneficiary Account Key" hint="Path in transaction JSON for receiver ID (e.g. beneficiary_id or receiver.id)">
+                <Input value={data.graph_receiver_key ?? ''} onChange={(v) => update({ graph_receiver_key: v })} placeholder="beneficiary_id" />
+              </Field>
+              <Field label="Transaction ID Key" hint="Path in transaction JSON for unique TX identifier (e.g. transaction_id)">
+                <Input value={data.graph_txn_id_key ?? ''} onChange={(v) => update({ graph_txn_id_key: v })} placeholder="transaction_id" />
+              </Field>
+              <Field label="Transaction Amount Key" hint="Path in transaction JSON for amount field (e.g. transaction_amount)">
+                <Input value={data.graph_amount_key ?? ''} onChange={(v) => update({ graph_amount_key: v })} placeholder="transaction_amount" />
+              </Field>
+              <Field label="Transaction Timestamp Key" hint="Path in transaction JSON for timestamp field (e.g. timestamp)">
+                <Input value={data.graph_timestamp_key ?? ''} onChange={(v) => update({ graph_timestamp_key: v })} placeholder="timestamp" />
+              </Field>
+            </div>
+          </>
+        )}
+
+        {/* ── PII Masking Node (Enterprise) ── */}
         {data.type === 'pii_node' && (
           <>
-            <Field label="Masking Engine" hint="Choose the detection algorithm. Regex is fast (pattern-based), GLiNER is smart (semantic context).">
+            {/* ─── Engine Selection (HOW to mask) ─── */}
+            <Field label="Masking Engine" hint="WHO performs the masking. Local is fast but destructive; DocBot is enterprise-grade with encrypted vault and reversible tokens.">
               <Select
-                value={data.pii_engine || 'regex'}
+                value={data.pii_engine || 'local'}
                 onChange={(v) => update({ pii_engine: v })}
                 options={[
-                  { value: 'regex', label: 'Regex (Fast, Pattern-based)' },
-                  { value: 'gliner', label: 'GLiNER (Advanced, Context-aware)' }
+                  { value: 'local', label: 'Local (DataFog — Fast, In-Process)' },
+                  { value: 'docbot', label: 'External (DocBot — Vaulted, Reversible)' }
                 ]}
               />
             </Field>
 
-            <Field label="Redaction Target" hint="Choose which part of the workflow flow to sanitize.">
+            {/* Local engine sub-option: DataFog algorithm */}
+            {(data.pii_engine || 'local') === 'local' && (
+              <>
+                <Field label="Detection Algorithm" hint="Regex is fast (pattern-matching). GLiNER uses NLP for context-aware detection.">
+                  <Select
+                    value={data.datafog_engine || 'regex'}
+                    onChange={(v) => update({ datafog_engine: v })}
+                    options={[
+                      { value: 'regex', label: 'Regex (Fast, Pattern-based)' },
+                      { value: 'gliner', label: 'GLiNER (NLP, Context-aware)' }
+                    ]}
+                  />
+                </Field>
+                <div style={{
+                  padding: '10px 12px', background: '#FEF3C7', borderRadius: 8,
+                  fontSize: 10, color: '#92400E', border: '1px solid #FDE68A',
+                  lineHeight: 1.5, display: 'flex', alignItems: 'flex-start', gap: 8
+                }}>
+                  <FiAlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                  <span><strong>Destructive masking:</strong> Original data is permanently replaced with placeholders (e.g., [PERSON]). Not reversible. For reversible masking with a secure vault, use the DocBot engine.</span>
+                </div>
+              </>
+            )}
+
+            {/* DocBot engine settings */}
+            {data.pii_engine === 'docbot' && (
+              <>
+                <Field label="DocBot API URL" hint="Base URL of the DocBot PII service.">
+                  <Input
+                    value={data.docbot_url || 'http://localhost:8000'}
+                    onChange={(v) => update({ docbot_url: v })}
+                    placeholder="http://localhost:8000"
+                  />
+                </Field>
+                <Field label="DocBot Method" hint="Local = regex only (fast). Hybrid = regex + LLM verification (more accurate, slower).">
+                  <Select
+                    value={data.docbot_method || 'local'}
+                    onChange={(v) => update({ docbot_method: v })}
+                    options={[
+                      { value: 'local', label: 'Local (Regex — Fast)' },
+                      { value: 'hybrid', label: 'Hybrid (Regex + LLM — Accurate)' }
+                    ]}
+                  />
+                </Field>
+                <div style={{
+                  padding: '10px 12px', background: '#ECFDF5', borderRadius: 8,
+                  fontSize: 10, color: '#065F46', border: '1px solid #A7F3D0',
+                  lineHeight: 1.5, display: 'flex', alignItems: 'flex-start', gap: 8
+                }}>
+                  <FiShield size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                  <span><strong>Enterprise vault:</strong> Original PII is encrypted and stored in DocBot's secure vault. Masked tokens (e.g., [PAN_a3f82b1c]) are reversible via the /pii/reveal endpoint.</span>
+                </div>
+              </>
+            )}
+
+            <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0', opacity: 0.4 }} />
+
+            {/* ─── Target Selection (WHAT to mask) ─── */}
+            <Field label="Redaction Target" hint="WHAT data should be scanned and masked. Works with any engine.">
               <Select
                 value={data.pii_target || 'latest_message'}
                 onChange={(v) => update({ pii_target: v })}
                 options={[
-                  { value: 'latest_message', label: 'Redact Latest Message' },
-                  { value: 'all_messages', label: 'Redact All Messages (History)' },
-                  { value: 'context_data', label: 'Redact Workflow Context (JSON-safe)' }
+                  { value: 'latest_message', label: 'Latest Message' },
+                  { value: 'context_variable', label: 'Context Variable (JSON-safe)' },
+                  { value: 'targeted_replacement', label: 'Targeted Replacement (Precision)' }
                 ]}
               />
             </Field>
 
+            {/* Context Variable target: key input */}
+            {data.pii_target === 'context_variable' && (
+              <Field label="Context Key" hint="Specific context variable to mask. Leave empty to mask entire context.">
+                <Input
+                  value={data.context_variable_key || ''}
+                  onChange={(v) => update({ context_variable_key: v })}
+                  placeholder="e.g. user_input or leave empty for all"
+                />
+              </Field>
+            )}
 
-            <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '20px 0', opacity: 0.5 }} />
+            {/* Targeted Replacement: identifier + rendered key inputs */}
+            {data.pii_target === 'targeted_replacement' && (
+              <>
+                <div style={{
+                  padding: '10px 12px', background: '#EFF6FF', borderRadius: 8,
+                  fontSize: 10, color: '#1E40AF', border: '1px solid #BFDBFE',
+                  lineHeight: 1.5, marginBottom: 8
+                }}>
+                  <strong>Precision mode:</strong> Takes known sensitive values (from an upstream Extract Identifiers node) and does an exact find-and-replace in the rendered text. Zero false positives — only masks what you explicitly extracted.
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <div style={{ flex: 1 }}>
+                    <Field label="Identifiers Input Key" hint="Context key containing extracted identifiers array.">
+                      <Input
+                        value={data.identifiers_input_key || 'extracted_identifiers'}
+                        onChange={(v) => update({ identifiers_input_key: v })}
+                        placeholder="extracted_identifiers"
+                      />
+                    </Field>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Field label="Rendered Text Key" hint="Context key containing the text/summaries where values will be masked.">
+                      <Input
+                        value={data.rendered_input_key || 'ocr_like_results'}
+                        onChange={(v) => update({ rendered_input_key: v })}
+                        placeholder="ocr_like_results"
+                      />
+                    </Field>
+                  </div>
+                </div>
+              </>
+            )}
 
+            <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0', opacity: 0.4 }} />
+
+            {/* ─── Custom Regex Patterns (pre-processing layer) ─── */}
             <CustomRegexEditor
               value={data.pii_custom_regex || []}
               onChange={(v) => update({ pii_custom_regex: v })}
@@ -5909,7 +6279,7 @@ export default function PropertiesPanel() {
               justifyContent: 'space-between'
             }}>
               <span style={{ flex: 1, fontWeight: 500 }}>
-                Privacy Guard: Sensitive data is masked and replaced with placeholders (e.g., [PERSON]) to ensure compliance before data leaves this step.
+                Privacy Guard: Custom regex patterns run as a pre-processing step before the main engine. This ensures matching data never reaches the engine at all.
               </span>
             </div>
           </>
@@ -6025,6 +6395,22 @@ export default function PropertiesPanel() {
             )}
 
             {/* 3. Classes & Descriptions/Patterns Editor */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                Classification Classes
+              </label>
+              <VariableLinker 
+                targetType={['schema_list', 'list']} 
+                onSelect={(variable) => {
+                  if (variable.var_type === 'schema_list') {
+                    update({ classification_classes: variable.value.map(item => ({ class: item.name, description: item.description || '' })) });
+                  } else if (variable.var_type === 'list') {
+                    update({ classification_classes: variable.value.map(name => ({ class: name, description: '' })) });
+                  }
+                }}
+                tooltip="Load from Variable"
+              />
+            </div>
             <ClassificationClassesEditor
               value={data.classification_classes || []}
               onChange={(v) => update({ classification_classes: v })}
@@ -6035,16 +6421,28 @@ export default function PropertiesPanel() {
 
             {/* 4. Summary toggle (only for LLM engine) */}
             {data.classification_engine !== 'regex' && (
-              <div style={{ marginBottom: 18 }}>
-                <Toggle
-                  checked={data.classification_summary === true}
-                  onChange={(v) => update({ classification_summary: v })}
-                  label="Summarize Classified Content"
-                />
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, marginLeft: 28, marginBottom: 20 }}>
-                  If enabled, the node will return a summary of the input data instead of the original raw data.
+              <>
+                <div style={{ marginBottom: 18 }}>
+                  <Toggle
+                    checked={data.classification_summary === true}
+                    onChange={(v) => update({ classification_summary: v })}
+                    label="Summarize Classified Content"
+                  />
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, marginLeft: 28, marginBottom: 20 }}>
+                    If enabled, the node will return a summary of the input data instead of the original raw data.
+                  </div>
                 </div>
-              </div>
+                <div style={{ marginBottom: 18 }}>
+                  <Toggle
+                    checked={data.classification_extract_identifiers === true}
+                    onChange={(v) => update({ classification_extract_identifiers: v })}
+                    label="Extract Identifiers (NER)"
+                  />
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, marginLeft: 28, marginBottom: 20 }}>
+                    If enabled, dynamically extracts key reference IDs (e.g. Govt IDs, Account Numbers) into an array.
+                  </div>
+                </div>
+              </>
             )}
 
             {/* 5. Optional Input Field Path (Moved to Bottom) */}
@@ -6089,6 +6487,96 @@ export default function PropertiesPanel() {
 
         {/* ── OCR Node ── */}
         {/* ── Ingestion Node ── */}
+        {/* ── Classification Node ── */}
+        {data.type === 'classification' && (
+          <>
+            {/* 1. Classification Engine Selection */}
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'block', marginBottom: 6 }}>
+                Classification Engine
+              </label>
+              <Select
+                value={data.classification_engine || 'llm'}
+                onChange={(v) => update({ classification_engine: v })}
+                options={[
+                  { value: 'llm', label: 'LLM (AI Classifier)' },
+                  { value: 'regex', label: 'Regex Patterns (Static Classifier)' }
+                ]}
+              />
+            </div>
+
+            {/* 2. LLM Model Selection (only if LLM engine is selected) */}
+            {data.classification_engine !== 'regex' && (
+              <div style={{ marginBottom: 22 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FiCpu size={12} /> Model Settings
+                </div>
+                <LLMConfigSection
+                  llm={data.llm || { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 }}
+                  onChange={(llm) => update({ llm })}
+                />
+              </div>
+            )}
+
+            {/* 3. Classes & Descriptions/Patterns Editor */}
+            <ClassificationClassesEditor
+              value={data.classification_classes || []}
+              onChange={(v) => update({ classification_classes: v })}
+              engine={data.classification_engine || 'llm'}
+            />
+
+            <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '20px 0', opacity: 0.5 }} />
+
+            {/* 4. Summary toggle (only for LLM engine) */}
+            {data.classification_engine !== 'regex' && (
+              <div style={{ marginBottom: 18 }}>
+                <Toggle
+                  checked={data.classification_summary === true}
+                  onChange={(v) => update({ classification_summary: v })}
+                  label="Summarize Classified Content"
+                />
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, marginLeft: 28, marginBottom: 20 }}>
+                  If enabled, the node will return a summary of the input data instead of the original raw data.
+                </div>
+              </div>
+            )}
+
+            {/* 5. Optional Input Field Path */}
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'block', marginBottom: 6 }}>
+                Input Field Path (Optional)
+              </label>
+              <Input
+                value={data.classification_input_field || ''}
+                onChange={(v) => update({ classification_input_field: v })}
+                placeholder="e.g. context.customer_query"
+              />
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
+                Variables path to classify. If empty, falls back to latest message or payload.
+              </div>
+            </div>
+
+            <div style={{
+              padding: '12px 14px',
+              background: '#F0F9FF',
+              borderRadius: 10,
+              fontSize: 11,
+              color: '#0369A1',
+              border: '1px solid #BAE6FD',
+              lineHeight: 1.5,
+              marginTop: 18,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}>
+              <FiInfo size={14} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, fontWeight: 500 }}>
+                Classification Agent: Classifies the incoming message or payload into one of your custom classes using {data.classification_engine === 'regex' ? 'Regex rules' : 'the configured LLM'}. Returns a JSON object with keys <strong>class</strong> and either <strong>original_data</strong> or <strong>summary</strong>.
+              </span>
+            </div>
+          </>
+        )}
+
         {data.type === 'ingestion_node' && (
           <>
             <Field label="Vector Store" hint="Target database for indexing.">
@@ -6250,18 +6738,20 @@ export default function PropertiesPanel() {
 
         {data.type === 'ocr_node' && (
           <>
-            <Field label="OCR Mode" hint="Vision OCR uses Cloud LLMs; Standard OCR uses local server engines.">
+            <Field label="OCR Mode" hint="Vision uses Cloud LLMs; Standard uses local engines; External sends files to an API service (e.g., DocBot).">
               <Select
                 value={data.ocr_engine || 'vision'}
                 onChange={(v) => update({ ocr_engine: v })}
                 options={[
                   { value: 'vision', label: 'Vision OCR (AI/LLM)' },
-                  { value: 'standard', label: 'Standard OCR (Local)' }
+                  { value: 'standard', label: 'Standard OCR (Local)' },
+                  { value: 'external', label: 'External Service (API)' }
                 ]}
               />
             </Field>
 
-            {(data.ocr_engine || 'vision') === 'vision' ? (
+            {/* ── Vision Engine Config ── */}
+            {(data.ocr_engine || 'vision') === 'vision' && (
               <>
                 <Field label="OCR Instruction / Prompt" hint="Instruction for the vision model. Be specific about what data to extract.">
                   <Textarea value={data.ocr_prompt} onChange={(v) => update({ ocr_prompt: v })} placeholder="e.g. Extract all text from this receipt accurately..." />
@@ -6274,8 +6764,10 @@ export default function PropertiesPanel() {
                   <LLMConfigSection llm={data.llm} onChange={(v) => update({ llm: v })} />
                 </div>
               </>
-            ) : (
-              <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: 12, border: '1px solid var(--border)', marginTop: 10 }}>
+            )}
+
+            {data.ocr_engine === 'standard' && (
+              <div style={{ padding: '16px', background: 'var(--bg-card-neutral, #F8FAFC)', borderRadius: 12, border: '1px solid var(--border)', marginTop: 10 }}>
                 <Field label="Local OCR Engine" hint="Select the local model installed on your server.">
                   <Select
                     value={data.ocr_standard_model || 'tesseract'}
@@ -6293,17 +6785,703 @@ export default function PropertiesPanel() {
               </div>
             )}
 
+            {/* ── External Service Engine Config ── */}
+            {data.ocr_engine === 'external' && (
+              <>
+                <div style={{ padding: 16, background: '#FFF7ED', borderRadius: 12, border: '1px solid #FED7AA', marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9A3412', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>External OCR Service</div>
+
+                  <Field label="Service URL" hint="Full URL of the extraction API endpoint.">
+                    <Input
+                      value={data.ocr_service_url || ''}
+                      onChange={(v) => update({ ocr_service_url: v })}
+                      placeholder="http://localhost:8003/api/ocr/upload"
+                    />
+                  </Field>
+
+                  <Field label="Response Type" hint="How the service returns data.">
+                    <Select
+                      value={data.ocr_service_response_type || 'sse'}
+                      onChange={(v) => update({ ocr_service_response_type: v })}
+                      options={[
+                        { value: 'sse', label: 'SSE Stream (Server-Sent Events)' },
+                        { value: 'json', label: 'JSON (Standard Response)' }
+                      ]}
+                    />
+                  </Field>
+
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <div style={{ flex: 1 }}>
+                      <Field label="File Field Name" hint="Multipart form field name for file.">
+                        <Input value={data.ocr_service_file_field || 'files'} onChange={(v) => update({ ocr_service_file_field: v })} placeholder="files" />
+                      </Field>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <Field label="Text Path in Response" hint="Dot-path to extracted text in each event/result.">
+                        <Input value={data.ocr_service_text_path || 'data.text'} onChange={(v) => update({ ocr_service_text_path: v })} placeholder="data.text" />
+                      </Field>
+                    </div>
+                  </div>
+                </div>
+
+                <KeyValueEditor
+                  label="Service Form Fields"
+                  value={data.ocr_service_params || {}}
+                  onChange={(v) => update({ ocr_service_params: v })}
+                  hint="Extra fields sent with the file (e.g., provider: groq, mask_pii: true)"
+                />
+
+                <KeyValueEditor
+                  label="Service Headers"
+                  value={data.ocr_service_headers || {}}
+                  onChange={(v) => update({ ocr_service_headers: v })}
+                  hint="Optional headers (e.g., Authorization: Bearer xxx)"
+                />
+
+                <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0', opacity: 0.5 }} />
+
+                <Field label="Multi-File Input Key (Optional)" hint="Context key containing a list of uploaded file objects (e.g., payload.uploaded_files). If set, processes ALL files.">
+                  <Input
+                    value={data.ocr_multi_file_key || ''}
+                    onChange={(v) => update({ ocr_multi_file_key: v })}
+                    placeholder="e.g. payload.uploaded_files"
+                  />
+                </Field>
+              </>
+            )}
+
+              <div style={{ marginTop: 12, marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid #BBF7D0' }}>
+                <Toggle
+                  checked={data.pii_verification === true}
+                  onChange={(v) => update({ pii_verification: v })}
+                  label="Legacy PII Verification Gate (Deprecated)"
+                />
+                <div style={{ fontSize: 10, color: '#059669', marginTop: 4, marginLeft: 28 }}>
+                  [Legacy CD workflows only]. Use the dedicated PII Gate Node instead.
+                </div>
+              </div>
+
+            <div style={{ marginTop: 16 }}>
+              <Field label="Destination Key" hint="The context key where OCR results are saved. Defaults to 'latest_ocr_output'.">
+                <Input
+                  value={data.destination_key || 'latest_ocr_output'}
+                  onChange={(v) => update({ destination_key: v })}
+                  placeholder="latest_ocr_output"
+                />
+              </Field>
+            </div>
+
             <div style={{
               padding: '12px 14px', background: '#F8FAFC', borderRadius: 10, fontSize: 11, color: 'var(--text-secondary)',
               border: '1px solid var(--border)', lineHeight: 1.5, marginTop: 18, display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'space-between'
             }}>
               <span style={{ flex: 1, fontWeight: 500 }}>
-                {data.ocr_engine === 'vision'
-                  ? "Vision Mode: Best for complex layouts, handwriting, and tables using AI."
-                  : `Standard Mode: Best for high-speed, plain text extraction using ${data.ocr_standard_model}.`
+                {data.ocr_engine === 'external'
+                  ? "External Mode: Sends files to a remote OCR/extraction service via multipart upload."
+                  : data.ocr_engine === 'standard'
+                    ? `Standard Mode: Best for high-speed, plain text extraction using ${data.ocr_standard_model || 'tesseract'}.`
+                    : "Vision Mode: Best for complex layouts, handwriting, and tables using AI."
                 }
               </span>
               <FiCamera size={16} style={{ color: 'var(--text-muted)', opacity: 0.5 }} />
+            </div>
+
+            <div style={{ marginTop: 24, padding: 16, border: '1px solid #E2E8F0', borderRadius: 12, background: '#F8FAFC' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>Execution Control</div>
+              <Toggle
+                checked={data.interrupt_after || false}
+                onChange={(v) => update({ interrupt_after: v })}
+                label="Pause Workflow After Node (interrupt_after)"
+              />
+              <div style={{ fontSize: 10, color: '#64748B', marginTop: 4, marginLeft: 28 }}>
+                The execution engine will halt and wait for external input/resumption.
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ── JSON Transform ── */}
+        {data.type === 'json_transform_va' && (
+          <>
+            <Field label="Operation" hint="Choose how to transform the JSON data.">
+              <Select
+                value={data.transform_operation || 'flatten'}
+                onChange={(v) => update({ transform_operation: v })}
+                options={[
+                  { value: 'flatten', label: 'Flatten (nested → flat keys)' },
+                  { value: 'pick', label: 'Pick (keep only listed fields)' },
+                  { value: 'rename', label: 'Rename (change key names)' },
+                  { value: 'omit', label: 'Omit (remove specific keys)' }
+                ]}
+              />
+            </Field>
+
+            <Field label="Input Key" hint="Context variable containing the JSON data.">
+              <Input value={data.transform_input_key || 'payload'} onChange={(v) => update({ transform_input_key: v })} placeholder="payload" />
+            </Field>
+
+            <Field label="Output Key" hint="Context variable where the result will be stored.">
+              <Input value={data.transform_output_key || 'transformed_json'} onChange={(v) => update({ transform_output_key: v })} placeholder="transformed_json" />
+            </Field>
+
+            {(data.transform_operation || 'flatten') === 'flatten' && (
+              <Field label="Separator" hint="Character between nested key segments (e.g., '/' → 'basic_info/name').">
+                <Input value={data.transform_separator || '/'} onChange={(v) => update({ transform_separator: v })} placeholder="/" />
+              </Field>
+            )}
+
+            {(data.transform_operation) === 'pick' && (
+              <Field 
+                label={
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    Fields to Pick
+                    <VariableLinker 
+                      targetType="json_keys"
+                      onSelect={(variable) => {
+                        const current = data.transform_pick_fields || [];
+                        update({ transform_pick_fields: [...new Set([...current, ...variable.value])] });
+                      }}
+                      tooltip="Pick from JSON Keys"
+                    />
+                  </div>
+                } 
+                hint="Comma-separated list of field paths to keep (e.g., name,address.city)."
+              >
+                <CommaArrayEditor
+                  value={data.transform_pick_fields}
+                  onChange={(v) => update({ transform_pick_fields: v })}
+                  placeholder="name, age, address.city"
+                  isTextarea={true}
+                  rows={3}
+                />
+              </Field>
+            )}
+
+            {(data.transform_operation) === 'rename' && (
+              <KeyValueEditor
+                label={
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    Rename Map (Old Key → New Key)
+                    <VariableLinker 
+                      targetType="json_keys"
+                      onSelect={(variable) => {
+                        const current = data.transform_rename_map || {};
+                        const next = { ...current };
+                        variable.value.forEach(k => {
+                          if (!(k in next)) next[k] = '';
+                        });
+                        update({ transform_rename_map: next });
+                      }}
+                      tooltip="Pick from JSON Keys"
+                    />
+                  </div>
+                }
+                value={data.transform_rename_map || {}}
+                onChange={(v) => update({ transform_rename_map: v })}
+                hint="Left = original key name, Right = new key name"
+              />
+            )}
+
+            {(data.transform_operation) === 'omit' && (
+              <Field 
+                label={
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    Keys to Omit
+                    <VariableLinker 
+                      targetType="json_keys"
+                      onSelect={(variable) => {
+                        const current = data.transform_omit_keys || [];
+                        update({ transform_omit_keys: [...new Set([...current, ...variable.value])] });
+                      }}
+                      tooltip="Pick from JSON Keys"
+                    />
+                  </div>
+                }
+                hint="Comma-separated list of keys to remove."
+              >
+                <CommaArrayEditor
+                  value={data.transform_omit_keys}
+                  onChange={(v) => update({ transform_omit_keys: v })}
+                  placeholder="ssn, password, internal_id"
+                  isTextarea={true}
+                  rows={3}
+                />
+              </Field>
+            )}
+
+            <div style={{
+              padding: '12px 14px', background: '#F0F9FF', borderRadius: 10, fontSize: 11, color: '#0369A1',
+              border: '1px solid #BAE6FD', lineHeight: 1.5, marginTop: 12, display: 'flex', alignItems: 'center', gap: 10
+            }}>
+              <FiInfo size={14} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, fontWeight: 500 }}>
+                JSON Transform processes structured data from APIs, uploads, or previous nodes. Use "Flatten" for nested JSON → flat keys before Pattern Extraction.
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* ── Pattern Extractor ── */}
+        {data.type === 'pattern_extract' && (
+          <>
+            <Field label="Extraction Mode" hint="Identifier: extract labeled values. Field Mapper: group by target class.">
+              <Select
+                value={data.extract_mode || 'identifier'}
+                onChange={(v) => update({ extract_mode: v })}
+                options={[
+                  { value: 'identifier', label: 'Identifier (ID, Name, Account No.)' },
+                  { value: 'field_mapper', label: 'Field Mapper (group by agent class)' },
+                  { value: 'text_renderer', label: 'Text Renderer (Generate ocr_like_results)' }
+                ]}
+              />
+            </Field>
+
+            <Field label="Input Key" hint="Context variable containing the flat dictionary to scan.">
+              <Input value={data.extract_input_key || 'transformed_json'} onChange={(v) => update({ extract_input_key: v })} placeholder="transformed_json" />
+            </Field>
+
+            <Field label="Output Key" hint="Context variable where extraction results are stored.">
+              <Input value={data.extract_output_key || ((data.extract_mode || 'identifier') === 'identifier' ? 'extracted_identifiers' : (data.extract_mode === 'text_renderer' ? 'ocr_like_results' : 'mapped_fields'))} onChange={(v) => update({ extract_output_key: v })} placeholder="extracted_identifiers" />
+            </Field>
+
+            {data.extract_mode === 'text_renderer' && (
+              <Field label="Identifiers Input Key" hint="Context variable containing previously extracted identifiers (for merging).">
+                <Input value={data.identifiers_input_key || 'extracted_identifiers'} onChange={(v) => update({ identifiers_input_key: v })} placeholder="extracted_identifiers" />
+              </Field>
+            )}
+
+            {/* Pattern list editor */}
+            {data.extract_mode !== 'text_renderer' && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Patterns ({(data.extract_patterns || []).length})
+                </label>
+                {data.extract_mode !== 'field_mapper' && (
+                  <button
+                    onClick={() => update({
+                      extract_patterns: [
+                        ...(data.extract_patterns || []),
+                        {
+                          concept: '',
+                          display_label: '',
+                          search_keywords: [],
+                          match_strategy: 'contains',
+                          is_required: false,
+                          target_class: (data.extract_mode || 'identifier') === 'field_mapper' ? '' : undefined
+                        }
+                      ]
+                    })}
+                    style={{
+                      background: 'none', border: 'none', color: 'var(--accent-btn)',
+                      cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center',
+                      borderRadius: 4
+                    }}
+                  >
+                    <FiPlus size={16} strokeWidth={3} />
+                  </button>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {(() => {
+                  const renderPatternRow = (pattern, idx) => (
+                    <div key={idx} style={{ padding: 10, background: '#F8FAFC', borderRadius: 8, border: '1px solid var(--border)', position: 'relative' }}>
+                      <button
+                        onClick={() => {
+                          const next = [...(data.extract_patterns || [])];
+                          next.splice(idx, 1);
+                          update({ extract_patterns: next });
+                        }}
+                        style={{ position: 'absolute', top: 6, right: 6, background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}
+                      >
+                        <FiX size={12} />
+                      </button>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
+                        <div>
+                          <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>CONCEPT</label>
+                          <Input
+                            value={pattern.concept || ''}
+                            onChange={(v) => {
+                              const next = [...(data.extract_patterns || [])];
+                              next[idx] = { ...next[idx], concept: v, display_label: next[idx].display_label || v };
+                              update({ extract_patterns: next });
+                            }}
+                            placeholder="e.g. ID_Number"
+                            style={{ padding: '4px 8px', fontSize: 11 }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DISPLAY LABEL</label>
+                          <Input
+                            value={pattern.display_label || ''}
+                            onChange={(v) => {
+                              const next = [...(data.extract_patterns || [])];
+                              next[idx] = { ...next[idx], display_label: v };
+                              update({ extract_patterns: next });
+                            }}
+                            placeholder="e.g. ID Number"
+                            style={{ padding: '4px 8px', fontSize: 11 }}
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ marginBottom: 6 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                          <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block' }}>SEARCH KEYWORDS (comma-separated)</label>
+                          <VariableLinker 
+                            targetType="json_keys" 
+                            onSelect={(variable) => {
+                              const next = [...(data.extract_patterns || [])];
+                              const current = next[idx].search_keywords || [];
+                              next[idx] = { ...next[idx], search_keywords: [...new Set([...current, ...variable.value])] };
+                              update({ extract_patterns: next });
+                            }}
+                            tooltip="Pick from JSON Keys"
+                          />
+                        </div>
+                        <CommaArrayEditor
+                          value={pattern.search_keywords}
+                          onChange={(v) => {
+                            const next = [...(data.extract_patterns || [])];
+                            next[idx] = { ...next[idx], search_keywords: v };
+                            update({ extract_patterns: next });
+                          }}
+                          placeholder="id, id_number, account"
+                          style={{ padding: '4px 8px', fontSize: 11 }}
+                        />
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                        <div>
+                          <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>STRATEGY</label>
+                          <Select
+                            value={pattern.match_strategy || 'contains'}
+                            onChange={(v) => {
+                              const next = [...(data.extract_patterns || [])];
+                              next[idx] = { ...next[idx], match_strategy: v };
+                              update({ extract_patterns: next });
+                            }}
+                            options={[
+                              { value: 'contains', label: 'Contains' },
+                              { value: 'exact', label: 'Exact Match' },
+                              { value: 'starts_with', label: 'Starts With' },
+                              { value: 'ends_with', label: 'Ends With' },
+                              { value: 'regex', label: 'Regex' }
+                            ]}
+                          />
+                        </div>
+                        {data.extract_mode !== 'field_mapper' && (
+                          <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 4 }}>
+                            <Toggle
+                              checked={pattern.is_required || false}
+                              onChange={(v) => {
+                                const next = [...(data.extract_patterns || [])];
+                                next[idx] = { ...next[idx], is_required: v };
+                                update({ extract_patterns: next });
+                              }}
+                              label="Required"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+
+                  if (data.extract_mode === 'field_mapper') {
+                    const grouped = (data.extract_patterns || []).reduce((acc, p, idx) => {
+                      const tc = p.target_class || 'Unassigned';
+                      if (!acc[tc]) acc[tc] = [];
+                      acc[tc].push({ ...p, originalIndex: idx });
+                      return acc;
+                    }, {});
+
+                    return (
+                      <>
+                        {Object.entries(grouped).map(([tc, groupPatterns]) => (
+                          <div key={tc} style={{ padding: 12, background: 'white', borderRadius: 8, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8, boxShadow: 'var(--shadow-sm)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: 8, marginBottom: 4 }}>
+                              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>CLASS:</span>
+                                <VariableDropdown
+                                  value={tc === 'Unassigned' ? '' : tc}
+                                  onChange={(newClass) => {
+                                    const next = [...(data.extract_patterns || [])];
+                                    groupPatterns.forEach(p => {
+                                      next[p.originalIndex].target_class = newClass;
+                                    });
+                                    update({ extract_patterns: next });
+                                  }}
+                                  placeholder="Select Target Class"
+                                  style={{ padding: '4px 8px', fontSize: 12, fontWeight: 600, border: 'none', background: 'transparent', color: 'var(--theme-primary)', minWidth: 200, outline: 'none' }}
+                                />
+                              </div>
+                              <button
+                                onClick={() => {
+                                  const next = [...(data.extract_patterns || [])];
+                                  next.push({
+                                    concept: '', display_label: '', search_keywords: [],
+                                    match_strategy: 'contains', is_required: false, target_class: tc !== 'Unassigned' ? tc : ''
+                                  });
+                                  update({ extract_patterns: next });
+                                }}
+                                style={{ background: 'none', border: 'none', color: 'var(--accent-btn)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700 }}
+                              >
+                                <FiPlus size={12} /> ADD FIELD
+                              </button>
+                            </div>
+                            {groupPatterns.map(p => renderPatternRow(p, p.originalIndex))}
+                          </div>
+                        ))}
+                        <button
+                          onClick={() => {
+                            const next = [...(data.extract_patterns || [])];
+                            next.push({ concept: '', display_label: '', search_keywords: [], match_strategy: 'contains', is_required: false, target_class: '' });
+                            update({ extract_patterns: next });
+                          }}
+                          style={{ padding: '8px', background: 'var(--bg-hover)', border: '1px dashed var(--border)', borderRadius: 8, color: 'var(--text-primary)', fontWeight: 600, fontSize: 11, cursor: 'pointer', marginTop: 4, width: '100%' }}
+                        >
+                          + ADD TARGET CLASS GROUP
+                        </button>
+                      </>
+                    );
+                  }
+
+                  return (data.extract_patterns || []).map((pattern, idx) => renderPatternRow(pattern, idx));
+                })()}
+                {(data.extract_patterns || []).length === 0 && (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', padding: '4px 0' }}>
+                    No patterns defined. Click the plus button above to add patterns.
+                  </div>
+                )}
+              </div>
+            </div>
+            )}
+
+            <div style={{
+              padding: '12px 14px', background: '#FDF2F8', borderRadius: 10, fontSize: 11, color: '#DB2777',
+              border: '1px solid #FBCFE8', lineHeight: 1.5, marginTop: 12, display: 'flex', alignItems: 'center', gap: 10
+            }}>
+              <FiSearch size={14} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, fontWeight: 500 }}>
+                {(data.extract_mode || 'identifier') === 'identifier'
+                  ? 'Identifier mode finds labeled values (ID, Name, etc.) from flat JSON keys. Connect after a JSON Transform node.'
+                  : 'Field Mapper mode groups extracted values by target class (class_1, class_2, etc.) for routing.'
+                }
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* ── MongoDB Node ── */}
+        {data.type === 'db_node' && (
+          <>
+            <Field label="Operation" hint="Choose the MongoDB CRUD operation.">
+              <Select
+                value={data.db_operation || 'insert_one'}
+                onChange={(v) => update({ db_operation: v })}
+                options={[
+                  { value: 'insert_one', label: 'Insert One' },
+                  { value: 'insert_many', label: 'Insert Many' },
+                  { value: 'find_one', label: 'Find One' },
+                  { value: 'find_many', label: 'Find Many' },
+                  { value: 'update_one', label: 'Update One' },
+                  { value: 'delete_one', label: 'Delete One' }
+                ]}
+              />
+            </Field>
+
+            <Field label="Connection String" hint="MongoDB URI. Leave blank to use backend MONGODB_URI env var.">
+              <Input
+                value={data.db_connection_string || ''}
+                onChange={(v) => update({ db_connection_string: v || null })}
+                placeholder="mongodb://localhost:27017 (or leave blank)"
+                type="password"
+              />
+            </Field>
+
+            <Field label="Database Name" hint="Target MongoDB database.">
+              <Input value={data.db_database || ''} onChange={(v) => update({ db_database: v })} placeholder="e.g. credit_decisioning" />
+            </Field>
+
+            <Field label="Collection Name" hint="Target MongoDB collection. Supports {{context.xxx}} interpolation.">
+              <Input value={data.db_collection || ''} onChange={(v) => update({ db_collection: v })} placeholder="e.g. customer_profiles" />
+            </Field>
+
+            {['insert_one', 'insert_many', 'update_one'].includes(data.db_operation || 'insert_one') && (
+              <Field label="Document Template" hint="JSON template with {{context.xxx}} placeholders. Use {{__NOW__}} for current timestamp.">
+                <Textarea
+                  value={typeof data.db_document === 'string' ? data.db_document : JSON.stringify(data.db_document || {}, null, 2)}
+                  onChange={(v) => {
+                    try { update({ db_document: JSON.parse(v) }); } catch { update({ db_document: v }); }
+                  }}
+                  placeholder={'{\n  "name": "{{extracted_identifiers.0.value}}",\n  "status": "completed",\n  "created_at": "{{__NOW__}}"\n}'}
+                  rows={8}
+                />
+              </Field>
+            )}
+
+            {['find_one', 'find_many', 'update_one', 'delete_one'].includes(data.db_operation || 'insert_one') && (
+              <Field label="Query Filter" hint="MongoDB query filter with {{context.xxx}} placeholders.">
+                <Textarea
+                  value={typeof data.db_query === 'string' ? data.db_query : JSON.stringify(data.db_query || {}, null, 2)}
+                  onChange={(v) => {
+                    try { update({ db_query: JSON.parse(v) }); } catch { update({ db_query: v }); }
+                  }}
+                  placeholder={'{\n  "customer_uid": "{{customer_uid}}"\n}'}
+                  rows={4}
+                />
+              </Field>
+            )}
+
+            {['find_one', 'find_many'].includes(data.db_operation || 'insert_one') && (
+              <Field label="Output Key" hint="Context key to store query results.">
+                <Input value={data.db_output_key || 'db_result'} onChange={(v) => update({ db_output_key: v })} placeholder="db_result" />
+              </Field>
+            )}
+
+            {(data.db_operation || 'insert_one') === 'find_many' && (
+              <Field label="Limit" hint="Maximum documents to return.">
+                <Input type="number" value={data.db_limit || 100} onChange={(v) => update({ db_limit: parseInt(v) || 100 })} placeholder="100" />
+              </Field>
+            )}
+
+            <div style={{
+              padding: '12px 14px', background: '#D1FAE5', borderRadius: 10, fontSize: 11, color: '#065F46',
+              border: '1px solid #A7F3D0', lineHeight: 1.5, marginTop: 12, display: 'flex', alignItems: 'center', gap: 10
+            }}>
+              <FiBox size={14} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, fontWeight: 500 }}>
+                {'MongoDB node performs real database operations. Use {{context.xxx}} in document templates to inject workflow data dynamically.'}
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* ── PII Verification Gate ── */}
+        {data.type === 'pii_gate_node' && (
+          <>
+            <div style={{
+              padding: '14px 16px', background: '#F0FDF4', borderRadius: 12, fontSize: 12, color: '#166534',
+              border: '1px solid #BBF7D0', lineHeight: 1.6, marginTop: 8, marginBottom: 16
+            }}>
+              <div style={{ fontWeight: 700, marginBottom: 4, fontSize: 13 }}>🛡️ PII Verification Gate</div>
+              <div style={{ color: '#14532D', fontSize: 11 }}>
+                Pauses the workflow and saves a draft of the OCR results to the database for human review before allowing the pipeline to continue.
+              </div>
+            </div>
+
+            <Field label="Input Key" hint="Context key containing the OCR extraction results.">
+              <Input
+                value={data.input_key || 'latest_ocr_output'}
+                onChange={(v) => update({ input_key: v })}
+                placeholder="latest_ocr_output"
+              />
+            </Field>
+
+            <div style={{ marginTop: 24, padding: 16, border: '1px solid #E2E8F0', borderRadius: 12, background: '#F8FAFC' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>Execution Control</div>
+              <Toggle
+                checked={data.interrupt_after !== false}
+                onChange={(v) => update({ interrupt_after: v })}
+                label="Pause Workflow For Human Review (interrupt_after)"
+              />
+              <div style={{ fontSize: 10, color: '#64748B', marginTop: 4, marginLeft: 28 }}>
+                Essential for Human-in-the-Loop. The workflow will halt until the verification is completed in the dashboard.
+              </div>
+            </div>
+          </>
+        )}
+
+
+
+        {data.type === 'ingestion_router' && (
+          <>
+            <Field label="Scan Mode" hint="How should this router handle the payload?">
+              <Select
+                value={data.scan_mode || 'auto'}
+                onChange={(v) => update({ scan_mode: v })}
+                options={[
+                  { value: 'auto', label: 'Auto Detect' },
+                  { value: 'files', label: 'Files Only' },
+                  { value: 'directory', label: 'Directory Bulk Dispatch' }
+                ]}
+              />
+            </Field>
+
+            <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Payload Keys Setup</div>
+              
+              <Field label="Parent Folder Key" hint="Key for macro-bulk processing (default: 'parent_folder_path').">
+                <Input value={data.parent_folder_key || 'parent_folder_path'} onChange={(v) => update({ parent_folder_key: v })} placeholder="parent_folder_path" />
+              </Field>
+              
+              <Field label="Folder / Item Identifier Key" hint="Key used to pass the item's name to the child workflow (default: 'customer_folder_name').">
+                <Input value={data.folder_identifier_key || 'customer_folder_name'} onChange={(v) => update({ folder_identifier_key: v })} placeholder="customer_folder_name" />
+              </Field>
+
+              <Field label="cURL Command Key" hint="Key containing a cURL command string to execute for JSON endpoints (default: 'curl_command').">
+                <Input value={data.curl_command_key || 'curl_command'} onChange={(v) => update({ curl_command_key: v })} placeholder="curl_command" />
+              </Field>
+            </div>
+
+            <Field label="File Filters" hint="Comma-separated extensions for bulk directory scanning (e.g. .pdf, .jpg)">
+              <CommaArrayEditor
+                value={data.file_filters || ['.pdf', '.jpg', '.png', '.jpeg']}
+                onChange={(v) => update({ file_filters: v })}
+                placeholder=".pdf, .jpg, .png"
+              />
+            </Field>
+
+            <Field label="Concurrency Limit" hint="Maximum number of parallel child workflows to spawn (Semaphore limit).">
+              <Input
+                type="number"
+                value={data.concurrency_limit ?? 5}
+                onChange={(v) => update({ concurrency_limit: v === '' ? '' : parseInt(v) })}
+              />
+            </Field>
+          </>
+        )}
+
+        {data.type === 'event_emitter' && (
+          <>
+            <Field label="Webhook URL" hint="The URL to ping when the workflow reaches this node (e.g. for SSE sync).">
+              <Input
+                value={data.webhook_url || 'http://localhost:8000/documents/mesh-status-sync'}
+                onChange={(v) => update({ webhook_url: v })}
+                placeholder="http://localhost:8000/documents/mesh-status-sync"
+              />
+            </Field>
+            
+            <Field label="Emit Status" hint="Optional status to send in the payload (e.g., awaiting_classification_review)">
+              <Input
+                value={data.emit_status || ''}
+                onChange={(v) => update({ emit_status: v })}
+                placeholder="awaiting_classification_review"
+              />
+            </Field>
+
+            <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />
+            
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Human-in-the-Loop</div>
+              <Toggle
+                checked={data.interrupt_before === true}
+                onChange={(v) => update({ interrupt_before: v, ...(v ? { interrupt_after: false } : {}) })}
+                label="Pause BEFORE this node runs"
+              />
+              <div style={{ fontSize: 10, color: '#64748B', marginTop: 2, marginLeft: 28, marginBottom: 12 }}>
+                Pauses the workflow before the webhook fires. Use when you want human approval before any notification is sent.
+              </div>
+              <Toggle
+                checked={data.interrupt_after === true}
+                onChange={(v) => update({ interrupt_after: v, ...(v ? { interrupt_before: false } : {}) })}
+                label="Pause AFTER this node runs (Recommended for HITL Review)"
+              />
+              <div style={{ fontSize: 10, color: '#059669', marginTop: 2, marginLeft: 28 }}>
+                Fires the webhook first (updates dashboard status), then pauses for human review. Best for classification verification workflows.
+              </div>
             </div>
           </>
         )}

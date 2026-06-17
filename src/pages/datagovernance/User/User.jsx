@@ -551,6 +551,7 @@ const currentUsers = users;
                 />
               </th>
             <th className="text-left" style={{ padding: '16px 19.75px' }}>User</th>
+            <th className="text-left" style={{ padding: '16px 19.75px' }}>Source</th>
               <th className="text-left" style={{ padding: '16px 19.75px' }}>Roles</th>
               <th className="text-left" style={{ padding: '16px 19.75px' }}>Persona</th>
               <th className="text-left" style={{ padding: '16px 19.75px' }}>Group</th>
@@ -599,6 +600,12 @@ const currentUsers = users;
                         {user.username}
                       </button>
                     </div>
+                  </td>
+                  <td style={{ padding: '16px 19.75px' }}>
+                    <span className="inline-block px-2 py-2 rounded-md text-sm font-medium"
+                      style={{ background: '#ede9f7', color: '#8e78b7', minWidth: '88px', textAlign: 'center' }}>
+                      {user.source}
+                    </span>
                   </td>
                   <td style={{ padding: '16px 19.75px' }}>
                     <button

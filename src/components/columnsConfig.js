@@ -21,6 +21,7 @@ const columnConfigurations = {
     { key: "username", label: "Username", sortable: true },
     { key: "host_address", label: "Hostname", sortable: true },
     { key: "table_count", label: "No. of Tables", sortable: true },
+    { key: "created_by", label: "Owner", sortable: true },
     { key: "created_at", label: "Created at", sortable: true },
     { key: "status", label: "Status", sortable: true },
     { label: "Action", sortable: false },

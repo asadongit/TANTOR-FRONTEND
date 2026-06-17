@@ -1,14 +1,15 @@
 import React from 'react';
 import toast from 'react-hot-toast';
-import { useWorkflowStore, useUIStore, useRunStore } from '../../store';
+import { useWorkflowStore, useUIStore, useVariablesStore, useRunStore } from '../../store';
 import { compileWorkflow, saveWorkflow, listWorkflowCategories, deleteWorkflow, explainWorkflow, getWorkflow, cloneWorkflow, fixGrammar, publishWorkflow, getMarketplaceUsecase } from '../../api/agentmesh';
-import { FiUpload, FiDownload, FiPlus, FiX, FiCheck, FiAlertTriangle, FiCopy, FiChevronDown, FiChevronUp, FiBookOpen, FiZap, FiLoader, FiTrash2, FiInfo, FiMaximize2, FiMinimize2, FiShare2, FiSave, FiSend, FiRotateCcw, FiCpu } from 'react-icons/fi';
+import { FiUpload, FiDownload, FiPlus, FiX, FiCheck, FiAlertTriangle, FiCopy, FiChevronDown, FiChevronUp, FiBookOpen, FiZap, FiLoader, FiTrash2, FiInfo, FiMaximize2, FiMinimize2, FiShare2, FiSave, FiCode, FiDatabase, FiSend, FiRotateCcw, FiCpu } from 'react-icons/fi';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { AiMagicIcon } from '@hugeicons/core-free-icons';
 import { formatMessage } from '../Common/messageFormatting';
 import ConfirmationModal from '../Common/ConfirmationModal';
 import SaveWorkflowTemplateModal from './SaveWorkflowTemplateModal';
 import { copyToClipboard } from '../../utils/copyToClipboard';
+import WorkflowAPIConsole from './WorkflowAPIConsole';
 import ArchitectBot from './ArchitectBot';
 import ShortcutKeysCanvasModal from './shortcutKeysCanvasModal';
 
@@ -77,6 +78,7 @@ export default function Navbar() {
     canvasNodeTheme
   } = useUIStore();
   const workflows = useWorkflowStore(s => s.workflows);
+  const { showVariablesPanel, setShowVariablesPanel, variables } = useVariablesStore();
   const [saving, setSaving] = React.useState(false);
   const [compiling, setCompiling] = React.useState(false);
   const [cloning, setCloning] = React.useState(false);
@@ -98,6 +100,7 @@ export default function Navbar() {
   const [ioDropdownOpen, setIoDropdownOpen] = React.useState(false);
   const ioDropdownRef = React.useRef(null);
   const ioTriggerRef = React.useRef(null);
+  const [showApiConsole, setShowApiConsole] = React.useState(false);
 
   const [showPublishModal, setShowPublishModal] = React.useState(false);
   const [showSaveTemplateModal, setShowSaveTemplateModal] = React.useState(false);
@@ -556,6 +559,33 @@ export default function Navbar() {
                 <FiBookOpen size={14} /> Notes
               </button>
 
+              {/* Variables */}
+              <button
+                onClick={() => setShowVariablesPanel(!showVariablesPanel)}
+                title="Workflow Variables"
+                style={{
+                  padding: '7px 14px', border: '1px solid var(--border)', borderRadius: 8,
+                  background: showVariablesPanel ? 'var(--theme-primary-glow)' : 'white',
+                  color: showVariablesPanel ? 'var(--theme-primary)' : 'var(--text-secondary)',
+                  fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', gap: 7, transition: 'all 0.15s',
+                }}
+                onMouseEnter={(e) => { if (!showVariablesPanel) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = showVariablesPanel ? 'var(--theme-primary-glow)' : 'white'; }}
+              >
+                <FiDatabase size={14} /> 
+                Variables
+                {variables.length > 0 && (
+                  <span style={{ 
+                    background: 'var(--theme-primary)', color: 'white', 
+                    fontSize: 10, fontWeight: 800, padding: '2px 6px', 
+                    borderRadius: 10, marginLeft: 2 
+                  }}>
+                    {variables.length}
+                  </span>
+                )}
+              </button>
+
               {/* Architect */}
               <button
                 onClick={() => setShowArchitect(prev => !prev)}
@@ -772,6 +802,25 @@ export default function Navbar() {
                   </div>
                 )}
               </div>
+
+              {/* API Console */}
+              <button
+                onClick={() => setShowApiConsole(true)}
+                disabled={!workflowId || !isCompiled}
+                title={!isCompiled ? 'Compile the workflow first to see the API' : 'Open API Console'}
+                style={{
+                  padding: '7px 14px', border: '1px solid var(--border)', borderRadius: 8,
+                  background: showApiConsole ? 'var(--theme-primary-glow)' : 'white',
+                  color: (!workflowId || !isCompiled) ? '#9CA3AF' : showApiConsole ? 'var(--theme-primary)' : 'var(--text-secondary)',
+                  fontSize: 13, fontWeight: 500, cursor: (!workflowId || !isCompiled) ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', gap: 7, transition: 'all 0.15s',
+                  opacity: (!workflowId || !isCompiled) ? 0.6 : 1
+                }}
+                onMouseEnter={(e) => { if (workflowId && isCompiled && !showApiConsole) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = showApiConsole ? 'var(--theme-primary-glow)' : 'white'; }}
+              >
+                <FiCode size={14} /> API
+              </button>
 
               {/* Compile */}
               <button
@@ -1700,6 +1749,13 @@ export default function Navbar() {
             </form>
           </div>
         </div>
+      )}
+
+      {showApiConsole && (
+        <WorkflowAPIConsole
+          workflowId={workflowId}
+          onClose={() => setShowApiConsole(false)}
+        />
       )}
       <ShortcutKeysCanvasModal isOpen={showShortcutsModal} onClose={() => setShowShortcutsModal(false)} />
     </>

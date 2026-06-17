@@ -2,7 +2,6 @@ import axios from 'axios';
 const hostnameAI = window._env_?.VITE_AI_API;
 
 
-
 // DATA CLEANING 
 export const cleanTimeSeriesData = async (params) => {
   try {
@@ -13,8 +12,7 @@ export const cleanTimeSeriesData = async (params) => {
         workflow_id: params.workflowId,
         modify_data_types: params.modifyDataTypes || false,
         modify_data_types_map: params.modifyDataTypesMap || {},
-        aggregation: params.aggregation || true,
-        aggregation_method: params.aggregationMethod || 'mean'
+      
       },
       {
         headers: {
@@ -40,12 +38,15 @@ export const handleMissingValues = async (params) => {
       {
         ensemble_id: params.ensembleId,
         workflow_id: params.workflowId,
+        high_missing_value_active: params.highMissingValueActive !== undefined ? params.highMissingValueActive : false,
+        high_missing_value_threshold: params.highMissingValueThreshold !== undefined ? params.highMissingValueThreshold : 70,
         generated_missing_value_active: params.generatedMissingValueActive !== undefined ? params.generatedMissingValueActive : true,
         generated_missing_value_numeric_method: params.generatedMissingValueNumericMethod || 'ffill',
         generated_missing_value_categorical_method: params.generatedMissingValueCategoricalMethod || 'ffill',
         generated_missing_value_datetime_method: params.generatedMissingValueDatetimeMethod || 'ffill',
         generated_missing_value_rolling_window: params.generatedMissingValueRollingWindow !== undefined ? params.generatedMissingValueRollingWindow : 3,
-        generated_missing_value_seasonal_period: params.generatedMissingValueSeasonalPeriod !== undefined ? params.generatedMissingValueSeasonalPeriod : 7,
+        generated_missing_value_categorical_seasonal_period:params.generatedMissingValueCategoricalSeasonalPeriod !== undefined ? params.generatedMissingValueCategoricalSeasonalPeriod : 7,
+        generated_missing_value_numerical_seasonal_period:params.generatedMissingValueNumericSeasonalPeriod !== undefined ? params.generatedMissingValueNumericSeasonalPeriod : 7,
         original_missing_value_active: params.originalMissingValueActive !== undefined ? params.originalMissingValueActive : true,
         original_missing_value_numeric_method: params.originalMissingValueNumericMethod || 'linear',
         original_missing_value_categorical_method: params.originalMissingValueCategoricalMethod || 'ffill',
@@ -105,7 +106,7 @@ export const stabilizeData = async (params) => {
         ensemble_id: params.ensembleId,
         workflow_id: params.workflowId,
         outlier_treatment_active: params.outlierTreatmentActive !== undefined ? params.outlierTreatmentActive : true,
-        outlier_treatment_strategy: params.outlierTreatmentStrategy ,
+        outlier_treatment_strategy: params.outlierTreatmentStrategy,
         outlier_thershold: params.outlierThreshold !== undefined ? params.outlierThreshold : 3,
         seasonality_analysis: params.seasonalityAnalysis !== undefined ? params.seasonalityAnalysis : false,
         seasonality_min_period: params.seasonalityMinPeriod !== undefined ? params.seasonalityMinPeriod : 2,
