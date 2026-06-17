@@ -3847,10 +3847,7 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
     </div>
   );
 }
-
-export default 
-
-export default function PropertiesPanel() {
+export default function PropertiesPanel() {
   const selectedNodeId = useUIStore((s) => s.selectedNodeId);
   const selectedEdgeId = useUIStore((s) => s.selectedEdgeId);
   const { nodes, edges } = useWorkflowStore();
@@ -5794,6 +5791,9 @@ export default function PropertiesPanel() {
         )}
 
 
+        {/* ── API Node ── */}
+        {data.type === 'api_node' && (
+          <>
             <div style={{ padding: 16, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 12, border: '1px solid var(--border-card-info, #BAE6FD)', marginBottom: 20 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-card-info, #0369A1)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Enterprise Connector</div>
 
@@ -5912,8 +5912,7 @@ export default function PropertiesPanel() {
                 ]}
               />
             </Field>
-            </>
-            )}
+
 
             <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />
             
@@ -8225,7 +8224,6 @@ export default function PropertiesPanel() {
 
       </div>
       <SkillGallery isOpen={skillGalleryOpen} onClose={() => setSkillGalleryOpen(false)} />
-      {showGlobalRuleModal && <GlobalRuleModal onClose={() => setShowGlobalRuleModal(false)} />}
       {saveModalOpen && (
         <SaveTemplateModal
           agentConfig={data}
