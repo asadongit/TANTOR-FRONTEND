@@ -378,29 +378,6 @@ const FONT = "'Google Sans','Roboto',sans-serif";
 
 SyntaxHighlighter.registerLanguage('json', jsonLang);
 
-function RuleAccordionItem({ rule, idx, totalRules, updateRule, removeRule, moveRule }) {
-  const [expanded, setExpanded] = useState(false);
-  return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 8, marginBottom: 8, overflow: 'hidden' }}>
-      <div 
-        style={{ padding: '10px 12px', background: 'var(--bg-card-neutral, #F8FAFC)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-        onClick={() => setExpanded(!expanded)}
-      >
-        <div style={{ fontWeight: 600, fontSize: 12 }}>Rule {idx + 1}: {rule.name || 'Unnamed Rule'}</div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button onClick={(e) => { e.stopPropagation(); removeRule(rule.id); }} style={{ background: 'transparent', border: 'none', color: '#EF4444', cursor: 'pointer' }}><FiTrash2 size={12} /></button>
-        </div>
-      </div>
-      {expanded && (
-        <div style={{ padding: 12, background: 'white' }}>
-          <Field label="Rule Name"><Input value={rule.name || ''} onChange={(v) => updateRule(rule.id, { name: v })} /></Field>
-          <Field label="Condition"><Input value={rule.condition || ''} onChange={(v) => updateRule(rule.id, { condition: v })} /></Field>
-          <Field label="Action"><Input value={rule.action || ''} onChange={(v) => updateRule(rule.id, { action: v })} /></Field>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // Dynamic model lists - populated from backend API on mount, with static fallbacks
 const PROVIDERS = [
