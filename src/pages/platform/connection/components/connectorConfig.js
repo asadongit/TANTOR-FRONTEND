@@ -160,6 +160,7 @@ export const connectorConfig = {
       fields: [
         { name: "url", label: "Connection String", required: true },
         { name: "database_name", label: "Database", required: true },
+        { name: "port_number", label: "Port", type: "number", required: true },
         { name: "username", label: "Username" },
         { name: "password", label: "Password", type: "password" },
       ],
