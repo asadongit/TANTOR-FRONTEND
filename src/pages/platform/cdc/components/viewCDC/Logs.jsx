@@ -86,7 +86,8 @@ export default function Logs({ data }) {
           start: start,
           end: end,
           step: "30s"
-        }
+        },
+        headers: { Authorization: `Bearer ${token}` }
       });
 
       if (response.data?.data?.result?.length > 0 && response.data.data.result[0]?.values) {
