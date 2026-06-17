@@ -3864,7 +3864,7 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
   const [fixingGrammar, setFixingGrammar] = useState(false);
   const [skillGalleryOpen, setSkillGalleryOpen] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
-  const [showGlobalRuleModal, setShowGlobalRuleModal] = useState(false);
+
 
   const handleFixGrammar = async (targetKey) => {
     if (!data[targetKey]) return;
@@ -6573,97 +6573,7 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
           <SensitivityClassifierConfig data={data} update={update} setShowGlobalRuleModal={setShowGlobalRuleModal} />
         )}
 
-        {/* ── OCR Node ── */}
-        {/* ── Ingestion Node ── */}
-        {/* ── Classification Node ── */}
-        {data.type === 'classification' && (
-          <>
-            {/* 1. Classification Engine Selection */}
-            <div style={{ marginBottom: 18 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'block', marginBottom: 6 }}>
-                Classification Engine
-              </label>
-              <Select
-                value={data.classification_engine || 'llm'}
-                onChange={(v) => update({ classification_engine: v })}
-                options={[
-                  { value: 'llm', label: 'LLM (AI Classifier)' },
-                  { value: 'regex', label: 'Regex Patterns (Static Classifier)' }
-                ]}
-              />
-            </div>
 
-            {/* 2. LLM Model Selection (only if LLM engine is selected) */}
-            {data.classification_engine !== 'regex' && (
-              <div style={{ marginBottom: 22 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.8px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <FiCpu size={12} /> Model Settings
-                </div>
-                <LLMConfigSection
-                  llm={data.llm || { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 }}
-                  onChange={(llm) => update({ llm })}
-                />
-              </div>
-            )}
-
-            {/* 3. Classes & Descriptions/Patterns Editor */}
-            <ClassificationClassesEditor
-              value={data.classification_classes || []}
-              onChange={(v) => update({ classification_classes: v })}
-              engine={data.classification_engine || 'llm'}
-            />
-
-            <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '20px 0', opacity: 0.5 }} />
-
-            {/* 4. Summary toggle (only for LLM engine) */}
-            {data.classification_engine !== 'regex' && (
-              <div style={{ marginBottom: 18 }}>
-                <Toggle
-                  checked={data.classification_summary === true}
-                  onChange={(v) => update({ classification_summary: v })}
-                  label="Summarize Classified Content"
-                />
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, marginLeft: 28, marginBottom: 20 }}>
-                  If enabled, the node will return a summary of the input data instead of the original raw data.
-                </div>
-              </div>
-            )}
-
-            {/* 5. Optional Input Field Path */}
-            <div style={{ marginBottom: 18 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'block', marginBottom: 6 }}>
-                Input Field Path (Optional)
-              </label>
-              <Input
-                value={data.classification_input_field || ''}
-                onChange={(v) => update({ classification_input_field: v })}
-                placeholder="e.g. context.customer_query"
-              />
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
-                Variables path to classify. If empty, falls back to latest message or payload.
-              </div>
-            </div>
-
-            <div style={{
-              padding: '12px 14px',
-              background: '#F0F9FF',
-              borderRadius: 10,
-              fontSize: 11,
-              color: '#0369A1',
-              border: '1px solid #BAE6FD',
-              lineHeight: 1.5,
-              marginTop: 18,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8
-            }}>
-              <FiInfo size={14} style={{ flexShrink: 0 }} />
-              <span style={{ flex: 1, fontWeight: 500 }}>
-                Classification Agent: Classifies the incoming message or payload into one of your custom classes using {data.classification_engine === 'regex' ? 'Regex rules' : 'the configured LLM'}. Returns a JSON object with keys <strong>class</strong> and either <strong>original_data</strong> or <strong>summary</strong>.
-              </span>
-            </div>
-          </>
-        )}
 
         {data.type === 'ingestion_node' && (
           <>
@@ -7624,180 +7534,7 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
           </>
         )}
 
-        {/* ── Template Engine Node ── */}
-        {data.type === 'template_node' && (
-          <>
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <FiFileText color="#3B82F6" size={14} /> Template Engine Settings
-              </div>
 
-              <Field label="Template Content" hint="Define your Jinja2/Markdown template. Use Jinja2 formatting (e.g., {{ latest_message }}, {{ user_input }}).">
-                <Textarea
-                  value={data.template_content ?? ''}
-                  onChange={(v) => update({ template_content: v })}
-                  placeholder="Hello {{ latest_message }},\n\nYour score is {{ total_score }} out of {{ max_possible_score }}."
-                  rows={8}
-                />
-              </Field>
-
-              <Field label="Template File Path (Optional)" hint="Provide an absolute path to a template file on the server. If set and file exists, its content overrides the Template Content text field above.">
-                <Input
-                  value={data.template_file_path ?? ''}
-                  onChange={(v) => update({ template_file_path: v })}
-                  placeholder="e.g. C:/templates/my_template.txt"
-                />
-              </Field>
-
-              <Field label="Input Variable Data Key (Optional)" hint="Specify the context key (e.g., enriched_transaction) from which to extract variables to inject into the template context. If it points to a dictionary, those fields are merged into the template variables.">
-                <Input
-                  value={data.template_data_key ?? ''}
-                  onChange={(v) => update({ template_data_key: v })}
-                  placeholder="e.g. enriched_transaction"
-                />
-              </Field>
-
-              <Field label="Output Context Key" hint="Context key to save the final rendered string output. Defaults to rendered_template.">
-                <Input
-                  value={data.template_output_key ?? 'rendered_template'}
-                  onChange={(v) => update({ template_output_key: v })}
-                  placeholder="rendered_template"
-                />
-              </Field>
-            </div>
-
-            <div style={{
-              padding: '12px 14px',
-              background: 'var(--bg-card-info, #F0F9FF)',
-              borderRadius: 10,
-              fontSize: 11,
-              color: 'var(--text-card-info, #0369A1)',
-              border: '1px solid var(--border-card-info, #BAE6FD)',
-              lineHeight: 1.5,
-              marginTop: 18,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8
-            }}>
-              <FiInfo size={14} style={{ flexShrink: 0 }} />
-              <span style={{ flex: 1, fontWeight: 500 }}>
-                Template Engine Node: Renders dynamic text or markdown using Jinja2 formatting. The global context, <code>latest_message</code>, and values under the selected <code>Input Data Key</code> are all exposed to your template variables automatically.
-              </span>
-            </div>
-          </>
-        )}
-
-        {/* ── Beneficiary Risk Router ── */}
-        {data.type === 'beneficiary_risk' && (() => {
-          const checks = data.risk_checks || ['mule_detection', 'account_age', 'sanctions_list', 'relationship_graph'];
-
-          const toggleCheck = (key) => {
-            const next = checks.includes(key) ? checks.filter(k => k !== key) : [...checks, key];
-            update({ risk_checks: next });
-          };
-
-          const checkList = [
-            { key: 'mule_detection', label: 'Mule Velocity Check', desc: 'Checks inbound velocity / mule indicators' },
-            { key: 'account_age', label: 'Account Age Registry', desc: 'Checks if recipient account is new' },
-            { key: 'sanctions_list', label: 'Sanctions Check', desc: 'Screens against OFAC & local blacklists' },
-            { key: 'relationship_graph', label: 'Relationship Graph', desc: 'Checks history between sender and receiver' },
-          ];
-
-          return (
-            <>
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <FiShield color="var(--theme-primary)" size={14} /> Risk Evaluator Checks
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {checkList.map((chk) => (
-                    <div
-                      key={chk.key}
-                      onClick={() => toggleCheck(chk.key)}
-                      style={{
-                        padding: '10px 12px',
-                        background: checks.includes(chk.key) ? 'rgba(142, 119, 187, 0.05)' : '#F8FAFC',
-                        border: checks.includes(chk.key) ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
-                        borderRadius: 10,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        transition: 'all 0.15s'
-                      }}
-                    >
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginRight: 8 }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: checks.includes(chk.key) ? 'var(--theme-primary)' : 'var(--text-primary)' }}>{chk.label}</span>
-                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{chk.desc}</span>
-                      </div>
-                      <div style={{
-                        width: 32, height: 18, borderRadius: 9, position: 'relative',
-                        background: checks.includes(chk.key) ? 'var(--theme-primary)' : '#cbd5e1',
-                        transition: 'all 0.2s', flexShrink: 0
-                      }}>
-                        <div style={{
-                          position: 'absolute', top: 2, left: checks.includes(chk.key) ? 16 : 2, width: 14, height: 14,
-                          borderRadius: '50%', background: '#fff', transition: 'left 0.2s ease'
-                        }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ color: '#EF4444' }}>🔴</span> Known Fraudster Branch
-                </div>
-                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.4 }}>
-                  Triggered only if deterministic check (Sanctions hit) matches 100%. Executes real-time block and raises alert.
-                </p>
-                <Field label="Fraud Alert API" hint="API endpoint to push immediate alert details.">
-                  <Input value={data.fraud_api_endpoint ?? ''} onChange={(v) => update({ fraud_api_endpoint: v })} placeholder="https://api.bank.com/v1/fraud-alerts" />
-                </Field>
-                <Field label="Alert Severity Level" hint="Level of severity logged downstream.">
-                  <Select
-                    value={data.fraud_alert_level ?? 'CRITICAL'}
-                    onChange={(v) => update({ fraud_alert_level: v })}
-                    options={[
-                      { value: 'CRITICAL', label: 'Critical' },
-                      { value: 'HIGH', label: 'High' },
-                      { value: 'MEDIUM', label: 'Medium' }
-                    ]}
-                  />
-                </Field>
-              </div>
-
-              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ color: '#F59E0B' }}>🟡</span> New Beneficiary Branch
-                </div>
-                <div style={{
-                  padding: 10, background: '#FEF3C7', borderRadius: 8, border: '1px solid #FCD34D',
-                  fontSize: 11, color: '#92400E', lineHeight: 1.4, marginBottom: 12, display: 'flex', gap: 6
-                }}>
-                  <FiShield size={14} style={{ flexShrink: 0, marginTop: 2 }} />
-                  <span>
-                    <strong>Privacy Sandbox Active:</strong> This node strips private sender data and passes only recipient details (Name, Account, Bank) down the yellow wire for KYC/registration.
-                  </span>
-                </div>
-              </div>
-
-              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ color: '#10B981' }}>🟢</span> Safe / Continue Branch
-                </div>
-                <p style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, margin: 0 }}>
-                  Payload passes untouched. Mule check scores and geo-velocity metrics are injected into `risk_profile` for downstream scoring engines.
-                </p>
-              </div>
-
-              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, background: '#F8FAFC', marginBottom: 20 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Data Keys</div>
-                <Field label="Input Context Key" hint="Context key that holds the transaction payload.">
-                  <Input value={data.context_key ?? 'enriched_transaction'} onChange={(v) => update({ context_key: v })} placeholder="enriched_transaction" />
-                </Field>
-              </div>
               {data.type === 'template_node' && (
                 <>
                   <div style={{ marginBottom: 20 }}>
@@ -8215,9 +7952,7 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
                   </>
                 );
               })()}
-            </>
-          );
-        })()}
+
 
         {/* Removed redundant Global Discovery Section */}
 
