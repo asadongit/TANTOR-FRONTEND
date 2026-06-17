@@ -5794,6 +5794,28 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
         {/* ── API Node ── */}
         {data.type === 'api_node' && (
           <>
+            <div style={{ marginBottom: 18 }}>
+              <Toggle
+                checked={data.use_curl}
+                onChange={(v) => update({ use_curl: v })}
+                label="Parse from cURL"
+              />
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: -8, marginLeft: 50, marginBottom: 20 }}>
+                If enabled, standard config is ignored and request is built entirely from the cURL string.
+              </div>
+            </div>
+
+            {data.use_curl ? (
+              <Field label="cURL String" hint="Raw cURL command. Supports {{variables}} and multiline.">
+                <Textarea
+                  value={data.curl_command || ''}
+                  onChange={(v) => update({ curl_command: v })}
+                  placeholder={'curl -X POST "http://..." -d "{\\"key\\": \\"value\\"}"'}
+                  rows={8}
+                />
+              </Field>
+            ) : (
+              <>
             <div style={{ padding: 16, background: 'var(--bg-card-info, #F0F9FF)', borderRadius: 12, border: '1px solid var(--border-card-info, #BAE6FD)', marginBottom: 20 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-card-info, #0369A1)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Enterprise Connector</div>
 
@@ -5912,6 +5934,9 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
                 ]}
               />
             </Field>
+            </>
+            )}
+
 
 
             <div style={{ height: '1px', background: 'var(--border)', margin: '16px 0' }} />
