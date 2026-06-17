@@ -11,14 +11,7 @@
   import StatisticalAnalysis from './Steps/StatisticalAnalysis';
   import FeatureImportance from './Steps/FeatureImportance';
   import Step7 from './Steps/Step7';
-  //  supervised preprocessing steps
-  import DataCleaning from './Steps/DataCleaning';
-  import FeatureSelection from './Steps/FeatureSelection';
-  import FeatureEngineering from './Steps/FeatureEngineering';
-  import ScalingTransformation from './Steps/ScalingTransformation';
-  import StatisticalAnalysis from './Steps/StatisticalAnalysis';
-  import FeatureImportance from './Steps/FeatureImportance';
-  import Step7 from './Steps/Step7';
+
 
   // Routing utilities
   import { useLocation, useNavigate } from 'react-router-dom';
