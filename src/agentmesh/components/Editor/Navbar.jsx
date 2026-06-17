@@ -9,7 +9,7 @@ import { formatMessage } from '../Common/messageFormatting';
 import ConfirmationModal from '../Common/ConfirmationModal';
 import SaveWorkflowTemplateModal from './SaveWorkflowTemplateModal';
 import { copyToClipboard } from '../../utils/copyToClipboard';
-import WorkflowAPIConsole from './WorkflowAPIConsole';
+
 import ArchitectBot from './ArchitectBot';
 import ShortcutKeysCanvasModal from './shortcutKeysCanvasModal';
 
@@ -100,7 +100,6 @@ export default function Navbar() {
   const [ioDropdownOpen, setIoDropdownOpen] = React.useState(false);
   const ioDropdownRef = React.useRef(null);
   const ioTriggerRef = React.useRef(null);
-  const [showApiConsole, setShowApiConsole] = React.useState(false);
 
   const [showPublishModal, setShowPublishModal] = React.useState(false);
   const [showSaveTemplateModal, setShowSaveTemplateModal] = React.useState(false);
@@ -1734,12 +1733,7 @@ export default function Navbar() {
         </div>
       )}
 
-      {showApiConsole && (
-        <WorkflowAPIConsole
-          workflowId={workflowId}
-          onClose={() => setShowApiConsole(false)}
-        />
-      )}
+
       <ShortcutKeysCanvasModal isOpen={showShortcutsModal} onClose={() => setShowShortcutsModal(false)} />
     </>
   );
