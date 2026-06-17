@@ -20,80 +20,25 @@ import DataTable from '../../../../../../../../components/DataTable';
  * - Enable/Disable aggregation
  * - Select aggregation method
  * - Show duplicate rows table
- *
- * Parent Component:
- * index.jsx
- *
- * NOTE:
- * This component ONLY handles UI.
- * API calls and payload creation remain in index.jsx.
  * =========================================================
  */
 
 function AggregateFeatures({
-  /**
-   * Toggle state for aggregation feature
-   */
   aggregation,
-
-  /**
-   * Expanded/collapsed section state
-   */
   expanded,
-
-  /**
-   * Function to toggle aggregation switch
-   */
   toggleSwitch,
-
-  /**
-   * Function to expand/collapse section
-   */
   toggleSection,
-
-  /**
-   * Readonly mode
-   */
   readonly,
-
-  /**
-   * Loading state during API call
-   */
   isLoading,
-
-  /**
-   * Boolean indicating duplicate rows exist
-   */
   hasDuplicateRows,
-
-  /**
-   * Selected aggregation method
-   */
   aggregationMethod,
-
-  /**
-   * Function to update aggregation method
-   */
   setAggregationMethod,
-
-  /**
-   * Duplicate rows data from backend
-   */
   duplicateRows,
-
-  /**
-   * Section descriptions for info tooltip
-   */
   sectionDescriptions
 }) {
 
-  /**
-   * =========================================================
+  /*
    * Create Dynamic Table Columns
-   * =========================================================
-   *
-   * Since duplicate row structure can vary,
-   * columns are generated dynamically from data keys.
    */
 
   const getDynamicColumns = () => {
@@ -101,18 +46,15 @@ function AggregateFeatures({
     if (!Array.isArray(duplicateRows) || duplicateRows.length === 0) {
       return [];
     }
-
     /**
      * Extract all unique keys from duplicate rows
      */
     const allKeys = new Set();
-
     duplicateRows.forEach((row) => {
       Object.keys(row).forEach((key) => {
         allKeys.add(key);
       });
     });
-
     /**
      * Build DataTable column configuration
      */
@@ -123,7 +65,6 @@ function AggregateFeatures({
         sortable: false,
         width: '50px'
       },
-
       ...Array.from(allKeys).map((key) => ({
         key,
 
@@ -141,7 +82,6 @@ function AggregateFeatures({
       }))
     ];
   };
-
   /**
    * =========================================================
    * Add Serial Number to Table Rows
@@ -234,20 +174,15 @@ function AggregateFeatures({
             {/* =================================================
                 Aggregation Method Dropdown
             ================================================= */}
-
             <div>
-
               <span className="text-xs font-medium text-gray-600 mb-1 block">
                 Aggregation Method
               </span>
-
               <SearchableDropdown
                 selectedColumn={aggregationMethod}
-
                 onSelect={(val) =>
                   setAggregationMethod(val)
                 }
-
                 availableOptions={[
                   'mean',
                   'sum',
@@ -255,7 +190,6 @@ function AggregateFeatures({
                   'last',
                   'median'
                 ]}
-
                 placeholder="Select"
 
                 readonly={readonly || isLoading}
@@ -263,24 +197,20 @@ function AggregateFeatures({
                 dropDirection="down"
               />
             </div>
-
             {/* =================================================
                 Duplicate Rows Table
             ================================================= */}
 
             <div className="mt-6">
-
               <p className="text-xs font-medium text-gray-600 mb-3">
                 Duplicate Rows Report
               </p>
-
               <DataTable
                 columns={getDynamicColumns()}
                 data={tableData}
                 isLoading={false}
                 isError={false}
               />
-
             </div>
           </div>
         </div>
@@ -288,5 +218,4 @@ function AggregateFeatures({
     </div>
   );
 }
-
 export default AggregateFeatures;

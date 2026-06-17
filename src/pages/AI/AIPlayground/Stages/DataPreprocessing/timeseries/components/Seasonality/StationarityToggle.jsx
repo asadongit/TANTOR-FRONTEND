@@ -27,29 +27,11 @@ import InfoButton from '../../../../../components/InfoButton';
  */
 
 function StationarityToggle({
-  /**
-   * Toggle state for stationarity analysis
-   */
+
   isToggled,
-
-  /**
-   * Function to toggle stationarity analysis switch
-   */
   onToggle,
-
-  /**
-   * Readonly mode
-   */
   readonly,
-
-  /**
-   * Loading state during API call
-   */
   isLoading,
-
-  /**
-   * Section descriptions for info tooltip
-   */
   sectionDescriptions
 }) {
 

@@ -121,7 +121,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     }
   }, [isOnAgentMesh, agentMeshActivePage]);
 
-  const { isGlobalAdmin, isPolicyManager, isUserManager, isDataAuditor } = useMemo(() => {
+  const { isGlobalAdmin, isPolicyManager, isUserManager, isDataAuditor, isConnectionCreation  } = useMemo(() => {
   const hasRoleInToken = (roleKey) =>
     decodedToken?.resource_access?.darch?.roles?.some(
       role => role.toLowerCase() === roleKey
@@ -132,7 +132,8 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     isPolicyManager: hasRoleInToken('persona:policy manager') && personaStatuses['persona:policy manager'] === true,
     isUserManager:   hasRoleInToken('persona:user manager')   && personaStatuses['persona:user manager']   === true,
     isDataAuditor:   hasRoleInToken('persona:data auditor')   && personaStatuses['persona:data auditor']   === true,
-  };
+    isConnectionCreation: hasRoleInToken('persona:connection manager')   && personaStatuses['persona:connection manager']   === true,
+};
 }, [decodedToken, personaStatuses]);
 
   const toggleExpand = (e, routeName) => {
@@ -226,7 +227,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const platformRoutes = [
     { name: 'Dashboard', icon: DashboardIcon, path: '/dashboard' },
     { name: 'Project', icon: CubeIcon, path: '/project' },
-    { name: 'Connections', icon: LinkIcon, path: '/connections' },
+    { name: 'Connections', icon: LinkIcon, path: '/connections'},
     {
       name: 'Reports',
       icon: DocumentTextIcon,
@@ -248,7 +249,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     { name: 'Purge', icon: TrashIcon, path: '/purge' },
     { name: 'CDC', icon: ServerStackIcon, path: '/cdc' },
     { name: 'Federation', icon: ShareIcon, path: '/federation' },
-    ...(window._env_?.VITE_ENABLE_DEDUP_MODULE === 'true' || window._env_?.ENABLE_DEDUP_MODULE === true ? [{ name: 'Dedup', icon: Copy, path: '/dedup' }] : []),
+    ...(window._env_?.VITE_ENABLE_DEDUP_MODULE === 'true' || window._env_?.ENABLE_DEDUP_MODULE === true ? [{ name: 'MDM', icon: Copy, path: '/dedup-group', expandOnly: true, subItems: [{ name: 'Rules Canvas', path: '/dedup' }, { name: 'Data Review Queue', path: '/dedup-results' }] }] : []),
   ];
 
   const DATAGOVERNANCE_PREFIX = '/datagovernance';

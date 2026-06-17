@@ -91,24 +91,8 @@ export const AddRuleModal = ({ isOpen, onClose, onComplete, ruleData }) => {
         }
     }, [isOpen, ruleData, connections]);
 
-    // Filter operators based on the selected column's data type (text/character varying vs other)
-    const selectedColumnObj = columns?.find(c => c.column_name === form.metric_column);
-    const selectedDataType = selectedColumnObj?.DATA_TYPE || selectedColumnObj?.data_type || '';
-    const isTextType = selectedDataType.toLowerCase().includes('char') || selectedDataType.toLowerCase().includes('text');
-
-    const availableOperators = isTextType
-        ? OPERATORS.filter(op => op.value === 'EQ' || op.value === 'NE')
-        : OPERATORS;
-
-    // Reset operator if it is no longer valid for the selected attribute type
-    useEffect(() => {
-        if (form.operator) {
-            const isValid = availableOperators.some(op => op.value === form.operator);
-            if (!isValid) {
-                setForm(prev => ({ ...prev, operator: '' }));
-            }
-        }
-    }, [form.metric_column, availableOperators, form.operator]);
+    // All operators are always available regardless of column data type
+    const availableOperators = OPERATORS;
 
     // 1. Fetch Connections
     useEffect(() => {
