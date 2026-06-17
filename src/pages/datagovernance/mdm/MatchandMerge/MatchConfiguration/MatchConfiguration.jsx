@@ -282,7 +282,7 @@ const MatchRulesTab = ({ filteredRules, isLoading, isError, onRefetch, selectedD
     };
 
     const columns = useMemo(() => [
-        { key: 'rule_name', label: 'Attribute', render: (row) => <span className="text-sm font-normal text-[#23252D]">{row.rule_name}</span> },
+        { key: 'rule_name', label: 'Rule Name', render: (row) => <span className="text-sm font-normal text-[#8E77BB]">{row.rule_name}</span> },
         { key: 'algorithm', label: 'Algorithm', render: (row) => <AlgoBadge algo={row.algorithm} /> },
         { key: 'weight', label: 'Weight', render: (row) => <span className="text-sm text-gray-600">{row.weight}</span> },
         { key: 'threshold', label: 'Threshold', render: (row) => <span className="text-sm text-gray-600">{row.threshold}</span> },
@@ -294,8 +294,8 @@ const MatchRulesTab = ({ filteredRules, isLoading, isError, onRefetch, selectedD
 
     return (
         <div>
-            {/* Match Thresholds */}
-            {!isError && (
+            {/* Match Thresholds Banner */}
+            {/* {!isError && (
                 <div className="bg-[#FAFAFA] rounded-xl p-3.5 mb-4">
                     <p className="text-lg font-medium text-[#332849] mb-3">Match Thresholds</p>
                     <div className="grid grid-cols-3 gap-3">
@@ -322,7 +322,7 @@ const MatchRulesTab = ({ filteredRules, isLoading, isError, onRefetch, selectedD
                         </div>
                     </div>
                 </div>
-            )}
+            )} */}
 
             {isError && !isLoading && (
                 <div className="flex flex-col items-center justify-center py-12 gap-4">
@@ -410,15 +410,11 @@ const MatchConfiguration = () => {
     }, [rules, typeFilter]);
 
     const ruleSetColumns = useMemo(() => [
-        {
-            key: 'ruleName',
-            label: 'Rule Name',
-            render: (row) => (
-                <button className="text-[#8E77BB] hover:underline font-normal text-left text-sm">
-                    {row.ruleName}
-                </button>
-            ),
-        },
+        { key: 'ruleName', label: 'Rule Set Name', render: (row) => (
+            <span className="font-normal text-left text-sm text-[#8E77BB]">
+                {row.ruleName}
+            </span>
+        ), },
         { key: 'domain', label: 'Domain', render: (row) => <DomainTag name={row.domain} /> },
         { key: 'type', label: 'Type', render: (row) => <TypeBadge type={row.type} /> },
         { key: 'rules', label: 'Rules', render: (row) => <span className="text-sm font-normal text-gray-600">{row.rules} Rules</span> },

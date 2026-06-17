@@ -73,7 +73,10 @@ export function AIPlaygroundLayout({
     onPreviewData8,
     isNextDisabled: isNextDisabledProp,
     onSaveModel,
-    onNextClick
+    onNextClick,
+    predictionType,
+isUnivariatePreview,
+onUnivariatePreview
 }) {
     const navigate = useNavigate();
     const location = useLocation();
@@ -272,8 +275,10 @@ export function AIPlaygroundLayout({
     const previousStage = workflowStages[Math.max(currentStageIndex - 1, 0)];
 
     const isPreprocessingPage = location.pathname === '/ai/playground/data-preprocessing';
+    // preview page
     const isOnStep7 = isPreprocessingPage && currentPreprocessingStep === totalPreprocessingSteps && totalPreprocessingSteps === 7;
     const isOnStep8 = isPreprocessingPage && currentPreprocessingStep === totalPreprocessingSteps && totalPreprocessingSteps === 8;
+    const isOnUnivariatePreviewStep = isPreprocessingPage && predictionType === 'univariate_timeseries' && currentPreprocessingStep === totalPreprocessingSteps;
 
     const shouldShowCancel = currentStageIndex >= 0 && currentStageIndex <= 3;
 
@@ -391,6 +396,16 @@ export function AIPlaygroundLayout({
             }
             return;
         }
+
+        if (
+  isOnUnivariatePreviewStep &&
+  !isUnivariatePreview
+) {
+  if (onUnivariatePreview) {
+    onUnivariatePreview(true);
+  }
+  return;
+}
 
         if (isOnStep8 && !isStep8Preview) {
             if (onPreviewData8) onPreviewData8(true);
@@ -668,7 +683,19 @@ export function AIPlaygroundLayout({
             }
             return `Continue to ${nextStage?.label || 'Next Stage'}`;
         }
+        if (
+  isOnUnivariatePreviewStep &&
+  !isUnivariatePreview
+) {
+  return 'Preview Processed Data';
+}
 
+if (
+  isOnUnivariatePreviewStep &&
+  isUnivariatePreview
+) {
+  return `Continue to ${nextStage?.label || 'Next Stage'}`;
+}
         if (isOnStep7 && !isStep7Preview) return 'Preview Data';
         if (isOnStep7 && isStep7Preview) return `Continue to ${nextStage?.label || 'Next Stage'}`;
         if (isOnStep8 && !isStep8Preview) return 'Preview Data';

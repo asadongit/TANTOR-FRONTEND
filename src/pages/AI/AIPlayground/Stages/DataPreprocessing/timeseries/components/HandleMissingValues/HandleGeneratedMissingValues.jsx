@@ -210,26 +210,53 @@ function HandleGeneratedMissingValues({
       ? 'Value must be between 3 and 365'
       : '';
 
+/* -------------------------------------------------------------
+ * Validate seasonal period for numeric seasonal methods.
+ * ------------------------------------------------------------- */
+const numericSeasonalPeriodValue = Number(
+  generatedMissingConfig.numericSeasonalgeneratedPeriod
+);
 
-    /* -------------------------------------------------------------
-   * Validate seasonal period for seasonal methods.
-   * ------------------------------------------------------------- */
-  const seasonalPeriodValue = Number(generatedMissingConfig.seasonalPeriod);
+const numericSeasonalPeriodInvalid =
+  (generatedMissingConfig.numeric === 'mode_by_season' ||
+   generatedMissingConfig.numeric === 'seasonal_mean') &&
+  (
+    !Number.isFinite(numericSeasonalPeriodValue) ||
+    numericSeasonalPeriodValue < 7 ||
+    numericSeasonalPeriodValue > 365
+  );
 
-  const seasonalPeriodInvalid =
-    (generatedMissingConfig.numeric === 'mode_by_season' || generatedMissingConfig.numeric === 'seasonal_mean' || generatedMissingConfig.categorical === 'mode_by_season') &&
-    (!Number.isFinite(seasonalPeriodValue) ||
-      seasonalPeriodValue < 7 ||
-      seasonalPeriodValue > 365);
+/* -------------------------------------------------------------
+ * Validate seasonal period for categorical seasonal methods.
+ * ------------------------------------------------------------- */
+const categoricalSeasonalPeriodValue = Number(
+  generatedMissingConfig.categoricalSeasonalgeneratedPeriod
+);
 
-  const seasonalPeriodError =
-    showFieldErrors &&
-    toggles.handleGeneratedMissing &&
-    (hasGeneratedMissingNumerical || hasGeneratedMissingCategorical) &&
-    seasonalPeriodInvalid
-      ? 'Value must be between 7 and 365'
-      : '';
+const categoricalSeasonalPeriodInvalid =
+  generatedMissingConfig.categorical === 'mode_by_season' &&
+  (
+    !Number.isFinite(categoricalSeasonalPeriodValue) ||
+    categoricalSeasonalPeriodValue < 7 ||
+    categoricalSeasonalPeriodValue > 365
+  );
 
+const numericSeasonalPeriodError =
+  showFieldErrors &&
+  toggles.handleGeneratedMissing &&
+  hasGeneratedMissingNumerical &&
+  numericSeasonalPeriodInvalid
+    ? 'Value must be between 7 and 365'
+    : '';
+
+const categoricalSeasonalPeriodError =
+  showFieldErrors &&
+  toggles.handleGeneratedMissing &&
+  hasGeneratedMissingCategorical &&
+  categoricalSeasonalPeriodInvalid
+    ? 'Value must be between 7 and 365'
+    : '';
+  
   /* -------------------------------------------------------------
    * Auto-expand section when validation errors appear.
    * ------------------------------------------------------------- */
@@ -241,7 +268,8 @@ function HandleGeneratedMissingValues({
         categoricalError ||
         datetimeError ||
         rollingWindowError ||
-        seasonalPeriodError
+        numericSeasonalPeriodError ||
+        categoricalSeasonalPeriodError
       ) &&
       !expandedSections.handleGeneratedMissing
     ) {
@@ -253,7 +281,8 @@ function HandleGeneratedMissingValues({
     categoricalError,
     datetimeError,
     rollingWindowError,
-    seasonalPeriodError,
+    numericSeasonalPeriodError,
+    categoricalSeasonalPeriodError,
     expandedSections.handleGeneratedMissing,
   ]);
 
@@ -352,7 +381,7 @@ function HandleGeneratedMissingValues({
                         numeric: value,
                      // Clear previous submethod values
                         rollingWindow: '',
-                        seasonalPeriod: '',
+                        numericSeasonalgeneratedPeriod: '',
                       }))
                     }
                     options={methodOptions.generatedNumeric}
@@ -391,16 +420,16 @@ function HandleGeneratedMissingValues({
                     generatedMissingConfig.numeric === 'seasonal_mean') && (
                     <MethodParameterField
                       label="Seasonal Period"
-                      value={generatedMissingConfig.seasonalPeriod ?? ''}
+                      value={generatedMissingConfig.numericSeasonalgeneratedPeriod ?? ''}
                       min={7}
                       max={365}
-                      hasError={!!seasonalPeriodError}
-                      errorMessage={seasonalPeriodError}
+                      hasError={!!numericSeasonalPeriodError}
+                      errorMessage={numericSeasonalPeriodError}
                       disabled={readonly}
                       onChange={(value) =>
                         setGeneratedMissingConfig(prev => ({
                           ...prev,
-                          seasonalPeriod: value,
+                          numericSeasonalgeneratedPeriod: value,
                         }))
                       }
                     />
@@ -450,16 +479,16 @@ function HandleGeneratedMissingValues({
                     {generatedMissingConfig.categorical === 'mode_by_season' && (
                       <MethodParameterField
                         label="Seasonal Period"
-                        value={generatedMissingConfig.seasonalPeriod ?? ''}
+                        value={generatedMissingConfig.categoricalSeasonalgeneratedPeriod ?? ''}
                         min={7}
                         max={365}
-                        hasError={!!seasonalPeriodError}
-                        errorMessage={seasonalPeriodError}
+                        hasError={!!categoricalSeasonalPeriodError}
+                        errorMessage={categoricalSeasonalPeriodError}
                         disabled={readonly}
                         onChange={(value) =>
                           setGeneratedMissingConfig(prev => ({
                             ...prev,
-                            seasonalPeriod: value,
+                            categoricalSeasonalgeneratedPeriod: value,
                           }))
                         }
                       />

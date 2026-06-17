@@ -108,37 +108,43 @@ const EditGoldenRecordModal = ({ isOpen, onClose, onSuccess, recordData }) => {
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 gap-5 pt-4">
-                            {fields.map(([key, value]) => (
-                                <div key={key} className="flex flex-col gap-1.5">
-                                    <label className={labelClass}>
-                                        {key.toLowerCase() === 'status'
-                                            ? <>Status <span className="text-[#E05252]">*</span></>
-                                            : key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-                                        }
-                                    </label>
-                                    {key.toLowerCase() === 'status' ? (
-                                        <select
-                                            value={value ?? ''}
-                                            onChange={(e) => handleChange(key, e.target.value)}
-                                            className={inputClass}
-                                            required
-                                        >
-                                            <option value="" disabled>Select status</option>
-                                            {STATUS_OPTIONS.map((opt) => (
-                                                <option key={opt} value={opt}>{opt}</option>
-                                            ))}
-                                        </select>
-                                    ) : (
-                                        <input
-                                            type="text"
-                                            placeholder={`Enter ${key.replace(/_/g, ' ')}`}
-                                            value={value ?? ''}
-                                            onChange={(e) => handleChange(key, e.target.value)}
-                                            className={inputClass}
-                                        />
-                                    )}
-                                </div>
-                            ))}
+                            {fields.map(([key, value]) => {
+                                const isReadOnly = ['golden_id', 'trust_score'].includes(key.toLowerCase());
+                                const disabledClass = 'w-full border border-[#CCCCCC] rounded-lg px-3.5 py-2.5 text-sm font-normal text-[#AAAAAA] outline-none bg-[#F5F5F5] font-[Satoshi,sans-serif] leading-none box-border cursor-not-allowed';
+
+                                return (
+                                    <div key={key} className="flex flex-col gap-1.5">
+                                        <label className={labelClass}>
+                                            {key.toLowerCase() === 'status'
+                                                ? <>Status <span className="text-[#E05252]">*</span></>
+                                                : key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+                                            }
+                                        </label>
+                                        {key.toLowerCase() === 'status' ? (
+                                            <select
+                                                value={value ?? ''}
+                                                onChange={(e) => handleChange(key, e.target.value)}
+                                                className={inputClass}
+                                                required
+                                            >
+                                                <option value="" disabled>Select status</option>
+                                                {STATUS_OPTIONS.map((opt) => (
+                                                    <option key={opt} value={opt}>{opt}</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <input
+                                                type="text"
+                                                placeholder={isReadOnly ? '-' : `Enter ${key.replace(/_/g, ' ')}`}
+                                                value={value ?? ''}
+                                                disabled={isReadOnly}
+                                                onChange={(e) => !isReadOnly && handleChange(key, e.target.value)}
+                                                className={isReadOnly ? disabledClass : inputClass}
+                                            />
+                                        )}
+                                    </div>
+                                );
+                            })}
 
                             {errorMessage && (
                                 <div className="col-span-2 text-sm text-[#E05252] bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 font-[Satoshi,sans-serif]">
