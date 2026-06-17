@@ -96,6 +96,7 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           tool_arguments: n.tool_arguments || n.data?.tool_arguments || {},
           destination_key: n.destination_key || n.data?.destination_key || '',
           return_direct: n.return_direct || n.data?.return_direct || false,
+          custom_python_rules: n.custom_python_rules || n.data?.custom_python_rules || '',
           member_ids: n.member_ids || n.data?.member_ids || [],
           iteration_policy: n.iteration_policy || n.data?.iteration_policy || { enabled: false, max_iterations: 3, target_score: 0.8, evaluator_task: '', inject_feedback_as: 'human' },
           branches: n.branches || n.data?.branches || [],
@@ -193,7 +194,92 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
   return { allNodes, rfEdges: mappedEdges };
 };
 
+let lastPropertyChangeTime = 0;
+
 export const useWorkflowStore = create((set, get) => ({
+  // Active workflow history
+  history: {
+    past: [],
+    future: [],
+  },
+
+  takeHistorySnapshot: () => {
+    const s = get();
+    const current = {
+      nodes: JSON.parse(JSON.stringify(s.nodes)),
+      edges: JSON.parse(JSON.stringify(s.edges)),
+    };
+    const lastPast = s.history.past[s.history.past.length - 1];
+    if (lastPast && JSON.stringify(lastPast) === JSON.stringify(current)) {
+      return;
+    }
+    const newPast = [...s.history.past, current];
+    if (newPast.length > 50) {
+      newPast.shift();
+    }
+    set({
+      history: {
+        past: newPast,
+        future: [],
+      }
+    });
+  },
+
+  undo: () => {
+    const { past, future } = get().history;
+    if (past.length === 0) return;
+
+    const previous = past[past.length - 1];
+    const newPast = past.slice(0, past.length - 1);
+    const current = {
+      nodes: JSON.parse(JSON.stringify(get().nodes)),
+      edges: JSON.parse(JSON.stringify(get().edges)),
+    };
+    const newFuture = [current, ...future];
+
+    set({
+      nodes: previous.nodes,
+      edges: previous.edges,
+      isDirty: true,
+      history: {
+        past: newPast,
+        future: newFuture,
+      }
+    });
+  },
+
+  redo: () => {
+    const { past, future } = get().history;
+    if (future.length === 0) return;
+
+    const next = future[0];
+    const newFuture = future.slice(1);
+    const current = {
+      nodes: JSON.parse(JSON.stringify(get().nodes)),
+      edges: JSON.parse(JSON.stringify(get().edges)),
+    };
+    const newPast = [...past, current];
+
+    set({
+      nodes: next.nodes,
+      edges: next.edges,
+      isDirty: true,
+      history: {
+        past: newPast,
+        future: newFuture,
+      }
+    });
+  },
+
+  clearHistory: () => {
+    set({
+      history: {
+        past: [],
+        future: [],
+      }
+    });
+  },
+
   // Active workflow being edited
   workflowId: `wf_${genId()}${Date.now().toString(36)}`,
   workflowName: 'Untitled Workflow',
@@ -271,7 +357,12 @@ export const useWorkflowStore = create((set, get) => ({
   setNodesDirty: (nodes) => set({ nodes, isDirty: true, isCompiled: false }),
   setEdgesDirty: (edges) => set({ edges, isDirty: true, isCompiled: false }),
 
-  setNodeData: (nodeId, data) =>
+  setNodeData: (nodeId, data) => {
+    const now = Date.now();
+    if (now - lastPropertyChangeTime > 1500) {
+      get().takeHistorySnapshot();
+    }
+    lastPropertyChangeTime = now;
     set((s) => {
       // 1. Update the target node
       let nextNodes = s.nodes.map((n) => {
@@ -325,9 +416,11 @@ export const useWorkflowStore = create((set, get) => ({
         isDirty: true,
         isCompiled: false,
       };
-    }),
+    });
+  },
 
-  setEdgeData: (edgeId, data) =>
+  setEdgeData: (edgeId, data) => {
+    get().takeHistorySnapshot();
     set((s) => ({
       edges: s.edges.map((e) => {
         if (e.id === edgeId) {
@@ -348,7 +441,8 @@ export const useWorkflowStore = create((set, get) => ({
       }),
       isDirty: true,
       isCompiled: false,
-    })),
+    }));
+  },
 
   addNode: (type, position) => {
     let id = `${type}_${genId()}`;
@@ -370,6 +464,7 @@ export const useWorkflowStore = create((set, get) => ({
         zIndex: -10
       } : {})
     };
+    get().takeHistorySnapshot();
     set((s) => {
       const nextNodes = [...s.nodes, newNode];
       nextNodes.sort((a, b) => {
@@ -398,6 +493,7 @@ export const useWorkflowStore = create((set, get) => ({
       selected: false,
     };
 
+    get().takeHistorySnapshot();
     set((s) => {
       const nextNodes = [...s.nodes, newNode];
       nextNodes.sort((a, b) => {
@@ -413,6 +509,7 @@ export const useWorkflowStore = create((set, get) => ({
   },
 
   clearNodeData: (nodeId) => {
+    get().takeHistorySnapshot();
     set((s) => ({
       nodes: s.nodes.map((n) => {
         if (n.id === nodeId) {
@@ -430,6 +527,7 @@ export const useWorkflowStore = create((set, get) => ({
   },
 
   unlinkNode: (nodeId) => {
+    get().takeHistorySnapshot();
     set((s) => ({
       edges: s.edges.filter((e) => e.source !== nodeId && e.target !== nodeId),
       isDirty: true,
@@ -440,6 +538,7 @@ export const useWorkflowStore = create((set, get) => ({
   removeNode: (nodeId) => {
     // Prevent deletion of system nodes
     if (nodeId === '__start__' || nodeId === '__end__') return;
+    get().takeHistorySnapshot();
     set((s) => ({
       nodes: s.nodes.filter((n) => n.id !== nodeId),
       edges: s.edges.filter((e) => e.source !== nodeId && e.target !== nodeId),
@@ -451,6 +550,7 @@ export const useWorkflowStore = create((set, get) => ({
   newWorkflow: () => {
     const id = `wf_${genId()}${Date.now().toString(36)}`;
     set({
+      history: { past: [], future: [] },
       workflowId: id,
       workflowName: 'Untitled Workflow',
       workflowDescription: '',
@@ -498,6 +598,7 @@ export const useWorkflowStore = create((set, get) => ({
     const { allNodes, rfEdges } = _reconstructRFNodesAndEdges(rawNodes, rawEdges, meta, triggers);
 
     set({
+      history: { past: [], future: [] },
       workflowId: w.id,
       workflowName: w.name,
       workflowDescription: w.description || '',
@@ -717,6 +818,7 @@ export const useWorkflowStore = create((set, get) => ({
     const { allNodes, rfEdges } = _reconstructRFNodesAndEdges(rawNodes, rawEdges, meta, triggers);
 
     set({
+      history: { past: [], future: [] },
       workflowId: newId,
       workflowName: config.name || 'Imported Workflow',
       workflowDescription: config.description || '',
@@ -788,6 +890,7 @@ export const useWorkflowStore = create((set, get) => ({
         };
       });
 
+    get().takeHistorySnapshot();
     // 4. Append to active state
     set((s) => ({
       nodes: [...s.nodes, ...processedNodes],
@@ -813,6 +916,10 @@ export const useUIStore = create((set) => ({
   unreadCount: 0,
   activeLibraryTab: 'agents', // agents | tools | apis
   setActiveLibraryTab: (tab) => set({ activeLibraryTab: tab }),
+  suggestionSource: null, // { nodeId, handleId }
+  setSuggestionSource: (v) => set({ suggestionSource: v }),
+  searchOpen: false,
+  setSearchOpen: (v) => set({ searchOpen: v }),
 
   // ─── Initialization guard (Strict Mode safe) ───────────────────────────────
   // Static class property (MainComponent._initialized) is NOT safe in React
@@ -872,6 +979,10 @@ export const useUIStore = create((set) => ({
   canvasWireStyle: (typeof window !== 'undefined' ? localStorage.getItem('canvas_wire_style') : 'square') || 'square',
   canvasBackgroundStyle: (typeof window !== 'undefined' ? localStorage.getItem('canvas_background_style') : 'dots') || 'dots',
   canvasNodeTheme: (typeof window !== 'undefined' ? localStorage.getItem('canvas_node_theme') : 'modern') || 'modern',
+  canvasDotSize: parseFloat((typeof window !== 'undefined' ? localStorage.getItem('canvas_dot_size') : '1.5') || '1.5'),
+  canvasEdgeWidth: parseFloat((typeof window !== 'undefined' ? localStorage.getItem('canvas_edge_width') : '3.5') || '3.5'),
+  canvasHandleSize: parseInt((typeof window !== 'undefined' ? localStorage.getItem('canvas_handle_size') : '10') || '10', 10),
+  canvasConnectionRadius: parseInt((typeof window !== 'undefined' ? localStorage.getItem('canvas_connection_radius') : '20') || '20', 10),
   setCanvasWireStyle: (v) => {
     if (typeof window !== 'undefined') localStorage.setItem('canvas_wire_style', v);
     set({ canvasWireStyle: v });
@@ -883,6 +994,22 @@ export const useUIStore = create((set) => ({
   setCanvasNodeTheme: (v) => {
     if (typeof window !== 'undefined') localStorage.setItem('canvas_node_theme', v);
     set({ canvasNodeTheme: v });
+  },
+  setCanvasDotSize: (v) => {
+    if (typeof window !== 'undefined') localStorage.setItem('canvas_dot_size', v.toString());
+    set({ canvasDotSize: v });
+  },
+  setCanvasEdgeWidth: (v) => {
+    if (typeof window !== 'undefined') localStorage.setItem('canvas_edge_width', v.toString());
+    set({ canvasEdgeWidth: v });
+  },
+  setCanvasHandleSize: (v) => {
+    if (typeof window !== 'undefined') localStorage.setItem('canvas_handle_size', v.toString());
+    set({ canvasHandleSize: v });
+  },
+  setCanvasConnectionRadius: (v) => {
+    if (typeof window !== 'undefined') localStorage.setItem('canvas_connection_radius', v.toString());
+    set({ canvasConnectionRadius: v });
   },
 }));
 

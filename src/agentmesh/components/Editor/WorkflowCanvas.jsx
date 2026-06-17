@@ -86,15 +86,19 @@ export default function WorkflowCanvas() {
     agentNode: AgentNode,
     cardboardNode: CardboardNode
   }), []);
-  const { nodes, edges, setNodes, setEdges, setNodesDirty, setEdgesDirty, addNode, setNodeData, workflowName } = useWorkflowStore();
-  const { selectedNodeId, selectedEdgeId, setSelectedNode, setSelectedEdge, canvasWireStyle, canvasBackgroundStyle, isDarkCanvas } = useUIStore();
+  const { nodes, edges, setNodes, setEdges, setNodesDirty, setEdgesDirty, addNode, setNodeData, workflowName, undo, redo } = useWorkflowStore();
+  const { 
+    selectedNodeId, selectedEdgeId, setSelectedNode, setSelectedEdge, 
+    canvasWireStyle, canvasBackgroundStyle, isDarkCanvas,
+    searchOpen, setSearchOpen, suggestionSource, setSuggestionSource,
+    canvasDotSize, canvasEdgeWidth, canvasConnectionRadius
+  } = useUIStore();
 
   const reactFlowWrapper = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
   const { setRunOpen } = useUIStore();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [menu, setMenu] = useState(null);
-  const [searchOpen, setSearchOpen] = useState(false);
 
   // Poll for active background runs (e.g. Cron/Webhook) to show live status
   React.useEffect(() => {
@@ -188,6 +192,10 @@ export default function WorkflowCanvas() {
 
   const onConnect = useCallback(
     (params) => {
+      // Take snapshot before connection modifications
+      useWorkflowStore.getState().takeHistorySnapshot();
+      // Take snapshot before connection modifications
+      useWorkflowStore.getState().takeHistorySnapshot();
       const { source, target } = params;
       const sourceNode = nodes.find(n => n.id === source);
       const targetNode = nodes.find(n => n.id === target);
@@ -217,23 +225,25 @@ export default function WorkflowCanvas() {
         ...params,
         animated: false,
         type: edgeType,
-        style: { stroke: '#CBD5E1', strokeWidth: 1.5 }
+        style: { stroke: '#CBD5E1', strokeWidth: canvasEdgeWidth }
       }, edges));
     },
-    [nodes, edges, setEdgesDirty, setNodeData, canvasWireStyle]
+    [nodes, edges, setEdgesDirty, setNodeData, canvasWireStyle, canvasEdgeWidth]
   );
 
   const edgeType = canvasWireStyle === 'curve' ? 'default' : 'smoothstep';
   const renderedEdges = React.useMemo(() => {
     const baseEdges = edges.map(edge => {
       const isHovered = edge.id === hoveredEdgeId;
-      let edgeStyle = edge.style || { stroke: '#CBD5E1', strokeWidth: 1.5 };
+      let edgeStyle = edge.style || { stroke: '#CBD5E1', strokeWidth: canvasEdgeWidth };
       if (isHovered) {
         if (draggedNodeId) {
-          edgeStyle = { stroke: '#EF4444', strokeWidth: 2, strokeDasharray: '3,3', opacity: 0.6 };
+          edgeStyle = { stroke: '#EF4444', strokeWidth: canvasEdgeWidth + 0.5, strokeDasharray: '3,3', opacity: 0.6 };
         } else {
-          edgeStyle = { stroke: 'var(--theme-primary, #8e77bb)', strokeWidth: 3, strokeDasharray: '5,5' };
+          edgeStyle = { stroke: 'var(--theme-primary, #8e77bb)', strokeWidth: canvasEdgeWidth + 1.5, strokeDasharray: '5,5' };
         }
+      } else {
+        edgeStyle = { ...edgeStyle, strokeWidth: canvasEdgeWidth };
       }
 
       return {
@@ -256,7 +266,7 @@ export default function WorkflowCanvas() {
             targetHandle: null,
             type: edgeType,
             animated: true,
-            style: { stroke: 'var(--theme-primary, #8e77bb)', strokeWidth: 2, strokeDasharray: '5,5' }
+            style: { stroke: 'var(--theme-primary, #8e77bb)', strokeWidth: canvasEdgeWidth + 0.5, strokeDasharray: '5,5' }
           },
           {
             id: `preview-edge-2-${draggedNodeId}-${edgeToSplit.target}`,
@@ -266,7 +276,7 @@ export default function WorkflowCanvas() {
             targetHandle: edgeToSplit.targetHandle,
             type: edgeType,
             animated: true,
-            style: { stroke: 'var(--theme-primary, #8e77bb)', strokeWidth: 2, strokeDasharray: '5,5' }
+            style: { stroke: 'var(--theme-primary, #8e77bb)', strokeWidth: canvasEdgeWidth + 0.5, strokeDasharray: '5,5' }
           }
         ];
         return [...baseEdges, ...previewEdges];
@@ -277,6 +287,12 @@ export default function WorkflowCanvas() {
   }, [edges, edgeType, hoveredEdgeId, draggedNodeId]);
 
   const onNodeDragStart = useCallback((event, node) => {
+    // Take snapshot before dragging moves the node
+    useWorkflowStore.getState().takeHistorySnapshot();
+
+    // Take snapshot before dragging moves the node
+    useWorkflowStore.getState().takeHistorySnapshot();
+
     const hasIncoming = edges.some(e => e.target === node.id);
     const hasOutgoing = edges.some(e => e.source === node.id);
     const isSolo = !hasIncoming && !hasOutgoing;
@@ -304,6 +320,10 @@ export default function WorkflowCanvas() {
     if (isDraggingSoloNode && hoveredEdgeId) {
       const edgeToSplit = edges.find(e => e.id === hoveredEdgeId);
       if (edgeToSplit) {
+        // Take snapshot before edge split modification
+        useWorkflowStore.getState().takeHistorySnapshot();
+        // Take snapshot before edge split modification
+        useWorkflowStore.getState().takeHistorySnapshot();
         const { source, target, sourceHandle, targetHandle } = edgeToSplit;
         const nextEdges = edges.filter(e => e.id !== hoveredEdgeId);
         const edgeType = canvasWireStyle === 'curve' ? 'default' : 'smoothstep';
@@ -364,6 +384,10 @@ export default function WorkflowCanvas() {
     if (hoveredEdgeId && id) {
       const edgeToSplit = edges.find(e => e.id === hoveredEdgeId);
       if (edgeToSplit) {
+        // Take snapshot before edge split drop modification
+        useWorkflowStore.getState().takeHistorySnapshot();
+        // Take snapshot before edge split drop modification
+        useWorkflowStore.getState().takeHistorySnapshot();
         const { source, target, sourceHandle, targetHandle } = edgeToSplit;
         const nextEdges = edges.filter(e => e.id !== hoveredEdgeId);
         const edgeType = canvasWireStyle === 'curve' ? 'default' : 'smoothstep';
@@ -503,6 +527,24 @@ export default function WorkflowCanvas() {
         return;
       }
 
+      // Undo/Redo Shortcuts
+      const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+      if (isCmdOrCtrl) {
+        if (e.key === 'z' || e.key === 'Z') {
+          e.preventDefault();
+          if (e.shiftKey) {
+            redo();
+          } else {
+            undo();
+          }
+          return;
+        } else if (e.key === 'y' || e.key === 'Y') {
+          e.preventDefault();
+          redo();
+          return;
+        }
+      }
+
       if ((e.key === 's' || e.key === 'S') && !selectedNodeId && !searchOpen) {
         e.preventDefault();
         setSearchOpen(true);
@@ -527,25 +569,56 @@ export default function WorkflowCanvas() {
 
     globalThis.addEventListener('keydown', handleKeyDown);
     return () => globalThis.removeEventListener('keydown', handleKeyDown);
-  }, [selectedNodeId, searchOpen, reactFlowInstance, addNode]);
+  }, [selectedNodeId, searchOpen, reactFlowInstance, addNode, undo, redo]);
 
   const handleSearchSelectNode = useCallback((type) => {
     setSearchOpen(false);
     
-    // Calculate center of canvas viewport
     let position;
-    if (reactFlowInstance && reactFlowWrapper.current) {
-      const bounds = reactFlowWrapper.current.getBoundingClientRect();
-      position = reactFlowInstance.screenToFlowPosition({
-        x: bounds.left + bounds.width / 2,
-        y: bounds.top + bounds.height / 2,
-      });
-    } else {
-      position = { x: 200 + Math.random() * 300, y: 100 + Math.random() * 200 };
+    let connected = false;
+    
+    if (suggestionSource) {
+      const sourceNode = nodes.find(n => n.id === suggestionSource.nodeId);
+      if (sourceNode) {
+        // Spawn offset to the right of the source node
+        position = {
+          x: sourceNode.position.x + 240,
+          y: sourceNode.position.y
+        };
+        
+        const newNodeId = addNode(type, position);
+        if (newNodeId) {
+          const edgeType = canvasWireStyle === 'curve' ? 'default' : 'smoothstep';
+          setEdgesDirty(addEdge({
+            source: suggestionSource.nodeId,
+            target: newNodeId,
+            sourceHandle: suggestionSource.handleId,
+            targetHandle: null,
+            animated: false,
+            type: edgeType,
+            style: { stroke: '#CBD5E1', strokeWidth: 1.5 }
+          }, edges));
+        }
+        connected = true;
+      }
     }
     
-    addNode(type, position);
-  }, [reactFlowInstance, addNode]);
+    if (!connected) {
+      // Calculate center of canvas viewport
+      if (reactFlowInstance && reactFlowWrapper.current) {
+        const bounds = reactFlowWrapper.current.getBoundingClientRect();
+        position = reactFlowInstance.screenToFlowPosition({
+          x: bounds.left + bounds.width / 2,
+          y: bounds.top + bounds.height / 2,
+        });
+      } else {
+        position = { x: 200 + Math.random() * 300, y: 100 + Math.random() * 200 };
+      }
+      addNode(type, position);
+    }
+    
+    setSuggestionSource(null);
+  }, [reactFlowInstance, addNode, suggestionSource, nodes, edges, setEdgesDirty, canvasWireStyle, setSuggestionSource, setSearchOpen]);
 
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden', background: 'var(--bg-canvas)', fontFamily: "'Inter', sans-serif", position: 'relative' }}>
@@ -649,11 +722,19 @@ export default function WorkflowCanvas() {
             edges={renderedEdges}
             selectionKeyCode="Control"
             onNodesChange={(changes) => {
+              // Prevent start and end nodes from being deleted
+              const filteredChanges = changes.filter(
+                c => !(c.type === 'remove' && (c.id === '__start__' || c.id === '__end__'))
+              );
+              const isDelete = filteredChanges.some(c => c.type === 'remove');
+              if (isDelete) {
+                useWorkflowStore.getState().takeHistorySnapshot();
+              }
               let hasDirtyChange = false;
               let hasDimensionsChange = false;
               
               // Check changes to see if a cardboard node is being manually resized
-              changes.forEach(change => {
+              filteredChanges.forEach(change => {
                 if (change.type === 'dimensions' && change.dimensions) {
                   const node = nodes.find(n => n.id === change.id);
                   if (node && (node.type === 'cardboardNode' || node.data?.type === 'cardboard')) {
@@ -672,8 +753,8 @@ export default function WorkflowCanvas() {
                   hasDirtyChange = true;
                 }
               });
-
-              let updated = applyNodeChanges(changes, nodes);
+ 
+              let updated = applyNodeChanges(filteredChanges, nodes);
 
               if (hasDimensionsChange) {
                 // Sync cardboard node dimensions to style width/height so it's persisted correctly
@@ -703,6 +784,10 @@ export default function WorkflowCanvas() {
               }
             }}
           onEdgesChange={(changes) => {
+            const isDelete = changes.some(c => c.type === 'remove');
+            if (isDelete) {
+              useWorkflowStore.getState().takeHistorySnapshot();
+            }
             const updated = applyEdgeChanges(changes, edges);
             const hasDirtyChange = changes.some(c => c.type !== 'select');
             if (hasDirtyChange) {
@@ -730,23 +815,24 @@ export default function WorkflowCanvas() {
           defaultEdgeOptions={{
             type: canvasWireStyle === 'curve' ? 'default' : 'smoothstep',
             animated: false,
-            style: { stroke: '#CBD5E1', strokeWidth: 1.5 },
+            style: { stroke: '#CBD5E1', strokeWidth: canvasEdgeWidth },
           }}
           fitView
           fitViewOptions={{ padding: 0.4 }}
           snapToGrid={true}
           snapGrid={[20, 20]}
+          connectionRadius={canvasConnectionRadius}
           deleteKeyCode={['Backspace', 'Delete']}
           className={isDarkCanvas ? 'is-dark-theme' : ''}
           style={{ background: isDarkCanvas ? '#1D1D1F' : '#F8F9FB' }}
         >
           {canvasBackgroundStyle !== 'clean' && (
             <Background 
-              key={canvasBackgroundStyle}
+              key={`${canvasBackgroundStyle}-${canvasDotSize}`}
               variant={canvasBackgroundStyle} 
               gap={20} 
-              size={canvasBackgroundStyle === 'cross' ? 6 : canvasBackgroundStyle === 'dots' ? 1.5 : undefined} 
-              lineWidth={canvasBackgroundStyle === 'lines' ? 1 : undefined}
+              size={canvasBackgroundStyle === 'cross' ? canvasDotSize * 4 : canvasBackgroundStyle === 'dots' ? canvasDotSize : undefined} 
+              lineWidth={canvasBackgroundStyle === 'lines' ? canvasDotSize : undefined}
               color={isDarkCanvas ? '#4C4B53' : '#CBD5E1'} 
             />
           )}
