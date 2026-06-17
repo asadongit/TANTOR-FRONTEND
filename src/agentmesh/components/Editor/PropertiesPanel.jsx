@@ -2882,35 +2882,35 @@ const DOC_TYPE_CATEGORIES = {
 };
 
 function ReportGeneratorConfig({ data, update }) {
-  const [templates, setTemplates] = useState([]);
-  const [category, setCategory] = useState(data.template_category || '');
-  const [format, setFormat] = useState(data.report_format || data.file_format || '');
-  const [deletingId, setDeletingId] = useState(null);
-  // Dynamic category list — derived from templates already in DB + doc-type suggestions
-  const [allCategories, setAllCategories] = useState(['General']);
+  const [templates, setTemplates]           = useState([]);
+  const [category, setCategory]             = useState(data.template_category || '');
+  const [format, setFormat]                 = useState(data.report_format || data.file_format || '');
+  const [deletingId, setDeletingId]         = useState(null);
+  const [allCategories, setAllCategories]   = useState(['General']);
   const [customCatInput, setCustomCatInput] = useState('');
   const [showCustomCatInput, setShowCustomCatInput] = useState(false);
+  const [advancedOpen, setAdvancedOpen]     = useState(false);
+  const [filtersOpen, setFiltersOpen]       = useState(false);
+  const [llmMode, setLlmMode]               = useState(data.llm_generation_mode || false);
 
   // Upload State
-  const [showUpload, setShowUpload] = useState(false);
-  const [uploadName, setUploadName] = useState('');
+  const [showUpload, setShowUpload]         = useState(false);
+  const [uploadName, setUploadName]         = useState('');
   const [uploadCategory, setUploadCategory] = useState('General');
-  const [uploadCatCustom, setUploadCatCustom] = useState(false); // typing a new category
-  const [uploadFiles, setUploadFiles] = useState([]);
-  const [uploading, setUploading] = useState(false);
+  const [uploadCatCustom, setUploadCatCustom] = useState(false);
+  const [uploadFiles, setUploadFiles]       = useState([]);
+  const [uploading, setUploading]           = useState(false);
 
   const fetchTemplates = async () => {
     try {
       const query = new URLSearchParams();
       if (category) query.append('category', category);
-      if (format) query.append('format_type', format);
+      if (format)   query.append('format_type', format);
       const res = await fetch(`http://localhost:8000/api/v1/agentmesh/report-templates/?${query.toString()}`);
       if (res.ok) {
         const json = await res.json();
         setTemplates(json);
-        // ── Derive dynamic category list from DB templates ──────────────
         const dbCats = [...new Set((json).map(t => t.category).filter(Boolean))];
-        // Merge: DB cats + doc-type suggestions for current format + always keep General
         const docTypeSuggestions = format ? (DOC_TYPE_CATEGORIES[format] || []) : [];
         const merged = [...new Set(['General', ...dbCats, ...docTypeSuggestions])];
         setAllCategories(merged);
@@ -2931,26 +2931,14 @@ function ReportGeneratorConfig({ data, update }) {
       const formData = new FormData();
       formData.append('name', uploadName);
       formData.append('category', uploadCategory);
-
       const ext = '.' + uploadFiles[0].name.split('.').pop().toLowerCase();
       formData.append('format_type', ext);
-
-      Array.from(uploadFiles).forEach(file => {
-        formData.append('files', file);
-      });
-
-      const res = await fetch('http://localhost:8000/api/v1/agentmesh/report-templates/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
+      Array.from(uploadFiles).forEach(file => { formData.append('files', file); });
+      const res = await fetch('http://localhost:8000/api/v1/agentmesh/report-templates/upload', { method: 'POST', body: formData });
       if (res.ok) {
         const resData = await res.json();
-        setShowUpload(false);
-        setUploadName('');
-        setUploadFiles([]);
+        setShowUpload(false); setUploadName(''); setUploadFiles([]);
         fetchTemplates();
-
         if (resData.template_ids && resData.template_ids.length > 0) {
           update({ template_id: resData.template_ids[0] });
         }
@@ -2959,23 +2947,17 @@ function ReportGeneratorConfig({ data, update }) {
         alert(`Failed to upload: ${errorData.detail}`);
       }
     } catch (err) {
-      console.error(err);
-      alert("Network error while uploading.");
+      console.error(err); alert("Network error while uploading.");
     }
     setUploading(false);
   };
 
-  // CHANGE 2: delete handler — calls the new DELETE /{id} endpoint
   const handleDeleteTemplate = async (templateId) => {
     if (!window.confirm("Delete this template? This cannot be undone.")) return;
     setDeletingId(templateId);
     try {
-      const res = await fetch(
-        `http://localhost:8000/api/v1/agentmesh/report-templates/${templateId}`,
-        { method: 'DELETE' }
-      );
+      const res = await fetch(`http://localhost:8000/api/v1/agentmesh/report-templates/${templateId}`, { method: 'DELETE' });
       if (res.ok) {
-        // If the deleted template was selected, clear the selection
         if (data.template_id === templateId) update({ template_id: '' });
         fetchTemplates();
       } else {
@@ -2983,536 +2965,292 @@ function ReportGeneratorConfig({ data, update }) {
         alert(`Failed to delete: ${err.detail}`);
       }
     } catch (err) {
-      console.error(err);
-      alert("Network error while deleting.");
+      console.error(err); alert("Network error while deleting.");
     }
     setDeletingId(null);
   };
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* ── CATEGORY FILTER — dynamic, sourced from DB + doc-type suggestions ── */}
-      <div style={{ marginBottom: 4 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Category</div>
-          <button
-            onClick={() => setShowCustomCatInput(v => !v)}
-            style={{
-              fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
-              border: '1px dashed var(--border)', background: 'transparent',
-              cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4,
-            }}
-          >
-            <FiPlus size={10} /> Custom
-          </button>
-        </div>
+  const selectedTemplate = Array.isArray(templates) ? templates.find(t => t.id === data.template_id) : null;
 
-        {/* Custom category input */}
-        {showCustomCatInput && (
-          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-            <input
-              value={customCatInput}
-              onChange={e => setCustomCatInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && customCatInput.trim()) {
-                  const newCat = customCatInput.trim();
-                  setAllCategories(prev => prev.includes(newCat) ? prev : [...prev, newCat]);
-                  setCategory(newCat);
-                  update({ template_category: newCat });
-                  setCustomCatInput('');
-                  setShowCustomCatInput(false);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+      {/* ÔöÇÔöÇ LLM MODE TOGGLE ÔöÇÔöÇ */}
+      <div style={{
+        padding: '0px 2px',
+        marginBottom: 24,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: 8,
+              background: 'transparent',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--text-muted)',
+            }}>
+              <FiCpu size={18} />
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+              LLM Generation Mode
+            </div>
+          </div>
+          <div style={{ marginBottom: -12 }}>
+            <Toggle
+              checked={llmMode}
+              onChange={v => { 
+                setLlmMode(v); 
+                const updates = { llm_generation_mode: v };
+                if (v && (!data.output_file_name || data.output_file_name === 'generated_report')) {
+                  updates.output_file_name = 'llm_generated_report';
                 }
-              }}
-              placeholder="Type new category + Enter"
-              autoFocus
-              style={{
-                flex: 1, padding: '6px 10px', fontSize: 12, borderRadius: 7,
-                border: '1.5px solid var(--theme-primary)', outline: 'none',
-                fontFamily: 'inherit',
+                update(updates); 
               }}
             />
-            <button
-              onClick={() => {
-                if (customCatInput.trim()) {
-                  const newCat = customCatInput.trim();
-                  setAllCategories(prev => prev.includes(newCat) ? prev : [...prev, newCat]);
-                  setCategory(newCat);
-                  update({ template_category: newCat });
-                  setCustomCatInput('');
-                  setShowCustomCatInput(false);
-                }
-              }}
-              style={{
-                padding: '6px 12px', borderRadius: 7, border: 'none',
-                background: 'var(--theme-primary)', color: 'white',
-                fontSize: 11, fontWeight: 700, cursor: 'pointer',
-              }}
-            >Add</button>
+          </div>
+        </div>
+        {llmMode && (
+          <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5, paddingLeft: 38 }}>
+            The AI will write and generate the entire document from scratch based on the context data.
           </div>
         )}
-
-        {/* Dynamic category chips */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-          {/* "All" chip */}
-          {(() => {
-            const active = category === '';
-            return (
-              <button
-                key="__all__"
-                onClick={() => { setCategory(''); update({ template_category: '' }); }}
-                style={{
-                  padding: '5px 11px', borderRadius: 99, fontSize: 11, fontWeight: 700,
-                  border: active ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
-                  background: active ? 'rgba(142,119,187,0.12)' : 'white',
-                  color: active ? 'var(--theme-primary)' : 'var(--text-muted)',
-                  cursor: 'pointer', transition: 'all 0.15s',
-                }}
-              >All</button>
-            );
-          })()}
-          {allCategories.map(cat => {
-            const active = category === cat;
-            return (
-              <button
-                key={cat}
-                onClick={() => { setCategory(active ? '' : cat); update({ template_category: active ? '' : cat }); }}
-                style={{
-                  padding: '5px 11px', borderRadius: 99, fontSize: 11, fontWeight: 700,
-                  border: active ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
-                  background: active ? 'rgba(142,119,187,0.12)' : 'white',
-                  color: active ? 'var(--theme-primary)' : 'var(--text-primary)',
-                  cursor: 'pointer', transition: 'all 0.15s',
-                }}
-              >{cat}</button>
-            );
-          })}
-        </div>
       </div>
 
-      {/* ── FORMAT FILTER — includes .md, writes to report_format ── */}
-      <div style={{ marginBottom: 4 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
-          Format
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5 }}>
-          {[
-            { value: '', label: 'All', icon: '📁' },
-            { value: '.docx', label: 'Word', icon: '📄' },
-            { value: '.xlsx', label: 'Excel', icon: '📊' },
-            { value: '.pdf', label: 'PDF', icon: '📕' },
-            { value: '.csv', label: 'CSV', icon: '📋' },
-            { value: '.json', label: 'JSON', icon: '{ }' },
-            { value: '.md', label: 'MD', icon: '📝' },
-          ].map(opt => {
-            const active = format === opt.value;
-            return (
-              <button
-                key={opt.label}
-                onClick={() => {
-                  setFormat(opt.value);
-                  // Use report_format (not file_format) to avoid bleeding into other nodes
-                  update({ report_format: opt.value });
-                }}
-                style={{
-                  padding: '8px 4px',
-                  borderRadius: 8,
-                  border: active ? '1.5px solid var(--theme-primary)' : '1px solid var(--border)',
-                  background: active ? 'rgba(142,119,187,0.10)' : 'white',
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                  transition: 'all 0.15s',
-                }}
-              >
-                <div style={{ fontSize: 13, marginBottom: 2 }}>{opt.icon}</div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: active ? 'var(--theme-primary)' : 'var(--text-primary)' }}>
-                  {opt.label}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── TEMPLATE SELECT — now with inline delete buttons ── */}
-      <Field
-        label="Select Template"
-        hint="The exact template to use for rendering the report."
-        action={
-          <button
-            onClick={() => setShowUpload(true)}
-            style={{
-              fontSize: 11,
-              padding: '6px 14px',
-              background: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)',
-              color: 'white',
-              border: '1px solid #5B21B6',
-              borderRadius: 8,
-              cursor: 'pointer',
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-              boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-1.5px)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(139, 92, 246, 0.4)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(139, 92, 246, 0.3)';
-            }}
-          >
-            <FiUploadCloud size={14} /> Upload New
-          </button>
-        }
-      >
-        {/* CHANGE 2: replaced native <select> with a custom list so each
-            row can have its own delete button. Behaviour is identical —
-            clicking a row selects it, clicking 🗑 deletes it. */}
-        <div style={{
-          border: '1px solid var(--border)',
-          borderRadius: 8,
-          overflow: 'hidden',
-          maxHeight: 220,
-          overflowY: 'auto',
-          background: 'var(--bg-canvas)',
-        }}>
-          {/* "No template" option */}
-          <div
-            onClick={() => update({ template_id: '' })}
-            style={{
-              padding: '9px 12px',
-              fontSize: 13,
-              cursor: 'pointer',
-              background: !data.template_id ? 'rgba(59,130,246,0.08)' : 'transparent',
-              color: !data.template_id ? 'var(--theme-primary)' : 'var(--text-muted)',
-              fontWeight: !data.template_id ? 600 : 400,
-              borderBottom: '1px solid var(--border)',
-              transition: 'background 0.12s',
-            }}
-            onMouseEnter={(e) => { if (data.template_id) e.currentTarget.style.background = 'var(--bg-hover)'; }}
-            onMouseLeave={(e) => { if (data.template_id) e.currentTarget.style.background = 'transparent'; }}
-          >
-            — No Template (Blank File) —
-          </div>
-
-          {/* Deep Nested Grouping (Group -> Format -> Category) */}
-          {(() => {
-            const rawTemplates = Array.isArray(templates) ? templates : [];
-            const tree = {};
-
-            // 1. Build the tree
-            rawTemplates.forEach(t => {
-              let catRaw = t.category || 'General';
-              let group = 'General';
-              let subcategory = catRaw;
-
-              if (catRaw.includes('/')) {
-                const parts = catRaw.split('/');
-                group = parts[0].trim();
-                subcategory = parts.slice(1).join('/').trim();
-              }
-
-              // Normalize format for display
-              let fmt = (t.format_type || 'Unknown').toUpperCase();
-              if (fmt.startsWith('.')) fmt = fmt.substring(1);
-              if (fmt === 'DOCX' || fmt === 'DOTX') fmt = 'WORD (.docx)';
-              if (fmt === 'PDF') fmt = 'PDF (.pdf)';
-              if (fmt === 'XLSX') fmt = 'EXCEL (.xlsx)';
-              if (fmt === 'CSV') fmt = 'CSV (.csv)';
-              if (fmt === 'MD') fmt = 'MARKDOWN (.md)';
-
-              if (!tree[group]) tree[group] = {};
-              if (!tree[group][fmt]) tree[group][fmt] = {};
-              if (!tree[group][fmt][subcategory]) tree[group][fmt][subcategory] = [];
-
-              tree[group][fmt][subcategory].push(t);
-            });
-
-            // 2. Render the tree
-            return Object.entries(tree).sort(([a], [b]) => a.localeCompare(b)).map(([groupName, formats]) => (
-              <div key={groupName} style={{ marginBottom: 16 }}>
-                {/* ── GROUP HEADER ── */}
-                <div style={{
-                  padding: '6px 12px',
-                  fontSize: 12,
-                  fontWeight: 800,
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
-                  color: 'var(--theme-primary)',
-                  background: 'rgba(59,130,246,0.06)',
-                  borderBottom: '2px solid rgba(59,130,246,0.2)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6
-                }}>
-                  <FiBox size={14} /> {groupName}
-                </div>
-
-                {Object.entries(formats).sort(([a], [b]) => a.localeCompare(b)).map(([fmtName, categories]) => (
-                  <div key={fmtName} style={{ paddingLeft: 12, borderLeft: '2px solid rgba(0,0,0,0.04)', marginLeft: 6 }}>
-                    {/* ── FORMAT HEADER ── */}
-                    <div style={{
-                      padding: '8px 12px 4px 0',
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: 'var(--text-muted)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 4
-                    }}>
-                      <FiFileText size={12} /> {fmtName}
-                    </div>
-
-                    {Object.entries(categories).sort(([a], [b]) => a.localeCompare(b)).map(([subcatName, list]) => (
-                      <div key={subcatName} style={{ marginBottom: 8 }}>
-                        {/* ── SUBCATEGORY LABEL ── */}
-                        <div style={{
-                          padding: '4px 8px',
-                          fontSize: 10,
-                          fontWeight: 700,
-                          color: '#475569',
-                          background: '#F1F5F9',
-                          borderRadius: 4,
-                          marginLeft: 8,
-                          marginRight: 8,
-                          marginTop: 4,
-                          display: 'inline-block'
-                        }}>
-                          {subcatName.toUpperCase()}
-                        </div>
-
-                        {/* ── TEMPLATE ROWS ── */}
-                        {list.map(t => {
-                          const selected = data.template_id === t.id;
-                          const isDeleting = deletingId === t.id;
-                          return (
-                            <div
-                              key={t.id}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                padding: '8px 10px 8px 12px',
-                                background: selected ? 'rgba(59,130,246,0.08)' : 'transparent',
-                                borderBottom: '1px solid var(--border)',
-                                transition: 'background 0.12s',
-                                gap: 8,
-                              }}
-                              onMouseEnter={(e) => { if (!selected) e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                              onMouseLeave={(e) => { if (!selected) e.currentTarget.style.background = 'transparent'; }}
-                            >
-                              <div
-                                onClick={() => update({ template_id: t.id })}
-                                style={{ flex: 1, cursor: 'pointer', minWidth: 0, overflow: 'hidden' }}
-                              >
-                                <div style={{
-                                  fontSize: 13,
-                                  fontWeight: selected ? 600 : 400,
-                                  color: selected ? 'var(--theme-primary)' : 'var(--text-primary)',
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis'
-                                }}>
-                                  {t.name}
-                                </div>
-                              </div>
-
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(t.id); }}
-                                disabled={isDeleting}
-                                title="Delete template"
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  padding: '4px 6px',
-                                  borderRadius: 6,
-                                  cursor: isDeleting ? 'not-allowed' : 'pointer',
-                                  color: isDeleting ? 'var(--text-muted)' : '#EF4444',
-                                  opacity: isDeleting ? 0.4 : 0.6,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  transition: 'opacity 0.15s',
-                                  flexShrink: 0,
-                                }}
-                                onMouseEnter={(e) => { if (!isDeleting) e.currentTarget.style.opacity = '1'; }}
-                                onMouseLeave={(e) => { if (!isDeleting) e.currentTarget.style.opacity = '0.6'; }}
-                              >
-                                <FiTrash2 size={13} />
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            ));
-          })()}
-
-          {templates.length === 0 && (
-            <div style={{ padding: '20px', textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
-              No templates found. Upload one above.
+      {/* ÔöÇÔöÇ TEMPLATE LIBRARY ÔöÇÔöÇ */}
+        <>
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginTop: 4, marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <FiFileText size={12} color="var(--accent-btn)" /> Template Selection
             </div>
-          )}
-        </div>
-      </Field>
+          </div>
+          {/* Format dropdown */}
+          <Field label="Format Filter" hint="Filter the template list by file format.">
+            <SearchableSelect
+              showSearch={false}
+              value={format}
+              onChange={v => { setFormat(v); update({ report_format: v }); }}
+              options={[
+                { value: '',      label: 'All Formats' },
+                { value: '.docx', label: 'Word (.docx)' },
+                { value: '.xlsx', label: 'Excel (.xlsx)' },
+                { value: '.pdf',  label: 'PDF (.pdf)' },
+                { value: '.csv',  label: 'CSV (.csv)' },
+                { value: '.json', label: 'JSON (.json)' },
+                { value: '.md',   label: 'Markdown (.md)' },
+              ]}
+              placeholder="All Formats"
+            />
+          </Field>
 
-      {/* ── UPLOAD MODAL — unchanged from original ── */}
+          {/* Category dropdown */}
+          <Field label="Category Filter" hint="Filter templates by category." action={
+            <button
+              onClick={() => setShowCustomCatInput(v => !v)}
+              style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}
+            >
+              <FiPlus size={11} /> New
+            </button>
+          }>
+            {showCustomCatInput && (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                <input
+                  value={customCatInput} onChange={e => setCustomCatInput(e.target.value)} autoFocus
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && customCatInput.trim()) {
+                      const newCat = customCatInput.trim();
+                      setAllCategories(prev => prev.includes(newCat) ? prev : [...prev, newCat]);
+                      setCategory(newCat); update({ template_category: newCat });
+                      setCustomCatInput(''); setShowCustomCatInput(false);
+                    }
+                  }}
+                  placeholder="New category name + Enter"
+                  style={{ flex: 1, padding: '8px 12px', fontSize: 12, borderRadius: 8, border: '1px solid var(--accent-btn)', outline: 'none', fontFamily: 'inherit' }}
+                />
+                <button
+                  onClick={() => {
+                    if (customCatInput.trim()) {
+                      const newCat = customCatInput.trim();
+                      setAllCategories(prev => prev.includes(newCat) ? prev : [...prev, newCat]);
+                      setCategory(newCat); update({ template_category: newCat });
+                      setCustomCatInput(''); setShowCustomCatInput(false);
+                    }
+                  }}
+                  style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: 'var(--accent-btn)', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                >Add</button>
+              </div>
+            )}
+            <SearchableSelect
+              showSearch={false}
+              value={category}
+              onChange={v => { setCategory(v); update({ template_category: v }); }}
+              options={[
+                { value: '', label: 'All Categories' },
+                ...allCategories.map(c => ({ value: c, label: c })),
+              ]}
+              placeholder="All Categories"
+            />
+          </Field>
+
+          {/* Template list */}
+          <Field label="Select Template" hint="Choose a template layout to generate into." action={
+            <button
+              onClick={() => setShowUpload(true)}
+              style={{ fontSize: 11, padding: '5px 12px', background: 'var(--accent-btn)', color: 'white', border: 'none', borderRadius: 7, cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            >
+              <FiUploadCloud size={13} /> Upload
+            </button>
+          }>
+              <SearchableSelect
+                value={data.template_id || ''}
+                onChange={v => {
+                  if (v === '' || v === 'auto') {
+                    update({ template_id: v, output_file_name: v === 'auto' ? 'auto_generated_report' : 'generated_report' });
+                  } else {
+                    const t = (Array.isArray(templates) ? templates : []).find(temp => temp.id === v);
+                    if (t) {
+                      const baseName = t.name.split('.')[0].replace(/[^a-zA-Z0-9_-]/g, '_');
+                      update({ template_id: t.id, report_format: t.format_type, output_file_name: baseName });
+                      setFormat(t.format_type);
+                    }
+                  }
+                }}
+                options={[
+                  { value: '', label: '­ƒôä Blank Document (No Template)' },
+                  { value: 'auto', label: 'Ô£¿ Auto-Select Template via AI' },
+                  ...(Array.isArray(templates) ? templates.map(t => ({
+                    value: t.id,
+                    label: t.name,
+                    sublabel: `${(t.category || 'General').toUpperCase()} ÔÇ║ ${t.format_type}`,
+                    onDelete: () => handleDeleteTemplate(t.id)
+                  })) : [])
+                ]}
+                placeholder="Select a template..."
+              />
+            </Field>
+        </>
+      {/* ÔöÇÔöÇ I/O ROUTING (collapsible) ÔöÇÔöÇ */}
+      <div style={{ borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden', marginBottom: 18 }}>
+        <div onClick={() => setAdvancedOpen(o => !o)} style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-card-neutral, #F8FAFC)' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <FiBox size={12} color="var(--text-muted)" /> ADVANCED ÔÇö I/O ROUTING
+          </span>
+          <FiChevronDown size={14} style={{ color: 'var(--text-muted)', transform: advancedOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+        </div>
+        {advancedOpen && (
+          <div style={{ padding: '14px 14px 2px' }}>
+            <Field label="Input Data Key" hint="Context key containing the JSON data to map into the template.">
+              <Input value={data.input_data_key || 'report_data'} onChange={v => update({ input_data_key: v })} placeholder="e.g. report_data" />
+            </Field>
+            <Field label="Output File Base Name" hint="Base name for the generated file (no extension needed).">
+              <Input value={data.output_file_name || 'generated_report'} onChange={v => update({ output_file_name: v })} placeholder="e.g. generated_report" />
+            </Field>
+          </div>
+        )}
+        {!advancedOpen && (
+          <div style={{ padding: '8px 14px', fontSize: 11, color: 'var(--text-muted)' }}>
+            Key: <strong>{data.input_data_key || 'report_data'}</strong> ÔåÆ File: <strong>{data.output_file_name || 'generated_report'}</strong>
+          </div>
+        )}
+      </div>
+
+      {/* ÔöÇÔöÇ AI SUBSTITUTION MODEL ÔöÇÔöÇ */}
+      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <FiZap size={12} color="var(--accent-btn)" /> AI Substitution Model
+        </div>
+        <div style={{ padding: '8px 12px', background: 'var(--bg-canvas)', borderRadius: 8, fontSize: 11, color: 'var(--text-muted)', border: '1px solid var(--border)', marginBottom: 12 }}>
+          {llmMode
+            ? 'LLM Mode ÔÇö The AI generates the entire document from scratch using the VFS.'
+            : 'Used when your template has no {{placeholders}} ÔÇö the AI figures out what to replace.'}
+        </div>
+        <LLMConfigSection llm={data.llm} onChange={v => update({ llm: v })} />
+      </div>
+
+      {/* ÔöÇÔöÇ UPLOAD MODAL ÔöÇÔöÇ */}
       {showUpload && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: 20 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: 20 }}>
           <div style={{ width: 440, background: 'white', borderRadius: 24, padding: 32, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', position: 'relative', border: '1px solid #E2E8F0' }}>
-            <button onClick={() => setShowUpload(false)} style={{ position: 'absolute', top: 20, right: 20, background: '#F1F5F9', border: 'none', width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748B', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E8F0'; e.currentTarget.style.color = '#0F172A'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F1F5F9'; e.currentTarget.style.color = '#64748B'; }}>
+            <button onClick={() => setShowUpload(false)} style={{ position: 'absolute', top: 20, right: 20, background: '#F1F5F9', border: 'none', width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748B' }}>
               <FiX size={16} strokeWidth={3} />
             </button>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 30 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #E0F2FE 0%, #BAE6FD 100%)', color: '#0284C7', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(2, 132, 199, 0.15)' }}>
-                <FiFileText size={24} strokeWidth={2.5} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--bg-hover)', color: 'var(--accent-btn)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FiUploadCloud size={22} strokeWidth={2} />
               </div>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em' }}>Upload Template</div>
-                <div style={{ fontSize: 13, color: '#64748B', marginTop: 2 }}>Securely add a new document to the database</div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: '#0F172A' }}>Upload Template</div>
+                <div style={{ fontSize: 13, color: '#64748B', marginTop: 2 }}>Add a new document to the library</div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Template Name</label>
-                <Input value={uploadName} onChange={setUploadName} placeholder="e.g. Monthly Finance Report" style={{ padding: '12px 16px', fontSize: 14, borderRadius: 12, background: '#F8FAFC', border: '2px solid #E2E8F0', width: '100%' }} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Category</label>
-                {uploadCatCustom ? (
-                  <div style={{ display: 'flex', gap: 5 }}>
-                    <input
-                      autoFocus
-                      value={uploadCategory}
-                      onChange={e => setUploadCategory(e.target.value)}
-                      placeholder="Type category name"
-                      style={{
-                        flex: 1, padding: '12px 14px', fontSize: 13, borderRadius: 12,
-                        background: '#F8FAFC', border: '2px solid #8B5CF6',
-                        outline: 'none', fontFamily: 'inherit',
-                      }}
-                    />
-                    <button
-                      onClick={() => setUploadCatCustom(false)}
-                      style={{
-                        padding: '8px 10px', borderRadius: 10, border: '1px solid #E2E8F0',
-                        background: '#F1F5F9', cursor: 'pointer', fontSize: 11,
-                        fontWeight: 600, color: '#64748B',
-                      }}
-                    >List</button>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', gap: 5 }}>
-                    <select
-                      value={uploadCategory}
-                      onChange={(e) => setUploadCategory(e.target.value)}
-                      style={{
-                        flex: 1, padding: '12px 14px', fontSize: 13, borderRadius: 12,
-                        background: '#F8FAFC', border: '2px solid #E2E8F0',
-                        color: '#0F172A', outline: 'none', fontFamily: 'inherit',
-                      }}
-                    >
-                      {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                    <button
-                      onClick={() => { setUploadCatCustom(true); setUploadCategory(''); }}
-                      title="Type a new category"
-                      style={{
-                        padding: '8px 10px', borderRadius: 10,
-                        border: '1.5px dashed #C4B5FD',
-                        background: '#F5F3FF', cursor: 'pointer', fontSize: 11,
-                        fontWeight: 700, color: '#7C3AED',
-                      }}
-                    ><FiPlus size={13} /></button>
-                  </div>
-                )}
-              </div>
-              <div style={{ marginTop: 8, fontSize: 11, color: '#94A3B8', lineHeight: 1.4 }}>
-                <strong>Tip:</strong> Use <code style={{ background: '#F1F5F9', padding: '1px 4px', borderRadius: 4 }}>/</code> to create subcategories (e.g., <em>HR / Offer Letters</em>). Categories are automatically deleted when all templates inside them are removed.
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Template Name</label>
+              <Input value={uploadName} onChange={setUploadName} placeholder="e.g. Monthly Finance Report" />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Category</label>
+              {uploadCatCustom ? (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input autoFocus value={uploadCategory} onChange={e => setUploadCategory(e.target.value)} placeholder="Type category name" style={{ flex: 1, ...{ width: '100%', padding: '9px 12px', background: 'white', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, outline: 'none', fontFamily: 'inherit' } }} onFocus={e => e.currentTarget.style.borderColor = 'var(--accent-btn)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border)'} />
+                  <button onClick={() => setUploadCatCustom(false)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: '#F1F5F9', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#64748B' }}>List</button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <select value={uploadCategory} onChange={e => setUploadCategory(e.target.value)} style={{ flex: 1, padding: '9px 12px', fontSize: 13, borderRadius: 8, background: 'white', border: '1px solid var(--border)', color: '#0F172A', outline: 'none', fontFamily: 'inherit' }}>
+                    {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <button onClick={() => { setUploadCatCustom(true); setUploadCategory(''); }} title="Type a new category" style={{ padding: '8px 12px', borderRadius: 8, border: '1px dashed var(--border)', background: '#F8FAFC', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--accent-btn)' }}><FiPlus size={13} /></button>
+                </div>
+              )}
+              <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-muted)' }}>
+                Tip: Use <code style={{ background: '#F1F5F9', padding: '1px 4px', borderRadius: 4 }}>/</code> for subcategories (e.g. <em>HR / Offer Letters</em>).
               </div>
             </div>
 
-            <div style={{ marginBottom: 32 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Select File(s)</label>
-              <div style={{
-                border: '2px dashed #CBD5E1', borderRadius: 16, padding: '40px 20px', textAlign: 'center',
-                background: uploadFiles.length > 0 ? '#F0FDF4' : '#F8FAFC', cursor: 'pointer', position: 'relative', transition: 'all 0.2s',
-                borderColor: uploadFiles.length > 0 ? '#22C55E' : '#CBD5E1'
-              }}
-                onMouseEnter={(e) => { if (uploadFiles.length === 0) e.currentTarget.style.borderColor = '#0EA5E9'; e.currentTarget.style.background = uploadFiles.length > 0 ? '#F0FDF4' : '#F1F5F9'; }}
-                onMouseLeave={(e) => { if (uploadFiles.length === 0) e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.background = uploadFiles.length > 0 ? '#F0FDF4' : '#F8FAFC'; }}
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Select File(s)</label>
+              <div style={{ border: '2px dashed var(--border)', borderRadius: 12, padding: '32px 20px', textAlign: 'center', background: uploadFiles.length > 0 ? '#F0FDF4' : '#F8FAFC', cursor: 'pointer', position: 'relative', transition: 'all 0.2s', borderColor: uploadFiles.length > 0 ? '#22C55E' : 'var(--border)' }}
+                onMouseEnter={e => { if (uploadFiles.length === 0) { e.currentTarget.style.borderColor = 'var(--accent-btn)'; e.currentTarget.style.background = '#F0F4FF'; } }}
+                onMouseLeave={e => { if (uploadFiles.length === 0) { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = '#F8FAFC'; } }}
               >
-                <input type="file" multiple onChange={(e) => { if (e.target.files.length > 0) { setUploadFiles(Array.from(e.target.files)); if (!uploadName) setUploadName(e.target.files[0].name.split('.')[0]); } }} style={{ opacity: 0, position: 'absolute', inset: 0, width: '100%', cursor: 'pointer', zIndex: 10 }} />
+                <input type="file" multiple onChange={e => { if (e.target.files.length > 0) { setUploadFiles(Array.from(e.target.files)); if (!uploadName) setUploadName(e.target.files[0].name.split('.')[0]); } }} style={{ opacity: 0, position: 'absolute', inset: 0, width: '100%', cursor: 'pointer', zIndex: 10 }} />
                 {uploadFiles.length > 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 20, background: '#DCFCE7', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <FiCheck size={20} strokeWidth={3} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: '#166534' }}>{uploadFiles.length} file(s) selected</div>
-                      <div style={{ fontSize: 12, color: '#22C55E', marginTop: 2 }}>Ready to upload</div>
-                    </div>
+                    <div style={{ width: 36, height: 36, borderRadius: 18, background: '#DCFCE7', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FiCheck size={18} strokeWidth={3} /></div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#166534' }}>{uploadFiles.length} file(s) selected ÔÇö Ready to upload</div>
                   </div>
                 ) : (
                   <>
-                    <FiPlus size={28} color="#94A3B8" style={{ marginBottom: 12 }} />
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#334155' }}>Click or drag files to upload</div>
-                    <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 6, fontWeight: 500 }}>Supports .docx, .xlsx, .pdf, .json, .md</div>
+                    <FiUploadCloud size={26} color="var(--text-muted)" style={{ marginBottom: 8 }} />
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Click or drag files here</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Supports .docx, .xlsx, .pdf, .json, .md</div>
                   </>
                 )}
               </div>
             </div>
 
             <button
-              onClick={handleUpload}
-              disabled={uploading || !uploadName || uploadFiles.length === 0}
-              style={{
-                width: '100%', padding: '14px',
-                background: (uploading || !uploadName || uploadFiles.length === 0) ? '#E2E8F0' : 'linear-gradient(135deg, #0EA5E9 0%, #2563EB 100%)',
-                color: (uploading || !uploadName || uploadFiles.length === 0) ? '#94A3B8' : 'white',
-                border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 700,
-                cursor: (uploading || !uploadName || uploadFiles.length === 0) ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: (uploading || !uploadName || uploadFiles.length === 0) ? 'none' : '0 10px 20px -10px rgba(37, 99, 235, 0.5)'
-              }}
-              onMouseEnter={(e) => { if (!uploading && uploadName && uploadFiles.length > 0) e.currentTarget.style.transform = 'translateY(-2px)'; }}
-              onMouseLeave={(e) => { if (!uploading && uploadName && uploadFiles.length > 0) e.currentTarget.style.transform = 'translateY(0)'; }}
+              onClick={handleUpload} disabled={uploading || !uploadName || uploadFiles.length === 0}
+              style={{ width: '100%', padding: '12px', background: (uploading || !uploadName || uploadFiles.length === 0) ? '#E2E8F0' : 'var(--accent-btn)', color: (uploading || !uploadName || uploadFiles.length === 0) ? '#94A3B8' : 'white', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: (uploading || !uploadName || uploadFiles.length === 0) ? 'not-allowed' : 'pointer', transition: 'opacity 0.2s' }}
+              onMouseEnter={e => { if (!uploading && uploadName && uploadFiles.length > 0) e.currentTarget.style.opacity = '0.85'; }}
+              onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
             >
               {uploading ? 'Uploading...' : 'Confirm & Save Template'}
             </button>
           </div>
         </div>
       )}
-
-      <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }} />
-
-      {/* ── INPUT DATA KEY + OUTPUT FILE NAME — unchanged ── */}
-      <Field label="Input Data Key" hint="Context key containing the JSON data to map into the template.">
-        <Input
-          value={data.input_data_key || 'report_data'}
-          onChange={(v) => update({ input_data_key: v })}
-          placeholder="e.g. report_data"
-        />
-      </Field>
-
-      <Field label="Output File Base Name" hint="Base name for the generated file.">
-        <Input
-          value={data.output_file_name || 'generated_report'}
-          onChange={(v) => update({ output_file_name: v })}
-          placeholder="e.g. generated_report"
-        />
-      </Field>
     </div>
   );
 }
+
+
+
+
+
+
 
 
 
@@ -3719,26 +3457,398 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
           opacity: op.disabled ? 0.55 : 1,
           transition: 'all 0.2s'
         }}>
-          <FiZap size={12} color="var(--accent-btn)" />
-          AI Substitution Model
+          {/* Card Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: op.disabled ? 'var(--text-muted, #94A3B8)' : 'var(--theme-primary)', letterSpacing: '0.05em' }}>
+                STEP {idx + 1} {op.disabled && '(DISABLED)'}
+              </span>
+              <div
+                onClick={() => updateOperation(idx, { disabled: !op.disabled })}
+                style={{
+                  width: 32, height: 18, borderRadius: 9, cursor: 'pointer', position: 'relative',
+                  background: !op.disabled ? 'var(--accent-btn, #4285F4)' : 'var(--border, #e2e8f0)',
+                  transition: 'all 0.2s', flexShrink: 0, display: 'inline-block'
+                }}
+                title={op.disabled ? "Enable Step" : "Disable Step"}
+              >
+                <div style={{
+                  position: 'absolute', top: 2, left: !op.disabled ? 16 : 2, width: 14, height: 14,
+                  borderRadius: '50%', background: '#fff', transition: 'left 0.2s ease',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                }} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button
+                disabled={idx === 0}
+                onClick={() => moveOperation(idx, -1)}
+                style={{ background: 'none', border: 'none', padding: 4, cursor: idx === 0 ? 'not-allowed' : 'pointer', color: 'var(--text-muted)' }}
+                title="Move Up"
+              >
+                Ôû▓
+              </button>
+              <button
+                disabled={idx === value.length - 1}
+                onClick={() => moveOperation(idx, 1)}
+                style={{ background: 'none', border: 'none', padding: 4, cursor: idx === value.length - 1 ? 'not-allowed' : 'pointer', color: 'var(--text-muted)' }}
+                title="Move Down"
+              >
+                Ôû╝
+              </button>
+              <button
+                onClick={() => removeOperation(idx)}
+                style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4 }}
+                title="Remove Operation"
+              >
+                <FiTrash2 size={12} />
+              </button>
+            </div>
+          </div>
+
+          {/* Operation Type Selector */}
+          <div>
+            <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>OPERATION TYPE</label>
+            <select
+              value={op.type}
+              onChange={(e) => updateOperation(idx, { type: e.target.value })}
+              style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+            >
+              {opTypes.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+
+          {/* Dynamic Configuration Fields */}
+          {op.type === 'extract_field' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>SOURCE PATH (NESTED DICT/LIST)</label>
+                <input
+                  list="jt-context-keys"
+                  value={op.source_path ?? ''}
+                  onChange={(e) => updateOperation(idx, { source_path: e.target.value })}
+                  placeholder="e.g. data.results"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>TARGET FIELD</label>
+                  <input
+                    value={op.field ?? ''}
+                    onChange={(e) => updateOperation(idx, { field: e.target.value })}
+                    placeholder="e.g. status"
+                    style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DESTINATION KEY (ROOT)</label>
+                  <input
+                    value={op.destination ?? ''}
+                    onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                    placeholder="e.g. job_status"
+                    style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {op.type === 'filter' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>SOURCE LIST PATH</label>
+                <input
+                  list="jt-context-keys"
+                  value={op.source_path ?? ''}
+                  onChange={(e) => updateOperation(idx, { source_path: e.target.value })}
+                  placeholder="e.g. data.items"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
+                <div style={{ flex: 1.5 }}>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>FILTER FIELD</label>
+                  <input
+                    value={op.filter_field ?? ''}
+                    onChange={(e) => updateOperation(idx, { filter_field: e.target.value })}
+                    placeholder="e.g. status"
+                    style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>OP</label>
+                  <select
+                    value={op.filter_operator ?? '=='}
+                    onChange={(e) => updateOperation(idx, { filter_operator: e.target.value })}
+                    style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                  >
+                    <option value="==">==</option>
+                    <option value="!=">!=</option>
+                    <option value="contains">contains</option>
+                    <option value=">">&gt;</option>
+                    <option value="<">&lt;</option>
+                  </select>
+                </div>
+                <div style={{ flex: 1.5 }}>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>VALUE</label>
+                  <input
+                    value={op.filter_value ?? ''}
+                    onChange={(e) => updateOperation(idx, { filter_value: e.target.value })}
+                    placeholder="e.g. active"
+                    style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                  />
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DESTINATION KEY (OPTIONAL)</label>
+                <input
+                  value={op.destination ?? ''}
+                  onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                  placeholder="e.g. filtered_items"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+            </div>
+          )}
+
+          {op.type === 'map' && (() => {
+            const projections = op.projections || [];
+            const isProjection = projections.length > 0 || op.use_projection;
+
+            const addProj = () => {
+              const nextProj = [...projections, { target_path: '', source_field: '' }];
+              updateOperation(idx, { projections: nextProj, use_projection: true });
+            };
+
+            const updateProj = (pIdx, patch) => {
+              const nextProj = [...projections];
+              nextProj[pIdx] = { ...nextProj[pIdx], ...patch };
+              updateOperation(idx, { projections: nextProj });
+            };
+
+            const removeProj = (pIdx) => {
+              const nextProj = projections.filter((_, i) => i !== pIdx);
+              updateOperation(idx, { projections: nextProj });
+            };
+
+            const toggleProjection = (checked) => {
+              if (checked) {
+                updateOperation(idx, { use_projection: true, projections: projections.length > 0 ? projections : [{ target_path: '', source_field: '' }] });
+              } else {
+                updateOperation(idx, { use_projection: false, projections: [] });
+              }
+            };
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>SOURCE LIST PATH</label>
+                  <input
+                    list="jt-context-keys"
+                    value={op.source_path ?? ''}
+                    onChange={(e) => updateOperation(idx, { source_path: e.target.value })}
+                    placeholder="e.g. job_status.tasks"
+                    style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '4px 0' }}>
+                  <input
+                    type="checkbox"
+                    id={`jt-map-proj-${idx}`}
+                    checked={isProjection}
+                    onChange={(e) => toggleProjection(e.target.checked)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <label htmlFor={`jt-map-proj-${idx}`} style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}>
+                    Construct custom objects (Object Projection)
+                  </label>
+                </div>
+
+                {isProjection ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'rgba(0,0,0,0.02)', padding: 10, borderRadius: 8, border: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>FIELD MAPPINGS</div>
+                    {projections.map((proj, pIdx) => (
+                      <div key={pIdx} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <input
+                          value={proj.target_path}
+                          onChange={(e) => updateProj(pIdx, { target_path: e.target.value })}
+                          placeholder="Target path (e.g. train.accuracy)"
+                          style={{ ...inputStyle, padding: '5px 8px', fontSize: 11, flex: 1 }}
+                        />
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>&larr;</span>
+                        <input
+                          value={proj.source_field}
+                          onChange={(e) => updateProj(pIdx, { source_field: e.target.value })}
+                          placeholder="Source path (relative to item)"
+                          style={{ ...inputStyle, padding: '5px 8px', fontSize: 11, flex: 1 }}
+                        />
+                        <button
+                          onClick={() => removeProj(pIdx)}
+                          style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4 }}
+                        >
+                          <FiTrash2 size={11} />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={addProj}
+                      style={{
+                        padding: '6px',
+                        background: 'white',
+                        border: '1px dashed var(--border)',
+                        borderRadius: 6,
+                        fontSize: 10,
+                        color: 'var(--accent-btn)',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        marginTop: 4
+                      }}
+                    >
+                      + Add Field Mapping
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>FIELD TO EXTRACT</label>
+                      <input
+                        value={op.field ?? ''}
+                        onChange={(e) => updateOperation(idx, { field: e.target.value })}
+                        placeholder="e.g. email"
+                        style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DESTINATION KEY</label>
+                  <input
+                    value={op.destination ?? ''}
+                    onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                    placeholder="e.g. user_emails"
+                    style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                  />
+                </div>
+              </div>
+            );
+          })()}
+
+          {op.type === 'rename' && (
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>SOURCE KEY</label>
+                <input
+                  list="jt-context-keys"
+                  value={op.source_path ?? ''}
+                  onChange={(e) => updateOperation(idx, { source_path: e.target.value })}
+                  placeholder="e.g. old_name"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>NEW KEY NAME</label>
+                <input
+                  value={op.destination ?? ''}
+                  onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                  placeholder="e.g. new_name"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+            </div>
+          )}
+
+          {op.type === 'set_value' && (
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DESTINATION PATH</label>
+                <input
+                  value={op.destination ?? ''}
+                  onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                  placeholder="e.g. config.debug"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>STATIC VALUE</label>
+                <input
+                  value={op.static_value ?? ''}
+                  onChange={(e) => updateOperation(idx, { static_value: e.target.value })}
+                  placeholder="e.g. true"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+            </div>
+          )}
+
+          {op.type === 'delete_field' && (
+            <div>
+              <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>FIELD TO DELETE (ROOT)</label>
+              <input
+                list="jt-context-keys"
+                value={op.field ?? ''}
+                onChange={(e) => updateOperation(idx, { field: e.target.value })}
+                placeholder="e.g. sensitive_field"
+                style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+              />
+            </div>
+          )}
+
+          {op.type === 'flatten' && (
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>SOURCE LIST OF LISTS</label>
+                <input
+                  list="jt-context-keys"
+                  value={op.source_path ?? ''}
+                  onChange={(e) => updateOperation(idx, { source_path: e.target.value })}
+                  placeholder="e.g. nested_arrays"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DESTINATION KEY</label>
+                <input
+                  value={op.destination ?? ''}
+                  onChange={(e) => updateOperation(idx, { destination: e.target.value })}
+                  placeholder="e.g. flat_array"
+                  style={{ ...inputStyle, padding: '6px 8px', fontSize: 12 }}
+                />
+              </div>
+            </div>
+          )}
         </div>
-        <div style={{
-          padding: '10px 12px', background: '#F0F9FF', borderRadius: 8,
-          fontSize: 11, color: '#0369A1', border: '1px solid #BAE6FD', marginBottom: 12
-        }}>
-          Used when your template has no &#123;&#123;placeholders&#125;&#125; — the AI reads the
-          document and figures out what to replace based on your input data.
-        </div>
-        <LLMConfigSection
-          llm={data.llm}
-          onChange={(v) => update({ llm: v })}
-        />
-      </div>
+      ))}
+
+      <button
+        onClick={addOperation}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+          padding: '10px',
+          background: 'none',
+          border: '1.5px dashed var(--border)',
+          borderRadius: 10,
+          color: 'var(--accent-btn)',
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: 'pointer',
+          transition: 'all 0.15s'
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-btn)'; e.currentTarget.style.background = 'var(--accent-glow)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'none'; }}
+      >
+        <FiPlus size={13} /> Add Transform Operation
+      </button>
     </div>
   );
 }
 
-
+export default 
 
 export default function PropertiesPanel() {
   const selectedNodeId = useUIStore((s) => s.selectedNodeId);
