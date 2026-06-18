@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef, memo } from 'react';
-import { FiInfo, FiZap } from 'react-icons/fi';
+import React, { useState, useEffect, useRef, memo, useMemo } from 'react';
+import { FiInfo, FiZap, FiDatabase } from 'react-icons/fi';
+import { useRunStore, useWorkflowStore } from '../../../../store';
 
 export const FONT = "'Google Sans','Roboto',sans-serif";
 
@@ -29,6 +30,49 @@ export const inputStyle = {
   border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)',
   fontSize: 13, outline: 'none', fontFamily: FONT, transition: 'border-color 0.15s',
   boxSizing: 'border-box',
+};
+
+// Reusable hook to fetch all variables from runtime context and state
+const useAvailableKeys = () => {
+  const latestContext = useRunStore(s => s.latestContext) || {};
+  const workflowNodes = useWorkflowStore(s => s.nodes) || {};
+  const nodeLabelMap = useMemo(() => Object.fromEntries(workflowNodes.map(n => [n.id, n.data?.label || n.id])), [workflowNodes]);
+
+  return useMemo(() => {
+    const list = [];
+    
+    // Add system vars
+    ['thread_id', 'workflow_id', 'user_id', 'msg'].forEach(k => {
+      if (latestContext[k] !== undefined) {
+        list.push({ label: `System: ${k}`, value: `{{${k}}}` });
+      }
+    });
+
+    // Add node variables
+    if (latestContext.nodes) {
+      Object.keys(latestContext.nodes).forEach(nodeId => {
+        const label = nodeLabelMap[nodeId] || nodeId;
+        const nodeData = latestContext.nodes[nodeId];
+        if (nodeData && typeof nodeData === 'object') {
+          Object.keys(nodeData).forEach(k => {
+            list.push({
+              label: `${label}: ${k}`,
+              value: `{{nodes.${nodeId}.${k}}}`
+            });
+          });
+        }
+      });
+    }
+
+    // Add general variables
+    Object.keys(latestContext).forEach(k => {
+      if (!['nodes', 'thread_id', 'workflow_id', 'workflow_name', 'user_id', 'msg'].includes(k)) {
+        list.push({ label: `Context: ${k}`, value: `{{${k}}}` });
+      }
+    });
+
+    return list;
+  }, [latestContext, nodeLabelMap]);
 };
 
 export const Field = memo(function Field({ label, hint, action, children }) {
@@ -62,9 +106,12 @@ export const Field = memo(function Field({ label, hint, action, children }) {
   );
 });
 
-export const Input = memo(function Input({ value, onChange, placeholder, type = 'text', style: extra, disabled, debounceMs }) {
+export const Input = memo(function Input({ value, onChange, placeholder, type = 'text', style: extra, disabled, debounceMs, noVariablePicker = false }) {
   const [localValue, setLocalValue] = useState(value ?? '');
+  const [showPicker, setShowPicker] = useState(false);
+  const dropdownRef = useRef(null);
   const timeoutRef = useRef(null);
+  const availableKeys = useAvailableKeys();
 
   useEffect(() => {
     setLocalValue(value ?? '');
@@ -76,11 +123,28 @@ export const Input = memo(function Input({ value, onChange, placeholder, type = 
     };
   }, []);
 
+  useEffect(() => {
+    if (!showPicker) return;
+    const handleOutsideClick = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setShowPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [showPicker]);
+
   const onDragOver = (e) => {
-    if (e.dataTransfer.types.includes('application/agentmesh-var')) e.preventDefault();
+    if (e.dataTransfer.types.includes('application/agentmesh-var') || e.dataTransfer.types.includes('application/agentmesh-variable')) {
+      e.preventDefault();
+    }
   };
   const onDrop = (e) => {
-    const text = e.dataTransfer.getData('application/agentmesh-var');
+    let text = e.dataTransfer.getData('application/agentmesh-var');
+    if (!text) {
+      const rawVar = e.dataTransfer.getData('application/agentmesh-variable');
+      if (rawVar) text = `{{${rawVar}}}`;
+    }
     if (text) {
       e.preventDefault();
       const newVal = (localValue || '') + text;
@@ -110,24 +174,66 @@ export const Input = memo(function Input({ value, onChange, placeholder, type = 
   };
 
   return (
-    <input
-      type={type}
-      value={localValue}
-      onChange={(e) => handleChange(e.target.value)}
-      onBlur={handleBlur}
-      placeholder={placeholder}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      disabled={disabled}
-      className={`w-full px-3 py-2 bg-white border border-[var(--border)] rounded-lg text-[13px] outline-none text-[var(--text-primary)] transition-colors duration-150 box-border disabled:opacity-60 focus:border-[var(--accent-btn)]`}
-      style={{ fontFamily: FONT, ...extra }}
-    />
+    <div className="relative w-full flex items-center">
+      <input
+        type={type}
+        value={localValue}
+        onChange={(e) => handleChange(e.target.value)}
+        onBlur={handleBlur}
+        placeholder={placeholder}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        disabled={disabled}
+        className={`w-full pl-3 pr-8 py-2 bg-white border border-[var(--border)] rounded-lg text-[13px] outline-none text-[var(--text-primary)] transition-colors duration-150 box-border disabled:opacity-60 focus:border-[var(--accent-btn)]`}
+        style={{ fontFamily: FONT, ...extra }}
+      />
+      {!disabled && !noVariablePicker && availableKeys.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowPicker(!showPicker)}
+          className="absolute right-2 bg-transparent border-none text-[var(--text-muted)] cursor-pointer hover:text-[var(--theme-primary)] flex items-center justify-center p-1"
+          style={{ outline: 'none' }}
+          title="Insert Variable"
+        >
+          <span style={{ fontSize: 13, fontWeight: 'bold', fontFamily: 'monospace' }}>{`{}`}</span>
+        </button>
+      )}
+
+      {showPicker && (
+        <div
+          ref={dropdownRef}
+          className="absolute right-0 top-[calc(100%+4px)] bg-white border border-[var(--border)] rounded-lg shadow-lg max-h-48 overflow-y-auto z-[9999] min-w-[220px]"
+        >
+          <div className="px-3 py-1.5 text-[10px] font-bold text-[var(--text-muted)] uppercase border-b border-[var(--border)] select-none">
+            Insert Variable
+          </div>
+          {availableKeys.map(k => (
+            <button
+              key={k.value}
+              type="button"
+              onClick={() => {
+                const newVal = (localValue || '') + k.value;
+                setLocalValue(newVal);
+                onChange(newVal);
+                setShowPicker(false);
+              }}
+              className="w-full text-left px-3 py-1.5 hover:bg-[var(--bg-hover,rgba(0,0,0,0.03))] text-[11px] text-[var(--text-primary)] border-none bg-transparent cursor-pointer truncate font-mono"
+            >
+              {k.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 });
 
-export const Textarea = memo(function Textarea({ value, onChange, placeholder, rows = 4, disabled, style: extra, debounceMs }) {
+export const Textarea = memo(function Textarea({ value, onChange, placeholder, rows = 4, disabled, style: extra, debounceMs, noVariablePicker = false }) {
   const [localValue, setLocalValue] = useState(value ?? '');
+  const [showPicker, setShowPicker] = useState(false);
+  const dropdownRef = useRef(null);
   const timeoutRef = useRef(null);
+  const availableKeys = useAvailableKeys();
 
   useEffect(() => {
     setLocalValue(value ?? '');
@@ -139,11 +245,28 @@ export const Textarea = memo(function Textarea({ value, onChange, placeholder, r
     };
   }, []);
 
+  useEffect(() => {
+    if (!showPicker) return;
+    const handleOutsideClick = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setShowPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [showPicker]);
+
   const onDragOver = (e) => {
-    if (e.dataTransfer.types.includes('application/agentmesh-var')) e.preventDefault();
+    if (e.dataTransfer.types.includes('application/agentmesh-var') || e.dataTransfer.types.includes('application/agentmesh-variable')) {
+      e.preventDefault();
+    }
   };
   const onDrop = (e) => {
-    const text = e.dataTransfer.getData('application/agentmesh-var');
+    let text = e.dataTransfer.getData('application/agentmesh-var');
+    if (!text) {
+      const rawVar = e.dataTransfer.getData('application/agentmesh-variable');
+      if (rawVar) text = `{{${rawVar}}}`;
+    }
     if (text) {
       e.preventDefault();
       const newVal = (localValue || '') + text;
@@ -173,18 +296,57 @@ export const Textarea = memo(function Textarea({ value, onChange, placeholder, r
   };
 
   return (
-    <textarea
-      value={localValue}
-      onChange={(e) => handleChange(e.target.value)}
-      onBlur={handleBlur}
-      placeholder={placeholder}
-      rows={rows}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      disabled={disabled}
-      className={`w-full px-3 py-2 bg-white border border-[var(--border)] rounded-lg text-[13px] outline-none text-[var(--text-primary)] transition-colors duration-150 box-border resize-y leading-relaxed disabled:opacity-60 focus:border-[var(--accent-btn)]`}
-      style={{ fontFamily: FONT, ...extra }}
-    />
+    <div className="relative w-full flex items-start">
+      <textarea
+        value={localValue}
+        onChange={(e) => handleChange(e.target.value)}
+        onBlur={handleBlur}
+        placeholder={placeholder}
+        rows={rows}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        disabled={disabled}
+        className={`w-full pl-3 pr-8 py-2 bg-white border border-[var(--border)] rounded-lg text-[13px] outline-none text-[var(--text-primary)] transition-colors duration-150 box-border resize-y leading-relaxed disabled:opacity-60 focus:border-[var(--accent-btn)]`}
+        style={{ fontFamily: FONT, ...extra }}
+      />
+      {!disabled && !noVariablePicker && availableKeys.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowPicker(!showPicker)}
+          className="absolute right-2 top-2 bg-transparent border-none text-[var(--text-muted)] cursor-pointer hover:text-[var(--theme-primary)] flex items-center justify-center p-1"
+          style={{ outline: 'none' }}
+          title="Insert Variable"
+        >
+          <span style={{ fontSize: 13, fontWeight: 'bold', fontFamily: 'monospace' }}>{`{}`}</span>
+        </button>
+      )}
+
+      {showPicker && (
+        <div
+          ref={dropdownRef}
+          className="absolute right-0 top-[calc(100%+4px)] bg-white border border-[var(--border)] rounded-lg shadow-lg max-h-48 overflow-y-auto z-[9999] min-w-[220px]"
+        >
+          <div className="px-3 py-1.5 text-[10px] font-bold text-[var(--text-muted)] uppercase border-b border-[var(--border)] select-none">
+            Insert Variable
+          </div>
+          {availableKeys.map(k => (
+            <button
+              key={k.value}
+              type="button"
+              onClick={() => {
+                const newVal = (localValue || '') + k.value;
+                setLocalValue(newVal);
+                onChange(newVal);
+                setShowPicker(false);
+              }}
+              className="w-full text-left px-3 py-1.5 hover:bg-[var(--bg-hover,rgba(0,0,0,0.03))] text-[11px] text-[var(--text-primary)] border-none bg-transparent cursor-pointer truncate font-mono"
+            >
+              {k.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 });
 

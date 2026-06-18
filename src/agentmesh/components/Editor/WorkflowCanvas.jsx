@@ -10,7 +10,7 @@ import {
   ReactFlowProvider,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useWorkflowStore, useUIStore } from "../../store";
+import { useWorkflowStore, useUIStore, useVariablesStore } from "../../store";
 import AgentNode from "./Nodes/AgentNode";
 import CardboardNode from "./Nodes/CardboardNode";
 import NodePalette from "./NodePalette";
@@ -21,11 +21,14 @@ import {
   FiGitBranch,
   FiArrowLeftCircle,
   FiDatabase,
+  FiSliders,
+  FiCompass,
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import ContextMenu from "./ContextMenu";
 import VariableExplorer from "./VariableExplorer";
 import NodeSearch from "./NodeSearch";
+import PilotPanel from "./PilotPanel";
 
 const NON_DIRTY_CHANGE_TYPES = new Set(["select", "dimensions", "reset"]);
 
@@ -145,6 +148,7 @@ export default function WorkflowCanvas() {
   const { setRunOpen } = useUIStore();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [menu, setMenu] = useState(null);
+  const [showPilotPanel, setShowPilotPanel] = useState(false);
 
   // Poll for active background runs (e.g. Cron/Webhook) to show live status
   React.useEffect(() => {
@@ -882,6 +886,68 @@ export default function WorkflowCanvas() {
           }}
         >
           <button
+            onClick={() => setShowPilotPanel(!showPilotPanel)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "10px",
+              background: showPilotPanel
+                ? "var(--theme-primary-glow)"
+                : "var(--bg-secondary, white)",
+              border: showPilotPanel
+                ? "1px solid var(--theme-primary)"
+                : "1px solid var(--border)",
+              borderRadius: 12,
+              color: showPilotPanel
+                ? "var(--theme-primary)"
+                : "var(--text-primary)",
+              cursor: "pointer",
+              boxShadow: "var(--shadow-sm)",
+              transition: "all 0.15s",
+              width: 44,
+              height: 44,
+            }}
+            title="Pilot Console"
+          >
+            <FiCompass size={20} />
+          </button>
+
+          <button
+            onClick={() =>
+              useVariablesStore
+                .getState()
+                .setShowVariablesPanel(
+                  !useVariablesStore.getState().showVariablesPanel,
+                )
+            }
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "10px",
+              background: useVariablesStore((s) => s.showVariablesPanel)
+                ? "var(--theme-primary-glow)"
+                : "var(--bg-secondary, white)",
+              border: useVariablesStore((s) => s.showVariablesPanel)
+                ? "1px solid var(--theme-primary)"
+                : "1px solid var(--border)",
+              borderRadius: 12,
+              color: useVariablesStore((s) => s.showVariablesPanel)
+                ? "var(--theme-primary)"
+                : "var(--text-primary)",
+              cursor: "pointer",
+              boxShadow: "var(--shadow-sm)",
+              transition: "all 0.15s",
+              width: 44,
+              height: 44,
+            }}
+            title="Workflow Variables"
+          >
+            <FiSliders size={20} />
+          </button>
+
+          <button
             onClick={() =>
               useUIStore
                 .getState()
@@ -1320,6 +1386,10 @@ export default function WorkflowCanvas() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {showPilotPanel && (
+        <PilotPanel onClose={() => setShowPilotPanel(false)} />
+      )}
 
       <style>{`
         .react-flow__selection {

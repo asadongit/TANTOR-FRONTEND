@@ -9,6 +9,7 @@ import React, {
 import { useWorkflowStore, useUIStore } from "../../store";
 import { listTools, fixGrammar } from "../../api/agentmesh";
 import SkillGallery from "./SkillGallery";
+import { NODE_TYPES } from "./NodePalette";
 import SaveTemplateModal from "./SaveTemplateModal";
 
 import {
@@ -155,19 +156,8 @@ export default function PropertiesPanel() {
   const edges = useWorkflowStore((s) => s.edges);
 
   // Directly retrieve only the currently selected node/edge
-  const node = useWorkflowStore(
-    useCallback(
-      (s) => s.nodes.find((n) => n.id === selectedNodeId),
-      [selectedNodeId],
-    ),
-  );
-
-  const edge = useWorkflowStore(
-    useCallback(
-      (s) => s.edges.find((e) => e.id === selectedEdgeId),
-      [selectedEdgeId],
-    ),
-  );
+  const node = useMemo(() => nodes.find((n) => n.id === selectedNodeId), [nodes, selectedNodeId]);
+  const edge = useMemo(() => edges.find((e) => e.id === selectedEdgeId), [edges, selectedEdgeId]);
 
   const setNodeData = useWorkflowStore((s) => s.setNodeData);
   const setEdgeData = useWorkflowStore((s) => s.setEdgeData);
@@ -184,6 +174,12 @@ export default function PropertiesPanel() {
   const [saveModalOpen, setSaveModalOpen] = useState(false);
 
   const data = node?.data;
+
+  const nodeDesc = useMemo(() => {
+    if (!data?.type) return null;
+    const info = NODE_TYPES.find((n) => n.type === data.type);
+    return info?.desc || null;
+  }, [data?.type]);
 
   const update = useCallback(
     (patch) => {
@@ -706,6 +702,27 @@ export default function PropertiesPanel() {
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
+        {nodeDesc && (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: "12px 14px",
+              background: "#F8FAFC",
+              border: "1px solid var(--border)",
+              borderRadius: 10,
+              fontSize: 12,
+              color: "var(--text-secondary, #334155)",
+              lineHeight: 1.45,
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 8,
+            }}
+          >
+            <FiInfo size={15} style={{ marginTop: 2, flexShrink: 0, color: "var(--theme-primary, #0EA5E9)" }} />
+            <div>{nodeDesc}</div>
+          </div>
+        )}
+
         {/* Common Label field (only for non-system nodes) */}
         {!isSystemNode && (
           <Field label="Node Label">

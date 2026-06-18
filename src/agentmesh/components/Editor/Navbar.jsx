@@ -823,57 +823,7 @@ export default function Navbar() {
                 <FiBookOpen size={14} /> Notes
               </button>
 
-              {/* Variables */}
-              <button
-                onClick={() => setShowVariablesPanel(!showVariablesPanel)}
-                title="Workflow Variables"
-                style={{
-                  padding: "7px 14px",
-                  border: "1px solid var(--border)",
-                  borderRadius: 8,
-                  background: showVariablesPanel
-                    ? "var(--theme-primary-glow)"
-                    : "white",
-                  color: showVariablesPanel
-                    ? "var(--theme-primary)"
-                    : "var(--text-secondary)",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 7,
-                  transition: "all 0.15s",
-                }}
-                onMouseEnter={(e) => {
-                  if (!showVariablesPanel)
-                    e.currentTarget.style.background = "var(--bg-hover)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = showVariablesPanel
-                    ? "var(--theme-primary-glow)"
-                    : "white";
-                }}
-              >
-                <FiDatabase size={14} />
-                Variables
-                {variables.length > 0 && (
-                  <span
-                    style={{
-                      background: "var(--theme-primary)",
-                      color: "white",
-                      fontSize: 10,
-                      fontWeight: 800,
-                      padding: "2px 6px",
-                      borderRadius: 10,
-                      marginLeft: 2,
-                    }}
-                  >
-                    {variables.length}
-                  </span>
-                )}
-              </button>
+
 
               {/* Architect */}
               <button

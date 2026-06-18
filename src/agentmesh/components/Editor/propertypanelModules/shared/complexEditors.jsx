@@ -6,6 +6,7 @@ import { chatArchitect } from '../../../../api/agentmesh';
 import { Field, Input, Textarea, Select, Toggle, MiniatureToggle, CommaArrayEditor } from './primitives';
 import { VariableLinker, VariableDropdown } from './VariableLinker';
 import { ListAccordionItem } from './ListAccordionItem';
+import { KeyValueEditor } from './KeyValueEditor';
 
 export const DOC_TYPE_CATEGORIES = {
   '.docx': ['Letter', 'Certificate', 'Report', 'Contract', 'Invoice', 'Proposal'],
@@ -496,7 +497,11 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
     { value: 'rename', label: 'Rename Key' },
     { value: 'set_value', label: 'Set Static Value' },
     { value: 'delete_field', label: 'Delete Key' },
-    { value: 'flatten', label: 'Flatten Nested Lists' }
+    { value: 'flatten', label: 'Flatten Nested Lists' },
+    { value: 'flatten_dict', label: 'Flatten Nested Dictionary (nested → flat keys)' },
+    { value: 'pick', label: 'Pick Fields (keep only listed fields)' },
+    { value: 'omit', label: 'Omit Keys (remove specific keys)' },
+    { value: 'rename_map', label: 'Rename Multiple Keys' }
   ];
 
   return (
@@ -881,6 +886,55 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
                   className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
                 />
               </div>
+            </div>
+          )}
+
+          {op.type === 'flatten_dict' && (
+            <div>
+              <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">SEPARATOR (CHARACTER)</label>
+              <input
+                value={op.separator ?? '/'}
+                onChange={(e) => updateOperation(idx, { separator: e.target.value })}
+                placeholder="e.g. /"
+                className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)] transition-colors duration-150 box-border"
+              />
+            </div>
+          )}
+
+          {op.type === 'pick' && (
+            <div>
+              <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">FIELDS TO KEEP (COMMA-SEPARATED)</label>
+              <CommaArrayEditor
+                value={op.fields}
+                onChange={(v) => updateOperation(idx, { fields: v })}
+                placeholder="name, age, address.city"
+                isTextarea={true}
+                rows={2}
+              />
+            </div>
+          )}
+
+          {op.type === 'omit' && (
+            <div>
+              <label className="text-[9px] font-bold text-[var(--text-muted)] block mb-0.5">KEYS TO OMIT (COMMA-SEPARATED)</label>
+              <CommaArrayEditor
+                value={op.keys}
+                onChange={(v) => updateOperation(idx, { keys: v })}
+                placeholder="ssn, password, internal_id"
+                isTextarea={true}
+                rows={2}
+              />
+            </div>
+          )}
+
+          {op.type === 'rename_map' && (
+            <div>
+              <KeyValueEditor
+                value={op.rename_map || {}}
+                onChange={(v) => updateOperation(idx, { rename_map: v })}
+                label="Rename Map (Old Key → New Key)"
+                hint="Left = original key name, Right = new key name"
+              />
             </div>
           )}
         </div>
