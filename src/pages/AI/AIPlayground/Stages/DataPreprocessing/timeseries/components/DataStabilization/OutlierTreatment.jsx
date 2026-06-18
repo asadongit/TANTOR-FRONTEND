@@ -16,7 +16,7 @@ const OutlierTreatment = ({
   sectionKey = 'outlierTreatment',
   hasError,
   outlierCount,
-
+  noOutliersDetected = false,
   outlierConfig,
   setOutlierConfig,
 
@@ -51,6 +51,17 @@ const OutlierTreatment = ({
                 section={sectionKey}
               />
             </div>
+            {noOutliersDetected && (
+              <div className="mt-2 mr-8 flex items-start gap-2 bg-[#FAF8FF] border border-[#8e78b7] rounded-md p-2">
+                <Info
+                  size={14}
+                  className="text-[#8e78b7] mt-0.5 flex-shrink-0"
+                />
+                <p className="text-xs text-[#8e78b7]">
+                  No outliers detected. Outlier treatment is not required.
+                </p>
+              </div>
+            )}
 
             {infoMessage && (
               <div className="mt-2 mr-8 flex items-start gap-2 bg-[#FAF8FF] border border-[#8e78b7] text-[#8e78b7] rounded-md p-2">
@@ -68,11 +79,10 @@ const OutlierTreatment = ({
 
         <div className="flex items-center gap-3">
           <ToggleSwitch
-            checked={isToggled}
-            onChange={onToggle}
-            disabled={readonly}
-          />
-
+          checked={isToggled}
+          onChange={onToggle}
+          disabled={readonly || noOutliersDetected}
+        />
           {isToggled && (
             <button
               onClick={onExpand}
@@ -91,7 +101,8 @@ const OutlierTreatment = ({
 
       {isToggled && isExpanded && (
         <div className="px-4 pb-4 border-t border-gray-100">
-          {typeof outlierCount === 'number' && (
+          {typeof outlierCount === 'number' &&
+          outlierCount > 0 && (
             <div className="mt-3 mr-8 flex items-start gap-2 bg-orange-50 border border-orange-200 rounded-md p-3">
               <Info
                 size={14}
@@ -105,7 +116,7 @@ const OutlierTreatment = ({
                 {outlierCount !== 1 ? 's' : ''} detected
               </p>
             </div>
-          )}
+        )}
 
           <div className="mt-4">
             <h5 className="text-sm font-medium text-gray-700 mb-3">
@@ -127,8 +138,7 @@ const OutlierTreatment = ({
                     onMouseLeave={() =>
                       setHoveredOption(null)
                     }
-                  >
-                    <label
+                  > <label
                       className={`flex flex-col p-3 rounded-lg transition-all ${
                         isSelected
                           ? 'bg-[#FAF8FF] border border-[#8e78b7]'
@@ -138,8 +148,7 @@ const OutlierTreatment = ({
                           ? 'cursor-not-allowed opacity-60'
                           : 'cursor-pointer'
                       }`}
-                    >
-                      <div className="flex items-center gap-3">
+                    ><div className="flex items-center gap-3">
                         <input
                           type="radio"
                           name="outlierMethod"
@@ -156,18 +165,15 @@ const OutlierTreatment = ({
                           disabled={readonly}
                           className="w-4 h-4 accent-[#8e78b7]"
                         />
-
                         <span
                           className={`text-sm font-medium ${
                             isSelected
                               ? 'text-[#8e78b7]'
                               : 'text-gray-700'
                           }`}
-                        >
-                          {option.label}
+                        >{option.label}
                         </span>
                       </div>
-
                       {isSelected &&
                         option.subMethod ===
                           'rolling_window' && (
@@ -180,26 +186,20 @@ const OutlierTreatment = ({
                               }
                               min={3}
                               max={365}
-                              hasError={
-                                !!rollingWindowError
-                              }
-                              errorMessage={
-                                rollingWindowError
-                              }
+                              hasError={!!rollingWindowError}
+                              errorMessage={rollingWindowError}
                               disabled={readonly}
                               onChange={(value) =>
                                 setOutlierConfig(
                                   (prev) => ({
                                     ...prev,
                                     rollingWindow:
-                                      value,
-                                  })
+                                      value, })
                                 )
                               }
                             />
                           </div>
                         )}
-
                       {isSelected &&
                         option.subMethod ===
                           'seasonal_period' && (
@@ -207,25 +207,17 @@ const OutlierTreatment = ({
                             <MethodParameterField
                               label="Seasonal Period"
                               value={
-                                outlierConfig?.seasonalPeriod ??
-                                ''
-                              }
+                                outlierConfig?.seasonalPeriod ?? ''}
                               min={2}
                               max={365}
                               hasError={
                                 !!seasonalPeriodError
                               }
-                              errorMessage={
-                                seasonalPeriodError
-                              }
+                              errorMessage={seasonalPeriodError}
                               disabled={readonly}
                               onChange={(value) =>
                                 setOutlierConfig(
-                                  (prev) => ({
-                                    ...prev,
-                                    seasonalPeriod:
-                                      value,
-                                  })
+                                  (prev) => ({ ...prev,seasonalPeriod:value,})
                                 )
                               }
                             />

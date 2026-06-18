@@ -42,7 +42,8 @@ function StationarityTable({
   isLoading,
   stationarityReport,
   sectionDescriptions,
-  stationarityAnalysisEnabled
+  stationarityAnalysisEnabled,
+  noStationarityReport
 }) {
 
 
@@ -108,23 +109,17 @@ function StationarityTable({
     : [];
 
   return (
-
     <div className="rounded-lg transition-all bg-[#FAFAFA]">
-
       {/* =====================================================
           Section Header
       ===================================================== */}
-
       <div className="p-4 flex items-center justify-between">
-
         {/* Left Side */}
         <div className="flex-1">
           <div className="flex items-center gap-2">
-
             <h4 className="text-sm font-medium text-gray-900">
               Stationarity Treatment
             </h4>
-
             {/* Info Tooltip */}
             <InfoButton
               sectionDescriptions={sectionDescriptions}
@@ -159,14 +154,22 @@ function StationarityTable({
         </div>
       </div>
       {!stationarityAnalysisEnabled && (
-  <div className="mx-4 mb-3 flex items-center gap-2 rounded-md border border-[#B69AD9] bg-[#F8F5FC] px-3 py-2 text-xs text-[#8C6BB1]">
-    <Info size={14} className="flex-shrink-0" />
+        <div className="mx-4 mb-3 flex items-center gap-2 rounded-md border border-[#B69AD9] bg-[#F8F5FC] px-3 py-2 text-xs text-[#8C6BB1]">
+          <Info size={14} className="flex-shrink-0" />
+          <span>
+            Stationarity Treatment is disabled because Stationarity Analysis was not selected in the previous step.
+          </span>
+        </div>
+      )}
 
-    <span>
-      Stationarity Treatment is disabled because Stationarity Analysis was not selected in the previous step.
-    </span>
-  </div>
-)}
+      {stationarityAnalysisEnabled && noStationarityReport && (
+        <div className="mx-4 mb-3 flex items-center gap-2 rounded-md border border-[#B69AD9] bg-[#F8F5FC] px-3 py-2 text-xs text-[#8C6BB1]">
+          <Info size={14} className="flex-shrink-0" />
+          <span>
+            No stationarity report available. Stationarity Treatment cannot be applied.
+          </span>
+        </div>
+      )}
       {/* =====================================================
           Expanded Section Content
       ===================================================== */}

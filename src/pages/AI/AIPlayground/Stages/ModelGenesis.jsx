@@ -596,18 +596,20 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
     }
   }, [config.predictionType]);
   useEffect(() => {
-  setShowFrequencyModal(false);
-  setFrequencyValidationData(null);
+      if (readonly) return;
 
-  if (isTimeSeriesValidated) {
-    setIsTimeSeriesValidated(false);
-  }
-}, [
-  config.targetFeature,
-  config.timeColumn,
-  config.frequency,
-  config.timeSeriesType
-]);
+      setShowFrequencyModal(false);
+      setFrequencyValidationData(null);
+
+      if (isTimeSeriesValidated) {
+        setIsTimeSeriesValidated(false);
+      }
+    }, [
+      config.targetFeature,
+      config.timeColumn,
+      config.frequency,
+      config.timeSeriesType
+    ]);
 
   const isValidateDisabled = !config.classification || !config.targetFeature || isValidating;
   const isTimeSeriesValidateDisabled =
@@ -1048,15 +1050,15 @@ const SelectColumnsMultivariate = ({
               disabled={readonly}
               onClick={() => !readonly && setIsOpen(!isOpen)}
               className={`w-full px-3 py-2 border rounded-lg text-sm text-left
-focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent
-bg-white flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed
-${
-  hasError
-    ? 'border-red-500'
-    : readonly
-      ? 'border-gray-300 bg-[#FAFAFA]'
-      : 'border-gray-300 hover:border-gray-400'
-}`}
+                focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent
+                bg-white flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed
+                ${
+                  hasError
+                    ? 'border-red-500'
+                    : readonly
+                      ? 'border-gray-300 bg-[#FAFAFA]'
+                      : 'border-gray-300 hover:border-gray-400'
+                }`}
             >
               <span className="text-gray-600">
                 {availableColumns.length === 0
@@ -1120,11 +1122,11 @@ ${
               </div>
             )}
           </div>
-{hasError && errorMessage && (
-  <p className="mt-2 text-sm text-[#EF4D5F]">
-    {errorMessage}
-  </p>
-)}
+          {hasError && errorMessage && (
+            <p className="mt-2 text-sm text-[#EF4D5F]">
+              {errorMessage}
+            </p>
+          )}
           {selectedColumns.length > 0 && (
             <div className="mt-4">
               <label className="text-xs font-medium text-gray-600 mb-2 block">Selected Columns</label>
@@ -1181,57 +1183,51 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
   // Time Series Split Setting
   if (config.predictionType === 'Time Series') {
     return (
-      <Section title="Split Setting" className="!bg-[#FAFAFA] p-6 rounded-lg">
-        <div className="space-y-6">
+      <Section title="Split Setting" className="!bg-[#FAFAFA] p-4 rounded-lg">
+        <div >
           <div>
             
             <div className="bg-white rounded-lg p-4 border border-gray-200">
               <div className="flex items-center gap-4">
                 <input
-  type="range"
-  min="6"
-  max="18"
-  value={config.timeSeriesLookback || 7}
-  disabled={readonly}
-  onChange={
-    readonly
-      ? undefined
-      : (e) => handleTimeSeriesLookbackChange(parseInt(e.target.value))
-  }
-  className={`slider-train flex-1 rounded-lg appearance-none ${
-    readonly ? 'cursor-not-allowed' : 'cursor-pointer'
-  }`}
-  style={{
-    height: '10px',
-    background: `linear-gradient(
-      to right,
-      #8e78b7 0%,
-      #8e78b7 ${(((config.timeSeriesLookback || 7) - 6) / (18 - 6)) * 100}%,
-      #E5E5E5 ${(((config.timeSeriesLookback || 7) - 6) / (18 - 6)) * 100}%,
-      #E5E5E5 100%
-    )`
-  }}
-/>
+                    type="range"
+                    min="6"
+                    max="18"
+                    value={config.timeSeriesLookback || 7}
+                    disabled={readonly}
+                    onChange={
+                      readonly
+                        ? undefined
+                        : (e) => handleTimeSeriesLookbackChange(parseInt(e.target.value))
+                    }
+                    className={`slider-train flex-1 rounded-lg appearance-none ${
+                      readonly ? 'cursor-not-allowed' : 'cursor-pointer'
+                    }`}
+                    style={{
+                      height: '10px',
+                      background: `linear-gradient(
+                        to right,
+                        #8e78b7 0%,
+                        #8e78b7 ${(((config.timeSeriesLookback || 7) - 6) / (18 - 6)) * 100}%,
+                        #E5E5E5 ${(((config.timeSeriesLookback || 7) - 6) / (18 - 6)) * 100}%,
+                        #E5E5E5 100%
+                      )`
+                    }}
+                  />
                 <div className="flex items-center justify-center bg-[#8e78b7] text-white rounded-md px-4 py-2 min-w-16">
                   <span className="text-sm font-medium">{config.timeSeriesLookback || 7}</span>
                 </div>
               </div>
-
               <div className="flex justify-between mt-3 text-xs text-gray-500">
-                <span>6</span>
-                <span>18</span>
-              </div>
+              <span>6</span>
+              <span>18</span>
             </div>
-            {/* <div className="bg-white border border-[#8e78b7] rounded-md p-2 mt-4">
-              <p className="text-sm">
-                <span className="font-medium text-[#8e78b7]">Note:</span> The lookback window determines how many previous time steps are used to predict the next value.
-              </p>
-            </div>*/}
           </div>
         </div>
-      </Section>
-    );
-  }
+      </div>
+    </Section>
+  );
+}
 
   // Supervised Split Setting (original)
   return (
@@ -1658,6 +1654,25 @@ function ModelGenesis() {
 
   const readonly = mode === 'view';
   // if in view or edit mode and with workflow state config , then prefill the form with saved config
+  const getPredictionType = (savedConfig) => {
+    if (
+      savedConfig.modelling_type === 'univariate_timeseries' ||
+      savedConfig.modelling_type === 'multivariate_timeseries' ||
+      savedConfig.modelling_type === 'multiseries_timeseries'
+    ) {
+      return 'Time Series';
+    }
+
+    if (
+      savedConfig.modelling_type === 'binary' ||
+      savedConfig.modelling_type === 'multiclass' ||
+      savedConfig.modelling_type === 'regression'
+    ) {
+      return 'Supervised';
+    }
+
+    return 'Supervised'; // or whatever default you want
+  };
   const getInitialConfig = () => {
     const savedConfig = workflowState?.modelGenesis?.config;
 
@@ -1667,16 +1682,16 @@ function ModelGenesis() {
         modelSelection: savedConfig.model_mode || 'Manual',
         notebookMode: false,
 
-        predictionType: savedConfig.predictionType || ' ',
+        predictionType: getPredictionType(savedConfig),
         classification: savedConfig.modelling_type === 'binary' ? 'Binary' :
           savedConfig.modelling_type === 'multiclass' ? 'Multiclass' : 'Regression',
         targetFeature: savedConfig.target_column || '',
-        timeSeriesType: savedConfig.timeseries_type === 'univariate_timeseries' ? 'Univariate' :
-          savedConfig.timeseries_type === 'multivariate_timeseries' ? 'Multivariate' :
-          savedConfig.timeseries_type === 'multiseries_timeseries' ? 'Multiseries' : '',
+        timeSeriesType: savedConfig.modelling_type === 'univariate_timeseries' ? 'Univariate' :
+          savedConfig.modelling_type === 'multivariate_timeseries' ? 'Multivariate' :
+          savedConfig.modelling_type === 'multiseries_timeseries' ? 'Multiseries' : '',
         timeColumn: savedConfig.time_column || '',
         frequency: '',
-        multivariate_columns: savedConfig.multivariate_columns || [],
+        multivariate_columns: savedConfig.selected_columns || [],
         timeSeriesLookback: savedConfig.timeSeriesLookback || 7,
 
         trainSplit: Math.round((savedConfig.train_size || 0.7) * 100),
@@ -1715,15 +1730,27 @@ function ModelGenesis() {
 
   const [config, setConfig] = useState(getInitialConfig);
   const [isValidated, setIsValidated] = useState(mode === 'view' && !!workflowState?.modelGenesis?.config);
-  const [isTimeSeriesValidated, setIsTimeSeriesValidated] = useState(false);
+  const [isTimeSeriesValidated, setIsTimeSeriesValidated] = useState(
+      mode === 'view' &&
+      !!workflowState?.modelGenesis?.config?.target_column &&
+      !!workflowState?.modelGenesis?.config?.time_column
+    );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if ((mode === 'view' || mode === 'edit') && workflowState?.modelGenesis?.config) {
-      setConfig(getInitialConfig());
-      setIsValidated(mode === 'view');
-    }
-  }, [mode, workflowState?.modelGenesis?.config]);
+  if ((mode === 'view' || mode === 'edit') && workflowState?.modelGenesis?.config) {
+        const savedConfig = workflowState.modelGenesis.config;
+
+        setConfig(getInitialConfig());
+        setIsValidated(mode === 'view');
+
+        setIsTimeSeriesValidated(
+          mode === 'view' &&
+          !!savedConfig?.target_column &&
+          !!savedConfig?.time_column
+        );
+      }
+    }, [mode, workflowState?.modelGenesis?.config]);
 
   useEffect(() => {
     if (mode === 'edit') {

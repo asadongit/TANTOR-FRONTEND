@@ -159,7 +159,7 @@ export const runTargetColumnValidation = async (config, datasetState, activeWork
     const ensembleId = datasetState.ensembleId;
     const targetColumn = config.targetFeature;
 
-    const response = await fetch(`${hostnameAI}/genesis/genesis/validate-target-column`, {
+    const response = await fetch(`${hostnameAI}/genesis/validate-target-column`, {
       method: 'POST',
       headers: {
         'accept': 'application/json',

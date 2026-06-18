@@ -46,19 +46,21 @@ const seasonalPeriodMethods = [
   ];
   useEffect(() => {
     const step4Config = workflowState?.dataPreprocessing?.step4?.config;
+    
 
     if (step4Config && (mode === 'view' || mode === 'edit')) {
       setToggles({
         outlierTreatment: step4Config.outlier_treatment_active ?? false,
-        seasonalityAnalysis: step4Config.seasonality_analysis_active ?? false
+        seasonalityAnalysis: step4Config.seasonality_analysis?? false
       });
+      
       setOutlierConfig({method: step4Config.outlier_treatment_strategy || '',
                         rollingWindow: step4Config.outlier_rolling_window || '',
                         seasonalPeriod: step4Config.outlier_season_period || '',
                       });
       setExpandedSections({
         outlierTreatment: !!step4Config.outlier_treatment_active,
-        seasonalityAnalysis: !!step4Config.seasonality_analysis_active
+        seasonalityAnalysis: !!step4Config.seasonality_analysis
       });
     } else {
       setToggles({
@@ -76,6 +78,8 @@ const seasonalPeriodMethods = [
         }
   }, [workflowState?.dataPreprocessing?.step4?.config, mode]);
 // Rolling window error is shown if the selected method requires a rolling window and the value is invalid
+
+
   const rollingWindowError =
   showFieldErrors &&
   toggles.outlierTreatment &&
@@ -110,7 +114,7 @@ const seasonalPeriodMethods = [
     : '';
   useEffect(() => {
   if (!showFieldErrors) return;
-
+  
   const outlierError =
     toggles.outlierTreatment &&
     (
@@ -122,13 +126,7 @@ const seasonalPeriodMethods = [
   if (!outlierError) {
     setShowFieldErrors(false);
   }
-}, [
-  outlierConfig,
-  toggles,
-  showFieldErrors,
-  rollingWindowError,
-  seasonalPeriodError,
-]);
+}, [ outlierConfig,toggles,showFieldErrors,rollingWindowError,seasonalPeriodError,]);
 
   const methodError = showFieldErrors && toggles.outlierTreatment &&!outlierConfig.method
     ? 'Please select an outlier treatment method'
@@ -202,11 +200,9 @@ const seasonalPeriodMethods = [
       }
     }
   };
-const requiresRollingWindow =
-  rollingWindowMethods.includes(outlierConfig.method);
+const requiresRollingWindow = rollingWindowMethods.includes(outlierConfig.method);
 
-const requiresSeasonalPeriod =
-  seasonalPeriodMethods.includes(outlierConfig.method);
+const requiresSeasonalPeriod = seasonalPeriodMethods.includes(outlierConfig.method);
 
   const handleApiCall = async () => {
     if (readonly) return true;
@@ -260,7 +256,7 @@ if (
       updatePreprocessingStep('step4', {
         config: {
           outlier_treatment_active: params.outlierTreatmentActive,
-          seasonality_analysis_active: params.seasonalityAnalysis,
+          seasonality_analysis: params.seasonalityAnalysis,
           outlier_treatment_strategy: params.outlierTreatmentStrategy,
           outlier_rolling_window:params.outlierRollingWindow,
           outlier_season_period:params.outlierSeasonPeriod,
@@ -283,6 +279,7 @@ if (
   useEffect(() => {
     if (onApiCall) onApiCall(handleApiCall);
   }, [toggles, outlierConfig, datasetState?.ensembleId, currentWorkflowId]);
+  
 
   return (
     <div className="space-y-4">
@@ -306,6 +303,7 @@ if (
         methodError={methodError}
         rollingWindowError={rollingWindowError}
         seasonalPeriodError={seasonalPeriodError}
+        noOutliersDetected={outliersDetectedCount === 0}
       />
 
       {!isUnivariateTimeseries && (

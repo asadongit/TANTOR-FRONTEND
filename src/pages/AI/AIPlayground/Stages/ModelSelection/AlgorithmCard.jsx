@@ -530,9 +530,11 @@ function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate,
         const isEmpty = isFieldEmpty(paramName, paramValue);
         const showError = hasError || isEmpty;
 
-        if (typeof paramValue === 'string') {
-            const options = paramValue.split(',').map(opt => opt.trim());
-            return (
+        if (typeof paramValue === 'string' || Array.isArray(paramValue)) {
+            const options = Array.isArray(paramValue)
+            ? paramValue.map(String)
+            : paramValue.split(',').map(opt => opt.trim());
+                return (
                 <div key={paramName}>
                     <label className={`block ${tw.sectionHeading} mb-2 capitalize`}>
                         {paramName.replace(/_/g, ' ')}
@@ -621,9 +623,27 @@ function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate,
 
             return (
                 <div key={paramName}>
-                    <label className={`block ${tw.sectionHeading} mb-2 capitalize`}>
-                        {paramName.replace(/_/g, ' ')}
-                    </label>
+                    <div className="flex items-center gap-1 mb-2">
+                        <label className={`${tw.sectionHeading} capitalize`}>
+                            {paramName.replace(/_/g, ' ')}
+                        </label>
+
+                        {paramValue?.warning && (
+                            <div className="relative group">
+                                <Info className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+
+                                <div className="
+                                    absolute left-5 top-0
+                                    hidden group-hover:block
+                                    w-64 p-2
+                                    bg-gray-900 text-white text-xs
+                                    rounded shadow-lg z-50
+                                ">
+                                    {paramValue.warning}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                     <input
                         type="text"
                         disabled={readonly || disabled}
@@ -654,23 +674,25 @@ function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate,
         return null;
     };
 
-    const renderGridSearchField = (paramName, paramValue) => {
-        const values = algo.gridSearchValues[paramName] || [''];
-        const errors = algo.gridSearchErrors[paramName] || [null];
-        const isEmpty = isFieldEmpty(paramName, paramValue);
+            const renderGridSearchField = (paramName, paramValue) => {
+                const values = algo.gridSearchValues[paramName] || [''];
+                const errors = algo.gridSearchErrors[paramName] || [null];
+                const isEmpty = isFieldEmpty(paramName, paramValue);
 
-        if (typeof paramValue === 'string') {
-            const options = paramValue.split(',').map(opt => opt.trim());
-            const selectedValues = (algo.gridSearchValues[paramName] || []).filter(v => v && v.trim() !== '');
+                if (typeof paramValue === 'string' || Array.isArray(paramValue)) {
+                    const options = Array.isArray(paramValue)
+                    ? paramValue.map(String)
+                    : paramValue.split(',').map(opt => opt.trim());
+                    const selectedValues = (algo.gridSearchValues[paramName] || []).filter(v => v && v.trim() !== '');
 
-            return (
-                <div key={paramName}>
-                    <div className="flex items-center justify-between mb-2">
-                        <label className={`block ${tw.sectionHeading} capitalize`}>
-                            {paramName.replace(/_/g, ' ')}
-                        </label>
-                        <span className="text-xs text-gray-400">{selectedValues.length}/{options.length}</span>
-                    </div>
+                    return (
+                        <div key={paramName}>
+                            <div className="flex items-center justify-between mb-2">
+                                <label className={`block ${tw.sectionHeading} capitalize`}>
+                                    {paramName.replace(/_/g, ' ')}
+                                </label>
+                                <span className="text-xs text-gray-400">{selectedValues.length}/{options.length}</span>
+                            </div>
 
                     <GridSearchDropdown
                         algo={algo}
@@ -821,9 +843,27 @@ function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate,
 
             return (
                 <div key={paramName}>
-                    <label className={`block ${tw.sectionHeading} mb-2 capitalize`}>
-                        {paramName.replace(/_/g, ' ')}
-                    </label>
+                    <div className="flex items-center gap-1 mb-2">
+                        <label className={`${tw.sectionHeading} capitalize`}>
+                            {paramName.replace(/_/g, ' ')}
+                        </label>
+
+                        {paramValue?.warning && (
+                            <div className="relative group">
+                                <Info className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+
+                                <div className="
+                                    absolute left-5 top-0
+                                    hidden group-hover:block
+                                    w-64 p-2
+                                    bg-gray-900 text-white text-xs
+                                    rounded shadow-lg z-50
+                                ">
+                                    {paramValue.warning}
+                                </div>
+                            </div>
+                        )}
+                    </div>
 
                     <div className="space-y-2 p-0.5">
                         {values.map((value, index) => (

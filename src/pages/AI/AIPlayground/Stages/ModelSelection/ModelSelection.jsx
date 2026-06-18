@@ -105,8 +105,13 @@ const toMetricBackendKey = (metric) => {
 
 const toPayloadValue = (value) => {
     const stringValue = String(value).trim();
+    if (stringValue === 'true') return true;
+    if (stringValue === 'false') return false;
+    if (stringValue === 'null') return null;
     const numericValue = Number(stringValue);
-    return stringValue !== '' && Number.isFinite(numericValue) ? numericValue : value;
+    return stringValue !== '' && Number.isFinite(numericValue)
+        ? numericValue
+        : value;
 };
 
 function ModelSelection() {
@@ -129,9 +134,9 @@ function ModelSelection() {
     const classificationType = modelGenesisConfig?.modelling_type || modelGenesisConfig?.classification;
     const isRegression = String(classificationType || '').trim().toLowerCase() === 'regression';
     const predictionType =
-    modelGenesisConfig?.prediction_type ||
+    modelGenesisConfig?.modelling_type ||
     modelGenesisConfig?.predictionType ||'';
-    const timeseriesType = modelGenesisConfig?.timeseries_type || modelGenesisConfig?.timeSeriesType || '';
+    const timeseriesType = modelGenesisConfig?.timeseries_type || modelGenesisConfig?.timeSeriesType || modelGenesisConfig?.modelling_type || '';
     const isTimeSeries =
     String(predictionType).trim().toLowerCase() === 'time series' ||
     String(predictionType).trim().toLowerCase() === 'timeseries' ||
@@ -140,11 +145,11 @@ function ModelSelection() {
 
     const isUnivariate =
     String(timeseriesType).trim().toLowerCase() ===
-    'Univariate' || String(timeseriesType).trim().toLowerCase() === 'univariate';
+    'Univariate' || String(timeseriesType).trim().toLowerCase() === 'univariate' || String(timeseriesType).trim().toLowerCase() === 'univariate_timeseries' ;
 
     const isMultivariate =
         String(timeseriesType).trim().toLowerCase() ===
-        'Multivariate' || String(timeseriesType).trim().toLowerCase() === 'multivariate';
+        'Multivariate' || String(timeseriesType).trim().toLowerCase() === 'multivariate' || String(timeseriesType).trim().toLowerCase() === 'multivariate_timeseries';
     let algorithmData;
     if (isUnivariate) {
     algorithmData = univariateAlgorithmsData;
@@ -314,9 +319,9 @@ const REVERSE_METRIC_MAPPING = isTimeSeries
         if (savedConfig.normalize !== undefined) {
             setNormalizeData(savedConfig.normalize);
         }
-        if (savedConfig.forecast_horizon) {
+        if (savedConfig.forecast) {
                 setForecastHorizon(
-                    String(savedConfig.forecast_horizon)
+                    String(savedConfig.forecast)
                 );
             }
         if (savedConfig.performance_metrics && Array.isArray(savedConfig.performance_metrics)) {
@@ -325,12 +330,14 @@ const REVERSE_METRIC_MAPPING = isTimeSeries
                 : isRegression
                     ? REGRESSION_REVERSE_METRIC_MAPPING
                     : CLASSIFICATION_REVERSE_METRIC_MAPPING;
+                
 
             const nameMap = isTimeSeries
                 ? TIMESERIES_METRIC_NAME_MAPPING
                 : isRegression
                     ? REGRESSION_METRIC_NAME_MAPPING
                     : CLASSIFICATION_METRIC_NAME_MAPPING;
+            
             const initialMetrics = getInitialMetrics();
             const byName = new Map(initialMetrics.map(metric => [metric.name, metric]));
 
@@ -364,6 +371,7 @@ const REVERSE_METRIC_MAPPING = isTimeSeries
 
             setMetrics(orderedMetrics.length ? orderedMetrics : initialMetrics);
         }
+        
 
         if (savedConfig.algorithms && Array.isArray(savedConfig.algorithms)) {
             setAllAlgorithmsState(prevState => {
@@ -613,6 +621,18 @@ const REVERSE_METRIC_MAPPING = isTimeSeries
         enabledAlgorithms.forEach(algo => {
             if (algo.configMode === 'Hyper Parameter') {
                 if (algo.hyperparameterValues && Object.keys(algo.hyperparameterValues).length > 0) {
+                    // Special handling for Encoder-Decoder LSTM
+                    if (algo.backend_key === "EncoderDecoderLSTM") {
+                        const units = Number(algo.hyperparameterValues["encoder_decoder units"] )|| 0;
+
+                        paramGrid[algo.backend_key] = {
+                            encoder_units: units,
+                            decoder_units: units,
+                            attention: algo.hyperparameterValues.attention === "true"
+                        };
+
+                        return;
+                    }
                     paramGrid[algo.backend_key] = {};
                     Object.entries(algo.hyperparameterValues).forEach(([paramName, value]) => {
                         if (value && typeof value === 'object') {
@@ -637,6 +657,19 @@ const REVERSE_METRIC_MAPPING = isTimeSeries
                 }
             } else if (algo.configMode === 'Grid Search') {
                 if (algo.gridSearchValues && Object.keys(algo.gridSearchValues).length > 0) {
+                   if (algo.backend_key === "EncoderDecoderLSTM") {
+                        const units = (
+                            algo.gridSearchValues["encoder_decoder units"] || []
+                        ).map(Number);
+
+                        paramGrid[algo.backend_key] = {
+                            encoder_units: units,
+                            decoder_units: units,
+                            attention: algo.gridSearchValues["attention"] || []
+                        };
+
+                        return;
+                    }
                     paramGrid[algo.backend_key] = {};
                     Object.entries(algo.gridSearchValues).forEach(([paramName, values]) => {
                         if (values && typeof values === 'object' && !Array.isArray(values)) {

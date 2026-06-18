@@ -107,7 +107,7 @@ const ModelInferencing = () => {
   const classificationType = typeof rawClassificationType === 'string' ? rawClassificationType.trim() : '';
   const isRegressionModel = classificationType !== '' && classificationType.toLowerCase() === 'regression';
   
-  const predictionType =modelGenesisConfig?.prediction_type ||modelGenesisConfig?.predictionType ||'';
+  const predictionType =modelGenesisConfig?.prediction_type ||modelGenesisConfig?.predictionType || modelGenesisConfig?.modelling_type || '';
   const isTimeSeriesModel =
     String(predictionType).trim().toLowerCase() === 'time series' ||
     String(predictionType).trim().toLowerCase() === 'timeseries' ||

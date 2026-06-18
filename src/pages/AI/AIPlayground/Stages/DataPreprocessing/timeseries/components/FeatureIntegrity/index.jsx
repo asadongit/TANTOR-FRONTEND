@@ -16,8 +16,7 @@ function FeatureIntegrity({ readonly: readonlyProp, onApiCall ,predictionType,})
   const workflowState = activeWorkflowId ? workflowsState[activeWorkflowId] : null;
   const currentWorkflowId = workflowState?.workflow_id || activeWorkflowId;
 
-  const columnAndUniqueness = 
-    workflowState?.dataPreprocessing?.step2?.apiResponse?.uniqueness_ratio_report?.map((item) => ({
+  const columnAndUniqueness = workflowState?.dataPreprocessing?.step2?.apiResponse?.uniqueness_ratio_report?.map((item) => ({
     name: item.column,
     uniqueness: `${(item.uniqueness_ratio * 100).toFixed(2)}%`,
     })) || [];
@@ -38,33 +37,33 @@ function FeatureIntegrity({ readonly: readonlyProp, onApiCall ,predictionType,})
   useEffect(() => {
   if (
     (mode === 'view' || mode === 'edit') &&
-    workflowState?.dataPreprocessing?.step2?.config
+    workflowState?.dataPreprocessing?.step3?.config
   ) {
-    const config = workflowState.dataPreprocessing.step2.config;
+    const config = workflowState.dataPreprocessing.step3.config;
     setToggles({
-      dropLowValue:config.dropColumnsActive || false,
-      detectOutliers: config.outlierDetectionActive || false,
+      dropLowValue:config.drop_columns_active || false,
+      detectOutliers: config.outlier_detection_active || false,
     });
     setOutlierConfig({
-      method:config.outlierDetectionMethod || '',
-      rollingWindow:config.outlierRollingWindow || '',
-      seasonalPeriod:config.outlierSeasonPeriod || '',
+      method:config.outlier_detection_method || '',
+      rollingWindow:config.outlier_rolling_window || '',
+      seasonalPeriod:config.outlier_seasonal_period || '',
     });
     if (
-      config.columnsToDrop &&
-      config.columnsToDrop.length > 0
+      config.columns_to_drop &&
+      config.columns_to_drop.length > 0
     ) {
       const newSelected = {};
-      config.columnsToDrop.forEach((columnName, idx) => {
+      config.columns_to_drop.forEach((columnName, idx) => {
         newSelected[`${columnName}-${idx}`] = true;
       });
       setSelectedColumns(newSelected);
     }
     setExpandedSections({
       dropLowValue:
-        config.dropColumnsActive || false,
+        config.drop_columns_active || false,
       detectOutliers:
-        config.outlierDetectionActive || false,
+        config.outlier_detection_active || false,
     });
   }}, [mode,workflowState?.dataPreprocessing?.step3?.config,]);
 
@@ -80,18 +79,15 @@ function FeatureIntegrity({ readonly: readonlyProp, onApiCall ,predictionType,})
   if (!toggles.detectOutliers) {
     return true;
   }
-
   if (!outlierConfig.method) {
     return false;
   }
-
   if (
     rollingWindowMethods.includes(outlierConfig.method) &&
     !outlierConfig.rollingWindow
   ) {
     return false;
   }
-
   if (
     seasonalPeriodMethods.includes(outlierConfig.method) &&
     !outlierConfig.seasonalPeriod
