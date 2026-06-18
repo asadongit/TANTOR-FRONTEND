@@ -93,7 +93,57 @@ function Models() {
   const [recentAccessed, setRecentAccessed] = useState([]);
   const [recentAccessedLoading, setRecentAccessedLoading] = useState(false);
   const [recentAccessedError, setRecentAccessedError] = useState(null);
+  const PREPROCESSING_STEP_MAP = {
 
+    multiclass: [
+      "initial_clean",
+      "feature_selection",
+      "feature_engineering",
+      "advanced_transformation",
+      "statistical_analysis",
+      "feature_importance",
+      "imbalance_handling"
+    ],
+
+    binary: [
+      "initial_clean",
+      "feature_selection",
+      "feature_engineering",
+      "advanced_transformation",
+      "statistical_analysis",
+      "feature_importance",
+      "imbalance_handling"
+    ],
+    regression: [
+      "initial_clean",
+      "feature_selection",
+      "feature_engineering",
+      "advanced_transformation",
+      "statistical_analysis",
+      "feature_importance",
+      "imbalance_handling"
+    ],
+
+    multivariate_timeseries: [
+      "initial_clean_timeseries",
+      "handle_missing_values_timeseries",
+      "feature_integrity_validation_timeseries",
+      "data_stabalization_timeseries",
+      "data_seasonalization_timeseries",
+      "data_stationarity_treatment_timeseries",
+      "feature_dependency_analysis_timeseries",
+      "scaling_and_encoding_timeseries"
+    ],
+
+    univariate_timeseries: [
+      "initial_clean_timeseries",
+      "handle_missing_values_timeseries",
+      "feature_integrity_validation_timeseries",
+      "data_stabalization_timeseries",
+      "data_seasonalization_timeseries",
+      "data_stationarity_treatment_timeseries",
+    ],
+  };
 
   useEffect(() => {
     const fetchModels = async () => {
@@ -737,6 +787,7 @@ function Models() {
             ensembleId,
             columnNames: ingestionData.column_names || [],
             profileReportHtml: ingestionData.profile_report_html || '',
+            datetimeConvertibleColumns: ingestionData.datetime_convertible_columns || [],
             isEnsemble: false,
             WorkflowCount: 1
           });
@@ -787,57 +838,28 @@ function Models() {
               modelData.prefill?.training ||
               preprocessingResponse?.training ||
               null;
-
-            const step1Request =
-              preprocessingRequest?.initial_clean ||
-              preprocessingRequest?.feature_selection ||
-              null;
-
-            const step1Response =
-              preprocessingResponse?.initial_clean ||
-              preprocessingResponse?.feature_selection ||
-              null;
+            
+            const modellingType =
+              preprocessingRequest?.genesis?.modelling_type;
+            
 
             updateWorkflowStage('modelGenesis', {
               config: preprocessingRequest?.genesis || null,
               apiResponse: preprocessingResponse?.genesis || null
             }, workflowId);
 
-            updatePreprocessingStep('step1', {
-              config: step1Request,
-              apiResponse: step1Response
-            }, workflowId);
+            const steps = PREPROCESSING_STEP_MAP[modellingType] || [];
 
-            updatePreprocessingStep('step2', {
-              config: preprocessingRequest?.feature_selection || null,
-              apiResponse: preprocessingResponse?.feature_selection || null
-            }, workflowId);
-
-            updatePreprocessingStep('step3', {
-              config: preprocessingRequest?.feature_engineering || null,
-              apiResponse: preprocessingResponse?.feature_engineering || null
-            }, workflowId);
-
-            updatePreprocessingStep('step4', {
-              config: preprocessingRequest?.advanced_transformation || null,
-              apiResponse: preprocessingResponse?.advanced_transformation || null
-            }, workflowId);
-
-            updatePreprocessingStep('step5', {
-              config: preprocessingRequest?.statistical_analysis || null,
-              apiResponse: preprocessingResponse?.statistical_analysis || null
-            }, workflowId);
-
-            updatePreprocessingStep('step6', {
-              config: preprocessingRequest?.feature_importance || null,
-              apiResponse: preprocessingResponse?.feature_importance || null
-            }, workflowId);
-
-            updatePreprocessingStep('step7', {
-              config: preprocessingRequest?.imbalance_handling || null,
-              apiResponse: preprocessingResponse?.imbalance_handling || null
-            }, workflowId);
-
+            steps.forEach((stepName, index) => {
+              updatePreprocessingStep(
+                `step${index + 1}`,
+                {
+                  config: preprocessingRequest?.[stepName] || null,
+                  apiResponse: preprocessingResponse?.[stepName] || null,
+                },
+                workflowId
+              );
+            });
             updateWorkflowStage('modelSelection', {
               config: modelSelectionRequest,
               apiResponse: modelSelectionResponse

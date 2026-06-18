@@ -24,47 +24,18 @@ import ChangeDataType from './ChangeDataType';
  * =========================================================
  */
 
-function TimeSeriesDataCleaning({
-  readonly,
-  onValidationChange,
-  onApiCall,
-  predictionType
+function TimeSeriesDataCleaning({readonly,onValidationChange, onApiCall, predictionType
 }) {
 
 
-  const {
-    datasetState,
-    workflowsState,
-    activeWorkflowId,
-    updatePreprocessingStep
-  } = useAIPlayground();
-
-  const isUnivariateTimeseries =
-    predictionType === 'univariate_timeseries';
-
-  const workflowState = activeWorkflowId
-    ? workflowsState?.[activeWorkflowId]
-    : null;
-
-  const columnsDataTypes =
-    workflowState?.modelGenesis?.apiResponse
-      ?.columns_data_types?.manual || {};
-
-
-  const duplicateRows =
-    workflowState?.modelGenesis?.apiResponse
-      ?.duplicate_timestamp_report?.duplicate_rows || {};
+  const {datasetState,workflowsState,activeWorkflowId,updatePreprocessingStep } = useAIPlayground();
+  const isUnivariateTimeseries =predictionType === 'univariate_timeseries';
+  const workflowState = activeWorkflowId? workflowsState?.[activeWorkflowId]: null;
+  const columnsDataTypes =workflowState?.modelGenesis?.apiResponse?.columns_data_types?.manual || {};
+  const duplicateRows = workflowState?.modelGenesis?.apiResponse?.duplicate_timestamp_report?.duplicate_rows || {};
   const columnNames = Object.keys(columnsDataTypes);
-
-
-  const hasDuplicateRows =
-    duplicateRows &&
-    Object.keys(duplicateRows).length > 0;
-
-
-  const sectionDescriptions =
-    dataPreprocessingDescriptions;
-
+  const hasDuplicateRows =duplicateRows &&Object.keys(duplicateRows).length > 0;
+  const sectionDescriptions = dataPreprocessingDescriptions;
 
   const dataTypeOptions = [
     'datetime',
@@ -73,15 +44,10 @@ function TimeSeriesDataCleaning({
     'category',
     'string'
   ];
-
-
-
-  const [modifyDataTypes, setModifyDataTypes] =
-    useState(false);
-
-
-  const [dataTypeColumns, setDataTypeColumns] =
-    useState([
+  const savedConfig =workflowState?.dataPreprocessing?.step1?.config;
+  const hasSavedConfig = !!savedConfig;
+  const [modifyDataTypes, setModifyDataTypes] =useState(false);
+  const [dataTypeColumns, setDataTypeColumns] =useState([
       {
         columnName: '',
         oldDataType: '',
@@ -89,25 +55,18 @@ function TimeSeriesDataCleaning({
       }
     ]);
 
-
   const [expandedSections, setExpandedSections] =
     useState({
       changeDataType: false,
       aggregation: false
     });
 
-  const [showFieldErrors, setShowFieldErrors] =
-    useState(false);
+  const [showFieldErrors, setShowFieldErrors] =useState(false);
 
-  const [aggregation, setAggregation] =
-  useState(hasDuplicateRows);
+  const [aggregation, setAggregation] =useState(hasDuplicateRows);
 
-  const [aggregationMethod, setAggregationMethod] =
-    useState('mean');
+  const [aggregationMethod, setAggregationMethod] =useState('mean');
 
-  /**
-   * Loading state
-   */
   const [isLoading, setIsLoading] =
     useState(false);
 
@@ -115,7 +74,49 @@ function TimeSeriesDataCleaning({
   const [error, setError] =
     useState(null);
 
-  
+  useEffect(() => {
+      if (!hasSavedConfig) return;
+
+      setModifyDataTypes(
+        savedConfig.modify_data_types || false
+      );
+
+      setAggregation(
+        savedConfig.aggregation ?? hasDuplicateRows
+      );
+
+      setAggregationMethod(
+        savedConfig.aggregation_method || 'mean'
+      );
+
+      if (
+        savedConfig.modify_data_types_map &&
+        Object.keys(savedConfig.modify_data_types_map).length > 0
+      ) {
+        setDataTypeColumns(
+          Object.entries(
+            savedConfig.modify_data_types_map
+          ).map(([columnName, newDataType]) => ({
+            columnName,
+            oldDataType:
+              columnsDataTypes[columnName] || '',
+            newDataType
+          }))
+        );
+      } else {
+        setDataTypeColumns([
+          {
+            columnName: '',
+            oldDataType: '',
+            newDataType: ''
+          }
+        ]);
+      }
+    }, [
+      savedConfig,
+      columnsDataTypes,
+      hasDuplicateRows
+    ]);
 
   const toggleSection = (section) => {
 
@@ -128,8 +129,10 @@ function TimeSeriesDataCleaning({
 
 
   useEffect(() => {
-  setAggregation(hasDuplicateRows);
-}, [hasDuplicateRows]);
+    if (hasSavedConfig) return;
+
+    setAggregation(hasDuplicateRows);
+  }, [hasDuplicateRows, hasSavedConfig]);
 
   const toggleSwitch = (key) => {
 
@@ -310,30 +313,15 @@ function TimeSeriesDataCleaning({
     index,
     columnName
   ) => {
-
     if (readonly || isLoading) return;
-
     const newColumns = [...dataTypeColumns];
-
     newColumns[index] = {
-
       columnName,
-
-      oldDataType:
-        columnsDataTypes[columnName] || '',
-
-      newDataType:
-        newColumns[index].newDataType
-    };
-
+      oldDataType:columnsDataTypes[columnName] || '',
+      newDataType:newColumns[index].newDataType};
     setDataTypeColumns(newColumns);
   };
 
-  /**
-   * =======================================================
-   * Handle New Datatype Selection
-   * =======================================================
-   */
 
   const handleNewDataTypeChange = (
     index,
@@ -349,12 +337,6 @@ function TimeSeriesDataCleaning({
 
     setDataTypeColumns(newColumns);
   };
-
-  /**
-   * =======================================================
-   * Add New Datatype Row
-   * =======================================================
-   */
 
   const addColumn = () => {
 
@@ -376,13 +358,6 @@ function TimeSeriesDataCleaning({
       }
     ]);
   };
-
-  /**
-   * =======================================================
-   * Remove Datatype Row
-   * =======================================================
-   */
-
   const removeDataTypeColumn = (index) => {
 
     if (
@@ -400,15 +375,11 @@ function TimeSeriesDataCleaning({
     );
   };
 
-  /**
-   * =======================================================
-   * Expose Submit Function to Parent
-   * =======================================================
-   */
 
   useEffect(() => {
 
     if (onApiCall) {
+      
 
       onApiCall(handleSubmit);
     }
@@ -421,31 +392,16 @@ function TimeSeriesDataCleaning({
     onApiCall
   ]);
 
-  /**
-   * =======================================================
-   * Final API Submit
-   * =======================================================
-   */
 
   const handleSubmit = async () => {
-
+    if (readonly) return true;
     try {
-
       setIsLoading(true);
-
       setError(null);
-
-      /**
-       * ---------------------------------------------------
-       * Validate Aggregation
-       * ---------------------------------------------------
-       */
-
       if (
         hasDuplicateRows &&
         !aggregation
       ) {
-
         toast.error(
           'Please select the Aggregation feature to process the data.',
           {
@@ -453,22 +409,12 @@ function TimeSeriesDataCleaning({
             position: 'top-right'
           }
         );
-
         setIsLoading(false);
-
         return false;
       }
 
-      /**
-       * ---------------------------------------------------
-       * Create Datatype Mapping
-       * ---------------------------------------------------
-       */
-
       const modifyDataTypesMap = {};
-
-      dataTypeColumns.forEach((col) => {
-
+      dataTypeColumns.forEach((col) => {  
         if (
           col.columnName &&
           col.newDataType
@@ -480,9 +426,6 @@ function TimeSeriesDataCleaning({
         }
       });
 
-      /**
-       * Validate Change Data Type
-       */
       if (modifyDataTypes) {
         const hasSelectedFeature = Object.keys(
           modifyDataTypesMap
@@ -504,11 +447,6 @@ function TimeSeriesDataCleaning({
         }
       }
 
-      /**
-       * ---------------------------------------------------
-       * Final Config Payload
-       * ---------------------------------------------------
-       */
 
       const config = {
 
@@ -531,11 +469,7 @@ function TimeSeriesDataCleaning({
           aggregationMethod
       };
 
-      /**
-       * ---------------------------------------------------
-       * API Call
-       * ---------------------------------------------------
-       */
+
 
       const result =
         await cleanTimeSeriesData({
@@ -559,11 +493,7 @@ function TimeSeriesDataCleaning({
             aggregationMethod
         });
 
-      /**
-       * ---------------------------------------------------
-       * Store Response
-       * ---------------------------------------------------
-       */
+
 
       updatePreprocessingStep(
         'step1',
@@ -696,45 +626,6 @@ function TimeSeriesDataCleaning({
       />
       )}
 
-      {/* ===================================================
-          Aggregate Features Section
-      =================================================== */}
-
-      {/* <AggregateFeatures
-
-        aggregation={aggregation}
-
-        expanded={
-          expandedSections.aggregation
-        }
-
-        toggleSwitch={toggleSwitch}
-
-        toggleSection={toggleSection}
-        aggregationDisabled={true}
-
-        readonly={readonly}
-
-        isLoading={isLoading}
-
-        hasDuplicateRows={
-          hasDuplicateRows
-        }
-
-        aggregationMethod={
-          aggregationMethod
-        }
-
-        setAggregationMethod={
-          setAggregationMethod
-        }
-
-        duplicateRows={duplicateRows}
-
-        sectionDescriptions={
-          sectionDescriptions
-        }
-      /> */}
     </div>
   );
 }

@@ -59,8 +59,10 @@
     "backend_key": "EncoderDecoderLSTM",
     "info": "Sequence-to-sequence architecture consisting of encoder and decoder LSTM networks, commonly used for multi-step forecasting tasks.",
     "hyperparameters": {
-      "encoder_units": { "low": "32", "high": "512" },
-      "decoder_units": { "low": "32", "high": "512" },
+       "encoder_decoder units": {
+      "low": "32",
+      "high": "512"
+    },
       "attention": "true, false"
     }
   },

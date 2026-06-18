@@ -22,15 +22,15 @@ import StationarityToggle from './StationarityToggle';
 function SeasonalityAnalysisComponent({readonly,onValidationChange,onApiCall,predictionType}) 
 {
 //context data
-  const {datasetState, workflowsState,activeWorkflowId, updatePreprocessingStep} = useAIPlayground();
+  const {datasetState, workflowsState,activeWorkflowId, updatePreprocessingStep,mode} = useAIPlayground();
 
   {/* Get current workflow state*/}
   const workflowState = activeWorkflowId? workflowsState?.[activeWorkflowId]: null;
   {/* Backend data */}
    //Check if seasonality analysis was enabled in step 4
   const step4Config = workflowState?.dataPreprocessing?.step4?.config;
-  const wasSeasonalityAnalysisEnabledInStep4 = step4Config?.seasonality_analysis_active ?? false;
-
+  const wasSeasonalityAnalysisEnabledInStep4 = step4Config?.seasonality_analysis ?? false;
+  const step5Config = workflowState?.dataPreprocessing?.step5?.config;
   //Seasonality analysis report from step 4 API response
   const rawSeasonalityReport =workflowState?.dataPreprocessing?.step4?.apiResponse?.seasonality_analysis_report || [];
 // univariate check
@@ -118,9 +118,32 @@ function SeasonalityAnalysisComponent({readonly,onValidationChange,onApiCall,pre
     }
   };
 
+  useEffect(() => {
+  if (
+    (mode === 'view' || mode === 'edit') &&
+    step5Config
+  ) {
+    setSeasonalityTreatmentActive(
+      step5Config.seasonality_treatment_active || false
+    );
+
+    setStationarityAnalysisActive(
+      step5Config.stationarity_analysis_active || false
+    );
+
+    setExpandedSections({
+      seasonalityAnalysis:
+        step5Config.seasonality_treatment_active || false,
+      stationarityAnalysis:
+        step5Config.stationarity_analysis_active || false
+    });
+  }
+}, [mode, step5Config]);
+
 // Handle API call 
 
   const handleApiCall = async () => {
+    if (readonly) return true;
     setError(null);
     setIsLoading(true);
     try {

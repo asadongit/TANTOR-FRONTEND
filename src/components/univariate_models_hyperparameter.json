@@ -120,49 +120,17 @@
     }
   },
 
-  "ARIMAX": {
-    "category": "Statistical",
-    "backend_key": "ARIMAX",
-    "info": "Autoregressive Integrated Moving Average with Exogenous Variables extends ARIMA by incorporating external predictors into the forecasting process.",
-    "hyperparameters": {
-      "order": {
-        "p": { "low": "0", "high": "5" },
-        "d": { "low": "0", "high": "2" },
-        "q": { "low": "0", "high": "5" }
-      },
-      "exog": "true, false",
-      "trend": "n, c, t, ct"
-    }
-  },
-
-  "SARIMAX": {
-    "category": "Statistical",
-    "backend_key": "SARIMAX",
-    "info": "Seasonal ARIMAX extends ARIMAX by modeling both seasonal and non-seasonal patterns while supporting exogenous variables.",
-    "hyperparameters": {
-      "order": {
-        "p": { "low": "0", "high": "5" },
-        "d": { "low": "0", "high": "2" },
-        "q": { "low": "0", "high": "5" }
-      },
-      "seasonal_order": {
-        "P": { "low": "0", "high": "3" },
-        "D": { "low": "0", "high": "2" },
-        "Q": { "low": "0", "high": "3" },
-        "s": { "low": "2", "high": "24" }
-      },
-      "exog": "true, false"
-    }
-  },
   
   "ProphetRegressor": {
     "category": "Machine Learning",
     "backend_key": "ProphetRegressor",
     "info": "Prophet-based forecasting model enhanced with external regressors to improve predictive performance.",
     "hyperparameters": {
-      "growth": "linear, logistic",
+      "growth": "linear",
       "changepoints": { "low": "5", "high": "50" },
-      "add_regressor": "true, false"
+      "add_regressor": "true, false",
+      "changepoint_prior_scale": {"low": "0.001","high": "1.0"},
+      "seasonality_mode": "additive"
     }
   },
 
@@ -171,9 +139,10 @@
     "backend_key": "ExponentialSmoothing",
     "info": "Forecasting method that assigns exponentially decreasing weights to older observations.",
     "hyperparameters": {
-      "trend": "add, mul, null",
-      "seasonal": "add, mul, null",
-      "damped": "true, false"
+      "trend": "add",
+      "seasonal": ["add", null],
+      "damped": "true, false",
+      "seasonal_periods": { "low": "2", "high": "365" }
     }
   },
 
@@ -193,8 +162,8 @@
     "backend_key": "Holt-Winters",
     "info": "Triple exponential smoothing method that models level, trend, and seasonality.",
     "hyperparameters": {
-      "trend": "add, mul",
-      "seasonal": "add, mul",
+      "trend": "add, null",
+      "seasonal": "add, null",
       "seasonal_periods": { "low": "2", "high": "365" }
     }
   },
@@ -204,51 +173,21 @@
     "backend_key": "ETS",
     "info": "Error-Trend-Seasonality state space framework for time-series forecasting.",
     "hyperparameters": {
-      "error": "add, mul",
-      "trend": "add, mul, null",
-      "seasonal": "add, mul, null"
+      "error": "add",
+      "trend": "add, null",
+      "seasonal": "add, null",
+      "seasonal_periods": { "low": "2", "high": "365" }
     }
   },
 
-  "Theta": {
-    "category": "Statistical",
-    "backend_key": "Theta",
-    "info": "Theta forecasting method known for strong performance in forecasting competitions.",
-    "hyperparameters": {
-      "theta": { "low": "1", "high": "5" },
-      "deseasonalize": "true, false",
-      "use_test": "true, false"
-    }
-  },
 
-  "TBATS": {
-    "category": "Statistical",
-    "backend_key": "TBATS",
-    "info": "Forecasting model supporting complex seasonality using trigonometric terms and Box-Cox transformations.",
-    "hyperparameters": {
-      "use_box_cox": "true, false",
-      "use_trend": "true, false",
-      "use_arma_errors": "true, false"
-    }
-  },
-
-  "BATS": {
-    "category": "Statistical",
-    "backend_key": "BATS",
-    "info": "State-space forecasting model supporting trend, seasonality, and Box-Cox transformations.",
-    "hyperparameters": {
-      "use_box_cox": "true, false",
-      "use_trend": "true, false",
-      "use_damped_trend": "true, false"
-    }
-  },
 
   "Prophet": {
     "category": "Statistical",
     "backend_key": "Prophet",
     "info": "Forecasting model developed by Meta for handling seasonality, holidays, and trend changes.",
     "hyperparameters": {
-      "growth": "linear, logistic",
+      "growth": "linear",
       "changepoint_prior_scale": { "low": "0.001", "high": "0.5" },
       "seasonality_mode": "additive, multiplicative"
     }
@@ -260,7 +199,7 @@
     "info": "Forecasting technique designed specifically for intermittent demand time series.",
     "hyperparameters": {
       "alpha": { "low": "0.01", "high": "0.99" },
-      "variant": "classic, optimized"
+      "variant": "classic, sba , tsb"
     }
   },
 
@@ -285,23 +224,22 @@
     }
   },
 
-  "MovingAverage": {
+  "Moving Average": {
     "category": "Baseline",
     "backend_key": "MovingAverage",
     "info": "Forecasting approach based on the average of recent observations.",
     "hyperparameters": {
       "window": { "low": "2", "high": "100" },
-      "center": "true, false",
-      "min_periods": { "low": "1", "high": "50" }
+      "center": [true, false],
+      "min_periods": { "low": "1", "high": "50" , "warning": "min_periods must be less than or equal to window."}
     }
   },
 
-  "WeightedMovingAverage": {
+  "Weighted Moving Average": {
     "category": "Baseline",
     "backend_key": "WeightedMovingAverage",
     "info": "Moving average method assigning higher importance to recent observations.",
     "hyperparameters": {
-      "weights": { "low": "1", "high": "10" },
       "window": { "low": "2", "high": "100" }
     }
   },

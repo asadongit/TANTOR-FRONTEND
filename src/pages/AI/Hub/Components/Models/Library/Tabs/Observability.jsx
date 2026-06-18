@@ -85,7 +85,7 @@ function Observability({ modelData }) {
     const avgLatencyMin = avgLatency ? (Number(avgLatency) / 60000).toFixed(2) : '0.00';
     
     // Check if model is regression
-    const isRegressionModel = modelData.modeling_type === 'regression' || (avgPerf.r2 !== undefined && avgPerf.rmse !== undefined);
+    const isRegressionModel = modelData.modeling_type === 'regression' || (avgPerf.r2 !== null  && avgPerf.rmse !==  null );
 
     const dataDriftData = Object.entries(data.data?.data_drift_over_time || {}).map(([date, val]) => ({
         date,

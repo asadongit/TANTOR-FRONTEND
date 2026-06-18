@@ -168,12 +168,26 @@ function FeatureDependency({
         correlation: config.correlation_active || false,
         featureTarget: config.feature_target_active || false
       });
+      const vifColumns =
+        config.drop_columns_from_vif || [];
+
+      const correlationColumns =
+        config.drop_columns_from_correlation || [];
+
+      const featureTargetColumns =
+        config.drop_columns_from_feature_target || [];
 
       setSelectedFeatures({
-        vif: config.drop_columns_from_vif || [],
-        correlation: config.drop_columns_from_correlation || [],
-        featureTarget: config.drop_columns_from_feature_target || []
-      });
+      vif: vifColumns,
+      correlation: correlationColumns,
+      featureTarget: featureTargetColumns
+    });
+
+    setDropperToggles({
+      vif: vifColumns.length > 0,
+      correlation: correlationColumns.length > 0,
+      featureTarget: featureTargetColumns.length > 0
+    });
     }
   }, [mode, workflowState]);
 

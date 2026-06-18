@@ -222,17 +222,24 @@ const ConfigurationTab = ({ onValidationErrors }) => {
         switch (field) {
             case 'project': {
                 const selectedProject = projects.find(p => p.name === value);
+
                 setSchedulerState(prev => ({
                     ...prev,
                     project: value,
                     ensemble_name: '',
                     model: isEnsembleEnabled ? [] : '',
                     model_id: isEnsembleEnabled ? [] : '',
-                    project_id: selectedProject ? selectedProject.id : ''
+                    project_id: selectedProject ? selectedProject.id : '',
+                    source: {
+                        ...prev.source,
+                        source_table: ''
+                    }
                 }));
+
                 setSelectedEnsemble('');
                 setEnsembleNames([]);
                 setModels([]);
+                setDataSources([]);   // <-- add here
                 setSummary(null);
                 break;
             }
@@ -250,14 +257,29 @@ const ConfigurationTab = ({ onValidationErrors }) => {
             }
             case 'model': {
                 const selectedValues = Array.isArray(value) ? value : [value].filter(Boolean);
-                const selectedModelIds = models
-                    .filter(m => selectedValues.includes(m.value || m.model_name))
-                    .map(m => m.model_id || '');
+
+                const selectedModels = models.filter(
+                    m => selectedValues.includes(m.value || m.model_name)
+                );
+
+                const selectedModelIds = selectedModels.map(
+                    m => m.model_id || ''
+                );
+
+                const selectedModel = selectedModels[0];
+
                 setSchedulerState(prev => ({
                     ...prev,
                     model: Array.isArray(value) ? value : value,
-                    model_id: isEnsembleEnabled ? selectedModelIds : (selectedModelIds[0] || '')
+                    model_id: isEnsembleEnabled
+                        ? selectedModelIds
+                        : (selectedModelIds[0] || '')
                 }));
+
+                if (selectedModel) {
+                    fetchDataSources(selectedModel.modeling_type);
+                }
+
                 setSummary(null);
                 break;
             }
@@ -433,7 +455,6 @@ const ConfigurationTab = ({ onValidationErrors }) => {
     useEffect(() => {
         fetchExistingSchedules();
         fetchProjects();
-        fetchDataSources();
         fetchDestinationTables();
     }, []);
 
@@ -637,7 +658,7 @@ const ConfigurationTab = ({ onValidationErrors }) => {
         return selectedModels.find(modelName => workflowModels.includes(modelName)) || '';
     };
 
-    const fetchDataSources = async () => {
+    const fetchDataSources = async (modelingType) => {
         setLoadingDataSources(true);
         try {
             const secureQueryResponse = await fetch(`${window._env_?.VITE_FAST_API}/secure-query`, {
@@ -648,8 +669,15 @@ const ConfigurationTab = ({ onValidationErrors }) => {
             if (!secureQueryResponse.ok) throw new Error("Failed to fetch policy IDs");
             const secureQueryData = await secureQueryResponse.json();
             const policyIds = secureQueryData.matched_policy_ids;
+            const isTimeSeries =
+            modelingType === 'univariate_timeseries' ||
+            modelingType === 'multivariate_timeseries';
+            const endpoint = isTimeSeries
+                ? `${hostnameAI}/schemas/source-schema/tables`
+                : `${hostnameAI}/schemas/predictions-source-schema/tables`;
 
-            const response = await fetch(`${hostnameAI}/schemas/predictions-source-schema/tables`, {
+            const response = await fetch(
+                endpoint, {
                 method: 'POST',
                 headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
                 body: JSON.stringify({ policy_id: policyIds })
