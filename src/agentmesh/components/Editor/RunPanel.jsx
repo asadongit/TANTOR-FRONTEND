@@ -43,6 +43,11 @@ export default function RunPanel({ onClose }) {
   const [showProfilingModal, setShowProfilingModal] = useState(false);
   const [showBlackboardModal, setShowBlackboardModal] = useState(false);
 
+  // 📝 Pagination States for History
+  const [historyPage, setHistoryPage] = useState(1);
+  const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
   // Hook into custom audio engine player
   const { audioPlaying, playAudio, stopAudio } = useAudioPlayer();
 
@@ -108,18 +113,48 @@ export default function RunPanel({ onClose }) {
     }
   }, [streamEvents, runOutput, runError]);
 
-  // Fetch History on Mount
+  // Fetch History on Mount / reset page
   useEffect(() => {
-    const fetchHistory = async () => {
+    const initHistory = async () => {
+      setLoadingHistory(true);
       try {
-        const res = await listThreads(workflowId);
-        setHistory(res.threads || []);
+        const limit = 20;
+        const res = await listThreads(workflowId, { page: 1, limit });
+        const newThreads = res.threads || [];
+        setHistory(newThreads);
+        setHistoryPage(1);
+        setHasMoreHistory(newThreads.length === limit);
       } catch (e) {
         console.error("Failed to fetch history:", e);
+      } finally {
+        setLoadingHistory(false);
       }
     };
-    fetchHistory();
+    initHistory();
   }, [workflowId, setHistory]);
+
+  const loadMoreHistory = async () => {
+    if (loadingHistory || !hasMoreHistory) return;
+    setLoadingHistory(true);
+    try {
+      const nextPage = historyPage + 1;
+      const limit = 20;
+      const res = await listThreads(workflowId, { page: nextPage, limit });
+      const newThreads = res.threads || [];
+      if (newThreads.length < limit) {
+        setHasMoreHistory(false);
+      }
+      const currentHistory = useRunStore.getState().history;
+      const existingIds = new Set(currentHistory.map(h => h.thread_id));
+      const filteredNew = newThreads.filter(h => !existingIds.has(h.thread_id));
+      setHistory([...currentHistory, ...filteredNew]);
+      setHistoryPage(nextPage);
+    } catch (e) {
+      console.error("Failed to load more history:", e);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   // ⚡ Auto-Restore History: If we opened via the Dashboard with a threadId
   useEffect(() => {
@@ -371,7 +406,7 @@ export default function RunPanel({ onClose }) {
         ...(isForm ? actionArg : {}),  // Spread individual form field values
         ...(choicePayload || {}),      // Spread choice selection payload
         feedback: reworkFeedback || null,
-        decision: action,
+        decision: isForm ? (actionArg.decision || action) : action,
         include_original_output: pausedInfo.includeOriginalOutput ?? true,
         inject_feedback: pausedInfo.injectFeedback ?? true,
         user_input: isForm ? actionArg : null
@@ -910,6 +945,9 @@ export default function RunPanel({ onClose }) {
         onOpenThread={handleOpenThread}
         onDeleteThread={handleDeleteThread}
         onNewConversation={handleNewConversation}
+        hasMore={hasMoreHistory}
+        loadingMore={loadingHistory}
+        onLoadMore={loadMoreHistory}
       />
 
       {/* Form Modal Portal - Renders outside stacking context */}

@@ -11,7 +11,10 @@ export default function HistorySidebar({
   threadId,
   onOpenThread,
   onDeleteThread,
-  onNewConversation
+  onNewConversation,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore
 }) {
   return (
     <AnimatePresence>
@@ -49,7 +52,17 @@ export default function HistorySidebar({
               </button>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px' }} className="custom-scrollbar">
+            <div
+              onScroll={(e) => {
+                if (!hasMore || loadingMore) return;
+                const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+                if (scrollHeight - scrollTop - clientHeight < 30) {
+                  onLoadMore();
+                }
+              }}
+              style={{ flex: 1, overflowY: 'auto', padding: '12px 10px' }}
+              className="custom-scrollbar"
+            >
               {history.length === 0 ? (
                 <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF', fontSize: 13, fontWeight: 500 }}>
                   No sessions recorded for this workflow yet.
@@ -110,6 +123,18 @@ export default function HistorySidebar({
                       </button>
                     </div>
                   ))}
+                  {loadingMore && (
+                    <div style={{
+                      padding: '12px',
+                      textAlign: 'center',
+                      color: '#9CA3AF',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      letterSpacing: '0.05em'
+                    }}>
+                      LOADING MORE...
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -148,5 +173,8 @@ HistorySidebar.propTypes = {
   threadId: PropTypes.string,
   onOpenThread: PropTypes.func.isRequired,
   onDeleteThread: PropTypes.func.isRequired,
-  onNewConversation: PropTypes.func.isRequired
+  onNewConversation: PropTypes.func.isRequired,
+  hasMore: PropTypes.bool,
+  loadingMore: PropTypes.bool,
+  onLoadMore: PropTypes.func
 };

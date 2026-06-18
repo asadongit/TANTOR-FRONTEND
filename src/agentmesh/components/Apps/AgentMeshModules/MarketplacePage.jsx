@@ -35,6 +35,7 @@ const generateOpenApiSpec = (workflow) => {
       const properties = {};
       const required = [];
       node.form_fields.forEach(field => {
+        if (field.enabled === false) return;
         const fieldName = field.id || field.name;
         properties[fieldName] = {
           type: field.type === 'number' ? 'number' : field.type === 'boolean' ? 'boolean' : 'string',

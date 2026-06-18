@@ -160,6 +160,8 @@ export const chatArchitect = (workflow, context, messages, llm) =>
   request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'chat_architect', payload: { workflow, context, messages, llm } }) });
 export const generateSkillSop = (payload) =>
   request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'generate_skill_sop', payload }) });
+export const generatePythonRule = (prompt) =>
+  request('/utils/action', { method: 'POST', body: JSON.stringify({ action: 'generate_python_rule', payload: { prompt, existing_code: "" } }) });
 
 // ─── Notifications ────────────────────────────────────────────────────────────
 export const listNotifications = (params = {}) => {
@@ -172,7 +174,11 @@ export const listNotifications = (params = {}) => {
 export const processNotifications = (payload) => request('/notifications/action', { method: 'POST', body: JSON.stringify(payload) });
 
 // ─── History ──────────────────────────────────────────────────────────────────
-export const listThreads = (workflowId) => request(`/workflow/${workflowId}/threads`);
+export const listThreads = (workflowId, params = {}) => {
+  const { page = 1, limit = 20 } = params;
+  const p = new URLSearchParams({ page, limit });
+  return request(`/workflow/${workflowId}/threads?${p}`);
+};
 export const getThreadHistory = (workflowId, threadId) => request(`/workflow/${workflowId}/thread/${threadId}`);
 export const deleteThread = (threadId) => request(`/thread/${threadId}`, { method: 'DELETE' });
 
