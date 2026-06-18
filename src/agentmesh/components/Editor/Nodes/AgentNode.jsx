@@ -209,8 +209,14 @@ function AgentNode({ id, data, selected }) {
     }
     return {
       ...logicRowStyle,
-      background: canvasNodeTheme === 'flat' ? 'white' : '#F9FAFB',
-      border: canvasNodeTheme === 'flat' ? '1px solid rgba(0,0,0,0.05)' : '1px solid #F1F5F9'
+      background: canvasNodeTheme === 'liquid-glass'
+        ? 'rgba(255, 255, 255, 0.25)'
+        : canvasNodeTheme === 'flat' ? 'white' : '#F9FAFB',
+      border: canvasNodeTheme === 'liquid-glass'
+        ? '1px solid rgba(255, 255, 255, 0.25)'
+        : canvasNodeTheme === 'flat' ? '1px solid rgba(0,0,0,0.05)' : '1px solid #F1F5F9',
+      backdropFilter: canvasNodeTheme === 'liquid-glass' ? 'blur(4px)' : 'none',
+      WebkitBackdropFilter: canvasNodeTheme === 'liquid-glass' ? 'blur(4px)' : 'none',
     };
   };
 
@@ -222,20 +228,34 @@ function AgentNode({ id, data, selected }) {
       className={data.isRunning ? "node-active-running" : ""}
       style={{
         minWidth: isLogicNode ? 220 : config.small ? 100 : 180,
-        background: canvasNodeTheme === 'flat' ? config.bg : 'white',
-        border: canvasNodeTheme === 'border'
-          ? (selected ? '2.5px solid var(--theme-primary, #8e77bb)' : hovered ? '1.5px solid var(--theme-primary, #8e77bb)' : '1.5px solid #CBD5E1')
-          : canvasNodeTheme === 'flat'
-            ? (selected ? `2.5px solid ${config.color}` : `1px solid ${config.color}50`)
-            : (selected ? '1.5px solid var(--theme-primary, #3B82F6)' : '1px solid rgba(0,0,0,0.08)'),
+        background: canvasNodeTheme === 'liquid-glass'
+          ? `radial-gradient(circle at 30px 30px, ${config.color}22 0%, rgba(255, 255, 255, 0.05) 55%, rgba(255, 255, 255, 0.02) 100%)`
+          : canvasNodeTheme === 'flat' ? config.bg : 'white',
+        backdropFilter: canvasNodeTheme === 'liquid-glass' ? 'blur(12px) saturate(150%)' : 'none',
+        WebkitBackdropFilter: canvasNodeTheme === 'liquid-glass' ? 'blur(12px) saturate(150%)' : 'none',
+        border: canvasNodeTheme === 'liquid-glass'
+          ? (selected ? `2.5px solid ${config.color}` : hovered ? `2px solid ${config.color}` : `1.5px solid ${config.color}`)
+          : canvasNodeTheme === 'border'
+            ? (selected ? '2.5px solid var(--theme-primary, #8e77bb)' : hovered ? '1.5px solid var(--theme-primary, #8e77bb)' : '1.5px solid #CBD5E1')
+            : canvasNodeTheme === 'flat'
+              ? (selected ? `2.5px solid ${config.color}` : `1px solid ${config.color}50`)
+              : (selected ? '1.5px solid var(--theme-primary, #3B82F6)' : '1px solid rgba(0,0,0,0.08)'),
         borderRadius: config.round,
-        boxShadow: canvasNodeTheme === 'flat' || canvasNodeTheme === 'border'
-          ? 'none'
-          : selected
-            ? '0 0 0 3px rgba(59, 130, 246, 0.25), 0 10px 20px -5px rgba(0, 0, 0, 0.15)'
-            : hovered ? '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)'
-              : '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.025)',
-        transform: (canvasNodeTheme === 'flat' || canvasNodeTheme === 'border') ? 'none' : (hovered ? 'translateY(-2px)' : 'none'),
+        boxShadow: canvasNodeTheme === 'liquid-glass'
+          ? (selected
+              ? `inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.15), 0 0 0 2px ${config.color}25, 0 15px 35px -5px ${config.color}35`
+              : hovered 
+                ? `inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 12px 28px -6px ${config.color}25`
+                : `inset 0 1px 0 rgba(255, 255, 255, 0.25), inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 8px 20px -8px ${config.color}15`)
+          : canvasNodeTheme === 'flat' || canvasNodeTheme === 'border'
+            ? 'none'
+            : selected
+              ? '0 0 0 3px rgba(59, 130, 246, 0.25), 0 10px 20px -5px rgba(0, 0, 0, 0.15)'
+              : hovered ? '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)'
+                : '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.025)',
+        transform: canvasNodeTheme === 'liquid-glass'
+          ? (hovered ? 'translateY(-2px) scale(1.02)' : 'none')
+          : (canvasNodeTheme === 'flat' || canvasNodeTheme === 'border') ? 'none' : (hovered ? 'translateY(-2px)' : 'none'),
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         cursor: 'pointer',
         padding: isLogicNode ? 0 : '10px 14px',
@@ -249,22 +269,44 @@ function AgentNode({ id, data, selected }) {
         overflow: 'visible'
       }}
     >
+      {/* Specular Highlight (The Gel Glare Gloss) */}
+      {canvasNodeTheme === 'liquid-glass' && (
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          borderRadius: config.round - 1,
+          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%)',
+          pointerEvents: 'none',
+          mixBlendMode: 'overlay',
+          zIndex: 1
+        }} />
+      )}
+
       {/* ── HEADER (FOR LOGIC NODES) ── */}
       {isLogicNode && (
         <div style={{
           padding: '10px 14px',
-          background: config.bg,
+          background: canvasNodeTheme === 'liquid-glass' ? 'rgba(255, 255, 255, 0.2)' : config.bg,
           display: 'flex',
           alignItems: 'center',
           gap: 10,
-          borderBottom: canvasNodeTheme === 'border' ? `1.5px solid #CBD5E1` : '1px solid #F1F5F9',
+          borderBottom: canvasNodeTheme === 'border'
+            ? `1.5px solid #CBD5E1`
+            : canvasNodeTheme === 'liquid-glass'
+              ? '1px solid rgba(255, 255, 255, 0.25)'
+              : '1px solid #F1F5F9',
           borderTopLeftRadius: config.round - 1,
-          borderTopRightRadius: config.round - 1
+          borderTopRightRadius: config.round - 1,
+          zIndex: 2
         }}>
           <div style={{
-            width: 28, height: 28, borderRadius: 8, background: 'white',
+            width: 28, height: 28, borderRadius: 8,
+            background: canvasNodeTheme === 'liquid-glass' ? 'rgba(255, 255, 255, 0.15)' : 'white',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 2px 5px rgba(0,0,0,0.06), inset 0 0 0 1px rgba(0,0,0,0.02)'
+            boxShadow: canvasNodeTheme === 'liquid-glass' ? 'none' : '0 2px 5px rgba(0,0,0,0.06), inset 0 0 0 1px rgba(0,0,0,0.02)',
+            border: canvasNodeTheme === 'liquid-glass'
+              ? `1.5px solid ${config.color}`
+              : 'none'
           }}>
             <Icon size={16} color={config.color} />
           </div>
@@ -291,19 +333,26 @@ function AgentNode({ id, data, selected }) {
             width: config.small ? 32 : 40,
             height: config.small ? 32 : 40,
             borderRadius: config.round - 4,
-            background: (canvasNodeTheme === 'border' || canvasNodeTheme === 'flat') ? 'white' : config.bg,
+            background: canvasNodeTheme === 'liquid-glass'
+              ? 'rgba(255, 255, 255, 0.15)'
+              : (canvasNodeTheme === 'border' || canvasNodeTheme === 'flat') ? 'white' : config.bg,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
             boxShadow: (canvasNodeTheme === 'flat' || canvasNodeTheme === 'border')
               ? 'none'
-              : 'inset 0 2px 4px rgba(255, 255, 255, 0.5), inset 0 -2px 4px rgba(0,0,0,0.02), 0 2px 5px rgba(0,0,0,0.05)',
-            border: canvasNodeTheme === 'border'
+              : canvasNodeTheme === 'liquid-glass'
+                ? 'inset 0 1px 2px rgba(255,255,255,0.45), 0 2px 8px rgba(0,0,0,0.04)'
+                : 'inset 0 2px 4px rgba(255, 255, 255, 0.5), inset 0 -2px 4px rgba(0,0,0,0.02), 0 2px 5px rgba(0,0,0,0.05)',
+            border: canvasNodeTheme === 'liquid-glass'
               ? `1.5px solid ${config.color}`
-              : canvasNodeTheme === 'flat'
-                ? `1px solid ${config.color}30`
-                : '1px solid rgba(0,0,0,0.03)'
+              : canvasNodeTheme === 'border'
+                ? `1.5px solid ${config.color}`
+                : canvasNodeTheme === 'flat'
+                  ? `1px solid ${config.color}30`
+                  : '1px solid rgba(0,0,0,0.03)',
+            zIndex: 2
           }}>
             <Icon size={config.small ? 14 : 20} color={config.color} />
           </div>
@@ -324,7 +373,9 @@ function AgentNode({ id, data, selected }) {
               <span style={{
                 fontSize: 10,
                 fontWeight: 600,
-                color: canvasNodeTheme === 'flat' ? `${config.color}ee` : '#64748B',
+                color: canvasNodeTheme === 'liquid-glass'
+                  ? `${config.color}`
+                  : canvasNodeTheme === 'flat' ? `${config.color}ee` : '#64748B',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 marginTop: 2
