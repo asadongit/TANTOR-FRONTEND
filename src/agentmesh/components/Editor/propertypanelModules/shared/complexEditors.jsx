@@ -1191,7 +1191,18 @@ export const WeightageCategoriesEditor = memo(function WeightageCategoriesEditor
               {/* Fields List (collapsible) */}
               {!isCatCollapsed && (
                 <div className="mt-3.5 flex flex-col gap-3">
-                  <div className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wide">Fields in {cat.name}</div>
+                  <div>
+                    <Field label="Category Name" hint="Lowercase & underscores only. spaces auto-replaced by _">
+                      <Input
+                        value={cat.name}
+                        onChange={(v) => updateCategory(catIdx, { name: v })}
+                        placeholder="e.g. loan_scoring"
+                        disabled={!isCatEnabled}
+                      />
+                    </Field>
+                  </div>
+
+                  <div className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wide mt-1">Fields in {cat.name}</div>
 
                   {(cat.fields || []).map((field, fieldIdx) => {
                     const fieldKey = `${catIdx}_${fieldIdx}`;
