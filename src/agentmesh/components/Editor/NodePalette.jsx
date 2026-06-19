@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { useWorkflowStore, useUIStore } from '../../store';
+import React, { useState } from 'react';
+import { useWorkflowStore } from '../../store';
 import {
-  FiPlay, FiSquare, FiCpu, FiBox, FiGitMerge,
+  FiPlay, FiCpu, FiBox, FiGitMerge,
   FiTarget, FiShare2, FiBookOpen, FiLink,
-  FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiAlertTriangle, FiZap, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiLayers, FiInbox, FiDatabase, FiServer, FiDownload,
-  FiHelpCircle, FiCode, FiSliders
+  FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiAlertTriangle, FiZap, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiLayers, FiInbox, FiDatabase, FiServer,
+  FiCode, FiSliders
 } from 'react-icons/fi';
 
 export const NODE_TYPES = [
@@ -78,9 +78,9 @@ export const NODE_TYPES = [
   { type: 'cardboard',   icon: FiLayers,    label: 'Sticky Note',     desc: 'Sticky notes to add visual documentation on the canvas.', detailedDesc: 'Visual layout containers that allow developers to group nodes, add comments, and document canvas flows without affecting runtime execution.', bg: '#F1F5F9', color: '#64748B', category: 'Visual Organizers' },
 
   // Banking
-  { type: 'ingestion_adapter', icon: FiDownload,  label: 'Ingestion Adapter', desc: 'Converts raw banking formats to canonical transaction schema.', detailedDesc: 'Standardizes bank statement formats (CSV, XML, JSON, ISO8583) into a unified canonical schema for financial analytics.', bg: '#F5F3FF', color: '#7C3AED', category: 'Banking' },
+  { type: 'ingestion_adapter', icon: FiInbox,  label: 'Ingestion Adapter', desc: 'Converts raw banking formats to canonical transaction schema.', detailedDesc: 'Standardizes bank statement formats (CSV, XML, JSON, ISO8583) into a unified canonical schema for financial analytics.', bg: '#F5F3FF', color: '#7C3AED', category: 'Banking' },
   { type: 'banking_enrichment', icon: FiServer,   label: 'Banking Pre-Enrichment Node', desc: 'Gathers external and internal data to enrich accounts.', detailedDesc: 'Queries third-party risk files, account profiles, and transaction histories to enrich banking files before evaluation.', bg: '#F5F3FF', color: '#7C3AED', category: 'Banking' },
-  { type: 'beneficiary_risk', icon: FiGitBranch,   label: 'Beneficiary Risk Router', desc: 'Evaluates beneficiary mule risk and routes paths.', detailedDesc: 'Analyzes receiver account details, velocity spikes, and network history to flag potential money-mule accounts.', bg: '#F5F3FF', color: '#7C3AED', category: 'Banking' },
+  { type: 'beneficiary_risk', icon: FiGitBranch,   label: 'Beneficiary Risk Router', desc: 'Evaluates beneficiary mule risk and routes paths.', detailedDesc: 'Analyzes receiver account details, velocity spikes, and network history to flag potential money-mule accounts.', bg: '#FEF2F2', color: '#EF4444', category: 'Banking' },
   { type: 'rule_engine', icon: FiShield,    label: 'Rule Engine',    desc: 'Runs custom Python rule blocks and scoring cards.', detailedDesc: 'Evaluates complex scoring grids, financial metrics, and custom business validation rules via a lightweight Python sandbox.', bg: '#FEE2E2', color: '#DC2626', category: 'Banking' },
   { type: 'weightage', icon: FiSliders,    label: 'Weightage System', desc: 'Calculates overall weighted scores across multiple categories.', detailedDesc: 'Applies custom category weights to values in context, producing aggregated risk scores or compliance grades.', bg: '#E0F2FE', color: '#0369A1', category: 'Banking' },
 ];
@@ -140,8 +140,8 @@ export default function NodePalette({ onClose }) {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'white', fontFamily: "'Google Sans','Roboto',sans-serif" }}>
       {/* Header */}
       <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Node library</div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, marginBottom: 16 }}>Drag onto canvas or click to add</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Node library ({filteredNodes.length})</div>
+        
         
         {/* Search Bar */}
         <div style={{ position: 'relative' }}>
@@ -197,9 +197,12 @@ export default function NodePalette({ onClose }) {
                   fontWeight: 800, 
                   letterSpacing: '0.05em', 
                   textTransform: 'uppercase', 
-                  color: 'var(--text-muted)' 
+                  color: 'var(--text-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4
                 }}>
-                  {category}
+                  {category} <span style={{ color: '#94A3B8', fontWeight: 600 }}>({categoryNodes.length})</span>
                 </div>
                 <div style={{ 
                   fontSize: 10, 
