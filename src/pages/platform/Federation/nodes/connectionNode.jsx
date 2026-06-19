@@ -400,7 +400,6 @@ export function ConnectionNode({ id, onSave }) {
     if (!selectedConnection) { showToast('Please select a connection', 'error'); return; }
     if (!selectedSchema) { showToast('Please select a schema', 'error'); return; }
     if (!selectedTable) { showToast('Please select a table', 'error'); return; }
-    if (!selectedColumns || selectedColumns.length === 0) { showToast('Please select at least one column', 'error'); return; }
 
     if (!finalPayload.operation && previousColId !== colId) {
       handleFinalPayload((prevData) => ({

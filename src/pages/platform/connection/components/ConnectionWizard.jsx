@@ -8,6 +8,7 @@ import Modal from "../../cdc/components/Modal";
 import { useAllConnectionData } from "../../../../hooks/platform/connection";
 import KafkaTopicManager from "./KafkaTopicManager";
 import KafkaTopicSelector from "./KafkaTopicSelector";
+import ClouderaHiveTableSelector from "./ClouderaHiveTableSelector";
 import JSZip from "jszip";
 
 const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
@@ -42,6 +43,8 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
   const [customFiles, setCustomFiles] = useState([]);
   const [removedTopics, setRemovedTopics] = useState([]);
   const [selectedKafkaTopics, setSelectedKafkaTopics] = useState([]);
+  const [clouderaHiveTables, setClouderaHiveTables] = useState([]);
+  const [selectedClouderaHiveTables, setSelectedClouderaHiveTables] = useState([]);
 
   const defaultFormData = {
     created_by: decodedToken.preferred_username,
@@ -83,6 +86,8 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
   const isKafkaRawOrAvro =
     selectedConnector === "kafka" &&
     (kafkaType === "raw" || kafkaType === "avro");
+  const isClouderaHive = selectedConnector === "clouderahive";
+  const isHiveConnector = isClouderaHive;
 
   useEffect(() => {
     if (isEditMode && editConnectionData) {
@@ -105,6 +110,14 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
         extra_info.topics.length > 0
       ) {
         setSelectedKafkaTopics(extra_info.topics);
+      }
+
+      if (
+        extra_info.tables &&
+        Array.isArray(extra_info.tables) &&
+        extra_info.tables.length > 0
+      ) {
+        setSelectedClouderaHiveTables(extra_info.tables);
       }
     }
   }, [isEditMode, editConnectionData]);
@@ -154,8 +167,11 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     formData.extra_info?.type === "custom";
 
   const getTruststoreFile = () => fileObjects["truststore_location"] || null;
+  const getKeytabFile = () => fileObjects["keytab_location"] || null;
+  const getCoreSiteFile = () => fileObjects["core_site_location"] || null;
+  const getHdfsSiteFile = () => fileObjects["hdfs_site_location"] || null;
 
-  const buildTestPayload = (data) => {
+  const buildTestPayload = async (data) => {
     const excludedKeys = [
       "created_by",
       "pool_type",
@@ -184,11 +200,48 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       };
     }
 
+    const keytabFile = getKeytabFile();
+    if (keytabFile && filteredData.extra_info) {
+      filteredData.extra_info = {
+        ...filteredData.extra_info,
+        keytab_location: `${data.connection_name}_${keytabFile.name}`,
+      };
+    }
+    const coreSiteFile = getCoreSiteFile();
+    if (coreSiteFile && filteredData.extra_info) {
+      filteredData.extra_info = {
+        ...filteredData.extra_info,
+        core_site_location: `${data.connection_name}_${coreSiteFile.name}`,
+      };
+    }
+    const hdfsSiteFile = getHdfsSiteFile();
+    if (hdfsSiteFile && filteredData.extra_info) {
+      filteredData.extra_info = {
+        ...filteredData.extra_info,
+        hdfs_site_location: `${data.connection_name}_${hdfsSiteFile.name}`,
+      };
+    }
+
     const payload = new FormData();
     payload.append("connection_info", JSON.stringify(filteredData));
     if (truststoreFile) {
       payload.append("truststore_file", truststoreFile);
     }
+
+    const hiveFiles = [keytabFile, coreSiteFile, hdfsSiteFile].filter(Boolean);
+    if (hiveFiles.length > 0) {
+      const zip = new JSZip();
+      if (keytabFile) zip.file(keytabFile.name, keytabFile);
+      if (coreSiteFile) zip.file("core-site.xml", coreSiteFile);
+      if (hdfsSiteFile) zip.file("hdfs-site.xml", hdfsSiteFile);
+      const zipBlob = await zip.generateAsync({
+        type: "blob",
+        compression: "DEFLATE",
+        compressionOptions: { level: 1 },
+      });
+      payload.append("hive_files_zip", zipBlob, "hive_files.zip");
+    }
+
     return payload;
   };
 
@@ -219,12 +272,53 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       };
     }
 
+    const keytabFile = getKeytabFile();
+    if (keytabFile && filteredData.extra_info) {
+      filteredData = {
+        ...filteredData,
+        extra_info: {
+          ...filteredData.extra_info,
+          keytab_location: `${data.connection_name}_${keytabFile.name}`,
+        },
+      };
+    }
+    const coreSiteFile = getCoreSiteFile();
+    if (coreSiteFile && filteredData.extra_info) {
+      filteredData = {
+        ...filteredData,
+        extra_info: {
+          ...filteredData.extra_info,
+          core_site_location: `${data.connection_name}_${coreSiteFile.name}`,
+        },
+      };
+    }
+    const hdfsSiteFile = getHdfsSiteFile();
+    if (hdfsSiteFile && filteredData.extra_info) {
+      filteredData = {
+        ...filteredData,
+        extra_info: {
+          ...filteredData.extra_info,
+          hdfs_site_location: `${data.connection_name}_${hdfsSiteFile.name}`,
+        },
+      };
+    }
+
     if (isKafkaRawOrAvro && selectedKafkaTopics.length > 0) {
       filteredData = {
         ...filteredData,
         extra_info: {
           ...filteredData.extra_info,
           topics: selectedKafkaTopics,
+        },
+      };
+    }
+
+    if (isHiveConnector && selectedClouderaHiveTables.length > 0) {
+      filteredData = {
+        ...filteredData,
+        extra_info: {
+          ...filteredData.extra_info,
+          tables: selectedClouderaHiveTables,
         },
       };
     }
@@ -243,6 +337,27 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     payload.append("connection_json", JSON.stringify(filteredData));
     if (truststoreFile) {
       payload.append("truststore_file", truststoreFile);
+    }
+
+    const hiveFiles = [keytabFile, coreSiteFile, hdfsSiteFile].filter(Boolean);
+    if (hiveFiles.length > 0) {
+      const zip = new JSZip();
+      if (keytabFile) zip.file(keytabFile.name, keytabFile);
+      if (coreSiteFile) zip.file("core-site.xml", coreSiteFile);
+      if (hdfsSiteFile) zip.file("hdfs-site.xml", hdfsSiteFile);
+      let zipBlob;
+      try {
+        zipBlob = await zip.generateAsync({
+          type: "blob",
+          compression: "DEFLATE",
+          compressionOptions: { level: 1 },
+        });
+      } catch (err) {
+        throw new Error(
+          "One or more files could not be read. Please re-select them and try again."
+        );
+      }
+      payload.append("hive_files_zip", zipBlob, "hive_files.zip");
     }
 
     if (customFiles.length > 0) {
@@ -404,10 +519,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       allTouched["custom_files"] = true;
     }
 
-    if (isKafkaRawOrAvro && isTestSuccessful && selectedKafkaTopics.length === 0) {
-      newErrors["kafka_topics"] = "At least one topic must be selected";
-      allTouched["kafka_topics"] = true;
-    }
+
 
     setErrors(newErrors);
     setTouchedFields((prev) => ({ ...prev, ...allTouched }));
@@ -612,9 +724,12 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       return;
     }
 
-    const payload = buildTestPayload(formData);
+    const payload = await buildTestPayload(formData);
 
     setIsTesting(true);
+    if (isHiveConnector) {
+      setClouderaHiveTables([]);
+    }
     try {
       const response = await fetch(`${hostnameV1}/test-connection`, {
         method: "POST",
@@ -625,8 +740,16 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       });
 
       if (response.ok) {
+        const responseData = await response.json();
         setIsTestSuccessful(true);
         toast.success("Connection test successful");
+
+        if (isHiveConnector) {
+          const tableList = Array.isArray(responseData.tables)
+            ? responseData.tables
+            : [];
+          setClouderaHiveTables(tableList);
+        }
       } else {
         const errorData = await response.json();
         const errorMsg =
@@ -666,6 +789,16 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       }));
       setTouchedFields((prev) => ({ ...prev, kafka_topics: true }));
       toast.error("Please select at least one Kafka topic");
+      return;
+    }
+
+    if (isHiveConnector && selectedClouderaHiveTables.length === 0) {
+      setErrors((prev) => ({
+        ...prev,
+        cloudera_tables: "At least one table must be selected",
+      }));
+      setTouchedFields((prev) => ({ ...prev, cloudera_tables: true }));
+      toast.error("Please select at least one Hive table");
       return;
     }
 
@@ -917,7 +1050,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
                   <input
                     type="file"
                     name={fieldName}
-                    accept=".p12"
+                    accept={field.accept || ".p12"}
                     className="sr-only"
                     onChange={(e) => {
                       const file = e.target.files[0];
@@ -925,29 +1058,37 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
 
                       setIsTestSuccessful(false);
 
-                      if (file && !file.name.toLowerCase().endsWith(".p12")) {
-                        toast.error("Only .p12 format is allowed");
-                        e.target.value = "";
-                        setFileObjects((prev) => {
-                          const updated = { ...prev };
-                          delete updated[key];
-                          return updated;
-                        });
-                        setFormData((prev) => ({
-                          ...prev,
-                          extra_info: { ...prev.extra_info, [key]: "" },
-                        }));
-                        setTouchedFields((prev) => ({
-                          ...prev,
-                          [fieldName]: true,
-                        }));
-                        setErrors((prev) => ({
-                          ...prev,
-                          [fieldName]: field.required
-                            ? `${field.label} is required`
-                            : undefined,
-                        }));
-                        return;
+                      if (file && field.accept) {
+                        const allowedExts = field.accept
+                          .split(",")
+                          .map((ext) => ext.trim().toLowerCase());
+                        const fileExt = `.${file.name.split(".").pop().toLowerCase()}`;
+                        if (!allowedExts.includes(fileExt)) {
+                          toast.error(
+                            `Only ${allowedExts.join(", ")} format${allowedExts.length > 1 ? "s are" : " is"} allowed`
+                          );
+                          e.target.value = "";
+                          setFileObjects((prev) => {
+                            const updated = { ...prev };
+                            delete updated[key];
+                            return updated;
+                          });
+                          setFormData((prev) => ({
+                            ...prev,
+                            extra_info: { ...prev.extra_info, [key]: "" },
+                          }));
+                          setTouchedFields((prev) => ({
+                            ...prev,
+                            [fieldName]: true,
+                          }));
+                          setErrors((prev) => ({
+                            ...prev,
+                            [fieldName]: field.required
+                              ? `${field.label} is required`
+                              : undefined,
+                          }));
+                          return;
+                        }
                       }
 
                       if (file) {
@@ -1232,6 +1373,27 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
               isEditMode={isEditMode}
             />
           )}
+
+          {isHiveConnector && (
+            <ClouderaHiveTableSelector
+              isTestSuccessful={isTestSuccessful}
+              tables={clouderaHiveTables}
+              isLoadingTables={isTesting}
+              selectedTables={selectedClouderaHiveTables}
+              onSelectedTablesChange={(tables) => {
+                setSelectedClouderaHiveTables(tables);
+                if (tables.length > 0) {
+                  setErrors((prev) => {
+                    const { cloudera_tables: _ct, ...rest } = prev;
+                    return rest;
+                  });
+                }
+              }}
+              hasError={
+                touchedFields.cloudera_tables && !!errors.cloudera_tables
+              }
+            />
+          )}
         </div>
 
         {isKafkaCustomOriginal && (
@@ -1284,7 +1446,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
                 <span className="h-4 w-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
                 Testing...
               </div>
-            ) : (
+                        ) : (
               "Test Connection"
             )}
           </button>

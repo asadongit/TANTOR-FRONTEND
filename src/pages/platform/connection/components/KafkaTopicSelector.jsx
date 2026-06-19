@@ -103,15 +103,33 @@ const KafkaTopicSelector = ({
     onSelectedTopicsChange(next);
   };
 
-  const selectAll = () => onSelectedTopicsChange([...topics]);
-  const clearAll  = () => onSelectedTopicsChange([]);
+  const selectAll = () => {
+    const next = Array.from(new Set([...selectedTopics, ...filtered]));
+    onSelectedTopicsChange(next);
+  };
+  const clearAll = () => {
+    if (search) {
+      const filteredSet = new Set(filtered);
+      onSelectedTopicsChange(selectedTopics.filter((t) => !filteredSet.has(t)));
+    } else {
+      onSelectedTopicsChange([]);
+    }
+  };
 
-  const filtered = search
-    ? topics.filter((t) => t.toLowerCase().includes(search.toLowerCase()))
-    : topics;
+  const filtered = (
+    search
+      ? topics.filter((t) => t.toLowerCase().includes(search.toLowerCase()))
+      : topics
+  ).slice().sort((a, b) => {
+    const aSelected = selectedTopics.includes(a);
+    const bSelected = selectedTopics.includes(b);
+    if (aSelected && !bSelected) return -1;
+    if (!aSelected && bSelected) return 1;
+    return a.localeCompare(b);
+  });
 
-  const allSelected  = topics.length > 0 && topics.every((t) => selectedTopics.includes(t));
-  const someSelected = topics.some((t) => selectedTopics.includes(t));
+  const allSelected  = filtered.length > 0 && filtered.every((t) => selectedTopics.includes(t));
+  const someSelected = filtered.some((t) => selectedTopics.includes(t));
 
   if (!isTestSuccessful) {
     return (

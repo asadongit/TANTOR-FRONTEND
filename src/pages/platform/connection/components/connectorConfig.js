@@ -118,19 +118,68 @@ export const connectorConfig = {
       ],
       icon: mssql
     },
-    hive: {
+    clouderahive: {
       fields: [
+        {
+          name: "extra_info.security_mode",
+          label: "Security Mode",
+          type: "select",
+          options: ["Kerberos (Secured)", "Standard"],
+          required: true,
+        },
         { name: "host_address", label: "Host", required: true },
         { name: "port_number", label: "Port", type: "number", required: true },
-        { name: "client_principal", label: "Client", required: true },
+        {
+          name: "client_principal",
+          label: "Client Principal",
+          required: true,
+          conditionalOn: {
+            field: "extra_info.security_mode",
+            value: "Kerberos (Secured)",
+          },
+        },
         {
           name: "service_principal",
           label: "Service Principal",
           required: true,
+          conditionalOn: {
+            field: "extra_info.security_mode",
+            value: "Kerberos (Secured)",
+          },
         },
-        { name: "username", label: "Username" },
-        { name: "password", label: "Password", type: "password" },
-        { name: "source_schema", label: "Schema", required: false },
+        {
+          name: "database_name",
+          label: "Database Name",
+          required: true
+        },
+        {
+          name: "extra_info.keytab_location",
+          label: "Keytab File",
+          type: "file",
+          fileType: "keytab",
+          accept: ".keytab",
+          required: true,
+          conditionalOn: {
+            field: "extra_info.security_mode",
+            value: "Kerberos (Secured)",
+          },
+        },
+        {
+          name: "extra_info.core_site_location",
+          label: "core-site.xml",
+          type: "file",
+          fileType: "xml",
+          accept: ".xml",
+          required: true,
+        },
+        {
+          name: "extra_info.hdfs_site_location",
+          label: "hdfs-site.xml",
+          type: "file",
+          fileType: "xml",
+          accept: ".xml",
+          required: true,
+        },
       ],
       icon: hive
     },
