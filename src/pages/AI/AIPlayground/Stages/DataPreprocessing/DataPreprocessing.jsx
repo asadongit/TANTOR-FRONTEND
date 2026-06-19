@@ -4,8 +4,6 @@ import { Check, Eye } from 'lucide-react';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 
 //  supervised preprocessing steps
-
-//  supervised preprocessing steps
 import DataCleaning from './Steps/DataCleaning';
 import FeatureSelection from './Steps/FeatureSelection';
 import FeatureEngineering from './Steps/FeatureEngineering';
@@ -14,9 +12,9 @@ import StatisticalAnalysis from './Steps/StatisticalAnalysis';
 import FeatureImportance from './Steps/FeatureImportance';
 import Step7 from './Steps/Step7';
 
+
 // Routing utilities
 import { useLocation, useNavigate } from 'react-router-dom';
-
 // Modal for previewing processed data
 import DataPreviewModal from '../../modals/DataPreprocessing/DataPreviewModal';
 
@@ -34,9 +32,18 @@ import ScalingandEncoding from './timeseries/components/ScalingandEncoding';
  * Returns preprocessing steps based on prediction type.
  */
 const getPreprocessingSteps = (predictionType) => {
-  // Time series workflow steps
+  if (predictionType === 'univariate_timeseries') {
+    return [
+      { id: 1, label: 'Handle Missing Values', isTimeSeries: true },
+      { id: 2, label: 'Feature Integrity', isTimeSeries: true },
+      { id: 3, label: 'Data Stabilization', isTimeSeries: true },
+      { id: 4, label: 'Seasonality Treatment', isTimeSeries: true },
+      { id: 5, label: 'Stationarity Analysis', isTimeSeries: true },
+      { id: 6, label: 'Stationarity Treatment', isTimeSeries: true },
+    ];
+  }
+
   if (
-    predictionType === 'univariate_timeseries' ||
     predictionType === 'multivariate_timeseries' ||
     predictionType === 'multiseries_timeseries'
   ) {
@@ -48,7 +55,7 @@ const getPreprocessingSteps = (predictionType) => {
       { id: 5, label: 'Seasonality Treatment', isTimeSeries: true },
       { id: 6, label: 'Stationarity Treatment', isTimeSeries: true },
       { id: 7, label: 'Feature Dependency', isTimeSeries: true },
-      {id: 8, label: 'Scaling  & Encoding', isTimeSeries: true },
+      { id: 8, label: 'Scaling & Encoding', isTimeSeries: true },
     ];
   }
 
@@ -78,13 +85,10 @@ function DataPreprocessing() {
   } = useAIPlayground();
 
   // Current workflow state
-  const workflowState = activeWorkflowId
-    ? workflowsState?.[activeWorkflowId]
-    : null;
+  const workflowState = activeWorkflowId ? workflowsState?.[activeWorkflowId] : null;
 
   // Determines whether screen is in readonly/view mode
   const readonly = mode === 'view';
-
   const navigate = useNavigate();
 
   /**
@@ -135,18 +139,24 @@ function DataPreprocessing() {
     )
   );
 
-  // Current active preprocessing step
-  const [currentStep, setCurrentStep] = useState(
-    isDataPreprocessingAuto ? 7 : 1
-  );
+  // Current active preprocessing step if it is univariate it starts from 2 
+  const [currentStep, setCurrentStep] = useState(() => {
+    if (isDataPreprocessingAuto) return 7;
+
+    if (predictionType === 'univariate_timeseries') {
+      return 2;
+    }
+
+    return 1;
+  });
 
   // Whether preview screen is open on step 7
-  const [isStep7Preview, setIsStep7Preview] = useState(
-    isDataPreprocessingAuto
-  );
-
+  const [isStep7Preview, setIsStep7Preview] = useState(isDataPreprocessingAuto);
   // Whether preview screen is open on step 8 (time series)
   const [isStep8Preview, setIsStep8Preview] = useState(false);
+
+  //preview screen state for univariate time series
+  const [isUnivariatePreview, setIsUnivariatePreview] = useState(false);
 
   // Validation states for individual steps
   const [isStep1Valid, setIsStep1Valid] = useState(true);
@@ -163,35 +173,34 @@ function DataPreprocessing() {
     useState(false);
 
   /**
-   * Auto-advance from step 6 if stationarity analysis was not enabled in step 5
+   * Auto-advance from step 6 if stationarity analysis was not enabled in step 5 and it's not univariate timeseries
    */
   useEffect(() => {
     if (currentStep === 6) {
       const step5Config = workflowState?.dataPreprocessing?.step5?.config;
       const wasStationarityAnalysisEnabledInStep5 = step5Config?.stationarity_analysis_active ?? false;
-
-      if (!wasStationarityAnalysisEnabledInStep5) {
+      const isUnivariateTimeseries = predictionType === 'univariate_timeseries';
+      if (!wasStationarityAnalysisEnabledInStep5 && !isUnivariateTimeseries) {
         setCurrentStep(7);
       }
     }
   }, [currentStep, workflowState?.dataPreprocessing?.step5?.config]);
 
   /**
-   * Auto-advance to preview mode after step 8 for time series if auto-preprocessing is enabled
-   */
+   * Auto-advance to preview mode after step 8 for time series if auto-preprocessing is enabled*/
   useEffect(() => {
     const isTimeSeries =
       predictionType &&
       [
-        'univariate_timeseries',
-        'multivariate_timeseries',
-        'multiseries_timeseries',
+
+        'multivariate_timeseries'
       ].includes(predictionType);
 
     if (isTimeSeries && currentStep === 8 && isDataPreprocessingAuto) {
       setIsStep8Preview(true);
     }
   }, [currentStep, isDataPreprocessingAuto, predictionType]);
+
 
   /**
    * Locks user interactions while
@@ -243,7 +252,7 @@ function DataPreprocessing() {
           const jobId = isDataPreprocessingAuto
             ? autoModeJobId
             : workflowState?.dataPreprocessing?.step7
-                ?.apiResponse?.job_id;
+              ?.apiResponse?.job_id;
 
           // Fetch completed job details
           if (jobId && hostnameAI) {
@@ -345,9 +354,6 @@ function DataPreprocessing() {
      * Time series workflow rendering
      */
     if (isTimeSeries) {
-     
-      
-
       switch (currentStep) {
         case 1:
           return (
@@ -360,7 +366,6 @@ function DataPreprocessing() {
               predictionType={predictionType}
             />
           );
-
         case 2:
           return (
             <HandleMissingValues
@@ -372,7 +377,6 @@ function DataPreprocessing() {
               predictionType={predictionType}
             />
           );
-
         case 3:
           return (
             <FeatureIntegrity
@@ -383,7 +387,6 @@ function DataPreprocessing() {
               predictionType={predictionType}
             />
           );
-
         case 4:
           return (
             <DataStabilization
@@ -407,23 +410,21 @@ function DataPreprocessing() {
           );
 
         case 6: {
-          /**
-           * Check if stationarity analysis was enabled in step 5
-           * If not, this step will be skipped by auto-advance useEffect
-           */
+          // if stationarity analysis was not enabled in step 5 and it's not univariate timeseries, skip stationarity treatment
           const step5Config = workflowState?.dataPreprocessing?.step5?.config;
           const wasStationarityAnalysisEnabledInStep5 = step5Config?.stationarity_analysis_active ?? false;
+          const isUnivariateTimeseries = predictionType === 'univariate_timeseries';
 
-          if (!wasStationarityAnalysisEnabledInStep5) {
+          if (!wasStationarityAnalysisEnabledInStep5 && !isUnivariateTimeseries) {
             return null;
           }
-
           return (
             <StationarityTreatment
               readonly={isInteractionLocked}
               onApiCall={(fn) =>
                 (step6ApiCallRef.current = fn)
               }
+              showPreview={predictionType === 'univariate_timeseries' && isUnivariatePreview}
             />
           );
         }
@@ -586,10 +587,13 @@ function DataPreprocessing() {
         onPreviewData8={setIsStep8Preview}
         onNextClick={handleNextClick}
         isNextDisabled={getIsNextDisabled()}
+        predictionType={predictionType}
+        isUnivariatePreview={isUnivariatePreview}
+        onUnivariatePreview={setIsUnivariatePreview}
       >
         <div className="w-full h-full overflow-hidden">
           <div className="flex flex-row h-full overflow-hidden">
-            
+
             {/* Sidebar hidden during final preview */}
             {!(currentStep === 7 && isStep7Preview) && !(currentStep === 8 && isStep8Preview) && (
               <div className="w-72 flex-shrink-0 h-full overflow-hidden">
@@ -625,25 +629,22 @@ function DataPreprocessing() {
                               setCurrentStep(step.id)
                             }
                             disabled={isApiCallInProgress}
-                            className={`flex items-center gap-3 w-full text-left transition-colors flex-shrink-0 ${
-                              isApiCallInProgress
+                            className={`flex items-center gap-3 w-full text-left transition-colors flex-shrink-0 ${isApiCallInProgress
                                 ? 'cursor-not-allowed opacity-50'
                                 : 'cursor-pointer'
-                            } ${
-                              currentStep === step.id
+                              } ${currentStep === step.id
                                 ? 'text-[#8e78b7]'
                                 : 'text-gray-500'
-                            }`}
+                              }`}
                           >
                             {/* Step circle */}
                             <div
-                              className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-medium border transition-all ${
-                                isCompleted
+                              className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-medium border transition-all ${isCompleted
                                   ? 'bg-[#e6f6f4] text-[#2ba995] border-[#2ba995]'
                                   : currentStep === step.id
-                                  ? 'bg-purple-100 border-[#8e78b7] text-[#8e78b7]'
-                                  : 'bg-white border-gray-300 text-gray-500'
-                              }`}
+                                    ? 'bg-purple-100 border-[#8e78b7] text-[#8e78b7]'
+                                    : 'bg-white border-gray-300 text-gray-500'
+                                }`}
                             >
                               {isCompleted ? (
                                 <Check className="w-4 h-4" />
@@ -681,11 +682,10 @@ function DataPreprocessing() {
                   <button
                     onClick={handlePreviewClick}
                     disabled={isApiCallInProgress}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all shadow-md ${
-                      isApiCallInProgress
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all shadow-md ${isApiCallInProgress
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         : 'bg-[#8e78b7] text-white hover:bg-[#7a6ba0] hover:shadow-lg'
-                    }`}
+                      }`}
                   >
                     <Eye className="w-4 h-4" />
                     <span className="font-medium">

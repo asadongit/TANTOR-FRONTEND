@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { useRunStore, useWorkflowStore } from '../../store';
+import { useRunStore, useWorkflowStore, useVariablesStore } from '../../store';
 import {
   FiSearch, FiCopy, FiChevronRight, FiChevronDown, FiDatabase,
-  FiActivity, FiTerminal, FiX, FiList, FiGrid, FiCode, FiInfo, FiArrowLeft
+  FiActivity, FiTerminal, FiX, FiList, FiGrid, FiCode, FiInfo, FiArrowLeft,
+  FiSliders
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -189,6 +190,20 @@ export default function VariableExplorer({ onClose }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button
+            onClick={() => useVariablesStore.getState().setShowVariablesPanel(true)}
+            title="Configure Global Variables"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', color: '#6366F1',
+              width: 28, height: 28, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.15s'
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--theme-primary-glow)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+          >
+            <FiSliders size={16} />
+          </button>
+
           <button
             onClick={copyAllToClipboard}
             title="Copy All Context (JSON)"

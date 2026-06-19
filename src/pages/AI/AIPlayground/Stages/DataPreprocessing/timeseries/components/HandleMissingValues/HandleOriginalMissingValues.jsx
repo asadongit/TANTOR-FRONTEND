@@ -152,7 +152,7 @@ function HandleOriginalMissingValues({
    * Validate seasonal period parameter when mode_by_season method is selected for categorical imputation.
    * ------------------------------------------------------------- */    
 
-    const seasonalPeriodValue = Number(originalMissingConfig.seasonalPeriod);
+    const seasonalPeriodValue = Number(originalMissingConfig.categoricalSeasonalOriginalPeriod);
     const seasonalPeriodInvalid =
     originalMissingConfig.categorical === 'mode_by_season' &&
     (!Number.isFinite(seasonalPeriodValue) || seasonalPeriodValue < 7 || seasonalPeriodValue > 365);
@@ -241,7 +241,6 @@ function HandleOriginalMissingValues({
 
                 <ColumnSearchableDropdown
                   value={originalMissingConfig.numeric}
-
                   /* Update selected numeric imputation method. */
                   onChange={(value) =>
                     setOriginalMissingConfig(prev => ({
@@ -353,7 +352,26 @@ function HandleOriginalMissingValues({
                     !originalMissingConfig.categorical
                   }
                 />
-
+                {originalMissingConfig.categorical === 'mode_by_season' && (
+  <MethodParameterField
+    label="Seasonal Period"
+    value={
+      originalMissingConfig.categoricalSeasonalOriginalPeriod || ''
+    }
+    min={7}
+    max={365}
+    hasError={!!seasonalPeriodError}
+    errorMessage={seasonalPeriodError}
+    disabled={readonly}
+    onChange={(value) =>
+      setOriginalMissingConfig((prev) => ({
+        ...prev,
+        categoricalSeasonalOriginalPeriod:
+          value === '' ? '' : Number(value),
+      }))
+    }
+  />
+)}
                 {/* Categorical validation message. */}
                 {categoricalError && (
                   <p className="mt-1 text-xs text-[#EF4D5F]">

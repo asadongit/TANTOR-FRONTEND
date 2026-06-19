@@ -7,12 +7,15 @@ import { THEME_ACCENT, THEME_SECONDARY, THEME_TEXT } from './constants';
 export default function FormRenderer({ config, context, onSubmit, isLoading }) {
   const [formData, setFormData] = React.useState({});
   const [errors, setErrors] = React.useState({});
+  const [clickedDecision, setClickedDecision] = React.useState(null);
 
   const finalConfig = React.useMemo(() => {
+    let baseConfig = config;
     if (config.form_use_context_schema && context.form_schema && Array.isArray(context.form_schema)) {
-      return { ...config, form_fields: context.form_schema };
+      baseConfig = { ...config, form_fields: context.form_schema };
     }
-    return config;
+    const activeFields = (baseConfig.form_fields || []).filter(f => f.enabled !== false);
+    return { ...baseConfig, form_fields: activeFields };
   }, [config, context.form_schema]);
 
   const validate = () => {
@@ -32,7 +35,10 @@ export default function FormRenderer({ config, context, onSubmit, isLoading }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validate()) {
-      onSubmit(formData);
+      onSubmit({
+        ...formData,
+        decision: clickedDecision || finalConfig.form_submit_label || 'Submit'
+      });
     }
   };
 
@@ -203,8 +209,8 @@ export default function FormRenderer({ config, context, onSubmit, isLoading }) {
                 disabled={isLoading}
                 style={{
                   width: '100%', minHeight: 100, padding: '12px 14px', borderRadius: 10,
-                  border: `1px solid ${errors[f.id] ? '#EF4444' : '#E5E7EB'}`,
-                  background: '#F9FAFB', fontSize: 13, fontFamily: 'inherit', outline: 'none',
+                  border: `1px solid ${errors[f.id] ? '#EF4444' : '#E2E8F0'}`,
+                  background: '#FFFFFF', fontSize: 13, fontFamily: 'inherit', outline: 'none',
                   resize: 'vertical'
                 }}
               />
@@ -223,8 +229,8 @@ export default function FormRenderer({ config, context, onSubmit, isLoading }) {
                 className="modern-scrollbar"
                 style={{
                   display: 'flex', flexDirection: 'column', gap: 10,
-                  background: '#F9FAFB', padding: '12px 14px', borderRadius: 10,
-                  border: `1px solid ${errors[f.id] ? '#EF4444' : '#E5E7EB'}`,
+                  background: '#FFFFFF', padding: '12px 14px', borderRadius: 10,
+                  border: `1px solid ${errors[f.id] ? '#EF4444' : '#E2E8F0'}`,
                   maxHeight: '190px', overflowY: 'auto'
                 }}
               >
@@ -304,8 +310,8 @@ export default function FormRenderer({ config, context, onSubmit, isLoading }) {
                 disabled={isLoading}
                 style={{
                   width: '100%', padding: '12px 14px', borderRadius: 10,
-                  border: `1px solid ${errors[f.id] ? '#EF4444' : '#E5E7EB'}`,
-                  background: '#F9FAFB', fontSize: 13, fontFamily: 'inherit', outline: 'none'
+                  border: `1px solid ${errors[f.id] ? '#EF4444' : '#E2E8F0'}`,
+                  background: '#FFFFFF', fontSize: 13, fontFamily: 'inherit', outline: 'none'
                 }}
               />
             ) : f.type === 'remark' ? (
@@ -313,7 +319,7 @@ export default function FormRenderer({ config, context, onSubmit, isLoading }) {
                 fontSize: 13,
                 color: '#4B5563',
                 lineHeight: 1.6,
-                background: '#F3F4F6',
+                background: '#F8FAFC',
                 padding: '12px 14px',
                 borderRadius: 10,
                 borderLeft: `4px solid ${THEME_ACCENT}`,
@@ -338,8 +344,8 @@ export default function FormRenderer({ config, context, onSubmit, isLoading }) {
                 disabled={isLoading}
                 style={{
                   width: '100%', padding: '10px 14px', borderRadius: 10,
-                  border: `1px solid ${errors[f.id] ? '#EF4444' : '#E5E7EB'}`,
-                  background: '#F9FAFB', fontSize: 13, outline: 'none'
+                  border: `1px solid ${errors[f.id] ? '#EF4444' : '#E2E8F0'}`,
+                  background: '#FFFFFF', fontSize: 13, outline: 'none'
                 }}
               />
             )}
@@ -351,21 +357,70 @@ export default function FormRenderer({ config, context, onSubmit, isLoading }) {
         );
       })}
 
-      <div style={{ marginTop: 12, paddingTop: 20, borderTop: '1px solid #F1F5F9' }}>
-        <button
-          type="submit"
-          disabled={isLoading}
-          style={{
-            width: '100%', padding: '14px', borderRadius: 14,
-            background: isLoading ? '#E5E7EB' : THEME_ACCENT,
-            color: 'white', border: 'none', fontWeight: 800, fontSize: 13,
-            cursor: isLoading ? 'wait' : 'pointer',
-            boxShadow: isLoading ? 'none' : '0 10px 20px rgba(142, 119, 187, 0.2)',
-            transition: 'all 0.2s'
-          }}
-        >
-          {isLoading ? 'PROCESSING...' : (finalConfig.form_submit_label || 'SUBMIT')}
-        </button>
+      <div style={{ marginTop: 12, paddingTop: 20, borderTop: '1px solid #F1F5F9', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        {finalConfig.form_decisions && finalConfig.form_decisions.length > 0 ? (
+          finalConfig.form_decisions.map((dec) => {
+            const decId = dec && typeof dec === 'object' ? dec.id : dec;
+            const decLabel = dec && typeof dec === 'object' ? dec.label : dec;
+            const isDanger = decId.toLowerCase() === 'cancel' || decId.toLowerCase() === 'reject';
+            return (
+              <button
+                key={decId}
+                type="submit"
+                disabled={isLoading}
+                onClick={() => setClickedDecision(decId)}
+                style={{
+                  flex: 1, minWidth: '120px', padding: '12px 18px', borderRadius: 10,
+                  background: isDanger ? 'rgba(239, 68, 68, 0.08)' : 'rgba(99, 102, 241, 0.08)',
+                  color: isDanger ? '#EF4444' : 'var(--theme-primary, #6366F1)',
+                  border: `1px solid ${isDanger ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.2)'}`,
+                  fontWeight: '700', fontSize: 13,
+                  cursor: isLoading ? 'wait' : 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  if (isLoading) return;
+                  e.currentTarget.style.background = isDanger ? 'rgba(239, 68, 68, 0.15)' : 'rgba(99, 102, 241, 0.15)';
+                  e.currentTarget.style.borderColor = isDanger ? 'rgba(239, 68, 68, 0.4)' : 'rgba(99, 102, 241, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  if (isLoading) return;
+                  e.currentTarget.style.background = isDanger ? 'rgba(239, 68, 68, 0.08)' : 'rgba(99, 102, 241, 0.08)';
+                  e.currentTarget.style.borderColor = isDanger ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.2)';
+                }}
+              >
+                {isLoading && clickedDecision === decId ? 'PROCESSING...' : decLabel.toUpperCase()}
+              </button>
+            );
+          })
+        ) : (
+          <button
+            type="submit"
+            disabled={isLoading}
+            onClick={() => setClickedDecision(finalConfig.form_submit_label || 'Submit')}
+            style={{
+              width: '100%', padding: '12px 18px', borderRadius: 10,
+              background: isLoading ? 'rgba(229, 231, 235, 0.5)' : 'rgba(99, 102, 241, 0.08)',
+              color: isLoading ? '#9CA3AF' : 'var(--theme-primary, #6366F1)',
+              border: `1px solid ${isLoading ? 'rgba(229, 231, 235, 0.8)' : 'rgba(99, 102, 241, 0.2)'}`,
+              fontWeight: '700', fontSize: 13,
+              cursor: isLoading ? 'wait' : 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              if (isLoading) return;
+              e.currentTarget.style.background = 'rgba(99, 102, 241, 0.15)';
+              e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.4)';
+            }}
+            onMouseLeave={(e) => {
+              if (isLoading) return;
+              e.currentTarget.style.background = 'rgba(99, 102, 241, 0.08)';
+              e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.2)';
+            }}
+          >
+            {isLoading ? 'PROCESSING...' : (finalConfig.form_submit_label || 'SUBMIT').toUpperCase()}
+          </button>
+        )}
       </div>
     </form>
   );

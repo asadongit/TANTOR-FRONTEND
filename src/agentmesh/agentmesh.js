@@ -144,7 +144,11 @@ export const listNotifications = (params = {}) => {
 export const processNotifications = (payload) => request('/notifications/action', { method: 'POST', body: JSON.stringify(payload) });
 
 // ─── History ──────────────────────────────────────────────────────────────────
-export const listThreads = (workflowId) => request(`/workflow/${workflowId}/threads`);
+export const listThreads = (workflowId, params = {}) => {
+  const { page = 1, limit = 20 } = params;
+  const p = new URLSearchParams({ page, limit });
+  return request(`/workflow/${workflowId}/threads?${p}`);
+};
 export const getThreadHistory = (workflowId, threadId) => request(`/workflow/${workflowId}/thread/${threadId}`);
 export const deleteThread = (threadId) => request(`/thread/${threadId}`, { method: 'DELETE' });
 

@@ -611,7 +611,8 @@ export default function SettingsPage() {
                       {[
                         { value: 'modern', label: 'Modern (Default)' },
                         { value: 'flat', label: 'Flat' },
-                        { value: 'border', label: 'Border Outline' }
+                        { value: 'border', label: 'Border Outline' },
+                        { value: 'liquid-glass', label: 'Liquid Glass' }
                       ].map(themeOpt => {
                         const isSelected = nodeTheme === themeOpt.value;
                         return (

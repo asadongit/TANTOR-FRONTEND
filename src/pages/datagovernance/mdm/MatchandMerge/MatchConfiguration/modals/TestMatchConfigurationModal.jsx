@@ -1,176 +1,113 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { X, Search } from 'lucide-react';
-import { useDomains, useRulesByDomain, useTestMatchConfig } from '../../../../../../hooks/mdm/matchMerge';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { X, Loader2, ArrowLeft, ChevronLeft } from 'lucide-react';
+import { useDomains, useTestMatchAttributes, useTestMatchConfig } from '../../../../../../hooks/mdm/matchMerge';
+import SearchableDropdown from '../../../components/SearchableDropdown';
+import TestResultsPanel from './TestResultsPanel';
 
-// ─── DomainDropdown ───────────────────────────────────────────────────────────
-
-const DomainDropdown = ({ domains, selected, onSelect, disabled }) => {
-    const [open, setOpen] = useState(false);
-    const [search, setSearch] = useState('');
-    const [popoverStyle, setPopoverStyle] = useState({});
-    const ref = useRef(null);
-
-    const filtered = useMemo(
-        () => domains.filter((d) => d.domain_name.toLowerCase().includes(search.toLowerCase())),
-        [domains, search]
-    );
-
-    useEffect(() => {
-        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, []);
-
-    const handleOpen = () => {
-        if (disabled) return;
-        if (!open && ref.current) {
-            const rect = ref.current.getBoundingClientRect();
-            setPopoverStyle({ position: 'fixed', top: rect.bottom + 4, left: rect.left, width: rect.width });
-        }
-        setOpen((p) => !p);
-    };
-
-    return (
-        <div ref={ref} className="relative w-full">
-            <button
-                type="button"
-                disabled={disabled}
-                onClick={handleOpen}
-                className={[
-                    'w-full border border-[#CCCCCC] rounded-lg px-3.5 py-2.5 text-sm font-normal font-[Satoshi,sans-serif]',
-                    'leading-none box-border outline-none flex items-center justify-between gap-2',
-                    disabled ? 'bg-[#F9F9F9] cursor-not-allowed' : 'bg-white cursor-pointer hover:border-[#8e78b7]',
-                    !selected ? 'text-[#A0AEC0]' : 'text-[#282F49]',
-                ].join(' ')}
-            >
-                <span>{selected?.domain_name ?? 'Select domain'}</span>
-                <svg
-                    width="16" height="16" fill="none" viewBox="0 0 24 24"
-                    stroke="#818181" strokeWidth="2"
-                    className={`flex-shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : 'rotate-0'}`}
-                >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-            </button>
-
-            {open && (
-                <div
-                    style={popoverStyle}
-                    className="bg-white border border-gray-200 rounded-[10px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-[9999] overflow-hidden"
-                >
-                    <div className="flex items-center gap-1.5 p-2 border-b border-gray-100">
-                        <Search size={13} className="text-gray-400 flex-shrink-0" />
-                        <input
-                            autoFocus
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search domain..."
-                            className="border-none outline-none text-[13px] text-gray-700 w-full bg-transparent font-[Satoshi,sans-serif]"
-                        />
+const AttributesSkeleton = ({ rows = 4 }) => (
+    <div className="grid grid-cols-2 gap-3">
+        {['A', 'B'].map((side) => (
+            <div key={side} className="bg-[#FAFAFA] rounded-lg p-3.5 flex flex-col gap-3">
+                <div className="h-6 w-20 bg-gray-200 rounded animate-pulse" />
+                {Array.from({ length: rows }).map((_, i) => (
+                    <div key={i} className="flex flex-col gap-1.5">
+                        <div className="h-3 w-24 bg-gray-200 rounded animate-pulse" />
+                        <div className="h-9 w-full bg-gray-200 rounded-lg animate-pulse" />
                     </div>
-                    <div className="max-h-[200px] overflow-y-auto">
-                        {filtered.length === 0 && (
-                            <div className="p-3 text-[13px] text-gray-400 text-center">No results</div>
-                        )}
-                        {filtered.map((d) => (
-                            <div
-                                key={d.domain_id}
-                                onClick={() => { onSelect(d); setOpen(false); setSearch(''); }}
-                                className={[
-                                    'px-3.5 py-2.5 text-[13px] cursor-pointer font-[Satoshi,sans-serif] transition-colors',
-                                    selected?.domain_id === d.domain_id
-                                        ? 'text-[#8E77BB] bg-[#f5f0ff]'
-                                        : 'text-gray-700 hover:bg-[#faf7ff]',
-                                ].join(' ')}
-                            >
-                                {d.domain_name}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
+                ))}
+            </div>
+        ))}
+    </div>
+);
 
-// ─── TestMatchConfigurationModal ──────────────────────────────────────────────
-
-const TestMatchConfigurationModal = ({ isOpen, onClose, ruleId = null }) => {
-    const isRuleMode = ruleId !== null;
-
-    const { domains, loading: domainsLoading } = useDomains(isOpen && !isRuleMode);
-    const { rules, rulesLoading, apiError, setApiError, fetchByDomain, fetchByRuleId } = useRulesByDomain();
-    const { isRunning, results, runTest, reset } = useTestMatchConfig();
+const TestMatchConfigurationModal = ({ isOpen, onClose }) => {
+    const { domains, loading: domainsLoading } = useDomains(isOpen);
+    const {
+        attributes,
+        attrsLoading,
+        apiError: attrsError,
+        fetchByDomainCode,
+        reset: resetAttrs,
+    } = useTestMatchAttributes();
+    const { isRunning, results, apiError: testError, runTest, reset: resetTest } = useTestMatchConfig();
 
     const [selectedDomain, setSelectedDomain] = useState(null);
     const [fieldValues, setFieldValues] = useState({});
+    const [page, setPage] = useState('input');
 
-    // Reset everything on close
     useEffect(() => {
         if (!isOpen) {
             setSelectedDomain(null);
             setFieldValues({});
-            reset();
+            setPage('input');
+            resetAttrs();
+            resetTest();
         }
-    }, [isOpen, reset]);
+    }, [isOpen, resetAttrs, resetTest]);
 
-    // Initialise field values whenever rules load
     useEffect(() => {
         const init = {};
-        rules.forEach((r) => { init[r.rule_id] = { a: '', b: '' }; });
+        attributes.forEach((attr) => { init[attr.name] = { a: '', b: '' }; });
         setFieldValues(init);
-    }, [rules]);
+    }, [attributes]);
 
-    // Domain-mode: auto-select first domain
     useEffect(() => {
-        if (!isRuleMode && domains.length > 0 && !selectedDomain) {
+        if (domains.length > 0 && !selectedDomain) {
             const first = domains[0];
             setSelectedDomain(first);
-            fetchByDomain(first.domain_id);
+            fetchByDomainCode(first.domain_code);
         }
-    }, [domains, isRuleMode, selectedDomain, fetchByDomain]);
+    }, [domains, selectedDomain, fetchByDomainCode]);
 
-    // Rule-mode: load by rule id
     useEffect(() => {
-        if (isOpen && isRuleMode && ruleId) fetchByRuleId(ruleId);
-    }, [isOpen, isRuleMode, ruleId, fetchByRuleId]);
+        if (results && !isRunning) setPage('results');
+    }, [results, isRunning]);
 
-    const handleDomainSelect = (domain) => {
-        setSelectedDomain(domain);
-        reset();
-        fetchByDomain(domain.domain_id);
-    };
-
-    const setField = useCallback((rId, side, val) => {
-        setFieldValues((prev) => ({ ...prev, [rId]: { ...prev[rId], [side]: val } }));
-    }, []);
-
-    const filledPairs = useMemo(
-        () => rules.filter((r) => fieldValues[r.rule_id]?.a?.trim() && fieldValues[r.rule_id]?.b?.trim()),
-        [rules, fieldValues]
+    const domainOptions = useMemo(
+        () => domains.map((d) => ({ value: d.domain_code, label: d.domain_name })),
+        [domains]
     );
 
-    const canRun = filledPairs.length > 0 && !isRunning;
-    const fieldsReady = isRuleMode ? rules.length > 0 : (selectedDomain && rules.length > 0);
+    const handleDomainChange = (domainCode) => {
+        const domain = domains.find((d) => d.domain_code === domainCode);
+        if (!domain) return;
+        setSelectedDomain(domain);
+        resetAttrs();
+        resetTest();
+        setPage('input');
+        fetchByDomainCode(domain.domain_code);
+    };
+
+    const setField = useCallback((attrName, side, val) => {
+        setFieldValues((prev) => ({ ...prev, [attrName]: { ...prev[attrName], [side]: val } }));
+    }, []);
+
+    const canRun = useMemo(
+        () => !isRunning && attributes.some(
+            (attr) => fieldValues[attr.name]?.a?.trim() || fieldValues[attr.name]?.b?.trim()
+        ),
+        [isRunning, attributes, fieldValues]
+    );
 
     const handleRunTest = async () => {
-        if (!canRun) return;
-        const payload = isRuleMode
-            ? {
-                rule_id: ruleId,
-                record_a: fieldValues[ruleId]?.a?.trim(),
-                record_b: fieldValues[ruleId]?.b?.trim(),
-            }
-            : {
-                domain_id: selectedDomain.domain_id,
-                records: filledPairs.map((r) => ({
-                    rule_id: r.rule_id,
-                    record_a: fieldValues[r.rule_id].a.trim(),
-                    record_b: fieldValues[r.rule_id].b.trim(),
-                })),
-            };
-        await runTest(isRuleMode, payload);
+        if (!canRun || !selectedDomain) return;
+        const record_a = {};
+        const record_b = {};
+        attributes.forEach((attr) => {
+            record_a[attr.name] = fieldValues[attr.name]?.a?.trim() || null;
+            record_b[attr.name] = fieldValues[attr.name]?.b?.trim() || null;
+        });
+        await runTest({ domain_code: selectedDomain.domain_code, record_a, record_b });
     };
+
+    const handleBack = () => {
+        setPage('input');
+        resetTest();
+    };
+
+    const showGrid = attributes.length > 0 && !attrsLoading;
+    const showAttrsLoading = attrsLoading;
+    const showAttrsError = !attrsLoading && !!attrsError && attributes.length === 0;
 
     if (!isOpen) return null;
 
@@ -180,14 +117,26 @@ const TestMatchConfigurationModal = ({ isOpen, onClose, ruleId = null }) => {
             onClick={onClose}
         >
             <div
-                className="w-[690px] bg-white rounded-2xl border border-[#CCCCCC] mx-4 max-h-[90vh] flex flex-col overflow-hidden"
+                className={[
+                    'bg-white rounded-2xl border border-[#CCCCCC] mx-4 max-h-[92vh] flex flex-col overflow-hidden transition-all duration-300 min-w-[1000px]',
+                ].join(' ')}
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Header */}
-                <div className="flex items-center justify-between px-4 py-4 flex-shrink-0">
-                    <span className="text-lg font-medium text-[#282F49] font-[Satoshi,sans-serif]">
-                        Test Match Configuration
-                    </span>
+                {/* ── Header */}
+                <div className="flex items-center justify-between px-5 py-4 flex-shrink-0 border-b border-gray-100">
+                    <div className="flex items-center gap-2">
+                        {page === 'results' && (
+                            <button
+                                onClick={handleBack}
+                                className="flex items-center gap-1 text-[#818181] text-md font-medium font-[Satoshi] bg-transparent border-none cursor-pointer px-0 hover:opacity-80 transition-opacity mr-1"
+                            >
+                                <ChevronLeft size={24} />
+                            </button>
+                        )}
+                        <span className="text-lg font-medium text-[#282F49] font-[Satoshi,sans-serif]">
+                            {page === 'results' ? 'Test Results' : 'Test Match Configuration'}
+                        </span>
+                    </div>
                     <button
                         onClick={onClose}
                         className="bg-transparent border-none cursor-pointer p-1 text-[#818181] flex items-center hover:text-gray-600 transition-colors"
@@ -196,108 +145,120 @@ const TestMatchConfigurationModal = ({ isOpen, onClose, ruleId = null }) => {
                     </button>
                 </div>
 
-                {/* Scrollable body */}
-                <div className="px-5 py-2 overflow-y-auto flex-1">
-                    {/* Instructions */}
-                    <div className="bg-[#FAF8FF] rounded-[10px] px-4 py-3 mb-5">
-                        <p className="text-sm text-[#332849] font-normal leading-relaxed m-0 font-[Satoshi,sans-serif]">
-                            Input Data: Enter values for Record A and B.
-                        </p>
-                        <p className="text-sm text-[#332849] font-normal leading-relaxed m-0 font-[Satoshi,sans-serif]">
-                            Compare: Click Run Test to view scores and weights.
-                        </p>
-                    </div>
-
-                    {/* Domain selector (domain mode only) */}
-                    {!isRuleMode && (
-                        <div className="flex flex-col gap-1.5 mb-5">
-                            <label className="text-sm font-medium text-[#332849] font-[Satoshi,sans-serif] leading-none mb-1.5 block">
-                                Domain <span className="text-[#E05252]">*</span>
-                            </label>
-                            <DomainDropdown
-                                domains={domains}
-                                selected={selectedDomain}
-                                onSelect={handleDomainSelect}
-                                disabled={domainsLoading}
-                            />
-                        </div>
-                    )}
-
-                    {/* API error / empty state */}
-                    {apiError && !rulesLoading && (
-                        <p className="text-sm text-[#818181] font-[Satoshi,sans-serif] text-center py-4 m-0">
-                            No match rules available
-                        </p>
-                    )}
-
-                    {/* Loading state */}
-                    {rulesLoading && (
-                        <div className="flex items-center justify-center py-8">
-                            <span className="text-sm text-[#818181] font-[Satoshi,sans-serif]">
-                                {isRuleMode ? 'Loading rule...' : 'Loading rules...'}
-                            </span>
-                        </div>
-                    )}
-
-                    {/* Input grid */}
-                    {fieldsReady && !rulesLoading && (
-                        <div className="grid grid-cols-2 gap-3">
-                            {/* Record A */}
-                            <div className="bg-[#FAFAFA] rounded-lg p-3.5 flex flex-col gap-3">
-                                <p className="text-lg font-bold text-[#332849] m-0 font-[Satoshi,sans-serif]">Record A</p>
-                                {rules.map((rule) => (
-                                    <div key={rule.rule_id}>
-                                        <p className="text-[11px] font-medium text-[#332849] m-0 mb-1.5 font-[Satoshi,sans-serif] uppercase tracking-[0.04em]">
-                                            {rule.source_attribute}
-                                        </p>
-                                        <input
-                                            type="text"
-                                            placeholder={`Enter ${rule.source_attribute}`}
-                                            value={fieldValues[rule.rule_id]?.a ?? ''}
-                                            onChange={(e) => setField(rule.rule_id, 'a', e.target.value)}
-                                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-[13px] text-[#282F49] outline-none bg-white font-[Satoshi,sans-serif] box-border focus:border-[#8e78b7] transition-colors"
-                                        />
-                                    </div>
-                                ))}
+                {/* ── Page 1: Inputs */}
+                {page === 'input' && (
+                    <>
+                        <div className="px-5 py-4 overflow-y-auto flex-1 flex flex-col gap-4">
+                            {/* Instructions */}
+                            <div className="bg-[#FAF8FF] rounded-[10px] px-4 py-3">
+                                <p className="text-sm text-[#332849] font-normal leading-relaxed m-0 font-[Satoshi,sans-serif]">
+                                    Input Data: Enter values for Record A and B.
+                                </p>
+                                <p className="text-sm text-[#332849] font-normal leading-relaxed m-0 font-[Satoshi,sans-serif]">
+                                    Compare: Click Run Test to view scores and weights.
+                                </p>
                             </div>
 
-                            {/* Record B */}
-                            <div className="bg-[#FAFAFA] rounded-lg p-3.5 flex flex-col gap-3">
-                                <p className="text-lg font-bold text-[#282F49] m-0 font-[Satoshi,sans-serif]">Record B</p>
-                                {rules.map((rule) => (
-                                    <div key={rule.rule_id}>
-                                        <p className="text-[11px] font-medium text-[#332849] m-0 mb-1.5 font-[Satoshi,sans-serif] uppercase tracking-[0.04em]">
-                                            {rule.target_attribute}
-                                        </p>
-                                        <input
-                                            type="text"
-                                            placeholder={`Enter ${rule.target_attribute}`}
-                                            value={fieldValues[rule.rule_id]?.b ?? ''}
-                                            onChange={(e) => setField(rule.rule_id, 'b', e.target.value)}
-                                            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-[13px] text-[#282F49] outline-none bg-white font-[Satoshi,sans-serif] box-border focus:border-[#8e78b7] transition-colors"
-                                        />
-                                    </div>
-                                ))}
+                            {/* Domain selector */}
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-sm font-medium text-[#332849] font-[Satoshi,sans-serif] leading-none block">
+                                    Domain <span className="text-[#E05252]">*</span>
+                                </label>
+                                <SearchableDropdown
+                                    value={selectedDomain?.domain_code ?? ''}
+                                    onChange={handleDomainChange}
+                                    options={domainOptions}
+                                    placeholder={domainsLoading ? 'Loading domains...' : 'Select domain'}
+                                />
                             </div>
-                        </div>
-                    )}
-                </div>
 
-                {/* Footer */}
-                {fieldsReady && !rulesLoading && (
-                    <div className="px-5 py-4 flex-shrink-0">
-                        <button
-                            onClick={handleRunTest}
-                            disabled={!canRun}
-                            className={[
-                                'w-full py-2.5 px-4 text-sm font-medium text-white border-none rounded-lg font-[Satoshi,sans-serif] transition-colors',
-                                canRun
-                                    ? 'bg-[#8E77BB] hover:bg-[#7a67a0] cursor-pointer'
-                                    : 'bg-[#CBC0E0] cursor-not-allowed',
-                            ].join(' ')}
-                        >
-                            {isRunning ? 'Running...' : 'Run Test'}
-                        </button>
+                            {showAttrsLoading && <AttributesSkeleton rows={4} />}
+
+                            {showAttrsError && (
+                                <div className="bg-[#FFF5F5] border border-[#EF4D5F] rounded-xl px-4 py-3">
+                                    <p className="text-sm text-[#EF4D5F] font-[Satoshi,sans-serif] m-0">{attrsError}</p>
+                                </div>
+                            )}
+
+                            {showGrid && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    {/* Record A */}
+                                    <div className="bg-[#FAFAFA] rounded-lg p-3.5 flex flex-col gap-3">
+                                        <p className="text-lg font-bold text-[#332849] m-0 font-[Satoshi,sans-serif]">Record A</p>
+                                        {attributes.map((attr) => (
+                                            <div key={attr.name}>
+                                                <p className="text-[11px] font-medium text-[#332849] m-0 mb-1.5 font-[Satoshi,sans-serif] uppercase tracking-[0.04em]">
+                                                    {attr.label}
+                                                </p>
+                                                <input
+                                                    type="text"
+                                                    placeholder={`Enter ${attr.label}`}
+                                                    value={fieldValues[attr.name]?.a ?? ''}
+                                                    onChange={(e) => setField(attr.name, 'a', e.target.value)}
+                                                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-[13px] text-[#282F49] outline-none bg-white font-[Satoshi,sans-serif] box-border focus:border-[#8e78b7] transition-colors"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {/* Record B */}
+                                    <div className="bg-[#FAFAFA] rounded-lg p-3.5 flex flex-col gap-3">
+                                        <p className="text-lg font-bold text-[#282F49] m-0 font-[Satoshi,sans-serif]">Record B</p>
+                                        {attributes.map((attr) => (
+                                            <div key={attr.name}>
+                                                <p className="text-[11px] font-medium text-[#332849] m-0 mb-1.5 font-[Satoshi,sans-serif] uppercase tracking-[0.04em]">
+                                                    {attr.label}
+                                                </p>
+                                                <input
+                                                    type="text"
+                                                    placeholder={`Enter ${attr.label}`}
+                                                    value={fieldValues[attr.name]?.b ?? ''}
+                                                    onChange={(e) => setField(attr.name, 'b', e.target.value)}
+                                                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-[13px] text-[#282F49] outline-none bg-white font-[Satoshi,sans-serif] box-border focus:border-[#8e78b7] transition-colors"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                        </div>
+
+                        {testError && !isRunning && (
+                            <div className="px-5 pt-3 mb-2">
+                                <div className="bg-[#FFF5F5] border border-[#EF4D5F] rounded-xl px-4 py-3">
+                                    <p className="text-sm text-[#EF4D5F] font-[Satoshi,sans-serif] m-0">{testError}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {showGrid && (
+                            <div className="px-5 py-4 flex-shrink-0 border-t border-gray-100">
+                                <button
+                                    onClick={handleRunTest}
+                                    disabled={!canRun}
+                                    className={[
+                                        'w-full py-2.5 px-4 text-sm font-medium text-white border-none rounded-lg font-[Satoshi,sans-serif] transition-colors flex items-center justify-center gap-2',
+                                        canRun
+                                            ? 'bg-[#8E77BB] hover:bg-[#7a67a0] cursor-pointer'
+                                            : 'bg-[#CBC0E0] cursor-not-allowed',
+                                    ].join(' ')}
+                                >
+                                    {isRunning ? (
+                                        <>
+                                            <Loader2 size={15} className="animate-spin" />
+                                            Running...
+                                        </>
+                                    ) : 'Run Test'}
+                                </button>
+                            </div>
+                        )}
+                    </>
+                )}
+
+                {/* ── Page 2: Results */}
+                {page === 'results' && (
+                    <div className="px-5 py-4 overflow-y-auto flex-1">
+                        <TestResultsPanel results={results} />
                     </div>
                 )}
             </div>

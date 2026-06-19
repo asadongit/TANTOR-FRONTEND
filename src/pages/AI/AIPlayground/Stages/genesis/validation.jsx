@@ -78,27 +78,64 @@ export const validateTimeSeriesLearning = async (config, datasetState, activeWor
         workflow_id: activeWorkflowId,
         target_column: targetColumn,
         modelling_type: modellingType,
-        time_column: timeColumn
+        time_column: timeColumn,
+        frequency: config.frequency || '' // Include frequency if available, otherwise send an empty string
       })
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      if (data.status === 'success') {
-        toast.success('Time Series validation successful!', { duration: 3000, position: 'top-right' });
-        setIsTimeSeriesValidated(true);
-      } else {
-        toast.error('Time column or target column is not compatible with the selected modeling type.', { duration: 4000, position: 'top-right' });
-      }
-    } else {
-      toast.error('Time column or target column is not compatible with the selected modeling type.', { duration: 4000, position: 'top-right' });
+  if (response.ok) {
+  const data = await response.json();
+
+  if (data.status === 'success') {
+
+    if (data.frequency_match === true) {
+      toast.success('Time Series validation successful!', {
+        duration: 3000,
+        position: 'top-right'
+      });
+
+      setIsTimeSeriesValidated(true);
     }
-  } catch (error) {
-    console.error('Time Series validation error:', error);
-    toast.error('Time column or target column is not compatible with the selected modeling type.', { duration: 4000, position: 'top-right' });
-  } finally {
-    setIsValidating(false);
+
+    return data;
   }
+
+  toast.error(
+    'Time column or target column is not compatible with the selected modeling type.',
+    {
+      duration: 4000,
+      position: 'top-right'
+    }
+  );
+
+  return null;
+} else {
+  toast.error(
+    'Failed to validate.',
+    {
+      duration: 4000,
+      position: 'top-right'
+    }
+  );
+
+  return null;
+}
+
+} catch (error) {
+  console.error('Time Series validation error:', error);
+
+  toast.error(
+    'Failed to validate.',
+    {
+      duration: 4000,
+      position: 'top-right'
+    }
+  );
+
+  return null;
+} finally {
+  setIsValidating(false);
+}
 };
 
 // Validation function for running target column validation

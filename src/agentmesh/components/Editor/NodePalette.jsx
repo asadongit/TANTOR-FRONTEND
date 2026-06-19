@@ -11,6 +11,7 @@ export const NODE_TYPES = [
   // Events & Triggers
   { type: 'webhook',    icon: FiGlobe,     label: 'Webhook',      desc: 'HTTP API Trigger',          bg: '#E0F2FE', color: '#0369A1', category: 'Events & Triggers' },
   { type: 'webhook_response', icon: FiShare2,  label: 'Webhook Response', desc: 'Custom Sync Response',    bg: '#E0F2FE', color: '#0369A1', category: 'Events & Triggers' },
+  { type: 'event_emitter', icon: FiGlobe, label: 'Event Emitter', desc: 'Broadcast progress webhooks', bg: '#E0F2FE', color: '#0369A1', category: 'Events & Triggers' },
   { type: 'cron',       icon: FiClock,     label: 'Cron',         desc: 'Scheduled Trigger',         bg: '#FEF3C7', color: '#B45309', category: 'Events & Triggers' },
   { type: 'polling',    icon: FiClock,     label: 'Polling Trigger', desc: 'Interval Poller Trigger',   bg: '#FDF2F8', color: '#DB2777', category: 'Events & Triggers' },
   { type: 'button_trigger', icon: FiZap,     label: 'Button',       desc: 'Manual UI Trigger',         bg: '#D1FAE5', color: '#059669', category: 'Events & Triggers' },
@@ -36,7 +37,8 @@ export const NODE_TYPES = [
   
   // Logic & Routing
   { type: 'router',     icon: FiGitMerge,  label: 'Router',       desc: 'Conditional flow logic',    bg: '#E5D9FF', color: '#7C3AED', category: 'Logic & Routing' },
-  { type: 'condition',  icon: FiHelpCircle, label: 'Condition (If)', desc: 'Binary If/Else gate',       bg: '#FEF3C7', color: '#D97706', category: 'Logic & Routing' },
+  { type: 'ingestion_router', icon: FiLayers, label: 'Ingestion Router', desc: 'Batch Thread Dispatcher', bg: '#C9F5E0', color: '#065F46', category: 'Logic & Routing' },
+  { type: 'condition',  icon: FiActivity,  label: 'Condition (If)', desc: 'Binary If/Else gate',       bg: '#FEF3C7', color: '#D97706', category: 'Logic & Routing' },
   { type: 'switch',     icon: FiGitBranch, label: 'Switch',         desc: 'Multi-branch router',       bg: '#E0F2FE', color: '#0369A1', category: 'Logic & Routing' },
   
   // Flow Control
@@ -54,7 +56,11 @@ export const NODE_TYPES = [
   // Data & Storage
   { type: 'set_data',   icon: FiEdit,      label: 'Set Message',    desc: 'Static data/response',      bg: '#F5F3FF', color: '#7C3AED', category: 'Data & Storage' },
   { type: 'output_parser', icon: FiFilter,  label: 'Output Parser',  desc: 'Auto-fix malformed JSON',   bg: '#FEF3C7', color: '#D97706', category: 'Data & Storage' },
+  { type: 'payload_builder', icon: FiBox,  label: 'Payload Builder',  desc: 'Build JSON payloads from templates', bg: '#E0F2FE', color: '#0369A1', category: 'Data & Storage' },
+  { type: 'pattern_extract', icon: FiSearch, label: 'Pattern Extractor', desc: 'Extract values via keyword/regex patterns', bg: '#FDF2F8', color: '#DB2777', category: 'Data & Storage' },
+  { type: 'db_node',    icon: FiBox,       label: 'MongoDB',        desc: 'Read/Write MongoDB collections', bg: '#D1FAE5', color: '#065F46', category: 'Data & Storage' },
   { type: 'json_transform', icon: FiCode,   label: 'JSON Transform', desc: 'Reshape data via JMESPath/Python', bg: '#F5F3FF', color: '#7C3AED', category: 'Data & Storage' },
+  { type: 'json_transform_va', icon: FiCode,   label: 'Flatten JSON (VA)', desc: 'Flatten/Pick/Rename/Omit JSON', bg: '#E0F2FE', color: '#0369A1', category: 'Data & Storage' },
   { type: 'data_cleaning', icon: FiFilter,  label: 'Data Cleaning',  desc: 'Clean dataset and run Pandas scripts', bg: '#ECFDF5', color: '#059669', category: 'Data & Storage' },
   { type: 'network_graph', icon: FiDatabase, label: 'Network Graph', desc: 'Ingest into Neo4j graph database', bg: '#EFF6FF', color: '#1D4ED8', category: 'Data & Storage' },
   { type: 'file_store', icon: FiFileText,  label: 'File Store',   desc: 'Save data to CSV/Excel',    bg: '#ECFDF5', color: '#059669', category: 'Data & Storage' },

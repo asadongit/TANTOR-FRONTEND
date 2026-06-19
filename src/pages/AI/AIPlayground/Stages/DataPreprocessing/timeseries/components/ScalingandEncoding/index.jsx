@@ -485,23 +485,6 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview }) 
         </div>
       )}
 
-      {/* No Categorical Columns Notice */}
-      {/* {!hasCategoricalColumns && (
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-700">
-            <span className="font-medium">Note:</span> Categorical encoding is disabled because no categorical columns were found in the dataset.
-          </p>
-        </div>
-      )} */}
-
-      {/* No Numerical Columns Notice */}
-      {/* {!hasNumericalColumns && (
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-700">
-            <span className="font-medium">Note:</span> Feature scaling is disabled because no numerical columns were found in the dataset.
-          </p>
-        </div>
-      )} */}
 
       {/* Categorical Encoding Section */}
       <CategoricalEncoding

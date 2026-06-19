@@ -1,42 +1,108 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useWorkflowStore, useUIStore } from '../../store';
-import { 
-  FiX, FiPlus, FiTrash2, FiBold, FiItalic, 
-  FiUnderline, FiList, FiSearch, FiBookOpen,
-  FiSave, FiZap, FiLoader, FiTerminal, FiDatabase,
-  FiCopy, FiDownload, FiFilter, FiAlignLeft, FiAlignCenter, 
-  FiAlignRight, FiCheck, FiInfo, FiTrash
-} from 'react-icons/fi';
-import { listWorkflowNotes, createWorkflowNote, deleteWorkflowNote, updateWorkflowNote, fixGrammar } from '../../api/agentmesh';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useWorkflowStore, useUIStore } from "../../store";
+import {
+  FiX,
+  FiPlus,
+  FiTrash2,
+  FiBold,
+  FiItalic,
+  FiUnderline,
+  FiList,
+  FiSearch,
+  FiBookOpen,
+  FiSave,
+  FiZap,
+  FiLoader,
+  FiTerminal,
+  FiDatabase,
+  FiCopy,
+  FiDownload,
+  FiFilter,
+  FiAlignLeft,
+  FiAlignCenter,
+  FiAlignRight,
+  FiCheck,
+  FiInfo,
+  FiTrash,
+} from "react-icons/fi";
+import {
+  listWorkflowNotes,
+  createWorkflowNote,
+  deleteWorkflowNote,
+  updateWorkflowNote,
+  fixGrammar,
+} from "../../api/agentmesh";
 
 /**
  * REDESIGNED WORKFLOW NOTES ENGINE v2.5 (Professional Editor Edition)
  */
 
-const NOTE_CATEGORIES = ["Technical", "Research", "Brainstorming", "Requirement", "Meeting", "Bug/Issue"];
+const NOTE_CATEGORIES = [
+  "Technical",
+  "Research",
+  "Brainstorming",
+  "Requirement",
+  "Meeting",
+  "Bug/Issue",
+];
 
 const getCategoryStyles = (cat) => {
   switch (cat) {
-    case 'Technical': return { bg: 'rgba(59, 130, 246, 0.1)', text: '#60a5fa', border: 'rgba(59, 130, 246, 0.3)' };
-    case 'Research': return { bg: 'rgba(139, 92, 246, 0.1)', text: '#a78bfa', border: 'rgba(139, 92, 246, 0.3)' };
-    case 'Brainstorming': return { bg: 'rgba(245, 158, 11, 0.1)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.3)' };
-    case 'Requirement': return { bg: 'rgba(16, 185, 129, 0.1)', text: '#34d399', border: 'rgba(16, 185, 129, 0.3)' };
-    case 'Meeting': return { bg: 'rgba(6, 182, 212, 0.1)', text: '#22d3ee', border: 'rgba(6, 182, 212, 0.3)' };
-    case 'Bug/Issue': return { bg: 'rgba(239, 68, 68, 0.1)', text: '#f87171', border: 'rgba(239, 68, 68, 0.3)' };
-    default: return { bg: 'rgba(156, 163, 175, 0.1)', text: '#9ca3af', border: 'rgba(156, 163, 175, 0.3)' };
+    case "Technical":
+      return {
+        bg: "rgba(59, 130, 246, 0.1)",
+        text: "#60a5fa",
+        border: "rgba(59, 130, 246, 0.3)",
+      };
+    case "Research":
+      return {
+        bg: "rgba(139, 92, 246, 0.1)",
+        text: "#a78bfa",
+        border: "rgba(139, 92, 246, 0.3)",
+      };
+    case "Brainstorming":
+      return {
+        bg: "rgba(245, 158, 11, 0.1)",
+        text: "#fbbf24",
+        border: "rgba(245, 158, 11, 0.3)",
+      };
+    case "Requirement":
+      return {
+        bg: "rgba(16, 185, 129, 0.1)",
+        text: "#34d399",
+        border: "rgba(16, 185, 129, 0.3)",
+      };
+    case "Meeting":
+      return {
+        bg: "rgba(6, 182, 212, 0.1)",
+        text: "#22d3ee",
+        border: "rgba(6, 182, 212, 0.3)",
+      };
+    case "Bug/Issue":
+      return {
+        bg: "rgba(239, 68, 68, 0.1)",
+        text: "#f87171",
+        border: "rgba(239, 68, 68, 0.3)",
+      };
+    default:
+      return {
+        bg: "rgba(156, 163, 175, 0.1)",
+        text: "#9ca3af",
+        border: "rgba(156, 163, 175, 0.3)",
+      };
   }
 };
 
 export default function WorkflowNotesModal() {
   const { workflowId, workflowName } = useWorkflowStore();
   const { showNotes, toggleNotes } = useUIStore();
-  
+
   const [notes, setNotes] = useState([]);
   const [selectedNote, setSelectedNote] = useState(null);
-  const [search, setSearch] = useState('');
-  const [filterCategory, setFilterCategory] = useState('All');
-  const [sortBy, setSortBy] = useState('newest'); // newest, oldest, alphabetical
-  const [saveStatus, setSaveStatus] = useState('idle'); // idle, typing, saving, saved
+  const [search, setSearch] = useState("");
+  const [filterCategory, setFilterCategory] = useState("All");
+  const [sortBy, setSortBy] = useState("newest"); // newest, oldest, alphabetical
+  const [saveStatus, setSaveStatus] = useState("idle"); // idle, typing, saving, saved
   const [isGrammarFixing, setIsGrammarFixing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ words: 0, chars: 0, readTime: 0 });
@@ -44,7 +110,7 @@ export default function WorkflowNotesModal() {
 
   const editorRef = useRef(null);
   const autoSaveTimerRef = useRef(null);
-  const lastSavedContentRef = useRef('');
+  const lastSavedContentRef = useRef("");
 
   // 1. Initial Load
   useEffect(() => {
@@ -57,17 +123,19 @@ export default function WorkflowNotesModal() {
     try {
       setLoading(true);
       const data = await listWorkflowNotes(workflowId);
-      const sorted = (data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      
+      const sorted = (data || []).sort(
+        (a, b) => new Date(b.created_at) - new Date(a.created_at),
+      );
+
       setNotes(sorted);
-      
+
       if (selectId) {
-        const found = sorted.find(n => n.id === selectId);
+        const found = sorted.find((n) => n.id === selectId);
         if (found) selectNote(found);
       } else if (selectedNote) {
-        const current = sorted.find(n => n.id === selectedNote.id);
+        const current = sorted.find((n) => n.id === selectedNote.id);
         if (current) {
-          setSelectedNote(prev => ({ ...current, content: prev.content }));
+          setSelectedNote((prev) => ({ ...current, content: prev.content }));
         }
       }
     } finally {
@@ -79,27 +147,37 @@ export default function WorkflowNotesModal() {
   const selectNote = (note) => {
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     setSelectedNote(note);
-    lastSavedContentRef.current = note?.content || '';
-    setSaveStatus('idle');
-    updateStats(note?.content || '');
+    lastSavedContentRef.current = note?.content || "";
+    setSaveStatus("idle");
+    updateStats(note?.content || "");
   };
 
   // 3. Robust Save
   const saveNote = async (id, content, category) => {
-    if (!id || (content === lastSavedContentRef.current && category === selectedNote?.category)) return;
-    
+    if (
+      !id ||
+      (content === lastSavedContentRef.current &&
+        category === selectedNote?.category)
+    )
+      return;
+
     try {
-      setSaveStatus('saving');
+      setSaveStatus("saving");
       await updateWorkflowNote(workflowId, id, content, category);
-      
+
       lastSavedContentRef.current = content;
-      setNotes(prev => prev.map(n => n.id === id ? { ...n, content, category } : n));
-      
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus(prev => prev === 'saved' ? 'idle' : prev), 2000);
+      setNotes((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, content, category } : n)),
+      );
+
+      setSaveStatus("saved");
+      setTimeout(
+        () => setSaveStatus((prev) => (prev === "saved" ? "idle" : prev)),
+        2000,
+      );
     } catch (e) {
-      console.error('Save failed:', e);
-      setSaveStatus('idle');
+      console.error("Save failed:", e);
+      setSaveStatus("idle");
     }
   };
 
@@ -108,7 +186,10 @@ export default function WorkflowNotesModal() {
       setStats({ words: 0, chars: 0, readTime: 0 });
       return;
     }
-    const cleanText = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const cleanText = html
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
     const chars = cleanText.length;
     const words = cleanText ? cleanText.split(/\s+/).length : 0;
     const readTime = Math.max(1, Math.ceil(words / 200));
@@ -116,8 +197,8 @@ export default function WorkflowNotesModal() {
   };
 
   const onInput = () => {
-    setSaveStatus('typing');
-    const newContent = editorRef.current ? editorRef.current.innerHTML : '';
+    setSaveStatus("typing");
+    const newContent = editorRef.current ? editorRef.current.innerHTML : "";
     updateStats(newContent);
 
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
@@ -130,11 +211,15 @@ export default function WorkflowNotesModal() {
 
   const handleCreate = async () => {
     try {
-      setSaveStatus('saving');
-      const res = await createWorkflowNote(workflowId, '<h1>New Note</h1><p>Start writing here...</p>', 'Technical');
+      setSaveStatus("saving");
+      const res = await createWorkflowNote(
+        workflowId,
+        "<h1>New Note</h1><p>Start writing here...</p>",
+        "Technical",
+      );
       await loadNotes(res.id);
     } catch (e) {
-      alert('Action failed');
+      alert("Action failed");
     }
   };
 
@@ -144,13 +229,15 @@ export default function WorkflowNotesModal() {
     try {
       setIsGrammarFixing(true);
       const res = await fixGrammar(raw);
-      if (res.status === 'success') {
-        const paragraphs = res.fixed.split('\n').filter(p => p.trim());
-        const fixedHtml = paragraphs.map(p => {
-          if (p.startsWith('# ')) return `<h1>${p.substring(2)}</h1>`;
-          if (p.startsWith('## ')) return `<h2>${p.substring(3)}</h2>`;
-          return `<p>${p}</p>`;
-        }).join('');
+      if (res.status === "success") {
+        const paragraphs = res.fixed.split("\n").filter((p) => p.trim());
+        const fixedHtml = paragraphs
+          .map((p) => {
+            if (p.startsWith("# ")) return `<h1>${p.substring(2)}</h1>`;
+            if (p.startsWith("## ")) return `<h2>${p.substring(3)}</h2>`;
+            return `<p>${p}</p>`;
+          })
+          .join("");
         editorRef.current.innerHTML = fixedHtml;
         saveNote(selectedNote.id, fixedHtml, selectedNote.category);
         updateStats(fixedHtml);
@@ -161,7 +248,11 @@ export default function WorkflowNotesModal() {
   };
 
   const handleDelete = async () => {
-    if (!selectedNote || !window.confirm('Are you sure you want to permanently delete this note?')) return;
+    if (
+      !selectedNote ||
+      !window.confirm("Are you sure you want to permanently delete this note?")
+    )
+      return;
     await deleteWorkflowNote(workflowId, selectedNote.id);
     setSelectedNote(null);
     loadNotes();
@@ -178,13 +269,18 @@ export default function WorkflowNotesModal() {
   const handleDownload = () => {
     if (!selectedNote || !editorRef.current) return;
     const text = editorRef.current.innerText;
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    
-    const title = text.split('\n')[0].replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 30).trim() || 'note';
-    link.download = `${title.toLowerCase().replace(/\s+/g, '_')}.txt`;
+
+    const title =
+      text
+        .split("\n")[0]
+        .replace(/[^a-zA-Z0-9 ]/g, "")
+        .substring(0, 30)
+        .trim() || "note";
+    link.download = `${title.toLowerCase().replace(/\s+/g, "_")}.txt`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -199,17 +295,30 @@ export default function WorkflowNotesModal() {
 
   // Search & Filtering & Sorting
   const filtered = notes
-    .filter(n => {
-      const matchSearch = n.content.toLowerCase().includes(search.toLowerCase());
-      const matchCategory = filterCategory === 'All' || n.category === filterCategory;
+    .filter((n) => {
+      const matchSearch = n.content
+        .toLowerCase()
+        .includes(search.toLowerCase());
+      const matchCategory =
+        filterCategory === "All" || n.category === filterCategory;
       return matchSearch && matchCategory;
     })
     .sort((a, b) => {
-      if (sortBy === 'newest') return new Date(b.created_at) - new Date(a.created_at);
-      if (sortBy === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
-      if (sortBy === 'alphabetical') {
-        const titleA = a.content.replace(/<[^>]*>/g, ' ').substring(0, 30).trim().toLowerCase();
-        const titleB = b.content.replace(/<[^>]*>/g, ' ').substring(0, 30).trim().toLowerCase();
+      if (sortBy === "newest")
+        return new Date(b.created_at) - new Date(a.created_at);
+      if (sortBy === "oldest")
+        return new Date(a.created_at) - new Date(b.created_at);
+      if (sortBy === "alphabetical") {
+        const titleA = a.content
+          .replace(/<[^>]*>/g, " ")
+          .substring(0, 30)
+          .trim()
+          .toLowerCase();
+        const titleB = b.content
+          .replace(/<[^>]*>/g, " ")
+          .substring(0, 30)
+          .trim()
+          .toLowerCase();
         return titleA.localeCompare(titleB);
       }
       return 0;
@@ -232,24 +341,35 @@ export default function WorkflowNotesModal() {
         </div>
       );
     }
-    return filtered.map(n => {
+    return filtered.map((n) => {
       const active = selectedNote?.id === n.id;
-      const cleanContent = n.content.replace(/<[^>]*>/g, ' ').trim();
-      const title = cleanContent.substring(0, 30) || 'Untitled Note';
-      const snippet = cleanContent.substring(title.length, title.length + 60) || 'No additional content...';
+      const cleanContent = n.content.replace(/<[^>]*>/g, " ").trim();
+      const title = cleanContent.substring(0, 30) || "Untitled Note";
+      const snippet =
+        cleanContent.substring(title.length, title.length + 60) ||
+        "No additional content...";
       const catStyle = getCategoryStyles(n.category);
-      
+
       return (
-        <div 
-          key={n.id} 
+        <div
+          key={n.id}
           onClick={() => selectNote(n)}
-          className={`note-item ${active ? 'active' : ''}`}
+          className={`note-item ${active ? "active" : ""}`}
         >
           <div className="note-item-meta">
-            <span className="note-item-date">{new Date(n.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-            <span 
-              className="note-item-badge" 
-              style={{ background: catStyle.bg, color: catStyle.text, borderColor: catStyle.border }}
+            <span className="note-item-date">
+              {new Date(n.created_at).toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+              })}
+            </span>
+            <span
+              className="note-item-badge"
+              style={{
+                background: catStyle.bg,
+                color: catStyle.text,
+                borderColor: catStyle.border,
+              }}
             >
               {n.category}
             </span>
@@ -263,8 +383,7 @@ export default function WorkflowNotesModal() {
 
   return (
     <div className="notes-overlay" onClick={toggleNotes}>
-      <div className="notes-modal" onClick={e => e.stopPropagation()}>
-        
+      <div className="notes-modal" onClick={(e) => e.stopPropagation()}>
         {/* Sidebar */}
         <div className="notes-sidebar">
           {/* Header */}
@@ -273,7 +392,11 @@ export default function WorkflowNotesModal() {
               <FiBookOpen className="sidebar-logo" size={20} />
               <h2 className="sidebar-title">Workflow Journal</h2>
             </div>
-            <button className="add-note-btn" onClick={handleCreate} title="Create Note">
+            <button
+              className="add-note-btn"
+              onClick={handleCreate}
+              title="Create Note"
+            >
               <FiPlus size={18} />
               <span>New Note</span>
             </button>
@@ -283,31 +406,41 @@ export default function WorkflowNotesModal() {
           <div className="sidebar-filters">
             <div className="search-wrapper">
               <FiSearch className="search-icon" size={14} />
-              <input 
-                placeholder="Search notes..." 
-                value={search} 
-                onChange={e => setSearch(e.target.value)}
+              <input
+                placeholder="Search notes..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 className="search-input"
               />
-              {search && <FiX className="clear-search" size={12} onClick={() => setSearch('')} />}
+              {search && (
+                <FiX
+                  className="clear-search"
+                  size={12}
+                  onClick={() => setSearch("")}
+                />
+              )}
             </div>
 
             <div className="filter-sort-row">
               <div className="filter-select-wrapper">
                 <FiFilter size={12} className="select-icon" />
-                <select 
-                  value={filterCategory} 
-                  onChange={e => setFilterCategory(e.target.value)}
+                <select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
                   className="sidebar-select"
                 >
                   <option value="All">All Categories</option>
-                  {NOTE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  {NOTE_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              <select 
-                value={sortBy} 
-                onChange={e => setSortBy(e.target.value)}
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
                 className="sidebar-select sort-select"
               >
                 <option value="newest">Newest First</option>
@@ -318,106 +451,186 @@ export default function WorkflowNotesModal() {
           </div>
 
           {/* Notes list */}
-          <div className="notes-list custom-scrollbar">
-            {renderNotesList()}
-          </div>
+          <div className="notes-list custom-scrollbar">{renderNotesList()}</div>
         </div>
 
         {/* Main Editor Area */}
         <div className="notes-editor-container">
-          
           {/* Main Toolbar */}
           <div className="editor-toolbar">
             <div className="toolbar-left">
               {selectedNote && (
                 <div className="formatting-group">
-                  <button className="toolbar-btn" onClick={() => exec('bold')} title="Bold">
+                  <button
+                    className="toolbar-btn"
+                    onClick={() => exec("bold")}
+                    title="Bold"
+                  >
                     <FiBold size={14} />
                   </button>
-                  <button className="toolbar-btn" onClick={() => exec('italic')} title="Italic">
+                  <button
+                    className="toolbar-btn"
+                    onClick={() => exec("italic")}
+                    title="Italic"
+                  >
                     <FiItalic size={14} />
                   </button>
-                  <button className="toolbar-btn" onClick={() => exec('underline')} title="Underline">
+                  <button
+                    className="toolbar-btn"
+                    onClick={() => exec("underline")}
+                    title="Underline"
+                  >
                     <FiUnderline size={14} />
                   </button>
                   <div className="toolbar-divider" />
-                  <button className="toolbar-btn" onClick={() => exec('formatBlock', '<h1>')} title="Heading 1">
+                  <button
+                    className="toolbar-btn"
+                    onClick={() => exec("formatBlock", "<h1>")}
+                    title="Heading 1"
+                  >
                     H1
                   </button>
-                  <button className="toolbar-btn" onClick={() => exec('formatBlock', '<h2>')} title="Heading 2">
+                  <button
+                    className="toolbar-btn"
+                    onClick={() => exec("formatBlock", "<h2>")}
+                    title="Heading 2"
+                  >
                     H2
                   </button>
-                  <button className="toolbar-btn" onClick={() => exec('formatBlock', '<blockquote>')} title="Blockquote" style={{ fontFamily: 'Georgia, serif', fontWeight: 'bold' }}>
+                  <button
+                    className="toolbar-btn"
+                    onClick={() => exec("formatBlock", "<blockquote>")}
+                    title="Blockquote"
+                    style={{ fontFamily: "Georgia, serif", fontWeight: "bold" }}
+                  >
                     “
                   </button>
                   <div className="toolbar-divider" />
-                  <button className="toolbar-btn" onClick={() => exec('insertUnorderedList')} title="Bullet List">
+                  <button
+                    className="toolbar-btn"
+                    onClick={() => exec("insertUnorderedList")}
+                    title="Bullet List"
+                  >
                     <FiList size={14} />
                   </button>
-                  <button className="toolbar-btn" onClick={() => exec('justifyLeft')} title="Align Left">
+                  <button
+                    className="toolbar-btn"
+                    onClick={() => exec("justifyLeft")}
+                    title="Align Left"
+                  >
                     <FiAlignLeft size={14} />
                   </button>
-                  <button className="toolbar-btn" onClick={() => exec('justifyCenter')} title="Align Center">
+                  <button
+                    className="toolbar-btn"
+                    onClick={() => exec("justifyCenter")}
+                    title="Align Center"
+                  >
                     <FiAlignCenter size={14} />
                   </button>
-                  <button className="toolbar-btn" onClick={() => exec('justifyRight')} title="Align Right">
+                  <button
+                    className="toolbar-btn"
+                    onClick={() => exec("justifyRight")}
+                    title="Align Right"
+                  >
                     <FiAlignRight size={14} />
                   </button>
                 </div>
               )}
             </div>
-            
+
             <div className="toolbar-right">
               {selectedNote && (
                 <>
                   <div className="sync-status">
-                    {saveStatus === 'saving' && (
+                    {saveStatus === "saving" && (
                       <span className="status-saving">
                         <FiLoader className="spin" size={12} /> Syncing...
                       </span>
                     )}
-                    {saveStatus === 'saved' && (
+                    {saveStatus === "saved" && (
                       <span className="status-saved">
                         <FiCheck size={12} /> Autosaved
                       </span>
                     )}
-                    {saveStatus === 'typing' && <span className="status-typing">Typing...</span>}
+                    {saveStatus === "typing" && (
+                      <span className="status-typing">Typing...</span>
+                    )}
                   </div>
 
-                  <select 
+                  <select
                     value={selectedNote.category}
-                    onChange={e => {
-                      setSelectedNote(prev => ({ ...prev, category: e.target.value }));
-                      saveNote(selectedNote.id, editorRef.current.innerHTML, e.target.value);
+                    onChange={(e) => {
+                      setSelectedNote((prev) => ({
+                        ...prev,
+                        category: e.target.value,
+                      }));
+                      saveNote(
+                        selectedNote.id,
+                        editorRef.current.innerHTML,
+                        e.target.value,
+                      );
                     }}
                     className="category-selector-dropdown"
                   >
-                    {NOTE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    {NOTE_CATEGORIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
                   </select>
 
-                  <button className="action-btn wizard-btn" onClick={handleFixGrammar} disabled={isGrammarFixing} title="Fix grammar with Wizard AI">
-                    {isGrammarFixing ? <FiLoader className="spin" size={13}/> : <FiZap size={13}/>} 
+                  <button
+                    className="action-btn wizard-btn"
+                    onClick={handleFixGrammar}
+                    disabled={isGrammarFixing}
+                    title="Fix grammar with Wizard AI"
+                  >
+                    {isGrammarFixing ? (
+                      <FiLoader className="spin" size={13} />
+                    ) : (
+                      <FiZap size={13} />
+                    )}
                     <span>Wizard</span>
                   </button>
 
                   <div className="toolbar-divider" />
 
-                  <button className="toolbar-btn action" onClick={handleCopy} title={copied ? "Copied!" : "Copy plaintext"}>
-                    {copied ? <FiCheck size={14} style={{ color: '#34d399' }} /> : <FiCopy size={14} />}
+                  <button
+                    className="toolbar-btn action"
+                    onClick={handleCopy}
+                    title={copied ? "Copied!" : "Copy plaintext"}
+                  >
+                    {copied ? (
+                      <FiCheck size={14} style={{ color: "#34d399" }} />
+                    ) : (
+                      <FiCopy size={14} />
+                    )}
                   </button>
 
-                  <button className="toolbar-btn action" onClick={handleDownload} title="Download note as text">
+                  <button
+                    className="toolbar-btn action"
+                    onClick={handleDownload}
+                    title="Download note as text"
+                  >
                     <FiDownload size={14} />
                   </button>
 
-                  <button className="toolbar-btn action delete-btn" onClick={handleDelete} title="Delete note permanently">
+                  <button
+                    className="toolbar-btn action delete-btn"
+                    onClick={handleDelete}
+                    title="Delete note permanently"
+                  >
                     <FiTrash2 size={14} />
                   </button>
                 </>
               )}
               <div className="toolbar-divider" />
-              <button className="toolbar-btn close-modal-btn" onClick={toggleNotes} title="Close Journal">
-                <FiX size={18}/>
+              <button
+                className="toolbar-btn close-modal-btn"
+                onClick={toggleNotes}
+                title="Close Journal"
+              >
+                <FiX size={18} />
               </button>
             </div>
           </div>
@@ -428,36 +641,44 @@ export default function WorkflowNotesModal() {
               <div className="editor-meta-bar">
                 <div className="meta-item">
                   <FiTerminal size={12} />
-                  <span>Workflow Context: <strong>{workflowName}</strong></span>
+                  <span>
+                    Workflow Context: <strong>{workflowName}</strong>
+                  </span>
                 </div>
                 <div className="meta-item">
                   <FiInfo size={12} />
-                  <span>Created: {new Date(selectedNote.created_at).toLocaleString()}</span>
+                  <span>
+                    Created:{" "}
+                    {new Date(selectedNote.created_at).toLocaleString()}
+                  </span>
                 </div>
               </div>
-              
-              <div 
-                 key={selectedNote.id}
-                 ref={(el) => {
-                   if (el) {
-                     if (el.innerHTML === "" && selectedNote.content) {
-                       el.innerHTML = selectedNote.content;
-                     }
-                     editorRef.current = el;
-                   }
-                 }}
-                 contentEditable
-                 suppressContentEditableWarning
-                 onInput={onInput}
-                 className="editor-canvas"
-                 placeholder="Start writing your thoughts..."
+
+              <div
+                key={selectedNote.id}
+                ref={(el) => {
+                  if (el) {
+                    if (el.innerHTML === "" && selectedNote.content) {
+                      el.innerHTML = selectedNote.content;
+                    }
+                    editorRef.current = el;
+                  }
+                }}
+                contentEditable
+                suppressContentEditableWarning
+                onInput={onInput}
+                className="editor-canvas"
+                placeholder="Start writing your thoughts..."
               />
             </div>
           ) : (
             <div className="editor-empty-state">
               <FiDatabase size={48} className="empty-icon" />
               <h3>No Note Selected</h3>
-              <p>Select an existing note from the ledger or create a new one to begin writing.</p>
+              <p>
+                Select an existing note from the ledger or create a new one to
+                begin writing.
+              </p>
               <button className="add-note-btn centered" onClick={handleCreate}>
                 <FiPlus size={16} />
                 <span>Create a Note</span>
@@ -473,10 +694,9 @@ export default function WorkflowNotesModal() {
               <div className="stat-pill">{stats.readTime} min read</div>
             </div>
           )}
-
         </div>
       </div>
-      
+
       <style>{`
         /* Scoped styles adapting to AgentMesh theme color variables */
         .notes-overlay {

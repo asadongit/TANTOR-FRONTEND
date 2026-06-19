@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { X, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useAttributesByLevel, useAddMatchRule, useEditMatchRule } from '../../../../../../hooks/mdm/matchMerge';
+import { useAttributesByLevel, useAddMatchRule, useEditMatchRule, useAlgorithmOptions } from '../../../../../../hooks/mdm/matchMerge';
 // ─── Style tokens ─────────────────────────────────────────────────────────────
 
 const inputCls =
@@ -150,22 +150,9 @@ const CustomSelect = ({ options, value, onChange, placeholder = 'Select', disabl
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ALGORITHM_OPTIONS = [
-    { value: 'EXACT', label: 'EXACT' },
-    { value: 'NORMALIZED_EXACT_MATCH', label: 'NORMALIZED_EXACT_MATCH' },
-    { value: 'JARO', label: 'JARO' },
-    { value: 'JARO_WINKLER', label: 'JARO_WINKLER' },
-    { value: 'LEVENSHTEIN', label: 'LEVENSHTEIN' },
-    { value: 'DAMERAU_LEVENSHTEIN', label: 'DAMERAU_LEVENSHTEIN' },
-    { value: 'BEIDER_MORSE', label: 'BEIDER_MORSE' },
-    { value: 'DATE_MATCH', label: 'DATE_MATCH' },
-    { value: 'LSH', label: 'LSH' },
-];
-
 const NULL_HANDLING_OPTIONS = [
     { value: 'EXCLUDE', label: 'EXCLUDE' },
     { value: 'NO_MATCH', label: 'NO_MATCH' },
-    { value: 'MATCH', label: 'MATCH' },
 ];
 
 const INIT_FORM = {
@@ -212,7 +199,10 @@ const ModalShell = ({ onClose, header, children, footer }) => (
     </div>
 );
 
-const RuleFormFields = ({ form, set, stagingAttributes, goldenAttributes, attrsLoading }) => (
+const RuleFormFields = ({ form, set, stagingAttributes, goldenAttributes, attrsLoading }) => {
+    const { algorithmOptions } = useAlgorithmOptions();
+
+    return (
     <>
         <div className="col-span-2 flex flex-col gap-1.5">
             <label className={labelCls}>Rule Name <span className="text-[#E05252]">*</span></label>
@@ -259,7 +249,7 @@ const RuleFormFields = ({ form, set, stagingAttributes, goldenAttributes, attrsL
         <div className="flex flex-col gap-1.5">
             <label className={labelCls}>Algorithm <span className="text-[#E05252]">*</span></label>
             <CustomSelect
-                options={ALGORITHM_OPTIONS}
+                options={algorithmOptions}
                 value={form.algorithm}
                 onChange={set('algorithm')}
                 placeholder="Select algorithm"
@@ -331,6 +321,7 @@ const RuleFormFields = ({ form, set, stagingAttributes, goldenAttributes, attrsL
         </div>
     </>
 );
+};
 
 const CancelButton = ({ onClick }) => (
     <button

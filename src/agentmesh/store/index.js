@@ -7,7 +7,7 @@ const NODE_DEFAULTS = {
   end: { label: 'END' },
   chat_model: { label: 'Chat Model', provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 },
   memory: { label: 'Memory', type_name: 'buffer_memory', window_size: 10 },
-  llm_agent: { label: 'LLM Agent', task: '', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 }, iteration_policy: { enabled: false, max_iterations: 3, target_score: 0.8, evaluator_task: '', inject_feedback_as: 'human' }, memory: null, tools: [], tool_configs: {}, return_direct: false, interrupt_before: false, interrupt_after: false, allowed_transitions: null },
+  llm_agent: { label: 'LLM Agent', task: '', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 }, iteration_policy: { enabled: false, max_iterations: 3, target_score: 0.8, evaluator_task: '', inject_feedback_as: 'human' }, memory: null, tools: [], tool_configs: {}, return_direct: false, interrupt_before: false, interrupt_after: false, allowed_transitions: null, agent_input_prefix: 'agent_input_', output_key_prefix: 'cd_output_' },
   deep_agent: { label: 'Deep Agent', task: '', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 }, tools: [], tool_configs: {}, skills: [], deep_agent_backend: 'postgres', deep_agent_root_dir: './mnt/deep_agents', interrupt_before: false, interrupt_after: false },
   tool_node: { label: 'Tool Node', tools: [], tool_configs: {}, return_direct: false, interrupt_before: false, interrupt_after: false },
   direct_tool: { label: 'Direct Tool', direct_tool_name: '', tool_arguments: {}, destination_key: '', return_direct: false, interrupt_before: false, interrupt_after: false },
@@ -20,24 +20,29 @@ const NODE_DEFAULTS = {
   webhook_response: { label: 'Webhook Response', response_status: 200, response_headers: {}, response_body_key: '' },
   cron: { label: 'Cron Schedule', enabled: true, cron_expression: '0 9 * * *', timezone: 'UTC' },
   polling: { label: 'Polling Trigger', enabled: true, poller_tool: '', tool_arguments: {}, destination_key: 'payload', cron_expression: '*/5 * * * *', timezone: 'UTC' },
-  splitter: { label: 'Splitter', split_field: 'items', batch_size: 1, destination_field: 'item' },
+  splitter: { label: 'Splitter', split_field: 'items', batch_size: 1, destination_field: 'item', discovery_keys: '' },
   aggregator: { label: 'Aggregator', action: 'append', field_to_aggregate: 'item', destination_field: 'aggregated_results' },
   form_node: { label: 'Form Submission', form_title: 'Information Required', form_description: 'Please fill out the following form.', form_fields: [{ id: 'feedback', label: 'Your Feedback', type: 'text', required: true }], form_submit_label: 'Submit' },
   notification: { label: 'Notification', notification_title: 'Workflow Alert', notification_message: 'The workflow has reached this point.', notification_type: 'info' },
   error_router: { label: 'Error Router', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 } },
   set_data: { label: 'Set Data', message: '' },
   output_parser: { label: 'Output Parser', parse_mode: 'auto', fallback_to_raw: true, output_context_key: 'parsed_output' },
-  pii_node: { label: 'PII Masking', pii_engine: 'regex', pii_target: 'latest_message', pii_entities: ['EMAIL_ADDRESS', 'PHONE_NUMBER', 'PERSON'], pii_custom_regex: [] },
+  pii_node: { label: 'PII Masking', pii_engine: 'regex', pii_target: 'latest_message', pii_entities: ['EMAIL_ADDRESS', 'PHONE_NUMBER', 'PERSON'], pii_custom_regex: [], docbot_url: 'http://localhost:8000', docbot_method: 'hybrid', hitl_enabled: false, identifiers_input_key: 'extracted_identifiers', rendered_input_key: 'ocr_like_results' },
   data_cleaning: { label: 'Data Cleaning', data_cleaning_rules: ['GEN_TRIM_WHITESPACE'], data_cleaning_target: 'latest_message', data_cleaning_input_key: '', data_cleaning_output_key: 'cleaned_data' },
   network_graph: { label: 'Network Graph', graph_target_key: 'latest_message', graph_neo4j_uri: '', graph_neo4j_user: '', graph_neo4j_password: '' },
   ocr_node: { label: 'OCR Node', ocr_input_key: 'latest_file_path', ocr_prompt: 'Please perform OCR on this document and return the full text accurately.', llm: { provider: 'groq', model: 'llama-3.2-90b-vision-preview', temperature: 0 }, interrupt_before: false, interrupt_after: false },
-  api_node: { label: 'API Request', method: 'GET', url: '', headers: {}, params: {}, body: '', auth_method: 'none', api_auth_config: {} },
+  pattern_extract: { label: 'Pattern Extractor', extract_mode: 'identifier', extract_patterns: [], extract_input_key: 'flattened_json', extract_output_key: 'extracted_identifiers', identifiers_input_key: 'extracted_identifiers' },
+  api_node: { label: 'API Request', method: 'GET', url: '', headers: {}, params: {}, body: '', auth_method: 'none', api_auth_config: {}, use_curl: false, curl_command: '' },
   ingestion_node: { label: 'Ingestion', vector_store: 'chroma', vector_collection: 'default', chunk_size: 1000, chunk_overlap: 100, chunking_strategy: 'recursive', ingestion_source_key: 'latest_ocr_output' },
   classification: { label: 'Classification Agent', classification_classes: [{ class: 'Class A', description: 'Description for Class A' }], classification_summary: false, classification_engine: 'llm', classification_input_field: '', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 } },
   sensitivity_classifier: { label: 'Sensitivity Classifier', classification_input_key: 'latest_ocr_output', classification_output_key: '', engine_mode: 'both', custom_entities: '', output_format: 'markdown' },
+  pii_gate_node: { label: 'PII Verification Gate', input_key: 'latest_ocr_output', interrupt_after: true },
+  ingestion_router: { label: 'Ingestion Router', scan_mode: 'auto', file_filters: ['.pdf', '.jpg', '.png', '.jpeg'], concurrency_limit: 5, parent_folder_key: 'parent_folder_path', folder_identifier_key: 'customer_folder_name', curl_command_key: 'curl_command' },
+  event_emitter: { label: 'Event Emitter', webhook_url: 'http://localhost:8000/documents/mesh-status-sync', emit_status: '', interrupt_before: false, interrupt_after: false },
   cardboard: { label: 'Sticky Note', color: 'slate' },
   json_transform: {
     label: 'JSON Transform',
+    transform_operation: 'flatten', transform_separator: '_', transform_pick_fields: '', transform_rename_map: '', transform_omit_keys: '', transform_input_key: 'api_response', transform_output_key: 'flattened_json',
     jt_input_key: 'latest_api_result',
     jt_output_key: 'transformed_data',
     jt_mode: 'jmespath',
@@ -45,6 +50,10 @@ const NODE_DEFAULTS = {
     jt_operations: [],
     jt_expression: '',
     jt_pass_through: false
+  },
+  json_transform_va: {
+    label: 'Flatten JSON (VA)',
+    transform_operation: 'flatten', transform_separator: '/', transform_pick_fields: [], transform_rename_map: {}, transform_omit_keys: [], transform_input_key: 'payload', transform_output_key: 'transformed_json'
   },
   button_trigger: {
     label: 'Button Trigger',
@@ -121,6 +130,8 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           classification_summary: n.classification_summary ?? n.data?.classification_summary ?? false,
           classification_engine: n.classification_engine || n.data?.classification_engine || 'llm',
           classification_input_field: n.classification_input_field || n.data?.classification_input_field || '',
+          use_curl: n.use_curl ?? n.data?.use_curl ?? false,
+          curl_command: n.curl_command || n.data?.curl_command || '',
           jt_input_key: n.jt_input_key || n.data?.jt_input_key || 'latest_api_result',
           jt_output_key: n.jt_output_key || n.data?.jt_output_key || 'transformed_data',
           jt_mode: n.jt_mode || n.data?.jt_mode || 'jmespath',
@@ -560,6 +571,7 @@ export const useWorkflowStore = create((set, get) => ({
     });
     // ✅ VARIABLE EXPLORER: Clear data explorer when starting a new workflow
     useRunStore.getState().reset();
+    useVariablesStore.getState().reset();
   },
 
   loadWorkflowIntoEditor: async (w) => {
@@ -605,6 +617,7 @@ export const useWorkflowStore = create((set, get) => ({
     });
     // ✅ VARIABLE EXPLORER: Clear data explorer when loading an existing workflow
     useRunStore.getState().reset();
+    useVariablesStore.getState().reset();
   },
 
   buildConfig: () => {
@@ -631,27 +644,56 @@ export const useWorkflowStore = create((set, get) => ({
           'audio_voice', 'mute_audio',
           'split_field', 'batch_size',
           'file_format', 'file_name', 'file_data_key', 'file_overwrite',
-          'api_method', 'api_url', 'api_headers', 'api_params', 'api_body', 'api_auth_type', 'api_auth_config', 'api_response_format', 'connection_id', 'api_protocol', 'graphql_query',
+          'api_method', 'api_url', 'api_headers', 'api_params', 'api_body', 'api_auth_type', 'api_auth_config', 'api_response_format', 'connection_id', 'api_protocol', 'graphql_query', 'use_curl', 'curl_command',
           'notification_title', 'notification_message', 'notification_type', 'mute_notification_message', 'show_chat_button',
           'form_title', 'form_description', 'form_fields', 'form_submit_label', 'form_use_context_schema',
-          'pii_engine', 'pii_target', 'pii_entities', 'pii_custom_regex',
+          'pii_engine', 'datafog_engine', 'pii_target', 'pii_entities', 'pii_custom_regex', 'docbot_url', 'docbot_method', 'hitl_enabled', 'identifiers_input_key', 'rendered_input_key', 'context_variable_key',
           'data_cleaning_rules', 'data_cleaning_target', 'data_cleaning_input_key', 'data_cleaning_output_key',
           'graph_target_key', 'graph_neo4j_uri', 'graph_neo4j_user', 'graph_neo4j_password',
           'graph_collection', 'graph_sender_key', 'graph_receiver_key', 'graph_txn_id_key', 'graph_amount_key', 'graph_timestamp_key',
           'ocr_input_key', 'ocr_prompt', 'ocr_engine', 'ocr_standard_model',
+          'scan_mode', 'file_filters', 'concurrency_limit', 'webhook_url', 'emit_status',
           'on_error',
           'response_status', 'response_headers', 'response_body_key',
           'direct_tool_name', 'tool_arguments', 'destination_key',
           'classification_classes', 'classification_summary', 'classification_engine', 'classification_input_field',
+          'engine_mode', 'custom_entities', 'output_format',
           'template_content', 'template_output_key', 'template_data_key', 'template_file_path',
+          'template_id', 'input_data_key', 'output_file_name', 'report_format', 'template_category',
           'button_label', 'button_input', 'button_category',
           'jt_input_key', 'jt_output_key', 'jt_mode', 'jt_query', 'jt_operations', 'jt_expression', 'jt_pass_through',
-          'weightage_categories', 'weightage_output_key'
+          'weightage_categories', 'weightage_output_key',
+          'db_connection_string', 'db_database', 'db_collection', 'db_operation', 'db_document', 'db_query', 'db_output_key', 'db_limit',
+          'transform_operation', 'transform_separator', 'transform_pick_fields', 'transform_rename_map', 'transform_omit_keys', 'transform_input_key', 'transform_output_key',
+          'ocr_service_url', 'ocr_service_params', 'ocr_service_headers', 'ocr_service_response_type', 'ocr_service_file_field', 'ocr_service_text_path', 'ocr_multi_file_key',
+          'classification_input_key', 'classification_output_key',
+          'destination_field', 'action', 'field_to_aggregate', 'separator',
+          'show_citations',
+          'extract_mode', 'extract_patterns', 'extract_input_key', 'extract_output_key', 'identifiers_input_key',
+          'debug_scope', 'debug_key',
+          'subscription_filters', 'subscription_input_key', 'subscription_output_key',
+          'payload_template', 'payload_destination_key', 'auto_collect_prefix', 'clean_binary_from',
+          'classification_extract_identifiers', 'discovery_keys', 'agent_input_prefix', 'output_key_prefix', 'input_key',
+          'parent_folder_key', 'folder_identifier_key', 'curl_command_key'
         ];
 
         const nodeConfig = {};
         validFields.forEach(field => {
-          if (d[field] !== undefined) nodeConfig[field] = d[field];
+          if (d[field] !== undefined) {
+             if (field === 'subscription_filters') {
+               if (typeof d[field] === 'string') {
+                 if (d[field].trim() === '') {
+                   nodeConfig[field] = null;
+                 } else {
+                   try { nodeConfig[field] = JSON.parse(d[field]); } catch(e) { nodeConfig[field] = null; }
+                 }
+               } else {
+                 nodeConfig[field] = Object.keys(d[field] || {}).length > 0 ? d[field] : null;
+               }
+             } else {
+               nodeConfig[field] = d[field];
+             }
+          }
         });
 
         // Ensure ID and position are correctly set from React Flow node state
@@ -1038,4 +1080,70 @@ export const useRunStore = create((set) => ({
       injectFeedback: true
     }
   }),
+}));
+
+export const useVariablesStore = create((set, get) => ({
+  variables: [],
+  isLoading: false,
+  error: null,
+  showVariablesPanel: false,
+  setShowVariablesPanel: (show) => set({ showVariablesPanel: show }),
+  setVariables: (variables) => set({ variables, error: null }),
+  setLoading: (isLoading) => set({ isLoading }),
+  setError: (error) => set({ error, isLoading: false }),
+  addVariable: (variable) => set((state) => {
+    // Prevent duplicates by updating if key exists
+    const idx = state.variables.findIndex(v => v.key === variable.key);
+    if (idx >= 0) {
+      const next = [...state.variables];
+      next[idx] = variable;
+      return { variables: next };
+    }
+    return { variables: [...state.variables, variable] };
+  }),
+  removeVariable: (key) => set((state) => ({
+    variables: state.variables.filter(v => v.key !== key)
+  })),
+  reset: () => set({ variables: [], isLoading: false, error: null, showVariablesPanel: false }),
+
+  // Async API wrappers
+  fetchVariables: async (workflowId) => {
+    set({ isLoading: true, error: null });
+    try {
+      const api = await import('../api/agentmesh');
+      const res = await api.listWorkflowVariables(workflowId);
+      set({ variables: res.variables || [], isLoading: false });
+    } catch (err) {
+      set({ error: err.message, isLoading: false });
+    }
+  },
+  upsertVariable: async (workflowId, payload) => {
+    const api = await import('../api/agentmesh');
+    const res = await api.setWorkflowVariable(workflowId, payload);
+    if (res.status === 'success') {
+      get().addVariable(res.variable);
+      return res.variable;
+    }
+    throw new Error(res.message || 'Failed to save variable');
+  },
+  deleteVariable: async (workflowId, key) => {
+    const api = await import('../api/agentmesh');
+    const res = await api.deleteWorkflowVariable(workflowId, key);
+    if (res.status === 'success') {
+      get().removeVariable(key);
+      return true;
+    }
+    throw new Error(res.message || 'Failed to delete variable');
+  },
+  uploadJsonFile: async (workflowId, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const api = await import('../api/agentmesh');
+    const res = await api.uploadJsonVariable(workflowId, formData);
+    if (res.status === 'success') {
+      await get().fetchVariables(workflowId);
+      return res;
+    }
+    throw new Error(res.message || 'Failed to upload JSON');
+  }
 }));
