@@ -1325,7 +1325,8 @@ export const WeightageCategoriesEditor = memo(function WeightageCategoriesEditor
                                           placeholder="Condition (e.g. loan_amount > 5000)"
                                           disabled={!isCondEnabled || !isFieldEnabled || !isCatEnabled}
                                           rows={1}
-                                          className="w-full min-h-[34px] px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-white text-xs outline-none resize-none box-border focus:border-[var(--accent-btn)]"
+                                          style={{ resize: "vertical" }}
+                                          className="w-full min-h-[34px] px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-white text-xs outline-none box-border focus:border-[var(--accent-btn)]"
                                         />
                                       </div>
 

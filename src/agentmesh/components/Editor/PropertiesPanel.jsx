@@ -178,7 +178,7 @@ export default function PropertiesPanel() {
   const nodeDesc = useMemo(() => {
     if (!data?.type) return null;
     const info = NODE_TYPES.find((n) => n.type === data.type);
-    return info?.desc || null;
+    return info?.detailedDesc || info?.desc || null;
   }, [data?.type]);
 
   const update = useCallback(
