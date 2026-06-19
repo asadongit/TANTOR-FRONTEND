@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { FiInfo, FiPlus } from "react-icons/fi";
 import {
-  Toggle,
   Field,
   Textarea,
   Select,
@@ -136,20 +135,6 @@ export default function ApiNodeConfig({ data, update, selectedNodeId }) {
         >
           {method}
         </span>
-        {api.api_url && (
-          <span
-            style={{
-              fontWeight: 400,
-              color: "var(--text-muted)",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              flex: 1,
-            }}
-          >
-            - {api.api_url}
-          </span>
-        )}
       </div>
     );
   };
@@ -467,58 +452,6 @@ export default function ApiNodeConfig({ data, update, selectedNodeId }) {
       >
         <FiPlus size={14} /> Add Additional API
       </button>
-
-      <div
-        style={{ height: "1px", background: "var(--border)", margin: "16px 0" }}
-      />
-
-      <div style={{ marginBottom: 20 }}>
-        <div
-          style={{
-            fontSize: 10,
-            fontWeight: 800,
-            color: "var(--text-muted)",
-            marginBottom: 12,
-            textTransform: "uppercase",
-          }}
-        >
-          Human-in-the-Loop
-        </div>
-        <Toggle
-          checked={data.interrupt_after === true}
-          onChange={(v) => update({ interrupt_after: v })}
-          label="Pause AFTER API execution (interrupt_after)"
-        />
-        <div
-          style={{
-            fontSize: 10,
-            color: "#059669",
-            marginTop: 2,
-            marginLeft: 28,
-          }}
-        >
-          Halts the workflow after sending the payload. The workflow will wait
-          until an external system resumes it.
-        </div>
-      </div>
-
-      <div
-        style={{
-          marginTop: 20,
-          padding: 12,
-          background: "#F0F9FF",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "#0369A1",
-          lineHeight: 1.5,
-          border: "1px solid #BAE6FD",
-        }}
-      >
-        <FiInfo size={12} style={{ marginRight: 6 }} />
-        Result is saved to <strong>context.api_result_{selectedNodeId}</strong>.
-        Use it in prompts as{" "}
-        <code>{"{{api_result_" + selectedNodeId + ".some_field}}"}</code>.
-      </div>
     </>
   );
 }

@@ -983,6 +983,7 @@ export const useUIStore = create((set) => ({
   canvasEdgeWidth: parseFloat((typeof window !== 'undefined' ? localStorage.getItem('canvas_edge_width') : '3.5') || '3.5'),
   canvasHandleSize: parseInt((typeof window !== 'undefined' ? localStorage.getItem('canvas_handle_size') : '10') || '10', 10),
   canvasConnectionRadius: parseInt((typeof window !== 'undefined' ? localStorage.getItem('canvas_connection_radius') : '20') || '20', 10),
+  canvasSnapGrid: parseInt((typeof window !== 'undefined' ? localStorage.getItem('canvas_snap_grid') : '20') || '20', 10),
   setCanvasWireStyle: (v) => {
     if (typeof window !== 'undefined') localStorage.setItem('canvas_wire_style', v);
     set({ canvasWireStyle: v });
@@ -1010,6 +1011,10 @@ export const useUIStore = create((set) => ({
   setCanvasConnectionRadius: (v) => {
     if (typeof window !== 'undefined') localStorage.setItem('canvas_connection_radius', v.toString());
     set({ canvasConnectionRadius: v });
+  },
+  setCanvasSnapGrid: (v) => {
+    if (typeof window !== 'undefined') localStorage.setItem('canvas_snap_grid', v.toString());
+    set({ canvasSnapGrid: v });
   },
 }));
 
