@@ -237,6 +237,13 @@ export function BusinessFooter() {
       return;
     }
 
+    const selectFields = getSelectFields(columnSettings, hasOperation);
+    if (!selectFields || selectFields.length === 0) {
+      setToast({ show: true, message: "Please select at least one column before proceeding.", type: "error" });
+      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+      return;
+    }
+
     Object.entries(source).forEach(([tableOrColumn, columnsOrProperties]) => {
       Object.entries(columnsOrProperties).forEach(([column, properties]) => {
         if (properties.output === "Yes") selectColumns.add(column);
@@ -365,7 +372,15 @@ export function BusinessFooter() {
           setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
           return;
         }
-                Object.entries(source).forEach(([tableOrColumn, columnsOrProperties]) => {
+
+        const selectFields = getSelectFields(columnSettings, hasOperation);
+        if (!selectFields || selectFields.length === 0) {
+          setToast({ show: true, message: "Please select at least one column before proceeding.", type: "error" });
+          setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+          return;
+        }
+
+        Object.entries(source).forEach(([tableOrColumn, columnsOrProperties]) => {
           const columns = hasOperation ? columnsOrProperties : columnsOrProperties;
 
           Object.entries(columns).forEach(([column, properties]) => {

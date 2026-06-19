@@ -320,11 +320,6 @@ export function SourceViewNode({ id, onSave }) {
       return;
     }
 
-    if (!selectedColumns || selectedColumns.length === 0) {
-      showToast('Please select at least one column', 'error');
-      return;
-    }
-
     if (!finalPayload.operation && previousView != selectedView) {
       handleFinalPayload((prevData) => ({
         ...prevData,
