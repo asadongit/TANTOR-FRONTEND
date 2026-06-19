@@ -89,7 +89,7 @@ const LAZY_CONFIGS = {
   data_cleaning: lazy(
     () => import("./propertypanelModules/DataCleaningConfig"),
   ),
-  network_graph: lazy(
+  graph_ingestion: lazy(
     () => import("./propertypanelModules/NetworkGraphConfig"),
   ),
   pii_node: lazy(() => import("./propertypanelModules/PiiNodeConfig")),
@@ -102,7 +102,7 @@ const LAZY_CONFIGS = {
   sensitivity_classifier: lazy(
     () => import("./propertypanelModules/SensitivityClassifierConfig"),
   ),
-  ingestion_node: lazy(
+  vector_ingestion: lazy(
     () => import("./propertypanelModules/IngestionNodeConfig"),
   ),
   rag_node: lazy(() => import("./propertypanelModules/RagNodeConfig")),

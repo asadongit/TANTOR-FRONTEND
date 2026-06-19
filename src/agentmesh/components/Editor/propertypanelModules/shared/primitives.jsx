@@ -434,7 +434,7 @@ export const Toggle = memo(function Toggle({ checked, onChange, label }) {
           position: 'relative',
           transition: 'background-color 0.2s',
           flexShrink: 0,
-          backgroundColor: checked ? 'var(--accent-btn, #3B82F6)' : '#E2E8F0'
+          backgroundColor: checked ? 'var(--accent-btn, #7C3AED)' : '#E2E8F0'
         }}
       >
         <div

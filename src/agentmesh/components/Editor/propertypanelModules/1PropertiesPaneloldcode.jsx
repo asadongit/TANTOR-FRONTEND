@@ -3847,7 +3847,8 @@ Output ONLY the JSON list inside \`\`\`json ... \`\`\` block. No other text.`;
     </div>
   );
 }
-export default function PropertiesPanel() {
+
+export default function PropertiesPanel() {
   const selectedNodeId = useUIStore((s) => s.selectedNodeId);
   const selectedEdgeId = useUIStore((s) => s.selectedEdgeId);
   const { nodes, edges } = useWorkflowStore();

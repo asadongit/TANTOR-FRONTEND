@@ -17,7 +17,7 @@ export default function TemplateNodeConfig({ data, update }) {
             gap: 6,
           }}
         >
-          <FiFileText color="#3B82F6" size={14} /> Template Engine Settings
+          <FiFileText color="#7C3AED" size={14} /> Template Engine Settings
         </div>
 
         <Field

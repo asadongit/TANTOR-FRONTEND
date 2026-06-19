@@ -29,11 +29,11 @@ const NODE_DEFAULTS = {
   output_parser: { label: 'Output Parser', parse_mode: 'auto', fallback_to_raw: true, output_context_key: 'parsed_output' },
   pii_node: { label: 'PII Masking', pii_engine: 'regex', pii_target: 'latest_message', pii_entities: ['EMAIL_ADDRESS', 'PHONE_NUMBER', 'PERSON'], pii_custom_regex: [], docbot_url: 'http://localhost:8000', docbot_method: 'hybrid', hitl_enabled: false, identifiers_input_key: 'extracted_identifiers', rendered_input_key: 'ocr_like_results' },
   data_cleaning: { label: 'Data Cleaning', data_cleaning_rules: ['GEN_TRIM_WHITESPACE'], data_cleaning_target: 'latest_message', data_cleaning_input_key: '', data_cleaning_output_key: 'cleaned_data' },
-  network_graph: { label: 'Network Graph', graph_target_key: 'latest_message', graph_neo4j_uri: '', graph_neo4j_user: '', graph_neo4j_password: '' },
+  graph_ingestion: { label: 'Graph Ingestion', graph_target_key: 'latest_message', graph_neo4j_uri: '', graph_neo4j_user: '', graph_neo4j_password: '', graph_ingestion_mode: 'visual', graph_cypher_query: '', graph_nodes_schema: [], graph_relations_schema: [] },
   ocr_node: { label: 'OCR Node', ocr_input_key: 'latest_file_path', ocr_prompt: 'Please perform OCR on this document and return the full text accurately.', llm: { provider: 'groq', model: 'llama-3.2-90b-vision-preview', temperature: 0 }, interrupt_before: false, interrupt_after: false },
   pattern_extract: { label: 'Pattern Extractor', extract_mode: 'identifier', extract_patterns: [], extract_input_key: 'flattened_json', extract_output_key: 'extracted_identifiers', identifiers_input_key: 'extracted_identifiers' },
   api_node: { label: 'API Request', method: 'GET', url: '', headers: {}, params: {}, body: '', auth_method: 'none', api_auth_config: {}, use_curl: false, curl_command: '' },
-  ingestion_node: { label: 'Ingestion', vector_store: 'chroma', vector_collection: 'default', chunk_size: 1000, chunk_overlap: 100, chunking_strategy: 'recursive', ingestion_source_key: 'latest_ocr_output' },
+  vector_ingestion: { label: 'Vector Ingestion', vector_store: 'chroma', vector_collection: 'default', chunk_size: 1000, chunk_overlap: 100, chunking_strategy: 'recursive', ingestion_source_key: 'latest_ocr_output' },
   classification: { label: 'Classification Agent', classification_classes: [{ class: 'Class A', description: 'Description for Class A' }], classification_summary: false, classification_engine: 'llm', classification_input_field: '', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 } },
   sensitivity_classifier: { label: 'Sensitivity Classifier', classification_input_key: 'latest_ocr_output', classification_output_key: '', engine_mode: 'both', custom_entities: '', output_format: 'markdown' },
   pii_gate_node: { label: 'PII Verification Gate', input_key: 'latest_ocr_output', interrupt_after: true },
@@ -674,7 +674,8 @@ export const useWorkflowStore = create((set, get) => ({
           'subscription_filters', 'subscription_input_key', 'subscription_output_key',
           'payload_template', 'payload_destination_key', 'auto_collect_prefix', 'clean_binary_from',
           'classification_extract_identifiers', 'discovery_keys', 'agent_input_prefix', 'output_key_prefix', 'input_key',
-          'parent_folder_key', 'folder_identifier_key', 'curl_command_key'
+          'parent_folder_key', 'folder_identifier_key', 'curl_command_key',
+          'graph_ingestion_mode', 'graph_cypher_query', 'graph_nodes_schema', 'graph_relations_schema'
         ];
 
         const nodeConfig = {};
