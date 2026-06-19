@@ -75,6 +75,7 @@ export default function SettingsPage() {
   const [edgeWidth, setEdgeWidth] = useState(1.5);
   const [handleSize, setHandleSize] = useState(10);
   const [connectionRadius, setConnectionRadius] = useState(20);
+  const [snapGrid, setSnapGrid] = useState(20);
   
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -91,7 +92,8 @@ export default function SettingsPage() {
     dotSize: 1.5,
     edgeWidth: 1.5,
     handleSize: 10,
-    connectionRadius: 20
+    connectionRadius: 20,
+    snapGrid: 20
   });
 
   const isDirty =
@@ -105,7 +107,8 @@ export default function SettingsPage() {
     dotSize !== savedRef.current.dotSize ||
     edgeWidth !== savedRef.current.edgeWidth ||
     handleSize !== savedRef.current.handleSize ||
-    connectionRadius !== savedRef.current.connectionRadius;
+    connectionRadius !== savedRef.current.connectionRadius ||
+    snapGrid !== savedRef.current.snapGrid;
  
   useEffect(() => {
     // Load settings from localStorage
@@ -120,6 +123,7 @@ export default function SettingsPage() {
     const cachedEdgeWidth = localStorage.getItem('canvas_edge_width') || '1.5';
     const cachedHandleSize = localStorage.getItem('canvas_handle_size') || '10';
     const cachedConnectionRadius = localStorage.getItem('canvas_connection_radius') || '20';
+    const cachedSnapGrid = localStorage.getItem('canvas_snap_grid') || '20';
   
     setProvider(cachedProvider);
     setModel(cachedModel);
@@ -130,8 +134,9 @@ export default function SettingsPage() {
     setNodeTheme(cachedTheme);
     setDotSize(parseFloat(cachedDotSize));
     setEdgeWidth(parseFloat(cachedEdgeWidth));
-    setHandleSize(parseInt(cachedHandleSize, 10));
-    setConnectionRadius(parseInt(cachedConnectionRadius, 10));
+    setHandleSize(Number.parseInt(cachedHandleSize, 10));
+    setConnectionRadius(Number.parseInt(cachedConnectionRadius, 10));
+    setSnapGrid(Number.parseInt(cachedSnapGrid, 10));
   
     // Sync ref so isDirty starts false
     savedRef.current = {
@@ -144,8 +149,9 @@ export default function SettingsPage() {
       nodeTheme: cachedTheme,
       dotSize: parseFloat(cachedDotSize),
       edgeWidth: parseFloat(cachedEdgeWidth),
-      handleSize: parseInt(cachedHandleSize, 10),
-      connectionRadius: parseInt(cachedConnectionRadius, 10)
+      handleSize: Number.parseInt(cachedHandleSize, 10),
+      connectionRadius: Number.parseInt(cachedConnectionRadius, 10),
+      snapGrid: Number.parseInt(cachedSnapGrid, 10)
     };
  
     // Fetch available models
@@ -176,6 +182,7 @@ export default function SettingsPage() {
       localStorage.setItem('canvas_edge_width', edgeWidth.toString());
       localStorage.setItem('canvas_handle_size', handleSize.toString());
       localStorage.setItem('canvas_connection_radius', connectionRadius.toString());
+      localStorage.setItem('canvas_snap_grid', snapGrid.toString());
  
       // Propagate setting changes to store instantly
       const storeState = useUIStore.getState();
@@ -186,9 +193,10 @@ export default function SettingsPage() {
       if (storeState.setCanvasEdgeWidth) storeState.setCanvasEdgeWidth(edgeWidth);
       if (storeState.setCanvasHandleSize) storeState.setCanvasHandleSize(handleSize);
       if (storeState.setCanvasConnectionRadius) storeState.setCanvasConnectionRadius(connectionRadius);
+      if (storeState.setCanvasSnapGrid) storeState.setCanvasSnapGrid(snapGrid);
  
       // Update ref so isDirty resets to false
-      savedRef.current = { provider, model, temperature, apiKeyOverride, wireStyle, backgroundStyle, nodeTheme, dotSize, edgeWidth, handleSize, connectionRadius };
+      savedRef.current = { provider, model, temperature, apiKeyOverride, wireStyle, backgroundStyle, nodeTheme, dotSize, edgeWidth, handleSize, connectionRadius, snapGrid };
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
     } catch (e) {
@@ -498,6 +506,53 @@ export default function SettingsPage() {
                             </div>
                             <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>
                               {sizeOpt.value}px
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Canvas Grid Snap Options */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: '#4B5563', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center' }}>
+                      Node Snapping to Grid
+                      <Tooltip text="Select the snapping distance when dragging nodes on the canvas grid." />
+                    </label>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      {[
+                        { value: 0, label: 'None', desc: 'No snapping' },
+                        { value: 10, label: 'Small', desc: '10px snap' },
+                        { value: 20, label: 'Normal', desc: '20px snap' },
+                        { value: 40, label: 'Large', desc: '40px snap' }
+                      ].map(gridOpt => {
+                        const isSelected = snapGrid === gridOpt.value;
+                        return (
+                          <button
+                            key={gridOpt.value}
+                            type="button"
+                            onClick={() => setSnapGrid(gridOpt.value)}
+                            style={{
+                              flex: 1,
+                              padding: '10px 8px',
+                              borderRadius: 10,
+                              border: isSelected ? '2px solid var(--theme-primary)' : '1px solid #E2E8F0',
+                              background: isSelected ? 'var(--theme-primary-glow)' : 'white',
+                              color: 'var(--text-primary)',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              textAlign: 'center',
+                              gap: 2,
+                            }}
+                          >
+                            <div style={{ fontSize: 12, fontWeight: 700 }}>
+                              {gridOpt.label}
+                            </div>
+                            <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>
+                              {gridOpt.desc}
                             </div>
                           </button>
                         );

@@ -141,6 +141,7 @@ export default function WorkflowCanvas() {
     canvasDotSize,
     canvasEdgeWidth,
     canvasConnectionRadius,
+    canvasSnapGrid,
   } = useUIStore();
 
   const reactFlowWrapper = useRef(null);
@@ -1152,8 +1153,8 @@ export default function WorkflowCanvas() {
             }}
             fitView
             fitViewOptions={{ padding: 0.4 }}
-            snapToGrid={true}
-            snapGrid={[20, 20]}
+            snapToGrid={canvasSnapGrid > 0}
+            snapGrid={canvasSnapGrid > 0 ? [canvasSnapGrid, canvasSnapGrid] : [20, 20]}
             connectionRadius={canvasConnectionRadius}
             deleteKeyCode={["Backspace", "Delete"]}
             className={isDarkCanvas ? "is-dark-theme" : ""}
