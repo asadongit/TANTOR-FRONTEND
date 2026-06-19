@@ -141,6 +141,7 @@ const LAZY_CONFIGS = {
   cardboard: lazy(() => import("./propertypanelModules/CardboardConfig")),
   button_trigger: lazy(() => import("./propertypanelModules/TriggerConfig")),
   auto_trigger: lazy(() => import("./propertypanelModules/TriggerConfig")),
+  textToAudio: lazy(() => import("./propertypanelModules/TextToAudioConfig")),
 };
 
 function getConfigComp(type) {
@@ -747,6 +748,7 @@ export default function PropertiesPanel() {
             "supervisor",
             "swarm",
             "tool_node",
+            "textToAudio",
           ];
           const hasInternalAdvanced =
             canHaveHitl && NODES_WITH_INTERNAL_ADVANCED.includes(data.type);
