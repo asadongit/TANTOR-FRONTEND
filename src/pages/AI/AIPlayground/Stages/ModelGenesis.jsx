@@ -1690,7 +1690,7 @@ function ModelGenesis() {
           savedConfig.modelling_type === 'multivariate_timeseries' ? 'Multivariate' :
           savedConfig.modelling_type === 'multiseries_timeseries' ? 'Multiseries' : '',
         timeColumn: savedConfig.time_column || '',
-        frequency: '',
+        frequency: savedConfig.frequency || '',
         multivariate_columns: savedConfig.selected_columns || [],
         timeSeriesLookback: savedConfig.timeSeriesLookback || 7,
 
@@ -1730,17 +1730,12 @@ function ModelGenesis() {
 
   const [config, setConfig] = useState(getInitialConfig);
   const [isValidated, setIsValidated] = useState(mode === 'view' && !!workflowState?.modelGenesis?.config);
-  const [isTimeSeriesValidated, setIsTimeSeriesValidated] = useState(
-      mode === 'view' &&
-      !!workflowState?.modelGenesis?.config?.target_column &&
-      !!workflowState?.modelGenesis?.config?.time_column
-    );
+  const [isTimeSeriesValidated, setIsTimeSeriesValidated] = useState(mode === 'view' &&!!workflowState?.modelGenesis?.config?.target_column &&!!workflowState?.modelGenesis?.config?.time_column);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
   if ((mode === 'view' || mode === 'edit') && workflowState?.modelGenesis?.config) {
         const savedConfig = workflowState.modelGenesis.config;
-
         setConfig(getInitialConfig());
         setIsValidated(mode === 'view');
 
@@ -1886,7 +1881,7 @@ function ModelGenesis() {
         train_size: trainSize,
         random_state: 42,
         target_column: config.targetFeature,
-        modelling_type: config.predictionType === 'Time Series' 
+        modelling_type: config.predictionType === 'Time Series'
           ? {
               'Univariate': 'univariate_timeseries',
               'Multivariate': 'multivariate_timeseries',
@@ -1894,6 +1889,7 @@ function ModelGenesis() {
             }[config.timeSeriesType]
           : modellingTypeMap[config.classification],
         time_column: config.predictionType === 'Time Series' ? config.timeColumn : null,
+        frequency: config.predictionType === 'Time Series' ? config.frequency || null : null,
         timeseries_split: config.predictionType === 'Time Series' ? config.timeSeriesLookback : null,
         selected_columns: config.predictionType === 'Time Series' && config.timeSeriesType === 'Multivariate' ? (config.multivariate_columns || []) : [],
         fairness_columns: config.fairness_columns,

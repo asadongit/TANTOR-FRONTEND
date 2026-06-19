@@ -273,7 +273,9 @@ const ConfigurationTab = ({ onValidationErrors }) => {
                     model: Array.isArray(value) ? value : value,
                     model_id: isEnsembleEnabled
                         ? selectedModelIds
-                        : (selectedModelIds[0] || '')
+                        : (selectedModelIds[0] || ''),
+                    modeling_type: selectedModel?.modeling_type || '',
+                    modelling_type: selectedModel?.modeling_type || ''
                 }));
 
                 if (selectedModel) {
@@ -364,16 +366,16 @@ const ConfigurationTab = ({ onValidationErrors }) => {
 
     const validateScheduleName = (name) => {
         if (!name.trim()) return null;
-        
+
         if (name.length > 100) return 'Schedule name must be 100 characters or less';
-        
+
         if (!/^[A-Za-z]/.test(name.trim())) return 'Schedule name must start with an alphabet';
-        
+
         if (/^\d+$/.test(name.trim())) return 'Schedule name cannot contain only digits';
-        
+
         const validCharPattern = /^[A-Za-z0-9_\-@#& ]+$/;
         if (!validCharPattern.test(name)) return 'Only letters, numbers, underscore, hyphen, space, @, #, and & are allowed';
-        
+
         if (existingSchedules.some(s => s.name.toLowerCase() === name.toLowerCase()))
             return 'A schedule with this name already exists. Please choose a different name.';
         return null;
@@ -425,6 +427,13 @@ const ConfigurationTab = ({ onValidationErrors }) => {
             const secureQueryData = await secureQueryResponse.json();
             const policyIds = secureQueryData.matched_policy_ids;
 
+            // Get modeling_type from the selected model
+            const selectedModelNames = getModelListValue();
+            const selectedModels = models.filter(
+                m => selectedModelNames.includes(m.value || m.model_name)
+            );
+            const modellingType = selectedModels[0]?.modeling_type || '';
+
             const response = await fetch(`${hostnameAI}/orchestration/validate-tables`, {
                 method: 'POST',
                 headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
@@ -432,7 +441,8 @@ const ConfigurationTab = ({ onValidationErrors }) => {
                     model_name: getModelListValue(),
                     source_table: schedulerState.source.source_table,
                     destination_table: schedulerState.target.destination_table,
-                    policy_id: policyIds
+                    policy_id: policyIds,
+                    modelling_type: modellingType
                 })
             });
             if (!response.ok) throw new Error('Validation failed');
@@ -670,8 +680,8 @@ const ConfigurationTab = ({ onValidationErrors }) => {
             const secureQueryData = await secureQueryResponse.json();
             const policyIds = secureQueryData.matched_policy_ids;
             const isTimeSeries =
-            modelingType === 'univariate_timeseries' ||
-            modelingType === 'multivariate_timeseries';
+                modelingType === 'univariate_timeseries' ||
+                modelingType === 'multivariate_timeseries';
             const endpoint = isTimeSeries
                 ? `${hostnameAI}/schemas/source-schema/tables`
                 : `${hostnameAI}/schemas/predictions-source-schema/tables`;
@@ -941,7 +951,7 @@ const ConfigurationTab = ({ onValidationErrors }) => {
         setSchedulerState(prev => ({
             ...createBlankSchedulerState(enabled),
             owner_id: prev?.owner_id || '',
-           
+
         }));
     };
 
