@@ -310,9 +310,33 @@ function AgentNode({ id, data, selected }) {
           }}>
             <Icon size={16} color={config.color} />
           </div>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
-            {config.label || actualType.toUpperCase()}
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
+            <span style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: 'var(--text-primary)',
+              whiteSpace: 'nowrap',
+              textOverflow: 'ellipsis',
+              overflow: 'hidden',
+              lineHeight: 1.2
+            }}>
+              {data.label || config.label || actualType.toUpperCase()}
+            </span>
+            {data.label && (
+              <span style={{
+                fontSize: 9,
+                fontWeight: 600,
+                color: canvasNodeTheme === 'liquid-glass'
+                  ? `${config.color}`
+                  : canvasNodeTheme === 'flat' ? `${config.color}ee` : '#64748B',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginTop: 2
+              }}>
+                {(config.label || actualType).replace(/_/g, ' ')}
+              </span>
+            )}
+          </div>
         </div>
       )}
 
