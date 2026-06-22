@@ -63,7 +63,9 @@ const defaultSchedulerState = {
     },
     model_drift_threshold: {
         prediction_drift_threshold: 0,
-        performance_drift_threshold: -1
+        performance_drift_threshold: -1,
+        rmse_threshold: '',
+        smape_threshold: ''
     },
     data_drift_check: 0,
     model_drift_check: 0,

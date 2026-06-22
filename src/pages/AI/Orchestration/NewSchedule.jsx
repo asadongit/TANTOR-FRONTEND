@@ -179,6 +179,10 @@ const NewSchedule = () => {
                 : normalizeToArray(schedulerState.model);
             const isEnsembleSchedule = Boolean(schedulerState.is_ensemble);
 
+            const isTimeSeries =
+                schedulerState.modeling_type === 'univariate_timeseries' ||
+                schedulerState.modeling_type === 'multivariate_timeseries';
+
             const dataDriftThreshold = selectedModelKeys.reduce((acc, modelId) => {
                 acc[modelId] = isThresholdEntry(schedulerState.data_drift_threshold?.[modelId])
                     ? { ...getFlatThresholdValues(schedulerState.data_drift_threshold?.[modelId], DATA_DRIFT_KEYS, DATA_DRIFT_DEFAULTS) }
@@ -190,6 +194,15 @@ const NewSchedule = () => {
                 acc[modelId] = isThresholdEntry(schedulerState.model_drift_threshold?.[modelId])
                     ? { ...getFlatThresholdValues(schedulerState.model_drift_threshold?.[modelId], MODEL_DRIFT_KEYS, MODEL_DRIFT_DEFAULTS) }
                     : getFlatThresholdValues(schedulerState.model_drift_threshold, MODEL_DRIFT_KEYS, MODEL_DRIFT_DEFAULTS);
+                return acc;
+            }, {});
+
+            const tsThresholdsByModel = selectedModelKeys.reduce((acc, modelId) => {
+                const src = schedulerState.model_drift_threshold?.[modelId] ?? schedulerState.model_drift_threshold ?? {};
+                acc[modelId] = {
+                    rmse_threshold: src.rmse_threshold ?? '',
+                    smape_threshold: src.smape_threshold ?? '',
+                };
                 return acc;
             }, {});
 
@@ -226,10 +239,21 @@ const NewSchedule = () => {
                         destination_schema: schedulerState.target.destination_schema,
                         destination_table: schedulerState.target.destination_table
                     },
-                    data_drift_threshold: dataDriftThreshold,
-                    model_drift_threshold: modelDriftThreshold,
-                    data_drift_check: schedulerState.data_drift_check,
-                    model_drift_check: schedulerState.model_drift_check,
+                    ...(isTimeSeries
+                        ? {
+                            ts_check: 1,
+                            ts_thresholds_by_model: tsThresholdsByModel,
+                            data_drift_check: 0,
+                            model_drift_check: 0,
+                            data_drift_threshold: {},
+                            model_drift_threshold: {},
+                        }
+                        : {
+                            data_drift_threshold: dataDriftThreshold,
+                            model_drift_threshold: modelDriftThreshold,
+                            data_drift_check: schedulerState.data_drift_check,
+                            model_drift_check: schedulerState.model_drift_check,
+                        }),
                     recipients: schedulerState.recipients || [],
                     mode: schedulerState.mode || 'read',
                     policy_id: policyIds

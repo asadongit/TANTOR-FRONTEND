@@ -2,6 +2,7 @@ import { Webhook, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAIPlayground } from '../../../../context/AIPlaygroundContext';
 import { tw } from '../../../../components/themeContext';
+import MethodParameterField from '../../AIPlayground/Stages/DataPreprocessing/timeseries/components/DataStabilization/MethodParameterField';
 
 const DATA_DRIFT_DEFAULTS = {
   distribution_drift_threshold: 0,
@@ -13,6 +14,8 @@ const DATA_DRIFT_DEFAULTS = {
 const MODEL_DRIFT_DEFAULTS = {
   prediction_drift_threshold: 0,
   performance_drift_threshold: -1,
+  rmse_threshold: '',
+  smape_threshold: '',
 };
 
 const getThresholdValues = (thresholdState, modelKey, defaults) => {
@@ -230,11 +233,11 @@ const DeliveryAlertsTab = () => {
   useEffect(() => {
     if (isTimeSeries) {
       setSchedulerState(prev => {
-        if (prev.data_drift_check !== 0 || prev.model_drift_check !== 1) {
+        if (prev.data_drift_check !== 0 || prev.model_drift_check !== 0) {
           return {
             ...prev,
             data_drift_check: 0,
-            model_drift_check: 1
+            model_drift_check: 0
           };
         }
         return prev;
@@ -253,15 +256,15 @@ const DeliveryAlertsTab = () => {
         </p>
 
         {isTimeSeries ? (
-          /* Time-series UI: Only show Model Health Threshold */
+          /* Time-series UI: RMSE and SMAPE Health Thresholds */
           <div className="bg-white rounded-lg p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-base font-semibold text-gray-900">
-                  Model Health Threshold
+                  Model Health Thresholds
                 </h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  Define threshold to detect when model performance drops below the baseline.
+                  Define RMSE and SMAPE thresholds to detect when model performance drops below the baseline.
                 </p>
               </div>
             </div>
@@ -276,26 +279,42 @@ const DeliveryAlertsTab = () => {
                         <h4 className="text-sm font-semibold text-gray-900">{modelName}</h4>
                         <p className="text-xs text-gray-500 break-all">Model ID: {modelId}</p>
                       </div>
-                      <div>
-                        {renderSlider(
-                          'Model Health Threshold',
-                          modelThreshold.performance_drift_threshold,
-                          (e) => handleModelDriftChangeForModel(modelId, 'performance_drift_threshold', parseFloat(e.target.value)),
-                          -1, 0, 0.01, true
-                        )}
+                      <div className="grid grid-cols-2 gap-4">
+                        <MethodParameterField
+                          label="RMSE Threshold"
+                          value={modelThreshold.rmse_threshold}
+                          onChange={(val) => handleModelDriftChangeForModel(modelId, 'rmse_threshold', val === '' ? '' : parseFloat(val))}
+                          min={0}
+                          max={9999}
+                        />
+                        <MethodParameterField
+                          label="SMAPE Threshold (%)"
+                          value={modelThreshold.smape_threshold}
+                          onChange={(val) => handleModelDriftChangeForModel(modelId, 'smape_threshold', val === '' ? '' : parseFloat(val))}
+                          min={0}
+                          max={100}
+                        />
                       </div>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div>
-                {renderSlider(
-                  'Model Health Threshold',
-                  getThresholdValues(schedulerState.model_drift_threshold, primaryModelId, MODEL_DRIFT_DEFAULTS).performance_drift_threshold,
-                  (e) => handleModelDriftChange('performance_drift_threshold', parseFloat(e.target.value)),
-                  -1, 0, 0.01, true
-                )}
+              <div className="grid grid-cols-2 gap-4">
+                <MethodParameterField
+                  label="RMSE Threshold"
+                  value={getThresholdValues(schedulerState.model_drift_threshold, primaryModelId, MODEL_DRIFT_DEFAULTS).rmse_threshold}
+                  onChange={(val) => handleModelDriftChange('rmse_threshold', val === '' ? '' : parseFloat(val))}
+                  min={0}
+                  max={9999}
+                />
+                <MethodParameterField
+                  label="SMAPE Threshold (%)"
+                  value={getThresholdValues(schedulerState.model_drift_threshold, primaryModelId, MODEL_DRIFT_DEFAULTS).smape_threshold}
+                  onChange={(val) => handleModelDriftChange('smape_threshold', val === '' ? '' : parseFloat(val))}
+                  min={0}
+                  max={100}
+                />
               </div>
             )}
           </div>
