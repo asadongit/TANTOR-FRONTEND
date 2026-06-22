@@ -214,21 +214,21 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     if (keytabFile && filteredData.extra_info) {
       filteredData.extra_info = {
         ...filteredData.extra_info,
-        keytab_location: `${data.connection_name}_${keytabFile.name}`,
+        keytab_location: "",
       };
     }
     const coreSiteFile = getCoreSiteFile();
     if (coreSiteFile && filteredData.extra_info) {
       filteredData.extra_info = {
         ...filteredData.extra_info,
-        core_site_location: `${data.connection_name}_${coreSiteFile.name}`,
+        core_site_location: "",
       };
     }
     const hdfsSiteFile = getHdfsSiteFile();
     if (hdfsSiteFile && filteredData.extra_info) {
       filteredData.extra_info = {
         ...filteredData.extra_info,
-        hdfs_site_location: `${data.connection_name}_${hdfsSiteFile.name}`,
+        hdfs_site_location: "",
       };
     }
 
@@ -1036,6 +1036,28 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
                 ? displayName
                 : "No file chosen";
 
+              const hasFile = hasNewFile || (isEditMode && !!displayName);
+
+              const handleClearFile = () => {
+                setFileObjects((prev) => {
+                  const updated = { ...prev };
+                  delete updated[key];
+                  return updated;
+                });
+                setFormData((prev) => ({
+                  ...prev,
+                  extra_info: { ...prev.extra_info, [key]: "" },
+                }));
+                setIsTestSuccessful(false);
+                setTouchedFields((prev) => ({ ...prev, [fieldName]: true }));
+                if (isFieldRequired(field)) {
+                  setErrors((prev) => ({
+                    ...prev,
+                    [fieldName]: `${field.label} is required`,
+                  }));
+                }
+              };
+
               return (
                 <label
                   className={`flex items-center w-full border rounded-lg overflow-hidden cursor-pointer h-[46px]
@@ -1049,7 +1071,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
                     Choose File
                   </span>
                   <span
-                    className={`h-full flex items-center px-3 text-sm truncate ${
+                    className={`h-full flex items-center px-3 text-sm truncate flex-1 ${
                       shownName === "No file chosen"
                         ? "text-gray-400"
                         : "text-gray-700"
@@ -1057,6 +1079,21 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
                   >
                     {shownName}
                   </span>
+
+                  {hasFile && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleClearFile();
+                      }}
+                      title="Remove file"
+                      className="flex-shrink-0 flex items-center justify-center w-5 h-5 mr-2 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+
                   <input
                     type="file"
                     name={fieldName}
