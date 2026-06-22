@@ -171,7 +171,7 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
 
   const startNode = rawNodes.find(n => n.type === 'start');
   const endNode = rawNodes.find(n => n.type === 'end');
-  
+
   const mappedEdges = rawEdges.map((e, i) => {
     const cond = e.condition;
     const hasCond = cond && cond.key && cond.value;
@@ -675,25 +675,37 @@ export const useWorkflowStore = create((set, get) => ({
           'payload_template', 'payload_destination_key', 'auto_collect_prefix', 'clean_binary_from',
           'classification_extract_identifiers', 'discovery_keys', 'agent_input_prefix', 'output_key_prefix', 'input_key',
           'parent_folder_key', 'folder_identifier_key', 'curl_command_key',
-          'graph_ingestion_mode', 'graph_cypher_query', 'graph_nodes_schema', 'graph_relations_schema'
+          // Ingestion Adapter Generic Configs
+          'source_format', 'target_serialization', 'validation_mode',
+          'flatten_depth', 'flatten_separator', 'field_aliases', 'default_values',
+          // Pre-Enrichment Configs
+          'source_key', 'external_integrations', 'internal_integrations',
+          // Form Decisions
+          'form_decisions',
+          // Node Display Configs
+          'mute_chat_bubble',
+          // API Extended Configs
+          'api_description', 'api_enabled', 'api_execution_mode', 'additional_apis',
+          // DB Engine
+          'db_engine'
         ];
 
         const nodeConfig = {};
         validFields.forEach(field => {
           if (d[field] !== undefined) {
-             if (field === 'subscription_filters') {
-               if (typeof d[field] === 'string') {
-                 if (d[field].trim() === '') {
-                   nodeConfig[field] = null;
-                 } else {
-                   try { nodeConfig[field] = JSON.parse(d[field]); } catch(e) { nodeConfig[field] = null; }
-                 }
-               } else {
-                 nodeConfig[field] = Object.keys(d[field] || {}).length > 0 ? d[field] : null;
-               }
-             } else {
-               nodeConfig[field] = d[field];
-             }
+            if (field === 'subscription_filters') {
+              if (typeof d[field] === 'string') {
+                if (d[field].trim() === '') {
+                  nodeConfig[field] = null;
+                } else {
+                  try { nodeConfig[field] = JSON.parse(d[field]); } catch (e) { nodeConfig[field] = null; }
+                }
+              } else {
+                nodeConfig[field] = Object.keys(d[field] || {}).length > 0 ? d[field] : null;
+              }
+            } else {
+              nodeConfig[field] = d[field];
+            }
           }
         });
 
