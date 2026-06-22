@@ -170,7 +170,11 @@ export const connectorConfig = {
           type: "file",
           fileType: "xml",
           accept: ".xml",
-          required: true,
+          required: false,
+          requiredOn: {
+            field: "extra_info.security_mode",
+            value: "Kerberos (Secured)",
+          },
         },
         {
           name: "extra_info.hdfs_site_location",
@@ -178,7 +182,11 @@ export const connectorConfig = {
           type: "file",
           fileType: "xml",
           accept: ".xml",
-          required: true,
+          required: false,
+          requiredOn: {
+            field: "extra_info.security_mode",
+            value: "Kerberos (Secured)",
+          },
         },
       ],
       icon: hive

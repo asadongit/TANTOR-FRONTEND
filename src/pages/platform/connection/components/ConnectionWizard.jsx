@@ -145,6 +145,16 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     return currentValue === condValue;
   };
 
+  const isFieldRequired = (field) => {
+    if (field.required) return true;
+    if (!field.requiredOn) return false;
+    const { field: condField, value: condValue } = field.requiredOn;
+    const currentValue = condField.startsWith("extra_info.")
+      ? formData.extra_info?.[condField.split(".")[1]]
+      : formData[condField];
+    return currentValue === condValue;
+  };
+
   const originalKafkaType = isEditMode
     ? editConnectionData?.extra_info?.type
     : null;
@@ -423,7 +433,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
             const existingValue = formData.extra_info?.[key];
 
             if (
-              field.required &&
+              isFieldRequired(field) &&
               isFieldVisible(field) &&
               !fileObjects[key] &&
               !existingValue
@@ -432,7 +442,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
             } else {
               delete newErrors[name];
             }
-          } else if (field.required && isFieldVisible(field) && !value) {
+          } else if (isFieldRequired(field) && isFieldVisible(field) && !value) {
             newErrors[name] = `${field.label} is required`;
           } else {
             delete newErrors[name];
@@ -483,7 +493,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     const connectorFields = getConnectorFields(selectedConnector);
     connectorFields.forEach((field) => {
       if (field.type === "file") {
-        if (field.required && isFieldVisible(field)) {
+        if (isFieldRequired(field) && isFieldVisible(field)) {
           const key = field.name.split(".")[1];
           const existingValue = formData.extra_info?.[key];
           if (!fileObjects[key] && !existingValue) {
@@ -494,7 +504,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
         return;
       }
 
-      if (field.required && isFieldVisible(field)) {
+      if (isFieldRequired(field) && isFieldVisible(field)) {
         let value;
         if (field.name.startsWith("extra_info.")) {
           const key = field.name.split(".")[1];
@@ -1005,7 +1015,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       <div key={fieldName}>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           {field.label}
-          {field.required && <span className="text-red-500">*</span>}
+          {isFieldRequired(field) && <span className="text-red-500">*</span>}
         </label>
 
         {/* ── File field ── */}
@@ -1083,7 +1093,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
                           }));
                           setErrors((prev) => ({
                             ...prev,
-                            [fieldName]: field.required
+                            [fieldName]: isFieldRequired(field)
                               ? `${field.label} is required`
                               : undefined,
                           }));
@@ -1116,7 +1126,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
                           ...prev,
                           extra_info: { ...prev.extra_info, [key]: "" },
                         }));
-                        if (field.required) {
+                        if (isFieldRequired(field)) {
                           setErrors((prev) => ({
                             ...prev,
                             [fieldName]: `${field.label} is required`,
