@@ -161,47 +161,60 @@ const FieldTooltip = ({ lines, position = "right" }) => {
 };
 
 // ── Configuration Modal ──────────────────────────────────────────────────────
-function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, isRegression, readonly = false, isGenerating = false }) {
+function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, isRegression, isTimeseries = false, readonly = false, isGenerating = false }) {
   const [showInfoTooltip, setShowInfoTooltip] = useState(false);
   const [showModelNameTooltip, setShowModelNameTooltip] = useState(false);
   const [showFieldErrors, setShowFieldErrors] = useState(false);
   const [configData, setConfigData] = useState({
     pdpTargetClass: '',
-cfDesiredClass: '',
-pdpTargetValue: '',
-cfDesiredValue: '',
+    cfDesiredClass: '',
+    pdpTargetValue: '',
+    cfDesiredValue: '',
     cfInstanceIndex: 0,
     limeInstanceIndex: 0,
-    pdpFeatures: []
+    pdpFeatures: [],
+    cfTargetValue: '',
   });
 
   useEffect(() => {
     if (xaiConfig) {
       setConfigData({
-  pdpTargetClass: '',
-  cfDesiredClass: '',
-  pdpTargetValue: '',
-  cfDesiredValue: '',
-  cfInstanceIndex: 0,
-  limeInstanceIndex: 0,
-  pdpFeatures: []
-});
+        pdpTargetClass: '',
+        cfDesiredClass: '',
+        pdpTargetValue: '',
+        cfDesiredValue: '',
+        cfInstanceIndex: 0,
+        limeInstanceIndex: 0,
+        pdpFeatures: [],
+        cfTargetValue: '',
+      });
       setShowFieldErrors(false);
     }
   }, [xaiConfig]);
 
-  // Extract ranges for regression models (moved before useEffect)
+  // Extract ranges for regression and timeseries models
   const pdpValueRange = xaiConfig?.pdp_target_value_range;
   const cfValueRange = xaiConfig?.cf_target_value_range;
+  const cfTargetRange = xaiConfig?.cf_target_value_range;
 
   // Clear errors once all required fields become valid
   useEffect(() => {
-  if (!showFieldErrors) return;
+    if (!showFieldErrors) return;
 
-  const max = xaiConfig?.indices?.max_index || 0;
+    const max = xaiConfig?.indices?.max_index || 0;
 
-  const allValid = isRegression
-    ? (
+    let allValid;
+    if (isTimeseries) {
+      allValid =
+        configData.cfTargetValue !== '' &&
+        !isNaN(configData.cfTargetValue) &&
+        (!cfTargetRange || (Number(configData.cfTargetValue) >= cfTargetRange.min && Number(configData.cfTargetValue) <= cfTargetRange.max)) &&
+        configData.cfInstanceIndex >= 0 &&
+        configData.cfInstanceIndex <= max &&
+        configData.limeInstanceIndex >= 0 &&
+        configData.limeInstanceIndex <= max;
+    } else if (isRegression) {
+      allValid =
         configData.pdpTargetValue !== '' &&
         !isNaN(configData.pdpTargetValue) &&
         (!pdpValueRange || (Number(configData.pdpTargetValue) >= pdpValueRange.min && Number(configData.pdpTargetValue) <= pdpValueRange.max)) &&
@@ -211,20 +224,19 @@ cfDesiredValue: '',
         configData.cfInstanceIndex >= 0 &&
         configData.cfInstanceIndex <= max &&
         configData.limeInstanceIndex >= 0 &&
-        configData.limeInstanceIndex <= max
-      )
-    : (
+        configData.limeInstanceIndex <= max;
+    } else {
+      allValid =
         configData.pdpTargetClass &&
         configData.cfDesiredClass &&
         configData.cfInstanceIndex >= 0 &&
         configData.cfInstanceIndex <= max &&
         configData.limeInstanceIndex >= 0 &&
-        configData.limeInstanceIndex <= max
-      );
+        configData.limeInstanceIndex <= max;
+    }
 
-  if (allValid) setShowFieldErrors(false);
-
-}, [configData, showFieldErrors, isRegression, pdpValueRange, cfValueRange]);
+    if (allValid) setShowFieldErrors(false);
+  }, [configData, showFieldErrors, isTimeseries, isRegression, pdpValueRange, cfValueRange, cfTargetRange]);
 
   const toggleFeature = (feature) => {
     if (readonly || isGenerating) return;
@@ -266,40 +278,57 @@ cfDesiredValue: '',
 
   const cfDesiredError = showFieldErrors && (
     isRegression
-      ? (configData.cfDesiredValue === '' || 
+      ? (configData.cfDesiredValue === '' ||
          isNaN(configData.cfDesiredValue) ||
          (cfValueRange && (Number(configData.cfDesiredValue) < cfValueRange.min || Number(configData.cfDesiredValue) > cfValueRange.max)))
       : !configData.cfDesiredClass
+  );
+  const cfTargetValueError = showFieldErrors && isTimeseries && (
+    configData.cfTargetValue === '' ||
+    isNaN(configData.cfTargetValue) ||
+    (cfTargetRange && (Number(configData.cfTargetValue) < cfTargetRange.min || Number(configData.cfTargetValue) > cfTargetRange.max))
   );
   const cfIndexError = showFieldErrors && !(configData.cfInstanceIndex >= 0 && configData.cfInstanceIndex <= maxIndex);
   const limeIndexError = showFieldErrors && !(configData.limeInstanceIndex >= 0 && configData.limeInstanceIndex <= maxIndex);
 
   const handleGenerate = () => {
-    const pdpValueValid = configData.pdpTargetValue !== '' && 
-                         !isNaN(configData.pdpTargetValue) &&
-                         (!pdpValueRange || (Number(configData.pdpTargetValue) >= pdpValueRange.min && Number(configData.pdpTargetValue) <= pdpValueRange.max));
-    
-    const cfValueValid = configData.cfDesiredValue !== '' && 
-                        !isNaN(configData.cfDesiredValue) &&
-                        (!cfValueRange || (Number(configData.cfDesiredValue) >= cfValueRange.min && Number(configData.cfDesiredValue) <= cfValueRange.max));
+    let isValid;
+    if (isTimeseries) {
+      isValid =
+        configData.cfTargetValue !== '' &&
+        !isNaN(configData.cfTargetValue) &&
+        (!cfTargetRange || (Number(configData.cfTargetValue) >= cfTargetRange.min && Number(configData.cfTargetValue) <= cfTargetRange.max)) &&
+        configData.cfInstanceIndex >= 0 &&
+        configData.cfInstanceIndex <= maxIndex &&
+        configData.limeInstanceIndex >= 0 &&
+        configData.limeInstanceIndex <= maxIndex;
+    } else {
+      const pdpValueValid = configData.pdpTargetValue !== '' &&
+        !isNaN(configData.pdpTargetValue) &&
+        (!pdpValueRange || (Number(configData.pdpTargetValue) >= pdpValueRange.min && Number(configData.pdpTargetValue) <= pdpValueRange.max));
 
-    const isValid = isRegression
-      ? (
-          pdpValueValid &&
-          cfValueValid &&
-          configData.cfInstanceIndex >= 0 &&
-          configData.cfInstanceIndex <= maxIndex &&
-          configData.limeInstanceIndex >= 0 &&
-          configData.limeInstanceIndex <= maxIndex
-        )
-      : (
-          configData.pdpTargetClass &&
-          configData.cfDesiredClass &&
-          configData.cfInstanceIndex >= 0 &&
-          configData.cfInstanceIndex <= maxIndex &&
-          configData.limeInstanceIndex >= 0 &&
-          configData.limeInstanceIndex <= maxIndex
-        );
+      const cfValueValid = configData.cfDesiredValue !== '' &&
+        !isNaN(configData.cfDesiredValue) &&
+        (!cfValueRange || (Number(configData.cfDesiredValue) >= cfValueRange.min && Number(configData.cfDesiredValue) <= cfValueRange.max));
+
+      isValid = isRegression
+        ? (
+            pdpValueValid &&
+            cfValueValid &&
+            configData.cfInstanceIndex >= 0 &&
+            configData.cfInstanceIndex <= maxIndex &&
+            configData.limeInstanceIndex >= 0 &&
+            configData.limeInstanceIndex <= maxIndex
+          )
+        : (
+            configData.pdpTargetClass &&
+            configData.cfDesiredClass &&
+            configData.cfInstanceIndex >= 0 &&
+            configData.cfInstanceIndex <= maxIndex &&
+            configData.limeInstanceIndex >= 0 &&
+            configData.limeInstanceIndex <= maxIndex
+          );
+    }
 
     if (!isValid) {
       setShowFieldErrors(true);
@@ -367,7 +396,8 @@ cfDesiredValue: '',
                   cfDesiredValue: '',
                   cfInstanceIndex: 0,
                   limeInstanceIndex: 0,
-                  pdpFeatures: []
+                  pdpFeatures: [],
+                  cfTargetValue: '',
                 });
                 setShowFieldErrors(false);
                 onClose();
@@ -409,102 +439,135 @@ cfDesiredValue: '',
             </div>
           </div>
 
-          {/* ── PDP Target Class & CF Desired Class ── */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* ── Timeseries-specific fields ── */}
+          {isTimeseries ? (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="flex items-center text-sm font-medium mb-2 text-gray-900">
+                    CF Target Value *
+                    <FieldTooltip lines={cfDesiredTooltip} position="right" />
+                  </label>
+                  <input
+                    type="number"
+                    value={configData.cfTargetValue}
+                    onChange={(e) => setConfigData({ ...configData, cfTargetValue: e.target.value })}
+                    className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors ${
+                      cfTargetValueError
+                        ? 'border-[#EF4D5F] bg-[#FFF7F8]'
+                        : 'border-gray-300'
+                    } ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                    disabled={readonly || isGenerating}
+                    placeholder={cfTargetRange ? `${cfTargetRange.min.toFixed(2)} – ${cfTargetRange.max.toFixed(2)}` : 'Enter target value'}
+                  />
+                  {cfTargetValueError && (
+                    <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">
+                      {cfTargetRange
+                        ? `Enter a value between ${cfTargetRange.min.toFixed(2)} and ${cfTargetRange.max.toFixed(2)}`
+                        : 'Please enter a valid number'}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : (
+            /* ── PDP Target Class & CF Desired Class (non-timeseries) ── */
+            <div className="grid grid-cols-2 gap-4">
 
-  {/* PDP FIELD */}
-  <div>
-    <label className="flex items-center text-sm font-medium mb-2 text-gray-900">
-      {isRegression ? "PDP Target Value" : "PDP Target Class"} *
-      <FieldTooltip lines={pdpTargetTooltip} position="right" />
-    </label>
+              {/* PDP FIELD */}
+              <div>
+                <label className="flex items-center text-sm font-medium mb-2 text-gray-900">
+                  {isRegression ? "PDP Target Value" : "PDP Target Class"} *
+                  <FieldTooltip lines={pdpTargetTooltip} position="right" />
+                </label>
 
-    {isRegression ? (
-      <div>
-        <input
-          type="number"
-          value={configData.pdpTargetValue}
-          onChange={(e) =>
-            setConfigData({ ...configData, pdpTargetValue: e.target.value })
-          }
-          className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors ${
-            pdpTargetError
-              ? 'border-[#EF4D5F] bg-[#FFF7F8]'
-              : 'border-gray-300'
-          } ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-          disabled={readonly || isGenerating}
-          placeholder={pdpValueRange ? ` ${pdpValueRange.min.toFixed(2)} - ${pdpValueRange.max.toFixed(2)}` : 'Enter value'}
-        />
-        {pdpTargetError && (
-          <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">
-            {pdpValueRange
-              ? `Enter a value between ${pdpValueRange.min.toFixed(2)} and ${pdpValueRange.max.toFixed(2)}`
-              : 'Please enter a valid number'}
-          </p>
-        )}
-      </div>
-    ) : (
-      <SearchableDropdown
-        selectedColumn={configData.pdpTargetClass}
-        onSelect={(val) =>
-          setConfigData({ ...configData, pdpTargetClass: val })
-        }
-        availableOptions={pdpTargetClasses}
-        placeholder="Select"
-        readonly={readonly}
-        disabled={isGenerating}
-        hasError={showFieldErrors && !configData.pdpTargetClass}
-      />
-    )}
-  </div>
+                {isRegression ? (
+                  <div>
+                    <input
+                      type="number"
+                      value={configData.pdpTargetValue}
+                      onChange={(e) =>
+                        setConfigData({ ...configData, pdpTargetValue: e.target.value })
+                      }
+                      className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors ${
+                        pdpTargetError
+                          ? 'border-[#EF4D5F] bg-[#FFF7F8]'
+                          : 'border-gray-300'
+                      } ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                      disabled={readonly || isGenerating}
+                      placeholder={pdpValueRange ? ` ${pdpValueRange.min.toFixed(2)} - ${pdpValueRange.max.toFixed(2)}` : 'Enter value'}
+                    />
+                    {pdpTargetError && (
+                      <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">
+                        {pdpValueRange
+                          ? `Enter a value between ${pdpValueRange.min.toFixed(2)} and ${pdpValueRange.max.toFixed(2)}`
+                          : 'Please enter a valid number'}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <SearchableDropdown
+                    selectedColumn={configData.pdpTargetClass}
+                    onSelect={(val) =>
+                      setConfigData({ ...configData, pdpTargetClass: val })
+                    }
+                    availableOptions={pdpTargetClasses}
+                    placeholder="Select"
+                    readonly={readonly}
+                    disabled={isGenerating}
+                    hasError={showFieldErrors && !configData.pdpTargetClass}
+                  />
+                )}
+              </div>
 
-  {/* CF FIELD */}
-  <div>
-    <label className="flex items-center text-sm font-medium mb-2 text-gray-900">
-      {isRegression ? "CF Desired Value" : "CF Desired Class"} *
-      <FieldTooltip lines={cfDesiredTooltip} position="left" />
-    </label>
+              {/* CF FIELD */}
+              <div>
+                <label className="flex items-center text-sm font-medium mb-2 text-gray-900">
+                  {isRegression ? "CF Desired Value" : "CF Desired Class"} *
+                  <FieldTooltip lines={cfDesiredTooltip} position="left" />
+                </label>
 
-    {isRegression ? (
-      <div>
-        <input
-          type="number"
-          value={configData.cfDesiredValue}
-          onChange={(e) =>
-            setConfigData({ ...configData, cfDesiredValue: e.target.value })
-          }
-          className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors ${
-            cfDesiredError
-              ? 'border-[#EF4D5F] bg-[#FFF7F8]'
-              : 'border-gray-300'
-          } ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-          disabled={readonly || isGenerating}
-          placeholder={cfValueRange ? ` ${cfValueRange.min.toFixed(2)} - ${cfValueRange.max.toFixed(2)}` : 'Enter value'}
-        />
-        {cfDesiredError && (
-          <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">
-            {cfValueRange
-              ? `Enter a value between ${cfValueRange.min.toFixed(2)} and ${cfValueRange.max.toFixed(2)}`
-              : 'Please enter a valid number'}
-          </p>
-        )}
-      </div>
-    ) : (
-      <SearchableDropdown
-        selectedColumn={configData.cfDesiredClass}
-        onSelect={(val) =>
-          setConfigData({ ...configData, cfDesiredClass: val })
-        }
-        availableOptions={cfDesiredClasses}
-        placeholder="Select"
-        readonly={readonly}
-        disabled={isGenerating}
-        hasError={showFieldErrors && !configData.cfDesiredClass}
-      />
-    )}
-  </div>
+                {isRegression ? (
+                  <div>
+                    <input
+                      type="number"
+                      value={configData.cfDesiredValue}
+                      onChange={(e) =>
+                        setConfigData({ ...configData, cfDesiredValue: e.target.value })
+                      }
+                      className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors ${
+                        cfDesiredError
+                          ? 'border-[#EF4D5F] bg-[#FFF7F8]'
+                          : 'border-gray-300'
+                      } ${readonly || isGenerating ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                      disabled={readonly || isGenerating}
+                      placeholder={cfValueRange ? ` ${cfValueRange.min.toFixed(2)} - ${cfValueRange.max.toFixed(2)}` : 'Enter value'}
+                    />
+                    {cfDesiredError && (
+                      <p className="text-xs text-[#EF4D5F] mt-1 pl-0.5">
+                        {cfValueRange
+                          ? `Enter a value between ${cfValueRange.min.toFixed(2)} and ${cfValueRange.max.toFixed(2)}`
+                          : 'Please enter a valid number'}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <SearchableDropdown
+                    selectedColumn={configData.cfDesiredClass}
+                    onSelect={(val) =>
+                      setConfigData({ ...configData, cfDesiredClass: val })
+                    }
+                    availableOptions={cfDesiredClasses}
+                    placeholder="Select"
+                    readonly={readonly}
+                    disabled={isGenerating}
+                    hasError={showFieldErrors && !configData.cfDesiredClass}
+                  />
+                )}
+              </div>
 
-</div>
+            </div>
+          )}
 
           {/* ── CF Instance Index & LIME Instance Index ── */}
           <div className="grid grid-cols-2 gap-4">
@@ -518,10 +581,11 @@ cfDesiredValue: '',
                 min="0"
                 max={maxIndex}
                 step="1"
-                value={configData.cfInstanceIndex}
+                value={isNaN(configData.cfInstanceIndex) ? '' : configData.cfInstanceIndex}
                 onChange={(e) => {
                   if (!readonly && !isGenerating) {
-                    setConfigData({ ...configData, cfInstanceIndex: parseInt(e.target.value) });
+                    const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                    setConfigData({ ...configData, cfInstanceIndex: val });
                   }
                 }}
                 disabled={readonly || isGenerating}
@@ -544,10 +608,11 @@ cfDesiredValue: '',
                 type="number"
                 min="0"
                 max={maxIndex}
-                value={configData.limeInstanceIndex}
+                value={isNaN(configData.limeInstanceIndex) ? '' : configData.limeInstanceIndex}
                 onChange={(e) => {
                   if (!readonly && !isGenerating) {
-                    setConfigData({ ...configData, limeInstanceIndex: parseInt(e.target.value) });
+                    const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                    setConfigData({ ...configData, limeInstanceIndex: val });
                   }
                 }}
                 disabled={readonly || isGenerating}
@@ -562,45 +627,47 @@ cfDesiredValue: '',
             </div>
           </div>
 
-          {/* ── PDP Features ── */}
-          <div className="rounded-lg p-4" style={{ backgroundColor: '#FAFAFA' }}>
-            <div className="flex items-center justify-between mb-2">
-              <label className="flex items-center text-sm font-medium text-gray-900">
-                PDP Features
-                <FieldTooltip lines={pdpFeaturesTooltip} position="right" />
-              </label>
-              <label className={`flex items-center gap-2 ${readonly || isGenerating ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  onChange={toggleSelectAll}
-                  disabled={readonly || isGenerating}
-                  className="w-4 h-4 border-gray-300 rounded"
-                  style={{ accentColor: '#8e78b7' }}
-                />
-                <span className="text-sm font-medium text-gray-700">Select All</span>
-              </label>
-            </div>
-            <p className="text-xs text-gray-500 mb-3">
-              Select features to include in the PDP analysis. If none are selected, all features will be used.
-            </p>
-
-            <div className="grid grid-cols-3 gap-x-8 gap-y-3 max-h-80 overflow-y-auto">
-              {featuresList.map((feature) => (
-                <label key={feature} className={`flex items-center gap-2 ${readonly || isGenerating ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+          {/* ── PDP Features (hidden for timeseries) ── */}
+          {!isTimeseries && (
+            <div className="rounded-lg p-4" style={{ backgroundColor: '#FAFAFA' }}>
+              <div className="flex items-center justify-between mb-2">
+                <label className="flex items-center text-sm font-medium text-gray-900">
+                  PDP Features
+                  <FieldTooltip lines={pdpFeaturesTooltip} position="right" />
+                </label>
+                <label className={`flex items-center gap-2 ${readonly || isGenerating ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                   <input
                     type="checkbox"
-                    checked={configData.pdpFeatures.includes(feature)}
-                    onChange={() => toggleFeature(feature)}
+                    checked={allSelected}
+                    onChange={toggleSelectAll}
                     disabled={readonly || isGenerating}
                     className="w-4 h-4 border-gray-300 rounded"
                     style={{ accentColor: '#8e78b7' }}
                   />
-                  <span className="text-sm text-gray-700 break-words">{feature}</span>
+                  <span className="text-sm font-medium text-gray-700">Select All</span>
                 </label>
-              ))}
+              </div>
+              <p className="text-xs text-gray-500 mb-3">
+                Select features to include in the PDP analysis. If none are selected, all features will be used.
+              </p>
+
+              <div className="grid grid-cols-3 gap-x-8 gap-y-3 max-h-80 overflow-y-auto">
+                {featuresList.map((feature) => (
+                  <label key={feature} className={`flex items-center gap-2 ${readonly || isGenerating ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                    <input
+                      type="checkbox"
+                      checked={configData.pdpFeatures.includes(feature)}
+                      onChange={() => toggleFeature(feature)}
+                      disabled={readonly || isGenerating}
+                      className="w-4 h-4 border-gray-300 rounded"
+                      style={{ accentColor: '#8e78b7' }}
+                    />
+                    <span className="text-sm text-gray-700 break-words">{feature}</span>
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* ── Footer ── */}
