@@ -6,36 +6,26 @@ export default function CollapsibleSection({ title, children, defaultOpen = fals
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', marginBottom: 20 }}>
+    <div className="border border-[var(--border)] rounded-xl overflow-hidden mb-5">
       <div
         onClick={() => setIsOpen(!isOpen)}
-        style={{
-          padding: '12px 16px',
-          background: '#F8FAFC',
-          cursor: 'pointer',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          borderBottom: isOpen ? '1px solid var(--border)' : 'none',
-          userSelect: 'none'
-        }}
+        className={`p-3 px-4 bg-[#F8FAFC] cursor-pointer flex justify-between items-center select-none ${isOpen ? 'border-b border-[var(--border)]' : 'border-none'}`}
       >
-        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8, fontFamily: FONT }}>
-          {Icon && <Icon size={14} color="var(--accent-btn)" />}
+        <div 
+          className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-2"
+          style={{ fontFamily: FONT }}
+        >
+          {Icon && <Icon size={14} className="text-[var(--accent-btn)]" />}
           {title}
         </div>
         <FiChevronDown
           size={14}
-          style={{
-            color: 'var(--text-muted)',
-            transition: 'transform 0.2s',
-            transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)'
-          }}
+          className={`text-[var(--text-muted)] transition-transform duration-200 transform ${isOpen ? 'rotate-180' : 'rotate-0'}`}
         />
       </div>
 
       {isOpen && (
-        <div style={{ padding: '16px', background: 'var(--bg-panel, white)' }}>
+        <div className="p-4 bg-[var(--bg-panel,white)]">
           {children}
         </div>
       )}

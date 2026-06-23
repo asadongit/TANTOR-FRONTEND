@@ -42,11 +42,7 @@ export default function FileStoreConfig({ data, update }) {
           If disabled, CSV will append new data to the existing file. Excel always overwrites.
         </div>
       </div>
-
-      <div style={{ padding: 12, background: '#ECFDF5', borderRadius: 10, fontSize: 11, color: '#059669', lineHeight: 1.5, border: '1px solid #A7F3D0' }}>
-        <div style={{ fontWeight: 700, marginBottom: 4 }}>Storage Location:</div>
-        Files are saved in <strong>Backend/mnt/exports/</strong> and the full path is saved to <strong>latest_file_path</strong>.
-      </div>
     </>
   );
 }
+

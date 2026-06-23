@@ -1,5 +1,4 @@
 import React from "react";
-import { FiFilter } from "react-icons/fi";
 import {
   Select,
   Field,
@@ -98,21 +97,6 @@ export default function JsonTransformConfig({ data, update }) {
         }}
       >
         If enabled, merges the output dictionary into the input dictionary.
-      </div>
-
-      <div
-        style={{
-          padding: 12,
-          background: "var(--bg-card-info, #F0F9FF)",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "var(--text-card-info, #0369A1)",
-          border: "1px solid var(--border-card-info, #BAE6FD)",
-        }}
-      >
-        <FiFilter size={12} style={{ marginRight: 6, display: "inline" }} />
-        Transforms JSON data structure without an LLM. Pure, zero-latency
-        deterministic transformation.
       </div>
     </>
   );

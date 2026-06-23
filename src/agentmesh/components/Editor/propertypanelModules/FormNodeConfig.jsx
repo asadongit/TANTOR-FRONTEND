@@ -5,6 +5,7 @@ import {
   Toggle,
   FormFieldsEditor,
   FormDecisionsEditor,
+  InfoBanner,
 } from "./SharedComponents";
 
 
@@ -62,22 +63,9 @@ export default function FormNodeConfig({ data, update }) {
         onChange={(v) => update({ form_use_context_schema: v })}
       />
       {data.form_use_context_schema && (
-        <div
-          style={{
-            padding: 10,
-            background: "#F0F9FF",
-            borderRadius: 10,
-            fontSize: 11,
-            color: "#0369A1",
-            border: "1px solid #BAE6FD",
-            marginTop: -10,
-            marginBottom: 20,
-          }}
-        >
-          If enabled, the form will be generated from{" "}
-          <code>context.form_schema</code> (must be a JSON array of fields)
-          instead of the static fields above.
-        </div>
+        <InfoBanner type="info">
+          If enabled, the form will be generated from <code>context.form_schema</code> (must be a JSON array of fields) instead of the static fields above.
+        </InfoBanner>
       )}
 
 

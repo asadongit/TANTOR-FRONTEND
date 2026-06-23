@@ -1,5 +1,4 @@
 import React from "react";
-import { FiBox } from "react-icons/fi";
 import { Select, Field, Input } from "./SharedComponents";
 
 export default function IngestionNodeConfig({ data, update }) {
@@ -30,7 +29,7 @@ export default function IngestionNodeConfig({ data, update }) {
               type="number"
               value={data.chunk_size ?? 1000}
               onChange={(v) =>
-                update({ chunk_size: v === "" ? "" : parseInt(v) })
+                update({ chunk_size: v === "" ? "" : Number.parseInt(v) })
               }
             />
           </Field>
@@ -41,7 +40,7 @@ export default function IngestionNodeConfig({ data, update }) {
               type="number"
               value={data.chunk_overlap ?? 100}
               onChange={(v) =>
-                update({ chunk_overlap: v === "" ? "" : parseInt(v) })
+                update({ chunk_overlap: v === "" ? "" : Number.parseInt(v) })
               }
             />
           </Field>
@@ -71,22 +70,6 @@ export default function IngestionNodeConfig({ data, update }) {
           placeholder="e.g. latest_ocr_output"
         />
       </Field>
-
-      <div
-        style={{
-          padding: 12,
-          background: "#F0F9FF",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "#0369A1",
-          border: "1px solid #BAE6FD",
-          marginTop: 10,
-        }}
-      >
-        <FiBox size={12} style={{ marginRight: 6 }} />
-        This node automatically splits large text into searchable chunks and
-        saves them in your vector database.
-      </div>
     </>
   );
 }

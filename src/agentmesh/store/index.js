@@ -42,7 +42,7 @@ const NODE_DEFAULTS = {
   cardboard: { label: 'Sticky Note', color: 'slate' },
   json_transform: {
     label: 'JSON Transform',
-    transform_operation: 'flatten', transform_separator: '_', transform_pick_fields: '', transform_rename_map: '', transform_omit_keys: '', transform_input_key: 'api_response', transform_output_key: 'flattened_json',
+    transform_operation: 'flatten', transform_separator: '_', transform_pick_fields: [], transform_rename_map: {}, transform_omit_keys: [], transform_input_key: 'api_response', transform_output_key: 'flattened_json',
     jt_input_key: 'latest_api_result',
     jt_output_key: 'transformed_data',
     jt_mode: 'jmespath',

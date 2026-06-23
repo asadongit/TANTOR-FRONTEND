@@ -51,7 +51,6 @@ import RuleEngineConfig from './RuleEngineConfig';
 import BeneficiaryRiskConfig from './BeneficiaryRiskConfig';
 import CardboardConfig from './CardboardConfig';
 import TriggerConfig from './TriggerConfig';
-import ToolConfigModal from './ToolConfigModal';
 import TextToAudioConfig from './TextToAudioConfig';
 
 export {
@@ -108,6 +107,7 @@ export {
   BeneficiaryRiskConfig,
   CardboardConfig,
   TriggerConfig,
-  ToolConfigModal,
   TextToAudioConfig
 };
+
+export { ToolConfigModal } from './shared/ToolConfigModal';
