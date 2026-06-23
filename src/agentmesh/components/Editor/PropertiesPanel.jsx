@@ -143,6 +143,7 @@ const LAZY_CONFIGS = {
   button_trigger: lazy(() => import("./propertypanelModules/TriggerConfig")),
   auto_trigger: lazy(() => import("./propertypanelModules/TriggerConfig")),
   textToAudio: lazy(() => import("./propertypanelModules/TextToAudioConfig")),
+  group: lazy(() => import("./propertypanelModules/GroupConfig")),
 };
 
 function getConfigComp(type) {
@@ -564,6 +565,7 @@ export default function PropertiesPanel() {
     json_transform: FiCode,
     json_transform_va: FiCode,
     condition: FiHelpCircle,
+    group: FiLayers,
   };
   const Icon = nodeIcons[data.type] || FiLayers;
 

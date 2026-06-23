@@ -125,6 +125,9 @@ export default function WorkflowCanvas() {
     workflowName,
     undo,
     redo,
+    previewingGroupId,
+    exitGroupPreview,
+    previewGroupOriginalNode,
   } = useWorkflowStore();
   const {
     selectedNodeId,
@@ -638,18 +641,23 @@ export default function WorkflowCanvas() {
 
   const onNodeContextMenu = useCallback(
     (event, node) => {
-      // Prevent native context menu from showing
+      console.log('[onNodeContextMenu] FIRED for node:', node?.id, 'selected:', node?.selected);
       event.preventDefault();
 
-      // Calculate position of the context menu relative to the viewport.
-      // We use window.innerWidth/innerHeight to ensure correctly flipping
-      // when near edges, regardless of whether panels are open.
+      const { nodes: allNodes } = useWorkflowStore.getState();
+      const selectedNodeIds = allNodes.filter(n => n.selected).map(n => n.id);
+      const targetIds = selectedNodeIds.includes(node.id)
+        ? selectedNodeIds
+        : [node.id];
+
+      console.log('[onNodeContextMenu] selectedNodeIds:', selectedNodeIds, 'targetIds:', targetIds);
+
       const menuWidth = 200;
-      const menuHeight = 240;
+      const menuHeight = targetIds.length > 1 ? 260 : 240;
       const { clientX, clientY } = event;
 
       setMenu({
-        id: node.id,
+        ids: targetIds,
         top: clientY < window.innerHeight - menuHeight ? clientY : undefined,
         left: clientX < window.innerWidth - menuWidth ? clientX : undefined,
         right:
@@ -667,15 +675,62 @@ export default function WorkflowCanvas() {
 
   const onPaneContextMenu = useCallback(
     (event) => {
+      console.log('[onPaneContextMenu] FIRED');
       event.preventDefault();
-      // For now, we only show node-specific context menu as per request
-      // But we could add a "Paste" or "Add Node" menu here.
       setMenu(null);
     },
     [setMenu],
   );
 
-  const onPaneClickCloseMenu = useCallback(() => setMenu(null), [setMenu]);
+  const onPaneClickCloseMenu = useCallback(() => {
+    console.log('[onPaneClickCloseMenu] closing menu');
+    setMenu(null);
+  }, [setMenu]);
+
+  React.useEffect(() => {
+    const wrapper = reactFlowWrapper.current;
+    if (!wrapper) return;
+
+    const handleContextMenu = (e) => {
+      let nodeElement = e.target.closest('.react-flow__node');
+      if (!nodeElement) {
+        const elements = document.elementsFromPoint(e.clientX, e.clientY);
+        nodeElement = elements.find(el => el.classList?.contains('react-flow__node')) || null;
+      }
+      console.log('[capture-contextmenu] fired, target:', e.target.tagName, 'className:', e.target.className, 'id:', e.target.id);
+      console.log('[capture-contextmenu] nodeElement found:', !!nodeElement);
+
+      if (nodeElement) {
+        e.preventDefault();
+
+        const nodeId = nodeElement.getAttribute('data-id') || nodeElement.getAttribute('data-testid');
+
+        if (nodeId) {
+          const { nodes: allNodes } = useWorkflowStore.getState();
+          const selectedNodeIds = allNodes.filter(n => n.selected).map(n => n.id);
+          const targetIds = selectedNodeIds.includes(nodeId)
+            ? selectedNodeIds
+            : [nodeId];
+
+          console.log('[capture-contextmenu] selectedNodeIds:', selectedNodeIds, 'targetIds:', targetIds);
+
+          const menuWidth = 200;
+          const menuHeight = targetIds.length > 1 ? 260 : 240;
+          const { clientX, clientY } = e;
+          setMenu({
+            ids: targetIds,
+            top: clientY < window.innerHeight - menuHeight ? clientY : undefined,
+            left: clientX < window.innerWidth - menuWidth ? clientX : undefined,
+            right: clientX >= window.innerWidth - menuWidth ? window.innerWidth - clientX : undefined,
+            bottom: clientY >= window.innerHeight - menuHeight ? window.innerHeight - clientY : undefined,
+          });
+        }
+      }
+    };
+
+    wrapper.addEventListener('contextmenu', handleContextMenu, true);
+    return () => wrapper.removeEventListener('contextmenu', handleContextMenu, true);
+  }, [setMenu]);
 
   // 🔍 KEYBOARD SHORTCUTS: "S" to open search, "N" to insert a sticky note (cardboard) when no node is selected
   React.useEffect(() => {
@@ -837,6 +892,54 @@ export default function WorkflowCanvas() {
 
       {/* ── Canvas ── */}
       <div ref={reactFlowWrapper} style={{ flex: 1, position: "relative" }}>
+        {previewingGroupId && (
+          <div style={{
+            position: 'absolute',
+            top: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 100,
+            background: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1.5px solid var(--theme-primary, #8e77bb)',
+            borderRadius: '12px',
+            padding: '10px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            boxShadow: '0 10px 30px rgba(142, 119, 187, 0.15)',
+            fontFamily: "'Inter', sans-serif"
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--theme-primary, #8e77bb)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Preview Mode
+              </span>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: '#1E293B' }}>
+                Editing "{previewGroupOriginalNode?.data?.label || 'Group'}" internal nodes
+              </span>
+            </div>
+            <button
+              onClick={() => exitGroupPreview(true)}
+              style={{
+                padding: '6px 14px',
+                background: 'var(--theme-primary, #8e77bb)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(142, 119, 187, 0.2)',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--theme-primary-hover, #7961a8)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'var(--theme-primary, #8e77bb)'}
+            >
+              Regroup Node
+            </button>
+          </div>
+        )}
         {/* Top-left: Add node toggle */}
         <div style={{ position: "absolute", top: 16, left: 16, zIndex: 10 }}>
           <button

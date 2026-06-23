@@ -696,7 +696,6 @@ Include clear guidelines, input/output structures, and agent behavior constraint
               title="Reset Session"
               style={{
                 background: "none",
-                border: "none",
                 color: "#64748B",
                 cursor: "pointer",
                 padding: "4px 8px",

@@ -64,6 +64,14 @@ const NODE_DEFAULTS = {
   auto_trigger: {
     label: 'Auto Trigger',
     button_input: 'Auto Start'
+  },
+  group: {
+    label: 'Group Node',
+    name: 'Group Node',
+    description: '',
+    internal_nodes: [],
+    internal_edges: [],
+    original_edges: []
   }
 };
 
@@ -298,6 +306,9 @@ export const useWorkflowStore = create((set, get) => ({
   autoNewSession: false,
   createdAt: null,
   updatedAt: null,
+  previewingGroupId: null,
+  previewNodeIds: [],
+  previewGroupOriginalNode: null,
 
   // Persisted workflows list
   workflows: [], // Used for paged list in Workflows page
@@ -547,6 +558,263 @@ export const useWorkflowStore = create((set, get) => ({
     }));
   },
 
+  groupNodes: (nodeIds) => {
+    if (!nodeIds || nodeIds.length < 2) return;
+    get().takeHistorySnapshot();
+
+    const currentNodes = get().nodes;
+    const currentEdges = get().edges;
+
+    const validNodeIds = nodeIds.filter(id => id !== '__start__' && id !== '__end__' && id !== 'START' && id !== 'END');
+    if (validNodeIds.length < 2) return;
+
+    const groupedNodes = currentNodes.filter(n => validNodeIds.includes(n.id) && n.type !== 'cardboardNode' && n.data?.type !== 'cardboard');
+    if (groupedNodes.length < 2) return;
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    groupedNodes.forEach(n => {
+      const x = n.position?.x ?? 0;
+      const y = n.position?.y ?? 0;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    });
+
+    const centerX = minX + (maxX - minX) / 2;
+    const centerY = minY + (maxY - minY) / 2;
+
+    const groupId = `group_${genId()}`;
+    const groupNode = {
+      id: groupId,
+      type: 'agentNode',
+      position: { x: centerX, y: centerY },
+      data: {
+        id: groupId,
+        type: 'group',
+        label: 'Group Node',
+        name: 'Group Node',
+        description: '',
+        internal_nodes: groupedNodes,
+        internal_edges: [],
+        original_edges: []
+      }
+    };
+
+    const internalEdges = [];
+    const originalEdges = [];
+    const nextEdges = [];
+
+    currentEdges.forEach(e => {
+      const isSourceInside = validNodeIds.includes(e.source);
+      const isTargetInside = validNodeIds.includes(e.target);
+
+      if (isSourceInside && isTargetInside) {
+        internalEdges.push(e);
+        originalEdges.push(e);
+      } else if (isSourceInside && !isTargetInside) {
+        originalEdges.push(e);
+        nextEdges.push({
+          ...e,
+          id: `e_${groupId}_to_${e.target}_${genId()}`,
+          source: groupId,
+          sourceHandle: null
+        });
+      } else if (!isSourceInside && isTargetInside) {
+        originalEdges.push(e);
+        nextEdges.push({
+          ...e,
+          id: `e_${e.source}_to_${groupId}_${genId()}`,
+          target: groupId,
+          targetHandle: null
+        });
+      } else {
+        nextEdges.push(e);
+      }
+    });
+
+    groupNode.data.internal_edges = internalEdges;
+    groupNode.data.original_edges = originalEdges;
+
+    const nextNodes = currentNodes.filter(n => !validNodeIds.includes(n.id));
+    nextNodes.push(groupNode);
+
+    set({
+      nodes: nextNodes,
+      edges: nextEdges,
+      isDirty: true,
+      isCompiled: false
+    });
+
+    useUIStore.getState().setSelectedNode(groupId);
+  },
+
+  ungroupNode: (groupNodeId) => {
+    const currentNodes = get().nodes;
+    const currentEdges = get().edges;
+
+    const groupNode = currentNodes.find(n => n.id === groupNodeId);
+    if (!groupNode || groupNode.data?.type !== 'group') return;
+
+    get().takeHistorySnapshot();
+
+    const internalNodes = groupNode.data.internal_nodes || [];
+    const originalEdges = groupNode.data.original_edges || [];
+
+    const nextNodes = currentNodes.filter(n => n.id !== groupNodeId);
+    nextNodes.push(...internalNodes);
+
+    const outsideEdges = currentEdges.filter(e => e.source !== groupNodeId && e.target !== groupNodeId);
+    const nextEdges = [...outsideEdges, ...originalEdges];
+
+    set({
+      nodes: nextNodes,
+      edges: nextEdges,
+      isDirty: true,
+      isCompiled: false
+    });
+
+    useUIStore.getState().setSelectedNode(null);
+  },
+
+  enterGroupPreview: (groupId) => {
+    const currentNodes = get().nodes;
+    const currentEdges = get().edges;
+
+    const groupNode = currentNodes.find(n => n.id === groupId);
+    if (!groupNode || groupNode.data?.type !== 'group') return;
+
+    get().takeHistorySnapshot();
+
+    const internalNodes = groupNode.data.internal_nodes || [];
+    const originalEdges = groupNode.data.original_edges || [];
+
+    const nextNodes = currentNodes.filter(n => n.id !== groupId);
+    nextNodes.push(...internalNodes);
+
+    const outsideEdges = currentEdges.filter(e => e.source !== groupId && e.target !== groupId);
+    const nextEdges = [...outsideEdges, ...originalEdges];
+
+    set({
+      nodes: nextNodes,
+      edges: nextEdges,
+      previewingGroupId: groupId,
+      previewNodeIds: internalNodes.map(n => n.id),
+      previewGroupOriginalNode: groupNode,
+      isDirty: true,
+      isCompiled: false
+    });
+
+    useUIStore.getState().setSelectedNode(null);
+  },
+
+  exitGroupPreview: (regroup = true) => {
+    const { previewingGroupId, previewNodeIds, previewGroupOriginalNode } = get();
+    if (!previewingGroupId) return;
+
+    if (!regroup) {
+      set({
+        previewingGroupId: null,
+        previewNodeIds: [],
+        previewGroupOriginalNode: null
+      });
+      return;
+    }
+
+    get().takeHistorySnapshot();
+
+    const currentNodes = get().nodes;
+    const currentEdges = get().edges;
+
+    const groupedNodes = currentNodes.filter(n => previewNodeIds.includes(n.id));
+    
+    if (groupedNodes.length === 0) {
+      set({
+        nodes: currentNodes.filter(n => !previewNodeIds.includes(n.id)),
+        previewingGroupId: null,
+        previewNodeIds: [],
+        previewGroupOriginalNode: null,
+        isDirty: true,
+        isCompiled: false
+      });
+      return;
+    }
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    groupedNodes.forEach(n => {
+      const x = n.position?.x ?? 0;
+      const y = n.position?.y ?? 0;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    });
+
+    const centerX = minX + (maxX - minX) / 2;
+    const centerY = minY + (maxY - minY) / 2;
+
+    const groupNode = {
+      ...previewGroupOriginalNode,
+      position: { x: centerX, y: centerY },
+      data: {
+        ...previewGroupOriginalNode.data,
+        internal_nodes: groupedNodes,
+        internal_edges: [],
+        original_edges: []
+      }
+    };
+
+    const internalEdges = [];
+    const originalEdges = [];
+    const nextEdges = [];
+
+    currentEdges.forEach(e => {
+      const isSourceInside = previewNodeIds.includes(e.source);
+      const isTargetInside = previewNodeIds.includes(e.target);
+
+      if (isSourceInside && isTargetInside) {
+        internalEdges.push(e);
+        originalEdges.push(e);
+      } else if (isSourceInside && !isTargetInside) {
+        originalEdges.push(e);
+        nextEdges.push({
+          ...e,
+          id: `e_${previewingGroupId}_to_${e.target}_${genId()}`,
+          source: previewingGroupId,
+          sourceHandle: null
+        });
+      } else if (!isSourceInside && isTargetInside) {
+        originalEdges.push(e);
+        nextEdges.push({
+          ...e,
+          id: `e_${e.source}_to_${previewingGroupId}_${genId()}`,
+          target: previewingGroupId,
+          targetHandle: null
+        });
+      } else {
+        nextEdges.push(e);
+      }
+    });
+
+    groupNode.data.internal_edges = internalEdges;
+    groupNode.data.original_edges = originalEdges;
+
+    const nextNodes = currentNodes.filter(n => !previewNodeIds.includes(n.id));
+    nextNodes.push(groupNode);
+
+    set({
+      nodes: nextNodes,
+      edges: nextEdges,
+      previewingGroupId: null,
+      previewNodeIds: [],
+      previewGroupOriginalNode: null,
+      isDirty: true,
+      isCompiled: false
+    });
+
+    useUIStore.getState().setSelectedNode(previewingGroupId);
+  },
+
   newWorkflow: () => {
     const id = `wf_${genId()}${Date.now().toString(36)}`;
     set({
@@ -687,7 +955,9 @@ export const useWorkflowStore = create((set, get) => ({
           // API Extended Configs
           'api_description', 'api_enabled', 'api_execution_mode', 'additional_apis',
           // DB Engine
-          'db_engine'
+          'db_engine',
+          // Group Node config fields
+          'name', 'description', 'internal_nodes', 'internal_edges', 'original_edges'
         ];
 
         const nodeConfig = {};

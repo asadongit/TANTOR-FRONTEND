@@ -879,7 +879,7 @@ function JsonTree({ data, path = '', onSelectPath, search = '' }) {
               onClick={(e) => { e.stopPropagation(); onSelectPath(nodePath); }}
               title="Focus on this node"
               style={{
-                background: 'none', border: 'none', cursor: 'pointer',
+                border: 'none', cursor: 'pointer',
                 color: 'var(--theme-primary)', fontSize: 10, fontWeight: 700,
                 display: 'flex', alignItems: 'center', opacity: 0.7, padding: '2px 6px',
                 borderRadius: 4, background: 'var(--theme-primary-glow)'

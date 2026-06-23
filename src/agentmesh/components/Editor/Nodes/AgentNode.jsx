@@ -12,6 +12,7 @@ import {
 const NODE_CONFIGS = {
   start: { bg: '#F8F9FA', color: '#10B981', icon: FiPlay, round: 12, fill: true, small: true },
   end: { bg: '#F8F9FA', color: '#EF4444', icon: FiSquare, round: 12, small: true },
+  group: { bg: '#F0FDFA', color: '#0EA5E9', icon: FiLayers, round: 14 },
   llm_agent: { bg: '#F0F7FF', color: '#3B82F6', icon: FiCpu, round: 16 },
   deep_agent: { bg: '#F5F3FF', color: '#8B5CF6', icon: FiCpu, round: 16 },
   classification: { bg: '#C9DEFF', color: '#1A56DB', icon: FiFilter, round: 16 },
