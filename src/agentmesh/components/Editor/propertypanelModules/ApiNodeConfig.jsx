@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FiInfo, FiPlus } from "react-icons/fi";
+import { FiPlus } from "react-icons/fi";
 import {
   Field,
   Textarea,
@@ -39,6 +39,8 @@ export default function ApiNodeConfig({ data, update, selectedNodeId }) {
         api_response_format: data.api_response_format || "json",
         connection_id: data.connection_id || null,
         api_protocol: data.api_protocol || "REST",
+        api_max_retries: data.api_max_retries ?? 1,
+        api_retry_delay: data.api_retry_delay ?? 2,
       },
       ...additionalApis.map((api, idx) => ({
         name: api.name || `API #${idx + 2}`,
@@ -53,6 +55,8 @@ export default function ApiNodeConfig({ data, update, selectedNodeId }) {
         api_auth_config: api.api_auth_config || {},
         api_response_format: api.api_response_format || "json",
         connection_id: api.connection_id || null,
+        api_max_retries: api.max_retries ?? 1,
+        api_retry_delay: api.retry_delay ?? 2,
       })),
     ];
 
@@ -66,7 +70,22 @@ export default function ApiNodeConfig({ data, update, selectedNodeId }) {
 
     // Save primary back to top-level fields
     const primary = allApis[0];
-    const additional = allApis.slice(1);
+    const additional = allApis.slice(1).map(api => ({
+      name: api.name,
+      description: api.description,
+      enabled: api.enabled,
+      api_method: api.api_method,
+      api_url: api.api_url,
+      api_headers: api.api_headers,
+      api_params: api.api_params,
+      api_body: api.api_body,
+      api_auth_type: api.api_auth_type,
+      api_auth_config: api.api_auth_config,
+      api_response_format: api.api_response_format,
+      connection_id: api.connection_id,
+      max_retries: api.api_max_retries ?? 1,
+      retry_delay: api.api_retry_delay ?? 2,
+    }));
 
     update({
       api_name: primary.name,
@@ -82,6 +101,8 @@ export default function ApiNodeConfig({ data, update, selectedNodeId }) {
       api_response_format: primary.api_response_format,
       connection_id: primary.connection_id,
       api_protocol: primary.api_protocol,
+      api_max_retries: primary.api_max_retries,
+      api_retry_delay: primary.api_retry_delay,
       additional_apis: additional,
     });
 
@@ -285,6 +306,25 @@ export default function ApiNodeConfig({ data, update, selectedNodeId }) {
               ]}
             />
           </Field>
+
+          <Field label="Max Retries" hint="Maximum number of retry attempts for this API call.">
+            <Input
+              type="number"
+              min="1"
+              value={data.api_max_retries ?? 1}
+              onChange={(v) => update({ api_max_retries: Number.parseInt(v) || 1 })}
+            />
+          </Field>
+
+          <Field label="Retry Delay (s)" hint="Delay in seconds between retry attempts.">
+            <Input
+              type="number"
+              min="0"
+              step="0.5"
+              value={data.api_retry_delay ?? 2}
+              onChange={(v) => update({ api_retry_delay: Number.parseFloat(v) || 0 })}
+            />
+          </Field>
         </ListAccordionItem>
 
         {/* Additional APIs */}
@@ -401,6 +441,25 @@ export default function ApiNodeConfig({ data, update, selectedNodeId }) {
                   ]}
                 />
               </Field>
+
+              <Field label="Max Retries" hint="Maximum number of retry attempts for this API call.">
+                <Input
+                  type="number"
+                  min="1"
+                  value={api.max_retries ?? 1}
+                  onChange={(v) => localUpdate({ max_retries: Number.parseInt(v) || 1 })}
+                />
+              </Field>
+
+              <Field label="Retry Delay (s)" hint="Delay in seconds between retry attempts.">
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={api.retry_delay ?? 2}
+                  onChange={(v) => localUpdate({ retry_delay: Number.parseFloat(v) || 0 })}
+                />
+              </Field>
             </ListAccordionItem>
           );
         })}
@@ -426,6 +485,8 @@ export default function ApiNodeConfig({ data, update, selectedNodeId }) {
               api_response_format: "json",
               use_curl: data.use_curl || false,
               curl_command: "",
+              max_retries: 1,
+              retry_delay: 2,
             },
           ];
           update({ additional_apis: newArr });

@@ -109,8 +109,10 @@ export default function RuleEngineConfig({ data, update }) {
           marginTop: 16,
         }}
       >
-        <strong>Note:</strong> Rules execute sequentially. If an enabled rule
-        sets <code>intent = 'block'</code>, execution stops instantly.
+        <strong>Note:</strong> Rules execute sequentially. Use{" "}
+        <code>context</code> to access workflow data and set{" "}
+        <code>intent</code> to control routing (e.g. 'approve', 'reject',
+        'block', 'allow').
       </div>
     </div>
   );

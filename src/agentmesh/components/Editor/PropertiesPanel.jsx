@@ -89,7 +89,7 @@ const LAZY_CONFIGS = {
   data_cleaning: lazy(
     () => import("./propertypanelModules/DataCleaningConfig"),
   ),
-  network_graph: lazy(
+  graph_ingestion: lazy(
     () => import("./propertypanelModules/NetworkGraphConfig"),
   ),
   pii_node: lazy(() => import("./propertypanelModules/PiiNodeConfig")),
@@ -102,7 +102,7 @@ const LAZY_CONFIGS = {
   sensitivity_classifier: lazy(
     () => import("./propertypanelModules/SensitivityClassifierConfig"),
   ),
-  ingestion_node: lazy(
+  vector_ingestion: lazy(
     () => import("./propertypanelModules/IngestionNodeConfig"),
   ),
   rag_node: lazy(() => import("./propertypanelModules/RagNodeConfig")),
@@ -141,6 +141,7 @@ const LAZY_CONFIGS = {
   cardboard: lazy(() => import("./propertypanelModules/CardboardConfig")),
   button_trigger: lazy(() => import("./propertypanelModules/TriggerConfig")),
   auto_trigger: lazy(() => import("./propertypanelModules/TriggerConfig")),
+  textToAudio: lazy(() => import("./propertypanelModules/TextToAudioConfig")),
 };
 
 function getConfigComp(type) {
@@ -747,6 +748,7 @@ export default function PropertiesPanel() {
             "supervisor",
             "swarm",
             "tool_node",
+            "textToAudio",
           ];
           const hasInternalAdvanced =
             canHaveHitl && NODES_WITH_INTERNAL_ADVANCED.includes(data.type);

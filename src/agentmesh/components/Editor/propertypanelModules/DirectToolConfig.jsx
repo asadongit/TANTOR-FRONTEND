@@ -182,10 +182,10 @@ const DirectToolConfig = memo(function DirectToolConfig({
                             borderRadius: 4,
                             color: isAdded
                               ? "var(--text-card-danger, #EF4444)"
-                              : "var(--accent-btn, #3B82F6)",
+                              : "#7C3AED",
                             background: isAdded
                               ? "var(--bg-card-danger, #FEF2F2)"
-                              : "var(--bg-card-info, #EFF6FF)",
+                              : "#F5F3FF",
                             fontSize: 10,
                             fontWeight: 600,
                             gap: 3,

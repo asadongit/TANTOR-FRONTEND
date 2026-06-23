@@ -267,7 +267,7 @@ export default function RunPanel({ onClose }) {
         }
 
         // AGENT OUTPUTS (from AIMessages)
-        else if (msg.type === 'AIMessage') {
+        if (msg.type === 'AIMessage') {
           if (hasArtifact(msg.content)) {
             addEvent({ type: 'tool_result', tool: 'chart_generator', content: msg.content });
             chartCount++;
@@ -482,7 +482,7 @@ export default function RunPanel({ onClose }) {
         }
 
         // AGENT OUTPUTS
-        else if (msg.type === 'AIMessage') {
+        if (msg.type === 'AIMessage') {
           if (hasArtifact(msg.content)) {
             addEvent({ type: 'tool_result', tool: 'chart_generator', content: msg.content });
             chartCount++;

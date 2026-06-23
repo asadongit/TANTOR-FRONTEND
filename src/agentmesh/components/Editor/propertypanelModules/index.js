@@ -52,6 +52,7 @@ import BeneficiaryRiskConfig from './BeneficiaryRiskConfig';
 import CardboardConfig from './CardboardConfig';
 import TriggerConfig from './TriggerConfig';
 import ToolConfigModal from './ToolConfigModal';
+import TextToAudioConfig from './TextToAudioConfig';
 
 export {
   LLMAgentConfig,
@@ -107,5 +108,6 @@ export {
   BeneficiaryRiskConfig,
   CardboardConfig,
   TriggerConfig,
-  ToolConfigModal
+  ToolConfigModal,
+  TextToAudioConfig
 };
