@@ -375,7 +375,7 @@ export const useWorkflowStore = create((set, get) => ({
     }
     lastPropertyChangeTime = now;
     set((s) => {
-      // 1. Update the target node
+      // 1. Update the target node (checks top-level and inside group nodes)
       let nextNodes = s.nodes.map((n) => {
         if (n.id === nodeId) {
           const nextData = { ...n.data, ...data };
@@ -384,6 +384,27 @@ export const useWorkflowStore = create((set, get) => ({
             data: nextData,
             ...(data.locked !== undefined ? { draggable: !data.locked } : {})
           };
+        }
+        if (n.data?.type === 'group' && n.data?.internal_nodes) {
+          const hasMatch = n.data.internal_nodes.some(sub => sub.id === nodeId);
+          if (hasMatch) {
+            const updatedInternalNodes = n.data.internal_nodes.map((sub) => {
+              if (sub.id === nodeId) {
+                return {
+                  ...sub,
+                  data: { ...sub.data, ...data }
+                };
+              }
+              return sub;
+            });
+            return {
+              ...n,
+              data: {
+                ...n.data,
+                internal_nodes: updatedInternalNodes
+              }
+            };
+          }
         }
         return n;
       });

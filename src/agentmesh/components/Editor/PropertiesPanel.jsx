@@ -159,7 +159,17 @@ export default function PropertiesPanel() {
   const edges = useWorkflowStore((s) => s.edges);
 
   // Directly retrieve only the currently selected node/edge
-  const node = useMemo(() => nodes.find((n) => n.id === selectedNodeId), [nodes, selectedNodeId]);
+  const node = useMemo(() => {
+    const found = nodes.find((n) => n.id === selectedNodeId);
+    if (found) return found;
+    for (const n of nodes) {
+      if (n.data?.type === 'group' && n.data?.internal_nodes) {
+        const sub = n.data.internal_nodes.find((sn) => sn.id === selectedNodeId);
+        if (sub) return sub;
+      }
+    }
+    return null;
+  }, [nodes, selectedNodeId]);
   const edge = useMemo(() => edges.find((e) => e.id === selectedEdgeId), [edges, selectedEdgeId]);
 
   const setNodeData = useWorkflowStore((s) => s.setNodeData);
