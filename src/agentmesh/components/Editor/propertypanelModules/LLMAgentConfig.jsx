@@ -11,9 +11,9 @@ import {
   IterationConfigSection,
   WizardButton,
   NodeIdList,
-  CollapsibleSection,
-  ErrorTargetField,
+  AdvancedSection,
 } from "./SharedComponents";
+
 
 const LLMAgentConfig = memo(function LLMAgentConfig({
   data,
@@ -167,15 +167,13 @@ const LLMAgentConfig = memo(function LLMAgentConfig({
           )}
       </div>
 
-      <CollapsibleSection title="Advanced Options">
-        {hitlSection}
-        <div
-          style={{
-            height: "1px",
-            background: "var(--border)",
-            margin: "16px 0",
-          }}
-        />
+      <AdvancedSection
+        hitlSection={hitlSection}
+        nodes={nodes}
+        selectedNodeId={selectedNodeId}
+        onErrorValue={data.on_error}
+        onErrorChange={(v) => update({ on_error: v })}
+      >
         <div style={{ marginBottom: 20 }}>
           <div
             style={{
@@ -290,34 +288,6 @@ const LLMAgentConfig = memo(function LLMAgentConfig({
           }}
         />
 
-        <div>
-          <div
-            style={{
-              fontSize: 10,
-              fontWeight: 800,
-              color: "var(--text-muted)",
-              marginBottom: 12,
-              textTransform: "uppercase",
-            }}
-          >
-            Error & Recovery
-          </div>
-          <ErrorTargetField
-            value={data.on_error}
-            onChange={(v) => update({ on_error: v })}
-            nodes={nodes}
-            selectedNodeId={selectedNodeId}
-          />
-        </div>
-
-        <div
-          style={{
-            height: "1px",
-            background: "var(--border)",
-            margin: "16px 0",
-          }}
-        />
-
         <div style={{ marginBottom: 20 }}>
           <div
             style={{
@@ -359,23 +329,14 @@ const LLMAgentConfig = memo(function LLMAgentConfig({
             />
           </Field>
         </div>
-      </CollapsibleSection>
+      </AdvancedSection>
 
       {nodes.some(
         (n) =>
           n.data?.type === "swarm" &&
           (n.data?.member_ids || []).includes(selectedNodeId),
       ) && (
-        <div
-          style={{
-            marginTop: 8,
-            marginBottom: 20,
-            padding: 14,
-            background: "#FDF2F8",
-            borderRadius: 12,
-            border: "1px solid #FBCFE8",
-          }}
-        >
+        <InfoBanner type="danger" style={{ marginTop: 8 }}>
           <div
             style={{
               fontSize: 11,
@@ -400,7 +361,7 @@ const LLMAgentConfig = memo(function LLMAgentConfig({
               allNodes={nodes}
             />
           </Field>
-        </div>
+        </InfoBanner>
       )}
     </>
   );

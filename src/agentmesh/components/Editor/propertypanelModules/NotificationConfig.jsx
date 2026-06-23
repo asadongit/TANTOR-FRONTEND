@@ -1,5 +1,4 @@
 import React, { memo } from "react";
-import { FiInfo } from "react-icons/fi";
 import {
   VariablePicker,
   Field,
@@ -57,22 +56,6 @@ const NotificationConfig = memo(function NotificationConfig({ data, update }) {
         checked={data.show_chat_button || false}
         onChange={(v) => update({ show_chat_button: v })}
       />
-      <div
-        style={{
-          marginTop: 20,
-          padding: 12,
-          background: "#F0F9FF",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "#0369A1",
-          lineHeight: 1.5,
-          border: "1px solid #BAE6FD",
-        }}
-      >
-        <FiInfo size={12} style={{ marginRight: 6 }} />
-        Triggering this node stores a persistent notification that can be viewed
-        in the notifications center.
-      </div>
     </>
   );
 });

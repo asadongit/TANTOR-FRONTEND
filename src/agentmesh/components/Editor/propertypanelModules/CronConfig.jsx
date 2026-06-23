@@ -1,5 +1,4 @@
 import React from "react";
-import { FiClock } from "react-icons/fi";
 import { Toggle, Field, CronHelper, Select } from "./SharedComponents";
 
 export default function CronConfig({ data, update }) {
@@ -29,22 +28,7 @@ export default function CronConfig({ data, update }) {
           ]}
         />
       </Field>
-      <div
-        style={{
-          marginTop: 20,
-          padding: 12,
-          background: "#FFFBEB",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "#92400E",
-          lineHeight: 1.5,
-          border: "1px solid #FDE68A",
-        }}
-      >
-        <FiClock size={12} style={{ marginRight: 6 }} />
-        The Cron trigger automatically executes the workflow at specified
-        intervals using the backend scheduler.
-      </div>
     </>
   );
 }
+

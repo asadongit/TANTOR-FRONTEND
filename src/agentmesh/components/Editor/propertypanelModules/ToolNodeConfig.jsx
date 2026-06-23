@@ -3,8 +3,7 @@ import {
   Field,
   ToolTagInput,
   Toggle,
-  CollapsibleSection,
-  ErrorTargetField,
+  AdvancedSection,
 } from "./SharedComponents";
 
 const ToolNodeConfig = memo(function ToolNodeConfig({
@@ -28,37 +27,20 @@ const ToolNodeConfig = memo(function ToolNodeConfig({
         />
       </Field>
 
-      <CollapsibleSection title="Advanced Options">
-        {hitlSection}
-        {hitlSection && (
-          <div
-            style={{
-              height: "1px",
-              background: "var(--border)",
-              margin: "16px 0",
-            }}
-          />
-        )}
+      <AdvancedSection
+        hitlSection={hitlSection}
+        nodes={nodes}
+        selectedNodeId={selectedNodeId}
+        onErrorValue={data.on_error}
+        onErrorChange={(v) => update({ on_error: v })}
+        onErrorHint="If this tool execution fails, jump to this error handler."
+      >
         <Toggle
           checked={data.return_direct}
           onChange={(v) => syncToggle("return_direct", v)}
           label="Return tool result directly to user"
         />
-        <div
-          style={{
-            height: "1px",
-            background: "var(--border)",
-            margin: "16px 0",
-          }}
-        />
-        <ErrorTargetField
-          value={data.on_error}
-          onChange={(v) => update({ on_error: v })}
-          nodes={nodes}
-          selectedNodeId={selectedNodeId}
-          hint="If this tool execution fails, jump to this error handler."
-        />
-      </CollapsibleSection>
+      </AdvancedSection>
     </>
   );
 });

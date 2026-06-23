@@ -1,5 +1,5 @@
 import React from "react";
-import { FiInfo } from "react-icons/fi";
+
 import {
   Select,
   Field,
@@ -146,30 +146,6 @@ export default function JsonTransformVaConfig({ data, update }) {
             rows={3}
           />
         </Field>
-      )}
-
-      <div
-        style={{
-          padding: "12px 14px",
-          background: "#F0F9FF",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "#0369A1",
-          border: "1px solid #BAE6FD",
-          lineHeight: 1.5,
-          marginTop: 12,
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-        }}
-      >
-        <FiInfo size={14} style={{ flexShrink: 0 }} />
-        <span style={{ flex: 1, fontWeight: 500 }}>
-          JSON Transform processes structured data from APIs, uploads, or
-          previous nodes. Use "Flatten" for nested JSON → flat keys before
-          Pattern Extraction.
-        </span>
-      </div>
-    </>
+      )}    </>
   );
 }

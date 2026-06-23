@@ -47,6 +47,7 @@ import {
   Toggle,
   CollapsibleSection,
   HitlConfigSection,
+  InfoBanner,
 } from "./propertypanelModules/SharedComponents";
 
 // Lazy load configuration modules to optimize bundle size and page load speed.
@@ -417,22 +418,10 @@ export default function PropertiesPanel() {
         </div>
 
         <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
-          <div
-            style={{
-              marginBottom: 20,
-              padding: 12,
-              background: "#F8F9FF",
-              borderRadius: 10,
-              fontSize: 11,
-              color: "#6366F1",
-              lineHeight: 1.5,
-              border: "1px solid #E0E7FF",
-            }}
-          >
-            <FiInfo size={11} style={{ marginRight: 5 }} />
+          <InfoBanner type="info">
             Conditional edges are used by <strong>Router</strong> nodes. If a
             node is not a Router, the edge acts as a standard flow connection.
-          </div>
+          </InfoBanner>
 
           <Field
             label="Condition Key"
@@ -704,24 +693,9 @@ export default function PropertiesPanel() {
       {/* Content */}
       <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
         {nodeDesc && (
-          <div
-            style={{
-              marginBottom: 16,
-              padding: "12px 14px",
-              background: "#F8FAFC",
-              border: "1px solid var(--border)",
-              borderRadius: 10,
-              fontSize: 12,
-              color: "var(--text-secondary, #334155)",
-              lineHeight: 1.45,
-              display: "flex",
-              alignItems: "flex-start",
-              gap: 8,
-            }}
-          >
-            <FiInfo size={15} style={{ marginTop: 2, flexShrink: 0, color: "var(--theme-primary, #0EA5E9)" }} />
-            <div>{nodeDesc}</div>
-          </div>
+          <InfoBanner type="neutral">
+            {nodeDesc}
+          </InfoBanner>
         )}
 
         {/* Common Label field (only for non-system nodes) */}

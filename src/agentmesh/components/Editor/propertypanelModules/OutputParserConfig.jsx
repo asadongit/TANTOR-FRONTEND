@@ -1,5 +1,4 @@
 import React from "react";
-import { FiFilter } from "react-icons/fi";
 import { Field, Select, Input } from "./SharedComponents";
 
 export default function OutputParserConfig({ data, update }) {
@@ -45,23 +44,6 @@ export default function OutputParserConfig({ data, update }) {
           placeholder="parsed_output"
         />
       </Field>
-      <div
-        style={{
-          padding: 12,
-          background: "#FEF3C7",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "#92400E",
-          lineHeight: 1.5,
-          border: "1px solid #FDE68A",
-          marginTop: 16,
-        }}
-      >
-        <FiFilter size={12} style={{ marginRight: 6, display: "inline" }} />
-        Automatically reads latest message and repairs malformed JSON: fixes
-        missing quotes, trailing commas, unquoted keys, etc. Result stored in
-        context automatically.
-      </div>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React from "react";
-import { FiPlus, FiTrash2, FiInfo } from "react-icons/fi";
+import { FiPlus, FiTrash2 } from "react-icons/fi";
 import { Field, Input, Textarea, LogicHelper } from "./SharedComponents";
 
 export default function SwitchConfig({ data, update }) {
@@ -114,22 +114,6 @@ export default function SwitchConfig({ data, update }) {
         >
           <FiPlus size={14} /> Add Branch
         </button>
-      </div>
-      <div
-        style={{
-          padding: 12,
-          background: "#F1F5F9",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "#475569",
-          lineHeight: 1.5,
-          border: "1px solid var(--border)",
-          marginTop: 16,
-        }}
-      >
-        <FiInfo size={12} style={{ marginRight: 6 }} />
-        The workflow routes to the <strong>first</strong> branch that evaluates
-        to True. If none match, it follows the <strong>ELSE</strong> path.
       </div>
     </>
   );

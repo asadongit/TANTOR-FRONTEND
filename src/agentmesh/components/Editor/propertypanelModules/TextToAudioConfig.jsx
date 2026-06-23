@@ -5,9 +5,9 @@ import {
   Select,
   Toggle,
   Textarea,
-  CollapsibleSection,
-  ErrorTargetField,
+  AdvancedSection,
 } from "./SharedComponents";
+
 
 const TextToAudioConfig = memo(function TextToAudioConfig({
   data,
@@ -64,25 +64,14 @@ const TextToAudioConfig = memo(function TextToAudioConfig({
         label="Mute Audio Generation"
       />
 
-      <CollapsibleSection title="Advanced Options">
-        {hitlSection}
-        {hitlSection && (
-          <div
-            style={{
-              height: "1px",
-              background: "var(--border)",
-              margin: "16px 0",
-            }}
-          />
-        )}
-        <ErrorTargetField
-          value={data.on_error}
-          onChange={(v) => update({ on_error: v })}
-          nodes={nodes}
-          selectedNodeId={selectedNodeId}
-          hint="If audio generation fails, jump to this error handler."
-        />
-      </CollapsibleSection>
+      <AdvancedSection
+        hitlSection={hitlSection}
+        nodes={nodes}
+        selectedNodeId={selectedNodeId}
+        onErrorValue={data.on_error}
+        onErrorChange={(v) => update({ on_error: v })}
+        onErrorHint="If audio generation fails, jump to this error handler."
+      />
     </>
   );
 });

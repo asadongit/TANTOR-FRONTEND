@@ -202,23 +202,6 @@ export default function IngestionAdapterConfig({ data, update }) {
           valuePlaceholder="Default value"
         />
       </div>
-
-      <div
-        style={{
-          padding: "12px 16px",
-          background: "rgba(59, 130, 246, 0.05)",
-          borderRadius: 12,
-          fontSize: 11,
-          color: "#0369A1",
-          border: "1px dashed rgba(59, 130, 246, 0.2)",
-          lineHeight: 1.6,
-          marginTop: 16,
-        }}
-      >
-        <strong>Domain-Agnostic:</strong> This node handles format detection and
-        parsing only. Configure field aliases and defaults above for your
-        specific workflow (fraud, LOS, compliance, etc.).
-      </div>
     </div>
   );
 }

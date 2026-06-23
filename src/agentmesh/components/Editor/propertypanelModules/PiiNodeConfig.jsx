@@ -1,5 +1,5 @@
 import React from "react";
-import { FiShield, FiAlertTriangle } from "react-icons/fi";
+
 import {
   Select,
   Field,
@@ -224,28 +224,6 @@ export default function PiiNodeConfig({ data, update }) {
         onChange={(v) => update({ pii_custom_regex: v })}
       />
 
-      <div
-        style={{
-          padding: "12px 14px",
-          background: "#F8FAFC",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "var(--text-secondary)",
-          border: "1px solid var(--border)",
-          lineHeight: 1.5,
-          marginTop: 18,
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          justifyContent: "space-between",
-        }}
-      >
-        <span style={{ flex: 1, fontWeight: 500 }}>
-          Privacy Guard: Custom regex patterns run as a pre-processing step
-          before the main engine. This ensures matching data never reaches the
-          engine at all.
-        </span>
-      </div>
     </>
   );
 }

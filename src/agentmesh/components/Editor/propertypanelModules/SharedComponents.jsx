@@ -44,3 +44,6 @@ export {
   WeightageCategoriesEditor,
 } from "./shared/complexEditors";
 export { default as CollapsibleSection } from "./shared/CollapsibleSection";
+export { default as InfoBanner } from "./shared/InfoBanner";
+export { default as AdvancedSection } from "./shared/AdvancedSection";
+

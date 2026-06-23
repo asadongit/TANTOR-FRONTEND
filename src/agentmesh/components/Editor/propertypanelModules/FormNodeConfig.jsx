@@ -6,7 +6,7 @@ import {
   FormFieldsEditor,
   FormDecisionsEditor,
 } from "./SharedComponents";
-import { FiInfo } from "react-icons/fi";
+
 
 export default function FormNodeConfig({ data, update }) {
   return (
@@ -80,22 +80,7 @@ export default function FormNodeConfig({ data, update }) {
         </div>
       )}
 
-      <div
-        style={{
-          marginTop: 20,
-          padding: 12,
-          background: "#F8F9FA",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "var(--text-muted)",
-          lineHeight: 1.5,
-          border: "1px solid var(--border)",
-        }}
-      >
-        <FiInfo size={12} style={{ marginRight: 6 }} />
-        Workflow will pause and wait for the user to submit this form. Results
-        are merged into the workflow context.
-      </div>
+
     </>
   );
 }

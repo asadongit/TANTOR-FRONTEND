@@ -1,5 +1,5 @@
 import React from "react";
-import { FiCpu, FiInfo } from "react-icons/fi";
+
 import {
   Select,
   Field,
@@ -194,32 +194,6 @@ export default function ClassificationConfig({ data, update }) {
         </div>
       </div>
 
-      <div
-        style={{
-          padding: "12px 14px",
-          background: "#F0F9FF",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "#0369A1",
-          border: "1px solid #BAE6FD",
-          lineHeight: 1.5,
-          marginTop: 18,
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-        }}
-      >
-        <FiInfo size={14} style={{ flexShrink: 0 }} />
-        <span style={{ flex: 1, fontWeight: 500 }}>
-          Classification Agent: Classifies the incoming message or payload into
-          one of your custom classes using{" "}
-          {data.classification_engine === "regex"
-            ? "Regex rules"
-            : "the configured LLM"}
-          . Returns a JSON object with keys <strong>class</strong> and either{" "}
-          <strong>original_data</strong> or <strong>summary</strong>.
-        </span>
-      </div>
     </>
   );
 }

@@ -1,5 +1,5 @@
 import React from "react";
-import { FiBox, FiChevronDown, FiShield } from "react-icons/fi";
+
 import { Field, Input, Textarea, Select } from "./SharedComponents";
 
 export default function SensitivityClassifierConfig({ data, update }) {
@@ -239,32 +239,6 @@ export default function SensitivityClassifierConfig({ data, update }) {
             </Field>
           </div>
         )}
-      </div>
-
-      <div
-        style={{
-          marginTop: 16,
-          padding: 12,
-          background: "#F8FAFC",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "#475569",
-          lineHeight: 1.5,
-          border: "1px solid var(--border)",
-          display: "flex",
-          alignItems: "flex-start",
-          gap: 8,
-        }}
-      >
-        <FiShield
-          size={13}
-          style={{ marginTop: 1, flexShrink: 0, color: "var(--theme-primary)" }}
-        />
-        <span>
-          Detects <strong>PII / PHI / PCI</strong> using Microsoft Presidio +
-          custom regex. Runs 100% locally — no data leaves the server.
-        </span>
-      </div>
-    </>
+      </div>    </>
   );
 }

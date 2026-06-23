@@ -4,28 +4,6 @@ import { Field, Input, Toggle } from "./SharedComponents";
 export default function PiiGateNodeConfig({ data, update }) {
   return (
     <>
-      <div
-        style={{
-          padding: "14px 16px",
-          background: "#F0FDF4",
-          borderRadius: 12,
-          fontSize: 12,
-          color: "#166534",
-          border: "1px solid #BBF7D0",
-          lineHeight: 1.6,
-          marginTop: 8,
-          marginBottom: 16,
-        }}
-      >
-        <div style={{ fontWeight: 700, marginBottom: 4, fontSize: 13 }}>
-          🛡️ PII Verification Gate
-        </div>
-        <div style={{ color: "#14532D", fontSize: 11 }}>
-          Pauses the workflow and saves a draft of the OCR results to the
-          database for human review before allowing the pipeline to continue.
-        </div>
-      </div>
-
       <Field
         label="Input Key"
         hint="Context key containing the OCR extraction results."

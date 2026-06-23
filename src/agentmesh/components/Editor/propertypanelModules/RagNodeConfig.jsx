@@ -1,5 +1,5 @@
 import React from "react";
-import { FiBookOpen } from "react-icons/fi";
+
 import {
   Select,
   Field,
@@ -132,23 +132,6 @@ export default function RagNodeConfig({
             label=""
           />
         </Field>
-      </div>
-
-      <div
-        style={{
-          padding: 12,
-          background: "#FFF7ED",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "#92400E",
-          border: "1px solid #FED7AA",
-          marginTop: 10,
-        }}
-      >
-        <FiBookOpen size={12} style={{ marginRight: 6 }} />
-        The RAG node searches your vector database for relevant info and uses an
-        LLM to generate an answer based only on those results.
-      </div>
-    </>
+      </div>    </>
   );
 }

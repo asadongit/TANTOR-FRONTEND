@@ -7,8 +7,7 @@ import {
   ToolTagInput,
   IterationConfigSection,
   WizardButton,
-  CollapsibleSection,
-  ErrorTargetField,
+  AdvancedSection,
 } from "./SharedComponents";
 
 const SupervisorConfig = memo(function SupervisorConfig({
@@ -92,38 +91,21 @@ const SupervisorConfig = memo(function SupervisorConfig({
         />
       </Field>
 
-      <CollapsibleSection title="Advanced Options">
-        {hitlSection}
-        <div
-          style={{
-            height: "1px",
-            background: "var(--border)",
-            margin: "16px 0",
-          }}
-        />
+      <AdvancedSection
+        hitlSection={hitlSection}
+        nodes={nodes}
+        selectedNodeId={selectedNodeId}
+        onErrorValue={data.on_error}
+        onErrorChange={(v) => update({ on_error: v })}
+        onErrorHint="If supervision fails, jump to this error handler."
+      >
         <div style={{ marginBottom: 20 }}>
           <IterationConfigSection
             policy={data.iteration_policy}
             onChange={(policy) => update({ iteration_policy: policy })}
           />
         </div>
-
-        <div
-          style={{
-            height: "1px",
-            background: "var(--border)",
-            margin: "16px 0",
-          }}
-        />
-
-        <ErrorTargetField
-          value={data.on_error}
-          onChange={(v) => update({ on_error: v })}
-          nodes={nodes}
-          selectedNodeId={selectedNodeId}
-          hint="If supervision fails, jump to this error handler."
-        />
-      </CollapsibleSection>
+      </AdvancedSection>
     </>
   );
 });
