@@ -1,5 +1,4 @@
 import React from "react";
-import { FiInfo } from "react-icons/fi";
 import { Select, Field, Input } from "./SharedComponents";
 
 export default function DataCleaningConfig({ data, update }) {
@@ -122,23 +121,6 @@ export default function DataCleaningConfig({ data, update }) {
         />
       </Field>
 
-      <div
-        style={{
-          marginTop: 20,
-          padding: 12,
-          background: "#ECFDF5",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "#059669",
-          lineHeight: 1.5,
-          border: "1px solid #A7F3D0",
-        }}
-      >
-        <FiInfo size={12} style={{ marginRight: 6 }} />
-        Loads a JSON string/dictionary, runs a Pandas data cleaning script, and
-        outputs the cleaned dataset plus execution metrics (issues found, fixes
-        applied).
-      </div>
     </>
   );
 }

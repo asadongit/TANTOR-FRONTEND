@@ -1,5 +1,5 @@
 import React from "react";
-import { FiFileText, FiInfo } from "react-icons/fi";
+
 import { Field, Input, Textarea } from "./SharedComponents";
 
 export default function TemplateNodeConfig({ data, update }) {
@@ -66,29 +66,6 @@ export default function TemplateNodeConfig({ data, update }) {
         </Field>
       </div>
 
-      <div
-        style={{
-          padding: "12px 14px",
-          background: "var(--bg-card-info, #F0F9FF)",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "var(--text-card-info, #0369A1)",
-          border: "1px solid var(--border-card-info, #BAE6FD)",
-          lineHeight: 1.5,
-          marginTop: 18,
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-        }}
-      >
-        <FiInfo size={14} style={{ flexShrink: 0 }} />
-        <span style={{ flex: 1, fontWeight: 500 }}>
-          Template Engine Node: Renders dynamic text or markdown using Jinja2
-          formatting. The global context, <code>latest_message</code>, and
-          values under the selected <code>Input Data Key</code> are all exposed
-          to your template variables automatically.
-        </span>
-      </div>
     </>
   );
 }

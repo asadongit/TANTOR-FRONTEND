@@ -1,5 +1,4 @@
 import React from "react";
-import { FiInfo } from "react-icons/fi";
 import { Field, Textarea, LogicHelper } from "./SharedComponents";
 
 export default function ConditionConfig({ data, update }) {
@@ -17,22 +16,7 @@ export default function ConditionConfig({ data, update }) {
         />
       </Field>
       <LogicHelper />
-      <div
-        style={{
-          padding: 12,
-          background: "#FFFBEB",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "#92400E",
-          lineHeight: 1.5,
-          border: "1px solid #FDE68A",
-          marginTop: 10,
-        }}
-      >
-        <FiInfo size={12} style={{ marginRight: 6 }} />
-        Connect two edges from this node. Label one <strong>true</strong> and
-        the other <strong>false</strong>.
-      </div>
     </>
   );
 }
+

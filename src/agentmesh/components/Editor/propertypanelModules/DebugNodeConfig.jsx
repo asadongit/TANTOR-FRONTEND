@@ -1,5 +1,4 @@
 import React from "react";
-import { FiInfo } from "react-icons/fi";
 import { Select, Field, Input } from "./SharedComponents";
 
 export default function DebugNodeConfig({ data, update }) {
@@ -31,22 +30,6 @@ export default function DebugNodeConfig({ data, update }) {
           />
         </Field>
       )}
-
-      <div
-        style={{
-          padding: 12,
-          background: "#F8FAFC",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "#475569",
-          lineHeight: 1.5,
-          border: "1px solid var(--border)",
-        }}
-      >
-        <FiInfo size={12} style={{ marginRight: 6 }} />
-        Prints a formatted JSON snapshot of the workflow state directly to the
-        chat interface. Use this to verify data movement between nodes.
-      </div>
     </>
   );
 }

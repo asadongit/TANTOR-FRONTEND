@@ -1,5 +1,4 @@
 import React from "react";
-import { FiInfo } from "react-icons/fi";
 import { Field, Input } from "./SharedComponents";
 
 export default function SplitterConfig({ data, update }) {
@@ -64,25 +63,6 @@ export default function SplitterConfig({ data, update }) {
             placeholder="cd_output_, ocr_like_results"
           />
         </Field>
-      </div>
-      <div
-        style={{
-          padding: 12,
-          background: "var(--bg-card-warning-alt, #FFF7ED)",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "var(--text-card-warning-alt, #9A3412)",
-          border: "1px solid var(--border-card-warning-alt, #FED7AA)",
-          lineHeight: 1.5,
-        }}
-      >
-        <FiInfo size={12} style={{ marginRight: 6 }} />
-        Iterates through a list. Each iteration puts the current item into{" "}
-        <strong>context.{data.destination_field || "item"}</strong>.
-        <br />
-        <br />
-        Use <strong>intent == 'loop'</strong> for the processing path and{" "}
-        <strong>intent == 'done'</strong> for the completion path.
       </div>
     </>
   );

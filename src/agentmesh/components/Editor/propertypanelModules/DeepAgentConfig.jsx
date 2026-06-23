@@ -5,14 +5,13 @@ import {
   Input,
   Textarea,
   ToolTagInput,
-  Select,
   LLMConfigSection,
   Toggle,
   WizardButton,
   NodeIdList,
-  CollapsibleSection,
-  ErrorTargetField,
+  AdvancedSection,
 } from "./SharedComponents";
+
 
 const DeepAgentConfig = memo(function DeepAgentConfig({
   data,
@@ -186,16 +185,14 @@ const DeepAgentConfig = memo(function DeepAgentConfig({
         </div>
       </Field>
 
-      <CollapsibleSection title="Advanced Options">
-        {hitlSection}
-        <div
-          style={{
-            height: "1px",
-            background: "var(--border)",
-            margin: "16px 0",
-          }}
-        />
-
+      <AdvancedSection
+        hitlSection={hitlSection}
+        nodes={nodes}
+        selectedNodeId={selectedNodeId}
+        onErrorValue={data.on_error}
+        onErrorChange={(v) => update({ on_error: v })}
+        onErrorHint="If this node fails, jump to this error handler."
+      >
         <div style={{ marginBottom: 20 }}>
           <div
             style={{
@@ -257,36 +254,7 @@ const DeepAgentConfig = memo(function DeepAgentConfig({
             label="Return result direct to user"
           />
         </div>
-
-        <div
-          style={{
-            height: "1px",
-            background: "var(--border)",
-            margin: "16px 0",
-          }}
-        />
-
-        <div>
-          <div
-            style={{
-              fontSize: 10,
-              fontWeight: 800,
-              color: "var(--text-muted)",
-              marginBottom: 12,
-              textTransform: "uppercase",
-            }}
-          >
-            Error & Recovery
-          </div>
-          <ErrorTargetField
-            value={data.on_error}
-            onChange={(v) => update({ on_error: v })}
-            nodes={nodes}
-            selectedNodeId={selectedNodeId}
-            hint="If this node fails, jump to this error handler."
-          />
-        </div>
-      </CollapsibleSection>
+      </AdvancedSection>
     </>
   );
 });

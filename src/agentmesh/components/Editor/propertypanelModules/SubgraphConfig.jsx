@@ -1,5 +1,5 @@
 import React from "react";
-import { Field, SearchableSelect, Toggle } from "./SharedComponents";
+import { Field, SearchableSelect, Toggle, InfoBanner } from "./SharedComponents";
 
 export default function SubgraphConfig({
   data,
@@ -45,19 +45,11 @@ export default function SubgraphConfig({
         />
       </div>
       {!data.workflow_id && (
-        <div
-          style={{
-            padding: 12,
-            background: "#FFFBEB",
-            borderRadius: 10,
-            fontSize: 12,
-            color: "#92400E",
-            border: "1px solid #FDE68A",
-          }}
-        >
+        <InfoBanner type="warning">
           Select a compiled workflow to use as a subgraph.
-        </div>
+        </InfoBanner>
       )}
     </>
   );
 }
+

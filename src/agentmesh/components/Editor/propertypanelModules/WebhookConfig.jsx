@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FiGlobe, FiCopy, FiInfo, FiCheck } from "react-icons/fi";
+import { FiGlobe, FiCopy, FiCheck } from "react-icons/fi";
 import {
   Toggle,
   Field,
@@ -236,25 +236,6 @@ export default function WebhookConfig({ data, update, nodes, selectedNodeId }) {
             {copied ? <FiCheck size={14} /> : <FiCopy size={14} />}
           </button>
         </div>
-      </div>
-
-      <div
-        style={{
-          marginTop: 20,
-          padding: 12,
-          background: "#F0F9FF",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "#0369A1",
-          lineHeight: 1.5,
-          border: "1px solid #BAE6FD",
-        }}
-      >
-        <FiInfo size={12} style={{ marginRight: 6 }} />
-        {data.response_mode === "on_completion"
-          ? "Synchronous Mode: Caller waits for result. Use a 'Webhook Response' node to customize the output."
-          : "Asynchronous Mode: Instant response. Workflow runs in background."}
-      </div>
-    </div>
+      </div>    </div>
   );
 }

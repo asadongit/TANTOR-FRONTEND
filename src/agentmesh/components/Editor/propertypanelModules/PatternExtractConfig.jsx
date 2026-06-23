@@ -1,5 +1,5 @@
 import React from "react";
-import { FiSearch, FiPlus, FiX } from "react-icons/fi";
+import { FiPlus, FiX } from "react-icons/fi";
 import {
   Select,
   Field,
@@ -9,6 +9,7 @@ import {
   VariableDropdown,
   Toggle,
 } from "./SharedComponents";
+
 
 export default function PatternExtractConfig({ data, update }) {
   const renderPatternRow = (pattern, idx) => (
@@ -485,30 +486,6 @@ export default function PatternExtractConfig({ data, update }) {
             )}
           </div>
         </div>
-      )}
-
-      <div
-        style={{
-          padding: "12px 14px",
-          background: "#FDF2F8",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "#DB2777",
-          border: "1px solid #FBCFE8",
-          lineHeight: 1.5,
-          marginTop: 12,
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-        }}
-      >
-        <FiSearch size={14} style={{ flexShrink: 0 }} />
-        <span style={{ flex: 1, fontWeight: 500 }}>
-          {(data.extract_mode || "identifier") === "identifier"
-            ? "Identifier mode finds labeled values (ID, Name, etc.) from flat JSON keys. Connect after a JSON Transform node."
-            : "Field Mapper mode groups extracted values by target class (class_1, class_2, etc.) for routing."}
-        </span>
-      </div>
-    </>
+      )}    </>
   );
 }

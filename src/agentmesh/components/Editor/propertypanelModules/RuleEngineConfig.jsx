@@ -97,23 +97,6 @@ export default function RuleEngineConfig({ data, update }) {
         <FiPlus size={12} /> Add Rule
       </button>
 
-      <div
-        style={{
-          background: "var(--bg-card-info, #F0F9FF)",
-          padding: 12,
-          borderRadius: 8,
-          border: "1px solid var(--border-card-info, #BAE6FD)",
-          fontSize: 12,
-          color: "var(--text-card-info, #0369A1)",
-          lineHeight: 1.5,
-          marginTop: 16,
-        }}
-      >
-        <strong>Note:</strong> Rules execute sequentially. Use{" "}
-        <code>context</code> to access workflow data and set{" "}
-        <code>intent</code> to control routing (e.g. 'approve', 'reject',
-        'block', 'allow').
-      </div>
     </div>
   );
 }

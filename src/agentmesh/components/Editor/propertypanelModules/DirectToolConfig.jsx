@@ -6,9 +6,9 @@ import {
   Input,
   KeyValueEditor,
   Toggle,
-  CollapsibleSection,
-  ErrorTargetField,
+  AdvancedSection,
 } from "./SharedComponents";
+
 
 const DirectToolConfig = memo(function DirectToolConfig({
   data,
@@ -243,35 +243,20 @@ const DirectToolConfig = memo(function DirectToolConfig({
         hint="Arguments to pass to the tool. Supports {{variable}} dynamic replacement."
       />
 
-      <CollapsibleSection title="Advanced Options">
-        {hitlSection}
-        <div
-          style={{
-            height: "1px",
-            background: "var(--border)",
-            margin: "16px 0",
-          }}
-        />
+      <AdvancedSection
+        hitlSection={hitlSection}
+        nodes={nodes}
+        selectedNodeId={selectedNodeId}
+        onErrorValue={data.on_error}
+        onErrorChange={(v) => update({ on_error: v })}
+        onErrorHint="If this tool execution fails, jump to this error handler."
+      >
         <Toggle
           checked={data.return_direct || false}
           onChange={(v) => update({ return_direct: v })}
           label="Return result direct to user"
         />
-        <div
-          style={{
-            height: "1px",
-            background: "var(--border)",
-            margin: "16px 0",
-          }}
-        />
-        <ErrorTargetField
-          value={data.on_error}
-          onChange={(v) => update({ on_error: v })}
-          nodes={nodes}
-          selectedNodeId={selectedNodeId}
-          hint="If this tool execution fails, jump to this error handler."
-        />
-      </CollapsibleSection>
+      </AdvancedSection>
     </>
   );
 });

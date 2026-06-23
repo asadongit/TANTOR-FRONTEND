@@ -1,5 +1,5 @@
 import React from "react";
-import { FiClock, FiTool } from "react-icons/fi";
+
 import {
   Toggle,
   Field,
@@ -221,22 +221,6 @@ export default function PollingConfig({
         hint="Key-value arguments to supply to the poller tool on every execution."
       />
 
-      <div
-        style={{
-          marginTop: 20,
-          padding: 12,
-          background: "#FFFDF5",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "#854D0E",
-          lineHeight: 1.5,
-          border: "1px solid #FEF08A",
-        }}
-      >
-        <FiClock size={12} style={{ marginRight: 6 }} />
-        The Polling trigger runs the selected tool on a scheduled interval
-        without an LLM. If new items are returned, it starts a workflow run.
-      </div>
     </>
   );
 }
