@@ -327,6 +327,13 @@ export function SourceViewNode({ id, onSave }) {
           (join) => join.view1 !== previousView && join.view2 !== previousView
         ),
       }));
+      if (previousView) {
+        setColumnSettings((prevSettings) => {
+          const updatedSettings = { ...prevSettings };
+          delete updatedSettings[previousView];
+          return updatedSettings;
+        });
+      }
     }
     else if (finalPayload.operation) {
       handleFinalPayload({});
