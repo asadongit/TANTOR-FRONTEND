@@ -128,6 +128,8 @@ export default function WorkflowCanvas() {
     previewingGroupId,
     exitGroupPreview,
     previewGroupOriginalNode,
+    groupNodes,
+    ungroupNode,
   } = useWorkflowStore();
   const {
     selectedNodeId,
@@ -759,6 +761,20 @@ export default function WorkflowCanvas() {
         } else if (e.key === "y" || e.key === "Y") {
           e.preventDefault();
           redo();
+          return;
+        } else if (e.key === "g" || e.key === "G") {
+          e.preventDefault();
+          if (e.shiftKey) {
+            const selectedGroupNode = nodes.find(n => n.id === selectedNodeId && n.data?.type === 'group');
+            if (selectedGroupNode) {
+              ungroupNode(selectedGroupNode.id);
+            }
+          } else {
+            const selectedNodeIds = nodes.filter(n => n.selected).map(n => n.id);
+            if (selectedNodeIds.length >= 2) {
+              groupNodes(selectedNodeIds);
+            }
+          }
           return;
         }
       }
