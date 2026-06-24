@@ -257,13 +257,16 @@ export default function RunPanel({ onClose }) {
 
       let chartCount = 0;
       let lastActiveAgent = null;
+      let lastActiveAgentName = null;
 
       for (const msg of newMessages) {
         const nodeId = msg.metadata?.active_agent;
+        const agentName = msg.metadata?.agent_name;
 
         if (nodeId && nodeId !== lastActiveAgent) {
-          addEvent({ type: 'node_start', node: nodeId });
+          addEvent({ type: 'node_start', node: nodeId, agent_name: agentName });
           lastActiveAgent = nodeId;
+          lastActiveAgentName = agentName;
         }
 
         // AGENT OUTPUTS (from AIMessages)
@@ -275,7 +278,7 @@ export default function RunPanel({ onClose }) {
 
           const isNotLast = msg !== newMessages[newMessages.length - 1];
           if (isNotLast && msg.content && typeof msg.content === 'string' && msg.content.trim()) {
-            addEvent({ type: 'token', content: msg.content, node: nodeId });
+            addEvent({ type: 'token', content: msg.content, node: nodeId, agent_name: agentName });
           }
         }
       }
@@ -292,9 +295,9 @@ export default function RunPanel({ onClose }) {
 
       const isPlaceholder = /imgur|<img|placeholder/i.test(output);
       if (output.trim() && !isPlaceholder) {
-        addEvent({ type: 'token', content: output, node: lastActiveAgent });
+        addEvent({ type: 'token', content: output, node: lastActiveAgent, agent_name: lastActiveAgentName });
       } else if (chartCount === 0 && output.trim()) {
-        addEvent({ type: 'token', content: output, node: lastActiveAgent });
+        addEvent({ type: 'token', content: output, node: lastActiveAgent, agent_name: lastActiveAgentName });
       }
 
       finishRun(output || null);
@@ -472,13 +475,16 @@ export default function RunPanel({ onClose }) {
 
       let chartCount = 0;
       let lastActiveAgent = res.active_agent || null;
+      let lastActiveAgentName = null;
 
       for (const msg of messages) {
         const nodeId = msg.metadata?.active_agent;
+        const agentName = msg.metadata?.agent_name;
 
         if (nodeId && nodeId !== lastActiveAgent) {
-          addEvent({ type: 'node_start', node: nodeId });
+          addEvent({ type: 'node_start', node: nodeId, agent_name: agentName });
           lastActiveAgent = nodeId;
+          lastActiveAgentName = agentName;
         }
 
         // AGENT OUTPUTS
@@ -490,7 +496,7 @@ export default function RunPanel({ onClose }) {
 
           const isNotLast = msg !== messages[messages.length - 1];
           if (isNotLast && msg.content && typeof msg.content === 'string' && msg.content.trim()) {
-            addEvent({ type: 'token', content: msg.content, node: nodeId });
+            addEvent({ type: 'token', content: msg.content, node: nodeId, agent_name: agentName });
           }
         }
       }
@@ -506,9 +512,9 @@ export default function RunPanel({ onClose }) {
 
       const isPlaceholder = /imgur|<img|placeholder/i.test(output);
       if (output.trim() && !isPlaceholder) {
-        addEvent({ type: 'token', content: output, node: lastActiveAgent });
+        addEvent({ type: 'token', content: output, node: lastActiveAgent, agent_name: lastActiveAgentName });
       } else if (chartCount === 0 && output.trim()) {
-        addEvent({ type: 'token', content: output, node: lastActiveAgent });
+        addEvent({ type: 'token', content: output, node: lastActiveAgent, agent_name: lastActiveAgentName });
       }
 
       const entry = (history || []).find(h => h.thread_id === threadId);
@@ -557,6 +563,7 @@ export default function RunPanel({ onClose }) {
 
       for (const msg of messages) {
         const nodeId = msg.metadata?.active_agent;
+        const agentName = msg.metadata?.agent_name;
 
         if (msg.type === 'HumanMessage') {
           events.push({ type: 'user_message', content: msg.content });
@@ -567,11 +574,11 @@ export default function RunPanel({ onClose }) {
           }
         } else if (msg.type === 'AIMessage') {
           if (nodeId && nodeId !== lastActiveAgent) {
-            events.push({ type: 'node_start', node: nodeId });
+            events.push({ type: 'node_start', node: nodeId, agent_name: agentName });
             lastActiveAgent = nodeId;
           }
           if (msg.content && typeof msg.content === 'string' && msg.content.trim()) {
-            events.push({ type: 'token', content: msg.content, node: nodeId });
+            events.push({ type: 'token', content: msg.content, node: nodeId, agent_name: agentName });
           }
         }
       }

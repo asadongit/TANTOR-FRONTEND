@@ -23,7 +23,8 @@ export function UnifiedAgentTurn({
   const [threadExpanded, setThreadExpanded] = useState(false);
   const stepCount = intermediateSteps.length;
 
-  const resolveLabel = (id) => {
+  const resolveLabel = (id, agentNameFallback) => {
+    if (agentNameFallback && agentNameFallback !== id) return agentNameFallback;
     const node = nodes.find((n) => n.id === id);
     return node?.data?.label || node?.label || id;
   };
@@ -93,7 +94,7 @@ export function UnifiedAgentTurn({
               gap: 8,
             }}
           >
-            {resolveLabel(finalAgent.node) || "Agent Mesh Orchestrator"}
+            {resolveLabel(finalAgent.node, finalAgent.agent_name) || "Agent Mesh Orchestrator"}
             {running && isLast && (
               <span
                 style={{
@@ -246,7 +247,7 @@ export function UnifiedAgentTurn({
                       gap: 6,
                     }}
                   >
-                    {resolveLabel(step.node) || "Internal Processing"}
+                    {resolveLabel(step.node, step.agent_name) || "Internal Processing"}
                   </div>
                   <div
                     style={{
