@@ -316,6 +316,7 @@ export function BusinessFooter() {
 
   const validateNodes = () => {
     const totalNodeCounts = nodeCount.connection + nodeCount.sourceView;
+    const joinsKeyExists = 'joins' in (finalPayload || {});
     const joins = finalPayload?.joins || [];
     const operation = finalPayload?.operation;
     const numberOfConnectionNodes = Array.isArray(connectionPayload) ? connectionPayload.length : 0;
@@ -335,7 +336,7 @@ export function BusinessFooter() {
         throw new Error(`To combine ${totalNodeCounts} sources, you need exactly ${totalNodeCounts - 1} consolidation node(s). Currently configured: ${expectedConsolidationNodes}`);
       if (numberOfConsolidationNodes !== expectedConsolidationNodes * 2)
         throw new Error(`Please connect all consolidation nodes properly!`);
-      if (joins.length > 0 && expectedConsolidationNodes !== joins.length)
+      if (joinsKeyExists && (joins.length === 0 || expectedConsolidationNodes !== joins.length))
         throw new Error(`Please configure all Consolidation nodes! Expected: ${expectedConsolidationNodes}, Configured: ${joins.length}`);
       if (expectedConsolidationNodes >= 0 && !finalPayload?.joins && !finalPayload?.union)
         throw new Error(`Please configure Consolidation nodes! No joins or unions found in the configuration.`);
@@ -595,13 +596,15 @@ export function BusinessFooter() {
 
       <div className='bg-white w-full py-2.5 flex justify-end border-solid border-t-2'>
         <div className="mr-3">
-          <button
-            type="button"
-            onClick={() => setPreview(false)}
-            className="text-black bg-white hover:bg-gray-50 focus:ring-1 rounded-lg text-sm px-8 py-1 mr-2 focus:outline-none border-solid border-2"
-          >
-            Cancel
-          </button>
+          {preview && (
+            <button
+              type="button"
+              onClick={() => setPreview(false)}
+              className="text-black bg-white hover:bg-gray-50 focus:ring-1 rounded-lg text-sm px-8 py-1 mr-2 focus:outline-none border-solid border-2"
+            >
+              Cancel
+            </button>
+          )}
           <button
             type="button"
             onClick={preview === true ? toggleModal : handleClick}
