@@ -157,10 +157,32 @@ export const Input = memo(function Input({ value, onChange, placeholder, type = 
     }
     if (text) {
       e.preventDefault();
-      const newVal = (localValue || '') + text;
-      setLocalValue(newVal);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      onChange(newVal);
+      const target = e.target;
+      const start = target.selectionStart ?? (localValue || '').length;
+      const end = target.selectionEnd ?? (localValue || '').length;
+
+      target.focus();
+      target.setSelectionRange(start, end);
+
+      let success = false;
+      try {
+        success = document.execCommand('insertText', false, text);
+      } catch (err) {
+        console.error('execCommand failed:', err);
+      }
+
+      if (!success) {
+        const newVal = (localValue || '').slice(0, start) + text + (localValue || '').slice(end);
+        setLocalValue(newVal);
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        onChange(newVal);
+
+        setTimeout(() => {
+          target.focus();
+          const newCursorPos = start + text.length;
+          target.setSelectionRange(newCursorPos, newCursorPos);
+        }, 0);
+      }
     }
   };
 
@@ -279,10 +301,32 @@ export const Textarea = memo(function Textarea({ value, onChange, placeholder, r
     }
     if (text) {
       e.preventDefault();
-      const newVal = (localValue || '') + text;
-      setLocalValue(newVal);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      onChange(newVal);
+      const target = e.target;
+      const start = target.selectionStart ?? (localValue || '').length;
+      const end = target.selectionEnd ?? (localValue || '').length;
+
+      target.focus();
+      target.setSelectionRange(start, end);
+
+      let success = false;
+      try {
+        success = document.execCommand('insertText', false, text);
+      } catch (err) {
+        console.error('execCommand failed:', err);
+      }
+
+      if (!success) {
+        const newVal = (localValue || '').slice(0, start) + text + (localValue || '').slice(end);
+        setLocalValue(newVal);
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        onChange(newVal);
+
+        setTimeout(() => {
+          target.focus();
+          const newCursorPos = start + text.length;
+          target.setSelectionRange(newCursorPos, newCursorPos);
+        }, 0);
+      }
     }
   };
 
