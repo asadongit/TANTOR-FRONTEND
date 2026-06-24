@@ -13,8 +13,8 @@ import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/fu
 import { useToast } from "../context/ToastContext";
 
 
-const SearchableSelect = ({ options, value, onChange, placeholder, disabled = false, isLoading = false }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const SearchableSelect = ({ id, openDropdownId, setOpenDropdownId, options, value, onChange, placeholder, disabled = false, isLoading = false }) => {
+  const isOpen = openDropdownId === id;
   const [searchTerm, setSearchTerm] = useState("");
 
   const filteredOptions = options.filter((option) =>
@@ -25,13 +25,14 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled = fa
     e.preventDefault();
     e.stopPropagation();
     if (!disabled && !isLoading) {
-      setIsOpen((prev) => !prev);
+      setOpenDropdownId((prev) => (prev === id ? null : id));
+      if (openDropdownId !== id) setSearchTerm("");
     }
   };
 
   const handleOptionClick = (option) => {
     onChange({ target: { value: option } });
-    setIsOpen(false);
+    setOpenDropdownId(null);
     setSearchTerm("");
   };
 
@@ -92,6 +93,7 @@ export function ConnectionNode({ id, onSave }) {
   const { token, hostnameV1 } = useAuth();
   const { handleConnectionPayload, connectionPayload, setColumnSettings, columnSettings, complexCheck, finalPayload, handleFinalPayload, incrementNodeCount, decrementNodeCount } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [openDropdownId, setOpenDropdownId] = useState(null);
   const [connections, setConnections] = useState([]);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [schemas, setSchemas] = useState([]);
@@ -521,15 +523,15 @@ export function ConnectionNode({ id, onSave }) {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-black mb-1">Connection</label>
-                <SearchableSelect options={connections} value={selectedConnection} onChange={handleConnectionChange} placeholder="Select a connection" isLoading={isLoadingConnections} />
+                <SearchableSelect id="connection" openDropdownId={openDropdownId} setOpenDropdownId={setOpenDropdownId} options={connections} value={selectedConnection} onChange={handleConnectionChange} placeholder="Select a connection" isLoading={isLoadingConnections} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-black mb-1">Schema</label>
-                <SearchableSelect options={schemas} value={selectedSchema} onChange={handleSchemaChange} placeholder="Select a schema" disabled={!selectedConnection} isLoading={isLoadingSchemas} />
+                <SearchableSelect id="schema" openDropdownId={openDropdownId} setOpenDropdownId={setOpenDropdownId} options={schemas} value={selectedSchema} onChange={handleSchemaChange} placeholder="Select a schema" disabled={!selectedConnection} isLoading={isLoadingSchemas} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-black mb-1">Table</label>
-                <SearchableSelect options={tables} value={selectedTable} onChange={handleTableChange} placeholder="Select a table" disabled={!selectedSchema} isLoading={isLoadingTables} />
+                <SearchableSelect id="table" openDropdownId={openDropdownId} setOpenDropdownId={setOpenDropdownId} options={tables} value={selectedTable} onChange={handleTableChange} placeholder="Select a table" disabled={!selectedSchema} isLoading={isLoadingTables} />
               </div>
 
               {isLoadingColumns && (
