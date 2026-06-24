@@ -7,6 +7,7 @@ import {
   Input,
   ApiConfigSection,
   ListAccordionItem,
+  Toggle,
 } from "./SharedComponents";
 import ConnectionsDropdown from "../ConnectionsDropdown";
 
@@ -15,6 +16,7 @@ export default function ApiNodeConfig({ data, update, selectedNodeId }) {
   const totalCount = 1 + additionalApis.length;
 
   const [collapsedIndices, setCollapsedIndices] = useState({ 0: false });
+  const [showFailTooltip, setShowFailTooltip] = useState(false);
 
   const toggleCollapse = (idx) => {
     setCollapsedIndices((prev) => ({
@@ -197,6 +199,61 @@ export default function ApiNodeConfig({ data, update, selectedNodeId }) {
             ]}
           />
         </Field>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary, #475569)" }}>
+            Continue on Failure
+          </span>
+          <div
+            style={{ position: "relative", display: "flex", alignItems: "center", cursor: "help" }}
+            onMouseEnter={() => setShowFailTooltip(true)}
+            onMouseLeave={() => setShowFailTooltip(false)}
+          >
+            <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="13" width="13" xmlns="http://www.w3.org/2000/svg" style={{ color: "var(--text-muted)", opacity: 0.6 }}>
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            {showFailTooltip && (
+              <div style={{
+                position: "absolute",
+                bottom: "calc(100% + 8px)",
+                left: "50%",
+                transform: "translateX(-50%)",
+                backgroundColor: "var(--text-primary, #1e293b)",
+                color: "white",
+                padding: "6px 8px",
+                borderRadius: "6px",
+                fontSize: "10px",
+                width: "180px",
+                lineHeight: "1.4",
+                zIndex: 1000,
+                boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                pointerEvents: "none",
+                textAlign: "center"
+              }}>
+                If enabled, execution will continue via the error path/fallback branch when this API call fails instead of halting the workflow.
+                <div style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  borderWidth: "5px",
+                  borderStyle: "solid",
+                  borderColor: "var(--text-primary, #1e293b) transparent transparent transparent"
+                }} />
+              </div>
+            )}
+          </div>
+        </div>
+        <div style={{ width: 36, flexShrink: 0 }}>
+          <Toggle
+            checked={data.continue_on_fail || false}
+            onChange={(v) => update({ continue_on_fail: v })}
+          />
+        </div>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", marginBottom: 15 }}>

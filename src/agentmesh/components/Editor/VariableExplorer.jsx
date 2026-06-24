@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { useRunStore, useWorkflowStore, useVariablesStore } from '../../store';
 import {
-  FiSearch, FiCopy, FiChevronRight, FiChevronDown, FiDatabase,
+  FiSearch, FiCopy, FiCheck, FiChevronRight, FiChevronDown, FiDatabase,
   FiActivity, FiTerminal, FiX, FiList, FiGrid, FiCode, FiInfo, FiArrowLeft,
   FiSliders
 } from 'react-icons/fi';
@@ -535,6 +535,7 @@ PathBreadcrumbs.propTypes = {
 function VariableTreeNode({ label, value, path, onSelectPath, isRoot = false }) {
   const [expanded, setExpanded] = useState(isRoot);
   const [isHovered, setIsHovered] = useState(false);
+  const [copied, setCopied] = useState(false);
   const isObj = value !== null && typeof value === 'object';
   const isArr = Array.isArray(value);
 
@@ -544,8 +545,20 @@ function VariableTreeNode({ label, value, path, onSelectPath, isRoot = false }) 
   };
 
   const copyToClipboard = (e) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     navigator.clipboard.writeText(`{{${path}}}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleKeyDown = (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+      if (!window.getSelection().toString()) {
+        e.preventDefault();
+        e.stopPropagation();
+        copyToClipboard();
+      }
+    }
   };
 
   const handleDragStart = (e) => {
@@ -568,6 +581,8 @@ function VariableTreeNode({ label, value, path, onSelectPath, isRoot = false }) 
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           onClick={toggleExpand}
+          tabIndex={0}
+          onKeyDown={handleKeyDown}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -576,7 +591,8 @@ function VariableTreeNode({ label, value, path, onSelectPath, isRoot = false }) 
             borderRadius: 6,
             cursor: 'grab',
             background: isHovered ? 'var(--bg-hover, rgba(0,0,0,0.015))' : 'transparent',
-            transition: 'background 0.1s'
+            transition: 'background 0.1s',
+            outline: 'none'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
@@ -601,10 +617,10 @@ function VariableTreeNode({ label, value, path, onSelectPath, isRoot = false }) 
               </button>
               <button
                 onClick={copyToClipboard}
-                title="Copy Expression"
-                style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 2 }}
+                title={copied ? "Copied!" : "Copy Expression"}
+                style={{ background: 'none', border: 'none', color: copied ? '#10B981' : '#9CA3AF', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 2 }}
               >
-                <FiCopy size={11} />
+                {copied ? <FiCheck size={11} color="#10B981" /> : <FiCopy size={11} />}
               </button>
             </div>
           )}
@@ -642,6 +658,8 @@ function VariableTreeNode({ label, value, path, onSelectPath, isRoot = false }) 
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           onClick={toggleExpand}
+          tabIndex={0}
+          onKeyDown={handleKeyDown}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -650,7 +668,8 @@ function VariableTreeNode({ label, value, path, onSelectPath, isRoot = false }) 
             borderRadius: 6,
             cursor: 'grab',
             background: isHovered ? 'var(--bg-hover, rgba(0,0,0,0.015))' : 'transparent',
-            transition: 'background 0.1s'
+            transition: 'background 0.1s',
+            outline: 'none'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
@@ -675,10 +694,10 @@ function VariableTreeNode({ label, value, path, onSelectPath, isRoot = false }) 
               </button>
               <button
                 onClick={copyToClipboard}
-                title="Copy Expression"
-                style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 2 }}
+                title={copied ? "Copied!" : "Copy Expression"}
+                style={{ background: 'none', border: 'none', color: copied ? '#10B981' : '#9CA3AF', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 2 }}
               >
-                <FiCopy size={11} />
+                {copied ? <FiCheck size={11} color="#10B981" /> : <FiCopy size={11} />}
               </button>
             </div>
           )}
@@ -723,6 +742,8 @@ function VariableTreeNode({ label, value, path, onSelectPath, isRoot = false }) 
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           onClick={toggleExpand}
+          tabIndex={0}
+          onKeyDown={handleKeyDown}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -731,7 +752,8 @@ function VariableTreeNode({ label, value, path, onSelectPath, isRoot = false }) 
             borderRadius: 6,
             cursor: 'grab',
             background: isHovered ? 'var(--bg-hover, rgba(0,0,0,0.015))' : 'transparent',
-            transition: 'background 0.1s'
+            transition: 'background 0.1s',
+            outline: 'none'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
@@ -756,10 +778,10 @@ function VariableTreeNode({ label, value, path, onSelectPath, isRoot = false }) 
               </button>
               <button
                 onClick={copyToClipboard}
-                title="Copy Expression"
-                style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 2 }}
+                title={copied ? "Copied!" : "Copy Expression"}
+                style={{ background: 'none', border: 'none', color: copied ? '#10B981' : '#9CA3AF', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 2 }}
               >
-                <FiCopy size={11} />
+                {copied ? <FiCheck size={11} color="#10B981" /> : <FiCopy size={11} />}
               </button>
             </div>
           )}
@@ -801,6 +823,8 @@ function VariableTreeNode({ label, value, path, onSelectPath, isRoot = false }) 
         onDragStart={handleDragStart}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
+        tabIndex={0}
+        onKeyDown={handleKeyDown}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -809,7 +833,8 @@ function VariableTreeNode({ label, value, path, onSelectPath, isRoot = false }) 
           borderRadius: 6,
           cursor: 'grab',
           background: isHovered ? 'var(--bg-hover, rgba(0,0,0,0.015))' : 'transparent',
-          transition: 'background 0.1s'
+          transition: 'background 0.1s',
+          outline: 'none'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
@@ -824,10 +849,10 @@ function VariableTreeNode({ label, value, path, onSelectPath, isRoot = false }) 
           <div style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
             <button
               onClick={copyToClipboard}
-              title="Copy Expression"
-              style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 2 }}
+              title={copied ? "Copied!" : "Copy Expression"}
+              style={{ background: 'none', border: 'none', color: copied ? '#10B981' : '#9CA3AF', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 2 }}
             >
-              <FiCopy size={11} />
+              {copied ? <FiCheck size={11} color="#10B981" /> : <FiCopy size={11} />}
             </button>
           </div>
         )}
@@ -847,13 +872,28 @@ VariableTreeNode.propTypes = {
 // Collapsible JSON Tree Viewer Component
 function JsonTree({ data, path = '', onSelectPath, search = '' }) {
   const [expanded, setExpanded] = useState({});
+  const [copiedPath, setCopiedPath] = useState(null);
 
   const toggleExpand = (p) => {
     setExpanded(prev => ({ ...prev, [p]: !prev[p] }));
   };
 
-  const copyToClipboard = (text) => {
+  const copyToClipboard = (text, nodePath) => {
     navigator.clipboard.writeText(text);
+    setCopiedPath(nodePath);
+    setTimeout(() => {
+      setCopiedPath(null);
+    }, 2000);
+  };
+
+  const handleKeyDown = (e, nodePath) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+      if (!window.getSelection().toString()) {
+        e.preventDefault();
+        e.stopPropagation();
+        copyToClipboard(`{{${nodePath}}}`, nodePath);
+      }
+    }
   };
 
   const renderNode = (val, currentKey = '', currentPath = '') => {
@@ -869,7 +909,9 @@ function JsonTree({ data, path = '', onSelectPath, search = '' }) {
       return (
         <div key={nodePath} style={{ marginLeft: currentPath ? 16 : 0, marginTop: 4 }}>
           <div 
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '2px 4px', borderRadius: 4, cursor: 'pointer' }} 
+            tabIndex={0}
+            onKeyDown={(e) => handleKeyDown(e, nodePath)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '2px 4px', borderRadius: 4, cursor: 'pointer', outline: 'none' }} 
             onClick={() => toggleExpand(nodePath)}
           >
             {isExpanded ? <FiChevronDown size={14} color="#9CA3AF" /> : <FiChevronRight size={14} color="#9CA3AF" />}
@@ -914,6 +956,8 @@ function JsonTree({ data, path = '', onSelectPath, search = '' }) {
     return (
       <div 
         key={nodePath} 
+        tabIndex={0}
+        onKeyDown={(e) => handleKeyDown(e, nodePath)}
         style={{ 
           marginLeft: currentPath ? 16 : 0, 
           display: 'flex', 
@@ -922,17 +966,18 @@ function JsonTree({ data, path = '', onSelectPath, search = '' }) {
           padding: '2px 4px', 
           fontSize: 12,
           background: isMatched ? 'rgba(234, 179, 8, 0.2)' : 'transparent',
-          borderRadius: 4
+          borderRadius: 4,
+          outline: 'none'
         }}
       >
         {currentKey && <span style={{ fontWeight: 600, color: 'var(--text-secondary, #4B5563)' }}>{currentKey}:</span>}
         <span style={{ color: valColor, wordBreak: 'break-all', fontFamily: 'monospace' }}>{displayVal}</span>
         <button
-          onClick={() => copyToClipboard(`{{${nodePath}}}`)}
-          title="Copy expression"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', display: 'flex', alignItems: 'center', padding: 2 }}
+          onClick={() => copyToClipboard(`{{${nodePath}}}`, nodePath)}
+          title={copiedPath === nodePath ? "Copied!" : "Copy expression"}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: copiedPath === nodePath ? '#10B981' : '#9CA3AF', display: 'flex', alignItems: 'center', padding: 2 }}
         >
-          <FiCopy size={10} />
+          {copiedPath === nodePath ? <FiCheck size={10} color="#10B981" /> : <FiCopy size={10} />}
         </button>
       </div>
     );
