@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useWorkflowStore, useUIStore } from "../../store";
-import { FiX, FiSearch, FiLayers, FiInfo, FiSliders, FiDatabase, FiCompass, FiPlay } from "react-icons/fi";
+import { FiX, FiSearch, FiLayers, FiInfo, FiSliders, FiCompass, FiPlay, FiChevronDown, FiChevronRight } from "react-icons/fi";
 import PropertiesPanel from "./PropertiesPanel";
 import VariableExplorer from "./VariableExplorer";
 import RunPanel from "./RunPanel";
@@ -14,6 +14,7 @@ export default function PilotPanel({ onClose }) {
 
   const [activeTab, setActiveTab] = useState("settings"); // "settings" | "run"
   const [searchQuery, setSearchQuery] = useState("");
+  const [collapsedGroups, setCollapsedGroups] = useState({});
 
   console.log("PILOT PANEL RENDER - selectedNodeId:", selectedNodeId, "total nodes in workflow:", nodes.length);
 
@@ -61,14 +62,40 @@ export default function PilotPanel({ onClose }) {
     return ordered;
   }, [nodes, edges]);
 
-  // Find current selected node index in sequential path
+  // Flatten list to include internal group nodes sequentially after their parent groups
+  const allRenderableNodes = useMemo(() => {
+    const list = [];
+    sequencedNodes.forEach(node => {
+      list.push({
+        ...node,
+        isInternal: false,
+        parentId: null,
+      });
+      if (node.data?.type === 'group' && node.data?.internal_nodes) {
+        const isCollapsed = collapsedGroups[node.id];
+        if (!isCollapsed) {
+          node.data.internal_nodes.forEach(sub => {
+            list.push({
+              ...sub,
+              isInternal: true,
+              parentId: node.id,
+              parentLabel: node.data?.label || node.id
+            });
+          });
+        }
+      }
+    });
+    return list;
+  }, [sequencedNodes, collapsedGroups]);
+
+  // Find current selected node index in sequential path (including internal group nodes)
   const currentNodeIndex = useMemo(() => {
-    return sequencedNodes.findIndex(n => n.id === selectedNodeId);
-  }, [sequencedNodes, selectedNodeId]);
+    return allRenderableNodes.findIndex(n => n.id === selectedNodeId);
+  }, [allRenderableNodes, selectedNodeId]);
 
   // Filter nodes based on search query, preserving the computed sequential flow order
   const filteredNodes = useMemo(() => {
-    return sequencedNodes.filter(n => {
+    return allRenderableNodes.filter(n => {
       const label = n.data?.label || n.id;
       const type = n.data?.type || "";
       const matchedTypeInfo = NODE_TYPES.find(t => t.type === type);
@@ -80,7 +107,7 @@ export default function PilotPanel({ onClose }) {
         desc.toLowerCase().includes(query)
       );
     });
-  }, [sequencedNodes, searchQuery]);
+  }, [allRenderableNodes, searchQuery]);
 
   return (
     <div
@@ -300,6 +327,7 @@ export default function PilotPanel({ onClose }) {
                           width: "100%",
                           textAlign: "left",
                           padding: "10px 12px",
+                          paddingLeft: node.isInternal ? 28 : 12,
                           borderRadius: 8,
                           border: "none",
                           background: isSelected ? "var(--theme-primary-glow, #EEF2FF)" : "transparent",
@@ -311,6 +339,7 @@ export default function PilotPanel({ onClose }) {
                           fontWeight: isSelected ? 600 : 500,
                           fontSize: 12,
                           transition: "all 0.1s",
+                          position: "relative",
                         }}
                         onMouseEnter={(e) => {
                           if (!isSelected) e.currentTarget.style.backgroundColor = "#F1F5F9";
@@ -319,6 +348,19 @@ export default function PilotPanel({ onClose }) {
                           if (!isSelected) e.currentTarget.style.backgroundColor = "transparent";
                         }}
                       >
+                        {node.isInternal && (
+                          <span style={{
+                            position: "absolute",
+                            left: 14,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            color: "var(--text-muted, #94A3B8)",
+                            fontSize: 10,
+                            fontWeight: "bold"
+                          }}>
+                            ↳
+                          </span>
+                        )}
                         <div
                           style={{
                             width: 24,
@@ -339,9 +381,34 @@ export default function PilotPanel({ onClose }) {
                             {node.data?.label || node.id}
                           </span>
                           <span style={{ fontSize: 10, color: "var(--text-muted, #64748B)", textTransform: "capitalize" }}>
-                            {node.data?.type?.replace(/_/g, " ")}
+                            {node.data?.type?.replace(/_/g, " ")} {node.isInternal && `• in ${node.parentLabel}`}
                           </span>
                         </div>
+                        {node.data?.type === 'group' && (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCollapsedGroups(prev => ({
+                                ...prev,
+                                [node.id]: !prev[node.id]
+                              }));
+                            }}
+                            style={{
+                              marginLeft: "auto",
+                              padding: "4px",
+                              borderRadius: "4px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              cursor: "pointer",
+                              color: "var(--text-muted, #64748B)",
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.05)"}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                          >
+                            {collapsedGroups[node.id] ? <FiChevronRight size={14} /> : <FiChevronDown size={14} />}
+                          </div>
+                        )}
                       </button>
                     );
                   })}
@@ -385,7 +452,7 @@ export default function PilotPanel({ onClose }) {
                         disabled={currentNodeIndex <= 0}
                         onClick={() => {
                           if (currentNodeIndex > 0) {
-                            setSelectedNode(sequencedNodes[currentNodeIndex - 1].id);
+                            setSelectedNode(allRenderableNodes[currentNodeIndex - 1].id);
                           }
                         }}
                         style={{
@@ -412,13 +479,13 @@ export default function PilotPanel({ onClose }) {
                         &larr; Prev Node
                       </button>
                       <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary, #0F172A)" }}>
-                        {currentNodeIndex !== -1 ? `Node ${currentNodeIndex + 1} of ${sequencedNodes.length}` : ""}
+                        {currentNodeIndex !== -1 ? `Node ${currentNodeIndex + 1} of ${allRenderableNodes.length}` : ""}
                       </div>
                       <button
-                        disabled={currentNodeIndex === -1 || currentNodeIndex >= sequencedNodes.length - 1}
+                        disabled={currentNodeIndex === -1 || currentNodeIndex >= allRenderableNodes.length - 1}
                         onClick={() => {
-                          if (currentNodeIndex !== -1 && currentNodeIndex < sequencedNodes.length - 1) {
-                            setSelectedNode(sequencedNodes[currentNodeIndex + 1].id);
+                          if (currentNodeIndex !== -1 && currentNodeIndex < allRenderableNodes.length - 1) {
+                            setSelectedNode(allRenderableNodes[currentNodeIndex + 1].id);
                           }
                         }}
                         style={{
@@ -427,8 +494,8 @@ export default function PilotPanel({ onClose }) {
                           gap: 6,
                           background: "transparent",
                           border: "none",
-                          cursor: (currentNodeIndex === -1 || currentNodeIndex >= sequencedNodes.length - 1) ? "not-allowed" : "pointer",
-                          color: (currentNodeIndex === -1 || currentNodeIndex >= sequencedNodes.length - 1) ? "#CBD5E1" : "var(--theme-primary, #6366F1)",
+                          cursor: (currentNodeIndex === -1 || currentNodeIndex >= allRenderableNodes.length - 1) ? "not-allowed" : "pointer",
+                          color: (currentNodeIndex === -1 || currentNodeIndex >= allRenderableNodes.length - 1) ? "#CBD5E1" : "var(--theme-primary, #6366F1)",
                           fontSize: 12,
                           fontWeight: 600,
                           padding: "6px 10px",
@@ -436,7 +503,7 @@ export default function PilotPanel({ onClose }) {
                           transition: "all 0.15s",
                         }}
                         onMouseEnter={(e) => {
-                          if (currentNodeIndex !== -1 && currentNodeIndex < sequencedNodes.length - 1) {
+                          if (currentNodeIndex !== -1 && currentNodeIndex < allRenderableNodes.length - 1) {
                             e.currentTarget.style.backgroundColor = "#E2E8F0";
                           }
                         }}

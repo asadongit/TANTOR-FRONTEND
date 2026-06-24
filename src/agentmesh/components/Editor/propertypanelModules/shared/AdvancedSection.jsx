@@ -22,25 +22,13 @@ export default function AdvancedSection({
       {hasHitl && hitlSection}
 
       {hasHitl && (hasChildren || hasErrorField) && (
-        <div
-          style={{
-            height: '1px',
-            background: 'var(--border)',
-            margin: '16px 0',
-          }}
-        />
+        <div className="h-px bg-[var(--border)] my-4" />
       )}
 
       {hasChildren && children}
 
       {hasChildren && hasErrorField && (
-        <div
-          style={{
-            height: '1px',
-            background: 'var(--border)',
-            margin: '16px 0',
-          }}
-        />
+        <div className="h-px bg-[var(--border)] my-4" />
       )}
 
       {hasErrorField && (

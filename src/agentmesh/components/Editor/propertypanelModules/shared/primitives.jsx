@@ -23,6 +23,16 @@ export const MODELS = {
   anthropic: ['claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307', 'claude-opus-4'],
   google: ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
   ollama: ['gemma3:1b', 'granite4:1b', 'deepseek-coder-v2:16b', 'qwen2.5:7b', 'gemma4:e2b'],
+  together: ['mistralai/Mixtral-8x7B-Instruct-v0.1', 'meta-llama/Llama-3-70b-chat-hf', 'togethercomputer/llama-2-70b-chat'],
+  mistral: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest', 'open-mixtral-8x22b', 'codestral-latest'],
+  huggingface: ['meta-llama/Meta-Llama-3-8B-Instruct', 'mistralai/Mistral-7B-Instruct-v0.2', 'microsoft/Phi-3-mini-4k-instruct'],
+  deepseek: ['deepseek-chat', 'deepseek-coder'],
+  cohere: ['command-r-plus', 'command-r', 'command'],
+  perplexity: ['sonar-reasoning', 'sonar'],
+  openrouter: ['meta-llama/llama-3.1-405b-instruct', 'google/gemini-pro-1.5', 'anthropic/claude-3.5-sonnet'],
+  azure: ['azure-openai/gpt-4o', 'azure-openai/gpt-35-turbo'],
+  bedrock: ['anthropic.claude-3-sonnet-20240229-v1:0', 'meta.llama3-70b-instruct-v1:0', 'amazon.titan-text-express-v1'],
+  vllm: ['custom-model']
 };
 
 export const inputStyle = {

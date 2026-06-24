@@ -143,6 +143,7 @@ const LAZY_CONFIGS = {
   button_trigger: lazy(() => import("./propertypanelModules/TriggerConfig")),
   auto_trigger: lazy(() => import("./propertypanelModules/TriggerConfig")),
   textToAudio: lazy(() => import("./propertypanelModules/TextToAudioConfig")),
+  group: lazy(() => import("./propertypanelModules/GroupConfig")),
 };
 
 function getConfigComp(type) {
@@ -158,7 +159,17 @@ export default function PropertiesPanel() {
   const edges = useWorkflowStore((s) => s.edges);
 
   // Directly retrieve only the currently selected node/edge
-  const node = useMemo(() => nodes.find((n) => n.id === selectedNodeId), [nodes, selectedNodeId]);
+  const node = useMemo(() => {
+    const found = nodes.find((n) => n.id === selectedNodeId);
+    if (found) return found;
+    for (const n of nodes) {
+      if (n.data?.type === 'group' && n.data?.internal_nodes) {
+        const sub = n.data.internal_nodes.find((sn) => sn.id === selectedNodeId);
+        if (sub) return sub;
+      }
+    }
+    return null;
+  }, [nodes, selectedNodeId]);
   const edge = useMemo(() => edges.find((e) => e.id === selectedEdgeId), [edges, selectedEdgeId]);
 
   const setNodeData = useWorkflowStore((s) => s.setNodeData);
@@ -564,6 +575,7 @@ export default function PropertiesPanel() {
     json_transform: FiCode,
     json_transform_va: FiCode,
     condition: FiHelpCircle,
+    group: FiLayers,
   };
   const Icon = nodeIcons[data.type] || FiLayers;
 

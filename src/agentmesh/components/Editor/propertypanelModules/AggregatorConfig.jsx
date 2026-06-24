@@ -1,5 +1,4 @@
 import React from "react";
-import { FiLayers } from "react-icons/fi";
 import { Field, Select, Input } from "./SharedComponents";
 
 export default function AggregatorConfig({ data, update }) {
@@ -48,25 +47,6 @@ export default function AggregatorConfig({ data, update }) {
           />
         </Field>
       )}
-      <div
-        style={{
-          padding: 12,
-          background: "#F0F9FF",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "#0369A1",
-          border: "1px solid #BAE6FD",
-          lineHeight: 1.5,
-        }}
-      >
-        <FiLayers size={12} style={{ marginRight: 6 }} />
-        Collects data across loop iterations. It will release the full payload
-        to{" "}
-        <strong>
-          context.{data.destination_field || "aggregated_results"}
-        </strong>{" "}
-        automatically once the Splitter finishes.
-      </div>
     </>
   );
 }

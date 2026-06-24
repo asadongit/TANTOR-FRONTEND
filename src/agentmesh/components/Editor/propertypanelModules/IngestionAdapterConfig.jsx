@@ -133,30 +133,9 @@ export default function IngestionAdapterConfig({ data, update }) {
           paddingTop: 16,
         }}
       >
-        <div
-          style={{
-            fontSize: 10,
-            fontWeight: 800,
-            color: "var(--text-muted)",
-            marginBottom: 8,
-            textTransform: "uppercase",
-            letterSpacing: "0.5px",
-          }}
-        >
-          Field Aliases (Rename Keys)
-        </div>
-        <div
-          style={{
-            fontSize: 11,
-            color: "#64748B",
-            marginBottom: 12,
-            lineHeight: 1.5,
-          }}
-        >
-          Rename fields after parsing. Key = original field name, Value = new field name.
-          Only applied if the original field exists and the new name doesn't.
-        </div>
         <KeyValueEditor
+          label="Field Aliases (Rename Keys)"
+          hint="Rename fields after parsing. Key = original field name, Value = new field name. Only applied if the original field exists and the new name doesn't."
           value={data.field_aliases || {}}
           onChange={(v) => update({ field_aliases: v })}
           keyPlaceholder="Original field name"
@@ -172,30 +151,9 @@ export default function IngestionAdapterConfig({ data, update }) {
           paddingTop: 16,
         }}
       >
-        <div
-          style={{
-            fontSize: 10,
-            fontWeight: 800,
-            color: "var(--text-muted)",
-            marginBottom: 8,
-            textTransform: "uppercase",
-            letterSpacing: "0.5px",
-          }}
-        >
-          Default Values (Inject Missing Fields)
-        </div>
-        <div
-          style={{
-            fontSize: 11,
-            color: "#64748B",
-            marginBottom: 12,
-            lineHeight: 1.5,
-          }}
-        >
-          Inject default values for fields that are missing from the parsed data.
-          Supports auto-type: "0" → number, "true" → boolean, "null" → null.
-        </div>
         <KeyValueEditor
+          label="Default Values (Inject Missing Fields)"
+          hint='Inject default values for fields that are missing from the parsed data. Supports auto-type: "0" → number, "true" → boolean, "null" → null.'
           value={data.default_values || {}}
           onChange={(v) => update({ default_values: v })}
           keyPlaceholder="Field name"

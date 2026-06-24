@@ -1,11 +1,10 @@
 import React from "react";
-import { FiCamera, FiSettings } from "react-icons/fi";
+import { FiSettings } from "react-icons/fi";
 import {
   Select,
   Field,
   Input,
   Textarea,
-  Toggle,
   KeyValueEditor,
   LLMConfigSection,
 } from "./SharedComponents";
@@ -220,7 +219,6 @@ export default function OcrNodeConfig({ data, update }) {
         </>
       )}
 
-
       <div style={{ marginTop: 16 }}>
         <Field
           label="Destination Key"
@@ -233,36 +231,6 @@ export default function OcrNodeConfig({ data, update }) {
           />
         </Field>
       </div>
-
-      <div
-        style={{
-          padding: "12px 14px",
-          background: "#F8FAFC",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "var(--text-secondary)",
-          border: "1px solid var(--border)",
-          lineHeight: 1.5,
-          marginTop: 18,
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          justifyContent: "space-between",
-        }}
-      >
-        <span style={{ flex: 1, fontWeight: 500 }}>
-          {data.ocr_engine === "external"
-            ? "External Mode: Sends files to a remote OCR/extraction service via multipart upload."
-            : data.ocr_engine === "standard"
-              ? `Standard Mode: Best for high-speed, plain text extraction using ${data.ocr_standard_model || "tesseract"}.`
-              : "Vision Mode: Best for complex layouts, handwriting, and tables using AI."}
-        </span>
-        <FiCamera
-          size={16}
-          style={{ color: "var(--text-muted)", opacity: 0.5 }}
-        />
-      </div>
-
     </>
   );
 }

@@ -1,11 +1,12 @@
 import React from "react";
+import { FiCpu, FiInfo } from "react-icons/fi";
 
 import {
   Select,
   Field,
   Input,
   Textarea,
-  Toggle,
+  MiniatureToggle,
   VariableLinker,
   ClassificationClassesEditor,
   LLMConfigSection,
@@ -126,45 +127,38 @@ export default function ClassificationConfig({ data, update }) {
 
       {data.classification_engine !== "regex" && (
         <>
-          <div style={{ marginBottom: 18 }}>
-            <Toggle
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 13, color: "var(--text-secondary, #475569)", fontWeight: 600 }}>
+                Summarize Classified Content
+              </span>
+              <FiInfo
+                size={12}
+                style={{ color: "var(--text-muted)", opacity: 0.5, cursor: "help" }}
+                title="If enabled, the node will return a summary of the input data instead of the original raw data."
+              />
+            </div>
+            <MiniatureToggle
               checked={data.classification_summary === true}
               onChange={(v) => update({ classification_summary: v })}
-              label="Summarize Classified Content"
             />
-            <div
-              style={{
-                fontSize: 11,
-                color: "var(--text-muted)",
-                marginTop: 4,
-                marginLeft: 28,
-                marginBottom: 20,
-              }}
-            >
-              If enabled, the node will return a summary of the input data
-              instead of the original raw data.
-            </div>
           </div>
-          <div style={{ marginBottom: 18 }}>
-            <Toggle
-              checked={data.classification_extract_identifiers === true}
-              onChange={(v) =>
-                update({ classification_extract_identifiers: v })
-              }
-              label="Extract Identifiers (NER)"
-            />
-            <div
-              style={{
-                fontSize: 11,
-                color: "var(--text-muted)",
-                marginTop: 4,
-                marginLeft: 28,
-                marginBottom: 20,
-              }}
-            >
-              If enabled, dynamically extracts key reference IDs (e.g. Govt IDs,
-              Account Numbers) into an array.
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 13, color: "var(--text-secondary, #475569)", fontWeight: 600 }}>
+                Extract Identifiers (NER)
+              </span>
+              <FiInfo
+                size={12}
+                style={{ color: "var(--text-muted)", opacity: 0.5, cursor: "help" }}
+                title="If enabled, dynamically extracts key reference IDs (e.g. Govt IDs, Account Numbers) into an array."
+              />
             </div>
+            <MiniatureToggle
+              checked={data.classification_extract_identifiers === true}
+              onChange={(v) => update({ classification_extract_identifiers: v })}
+            />
           </div>
         </>
       )}

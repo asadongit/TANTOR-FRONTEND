@@ -6,6 +6,7 @@ import {
   Input,
   Toggle,
   CustomRegexEditor,
+  InfoBanner,
 } from "./SharedComponents";
 
 export default function PiiNodeConfig({ data, update }) {
@@ -43,30 +44,9 @@ export default function PiiNodeConfig({ data, update }) {
               ]}
             />
           </Field>
-          <div
-            style={{
-              padding: "10px 12px",
-              background: "#FEF3C7",
-              borderRadius: 8,
-              fontSize: 10,
-              color: "#92400E",
-              border: "1px solid #FDE68A",
-              lineHeight: 1.5,
-              display: "flex",
-              alignItems: "flex-start",
-              gap: 8,
-            }}
-          >
-            <FiAlertTriangle
-              size={14}
-              style={{ flexShrink: 0, marginTop: 1 }}
-            />
-            <span>
-              <strong>Destructive masking:</strong> Original data is permanently
-              replaced with placeholders (e.g., [PERSON]). Not reversible. For
-              reversible masking with a secure vault, use the DocBot engine.
-            </span>
-          </div>
+          <InfoBanner type="warning">
+            <strong>Destructive masking:</strong> Original data is permanently replaced with placeholders (e.g., [PERSON]). Not reversible. For reversible masking with a secure vault, use the DocBot engine.
+          </InfoBanner>
         </>
       )}
 
@@ -95,27 +75,9 @@ export default function PiiNodeConfig({ data, update }) {
               ]}
             />
           </Field>
-          <div
-            style={{
-              padding: "10px 12px",
-              background: "#ECFDF5",
-              borderRadius: 8,
-              fontSize: 10,
-              color: "#065F46",
-              border: "1px solid #A7F3D0",
-              lineHeight: 1.5,
-              display: "flex",
-              alignItems: "flex-start",
-              gap: 8,
-            }}
-          >
-            <FiShield size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-            <span>
-              <strong>Enterprise vault:</strong> Original PII is encrypted and
-              stored in DocBot's secure vault. Masked tokens (e.g.,
-              [PAN_a3f82b1c]) are reversible via the /pii/reveal endpoint.
-            </span>
-          </div>
+          <InfoBanner type="success">
+            <strong>Enterprise vault:</strong> Original PII is encrypted and stored in DocBot's secure vault. Masked tokens (e.g., [PAN_a3f82b1c]) are reversible via the /pii/reveal endpoint.
+          </InfoBanner>
         </>
       )}
 
@@ -164,23 +126,9 @@ export default function PiiNodeConfig({ data, update }) {
 
       {data.pii_target === "targeted_replacement" && (
         <>
-          <div
-            style={{
-              padding: "10px 12px",
-              background: "#EFF6FF",
-              borderRadius: 8,
-              fontSize: 10,
-              color: "#1E40AF",
-              border: "1px solid #BFDBFE",
-              lineHeight: 1.5,
-              marginBottom: 8,
-            }}
-          >
-            <strong>Precision mode:</strong> Takes known sensitive values (from
-            an upstream Extract Identifiers node) and does an exact
-            find-and-replace in the rendered text. Zero false positives — only
-            masks what you explicitly extracted.
-          </div>
+          <InfoBanner type="info">
+            <strong>Precision mode:</strong> Takes known sensitive values (from an upstream Extract Identifiers node) and does an exact find-and-replace in the rendered text. Zero false positives — only masks what you explicitly extracted.
+          </InfoBanner>
           <div style={{ display: "flex", gap: 10 }}>
             <div style={{ flex: 1 }}>
               <Field

@@ -196,7 +196,7 @@ export const FormDecisionsEditor = memo(function FormDecisionsEditor({ decisions
   };
 
   const addDecision = () => {
-    const newDecision = { id: `decision_${decisions.length + 1}`, label: `Decision ${decisions.length + 1}` };
+    const newDecision = { id: `decision_${decisions.length + 1}`, label: `Decision ${decisions.length + 1}`, enabled: true };
     onChange([...decisions, newDecision]);
   };
 
@@ -246,54 +246,39 @@ export const FormDecisionsEditor = memo(function FormDecisionsEditor({ decisions
           const isCollapsed = !!collapsedDecisions[i];
           const isEnabled = d.enabled !== false;
           return (
-            <div key={i} className={`p-3 bg-slate-50 rounded-xl border border-[var(--border)] relative transition-all duration-200 ${isEnabled ? 'opacity-100' : 'opacity-60'}`}>
-              <div className={`flex items-center gap-1.5 ${isCollapsed ? 'mb-0' : 'mb-3'}`}>
-                {/* Collapse toggle */}
-                <div className="flex items-center gap-1.5 flex-1 min-w-0 cursor-pointer" onClick={() => toggleCollapse(i)}>
-                  <FiChevronDown 
-                    size={14} 
-                    className="text-[var(--text-muted)] transition-transform duration-200 shrink-0"
-                    style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }} 
-                  />
-                  <span className="text-xs font-semibold text-[var(--text-primary)] truncate">
+            <ListAccordionItem
+              key={i}
+              index={i}
+              totalItems={decisions.length}
+              isCollapsed={isCollapsed}
+              onToggleCollapse={() => toggleCollapse(i)}
+              isEnabled={isEnabled}
+              onToggleEnabled={(v) => updateDecision(i, { enabled: v })}
+              onMoveUp={() => moveDecision(i, -1)}
+              onMoveDown={() => moveDecision(i, 1)}
+              onDelete={() => removeDecision(i)}
+              headerContent={
+                <>
+                  <span className={`text-xs font-semibold truncate ${isEnabled ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}`}>
                     {d.label || d.id || `Decision #${i + 1}`}
                   </span>
                   <span className="text-[10px] text-[var(--text-muted)] font-mono bg-slate-200 px-1.5 py-0.5 rounded shrink-0">
                     {d.id}
                   </span>
-                </div>
-
-                {/* Up/Down */}
-                <div className="flex items-center gap-0.5 border-r border-[var(--border)] pr-1.5">
-                  <button onClick={() => moveDecision(i, -1)} disabled={i === 0} className="bg-transparent border-none text-[var(--text-muted)] cursor-pointer disabled:opacity-30 p-0.5" title="Move Up"><FiChevronDown size={13} className="rotate-180" /></button>
-                  <button onClick={() => moveDecision(i, 1)} disabled={i === decisions.length - 1} className="bg-transparent border-none text-[var(--text-muted)] cursor-pointer disabled:opacity-30 p-0.5" title="Move Down"><FiChevronDown size={13} /></button>
-                </div>
-
-                {/* Toggle (purple) */}
-                <MiniatureToggle
-                  checked={isEnabled}
-                  onChange={(v) => updateDecision(i, { enabled: v })}
-                />
-
-                {/* Delete */}
-                <button onClick={() => removeDecision(i)} className="bg-transparent border-none text-red-500 cursor-pointer p-0.5" title="Delete Decision"><FiTrash2 size={13} /></button>
+                </>
+              }
+            >
+              <div>
+                <Field label="Button ID (Value in Context)">
+                  <Input value={d.id} onChange={(v) => updateDecision(i, { id: v })} placeholder="e.g. approve, cancel" />
+                </Field>
               </div>
-
-              {!isCollapsed && (
-                <div className="flex flex-col gap-3">
-                  <div>
-                    <Field label="Button ID (Value in Context)">
-                      <Input value={d.id} onChange={(v) => updateDecision(i, { id: v })} placeholder="e.g. approve, cancel" />
-                    </Field>
-                  </div>
-                  <div>
-                    <Field label="Button Label (Display Text)">
-                      <Input value={d.label} onChange={(v) => updateDecision(i, { label: v })} placeholder="e.g. Approve, Cancel Request" />
-                    </Field>
-                  </div>
-                </div>
-              )}
-            </div>
+              <div>
+                <Field label="Button Label (Display Text)">
+                  <Input value={d.label} onChange={(v) => updateDecision(i, { label: v })} placeholder="e.g. Approve, Cancel Request" />
+                </Field>
+              </div>
+            </ListAccordionItem>
           );
         })}
 
@@ -1117,6 +1102,24 @@ export const WeightageCategoriesEditor = memo(function WeightageCategoriesEditor
     setCollapsedFields(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const moveCategory = (catIdx, dir) => {
+    if ((catIdx === 0 && dir === -1) || (catIdx === categories.length - 1 && dir === 1)) return;
+    const next = [...categories];
+    const target = catIdx + dir;
+    [next[catIdx], next[target]] = [next[target], next[catIdx]];
+    onChange(next);
+  };
+
+  const moveField = (catIdx, fieldIdx, dir) => {
+    const cat = categories[catIdx];
+    const fields = cat.fields || [];
+    if ((fieldIdx === 0 && dir === -1) || (fieldIdx === fields.length - 1 && dir === 1)) return;
+    const nextFields = [...fields];
+    const target = fieldIdx + dir;
+    [nextFields[fieldIdx], nextFields[target]] = [nextFields[target], nextFields[fieldIdx]];
+    updateCategory(catIdx, { fields: nextFields });
+  };
+
   return (
     <div className="mb-6">
       <div className="flex justify-between items-center mb-3">
@@ -1127,272 +1130,180 @@ export const WeightageCategoriesEditor = memo(function WeightageCategoriesEditor
 
       <div className="flex flex-col gap-4">
         {categories.map((cat, catIdx) => {
-          const isCatCollapsed = collapsedCategories[catIdx];
+          const isCatCollapsed = !!collapsedCategories[catIdx];
           const isCatEnabled = cat.enabled !== false;
           return (
-            <div key={catIdx} className={`p-3.5 bg-slate-50 rounded-xl border border-[var(--border)] flex flex-col gap-2.5 shadow-[0_2px_8px_rgba(124,58,237,0.04)] transition-all duration-200 ${isCatEnabled ? 'opacity-100' : 'opacity-60'}`}>
-
-              {/* Category Header: Chevron+Name | Up/Down | Toggle | Delete */}
-              <div className={`flex items-center gap-1.5 ${isCatCollapsed ? '' : 'border-b border-slate-200 pb-2'}`}>
-                {/* Collapse toggle + name */}
-                <div className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer" onClick={() => toggleCategoryCollapse(catIdx)}>
-                  <FiChevronDown 
-                    size={14} 
-                    className="text-[var(--text-muted)] transition-transform duration-150 shrink-0"
-                    style={{ transform: isCatCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }} 
+            <ListAccordionItem
+              key={catIdx}
+              index={catIdx}
+              totalItems={categories.length}
+              isCollapsed={isCatCollapsed}
+              onToggleCollapse={() => toggleCategoryCollapse(catIdx)}
+              isEnabled={isCatEnabled}
+              onToggleEnabled={(v) => updateCategory(catIdx, { enabled: v })}
+              onMoveUp={() => moveCategory(catIdx, -1)}
+              onMoveDown={() => moveCategory(catIdx, 1)}
+              onDelete={() => removeCategory(catIdx)}
+              headerContent={
+                <span className="text-xs font-bold text-[var(--text-primary)] truncate">
+                  {cat.name || `Category #${catIdx + 1}`}
+                </span>
+              }
+            >
+              <div>
+                <Field label="Category Name" hint="Lowercase & underscores only. spaces auto-replaced by _">
+                  <Input
+                    value={cat.name}
+                    onChange={(v) => updateCategory(catIdx, { name: v })}
+                    placeholder="e.g. loan_scoring"
+                    disabled={!isCatEnabled}
                   />
-                  <span className="text-xs font-bold text-[var(--text-primary)] truncate">
-                    {cat.name || `Category #${catIdx + 1}`}
-                  </span>
-                </div>
-
-                {/* Up/Down */}
-                <div className="flex items-center gap-0.5 border-r border-[var(--border)] pr-1.5">
-                  <button
-                    onClick={() => {
-                      if (catIdx === 0) return;
-                      const next = [...categories];
-                      [next[catIdx - 1], next[catIdx]] = [next[catIdx], next[catIdx - 1]];
-                      onChange(next);
-                    }}
-                    disabled={catIdx === 0}
-                    className="bg-transparent border-none text-[var(--text-muted)] cursor-pointer disabled:opacity-30 p-0.5"
-                    title="Move Up"
-                  ><FiChevronDown size={13} className="rotate-180" /></button>
-                  <button
-                    onClick={() => {
-                      if (catIdx === categories.length - 1) return;
-                      const next = [...categories];
-                      [next[catIdx], next[catIdx + 1]] = [next[catIdx + 1], next[catIdx]];
-                      onChange(next);
-                    }}
-                    disabled={catIdx === categories.length - 1}
-                    className="bg-transparent border-none text-[var(--text-muted)] cursor-pointer disabled:opacity-30 p-0.5"
-                    title="Move Down"
-                  ><FiChevronDown size={13} /></button>
-                </div>
-
-                {/* Toggle (purple) */}
-                <MiniatureToggle
-                  checked={isCatEnabled}
-                  onChange={(v) => updateCategory(catIdx, { enabled: v })}
-                />
-
-                {/* Delete */}
-                <button
-                  onClick={() => removeCategory(catIdx)}
-                  className="bg-transparent border-none text-red-500 cursor-pointer p-0.5"
-                  title="Delete Category"
-                >
-                  <FiTrash2 size={13} />
-                </button>
+                </Field>
               </div>
 
-              {/* Fields List (collapsible) */}
-              {!isCatCollapsed && (
-                <div className="mt-3.5 flex flex-col gap-3">
-                  <div>
-                    <Field label="Category Name" hint="Lowercase & underscores only. spaces auto-replaced by _">
-                      <Input
-                        value={cat.name}
-                        onChange={(v) => updateCategory(catIdx, { name: v })}
-                        placeholder="e.g. loan_scoring"
-                        disabled={!isCatEnabled}
-                      />
-                    </Field>
-                  </div>
+              <div className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wide mt-1">Fields in {cat.name}</div>
 
-                  <div className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wide mt-1">Fields in {cat.name}</div>
-
-                  {(cat.fields || []).map((field, fieldIdx) => {
-                    const fieldKey = `${catIdx}_${fieldIdx}`;
-                    const isFieldCollapsed = collapsedFields[fieldKey];
-                    const isFieldEnabled = field.enabled !== false;
-                    return (
-                      <div key={fieldIdx} className={`p-3 bg-white rounded-lg border border-slate-200 shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex flex-col gap-2.5 transition-all duration-200 ${isFieldEnabled && isCatEnabled ? 'opacity-100' : 'opacity-60'}`}>
-
-                        {/* Field Header: Chevron+Name | Up/Down | Toggle | Delete */}
-                        <div className={`flex items-center gap-1.5 ${isFieldCollapsed ? '' : 'border-b border-slate-100 pb-1.5'}`}>
-                          {/* Collapse toggle + name */}
-                          <div className="flex items-center gap-1.5 flex-1 min-w-0 cursor-pointer" onClick={() => toggleFieldCollapse(catIdx, fieldIdx)}>
-                            <FiChevronDown 
-                              size={13} 
-                              className="text-[var(--text-muted)] transition-transform duration-150 shrink-0"
-                              style={{ transform: isFieldCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }} 
-                            />
-                            <span className="text-[10px] font-bold text-[var(--text-primary)] truncate">
-                              {field.name || `Field #${fieldIdx + 1}`}
-                            </span>
-                          </div>
-
-                          {/* Up/Down */}
-                          <div className="flex items-center gap-0.5 border-r border-[var(--border)] pr-1">
-                            <button
-                              onClick={() => {
-                                const cat = categories[catIdx];
-                                if (fieldIdx === 0) return;
-                                const nextFields = [...(cat.fields || [])];
-                                [nextFields[fieldIdx - 1], nextFields[fieldIdx]] = [nextFields[fieldIdx], nextFields[fieldIdx - 1]];
-                                updateCategory(catIdx, { fields: nextFields });
-                              }}
-                              disabled={fieldIdx === 0}
-                              className="bg-transparent border-none text-[var(--text-muted)] cursor-pointer disabled:opacity-30 p-0.5"
-                              title="Move Up"
-                            ><FiChevronDown size={12} className="rotate-180" /></button>
-                            <button
-                              onClick={() => {
-                                const cat = categories[catIdx];
-                                if (fieldIdx === (cat.fields || []).length - 1) return;
-                                const nextFields = [...(cat.fields || [])];
-                                [nextFields[fieldIdx], nextFields[fieldIdx + 1]] = [nextFields[fieldIdx + 1], nextFields[fieldIdx]];
-                                updateCategory(catIdx, { fields: nextFields });
-                              }}
-                              disabled={fieldIdx === (categories[catIdx].fields || []).length - 1}
-                              className="bg-transparent border-none text-[var(--text-muted)] cursor-pointer disabled:opacity-30 p-0.5"
-                              title="Move Down"
-                            ><FiChevronDown size={12} /></button>
-                          </div>
-
-                          {/* Toggle (purple) */}
-                          <MiniatureToggle
-                            checked={isFieldEnabled}
-                            onChange={(v) => updateField(catIdx, fieldIdx, { enabled: v })}
+              <div className="flex flex-col gap-3">
+                {(cat.fields || []).map((field, fieldIdx) => {
+                  const fieldKey = `${catIdx}_${fieldIdx}`;
+                  const isFieldCollapsed = !!collapsedFields[fieldKey];
+                  const isFieldEnabled = field.enabled !== false;
+                  return (
+                    <ListAccordionItem
+                      key={fieldIdx}
+                      index={fieldIdx}
+                      totalItems={(cat.fields || []).length}
+                      isCollapsed={isFieldCollapsed}
+                      onToggleCollapse={() => toggleFieldCollapse(catIdx, fieldIdx)}
+                      isEnabled={isFieldEnabled}
+                      onToggleEnabled={(v) => updateField(catIdx, fieldIdx, { enabled: v })}
+                      onMoveUp={() => moveField(catIdx, fieldIdx, -1)}
+                      onMoveDown={() => moveField(catIdx, fieldIdx, 1)}
+                      onDelete={() => removeField(catIdx, fieldIdx)}
+                      headerContent={
+                        <span className="text-[10px] font-bold text-[var(--text-primary)] truncate">
+                          {field.name || `Field #${fieldIdx + 1}`}
+                        </span>
+                      }
+                    >
+                      <div>
+                        <Field label="Field / JSON Path" hint="Lowercase & underscores only.">
+                          <Input
+                            value={field.name}
+                            onChange={(v) => updateField(catIdx, fieldIdx, { name: v })}
+                            placeholder="e.g. loan_amount"
+                            disabled={!isFieldEnabled || !isCatEnabled}
                           />
+                        </Field>
+                      </div>
 
-                          {/* Delete */}
+                      <div className="flex gap-2.5 flex-wrap">
+                        <div className="flex-[1_1_120px]">
+                          <Field label="Strategy">
+                            <Select
+                              value={field.match_strategy || 'first_match'}
+                              onChange={(v) => updateField(catIdx, fieldIdx, { match_strategy: v })}
+                              options={[
+                                { value: 'first_match', label: 'First Match' },
+                                { value: 'sum_all', label: 'Sum All' }
+                              ]}
+                              disabled={!isFieldEnabled || !isCatEnabled}
+                            />
+                          </Field>
+                        </div>
+                        <div className="flex-[1_1_80px]">
+                          <Field label="Fallback Wt">
+                            <Input
+                              type="number"
+                              value={field.default_weight ?? 0}
+                              onChange={(v) => updateField(catIdx, fieldIdx, { default_weight: parseFloat(v) || 0 })}
+                              placeholder="0"
+                              disabled={!isFieldEnabled || !isCatEnabled}
+                            />
+                          </Field>
+                        </div>
+                      </div>
+
+                      {/* Conditions */}
+                      <div className="border-t border-dashed border-slate-200 pt-2.5">
+                        <div className="text-[10px] font-bold text-[var(--text-muted)] mb-2">Conditions & Weights</div>
+                        <div className="flex flex-col gap-2">
+                          {(field.conditions || []).map((cond, condIdx) => {
+                            const isCondEnabled = cond.enabled !== false;
+                            return (
+                              <div key={condIdx} className={`flex gap-0 items-center p-1.5 px-2 bg-slate-50 rounded-lg border border-slate-100 transition-opacity duration-200 ${isCondEnabled && isFieldEnabled && isCatEnabled ? 'opacity-100' : 'opacity-60'}`}>
+                                <div className="shrink-0 pr-1 box-border" style={{ width: `${conditionWidthPct}%` }}>
+                                  <textarea
+                                    value={cond.condition}
+                                    onChange={(v) => updateCondition(catIdx, fieldIdx, condIdx, { condition: v.target.value })}
+                                    placeholder="Condition (e.g. loan_amount > 5000)"
+                                    disabled={!isCondEnabled || !isFieldEnabled || !isCatEnabled}
+                                    rows={1}
+                                    style={{ resize: "vertical" }}
+                                    className="w-full min-h-[34px] px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-white text-xs outline-none box-border focus:border-[var(--accent-btn)]"
+                                  />
+                                </div>
+
+                                {/* Drag Handle */}
+                                <div
+                                  onMouseDown={(e) => handleMouseDown(e, e.currentTarget.parentNode)}
+                                  className="w-3 cursor-col-resize flex justify-center items-center self-stretch select-none mx-1 relative"
+                                  title="Drag to resize horizontally"
+                                >
+                                  <div className="w-0.5 h-[85%] bg-slate-300 rounded-sm" />
+                                </div>
+
+                                <div className="flex-1 pr-2 box-border">
+                                  <Input
+                                    value={cond.weight}
+                                    onChange={(v) => {
+                                      const parsed = parseFloat(v);
+                                      const val = isNaN(parsed) ? v : parsed;
+                                      updateCondition(catIdx, fieldIdx, condIdx, { weight: val });
+                                    }}
+                                    placeholder="Weight"
+                                    disabled={!isCondEnabled || !isFieldEnabled || !isCatEnabled}
+                                  />
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <div title="Toggle Condition Enabled" className="flex items-center">
+                                    <MiniatureToggle
+                                      checked={isCondEnabled}
+                                      onChange={(v) => updateCondition(catIdx, fieldIdx, condIdx, { enabled: v })}
+                                    />
+                                  </div>
+                                  <button
+                                    onClick={() => removeCondition(catIdx, fieldIdx, condIdx)}
+                                    className="bg-transparent border-none text-red-500 cursor-pointer p-1"
+                                  >
+                                    <FiTrash2 size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+
                           <button
-                            onClick={() => removeField(catIdx, fieldIdx)}
-                            className="bg-transparent border-none text-red-500 cursor-pointer p-0.5"
-                            title="Delete Field"
+                            onClick={() => addCondition(catIdx, fieldIdx)}
+                            disabled={!isFieldEnabled || !isCatEnabled}
+                            className={`self-start flex items-center gap-1 p-1.5 px-2.5 rounded-md border border-dashed border-[var(--border)] bg-slate-50 text-[var(--text-secondary)] text-[10px] font-semibold transition-opacity duration-200 ${isFieldEnabled && isCatEnabled ? 'cursor-pointer opacity-100 hover:border-[var(--accent-btn)] hover:text-[var(--accent-btn)]' : 'cursor-not-allowed opacity-50'}`}
                           >
-                            <FiTrash2 size={12} />
+                            <FiPlus size={10} /> Add Condition
                           </button>
                         </div>
-
-                        {/* Field settings - collapsible */}
-                        {!isFieldCollapsed && (
-                          <div className="flex flex-col gap-2.5">
-                            <div>
-                              <Field label="Field / JSON Path" hint="Lowercase & underscores only.">
-                                <Input
-                                  value={field.name}
-                                  onChange={(v) => updateField(catIdx, fieldIdx, { name: v })}
-                                  placeholder="e.g. loan_amount"
-                                  disabled={!isFieldEnabled || !isCatEnabled}
-                                />
-                              </Field>
-                            </div>
-
-                            <div className="flex gap-2.5 flex-wrap">
-                              <div className="flex-[1_1_120px]">
-                                <Field label="Strategy">
-                                  <Select
-                                    value={field.match_strategy || 'first_match'}
-                                    onChange={(v) => updateField(catIdx, fieldIdx, { match_strategy: v })}
-                                    options={[
-                                      { value: 'first_match', label: 'First Match' },
-                                      { value: 'sum_all', label: 'Sum All' }
-                                    ]}
-                                    disabled={!isFieldEnabled || !isCatEnabled}
-                                  />
-                                </Field>
-                              </div>
-                              <div className="flex-[1_1_80px]">
-                                <Field label="Fallback Wt">
-                                  <Input
-                                    type="number"
-                                    value={field.default_weight ?? 0}
-                                    onChange={(v) => updateField(catIdx, fieldIdx, { default_weight: parseFloat(v) || 0 })}
-                                    placeholder="0"
-                                    disabled={!isFieldEnabled || !isCatEnabled}
-                                  />
-                                </Field>
-                              </div>
-                            </div>
-
-                            {/* Conditions */}
-                            <div className="border-t border-dashed border-slate-200 pt-2.5">
-                              <div className="text-[10px] font-bold text-[var(--text-muted)] mb-2">Conditions & Weights</div>
-                              <div className="flex flex-col gap-2">
-                                {(field.conditions || []).map((cond, condIdx) => {
-                                  const isCondEnabled = cond.enabled !== false;
-                                  return (
-                                    <div key={condIdx} className={`flex gap-0 items-center p-1.5 px-2 bg-slate-50 rounded-lg border border-slate-100 transition-all duration-200 ${isCondEnabled && isFieldEnabled && isCatEnabled ? 'opacity-100' : 'opacity-60'}`}>
-                                      <div className="shrink-0 pr-1 box-border" style={{ width: `${conditionWidthPct}%` }}>
-                                        <textarea
-                                          value={cond.condition}
-                                          onChange={(v) => updateCondition(catIdx, fieldIdx, condIdx, { condition: v.target.value })}
-                                          placeholder="Condition (e.g. loan_amount > 5000)"
-                                          disabled={!isCondEnabled || !isFieldEnabled || !isCatEnabled}
-                                          rows={1}
-                                          style={{ resize: "vertical" }}
-                                          className="w-full min-h-[34px] px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-white text-xs outline-none box-border focus:border-[var(--accent-btn)]"
-                                        />
-                                      </div>
-
-                                      {/* Drag Handle */}
-                                      <div
-                                        onMouseDown={(e) => handleMouseDown(e, e.currentTarget.parentNode)}
-                                        className="w-3 cursor-col-resize flex justify-center items-center self-stretch select-none mx-1 relative"
-                                        title="Drag to resize horizontally"
-                                      >
-                                        <div className="w-0.5 h-[85%] bg-slate-300 rounded-sm" />
-                                      </div>
-
-                                      <div className="flex-1 pr-2 box-border">
-                                        <Input
-                                          value={cond.weight}
-                                          onChange={(v) => {
-                                            const parsed = parseFloat(v);
-                                            const val = isNaN(parsed) ? v : parsed;
-                                            updateCondition(catIdx, fieldIdx, condIdx, { weight: val });
-                                          }}
-                                          placeholder="Weight"
-                                          disabled={!isCondEnabled || !isFieldEnabled || !isCatEnabled}
-                                        />
-                                      </div>
-                                      <div className="flex items-center gap-1.5 shrink-0">
-                                        <div title="Toggle Condition Enabled" className="flex items-center">
-                                          <MiniatureToggle
-                                            checked={isCondEnabled}
-                                            onChange={(v) => updateCondition(catIdx, fieldIdx, condIdx, { enabled: v })}
-                                          />
-                                        </div>
-                                        <button
-                                          onClick={() => removeCondition(catIdx, fieldIdx, condIdx)}
-                                          className="bg-transparent border-none text-red-500 cursor-pointer p-1"
-                                        >
-                                          <FiTrash2 size={12} />
-                                        </button>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-
-                                <button
-                                  onClick={() => addCondition(catIdx, fieldIdx)}
-                                  disabled={!isFieldEnabled || !isCatEnabled}
-                                  className={`self-start flex items-center gap-1 p-1.5 px-2.5 rounded-md border border-dashed border-[var(--border)] bg-slate-50 text-[var(--text-secondary)] text-[10px] font-semibold transition-all duration-200 ${isFieldEnabled && isCatEnabled ? 'cursor-pointer opacity-100 hover:border-[var(--accent-btn)] hover:text-[var(--accent-btn)]' : 'cursor-not-allowed opacity-50'}`}
-                                >
-                                  <FiPlus size={10} /> Add Condition
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
                       </div>
-                    );
-                  })}
+                    </ListAccordionItem>
+                  );
+                })}
+              </div>
 
-                  <button
-                    onClick={() => addField(catIdx)}
-                    className="self-start flex items-center gap-1.5 p-2 px-3 rounded-lg border border-dashed border-[var(--border)] bg-white text-[var(--text-secondary)] text-[11px] font-semibold cursor-pointer hover:border-[var(--accent-btn)] hover:text-[var(--accent-btn)]"
-                  >
-                    <FiPlus size={12} /> Add Field
-                  </button>
-                </div>
-              )}
-            </div>
+              <button
+                onClick={() => addField(catIdx)}
+                className="self-start flex items-center gap-1.5 p-2 px-3 rounded-lg border border-dashed border-[var(--border)] bg-white text-[var(--text-secondary)] text-[11px] font-semibold cursor-pointer hover:border-[var(--accent-btn)] hover:text-[var(--accent-btn)]"
+              >
+                <FiPlus size={12} /> Add Field
+              </button>
+            </ListAccordionItem>
           );
         })}
 

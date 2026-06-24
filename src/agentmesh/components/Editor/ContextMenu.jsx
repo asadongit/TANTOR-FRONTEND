@@ -1,64 +1,84 @@
 import React, { useCallback, useState } from 'react';
 import { useWorkflowStore, useUIStore } from '../../store';
-import { FiSettings, FiCopy, FiTrash2, FiLink, FiXCircle } from 'react-icons/fi';
+import { FiSettings, FiCopy, FiTrash2, FiLink, FiXCircle, FiLayers } from 'react-icons/fi';
 import ConfirmationModal from '../Common/ConfirmationModal';
 
-export default function ContextMenu({ id, top, left, right, bottom, onMouseLeave, ...props }) {
-    const { removeNode, duplicateNode, clearNodeData, unlinkNode, nodes } = useWorkflowStore();
+export default function ContextMenu({ ids = [], top, left, right, bottom, onMouseLeave, ...props }) {
+    const { removeNode, duplicateNode, duplicateNodes, clearNodeData, unlinkNode, nodes, groupNodes, ungroupNode } = useWorkflowStore();
     const { setSelectedNode } = useUIStore();
     const [confirmModal, setConfirmModal] = useState({ type: null, isOpen: false });
 
-    // Get node label for the modal message
-    const node = nodes.find(n => n.id === id);
-    const nodeLabel = node?.data?.label || id;
+    const isBatch = ids.length > 1;
+    const isAnySystem = ids.some(id => id === '__start__' || id === '__end__');
+    const isGroupNode = !isBatch && ids.length === 1 && nodes.find(n => n.id === ids[0])?.data?.type === 'group';
+
+    const onGroup = useCallback(() => {
+        groupNodes(ids);
+        onMouseLeave();
+    }, [ids, groupNodes, onMouseLeave]);
+
+    const onUngroup = useCallback(() => {
+        ungroupNode(ids[0]);
+        onMouseLeave();
+    }, [ids, ungroupNode, onMouseLeave]);
+
+    // Get node labels for the modal message
+    const targetNodes = nodes.filter(n => ids.includes(n.id));
+    const nodeLabels = targetNodes.map(n => n.data?.label || n.id).join('", "');
 
     const onOpen = useCallback(() => {
-        setSelectedNode(id);
+        setSelectedNode(ids[0]);
         onMouseLeave();
-    }, [id, setSelectedNode, onMouseLeave]);
+    }, [ids, setSelectedNode, onMouseLeave]);
 
     const onCopyProperties = useCallback(() => {
-        const data = node?.data;
-        if (!data) return;
+        let fullText = '';
+        targetNodes.forEach((node) => {
+            const data = node?.data;
+            if (!data) return;
 
-        const { id: node_id, type, label, ...configs } = data;
-        let text = `--- Node Properties ---\n`;
-        text += `ID: ${node_id}\n`;
-        text += `Type: ${type || 'unknown'}\n`;
-        text += `Label: ${label || node_id}\n\n`;
+            const { id: node_id, type, label, ...configs } = data;
+            let text = `--- ${label || node_id} ---\n`;
+            text += `ID: ${node_id}\n`;
+            text += `Type: ${type || 'unknown'}\n`;
+            text += `Label: ${label || node_id}\n\n`;
 
-        Object.entries(configs).forEach(([key, value]) => {
-            if (value === null || value === undefined || value === '') return;
-            
-            if (typeof value === 'object') {
-                try {
-                    // Filter out empty arrays or empty objects to keep it clean
-                    if (Array.isArray(value) && value.length === 0) return;
-                    if (!Array.isArray(value) && Object.keys(value).length === 0) return;
-                    
-                    text += `${key}:\n${JSON.stringify(value, null, 2)}\n\n`;
-                } catch {
-                    text += `${key}: ${value}\n\n`;
+            Object.entries(configs).forEach(([key, value]) => {
+                if (value === null || value === undefined || value === '') return;
+                if (typeof value === 'object') {
+                    try {
+                        if (Array.isArray(value) && value.length === 0) return;
+                        if (!Array.isArray(value) && Object.keys(value).length === 0) return;
+                        text += `${key}:\n${JSON.stringify(value, null, 2)}\n\n`;
+                    } catch {
+                        text += `${key}: ${value}\n\n`;
+                    }
+                } else {
+                    text += `${key}: ${value}\n`;
                 }
-            } else {
-                text += `${key}: ${value}\n`;
-            }
+            });
+            fullText += text + '\n';
         });
 
-        navigator.clipboard.writeText(text.trim())
+        navigator.clipboard.writeText(fullText.trim())
             .then(() => {
-                alert(`Properties for "${label || node_id}" copied to clipboard!`);
+                const count = targetNodes.length;
+                alert(`Properties for ${count} node${count > 1 ? 's' : ''} copied to clipboard!`);
             })
             .catch(err => {
                 console.error("Clipboard copy failed: ", err);
             });
         onMouseLeave();
-    }, [node, onMouseLeave]);
+    }, [targetNodes, onMouseLeave]);
 
     const onDuplicate = useCallback(() => {
-        duplicateNode(id);
+        if (isBatch) {
+            duplicateNodes(ids);
+        } else {
+            duplicateNode(ids[0]);
+        }
         onMouseLeave();
-    }, [id, duplicateNode, onMouseLeave]);
+    }, [ids, isBatch, duplicateNode, duplicateNodes, onMouseLeave]);
 
     const onClearClick = (e) => {
         e.stopPropagation();
@@ -72,13 +92,13 @@ export default function ContextMenu({ id, top, left, right, bottom, onMouseLeave
 
     const handleConfirm = useCallback(() => {
         if (confirmModal.type === 'clear') {
-            clearNodeData(id);
+            ids.forEach(id => clearNodeData(id));
         } else if (confirmModal.type === 'delete') {
-            removeNode(id);
+            ids.forEach(id => removeNode(id));
         }
         setConfirmModal({ type: null, isOpen: false });
         onMouseLeave();
-    }, [id, confirmModal.type, clearNodeData, removeNode, onMouseLeave]);
+    }, [ids, confirmModal.type, clearNodeData, removeNode, onMouseLeave]);
 
     const handleCloseModal = () => {
         setConfirmModal({ type: null, isOpen: false });
@@ -86,12 +106,11 @@ export default function ContextMenu({ id, top, left, right, bottom, onMouseLeave
     };
 
     const onUnlink = useCallback(() => {
-        unlinkNode(id);
+        ids.forEach(id => unlinkNode(id));
         onMouseLeave();
-    }, [id, unlinkNode, onMouseLeave]);
+    }, [ids, unlinkNode, onMouseLeave]);
 
-    // Don't show context menu for system start/end nodes (except maybe open)
-    const isSystemNode = id === '__start__' || id === '__end__';
+    const duplicateableNodesCount = targetNodes.filter(n => n.id !== '__start__' && n.id !== '__end__' && n.data?.type !== 'group').length;
 
     return (
         <div
@@ -114,20 +133,36 @@ export default function ContextMenu({ id, top, left, right, bottom, onMouseLeave
             {...props}
         >
             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', padding: '6px 10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Node Actions
+                {isBatch ? `Batch Actions (${ids.length})` : 'Node Actions'}
             </div>
             
-            <ContextItem icon={<FiSettings />} label="Open Settings" onClick={onOpen} />
-            <ContextItem icon={<FiCopy />} label="Copy Properties" onClick={onCopyProperties} />
+            {!isBatch && (
+                <>
+                    {isGroupNode && (
+                        <ContextItem icon={<FiLayers />} label="Ungroup" shortcut="Ctrl+Shift+G" onClick={onUngroup} />
+                    )}
+                    <ContextItem icon={<FiSettings />} label="Open Settings" onClick={onOpen} />
+                    <ContextItem icon={<FiCopy />} label="Copy Properties" onClick={onCopyProperties} />
+                </>
+            )}
             
-            {!isSystemNode && (
+            {isBatch && (
+                <>
+                    <ContextItem icon={<FiLayers />} label="Group Selected" shortcut="Ctrl+G" onClick={onGroup} />
+                    <ContextItem icon={<FiCopy />} label="Copy All Properties" onClick={onCopyProperties} />
+                </>
+            )}
+            
+            {!isAnySystem && (
                 <>
                     <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }} />
-                    <ContextItem icon={<FiCopy />} label="Duplicate" onClick={onDuplicate} />
-                    <ContextItem icon={<FiLink />} label="Unlink Connections" onClick={onUnlink} />
+                    {(!isGroupNode && (isBatch ? duplicateableNodesCount > 0 : true)) && (
+                        <ContextItem icon={<FiCopy />} label={isBatch ? `Duplicate (${duplicateableNodesCount})` : 'Duplicate'} onClick={onDuplicate} />
+                    )}
+                    <ContextItem icon={<FiLink />} label={isBatch ? `Unlink All (${ids.length})` : 'Unlink Connections'} onClick={onUnlink} />
                     <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }} />
-                    <ContextItem icon={<FiXCircle />} label="Clear Data" onClick={onClearClick} />
-                    <ContextItem icon={<FiTrash2 />} label="Delete Node" onClick={onDeleteClick} color="#EF4444" />
+                    <ContextItem icon={<FiXCircle />} label={isBatch ? `Clear All Data (${ids.length})` : 'Clear Data'} onClick={onClearClick} />
+                    <ContextItem icon={<FiTrash2 />} label={isBatch ? `Delete All (${ids.length})` : 'Delete Node'} onClick={onDeleteClick} color="#EF4444" />
                 </>
             )}
 
@@ -135,13 +170,25 @@ export default function ContextMenu({ id, top, left, right, bottom, onMouseLeave
                 isOpen={confirmModal.isOpen}
                 onClose={handleCloseModal}
                 onConfirm={handleConfirm}
-                title={confirmModal.type === 'clear' ? "Clear Node Data?" : "Delete Node?"}
-                message={
-                    confirmModal.type === 'clear'
-                        ? `Are you sure you want to reset all data for **${nodeLabel}**? This action cannot be undone.`
-                        : `Are you sure you want to delete **${nodeLabel}**? All its connections will be removed.`
+                title={
+                    isBatch
+                        ? confirmModal.type === 'clear' ? `Clear Data for ${ids.length} Nodes?` : `Delete ${ids.length} Nodes?`
+                        : confirmModal.type === 'clear' ? 'Clear Node Data?' : 'Delete Node?'
                 }
-                confirmText={confirmModal.type === 'clear' ? "Reset Data" : "Delete Node"}
+                message={
+                    isBatch
+                        ? confirmModal.type === 'clear'
+                            ? `Are you sure you want to reset all data for **"${nodeLabels}"**? This action cannot be undone.`
+                            : `Are you sure you want to delete **${ids.length} nodes**? All their connections will be removed.`
+                        : confirmModal.type === 'clear'
+                            ? `Are you sure you want to reset all data for **${nodeLabels}**? This action cannot be undone.`
+                            : `Are you sure you want to delete **${nodeLabels}**? All its connections will be removed.`
+                }
+                confirmText={
+                    isBatch
+                        ? confirmModal.type === 'clear' ? `Reset ${ids.length} Nodes` : `Delete ${ids.length} Nodes`
+                        : confirmModal.type === 'clear' ? 'Reset Data' : 'Delete Node'
+                }
                 variant="danger"
             />
 
@@ -155,14 +202,14 @@ export default function ContextMenu({ id, top, left, right, bottom, onMouseLeave
     );
 }
 
-function ContextItem({ icon, label, onClick, color = 'var(--text-primary)' }) {
+function ContextItem({ icon, label, shortcut, onClick, color = 'var(--text-primary)' }) {
     return (
         <button
             onClick={onClick}
             style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '10px',
+                justifyContent: 'space-between',
                 width: '100%',
                 padding: '8px 10px',
                 border: 'none',
@@ -177,8 +224,15 @@ function ContextItem({ icon, label, onClick, color = 'var(--text-primary)' }) {
             onMouseEnter={(e) => (e.currentTarget.style.background = '#F3F4F6')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
         >
-            <span style={{ display: 'flex', alignItems: 'center', opacity: 0.7 }}>{icon}</span>
-            <span style={{ fontWeight: 500 }}>{label}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', opacity: 0.7 }}>{icon}</span>
+                <span style={{ fontWeight: 500 }}>{label}</span>
+            </div>
+            {shortcut && (
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)', opacity: 0.6, fontWeight: 500, paddingLeft: '8px' }}>
+                    {shortcut}
+                </span>
+            )}
         </button>
     );
 }

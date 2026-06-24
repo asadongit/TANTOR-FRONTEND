@@ -1,5 +1,4 @@
 import React from "react";
-import { FiBox } from "react-icons/fi";
 import { Select, Field, Input, Textarea } from "./SharedComponents";
 
 export default function DbNodeConfig({ data, update }) {
@@ -122,34 +121,11 @@ export default function DbNodeConfig({ data, update }) {
           <Input
             type="number"
             value={data.db_limit || 100}
-            onChange={(v) => update({ db_limit: parseInt(v) || 100 })}
+            onChange={(v) => update({ db_limit: Number.parseInt(v) || 100 })}
             placeholder="100"
           />
         </Field>
       )}
-
-      <div
-        style={{
-          padding: "12px 14px",
-          background: "#D1FAE5",
-          borderRadius: 10,
-          fontSize: 11,
-          color: "#065F46",
-          border: "1px solid #A7F3D0",
-          lineHeight: 1.5,
-          marginTop: 12,
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-        }}
-      >
-        <FiBox size={14} style={{ flexShrink: 0 }} />
-        <span style={{ flex: 1, fontWeight: 500 }}>
-          MongoDB node performs real database operations. Use{" "}
-          {"{{context.xxx}}"} in document templates to inject workflow data
-          dynamically.
-        </span>
-      </div>
     </>
   );
 }
