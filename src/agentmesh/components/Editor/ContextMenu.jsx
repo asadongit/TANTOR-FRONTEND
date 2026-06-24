@@ -110,6 +110,8 @@ export default function ContextMenu({ ids = [], top, left, right, bottom, onMous
         onMouseLeave();
     }, [ids, unlinkNode, onMouseLeave]);
 
+    const duplicateableNodesCount = targetNodes.filter(n => n.id !== '__start__' && n.id !== '__end__' && n.data?.type !== 'group').length;
+
     return (
         <div
             style={{
@@ -137,7 +139,7 @@ export default function ContextMenu({ ids = [], top, left, right, bottom, onMous
             {!isBatch && (
                 <>
                     {isGroupNode && (
-                        <ContextItem icon={<FiLayers />} label="Ungroup" onClick={onUngroup} />
+                        <ContextItem icon={<FiLayers />} label="Ungroup" shortcut="Ctrl+Shift+G" onClick={onUngroup} />
                     )}
                     <ContextItem icon={<FiSettings />} label="Open Settings" onClick={onOpen} />
                     <ContextItem icon={<FiCopy />} label="Copy Properties" onClick={onCopyProperties} />
@@ -146,7 +148,7 @@ export default function ContextMenu({ ids = [], top, left, right, bottom, onMous
             
             {isBatch && (
                 <>
-                    <ContextItem icon={<FiLayers />} label="Group Selected" onClick={onGroup} />
+                    <ContextItem icon={<FiLayers />} label="Group Selected" shortcut="Ctrl+G" onClick={onGroup} />
                     <ContextItem icon={<FiCopy />} label="Copy All Properties" onClick={onCopyProperties} />
                 </>
             )}
@@ -154,7 +156,9 @@ export default function ContextMenu({ ids = [], top, left, right, bottom, onMous
             {!isAnySystem && (
                 <>
                     <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }} />
-                    <ContextItem icon={<FiCopy />} label={isBatch ? `Duplicate (${ids.length})` : 'Duplicate'} onClick={onDuplicate} />
+                    {(!isGroupNode && (isBatch ? duplicateableNodesCount > 0 : true)) && (
+                        <ContextItem icon={<FiCopy />} label={isBatch ? `Duplicate (${duplicateableNodesCount})` : 'Duplicate'} onClick={onDuplicate} />
+                    )}
                     <ContextItem icon={<FiLink />} label={isBatch ? `Unlink All (${ids.length})` : 'Unlink Connections'} onClick={onUnlink} />
                     <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }} />
                     <ContextItem icon={<FiXCircle />} label={isBatch ? `Clear All Data (${ids.length})` : 'Clear Data'} onClick={onClearClick} />
@@ -198,14 +202,14 @@ export default function ContextMenu({ ids = [], top, left, right, bottom, onMous
     );
 }
 
-function ContextItem({ icon, label, onClick, color = 'var(--text-primary)' }) {
+function ContextItem({ icon, label, shortcut, onClick, color = 'var(--text-primary)' }) {
     return (
         <button
             onClick={onClick}
             style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '10px',
+                justifyContent: 'space-between',
                 width: '100%',
                 padding: '8px 10px',
                 border: 'none',
@@ -220,8 +224,15 @@ function ContextItem({ icon, label, onClick, color = 'var(--text-primary)' }) {
             onMouseEnter={(e) => (e.currentTarget.style.background = '#F3F4F6')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
         >
-            <span style={{ display: 'flex', alignItems: 'center', opacity: 0.7 }}>{icon}</span>
-            <span style={{ fontWeight: 500 }}>{label}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', opacity: 0.7 }}>{icon}</span>
+                <span style={{ fontWeight: 500 }}>{label}</span>
+            </div>
+            {shortcut && (
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)', opacity: 0.6, fontWeight: 500, paddingLeft: '8px' }}>
+                    {shortcut}
+                </span>
+            )}
         </button>
     );
 }

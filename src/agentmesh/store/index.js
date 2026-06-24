@@ -513,7 +513,7 @@ export const useWorkflowStore = create((set, get) => ({
 
   duplicateNode: (nodeId) => {
     const node = get().nodes.find((n) => n.id === nodeId);
-    if (!node || node.id === '__start__' || node.id === '__end__') return;
+    if (!node || node.id === '__start__' || node.id === '__end__' || node.data?.type === 'group') return;
 
     const type = node.data?.type || 'node';
     const newId = `${type}_${genId()}`;
@@ -538,6 +538,51 @@ export const useWorkflowStore = create((set, get) => ({
       return { nodes: nextNodes, isDirty: true, isCompiled: false };
     });
     return newId;
+  },
+
+  duplicateNodes: (nodeIds) => {
+    const idsToDuplicate = nodeIds.filter(id => {
+      const node = get().nodes.find(n => n.id === id);
+      return id !== '__start__' && id !== '__end__' && node?.data?.type !== 'group';
+    });
+    if (idsToDuplicate.length === 0) return;
+    
+    get().takeHistorySnapshot();
+    set((s) => {
+      const newNodes = [];
+      
+      idsToDuplicate.forEach((nodeId) => {
+        const node = s.nodes.find((n) => n.id === nodeId);
+        if (!node) return;
+        
+        const type = node.data?.type || 'node';
+        const newId = `${type}_${genId()}`;
+        
+        const newNode = {
+          ...node,
+          id: newId,
+          position: { x: node.position.x + 40, y: node.position.y + 40 },
+          data: { ...node.data, id: newId, label: `${node.data.label || node.id} (Copy)` },
+          selected: false,
+        };
+        newNodes.push(newNode);
+      });
+      
+      const nextNodes = [...s.nodes, ...newNodes];
+      nextNodes.sort((a, b) => {
+        const aIsBack = a.type === 'cardboardNode' || a.data?.type === 'cardboard';
+        const bIsBack = b.type === 'cardboardNode' || b.data?.type === 'cardboard';
+        if (aIsBack && !bIsBack) return -1;
+        if (!aIsBack && bIsBack) return 1;
+        return 0;
+      });
+      
+      return { 
+        nodes: nextNodes, 
+        isDirty: true, 
+        isCompiled: false 
+      };
+    });
   },
 
   clearNodeData: (nodeId) => {
