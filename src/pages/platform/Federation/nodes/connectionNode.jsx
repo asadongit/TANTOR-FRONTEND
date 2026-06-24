@@ -406,6 +406,13 @@ export function ConnectionNode({ id, onSave }) {
         ...prevData,
         joins: prevData?.joins?.filter((join) => join.view1 !== previousColId && join.view2 !== previousColId),
       }));
+      if (previousColId) {
+        setColumnSettings((prevSettings) => {
+          const updatedSettings = { ...prevSettings };
+          delete updatedSettings[previousColId];
+          return updatedSettings;
+        });
+      }
     } else if (finalPayload.operation) {
       handleFinalPayload({});
       const updatedSettings = { ...columnSettings };

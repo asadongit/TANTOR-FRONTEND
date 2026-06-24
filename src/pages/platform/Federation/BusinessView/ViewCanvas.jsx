@@ -26,7 +26,7 @@ const getId = () => `node_${id++}`;
 
 export function ViewCanvas() {
 
-  const { handleConsolidationPayload } = useStateContext("");
+  const { handleConsolidationPayload, removeConsolidationPayloadByNode } = useStateContext("");
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -82,7 +82,8 @@ export function ViewCanvas() {
     setEdges((eds) => eds.filter((edge) =>
       edge.source !== nodeId && edge.target !== nodeId
     ));
-  }, [setNodes, setEdges]);
+    removeConsolidationPayloadByNode(nodeId);
+  }, [setNodes, setEdges, removeConsolidationPayloadByNode]);
 
   useEffect(() => {
     window.deleteNode = onNodeDelete;

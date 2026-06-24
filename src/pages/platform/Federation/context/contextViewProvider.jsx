@@ -23,6 +23,14 @@ export const ContextViewProvider = ({ children }) => {
     });
   };
 
+  const removeConsolidationPayloadByNode = (nodeId) => {
+    setConsolidationPayload((prevPayload) =>
+      prevPayload.filter(
+        (entry) => entry.source !== nodeId && entry.target !== nodeId
+      )
+    );
+  };
+
   const [nodeCount, setNodeCount] = useState({
     sourceView: 0,
     connection: 0,
@@ -82,6 +90,7 @@ export const ContextViewProvider = ({ children }) => {
         handleViewPayload,
         consolidationPayload,
         handleConsolidationPayload,
+        removeConsolidationPayloadByNode,
         connectionPayload,
         handleConnectionPayload,
         finalPayload,
