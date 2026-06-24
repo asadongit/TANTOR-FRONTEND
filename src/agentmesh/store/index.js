@@ -988,6 +988,7 @@ export const useWorkflowStore = create((set, get) => ({
           'ocr_input_key', 'ocr_prompt', 'ocr_engine', 'ocr_standard_model',
           'scan_mode', 'file_filters', 'concurrency_limit', 'webhook_url', 'emit_status',
           'on_error',
+          'continue_on_fail',
           'response_status', 'response_headers', 'response_body_key',
           'direct_tool_name', 'tool_arguments', 'destination_key',
           'classification_classes', 'classification_summary', 'classification_engine', 'classification_input_field',
