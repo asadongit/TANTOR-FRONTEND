@@ -12,9 +12,22 @@ import { useAuth } from "../../../../context/AuthContext";
 import { useToast } from '../context/ToastContext';
 
 
-const SearchableSelect = ({ options, value, onChange, placeholder, disabled = false, isLoading = false }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const SearchableSelect = ({ id, openDropdownId, setOpenDropdownId, options, value, onChange, placeholder, disabled = false, isLoading = false }) => {
+  const isOpen = openDropdownId === id;
   const [searchTerm, setSearchTerm] = useState("");
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpenDropdownId(null);
+        setSearchTerm("");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
 
   const filteredOptions = options.map(option =>
     typeof option === 'object' ? option.connection_name : option
@@ -24,18 +37,19 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled = fa
 
   const handleSelectClick = () => {
     if (!disabled && !isLoading) {
-      setIsOpen(!isOpen);
+      setOpenDropdownId((prev) => (prev === id ? null : id));
+      if (openDropdownId !== id) setSearchTerm("");
     }
   };
 
   const handleOptionClick = (option) => {
     onChange({ target: { value: option } });
-    setIsOpen(false);
+    setOpenDropdownId(null);
     setSearchTerm("");
   };
 
   return (
-    <div className="relative w-full h-full">
+    <div ref={containerRef} className="relative w-full h-full">
       <div
         className={`w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${disabled || isLoading ? "opacity-50 cursor-not-allowed" : ""
           }`}
@@ -55,7 +69,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled = fa
       </div>
 
       {isOpen && !isLoading && !disabled && (
-        <div className="absolute z-10 w-full mt-1 bg-white text-black border rounded-lg shadow-lg">
+        <div className="absolute z-50 w-full mt-1 bg-white text-black border rounded-lg shadow-lg">
           <div className="p-2 border-b">
             <div className="relative">
               <Search className="absolute left-2 top-2.5 w-4 h-4 text-black" />
@@ -94,6 +108,7 @@ export function SourceViewNode({ id, onSave }) {
   const encodedToken = window._env_?.VITE_FEDERATION_ACCESS_TOKEN;
   const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, finalPayload, handleFinalPayload, incrementNodeCount, decrementNodeCount } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [openDropdownId, setOpenDropdownId] = useState(null);
   const [selectedView, setSelectedView] = useState("");
   const [selectedColumns, setSelectedColumns] = useState([]);
   const [views, setViews] = useState([])
@@ -492,6 +507,9 @@ export function SourceViewNode({ id, onSave }) {
               <div>
                 <label className="block text-sm font-medium text-black mb-1">View</label>
                 <SearchableSelect
+                  id="view"
+                  openDropdownId={openDropdownId}
+                  setOpenDropdownId={setOpenDropdownId}
                   options={views}
                   value={selectedView}
                   onChange={handleViewChange}

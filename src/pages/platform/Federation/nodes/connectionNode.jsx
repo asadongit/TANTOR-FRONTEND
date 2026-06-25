@@ -16,6 +16,19 @@ import { useToast } from "../context/ToastContext";
 const SearchableSelect = ({ id, openDropdownId, setOpenDropdownId, options, value, onChange, placeholder, disabled = false, isLoading = false }) => {
   const isOpen = openDropdownId === id;
   const [searchTerm, setSearchTerm] = useState("");
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpenDropdownId(null);
+        setSearchTerm("");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
 
   const filteredOptions = options.filter((option) =>
     option.toLowerCase().includes(searchTerm.toLowerCase())
@@ -37,7 +50,7 @@ const SearchableSelect = ({ id, openDropdownId, setOpenDropdownId, options, valu
   };
 
   return (
-    <div className="relative w-full text-black">
+    <div ref={containerRef} className="relative w-full text-black">
       <div
         className={`w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${disabled || isLoading ? "opacity-50 cursor-not-allowed" : ""
           }`}
@@ -53,7 +66,7 @@ const SearchableSelect = ({ id, openDropdownId, setOpenDropdownId, options, valu
         )}
       </div>
       {isOpen && !disabled && !isLoading && (
-        <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
+        <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg">
           <div className="p-2 border-b">
             <div className="relative">
               <Search className="absolute left-2 top-2.5 w-4 h-4 text-gray-400" />
