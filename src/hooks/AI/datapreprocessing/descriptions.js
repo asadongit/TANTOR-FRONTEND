@@ -294,12 +294,6 @@ export const multivariateOutlierMethods = [
     label: 'Soft Impute',
     description:
       'Uses matrix-completion techniques to estimate replacement values while preserving relationships across multiple variables.'
-  },
-  {
-    value: 'remove',
-    label: 'Remove',
-    description:
-      'Removes observations identified as outliers from the dataset. This method is suitable when abnormal values are likely caused by errors or corruption.'
   }
 ];
 
@@ -322,26 +316,14 @@ export const encodingMethods = [
     label: 'Target',
     description: 'Target Encoding replaces each category with the average target value for that category. It captures the relationship between the category and the prediction outcome.'
   },
-  {
-    value: 'woe',
-    label: 'WOE',
-    description: 'WOE encoding replaces categories with a value based on their predictive power relative to the target. It is widely used in credit risk and banking models for interpretability.'
-  },
-  {
+ 
+ {
     value: 'frequency',
     label: 'Frequency',
     description: 'Frequency Encoding replaces categories with their occurrence frequency in the dataset. It preserves information about how common each category is.'
   },
-  {
-    value: 'binary',
-    label: 'Binary',
-    description: 'Binary Encoding converts categories into binary digits and splits them across multiple columns. It reduces dimensionality compared to one-hot encoding.'
-  },
-  {
-    value: 'leave_one_out',
-    label: 'Leave One Out',
-    description: 'Leave-One-Out Encoding replaces a category using the target mean excluding the current row. This helps reduce overfitting compared to standard target encoding.'
-  },
+
+ 
   {
     value: 'james_stein',
     label: 'James Stein',
@@ -357,40 +339,12 @@ export const encodingMethods = [
     label: 'CatBoost',
     description: 'CatBoost Encoding is a target-based method that uses ordered statistics to avoid data leakage. It is optimized for gradient-boosting models like CatBoost.'
   },
-  {
-    value: 'count',
-    label: 'Count',
-    description: 'Count Encoding replaces each category with the number of times it appears in the data. It is simple and effective for high-cardinality features.'
-  },
-  {
-    value: 'basen',
-    label: 'BaseN',
-    description: 'Base-N Encoding represents categories as digits in a base-N numeral system. It is a generalized form of binary encoding that balances feature size and information.'
-  },
+
+
   {
     value: 'hashing',
     label: 'Hashing',
     description: 'Hashing Encoding converts categories into numeric features using a hash function. It is memory-efficient and suitable for large-scale datasets.'
-  },
-  {
-    value: 'helmert',
-    label: 'Helmert',
-    description: 'Helmert Encoding compares each category with the mean of subsequent categories. It is commonly used in statistical modeling and hypothesis testing.'
-  },
-  {
-    value: 'sum',
-    label: 'Sum',
-    description: 'Sum Encoding represents categories using deviation from the overall mean. It is mainly used in regression and statistical analysis.'
-  },
-  {
-    value: 'backward_difference',
-    label: 'Backward Difference',
-    description: 'Backward Difference Encoding compares each category with the previous category in order. It is useful for ordered categorical features.'
-  },
-  {
-    value: 'polynomial',
-    label: 'Polynomial',
-    description: 'Polynomial Encoding creates contrast-based numeric representations for categorical variables. It is mainly used in statistical and regression-based models.'
   }
 ];
 

@@ -29,15 +29,11 @@ function HandleHighMissingValues({
   setHighMissingConfig,
   numericColumns = [],
   showFieldErrors,
+  expanded,
+  toggleSection,
 }) {
 
-   //Expand / collapse state
-
-  const [expandedSections, setExpandedSections] = useState({
-    handleHighMissing: false,
-  });
-
-  /* 
+  /*
    * Toggle behavior
    * - Numeric columns exist -> ON and locked
    * - No numeric columns -> OFF and locked
@@ -45,13 +41,6 @@ function HandleHighMissingValues({
   const hasNumericalColumns = numericColumns.length > 0;
 
   const toggleDisabled = true || readonly;
-   // Expand / collapse handler
-  const toggleSection = (section) => {
-    setExpandedSections((prev) => ({
-      ...prev,
-      [section]: !prev[section],
-    }));
-  };
 //validation 
   const thresholdEmpty =
     highMissingConfig.threshold === '' ||
@@ -78,23 +67,6 @@ function HandleHighMissingValues({
         ? 'Please enter a value'
         : 'Value must be between 0 and 100'
       : '';
-// Auto-expand section if there are validation errors
-  useEffect(() => {
-    if (
-      showFieldErrors &&
-      thresholdError &&
-      !expandedSections.handleHighMissing
-    ) {
-      setExpandedSections((prev) => ({
-        ...prev,
-        handleHighMissing: true,
-      }));
-    }
-  }, [
-    showFieldErrors,
-    thresholdError,
-    expandedSections.handleHighMissing,
-  ]);
 
   return (
     <div className="rounded-lg bg-[#FAFAFA]">
@@ -124,12 +96,10 @@ function HandleHighMissingValues({
 
           <button
             type="button"
-            onClick={() =>
-              toggleSection('handleHighMissing')
-            }
+            onClick={toggleSection}
             aria-label="Toggle high missing values section"
             className={`transform transition-transform ${
-              expandedSections.handleHighMissing
+              expanded
                 ? 'rotate-180'
                 : ''
             }`}
@@ -148,7 +118,7 @@ function HandleHighMissingValues({
   </span>
 </div>
       {/* body */}
-      {expandedSections.handleHighMissing &&
+      {expanded &&
         toggles.handleHighMissing && (
           <div className="px-4 py-4 border-t border-gray-100">
             <div className="grid grid-cols-1 gap-4">

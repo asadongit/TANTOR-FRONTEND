@@ -1941,9 +1941,10 @@ function ModelGenesis() {
 });
 
 
-// call the initial clean api for univariate for timeseries in this step 
+// call the initial clean api for univariate for timeseries in this step
+// but only for manual data preprocessing mode, not for auto modes (Swift, Standard, Comprehensive)
 
-if (storedModellingType === 'univariate_timeseries') {
+if (storedModellingType === 'univariate_timeseries' && config.dataPreprocessing === 'Manual') {
   const cleanResponse = await cleanTimeSeriesData({
     ensembleId: datasetState.ensembleId,
     workflowId: activeWorkflowId,
@@ -1951,7 +1952,7 @@ if (storedModellingType === 'univariate_timeseries') {
     modifyDataTypes: false,
     modifyDataTypesMap: {},
 
-  
+
   });
 
   updatePreprocessingStep('step1', {

@@ -138,12 +138,15 @@
       )
     );
 
-    // Current active preprocessing step if it is univariate it starts from 2 
+    // Current active preprocessing step if it is univariate it starts from 2
    const [currentStep, setCurrentStep] = useState(() => {
-  if (isDataPreprocessingAuto) return 7;
-
-  if (predictionType === 'univariate_timeseries') {
-    return 1;
+  if (isDataPreprocessingAuto) {
+    if (predictionType === 'univariate_timeseries') return 5;
+    if (
+      predictionType === 'multivariate_timeseries' ||
+      predictionType === 'multiseries_timeseries'
+    ) return 8;
+    return 7;
   }
 
   return 1;
@@ -197,6 +200,19 @@
 
       if (isTimeSeries && currentStep === 8 && isDataPreprocessingAuto) {
         setIsStep8Preview(true);
+      }
+    }, [currentStep, isDataPreprocessingAuto, predictionType]);
+
+    /**
+     * Auto-advance to preview mode for univariate timeseries at step 5 if auto-preprocessing is enabled
+     */
+    useEffect(() => {
+      if (
+        predictionType === 'univariate_timeseries' &&
+        currentStep === 5 &&
+        isDataPreprocessingAuto
+      ) {
+        setIsUnivariatePreview(true);
       }
     }, [currentStep, isDataPreprocessingAuto, predictionType]);
 
@@ -285,6 +301,14 @@
 
         // Prevent duplicate execution in preview mode
         if (currentStep === 7 && isStep7Preview) return true;
+
+        /**
+         * Special handling for step 5 preview (univariate timeseries):
+         * Exit preview mode and move to model selection.
+         */
+        if (currentStep === 5 && isUnivariatePreview) {
+          return true;
+        }
 
         /**
          * Special handling for step 8 preview (time series):
@@ -518,6 +542,7 @@
               (step8ApiCallRef.current = fn)
             }
             showPreview={isStep8Preview}
+            isDataPreprocessingAuto={isDataPreprocessingAuto}
           />
         );
 
