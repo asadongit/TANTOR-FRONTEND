@@ -153,7 +153,8 @@
         "Q": { "low": "0", "high": "3" },
         "s": { "low": "2", "high": "24" }
       },
-      "exog": "true, false"
+      "exog": "true, false",
+      "trend": "n, c, t, ct"
     }
   }
 }

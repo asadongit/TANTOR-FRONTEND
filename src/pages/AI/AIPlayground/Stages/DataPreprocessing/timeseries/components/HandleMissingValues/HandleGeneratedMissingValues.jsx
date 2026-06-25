@@ -31,10 +31,9 @@ function HandleGeneratedMissingValues({
   hasGeneratedMissingCategorical,
   hasGeneratedMissingDatetime,
   showFieldErrors,
+  expanded,
+  toggleSection,
 }) {
-
- 
-  const [expandedSections, setExpandedSections] = useState({ handleGeneratedMissing: false,});
   const missingTypeCount = [hasGeneratedMissingNumerical, hasGeneratedMissingCategorical, hasGeneratedMissingDatetime].filter(Boolean).length;
   const singleTypeOnly = missingTypeCount === 1;
   const [searchValues, setSearchValues] = useState({generatedNumeric: '',generatedCategorical: '',generatedDatetime: '',});
@@ -76,14 +75,6 @@ function HandleGeneratedMissingValues({
   const sectionDescriptions = {
     handleGeneratedMissing:
       'Handle missing values that were created during preprocessing or feature generation.',
-  };
-
-// expand/collapse section
-  const toggleSection = (section) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section],
-    }));
   };
 
 // Enable/disable handling of generated missing values. When enabling, also auto-expand the section 
@@ -190,33 +181,6 @@ const categoricalSeasonalPeriodError =
   categoricalSeasonalPeriodInvalid
     ? 'Value must be between 7 and 365'
     : '';
-  
-// Auto-expand section if there are validation errors to show.
-  React.useEffect(() => {
-    if (
-      showFieldErrors &&
-      (
-        numericError ||
-        categoricalError ||
-        datetimeError ||
-        rollingWindowError ||
-        numericSeasonalPeriodError ||
-        categoricalSeasonalPeriodError
-      ) &&
-      !expandedSections.handleGeneratedMissing
-    ) {
-      toggleSection('handleGeneratedMissing');
-    }
-  }, [
-    showFieldErrors,
-    numericError,
-    categoricalError,
-    datetimeError,
-    rollingWindowError,
-    numericSeasonalPeriodError,
-    categoricalSeasonalPeriodError,
-    expandedSections.handleGeneratedMissing,
-  ]);
 
   return (
     <div className="rounded-lg bg-[#FAFAFA] ">
@@ -251,10 +215,10 @@ const categoricalSeasonalPeriodError =
 
           <button
             type="button"
-            onClick={() => toggleSection('handleGeneratedMissing')}
+            onClick={toggleSection}
             aria-label="Toggle generated missing section"
             className={`transform transition-transform ${
-              expandedSections.handleGeneratedMissing
+              expanded
                 ? 'rotate-180'
                 : ''
             }`}
@@ -273,7 +237,7 @@ const categoricalSeasonalPeriodError =
   </span>
 </div>
      {/* Expandable content section - only rendered if toggle is on and section is expanded */}
-      {expandedSections.handleGeneratedMissing &&
+      {expanded &&
         toggles.handleGeneratedMissing && (
           <div className="px-4 py-4 border-t border-gray-100">
 {/* Use a responsive grid layout that adapts based on how many types of generated missing values are present. */}

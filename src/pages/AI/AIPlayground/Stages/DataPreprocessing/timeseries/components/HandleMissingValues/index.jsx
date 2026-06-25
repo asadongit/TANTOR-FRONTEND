@@ -322,11 +322,11 @@ const getHighMissingError = () => {
 
   // Expand or collapse one of the two subsection cards.
   const toggleSection = (section) => {
-
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section],
-    }));
+    setExpandedSections(prev => {
+      const isOpen = prev[section];
+      const allClosed = Object.keys(prev).reduce((acc, key) => ({ ...acc, [key]: false }), {});
+      return isOpen ? allClosed : { ...allClosed, [section]: true };
+    });
   };
   // Submit the step configuration to the preprocessing API.
   const makeApiCall = useCallback(async () => {
@@ -463,6 +463,8 @@ console.log(
       setHighMissingConfig={setHighMissingConfig}
      numericColumns={numericColumns}
      showFieldErrors={showFieldErrors}
+     expanded={expandedSections.handleHighMissing}
+     toggleSection={() => toggleSection('handleHighMissing')}
      />
       )}
       {/* Original missing-values card. */}
@@ -507,6 +509,8 @@ console.log(
         setShowDropdowns={setShowDropdowns}
         showFieldErrors={showFieldErrors}
         generatedMissingError={generatedMissingError}
+        expanded={expandedSections.handleGeneratedMissing}
+        toggleSection={() => toggleSection('handleGeneratedMissing')}
       />
     </div>
   );

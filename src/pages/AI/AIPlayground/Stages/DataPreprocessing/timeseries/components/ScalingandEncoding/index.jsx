@@ -96,7 +96,7 @@ const VariantDataTable = ({ variantKey, displayData }) => {
   );
 };
 
-function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview }) {
+function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview, isDataPreprocessingAuto }) {
   /**
    * =======================================================
    * Context Data
@@ -216,7 +216,7 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview }) 
       const config = workflowState.dataPreprocessing.step8.config;
 
       setToggles({
-        encoding: config.encoding_active || false,
+        encoding: config.encoder_active || false,
         scaling: config.scaling_active || false
       });
 
@@ -230,10 +230,11 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview }) 
     }
   }, [mode, workflowState]);
   const toggleSection = (section) => {
-    setExpandedSections((prev) => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
+    setExpandedSections((prev) => {
+      const isOpen = prev[section];
+      const allClosed = Object.keys(prev).reduce((acc, key) => ({ ...acc, [key]: false }), {});
+      return isOpen ? allClosed : { ...allClosed, [section]: true };
+    });
   };
 
   /**
@@ -434,7 +435,13 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview }) 
    */
   if (showPreview) {
     // Determine data source and structure
-    let cleanedDfData = previewData?.cleaned_df;
+    let cleanedDfData = previewData?.cleaned_df_preview || previewData?.cleaned_df;
+
+    // Fallback to genesis response in auto-preprocessing mode
+    if (!cleanedDfData && isDataPreprocessingAuto && workflowState?.modelGenesis?.apiResponse) {
+      const genesisResponse = workflowState.modelGenesis.apiResponse;
+      cleanedDfData = genesisResponse?.cleaned_df_preview || genesisResponse?.cleaned_df;
+    }
 
     // If no data available, show message
     if (!cleanedDfData) {
