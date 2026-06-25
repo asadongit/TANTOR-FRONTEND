@@ -1,15 +1,17 @@
 import React, { useEffect, useState, useRef } from 'react';
+import PropTypes from 'prop-types';
 import { useWorkflowStore, useUIStore } from '../../../store';
 import { listAgentTemplates, deleteAgentTemplate, getAgentTemplate } from '../../../api/agentmesh';
 import {
-  FiSearch, FiUser, FiInfo, FiTag, FiGrid, FiList,
-  FiFilter, FiX, FiTrash2, FiCpu, FiCode, FiLayers, FiActivity,
-  FiZap, FiTerminal, FiUsers, FiShield, FiTarget, FiShare2
+  FiSearch, FiUser, FiInfo, FiGrid, FiList,
+  FiFilter, FiX, FiTrash2, FiCpu, FiCode, FiTarget, FiShare2
 } from 'react-icons/fi';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import bannerImage from '../../../assets/data/Stack-p-2000.png';
 import Pagination from '../../Common/Pagination';
 import PageHeader from '../../Common/PageHeader';
+import LibraryCard from '../../Common/LibraryCard';
+import LibraryListRow from '../../Common/LibraryListRow';
 
 const PURPLE_THEME = {
   primary: 'var(--theme-primary)',
@@ -20,136 +22,80 @@ const PURPLE_THEME = {
 };
 
 function AgentTemplateCard({ t, onDetails, onDelete, onUse, idx }) {
-  const theme = PURPLE_THEME;
-  // config is NOT in the list response (summary only). Details modal fetches it on demand.
+  const tags = [];
+  if (t.group) tags.push(t.group);
+  if (t.category) tags.push(t.category);
+
+  const moreActions = [
+    { label: 'Delete', icon: <FiTrash2 size={14} />, onClick: () => onDelete(t.id), variant: 'danger' },
+  ];
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -5, transition: { duration: 0.2 } }}
-      transition={{ duration: 0.4, delay: idx * 0.05, ease: [0.23, 1, 0.32, 1] }}
-      style={{
-        background: 'white',
-        border: `1px solid var(--border-light)`,
-        borderRadius: 24,
-        boxShadow: 'var(--shadow-sm)',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        overflow: 'hidden',
-        height: '100%',
-        transition: 'all 0.3s ease'
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
-        e.currentTarget.style.borderColor = '#E2E8F0';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
-        e.currentTarget.style.borderColor = 'var(--border-light)';
-      }}
-    >
-      {/* Top Body */}
-      <div style={{ padding: '20px 20px 16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 12,
-            background: theme.bg,
-            border: `1px solid ${theme.border}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: theme.primary,
-            boxShadow: `0 4px 12px -2px var(--theme-primary-glow)`
-          }}>
-            <FiUser size={22} strokeWidth={2} />
-          </div>
-
-          <div style={{
-            fontSize: 9, fontWeight: 800, color: theme.primary,
-            background: theme.bg, padding: '4px 10px', borderRadius: 20,
-            letterSpacing: '0.05em', textTransform: 'uppercase'
-          }}>
-            {t.group || 'GENERAL AGENT'}
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 10 }}>
-          <h3 style={{
-            fontSize: 17, fontWeight: 800, color: 'var(--text-primary)',
-            marginBottom: 4, letterSpacing: '-0.02em'
-          }}>
-            {t.name}
-          </h3>
-          <span style={{
-            fontSize: 10, fontWeight: 800, color: theme.primary,
-            background: theme.bg, padding: '2px 8px', borderRadius: 4,
-            textTransform: 'uppercase', letterSpacing: '0.05em'
-          }}>
-            {t.category || 'FINANCE'}
-          </span>
-        </div>
-
-        <p style={{
-          fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5,
-          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-          marginBottom: 12
-        }}>
-          {t.description || "Deploy this agent template for complex task orchestration and real-time processing."}
-        </p>
-      </div>
-
-      {/* Footer Actions */}
-      <div style={{
-        padding: '12px 16px',
-        background: '#F9FAFB',
-        borderTop: '1px solid #F1F5F9',
-        display: 'flex', alignItems: 'center', gap: 10
-      }}>
-        <button
-          onClick={(e) => { e.stopPropagation(); onUse(t); }}
-          style={{
-            flex: 1, height: 36, borderRadius: 8, border: 'none',
-            background: theme.accent, color: theme.primary, fontSize: 11, fontWeight: 800,
-            cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = theme.primary; e.currentTarget.style.color = 'white'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = theme.accent; e.currentTarget.style.color = theme.primary; }}
-        >
-          <span>+ Add</span>
-        </button>
-
-        <button
-          onClick={(e) => { e.stopPropagation(); onDetails(t); }}
-          style={{
-            flex: 1, height: 36, borderRadius: 8, border: '1px solid #E5E7EB',
-            background: 'white', color: '#111827', fontSize: 11, fontWeight: 700,
-            cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = '#F3F4F6'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-        >
-          <FiInfo size={14} />
-          <span>Details</span>
-        </button>
-
-        <button 
-          onClick={(e) => { e.stopPropagation(); onDelete(t.id); }}
-          style={{ 
-            width: 36, height: 36, borderRadius: 8, border: '1px solid #FEE2E2',
-            background: 'white', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', transition: 'all 0.2s'
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'white'; }}
-          title="Delete Template"
-        >
-          <FiTrash2 size={14} />
-        </button>
-      </div>
-    </motion.div>
+    <LibraryCard
+      icon={<FiUser size={22} strokeWidth={2} />}
+      title={t.name}
+      description={t.description}
+      tags={tags}
+      primaryAction={{ label: '+ Add', onClick: () => onUse(t) }}
+      secondaryAction={{ label: 'Details', onClick: () => onDetails(t) }}
+      moreActions={moreActions}
+      idx={idx}
+      onClick={() => onDetails(t)}
+    />
   );
 }
+
+AgentTemplateCard.propTypes = {
+  t: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string,
+    category: PropTypes.string,
+    group: PropTypes.string
+  }).isRequired,
+  onDetails: PropTypes.func.isRequired,
+  onDelete: PropTypes.func.isRequired,
+  onUse: PropTypes.func.isRequired,
+  idx: PropTypes.number.isRequired
+};
+
+function AgentListRow({ t, onDetails, onDelete, onUse, idx }) {
+  const tags = [];
+  if (t.group) tags.push(t.group);
+  if (t.category) tags.push(t.category);
+
+  const moreActions = [
+    { label: 'Delete', icon: <FiTrash2 size={14} />, onClick: () => onDelete(t.id), variant: 'danger' },
+  ];
+
+  return (
+    <LibraryListRow
+      icon={<FiUser size={22} />}
+      title={t.name}
+      description={t.description}
+      tags={tags}
+      primaryAction={{ label: '+ Add', onClick: () => onUse(t) }}
+      secondaryAction={{ label: 'Details', onClick: () => onDetails(t) }}
+      moreActions={moreActions}
+      idx={idx}
+      onClick={() => onDetails(t)}
+    />
+  );
+}
+
+AgentListRow.propTypes = {
+  t: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string,
+    category: PropTypes.string,
+    group: PropTypes.string
+  }).isRequired,
+  onDetails: PropTypes.func.isRequired,
+  onDelete: PropTypes.func.isRequired,
+  onUse: PropTypes.func.isRequired,
+  idx: PropTypes.number.isRequired
+};
 
 function AgentDetailsModal({ template, onClose, onUse }) {
   const [activeTab, setActiveTab] = useState('summary');
@@ -324,6 +270,17 @@ function AgentDetailsModal({ template, onClose, onUse }) {
   );
 }
 
+AgentDetailsModal.propTypes = {
+  template: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string,
+    config: PropTypes.object
+  }).isRequired,
+  onClose: PropTypes.func.isRequired,
+  onUse: PropTypes.func.isRequired
+};
+
 function AgentTypeSelectionModal({ onSelect, onClose }) {
   const types = [
     { id: 'llm_agent', label: 'Standard Agent', desc: 'Versatile LLM node with tools.', icon: FiCpu, color: '#3B82F6' },
@@ -401,6 +358,11 @@ function AgentTypeSelectionModal({ onSelect, onClose }) {
     </motion.div>
   );
 }
+
+AgentTypeSelectionModal.propTypes = {
+  onSelect: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired
+};
 
 export default function AgentsPage() {
   const { nodes, setNodesDirty } = useWorkflowStore();
@@ -797,21 +759,29 @@ export default function AgentsPage() {
             <div style={{ fontSize: 14, fontWeight: 500 }}>No agent templates found</div>
           </div>
         ) : (
-          <div style={{
-            display: viewMode === 'cards' ? 'grid' : 'flex',
-            flexDirection: viewMode === 'cards' ? 'unset' : 'column',
-            gridTemplateColumns: viewMode === 'cards' ? 'repeat(auto-fill, minmax(320px, 1fr))' : 'unset',
-            gap: 24
-          }}>
-            {templates.map((t, i) => (
-              <AgentTemplateCard
-                key={t.id} t={t} idx={i}
-                onDetails={setSelectedTemplate}
-                onDelete={handleDelete}
-                onUse={handleUseTemplate}
-              />
-            ))}
-          </div>
+          viewMode === 'cards' ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
+              {templates.map((t, i) => (
+                <AgentTemplateCard
+                  key={t.id} t={t} idx={i}
+                  onDetails={setSelectedTemplate}
+                  onDelete={handleDelete}
+                  onUse={handleUseTemplate}
+                />
+              ))}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {templates.map((t, i) => (
+                <AgentListRow
+                  key={t.id} t={t} idx={i}
+                  onDetails={setSelectedTemplate}
+                  onDelete={handleDelete}
+                  onUse={handleUseTemplate}
+                />
+              ))}
+            </div>
+          )
         )}
 
         {total > pageSize && (

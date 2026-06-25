@@ -4,7 +4,7 @@ import {
   FiPlay, FiCpu, FiBox, FiGitMerge,
   FiTarget, FiShare2, FiBookOpen, FiLink,
   FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiAlertTriangle, FiZap, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiLayers, FiInbox, FiDatabase, FiServer,
-  FiCode, FiSliders
+  FiCode, FiSliders, FiInfo
 } from 'react-icons/fi';
 
 export const NODE_TYPES = [
@@ -90,6 +90,7 @@ export default function NodePalette({ onClose }) {
   const setNodeData = useWorkflowStore((s) => s.setNodeData);
   const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState({});
+  const [tooltipData, setTooltipData] = useState(null); // { node, x, y }
 
   const toggleCategory = (cat) => {
     setCollapsed(prev => ({ ...prev, [cat]: !prev[cat] }));
@@ -137,38 +138,25 @@ export default function NodePalette({ onClose }) {
   };
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'white', fontFamily: "'Google Sans','Roboto',sans-serif" }}>
+    <div className="h-full flex flex-col bg-white relative font-sans">
       {/* Header */}
-      <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Node library ({filteredNodes.length})</div>
-        
+      <div className="p-5 pb-4 border-b border-slate-200">
+        <div className="text-sm font-bold text-slate-800">Node library ({filteredNodes.length})</div>
         
         {/* Search Bar */}
-        <div style={{ position: 'relative' }}>
-          <FiSearch size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+        <div className="relative mt-2">
+          <FiSearch size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search nodes..."
-            style={{
-              width: '100%',
-              padding: '9px 12px 9px 34px',
-              background: '#F8F9FB',
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              fontSize: 13,
-              outline: 'none',
-              fontFamily: 'inherit',
-              transition: 'all 0.15s'
-            }}
-            onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent-blue)'; e.currentTarget.style.background = 'white'; }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = '#F8F9FB'; }}
+            className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none transition-all focus:border-indigo-500 focus:bg-white font-sans"
           />
         </div>
       </div>
 
       {/* Node list grouped by category */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px' }} className="msg-scrollbar">
+      <div className="flex-1 overflow-y-auto px-2 py-3 msg-scrollbar">
         {categories.map(category => {
           const categoryNodes = filteredNodes.filter(n => n.category === category);
           if (categoryNodes.length === 0) return null;
@@ -176,47 +164,23 @@ export default function NodePalette({ onClose }) {
           const isCollapsed = collapsed[category];
 
           return (
-            <div key={category} style={{ marginBottom: 8 }}>
+            <div key={category} className="mb-2">
               {/* Category Header */}
               <button
                 onClick={() => toggleCategory(category)}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '8px 10px',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  outline: 'none'
-                }}
+                className="w-full flex items-center justify-between px-2.5 py-2 bg-transparent border-none cursor-pointer outline-none"
               >
-                <div style={{ 
-                  fontSize: 11, 
-                  fontWeight: 800, 
-                  letterSpacing: '0.05em', 
-                  textTransform: 'uppercase', 
-                  color: 'var(--text-muted)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4
-                }}>
-                  {category} <span style={{ color: '#94A3B8', fontWeight: 600 }}>({categoryNodes.length})</span>
+                <div className="text-[10px] font-extrabold tracking-wider uppercase text-slate-400 flex items-center gap-1">
+                  {category} <span className="text-slate-400 font-semibold">({categoryNodes.length})</span>
                 </div>
-                <div style={{ 
-                  fontSize: 10, 
-                  color: 'var(--text-muted)',
-                  transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
-                  transition: 'transform 0.2s'
-                }}>
+                <div className={`text-[10px] text-slate-400 transition-transform duration-200 ${isCollapsed ? '-rotate-90' : 'rotate-0'}`}>
                   ▼
                 </div>
               </button>
 
               {/* Category Content */}
               {!isCollapsed && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 }}>
+                <div className="flex flex-col gap-0.5 mt-1">
                   {categoryNodes.map((n) => {
                     const Icon = n.icon;
                     return (
@@ -225,26 +189,36 @@ export default function NodePalette({ onClose }) {
                         draggable
                         onDragStart={(e) => handleDragStart(e, n)}
                         onClick={() => handleAdd(n)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 12,
-                          padding: '10px 12px', borderRadius: 8,
-                          background: 'white', border: '1px solid transparent',
-                          cursor: 'grab', transition: 'all 0.12s',
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.border = '1px solid var(--border)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.style.border = '1px solid transparent'; }}
+                        className="node-palette-item group flex items-center gap-3 p-2.5 rounded-lg bg-white border border-transparent cursor-grab transition-all hover:bg-slate-50 hover:border-slate-200 relative"
                       >
-                        <div style={{
-                          width: 32, height: 32, borderRadius: 8,
-                          background: n.bg,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          flexShrink: 0, color: n.color,
-                        }}>
+                        <div 
+                          style={{ backgroundColor: n.bg, color: n.color }}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                        >
                           <Icon size={16} strokeWidth={2} />
                         </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{n.label}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{n.desc}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold text-slate-800 truncate">{n.label}</div>
+                          <div className="text-[11px] text-slate-400 mt-0.5 truncate">{n.desc}</div>
+                        </div>
+                        <div
+                          className="info-icon opacity-0 group-hover:opacity-100 flex items-center justify-center p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-all duration-150 shrink-0 cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                          onMouseEnter={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setTooltipData({
+                              node: n,
+                              x: rect.right + 10,
+                              y: rect.top - 10,
+                            });
+                          }}
+                          onMouseLeave={() => {
+                            setTooltipData(null);
+                          }}
+                        >
+                          <FiInfo size={14} />
                         </div>
                       </div>
                     );
@@ -256,12 +230,55 @@ export default function NodePalette({ onClose }) {
         })}
         
         {filteredNodes.length === 0 && (
-          <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-            <div style={{ fontSize: 24, marginBottom: 12 }}>🔍</div>
+          <div className="py-10 px-5 text-center text-slate-400 text-xs">
+            <div className="text-2xl mb-3">🔍</div>
             No nodes match your search
           </div>
         )}
       </div>
+
+      {/* Shared Portal/Tooltip Overlay */}
+      {tooltipData && (
+        <div 
+          style={{
+            left: tooltipData.x,
+            top: Math.max(10, Math.min(window.innerHeight - 240, tooltipData.y)),
+          }}
+          className="fixed w-80 bg-white rounded-xl shadow-xl z-[99999] p-4 pointer-events-none flex flex-col gap-3 border border-slate-200 animate-fade-in font-sans"
+        >
+          {/* Header */}
+          <div className="flex items-center gap-2.5">
+            <div 
+              style={{ backgroundColor: tooltipData.node.bg, color: tooltipData.node.color }}
+              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+            >
+              {React.createElement(tooltipData.node.icon, { size: 16, strokeWidth: 2 })}
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-slate-800">{tooltipData.node.label}</div>
+              <div 
+                style={{ backgroundColor: tooltipData.node.bg, color: tooltipData.node.color }}
+                className="text-[9px] font-bold px-1.5 py-0.5 rounded mt-0.5 inline-block uppercase tracking-wider"
+              >
+                {tooltipData.node.category}
+              </div>
+            </div>
+          </div>
+
+          <div className="h-px bg-slate-100" />
+
+          {/* Description */}
+          <div className="text-[11.5px] text-slate-600 leading-relaxed whitespace-normal break-word">
+            {tooltipData.node.detailedDesc || tooltipData.node.desc}
+          </div>
+
+          {/* Footer tip */}
+          <div className="flex items-center gap-1.5 text-[9px] text-slate-400 mt-1">
+            <FiZap size={10} className="text-indigo-500" />
+            <span>Drag to canvas or click to add</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

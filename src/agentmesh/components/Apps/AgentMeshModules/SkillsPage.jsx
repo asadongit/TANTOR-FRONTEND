@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { 
   FiBookOpen, FiPlus, FiTrash2, FiEdit, FiSearch, 
-  FiTag, FiX, FiCheck, FiLoader, FiAlertCircle, FiMoreHorizontal, FiCpu,
+  FiTag, FiX, FiCheck, FiLoader, FiAlertCircle, FiCpu,
   FiGrid, FiList
 } from 'react-icons/fi';
 import { listAvailableSkills, createSkill, deleteSkill, generateSkillSop } from '../../../api/agentmesh';
@@ -10,322 +10,78 @@ import AddSkillModal from './addSkillModal';
 import ConfirmationModal from '../../Common/ConfirmationModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import PageHeader from '../../Common/PageHeader';
-
-function ActionDropdown({ actions, isOpen, onClose }) {
-  if (!isOpen) return null;
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9, y: -10 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      style={{
-        position: 'absolute', top: '100%', right: 0, marginTop: 8,
-        background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
-        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', zIndex: 50,
-        minWidth: 160, padding: '6px'
-      }}
-    >
-      {actions.map((a) => (
-        <button
-          key={a.label}
-          onClick={(e) => { e.stopPropagation(); a.onClick(); onClose(); }}
-          style={{
-            width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-            padding: '10px 12px', borderRadius: 8, border: 'none', background: 'none',
-            fontSize: 13, fontWeight: 500, color: a.variant === 'danger' ? '#EF4444' : '#374151',
-            cursor: 'pointer', transition: 'all 0.15s'
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = a.variant === 'danger' ? '#FEF2F2' : '#F3F4F6'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
-        >
-          {a.icon} {a.label}
-        </button>
-      ))}
-    </motion.div>
-  );
-}
-
-ActionDropdown.propTypes = {
-  actions: PropTypes.arrayOf(PropTypes.shape({
-    label: PropTypes.string.isRequired,
-    icon: PropTypes.node.isRequired,
-    onClick: PropTypes.func.isRequired,
-    variant: PropTypes.string
-  })).isRequired,
-  isOpen: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired
-};
+import LibraryCard from '../../Common/LibraryCard';
+import LibraryListRow from '../../Common/LibraryListRow';
 
 function SkillCard({ skill, onDetails, onEdit, onDelete, onAddToCanvas, idx }) {
-  const [showMore, setShowMore] = useState(false);
-
   const moreActions = [
     { label: 'Edit', icon: <FiEdit size={14} />, onClick: () => onEdit(skill) },
     { label: 'Delete', icon: <FiTrash2 size={14} />, onClick: () => onDelete(skill.id), variant: 'danger' },
   ];
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -5, transition: { duration: 0.2 } }}
-      transition={{ duration: 0.4, delay: idx * 0.05, ease: [0.23, 1, 0.32, 1] }}
-      style={{
-        background: 'white',
-        border: '1px solid var(--border-light)',
-        borderRadius: 24,
-        boxShadow: 'var(--shadow-sm)',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        zIndex: showMore ? 10 : 1,
-        height: '100%',
-        transition: 'all 0.3s ease',
-        cursor: 'pointer'
-      }}
+    <LibraryCard
+      icon={<FiBookOpen size={22} strokeWidth={2} />}
+      title={skill.name.replace(/-/g, ' ')}
+      description={skill.description}
+      tags={skill.tags}
+      primaryAction={{ label: '+ Add', onClick: () => onAddToCanvas(skill) }}
+      secondaryAction={{ label: 'SOP', onClick: () => onDetails(skill) }}
+      moreActions={moreActions}
+      idx={idx}
       onClick={() => onDetails(skill)}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
-        e.currentTarget.style.borderColor = '#E2E8F0';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
-        e.currentTarget.style.borderColor = 'var(--border-light)';
-        setShowMore(false);
-      }}
-    >
-      {/* Top Body */}
-      <div style={{ padding: '20px 20px 16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 12,
-            background: 'var(--theme-primary-glow)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'var(--theme-primary)',
-            boxShadow: '0 4px 12px -2px var(--theme-primary-glow)'
-          }}>
-            <FiBookOpen size={22} strokeWidth={2} />
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 10 }}>
-          <h3 style={{
-            fontSize: 17, fontWeight: 800, color: 'var(--text-primary)',
-            marginBottom: 6, letterSpacing: '-0.02em', textTransform: 'capitalize'
-          }}>
-            {skill.name.replace(/-/g, ' ')}
-          </h3>
-        </div>
-
-        <p style={{
-          fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5,
-          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-          marginBottom: 12
-        }}>
-          {skill.description || "No description provided."}
-        </p>
-
-        {skill.tags && skill.tags.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 'auto' }}>
-            {skill.tags.map(tag => (
-              <span
-                key={tag}
-                style={{
-                  fontSize: 10,
-                  fontWeight: 500,
-                  background: 'var(--border-light)',
-                  color: 'var(--text-secondary)',
-                  padding: '2px 8px',
-                  borderRadius: 4
-                }}
-              >
-                #{tag}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div style={{
-        padding: '12px 16px',
-        background: '#F9FAFB',
-        borderTop: '1px solid #F1F5F9',
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24,
-        display: 'flex', alignItems: 'center', gap: 8,
-        position: 'relative'
-      }}>
-        <button
-          onClick={(e) => { e.stopPropagation(); onAddToCanvas(skill); }}
-          style={{
-            height: 36, padding: '0 16px', borderRadius: 8, border: 'none',
-            background: 'var(--theme-primary-glow)', color: 'var(--theme-primary)', fontSize: 11, fontWeight: 800,
-            cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--theme-primary)'; e.currentTarget.style.color = 'white'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--theme-primary-glow)'; e.currentTarget.style.color = 'var(--theme-primary)'; }}
-        >
-          <span>+ Add</span>
-        </button>
-
-        <button
-          onClick={(e) => { e.stopPropagation(); onDetails(skill); }}
-          style={{
-            height: 36, padding: '0 16px', borderRadius: 8, border: '1px solid #E5E7EB',
-            background: 'white', color: '#111827', fontSize: 11, fontWeight: 700,
-            cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = '#F3F4F6'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-        >
-          <span>SOP</span>
-        </button>
-
-        <div style={{ flex: 1 }} />
-
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={(e) => { e.stopPropagation(); setShowMore(!showMore); }}
-            title="More Options"
-            style={{
-              width: 36, height: 36, borderRadius: 8, border: '1px solid #E5E7EB',
-              background: 'white', color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#F3F4F6'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-          >
-            <FiMoreHorizontal size={18} />
-          </button>
-          <ActionDropdown actions={moreActions} isOpen={showMore} onClose={() => setShowMore(false)} />
-        </div>
-      </div>
-    </motion.div>
+    />
   );
 }
+
+SkillCard.propTypes = {
+  skill: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string,
+    tags: PropTypes.arrayOf(PropTypes.string)
+  }).isRequired,
+  onDetails: PropTypes.func.isRequired,
+  onEdit: PropTypes.func.isRequired,
+  onDelete: PropTypes.func.isRequired,
+  onAddToCanvas: PropTypes.func.isRequired,
+  idx: PropTypes.number.isRequired
+};
 
 function SkillListRow({ skill, onDetails, onEdit, onDelete, onAddToCanvas, idx }) {
-  const [showMore, setShowMore] = useState(false);
-
   const moreActions = [
     { label: 'Edit', icon: <FiEdit size={14} />, onClick: () => onEdit(skill) },
     { label: 'Delete', icon: <FiTrash2 size={14} />, onClick: () => onDelete(skill.id), variant: 'danger' },
   ];
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: idx * 0.03 }}
-      style={{
-        background: 'white',
-        border: `1px solid var(--border-light)`,
-        borderRadius: 16,
-        padding: '12px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 20,
-        position: 'relative',
-        zIndex: showMore ? 10 : 1,
-        cursor: 'pointer',
-        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-      }}
+    <LibraryListRow
+      icon={<FiBookOpen size={22} />}
+      title={skill.name.replace(/-/g, ' ')}
+      description={skill.description}
+      tags={skill.tags}
+      primaryAction={{ label: '+ Add', onClick: () => onAddToCanvas(skill) }}
+      secondaryAction={{ label: 'SOP', onClick: () => onDetails(skill) }}
+      moreActions={moreActions}
+      idx={idx}
       onClick={() => onDetails(skill)}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = 'var(--shadow-md)';
-        e.currentTarget.style.borderColor = '#E5E7EB';
-        e.currentTarget.style.transform = 'translateX(4px)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = 'none';
-        e.currentTarget.style.borderColor = 'var(--border-light)';
-        e.currentTarget.style.transform = 'translateX(0)';
-        setShowMore(false);
-      }}
-    >
-      {/* Accent bar */}
-      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: 'var(--theme-primary)', borderTopLeftRadius: 16, borderBottomLeftRadius: 16 }} />
-
-      <div style={{
-        width: 44, height: 44, borderRadius: 12,
-        background: 'var(--theme-primary-glow)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexShrink: 0,
-        color: 'var(--theme-primary)',
-        boxShadow: '0 4px 12px -2px var(--theme-primary-glow)'
-      }}>
-        <FiBookOpen size={22} />
-      </div>
-
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 10, textTransform: 'capitalize' }}>
-          {skill.name.replace(/-/g, ' ')}
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {skill.description || "No description provided."}
-          </span>
-          {skill.tags && skill.tags.length > 0 && (
-            <>
-              <span style={{ width: 1, height: 12, background: 'var(--border)' }} />
-              <div style={{ display: 'flex', gap: 4 }}>
-                {skill.tags.map(tag => (
-                  <span key={tag} style={{ fontSize: 10, color: 'var(--text-muted)' }}>#{tag}</span>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }} onClick={e => e.stopPropagation()}>
-        <button
-          onClick={() => onAddToCanvas(skill)}
-          style={{
-            height: 32, border: 'none', borderRadius: 8,
-            background: 'var(--theme-primary-glow)', color: 'var(--theme-primary)', padding: '0 14px', display: 'flex', alignItems: 'center',
-            gap: 6, fontSize: 11, fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'var(--theme-primary)'; e.currentTarget.style.color = 'white'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'var(--theme-primary-glow)'; e.currentTarget.style.color = 'var(--theme-primary)'; }}
-        >
-          <span>+ Add</span>
-        </button>
-
-        <button
-          onClick={() => onDetails(skill)}
-          style={{
-            height: 32, border: '1px solid #E5E7EB', borderRadius: 8,
-            background: 'white', color: '#111827', padding: '0 12px', display: 'flex', alignItems: 'center',
-            gap: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = '#F3F4F6'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-        >
-          <span>SOP</span>
-        </button>
-
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={() => setShowMore(!showMore)}
-            title="More Options"
-            style={{
-              width: 32, height: 32, borderRadius: 8, border: '1px solid #E5E7EB',
-              background: 'white', color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#F3F4F6'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-          >
-            <FiMoreHorizontal size={16} />
-          </button>
-          <ActionDropdown actions={moreActions} isOpen={showMore} onClose={() => setShowMore(false)} />
-        </div>
-      </div>
-    </motion.div>
+    />
   );
 }
+
+SkillListRow.propTypes = {
+  skill: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string,
+    tags: PropTypes.arrayOf(PropTypes.string)
+  }).isRequired,
+  onDetails: PropTypes.func.isRequired,
+  onEdit: PropTypes.func.isRequired,
+  onDelete: PropTypes.func.isRequired,
+  onAddToCanvas: PropTypes.func.isRequired,
+  idx: PropTypes.number.isRequired
+};
 
 function SkillDetailsModal({ skill, onClose, onAddToCanvas }) {
   if (!skill) return null;
