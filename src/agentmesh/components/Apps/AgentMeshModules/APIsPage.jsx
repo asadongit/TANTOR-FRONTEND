@@ -1,16 +1,13 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { useWorkflowStore, useUIStore } from '../../../store';
 import { listComponentTemplates, deleteComponentTemplate, listComponentTemplateFilters } from '../../../api/agentmesh';
 import { PREDEFINED_API_CATEGORIES } from '../../../constants/apiCategories';
-import {
-  FiSearch, FiGlobe, FiGrid, FiList,
-  FiFilter, FiX, FiTrash2, FiLock
-} from 'react-icons/fi';
+import { FiGlobe, FiX, FiTrash2, FiLock } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import Pagination from '../../Common/Pagination';
 import ConfirmationModal from '../../Common/ConfirmationModal';
-import PageHeader from '../../Common/PageHeader';
+import LibraryHeader from '../../Common/LibraryHeader';
 import LibraryCard from '../../Common/LibraryCard';
 import LibraryListRow from '../../Common/LibraryListRow';
 
@@ -28,8 +25,8 @@ function ApiTemplateCard({ t, onDetails, onDelete, onUse, idx }) {
   const categoryDesc = predefined ? predefined.description : "Custom API Endpoint";
 
   const tags = [];
-  if (t.group) tags.push(t.group);
-  if (t.category_name) tags.push(t.category_name);
+  if (t.group) tags.push({ label: t.group, type: 'Group' });
+  if (t.category_name) tags.push({ label: t.category_name, type: 'Category' });
 
   const moreActions = [
     { label: 'Delete', icon: <FiTrash2 size={14} />, onClick: () => onDelete(t.id), variant: 'danger' },
@@ -69,8 +66,8 @@ function ApiListRow({ t, onDetails, onDelete, onUse, idx }) {
   const categoryDesc = predefined ? predefined.description : "Custom API Endpoint";
 
   const tags = [];
-  if (t.group) tags.push(t.group);
-  if (t.category_name) tags.push(t.category_name);
+  if (t.group) tags.push({ label: t.group, type: 'Group' });
+  if (t.category_name) tags.push({ label: t.category_name, type: 'Category' });
 
   const moreActions = [
     { label: 'Delete', icon: <FiTrash2 size={14} />, onClick: () => onDelete(t.id), variant: 'danger' },
@@ -236,7 +233,6 @@ export default function APIsPage() {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
   const [viewMode, setViewMode] = useState('cards');
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   
@@ -244,10 +240,6 @@ export default function APIsPage() {
   const [categories, setCategories] = useState(['All']);
   const [selectedGroup, setSelectedGroup] = useState('All');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [filterOpen, setFilterOpen] = useState(false);
-  
-  const filterPanelRef = useRef(null);
-  const searchInputRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -320,39 +312,6 @@ export default function APIsPage() {
     load();
   }, [currentPage, search, selectedGroup, selectedCategory]);
 
-  // Focus search input when searchOpen is true
-  useEffect(() => {
-    if (searchOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [searchOpen]);
-
-  // Keydown listener for 's' keyboard shortcut
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      const activeEl = document.activeElement;
-      if (
-        activeEl &&
-        (activeEl.tagName === 'INPUT' ||
-         activeEl.tagName === 'TEXTAREA' ||
-         activeEl.isContentEditable)
-      ) {
-        return;
-      }
-      if (e.key === 's' || e.key === 'S') {
-        e.preventDefault();
-        setSearchOpen(true);
-        setTimeout(() => {
-          if (searchInputRef.current) {
-            searchInputRef.current.focus();
-          }
-        }, 50);
-      }
-    };
-    globalThis.addEventListener('keydown', handleKeyDown);
-    return () => globalThis.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
   const handleDeleteClick = (id) => {
     setConfirmDeleteId(id);
   };
@@ -368,72 +327,23 @@ export default function APIsPage() {
       setConfirmDeleteId(null);
     }
   };
-
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', overflow: 'hidden' }}>
-      <div style={{ padding: '16px 32px', borderBottom: '1px solid var(--border-light)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <PageHeader 
-          title="API Library" 
-          description="Register, configure, and manage external REST and GraphQL APIs for integration into agentic workflows." 
-        />
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* Search bar */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', transition: 'width 0.2s', width: (searchOpen || search) ? 320 : 36 }}>
-            {(!searchOpen && !search) && (
-              <button onClick={() => setSearchOpen(true)} title="Search templates..." style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8 }}>
-                <FiSearch size={18} color="#6B7280" />
-              </button>
-            )}
-            {(searchOpen || search) && (
-              <div style={{ position: 'relative', width: '100%' }}>
-                <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} size={16} />
-                <input
-                  ref={searchInputRef} type="text" placeholder="Search API templates..."
-                  value={search} onChange={e => setSearch(e.target.value)}
-                  onBlur={() => { if (!search) setSearchOpen(false); }}
-                  style={{ width: '100%', padding: '8px 12px 8px 36px', border: '1px solid #E5E7EB', borderRadius: 10, fontSize: 14, outline: 'none', background: 'white', color: '#111827' }}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Filters Popover */}
-          <div style={{ position: 'relative' }} ref={filterPanelRef}>
-            <button
-              onClick={() => setFilterOpen(!filterOpen)}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: filterOpen ? 'var(--theme-primary)' : 'white', color: filterOpen ? 'white' : '#111827', border: '1px solid #E5E7EB', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
-            >
-              <FiFilter size={16} /> Filters
-              {(selectedCategory !== 'All' || selectedGroup !== 'All') && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444' }} />}
-            </button>
-            {filterOpen && (
-              <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 260, background: 'white', border: '1px solid #E5E7EB', borderRadius: 12, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', zIndex: 100, padding: 16 }}>
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', marginBottom: 8 }}>By Group</div>
-                  <select value={selectedGroup} onChange={(e) => {setSelectedGroup(e.target.value); setCurrentPage(1);}} style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 8, outline: 'none', fontSize: 13 }}>
-                    {groups.map(g => <option key={g} value={g}>{g === 'All' ? 'All Groups' : g}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', marginBottom: 8 }}>By Category</div>
-                  <select value={selectedCategory} onChange={(e) => {setSelectedCategory(e.target.value); setCurrentPage(1);}} style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 8, outline: 'none', fontSize: 13 }}>
-                    {categories.map(c => <option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>)}
-                  </select>
-                </div>
-                <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end' }}>
-                  <button onClick={() => { setSelectedCategory('All'); setSelectedGroup('All'); }} style={{ padding: '6px 10px', fontSize: 12, color: '#6B7280', border: 'none', background: 'none', cursor: 'pointer' }}>Reset</button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', gap: 2, background: 'var(--bg-canvas)', border: '1px solid var(--border)', borderRadius: 10, padding: '4px' }}>
-            <button onClick={() => setViewMode('cards')} style={{ background: viewMode === 'cards' ? 'var(--theme-primary)' : 'transparent', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', color: viewMode === 'cards' ? 'white' : '#6B7280' }}><FiGrid size={16} /></button>
-            <button onClick={() => setViewMode('list')} style={{ background: viewMode === 'list' ? 'var(--theme-primary)' : 'transparent', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', color: viewMode === 'list' ? 'white' : '#6B7280' }}><FiList size={16} /></button>
-          </div>
-        </div>
-      </div>
+      <LibraryHeader
+        title="API Library"
+        description="Register, configure, and manage external REST and GraphQL APIs for integration into agentic workflows."
+        search={search}
+        onSearchChange={val => { setSearch(val); setCurrentPage(1); }}
+        groups={groups}
+        categories={categories}
+        selectedGroup={selectedGroup}
+        onGroupChange={val => { setSelectedGroup(val); setCurrentPage(1); }}
+        selectedCategory={selectedCategory}
+        onCategoryChange={val => { setSelectedCategory(val); setCurrentPage(1); }}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        placeholder="Search API templates..."
+      />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
         {loading ? (
@@ -443,10 +353,16 @@ export default function APIsPage() {
             <FiGlobe size={48} strokeWidth={1} color="#DDD6FE" />
             <div style={{ fontSize: 14, fontWeight: 500 }}>No API templates found in the library.</div>
           </div>
-        ) : (
-          <div style={{ display: viewMode === 'cards' ? 'grid' : 'flex', flexDirection: viewMode === 'cards' ? 'unset' : 'column', gridTemplateColumns: viewMode === 'cards' ? 'repeat(auto-fill, minmax(320px, 1fr))' : 'unset', gap: 24 }}>
+        ) : viewMode === 'cards' ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
             {templates.map((t, i) => (
               <ApiTemplateCard key={t.id} t={t} idx={i} onDetails={setSelectedTemplate} onDelete={handleDeleteClick} onUse={handleUseTemplate} />
+            ))}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {templates.map((t, i) => (
+              <ApiListRow key={t.id} t={t} idx={i} onDetails={setSelectedTemplate} onDelete={handleDeleteClick} onUse={handleUseTemplate} />
             ))}
           </div>
         )}

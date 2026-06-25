@@ -638,9 +638,7 @@ export default function PropertiesPanel() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          {["llm_agent", "deep_agent", "supervisor", "swarm"].includes(
-            data.type,
-          ) && (
+          {!isSystemNode && (
             <button
               onClick={() => setSaveModalOpen(true)}
               style={{
@@ -656,7 +654,7 @@ export default function PropertiesPanel() {
                 cursor: "pointer",
                 transition: "all 0.15s",
               }}
-              title="Save as Agent Template"
+              title="Save Node as Template"
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "var(--accent-glow)";
               }}

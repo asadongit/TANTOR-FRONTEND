@@ -129,9 +129,14 @@ export default function LibraryListRow({
             <>
               <span style={{ width: 1, height: 12, background: 'var(--border)' }} />
               <div style={{ display: 'flex', gap: 4 }}>
-                {tags.map((tag, i) => (
-                  <span key={`${tag}-${i}`} style={{ fontSize: 10, color: 'var(--text-muted)' }}>#{tag}</span>
-                ))}
+                {tags.map((tag, i) => {
+                  const isObj = typeof tag === 'object' && tag !== null;
+                  const label = isObj ? tag.label : tag;
+                  const hoverTitle = isObj && tag.type ? `${tag.type}: ${tag.label}` : undefined;
+                  return (
+                    <span key={`${label}-${i}`} title={hoverTitle} style={{ fontSize: 10, color: 'var(--text-muted)' }}>#{label}</span>
+                  );
+                })}
               </div>
             </>
           )}

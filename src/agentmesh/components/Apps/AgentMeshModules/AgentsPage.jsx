@@ -10,6 +10,7 @@ import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import bannerImage from '../../../assets/data/Stack-p-2000.png';
 import Pagination from '../../Common/Pagination';
 import PageHeader from '../../Common/PageHeader';
+import LibraryHeader from '../../Common/LibraryHeader';
 import LibraryCard from '../../Common/LibraryCard';
 import LibraryListRow from '../../Common/LibraryListRow';
 
@@ -23,8 +24,8 @@ const PURPLE_THEME = {
 
 function AgentTemplateCard({ t, onDetails, onDelete, onUse, idx }) {
   const tags = [];
-  if (t.group) tags.push(t.group);
-  if (t.category) tags.push(t.category);
+  if (t.group) tags.push({ label: t.group, type: 'Group' });
+  if (t.category) tags.push({ label: t.category, type: 'Category' });
 
   const moreActions = [
     { label: 'Delete', icon: <FiTrash2 size={14} />, onClick: () => onDelete(t.id), variant: 'danger' },
@@ -61,8 +62,8 @@ AgentTemplateCard.propTypes = {
 
 function AgentListRow({ t, onDetails, onDelete, onUse, idx }) {
   const tags = [];
-  if (t.group) tags.push(t.group);
-  if (t.category) tags.push(t.category);
+  if (t.group) tags.push({ label: t.group, type: 'Group' });
+  if (t.category) tags.push({ label: t.category, type: 'Category' });
 
   const moreActions = [
     { label: 'Delete', icon: <FiTrash2 size={14} />, onClick: () => onDelete(t.id), variant: 'danger' },
@@ -371,7 +372,6 @@ export default function AgentsPage() {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
   const [viewMode, setViewMode] = useState('cards');
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [templateToUse, setTemplateToUse] = useState(null);
@@ -379,9 +379,6 @@ export default function AgentsPage() {
   const [categories, setCategories] = useState(['All']);
   const [selectedGroup, setSelectedGroup] = useState('All');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [filterOpen, setFilterOpen] = useState(false);
-  const filterPanelRef = useRef(null);
-  const searchInputRef = useRef(null);
 
   const handleUseTemplate = (template) => {
     setTemplateToUse(template);
@@ -475,59 +472,6 @@ export default function AgentsPage() {
     load();
   }, [currentPage, search, selectedGroup, selectedCategory]);
 
-  const handleGroupChange = (val) => {
-    setSelectedGroup(val);
-    setCurrentPage(1);
-  };
-
-  const handleCategoryChange = (val) => {
-    setSelectedCategory(val);
-    setCurrentPage(1);
-  };
-
-  // Handle clicks outside filter panel
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (filterPanelRef.current && !filterPanelRef.current.contains(event.target)) {
-        setFilterOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    if (searchOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [searchOpen]);
-
-  // Keydown listener for 's' keyboard shortcut
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      const activeEl = document.activeElement;
-      if (
-        activeEl &&
-        (activeEl.tagName === 'INPUT' ||
-         activeEl.tagName === 'TEXTAREA' ||
-         activeEl.isContentEditable)
-      ) {
-        return;
-      }
-      if (e.key === 's' || e.key === 'S') {
-        e.preventDefault();
-        setSearchOpen(true);
-        setTimeout(() => {
-          if (searchInputRef.current) {
-            searchInputRef.current.focus();
-          }
-        }, 50);
-      }
-    };
-    globalThis.addEventListener('keydown', handleKeyDown);
-    return () => globalThis.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this agent template?')) return;
     try {
@@ -540,114 +484,21 @@ export default function AgentsPage() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', overflow: 'hidden' }}>
-      <div style={{ padding: '16px 32px', borderBottom: '1px solid var(--border-light)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <PageHeader 
-          title="Agent Library" 
-          description="Manage and customize autonomous agent blueprints, persona prompts, and underlying LLM configurations." 
-        />
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* Search bar collapsible (Matching Marketplace) */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', transition: 'width 0.2s', width: (searchOpen || search) ? 320 : 36 }}>
-            {(!searchOpen && !search) && (
-              <button
-                onClick={() => setSearchOpen(true)}
-                title="Search templates..."
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8
-                }}
-              >
-                <FiSearch size={18} color="#6B7280" />
-              </button>
-            )}
-            {(searchOpen || search) && (
-              <div style={{ position: 'relative', width: '100%' }}>
-                <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} size={16} />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search templates..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  onBlur={() => { if (!search) setSearchOpen(false); }}
-                  style={{
-                    width: '100%', padding: '8px 12px 8px 36px', border: '1px solid #E5E7EB', borderRadius: 10,
-                    fontSize: 14, outline: 'none', background: 'white', color: '#111827'
-                  }}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Filters Popover */}
-          <div style={{ position: 'relative' }} ref={filterPanelRef}>
-            <button
-              onClick={() => setFilterOpen(!filterOpen)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
-                background: filterOpen ? '#111827' : 'white',
-                color: filterOpen ? 'white' : '#111827',
-                border: '1px solid #E5E7EB', borderRadius: 10, fontSize: 13, fontWeight: 600,
-                cursor: 'pointer', transition: 'all 0.2s'
-              }}
-            >
-              <FiFilter size={16} /> Filters
-              {(selectedCategory !== 'All' || selectedGroup !== 'All') && (
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444' }} />
-              )}
-            </button>
-
-            <AnimatePresence>
-              {filterOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                  style={{
-                    position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 260,
-                    background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
-                    boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', zIndex: 100, padding: 16
-                  }}
-                >
-                  <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>By Group</div>
-                    <select
-                      value={selectedGroup}
-                      onChange={(e) => handleGroupChange(e.target.value)}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 8, outline: 'none', fontSize: 13 }}
-                    >
-                      {groups.map(g => <option key={g} value={g}>{g === 'All' ? 'All Groups' : g}</option>)}
-                    </select>
-                  </div>
-
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>By Category</div>
-                    <select
-                      value={selectedCategory}
-                      onChange={(e) => handleCategoryChange(e.target.value)}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 8, outline: 'none', fontSize: 13 }}
-                    >
-                      {categories.map(c => <option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>)}
-                    </select>
-                  </div>
-
-                  <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end' }}>
-                    <button
-                      onClick={() => { setSelectedCategory('All'); setSelectedGroup('All'); }}
-                      style={{ padding: '6px 10px', fontSize: 12, color: '#6B7280', border: 'none', background: 'none', cursor: 'pointer' }}
-                    >
-                      Reset All
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          <div style={{ display: 'flex', gap: 2, background: 'var(--bg-canvas)', border: '1px solid var(--border)', borderRadius: 10, padding: '4px' }}>
-            <button onClick={() => setViewMode('cards')} style={{ background: viewMode === 'cards' ? 'var(--theme-primary)' : 'transparent', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', color: viewMode === 'cards' ? 'white' : '#6B7280' }}><FiGrid size={16} /></button>
-            <button onClick={() => setViewMode('list')} style={{ background: viewMode === 'list' ? 'var(--theme-primary)' : 'transparent', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', color: viewMode === 'list' ? 'white' : '#6B7280' }}><FiList size={16} /></button>
-          </div>
-        </div>
-      </div>
+      <LibraryHeader
+        title="Agent Library"
+        description="Manage and customize autonomous agent blueprints, persona prompts, and underlying LLM configurations."
+        search={search}
+        onSearchChange={val => { setSearch(val); setCurrentPage(1); }}
+        groups={groups}
+        categories={categories}
+        selectedGroup={selectedGroup}
+        onGroupChange={val => { setSelectedGroup(val); setCurrentPage(1); }}
+        selectedCategory={selectedCategory}
+        onCategoryChange={val => { setSelectedCategory(val); setCurrentPage(1); }}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        placeholder="Search templates..."
+      />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }} ref={containerRef}>
         {/* ── Agent Banner — only show once agents exist ── */}

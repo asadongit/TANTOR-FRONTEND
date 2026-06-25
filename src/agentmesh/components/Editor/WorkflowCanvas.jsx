@@ -105,6 +105,50 @@ const findClosestEdge = (
   return closestEdgeId;
 };
 
+const instantiateGroupTemplate = (config, newPosition) => {
+  const originalPos = config.position || { x: 0, y: 0 };
+  const dx = newPosition.x - originalPos.x;
+  const dy = newPosition.y - originalPos.y;
+
+  const idMap = {};
+  const internalNodes = (config.internal_nodes || []).map(n => {
+    const oldId = n.id;
+    const type = n.data?.type || 'node';
+    const newId = `${type}_${Math.random().toString(36).substring(2, 7)}`;
+    idMap[oldId] = newId;
+
+    return {
+      ...n,
+      id: newId,
+      position: {
+        x: (n.position?.x ?? 0) + dx,
+        y: (n.position?.y ?? 0) + dy
+      },
+      data: {
+        ...n.data,
+        id: newId
+      }
+    };
+  });
+
+  const mapEdges = (edges) => (edges || []).map(e => ({
+    ...e,
+    id: `e_${idMap[e.source] || e.source}_to_${idMap[e.target] || e.target}_${Math.random().toString(36).substring(2, 7)}`,
+    source: idMap[e.source] || e.source,
+    target: idMap[e.target] || e.target
+  }));
+
+  const internalEdges = mapEdges(config.internal_edges);
+  const originalEdges = mapEdges(config.original_edges);
+
+  return {
+    ...config,
+    internal_nodes: internalNodes,
+    internal_edges: internalEdges,
+    original_edges: originalEdges
+  };
+};
+
 export default function WorkflowCanvas() {
   const nodeTypes = React.useMemo(
     () => ({
@@ -505,7 +549,10 @@ export default function WorkflowCanvas() {
       const configStr = e.dataTransfer.getData("application/agentmesh-config");
       if (configStr && id) {
         try {
-          const config = JSON.parse(configStr);
+          let config = JSON.parse(configStr);
+          if (type === 'group') {
+            config = instantiateGroupTemplate(config, position);
+          }
           setNodeData(id, config);
         } catch (err) {
           console.error("Failed to parse dropped template config:", err);

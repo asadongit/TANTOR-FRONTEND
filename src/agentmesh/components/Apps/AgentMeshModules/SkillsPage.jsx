@@ -1,15 +1,14 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { 
-  FiBookOpen, FiPlus, FiTrash2, FiEdit, FiSearch, 
-  FiTag, FiX, FiCheck, FiLoader, FiAlertCircle, FiCpu,
-  FiGrid, FiList
+  FiBookOpen, FiPlus, FiTrash2, FiEdit, 
+  FiX, FiCheck, FiLoader, FiAlertCircle, FiCpu
 } from 'react-icons/fi';
 import { listAvailableSkills, createSkill, deleteSkill, generateSkillSop } from '../../../api/agentmesh';
 import AddSkillModal from './addSkillModal';
 import ConfirmationModal from '../../Common/ConfirmationModal';
 import { motion, AnimatePresence } from 'framer-motion';
-import PageHeader from '../../Common/PageHeader';
+import LibraryHeader from '../../Common/LibraryHeader';
 import LibraryCard from '../../Common/LibraryCard';
 import LibraryListRow from '../../Common/LibraryListRow';
 
@@ -24,7 +23,7 @@ function SkillCard({ skill, onDetails, onEdit, onDelete, onAddToCanvas, idx }) {
       icon={<FiBookOpen size={22} strokeWidth={2} />}
       title={skill.name.replace(/-/g, ' ')}
       description={skill.description}
-      tags={skill.tags}
+      tags={(skill.tags || []).map(t => ({ label: t, type: 'Tag' }))}
       primaryAction={{ label: '+ Add', onClick: () => onAddToCanvas(skill) }}
       secondaryAction={{ label: 'SOP', onClick: () => onDetails(skill) }}
       moreActions={moreActions}
@@ -59,7 +58,7 @@ function SkillListRow({ skill, onDetails, onEdit, onDelete, onAddToCanvas, idx }
       icon={<FiBookOpen size={22} />}
       title={skill.name.replace(/-/g, ' ')}
       description={skill.description}
-      tags={skill.tags}
+      tags={(skill.tags || []).map(t => ({ label: t, type: 'Tag' }))}
       primaryAction={{ label: '+ Add', onClick: () => onAddToCanvas(skill) }}
       secondaryAction={{ label: 'SOP', onClick: () => onDetails(skill) }}
       moreActions={moreActions}
@@ -240,40 +239,8 @@ export default function SkillsPage() {
     return errors;
   };
 
-  const [searchOpen, setSearchOpen] = useState(searchQuery?.length > 0);
-  const searchInputRef = useRef(null);
-
-  useEffect(() => {
-    if (searchOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [searchOpen]);
-
   // Keydown listener for 's' keyboard shortcut
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      const activeEl = document.activeElement;
-      if (
-        activeEl &&
-        (activeEl.tagName === 'INPUT' ||
-         activeEl.tagName === 'TEXTAREA' ||
-         activeEl.isContentEditable)
-      ) {
-        return;
-      }
-      if (e.key === 's' || e.key === 'S') {
-        e.preventDefault();
-        setSearchOpen(true);
-        setTimeout(() => {
-          if (searchInputRef.current) {
-            searchInputRef.current.focus();
-          }
-        }, 50);
-      }
-    };
-    globalThis.addEventListener('keydown', handleKeyDown);
-    return () => globalThis.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  // (Optional keydown search trigger can be added if desired, keeping clean for now)
 
   const fetchSkills = async () => {
     setLoading(true);
@@ -435,55 +402,18 @@ export default function SkillsPage() {
       fontFamily: "'Google Sans','Roboto',sans-serif",
       overflow: 'hidden'
     }}>
-      {/* Header Banner */}
-      <div style={{
-        padding: '16px 32px',
-        borderBottom: '1px solid var(--border-light)',
-        background: 'white',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        boxShadow: 'var(--shadow-xs)'
-      }}>
-        <PageHeader 
-          title="Skills" 
-          description="Define and refine Standard Operating Procedures (SOPs) that guide agent execution behaviors." 
-        />
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* Search bar collapsible (Standard Layout) */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', transition: 'width 0.2s', width: (searchOpen || searchQuery) ? 320 : 36 }}>
-            {(!searchOpen && !searchQuery) && (
-              <button
-                onClick={() => setSearchOpen(true)}
-                title="Search skills..."
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8
-                }}
-              >
-                <FiSearch size={18} color="#6B7280" />
-              </button>
-            )}
-            {(searchOpen || searchQuery) && (
-              <div style={{ position: 'relative', width: '100%' }}>
-                <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} size={16} />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search skills..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onBlur={() => { if (!searchQuery) setSearchOpen(false); }}
-                  style={{
-                    width: '100%', padding: '8px 12px 8px 36px', border: '1px solid #E5E7EB', borderRadius: 10,
-                    fontSize: 14, outline: 'none', background: 'white', color: '#111827'
-                  }}
-                />
-              </div>
-            )}
-          </div>
-
+      <LibraryHeader
+        title="Skills"
+        description="Define and refine Standard Operating Procedures (SOPs) that guide agent execution behaviors."
+        search={searchQuery}
+        onSearchChange={setSearchQuery}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        showFilters={false}
+        placeholder="Search skills..."
+        actions={
           <button
+            type="button"
             onClick={handleOpenCreate}
             style={{
               display: 'flex',
@@ -510,13 +440,8 @@ export default function SkillsPage() {
           >
             <FiPlus strokeWidth={2.5} /> Add Skill
           </button>
-
-          <div style={{ display: 'flex', gap: 2, background: 'var(--bg-canvas)', border: '1px solid var(--border)', borderRadius: 10, padding: '4px' }}>
-            <button onClick={() => setViewMode('cards')} style={{ background: viewMode === 'cards' ? 'var(--theme-primary)' : 'transparent', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', color: viewMode === 'cards' ? 'white' : '#6B7280' }}><FiGrid size={16} /></button>
-            <button onClick={() => setViewMode('list')} style={{ background: viewMode === 'list' ? 'var(--theme-primary)' : 'transparent', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', color: viewMode === 'list' ? 'white' : '#6B7280' }}><FiList size={16} /></button>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Main Panel (Grid of Cards) */}
       <div style={{

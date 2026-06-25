@@ -441,6 +441,7 @@ function Field({ label, icon: Icon, children }) {
 }
 
 export default function SaveTemplateModal({ agentConfig, onClose, onSaved }) {
+  const isAgentNode = ["llm_agent", "deep_agent", "supervisor", "swarm"].includes(agentConfig.type);
   const isApiNode = agentConfig.type === "api_node";
   const [name, setName] = useState(agentConfig.label || "");
   const [description, setDescription] = useState("");
@@ -482,7 +483,29 @@ export default function SaveTemplateModal({ agentConfig, onClose, onSaved }) {
     setLoading(true);
     setError(null);
     try {
-      if (isApiNode) {
+      if (isAgentNode) {
+        // Original Agent Save Logic
+        const scrubbedConfig = {
+          ...agentConfig,
+          tool_configs: {},
+          api_auth_config: {},
+        };
+
+        if (scrubbedConfig.llm) {
+          scrubbedConfig.llm = {
+            ...scrubbedConfig.llm,
+            api_key_override: "",
+          };
+        }
+
+        await saveAgentTemplate({
+          name,
+          description,
+          group,
+          category,
+          config: scrubbedConfig,
+        });
+      } else if (isApiNode) {
         // Handle custom category creation if it doesn't exist
         let finalCatName = category;
         const exists = apiCategoryOptions.find((c) => c.name === category);
@@ -514,13 +537,13 @@ export default function SaveTemplateModal({ agentConfig, onClose, onSaved }) {
           config: scrubbedConfig,
         });
       } else {
-        // Original Agent Save Logic
-        const scrubbedConfig = {
-          ...agentConfig,
-          tool_configs: {},
-          api_auth_config: {},
-        };
-
+        // Generic Node Component Save Logic (e.g. db_node, json_transform, ocr_node)
+        const scrubbedConfig = { ...agentConfig };
+        
+        // Scrub basic auth credentials or tokens if present
+        if (scrubbedConfig.api_auth_type && scrubbedConfig.api_auth_type !== "Vault") {
+          scrubbedConfig.api_auth_config = {};
+        }
         if (scrubbedConfig.llm) {
           scrubbedConfig.llm = {
             ...scrubbedConfig.llm,
@@ -528,11 +551,12 @@ export default function SaveTemplateModal({ agentConfig, onClose, onSaved }) {
           };
         }
 
-        await saveAgentTemplate({
+        await saveComponentTemplate({
           name,
+          type: agentConfig.type,
           description,
           group,
-          category,
+          category_name: category,
           config: scrubbedConfig,
         });
       }
@@ -603,7 +627,7 @@ export default function SaveTemplateModal({ agentConfig, onClose, onSaved }) {
                 color: "var(--text-primary)",
               }}
             >
-              {isApiNode ? "Save API to Library" : "Save Agent as Template"}
+              {isApiNode ? "Save API to Library" : isAgentNode ? "Save Agent as Template" : "Save Node as Template"}
             </div>
           </div>
           <button
@@ -641,7 +665,7 @@ export default function SaveTemplateModal({ agentConfig, onClose, onSaved }) {
               style={inputStyle}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Expert Researcher Agent"
+              placeholder={isApiNode ? "e.g. Fetch CRM Users" : isAgentNode ? "e.g. Expert Researcher Agent" : "e.g. Custom Node Configuration"}
               autoFocus
             />
           </Field>
@@ -651,7 +675,7 @@ export default function SaveTemplateModal({ agentConfig, onClose, onSaved }) {
               style={{ ...inputStyle, minHeight: 80, resize: "vertical" }}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder={`What does this ${isApiNode ? "API" : "agent"} specialize in?`}
+              placeholder={`What does this ${isApiNode ? "API" : isAgentNode ? "agent" : "node"} specialize in?`}
             />
           </Field>
 
@@ -739,13 +763,13 @@ export default function SaveTemplateModal({ agentConfig, onClose, onSaved }) {
             }}
           >
             <strong>Security Notice:</strong> Saving this{" "}
-            {isApiNode ? "API" : "agent"} will store its configuration. For your
+            {isApiNode ? "API" : isAgentNode ? "agent" : "node"} will store its configuration. For your
             security,{" "}
             <strong>
               all{" "}
               {isApiNode
                 ? "manual auth passwords/tokens"
-                : "tool configurations and API keys"}{" "}
+                : "tool configurations, API keys, and sensitive fields"}{" "}
               are automatically scrubbed
             </strong>{" "}
             before saving to the library.{" "}

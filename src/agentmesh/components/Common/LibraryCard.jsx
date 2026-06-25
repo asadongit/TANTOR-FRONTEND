@@ -137,21 +137,27 @@ export default function LibraryCard({
         {/* Tags */}
         {tags && tags.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 'auto' }}>
-            {tags.map((tag, i) => (
-              <span
-                key={`${tag}-${i}`}
-                style={{
-                  fontSize: 10,
-                  fontWeight: 500,
-                  background: 'var(--border-light)',
-                  color: 'var(--text-secondary)',
-                  padding: '2px 8px',
-                  borderRadius: 4
-                }}
-              >
-                #{tag}
-              </span>
-            ))}
+            {tags.map((tag, i) => {
+              const isObj = typeof tag === 'object' && tag !== null;
+              const label = isObj ? tag.label : tag;
+              const hoverTitle = isObj && tag.type ? `${tag.type}: ${tag.label}` : undefined;
+              return (
+                <span
+                  key={`${label}-${i}`}
+                  title={hoverTitle}
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 500,
+                    background: 'var(--border-light)',
+                    color: 'var(--text-secondary)',
+                    padding: '2px 8px',
+                    borderRadius: 4
+                  }}
+                >
+                  #{label}
+                </span>
+              );
+            })}
           </div>
         )}
       </div>
