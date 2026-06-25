@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Cable,
   X,
@@ -16,26 +16,42 @@ import { useAuth } from "../../../../context/AuthContext";
 import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/function.js';
 import { useToast } from "../context/ToastContext";
 
-const SearchableSelect = ({ options, value, onChange, placeholder, disabled = false, isLoading = false }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const SearchableSelect = ({ id, openDropdownId, setOpenDropdownId, options, value, onChange, placeholder, disabled = false, isLoading = false }) => {
+  const isOpen = openDropdownId === id;
   const [searchTerm, setSearchTerm] = useState("");
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpenDropdownId(null);
+        setSearchTerm("");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
 
   const filteredOptions = options
     .map((option) => typeof option === "object" ? option.connection_name : option)
     .filter((option) => option.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const handleSelectClick = () => {
-    if (!disabled && !isLoading) setIsOpen(!isOpen);
+    if (!disabled && !isLoading) {
+      setOpenDropdownId((prev) => (prev === id ? null : id));
+      if (openDropdownId !== id) setSearchTerm("");
+    }
   };
 
   const handleOptionClick = (option) => {
     onChange({ target: { value: option } });
-    setIsOpen(false);
+    setOpenDropdownId(null);
     setSearchTerm("");
   };
 
   return (
-    <div className="relative w-full">
+    <div ref={containerRef} className="relative w-full">
       <div
         className={`w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${disabled || isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
         onClick={handleSelectClick}
@@ -50,7 +66,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled = fa
       </div>
 
       {isOpen && !isLoading && !disabled && (
-        <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
+        <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg">
           <div className="p-2 border-b">
             <div className="relative">
               <Search className="absolute left-2 top-2.5 w-4 h-4 text-gray-400" />
@@ -84,6 +100,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled = fa
 export function BaseNode({ id, data }) {
   const { showToast } = useToast();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [openDropdownId, setOpenDropdownId] = useState(null);
   const [isAllSelected, setIsAllSelected] = useState(false);
   const [apiViews, setApiViews] = useState([]);
   const [selectedView, setSelectedView] = useState("");
@@ -257,7 +274,7 @@ export function BaseNode({ id, data }) {
         <div className="space-y-4">
           <div className="mb-4">
             <label className="block text-gray-700 mb-1">View</label>
-            <SearchableSelect options={apiViews} value={selectedView} onChange={handleChangeView} placeholder="Select View" isLoading={isLoadingViews} />
+            <SearchableSelect id="view" openDropdownId={openDropdownId} setOpenDropdownId={setOpenDropdownId} options={apiViews} value={selectedView} onChange={handleChangeView} placeholder="Select View" isLoading={isLoadingViews} />
           </div>
 
           {isLoadingColumns && (
@@ -350,6 +367,7 @@ export function BaseNode({ id, data }) {
 export function ConnectionNode({ id, data }) {
   const { showToast } = useToast();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [openDropdownId, setOpenDropdownId] = useState(null);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");
   const [selectedTable, setSelectedTable] = useState("");
@@ -476,7 +494,8 @@ export function ConnectionNode({ id, data }) {
             { method: "GET", headers: { authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
           );
           if (!detailedColumnsResponse.ok) throw new Error("Failed to fetch detailed columns");
-          setApiColumns(await detailedColumnsResponse.json());
+          const detailedColsData = await detailedColumnsResponse.json();
+          setApiColumns(detailedColsData);
 
           const secureQueryResponse = await secureQuery({ user_query: "" }, token);
           const policyIds = secureQueryResponse.matched_policy_ids || [];
@@ -492,7 +511,12 @@ export function ConnectionNode({ id, data }) {
           if (allowedColumnsData?.columns) {
             const columns = allowedColumnsData.columns
               .find((item) => item.connection_name === selectedConnection && item.schema === selectedSchema && item.table_name === selectedTable)
-              ?.columns.map((col) => ({ column_name: col.column_name, datatype: col.metadata.DATA_TYPE })) || [];
+              ?.columns.map((col) => {
+                const datatype = detailedColsData.find((dc) => dc.column?.toLowerCase() === col.column_name?.toLowerCase())?.datatype
+                  || col.metadata?.DATA_TYPE
+                  || "unknown";
+                return { column_name: col.column_name, datatype };
+              }) || [];
             setAllowedColumns(columns);
           } else {
             setAllowedColumns([]);
@@ -641,15 +665,15 @@ export function ConnectionNode({ id, data }) {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-black mb-1">Connection</label>
-              <SearchableSelect options={apiConnections} value={selectedConnection} onChange={handleConnectionChange} placeholder="Select a connection" isLoading={isLoadingConnections} />
+              <SearchableSelect id="connection" openDropdownId={openDropdownId} setOpenDropdownId={setOpenDropdownId} options={apiConnections} value={selectedConnection} onChange={handleConnectionChange} placeholder="Select a connection" isLoading={isLoadingConnections} />
             </div>
             <div>
               <label className="block text-sm font-medium text-black mb-1">Schema</label>
-              <SearchableSelect options={apiSchemas} value={selectedSchema} onChange={handleSchemaChange} placeholder="Select a schema" disabled={!selectedConnection} isLoading={isLoadingSchemas} />
+              <SearchableSelect id="schema" openDropdownId={openDropdownId} setOpenDropdownId={setOpenDropdownId} options={apiSchemas} value={selectedSchema} onChange={handleSchemaChange} placeholder="Select a schema" disabled={!selectedConnection} isLoading={isLoadingSchemas} />
             </div>
             <div>
               <label className="block text-sm font-medium text-black mb-1">Table</label>
-              <SearchableSelect options={apiTables} value={selectedTable} onChange={handleTableChange} placeholder="Select a table" disabled={!selectedSchema} isLoading={isLoadingTables} />
+              <SearchableSelect id="table" openDropdownId={openDropdownId} setOpenDropdownId={setOpenDropdownId} options={apiTables} value={selectedTable} onChange={handleTableChange} placeholder="Select a table" disabled={!selectedSchema} isLoading={isLoadingTables} />
             </div>
 
             {isLoadingColumns && (
