@@ -15,6 +15,7 @@ export {
 } from "./shared/primitives";
 export { VariableLinker, VariableDropdown } from "./shared/VariableLinker";
 export { SearchableSelect } from "./shared/SearchableSelect";
+export { AsyncSearchableSelect } from "./shared/AsyncSearchableSelect";
 export { CronHelper } from "./shared/CronHelper";
 export { LogicHelper } from "./shared/LogicHelper";
 export {
