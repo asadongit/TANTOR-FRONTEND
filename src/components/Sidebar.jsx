@@ -428,6 +428,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
               name: 'Library',   agentMeshPage: 'library',
               subItems: [
                 { name: 'Agents', agentMeshLibTab: 'agents' },
+                { name: 'Nodes',  agentMeshLibTab: 'nodes' },
                 { name: 'Tools',  agentMeshLibTab: 'tools' },
                 { name: 'APIs',   agentMeshLibTab: 'apis' },
                 { name: 'Skills', agentMeshLibTab: 'skills' },

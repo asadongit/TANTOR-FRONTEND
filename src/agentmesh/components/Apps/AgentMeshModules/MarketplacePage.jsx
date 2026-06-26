@@ -260,9 +260,6 @@ function MarketplaceListRow({ w, onChat, onDetails, isRunning, idx }) {
           <span title={`Category: ${w.category || 'General'}`} style={{ display: 'flex', alignItems: 'center', gap: 4, color: theme.primary, fontWeight: 600, fontSize: 12 }}>
             <FiTag size={12} /> {w.category || 'General'}
           </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#D97706', fontWeight: 700, fontSize: 12 }}>
-            ★ {w.rating !== undefined ? w.rating.toFixed(1) : '0.0'}
-          </span>
           <span style={{ width: 1, height: 12, background: 'var(--border)' }} />
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.description || 'No description provided for this specialized AI agent.'}</span>
         </div>
@@ -418,13 +415,6 @@ function MarketplaceCard({ w, onChat, onDetails, isRunning, idx }) {
                 background: theme.bg, padding: '1px 6px', borderRadius: 4
               }}>
                 {w.category || 'General'}
-              </span>
-              <span style={{
-                fontSize: 10, color: '#D97706', fontWeight: 700,
-                background: '#FEF3C7', padding: '1px 6px', borderRadius: 4,
-                display: 'flex', alignItems: 'center', gap: 2
-              }}>
-                ★ {w.rating !== undefined ? w.rating.toFixed(1) : '0.0'}
               </span>
             </div>
           </div>
@@ -1122,19 +1112,6 @@ function MarketplaceDetailsModal({ agent, onClose, onChat, onEdit, onSwagger }) 
             padding: '16px 0',
             marginBottom: 28
           }}>
-            {/* Stat 1: Rating */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 4 }}>
-                {agent.rating !== undefined ? agent.rating.toFixed(1) : '0.0'} <span style={{ color: '#D97706', fontSize: 14 }}>★</span>
-              </div>
-              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 650, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
-                User Rating
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div style={{ width: 1, height: 28, background: '#e2e8f0' }} />
-
             {/* Stat 2: Active status */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: '#10B981', display: 'flex', alignItems: 'center', gap: 6 }}>

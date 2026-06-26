@@ -209,7 +209,12 @@ export const readVfsFile = (rootDir, filePath, threadId) => {
   const p = new URLSearchParams({ root_dir: rootDir, file_path: filePath, thread_id: threadId });
   return request(`/deep-agent/vfs/read?${p}`);
 };
-export const listAvailableSkills = () => request('/skills/list');
+export const listAvailableSkills = (params = {}) => {
+  const { page = 1, limit = 1000, search } = params;
+  const p = new URLSearchParams({ page, limit });
+  if (search) p.set('search', search);
+  return request(`/skills/list?${p}`);
+};
 export const createSkill = (payload) => request('/skills/create', { method: 'POST', body: JSON.stringify(payload) });
 export const deleteSkill = (id) => request(`/skills/${id}`, { method: 'DELETE' });
 export const listAvailableModels = () => request('/models/available');
@@ -245,22 +250,30 @@ export const listCategories = (type) => {
 export const createCategory = (payload) => 
   request('/categories', { method: 'POST', body: JSON.stringify(payload) });
 
-export const listComponentTemplateFilters = (type) => {
+export const listComponentTemplateFilters = (params) => {
   const p = new URLSearchParams();
-  if (type) p.set('type', type);
+  if (typeof params === 'string') {
+    p.set('type', params);
+  } else if (params && typeof params === 'object') {
+    const { type, exclude_type } = params;
+    if (type) p.set('type', type);
+    if (exclude_type) p.set('exclude_type', exclude_type);
+  }
   return request(`/component-templates/filters?${p}`);
 };
 
 export const listComponentTemplates = (params = {}) => {
-  const { page = 1, limit = 50, group, category_id, category_name, type, search } = params;
+  const { page = 1, limit = 50, group, category_id, category_name, type, search, exclude_type } = params;
   const p = new URLSearchParams({ page, limit });
   if (group) p.set('group', group);
   if (category_id) p.set('category_id', category_id);
   if (category_name) p.set('category_name', category_name);
   if (type) p.set('type', type);
+  if (exclude_type) p.set('exclude_type', exclude_type);
   if (search) p.set('search', search);
   return request(`/component-templates?${p}`);
 };
+
 export const saveComponentTemplate = (payload) =>
   request('/component-templates', { method: 'POST', body: JSON.stringify(payload) });
 export const deleteComponentTemplate = (id) =>

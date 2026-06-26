@@ -105,6 +105,50 @@ const findClosestEdge = (
   return closestEdgeId;
 };
 
+const instantiateGroupTemplate = (config, newPosition) => {
+  const originalPos = config.position || { x: 0, y: 0 };
+  const dx = newPosition.x - originalPos.x;
+  const dy = newPosition.y - originalPos.y;
+
+  const idMap = {};
+  const internalNodes = (config.internal_nodes || []).map(n => {
+    const oldId = n.id;
+    const type = n.data?.type || 'node';
+    const newId = `${type}_${Math.random().toString(36).substring(2, 7)}`;
+    idMap[oldId] = newId;
+
+    return {
+      ...n,
+      id: newId,
+      position: {
+        x: (n.position?.x ?? 0) + dx,
+        y: (n.position?.y ?? 0) + dy
+      },
+      data: {
+        ...n.data,
+        id: newId
+      }
+    };
+  });
+
+  const mapEdges = (edges) => (edges || []).map(e => ({
+    ...e,
+    id: `e_${idMap[e.source] || e.source}_to_${idMap[e.target] || e.target}_${Math.random().toString(36).substring(2, 7)}`,
+    source: idMap[e.source] || e.source,
+    target: idMap[e.target] || e.target
+  }));
+
+  const internalEdges = mapEdges(config.internal_edges);
+  const originalEdges = mapEdges(config.original_edges);
+
+  return {
+    ...config,
+    internal_nodes: internalNodes,
+    internal_edges: internalEdges,
+    original_edges: originalEdges
+  };
+};
+
 export default function WorkflowCanvas() {
   const nodeTypes = React.useMemo(
     () => ({
@@ -505,7 +549,10 @@ export default function WorkflowCanvas() {
       const configStr = e.dataTransfer.getData("application/agentmesh-config");
       if (configStr && id) {
         try {
-          const config = JSON.parse(configStr);
+          let config = JSON.parse(configStr);
+          if (type === 'group') {
+            config = instantiateGroupTemplate(config, position);
+          }
           setNodeData(id, config);
         } catch (err) {
           console.error("Failed to parse dropped template config:", err);
@@ -747,44 +794,94 @@ export default function WorkflowCanvas() {
         return;
       }
 
+      const storeState = useWorkflowStore.getState();
+      const uiState = useUIStore.getState();
+      const currentNodes = storeState.nodes;
+      const currentSelectedNodeId = uiState.selectedNodeId;
+      const currentSearchOpen = uiState.searchOpen;
+
       // Undo/Redo Shortcuts
       const isCmdOrCtrl = e.metaKey || e.ctrlKey;
       if (isCmdOrCtrl) {
         if (e.key === "z" || e.key === "Z") {
           e.preventDefault();
           if (e.shiftKey) {
-            redo();
+            storeState.redo();
           } else {
-            undo();
+            storeState.undo();
           }
           return;
         } else if (e.key === "y" || e.key === "Y") {
           e.preventDefault();
-          redo();
+          storeState.redo();
           return;
         } else if (e.key === "g" || e.key === "G") {
           e.preventDefault();
           if (e.shiftKey) {
-            const selectedGroupNode = nodes.find(n => n.id === selectedNodeId && n.data?.type === 'group');
+            const selectedGroupNode = currentNodes.find(n => n.id === currentSelectedNodeId && n.data?.type === 'group');
             if (selectedGroupNode) {
-              ungroupNode(selectedGroupNode.id);
+              storeState.ungroupNode(selectedGroupNode.id);
             }
           } else {
-            const selectedNodeIds = nodes.filter(n => n.selected).map(n => n.id);
+            const selectedNodeIds = currentNodes.filter(n => n.selected).map(n => n.id);
             if (selectedNodeIds.length >= 2) {
-              groupNodes(selectedNodeIds);
+              storeState.groupNodes(selectedNodeIds);
             }
           }
           return;
         }
       }
 
-      if ((e.key === "s" || e.key === "S") && !selectedNodeId && !searchOpen) {
-        e.preventDefault();
-        setSearchOpen(true);
+      if (e.key === "Delete" || e.key === "Backspace") {
+        const currentEdges = storeState.edges;
+        const selectedNodes = currentNodes.filter(n => n.selected);
+        const selectedEdges = currentEdges.filter(e => e.selected);
+
+        const hasSelectedNodes = selectedNodes.length > 0;
+        const hasSelectedEdges = selectedEdges.length > 0;
+
+        if (hasSelectedNodes || hasSelectedEdges) {
+          e.preventDefault();
+          storeState.takeHistorySnapshot();
+
+          let nextNodes = currentNodes;
+          let nextEdges = currentEdges;
+
+          if (hasSelectedNodes) {
+            const nodeIdsToDelete = selectedNodes
+              .filter(n => n.id !== '__start__' && n.id !== '__end__')
+              .map(n => n.id);
+
+            if (nodeIdsToDelete.length > 0) {
+              nextNodes = currentNodes.filter(n => !nodeIdsToDelete.includes(n.id));
+              nextEdges = nextEdges.filter(edge => !nodeIdsToDelete.includes(edge.source) && !nodeIdsToDelete.includes(edge.target));
+              
+              if (nodeIdsToDelete.includes(currentSelectedNodeId)) {
+                uiState.setSelectedNode(null);
+              }
+            }
+          }
+
+          if (hasSelectedEdges) {
+            const edgeIdsToDelete = selectedEdges.map(edge => edge.id);
+            nextEdges = nextEdges.filter(edge => !edgeIdsToDelete.includes(edge.id));
+            
+            if (edgeIdsToDelete.includes(uiState.selectedEdgeId)) {
+              uiState.setSelectedEdge(null);
+            }
+          }
+
+          storeState.setNodesDirty(nextNodes);
+          storeState.setEdgesDirty(nextEdges);
+        }
       }
 
-      if ((e.key === "n" || e.key === "N") && !selectedNodeId) {
+      if ((e.key === "s" || e.key === "S") && !currentSelectedNodeId && !currentSearchOpen) {
+        e.preventDefault();
+        uiState.setSearchOpen(true);
+      }
+
+      if ((e.key === "n" || e.key === "N") && !currentSelectedNodeId) {
         e.preventDefault();
         // Calculate center of canvas viewport
         let position;
@@ -800,13 +897,13 @@ export default function WorkflowCanvas() {
             y: 100 + Math.random() * 200,
           };
         }
-        addNode("cardboard", position);
+        storeState.addNode("cardboard", position);
       }
     };
 
     globalThis.addEventListener("keydown", handleKeyDown);
     return () => globalThis.removeEventListener("keydown", handleKeyDown);
-  }, [selectedNodeId, searchOpen, reactFlowInstance, addNode, undo, redo]);
+  }, [reactFlowInstance]);
 
   const handleSearchSelectNode = useCallback(
     (type) => {

@@ -94,18 +94,6 @@ export default function BlackboardModal({ isOpen, onClose, threadId }) {
                 >
                   Task Blackboard
                 </span>
-                <span
-                  style={{
-                    fontSize: 11,
-                    background: "#E5E7EB",
-                    color: "#4B5563",
-                    padding: "2px 8px",
-                    borderRadius: 12,
-                    fontWeight: 600,
-                  }}
-                >
-                  {threadId || "No Session"}
-                </span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <button
@@ -256,9 +244,8 @@ export default function BlackboardModal({ isOpen, onClose, threadId }) {
                         gap: 14,
                         padding: "16px",
                         borderRadius: "12px",
-                        background:
-                          task.status === "done" ? "#F9FAFB" : "#FFFFFF",
-                        border: `1px solid ${task.status === "done" ? "#E5E7EB" : "rgba(16, 185, 129, 0.15)"}`,
+                        background: "#FFFFFF",
+                        border: "1px solid rgba(16, 185, 129, 0.15)",
                         boxShadow: "0 2px 8px rgba(0, 0, 0, 0.01)",
                         transition: "all 0.2s",
                       }}
@@ -268,34 +255,25 @@ export default function BlackboardModal({ isOpen, onClose, threadId }) {
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          width: 20,
-                          height: 20,
-                          marginTop: 2,
+                          width: 22,
+                          height: 22,
+                          borderRadius: "50%",
+                          background: "rgba(16, 185, 129, 0.1)",
+                          border: "1px solid rgba(16, 185, 129, 0.2)",
+                          color: "#10B981",
+                          fontSize: "11px",
+                          fontWeight: "700",
                           flexShrink: 0,
+                          marginTop: 2,
                         }}
                       >
-                        {task.status === "done" ? (
-                          <FiCheckSquare size={18} color="#10B981" />
-                        ) : (
-                          <div
-                            style={{
-                              width: 16,
-                              height: 16,
-                              borderRadius: 4,
-                              border: "2px solid #D1D5DB",
-                              background: "#FFF",
-                            }}
-                          />
-                        )}
+                        {task.id}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p
                           style={{
                             fontSize: 14,
-                            color:
-                              task.status === "done" ? "#9CA3AF" : "#111827",
-                            textDecoration:
-                              task.status === "done" ? "line-through" : "none",
+                            color: "#111827",
                             lineHeight: 1.5,
                             fontWeight: 500,
                             wordBreak: "break-word",
@@ -309,20 +287,9 @@ export default function BlackboardModal({ isOpen, onClose, threadId }) {
                             alignItems: "center",
                             gap: 8,
                             marginTop: 8,
+                            flexWrap: "wrap",
                           }}
                         >
-                          <span
-                            style={{
-                              fontSize: 10,
-                              fontFamily: "monospace",
-                              color: "#9CA3AF",
-                              background: "#F3F4F6",
-                              padding: "2px 6px",
-                              borderRadius: 4,
-                            }}
-                          >
-                            ID: {task.id}
-                          </span>
                           <span
                             style={{
                               fontSize: 10,
@@ -336,6 +303,19 @@ export default function BlackboardModal({ isOpen, onClose, threadId }) {
                           >
                             #{task.category || "general"}
                           </span>
+                          <span
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 600,
+                              color: "#3B82F6",
+                              background: "rgba(59, 130, 246, 0.08)",
+                              padding: "2px 8px",
+                              borderRadius: 12,
+                            }}
+                          >
+                            by {task.agent_name || "system"}
+                          </span>
+
                         </div>
                       </div>
                     </div>

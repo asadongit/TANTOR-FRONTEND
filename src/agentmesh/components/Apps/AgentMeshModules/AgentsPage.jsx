@@ -1,15 +1,19 @@
 import React, { useEffect, useState, useRef } from 'react';
+import PropTypes from 'prop-types';
 import { useWorkflowStore, useUIStore } from '../../../store';
 import { listAgentTemplates, deleteAgentTemplate, getAgentTemplate } from '../../../api/agentmesh';
 import {
-  FiSearch, FiUser, FiInfo, FiTag, FiGrid, FiList,
-  FiFilter, FiX, FiTrash2, FiCpu, FiCode, FiLayers, FiActivity,
-  FiZap, FiTerminal, FiUsers, FiShield, FiTarget, FiShare2
+  FiSearch, FiUser, FiInfo, FiGrid, FiList,
+  FiFilter, FiX, FiTrash2, FiCpu, FiCode, FiTarget, FiShare2
 } from 'react-icons/fi';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import bannerImage from '../../../assets/data/Stack-p-2000.png';
 import Pagination from '../../Common/Pagination';
 import PageHeader from '../../Common/PageHeader';
+import LibraryHeader from '../../Common/LibraryHeader';
+import LibraryCard from '../../Common/LibraryCard';
+import LibraryListRow from '../../Common/LibraryListRow';
+import ConfirmationModal from '../../Common/ConfirmationModal';
 
 const PURPLE_THEME = {
   primary: 'var(--theme-primary)',
@@ -20,136 +24,80 @@ const PURPLE_THEME = {
 };
 
 function AgentTemplateCard({ t, onDetails, onDelete, onUse, idx }) {
-  const theme = PURPLE_THEME;
-  // config is NOT in the list response (summary only). Details modal fetches it on demand.
+  const tags = [];
+  if (t.group) tags.push({ label: t.group, type: 'Group' });
+  if (t.category) tags.push({ label: t.category, type: 'Category' });
+
+  const moreActions = [
+    { label: 'Delete', icon: <FiTrash2 size={14} />, onClick: () => onDelete(t.id), variant: 'danger' },
+  ];
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -5, transition: { duration: 0.2 } }}
-      transition={{ duration: 0.4, delay: idx * 0.05, ease: [0.23, 1, 0.32, 1] }}
-      style={{
-        background: 'white',
-        border: `1px solid var(--border-light)`,
-        borderRadius: 24,
-        boxShadow: 'var(--shadow-sm)',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        overflow: 'hidden',
-        height: '100%',
-        transition: 'all 0.3s ease'
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
-        e.currentTarget.style.borderColor = '#E2E8F0';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
-        e.currentTarget.style.borderColor = 'var(--border-light)';
-      }}
-    >
-      {/* Top Body */}
-      <div style={{ padding: '20px 20px 16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 12,
-            background: theme.bg,
-            border: `1px solid ${theme.border}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: theme.primary,
-            boxShadow: `0 4px 12px -2px var(--theme-primary-glow)`
-          }}>
-            <FiUser size={22} strokeWidth={2} />
-          </div>
-
-          <div style={{
-            fontSize: 9, fontWeight: 800, color: theme.primary,
-            background: theme.bg, padding: '4px 10px', borderRadius: 20,
-            letterSpacing: '0.05em', textTransform: 'uppercase'
-          }}>
-            {t.group || 'GENERAL AGENT'}
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 10 }}>
-          <h3 style={{
-            fontSize: 17, fontWeight: 800, color: 'var(--text-primary)',
-            marginBottom: 4, letterSpacing: '-0.02em'
-          }}>
-            {t.name}
-          </h3>
-          <span style={{
-            fontSize: 10, fontWeight: 800, color: theme.primary,
-            background: theme.bg, padding: '2px 8px', borderRadius: 4,
-            textTransform: 'uppercase', letterSpacing: '0.05em'
-          }}>
-            {t.category || 'FINANCE'}
-          </span>
-        </div>
-
-        <p style={{
-          fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5,
-          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-          marginBottom: 12
-        }}>
-          {t.description || "Deploy this agent template for complex task orchestration and real-time processing."}
-        </p>
-      </div>
-
-      {/* Footer Actions */}
-      <div style={{
-        padding: '12px 16px',
-        background: '#F9FAFB',
-        borderTop: '1px solid #F1F5F9',
-        display: 'flex', alignItems: 'center', gap: 10
-      }}>
-        <button
-          onClick={(e) => { e.stopPropagation(); onUse(t); }}
-          style={{
-            flex: 1, height: 36, borderRadius: 8, border: 'none',
-            background: theme.accent, color: theme.primary, fontSize: 11, fontWeight: 800,
-            cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = theme.primary; e.currentTarget.style.color = 'white'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = theme.accent; e.currentTarget.style.color = theme.primary; }}
-        >
-          <span>+ Add</span>
-        </button>
-
-        <button
-          onClick={(e) => { e.stopPropagation(); onDetails(t); }}
-          style={{
-            flex: 1, height: 36, borderRadius: 8, border: '1px solid #E5E7EB',
-            background: 'white', color: '#111827', fontSize: 11, fontWeight: 700,
-            cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = '#F3F4F6'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-        >
-          <FiInfo size={14} />
-          <span>Details</span>
-        </button>
-
-        <button 
-          onClick={(e) => { e.stopPropagation(); onDelete(t.id); }}
-          style={{ 
-            width: 36, height: 36, borderRadius: 8, border: '1px solid #FEE2E2',
-            background: 'white', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', transition: 'all 0.2s'
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'white'; }}
-          title="Delete Template"
-        >
-          <FiTrash2 size={14} />
-        </button>
-      </div>
-    </motion.div>
+    <LibraryCard
+      icon={<FiUser size={22} strokeWidth={2} />}
+      title={t.name}
+      description={t.description}
+      tags={tags}
+      primaryAction={{ label: '+ Add', onClick: () => onUse(t) }}
+      secondaryAction={{ label: 'Details', onClick: () => onDetails(t) }}
+      moreActions={moreActions}
+      idx={idx}
+      onClick={() => onDetails(t)}
+    />
   );
 }
+
+AgentTemplateCard.propTypes = {
+  t: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string,
+    category: PropTypes.string,
+    group: PropTypes.string
+  }).isRequired,
+  onDetails: PropTypes.func.isRequired,
+  onDelete: PropTypes.func.isRequired,
+  onUse: PropTypes.func.isRequired,
+  idx: PropTypes.number.isRequired
+};
+
+function AgentListRow({ t, onDetails, onDelete, onUse, idx }) {
+  const tags = [];
+  if (t.group) tags.push({ label: t.group, type: 'Group' });
+  if (t.category) tags.push({ label: t.category, type: 'Category' });
+
+  const moreActions = [
+    { label: 'Delete', icon: <FiTrash2 size={14} />, onClick: () => onDelete(t.id), variant: 'danger' },
+  ];
+
+  return (
+    <LibraryListRow
+      icon={<FiUser size={22} />}
+      title={t.name}
+      description={t.description}
+      tags={tags}
+      primaryAction={{ label: '+ Add', onClick: () => onUse(t) }}
+      secondaryAction={{ label: 'Details', onClick: () => onDetails(t) }}
+      moreActions={moreActions}
+      idx={idx}
+      onClick={() => onDetails(t)}
+    />
+  );
+}
+
+AgentListRow.propTypes = {
+  t: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string,
+    category: PropTypes.string,
+    group: PropTypes.string
+  }).isRequired,
+  onDetails: PropTypes.func.isRequired,
+  onDelete: PropTypes.func.isRequired,
+  onUse: PropTypes.func.isRequired,
+  idx: PropTypes.number.isRequired
+};
 
 function AgentDetailsModal({ template, onClose, onUse }) {
   const [activeTab, setActiveTab] = useState('summary');
@@ -324,6 +272,17 @@ function AgentDetailsModal({ template, onClose, onUse }) {
   );
 }
 
+AgentDetailsModal.propTypes = {
+  template: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string,
+    config: PropTypes.object
+  }).isRequired,
+  onClose: PropTypes.func.isRequired,
+  onUse: PropTypes.func.isRequired
+};
+
 function AgentTypeSelectionModal({ onSelect, onClose }) {
   const types = [
     { id: 'llm_agent', label: 'Standard Agent', desc: 'Versatile LLM node with tools.', icon: FiCpu, color: '#3B82F6' },
@@ -402,6 +361,11 @@ function AgentTypeSelectionModal({ onSelect, onClose }) {
   );
 }
 
+AgentTypeSelectionModal.propTypes = {
+  onSelect: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired
+};
+
 export default function AgentsPage() {
   const { nodes, setNodesDirty } = useWorkflowStore();
   const { refreshTrigger, setActivePage } = useUIStore();
@@ -409,7 +373,6 @@ export default function AgentsPage() {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
   const [viewMode, setViewMode] = useState('cards');
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [templateToUse, setTemplateToUse] = useState(null);
@@ -417,9 +380,7 @@ export default function AgentsPage() {
   const [categories, setCategories] = useState(['All']);
   const [selectedGroup, setSelectedGroup] = useState('All');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [filterOpen, setFilterOpen] = useState(false);
-  const filterPanelRef = useRef(null);
-  const searchInputRef = useRef(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const handleUseTemplate = (template) => {
     setTemplateToUse(template);
@@ -513,179 +474,39 @@ export default function AgentsPage() {
     load();
   }, [currentPage, search, selectedGroup, selectedCategory]);
 
-  const handleGroupChange = (val) => {
-    setSelectedGroup(val);
-    setCurrentPage(1);
+  const handleDelete = (id) => {
+    setConfirmDeleteId(id);
   };
 
-  const handleCategoryChange = (val) => {
-    setSelectedCategory(val);
-    setCurrentPage(1);
-  };
-
-  // Handle clicks outside filter panel
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (filterPanelRef.current && !filterPanelRef.current.contains(event.target)) {
-        setFilterOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    if (searchOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [searchOpen]);
-
-  // Keydown listener for 's' keyboard shortcut
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      const activeEl = document.activeElement;
-      if (
-        activeEl &&
-        (activeEl.tagName === 'INPUT' ||
-         activeEl.tagName === 'TEXTAREA' ||
-         activeEl.isContentEditable)
-      ) {
-        return;
-      }
-      if (e.key === 's' || e.key === 'S') {
-        e.preventDefault();
-        setSearchOpen(true);
-        setTimeout(() => {
-          if (searchInputRef.current) {
-            searchInputRef.current.focus();
-          }
-        }, 50);
-      }
-    };
-    globalThis.addEventListener('keydown', handleKeyDown);
-    return () => globalThis.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this agent template?')) return;
+  const confirmDeleteTemplate = async () => {
+    if (!confirmDeleteId) return;
     try {
-      await deleteAgentTemplate(id);
+      await deleteAgentTemplate(confirmDeleteId);
       load();
     } catch (e) {
       alert('Delete failed: ' + e.message);
+    } finally {
+      setConfirmDeleteId(null);
     }
   };
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', overflow: 'hidden' }}>
-      <div style={{ padding: '16px 32px', borderBottom: '1px solid var(--border-light)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <PageHeader 
-          title="Agent Library" 
-          description="Manage and customize autonomous agent blueprints, persona prompts, and underlying LLM configurations." 
-        />
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* Search bar collapsible (Matching Marketplace) */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', transition: 'width 0.2s', width: (searchOpen || search) ? 320 : 36 }}>
-            {(!searchOpen && !search) && (
-              <button
-                onClick={() => setSearchOpen(true)}
-                title="Search templates..."
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8
-                }}
-              >
-                <FiSearch size={18} color="#6B7280" />
-              </button>
-            )}
-            {(searchOpen || search) && (
-              <div style={{ position: 'relative', width: '100%' }}>
-                <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} size={16} />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search templates..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  onBlur={() => { if (!search) setSearchOpen(false); }}
-                  style={{
-                    width: '100%', padding: '8px 12px 8px 36px', border: '1px solid #E5E7EB', borderRadius: 10,
-                    fontSize: 14, outline: 'none', background: 'white', color: '#111827'
-                  }}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Filters Popover */}
-          <div style={{ position: 'relative' }} ref={filterPanelRef}>
-            <button
-              onClick={() => setFilterOpen(!filterOpen)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
-                background: filterOpen ? '#111827' : 'white',
-                color: filterOpen ? 'white' : '#111827',
-                border: '1px solid #E5E7EB', borderRadius: 10, fontSize: 13, fontWeight: 600,
-                cursor: 'pointer', transition: 'all 0.2s'
-              }}
-            >
-              <FiFilter size={16} /> Filters
-              {(selectedCategory !== 'All' || selectedGroup !== 'All') && (
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444' }} />
-              )}
-            </button>
-
-            <AnimatePresence>
-              {filterOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                  style={{
-                    position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 260,
-                    background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
-                    boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', zIndex: 100, padding: 16
-                  }}
-                >
-                  <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>By Group</div>
-                    <select
-                      value={selectedGroup}
-                      onChange={(e) => handleGroupChange(e.target.value)}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 8, outline: 'none', fontSize: 13 }}
-                    >
-                      {groups.map(g => <option key={g} value={g}>{g === 'All' ? 'All Groups' : g}</option>)}
-                    </select>
-                  </div>
-
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>By Category</div>
-                    <select
-                      value={selectedCategory}
-                      onChange={(e) => handleCategoryChange(e.target.value)}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 8, outline: 'none', fontSize: 13 }}
-                    >
-                      {categories.map(c => <option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>)}
-                    </select>
-                  </div>
-
-                  <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end' }}>
-                    <button
-                      onClick={() => { setSelectedCategory('All'); setSelectedGroup('All'); }}
-                      style={{ padding: '6px 10px', fontSize: 12, color: '#6B7280', border: 'none', background: 'none', cursor: 'pointer' }}
-                    >
-                      Reset All
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          <div style={{ display: 'flex', gap: 2, background: 'var(--bg-canvas)', border: '1px solid var(--border)', borderRadius: 10, padding: '4px' }}>
-            <button onClick={() => setViewMode('cards')} style={{ background: viewMode === 'cards' ? 'var(--theme-primary)' : 'transparent', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', color: viewMode === 'cards' ? 'white' : '#6B7280' }}><FiGrid size={16} /></button>
-            <button onClick={() => setViewMode('list')} style={{ background: viewMode === 'list' ? 'var(--theme-primary)' : 'transparent', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', color: viewMode === 'list' ? 'white' : '#6B7280' }}><FiList size={16} /></button>
-          </div>
-        </div>
-      </div>
+      <LibraryHeader
+        title="Agent Library"
+        description="Manage and customize autonomous agent blueprints, persona prompts, and underlying LLM configurations."
+        search={search}
+        onSearchChange={val => { setSearch(val); setCurrentPage(1); }}
+        groups={groups}
+        categories={categories}
+        selectedGroup={selectedGroup}
+        onGroupChange={val => { setSelectedGroup(val); setCurrentPage(1); }}
+        selectedCategory={selectedCategory}
+        onCategoryChange={val => { setSelectedCategory(val); setCurrentPage(1); }}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        placeholder="Search templates..."
+      />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }} ref={containerRef}>
         {/* ── Agent Banner — only show once agents exist ── */}
@@ -797,21 +618,29 @@ export default function AgentsPage() {
             <div style={{ fontSize: 14, fontWeight: 500 }}>No agent templates found</div>
           </div>
         ) : (
-          <div style={{
-            display: viewMode === 'cards' ? 'grid' : 'flex',
-            flexDirection: viewMode === 'cards' ? 'unset' : 'column',
-            gridTemplateColumns: viewMode === 'cards' ? 'repeat(auto-fill, minmax(320px, 1fr))' : 'unset',
-            gap: 24
-          }}>
-            {templates.map((t, i) => (
-              <AgentTemplateCard
-                key={t.id} t={t} idx={i}
-                onDetails={setSelectedTemplate}
-                onDelete={handleDelete}
-                onUse={handleUseTemplate}
-              />
-            ))}
-          </div>
+          viewMode === 'cards' ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
+              {templates.map((t, i) => (
+                <AgentTemplateCard
+                  key={t.id} t={t} idx={i}
+                  onDetails={setSelectedTemplate}
+                  onDelete={handleDelete}
+                  onUse={handleUseTemplate}
+                />
+              ))}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {templates.map((t, i) => (
+                <AgentListRow
+                  key={t.id} t={t} idx={i}
+                  onDetails={setSelectedTemplate}
+                  onDelete={handleDelete}
+                  onUse={handleUseTemplate}
+                />
+              ))}
+            </div>
+          )
         )}
 
         {total > pageSize && (
@@ -840,6 +669,17 @@ export default function AgentsPage() {
           />
         )}
       </AnimatePresence>
+
+      <ConfirmationModal
+        isOpen={confirmDeleteId !== null}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={confirmDeleteTemplate}
+        title="Delete Agent Template"
+        message="Are you sure you want to delete this agent template? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   );
 }

@@ -1,331 +1,87 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { 
-  FiBookOpen, FiPlus, FiTrash2, FiEdit, FiSearch, 
-  FiTag, FiX, FiCheck, FiLoader, FiAlertCircle, FiMoreHorizontal, FiCpu,
-  FiGrid, FiList
+  FiBookOpen, FiPlus, FiTrash2, FiEdit, 
+  FiX, FiCheck, FiLoader, FiAlertCircle, FiCpu
 } from 'react-icons/fi';
 import { listAvailableSkills, createSkill, deleteSkill, generateSkillSop } from '../../../api/agentmesh';
 import AddSkillModal from './addSkillModal';
 import ConfirmationModal from '../../Common/ConfirmationModal';
 import { motion, AnimatePresence } from 'framer-motion';
-import PageHeader from '../../Common/PageHeader';
-
-function ActionDropdown({ actions, isOpen, onClose }) {
-  if (!isOpen) return null;
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9, y: -10 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      style={{
-        position: 'absolute', top: '100%', right: 0, marginTop: 8,
-        background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
-        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', zIndex: 50,
-        minWidth: 160, padding: '6px'
-      }}
-    >
-      {actions.map((a) => (
-        <button
-          key={a.label}
-          onClick={(e) => { e.stopPropagation(); a.onClick(); onClose(); }}
-          style={{
-            width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-            padding: '10px 12px', borderRadius: 8, border: 'none', background: 'none',
-            fontSize: 13, fontWeight: 500, color: a.variant === 'danger' ? '#EF4444' : '#374151',
-            cursor: 'pointer', transition: 'all 0.15s'
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = a.variant === 'danger' ? '#FEF2F2' : '#F3F4F6'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
-        >
-          {a.icon} {a.label}
-        </button>
-      ))}
-    </motion.div>
-  );
-}
-
-ActionDropdown.propTypes = {
-  actions: PropTypes.arrayOf(PropTypes.shape({
-    label: PropTypes.string.isRequired,
-    icon: PropTypes.node.isRequired,
-    onClick: PropTypes.func.isRequired,
-    variant: PropTypes.string
-  })).isRequired,
-  isOpen: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired
-};
+import LibraryHeader from '../../Common/LibraryHeader';
+import LibraryCard from '../../Common/LibraryCard';
+import LibraryListRow from '../../Common/LibraryListRow';
+import Pagination from '../../Common/Pagination';
 
 function SkillCard({ skill, onDetails, onEdit, onDelete, onAddToCanvas, idx }) {
-  const [showMore, setShowMore] = useState(false);
-
   const moreActions = [
     { label: 'Edit', icon: <FiEdit size={14} />, onClick: () => onEdit(skill) },
     { label: 'Delete', icon: <FiTrash2 size={14} />, onClick: () => onDelete(skill.id), variant: 'danger' },
   ];
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -5, transition: { duration: 0.2 } }}
-      transition={{ duration: 0.4, delay: idx * 0.05, ease: [0.23, 1, 0.32, 1] }}
-      style={{
-        background: 'white',
-        border: '1px solid var(--border-light)',
-        borderRadius: 24,
-        boxShadow: 'var(--shadow-sm)',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        zIndex: showMore ? 10 : 1,
-        height: '100%',
-        transition: 'all 0.3s ease',
-        cursor: 'pointer'
-      }}
+    <LibraryCard
+      icon={<FiBookOpen size={22} strokeWidth={2} />}
+      title={skill.name.replace(/-/g, ' ')}
+      description={skill.description}
+      tags={(skill.tags || []).map(t => ({ label: t, type: 'Tag' }))}
+      primaryAction={{ label: '+ Add', onClick: () => onAddToCanvas(skill) }}
+      secondaryAction={{ label: 'SOP', onClick: () => onDetails(skill) }}
+      moreActions={moreActions}
+      idx={idx}
       onClick={() => onDetails(skill)}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
-        e.currentTarget.style.borderColor = '#E2E8F0';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
-        e.currentTarget.style.borderColor = 'var(--border-light)';
-        setShowMore(false);
-      }}
-    >
-      {/* Top Body */}
-      <div style={{ padding: '20px 20px 16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 12,
-            background: 'var(--theme-primary-glow)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'var(--theme-primary)',
-            boxShadow: '0 4px 12px -2px var(--theme-primary-glow)'
-          }}>
-            <FiBookOpen size={22} strokeWidth={2} />
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 10 }}>
-          <h3 style={{
-            fontSize: 17, fontWeight: 800, color: 'var(--text-primary)',
-            marginBottom: 6, letterSpacing: '-0.02em', textTransform: 'capitalize'
-          }}>
-            {skill.name.replace(/-/g, ' ')}
-          </h3>
-        </div>
-
-        <p style={{
-          fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5,
-          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-          marginBottom: 12
-        }}>
-          {skill.description || "No description provided."}
-        </p>
-
-        {skill.tags && skill.tags.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 'auto' }}>
-            {skill.tags.map(tag => (
-              <span
-                key={tag}
-                style={{
-                  fontSize: 10,
-                  fontWeight: 500,
-                  background: 'var(--border-light)',
-                  color: 'var(--text-secondary)',
-                  padding: '2px 8px',
-                  borderRadius: 4
-                }}
-              >
-                #{tag}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div style={{
-        padding: '12px 16px',
-        background: '#F9FAFB',
-        borderTop: '1px solid #F1F5F9',
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24,
-        display: 'flex', alignItems: 'center', gap: 8,
-        position: 'relative'
-      }}>
-        <button
-          onClick={(e) => { e.stopPropagation(); onAddToCanvas(skill); }}
-          style={{
-            height: 36, padding: '0 16px', borderRadius: 8, border: 'none',
-            background: 'var(--theme-primary-glow)', color: 'var(--theme-primary)', fontSize: 11, fontWeight: 800,
-            cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--theme-primary)'; e.currentTarget.style.color = 'white'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--theme-primary-glow)'; e.currentTarget.style.color = 'var(--theme-primary)'; }}
-        >
-          <span>+ Add</span>
-        </button>
-
-        <button
-          onClick={(e) => { e.stopPropagation(); onDetails(skill); }}
-          style={{
-            height: 36, padding: '0 16px', borderRadius: 8, border: '1px solid #E5E7EB',
-            background: 'white', color: '#111827', fontSize: 11, fontWeight: 700,
-            cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = '#F3F4F6'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-        >
-          <span>SOP</span>
-        </button>
-
-        <div style={{ flex: 1 }} />
-
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={(e) => { e.stopPropagation(); setShowMore(!showMore); }}
-            title="More Options"
-            style={{
-              width: 36, height: 36, borderRadius: 8, border: '1px solid #E5E7EB',
-              background: 'white', color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#F3F4F6'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-          >
-            <FiMoreHorizontal size={18} />
-          </button>
-          <ActionDropdown actions={moreActions} isOpen={showMore} onClose={() => setShowMore(false)} />
-        </div>
-      </div>
-    </motion.div>
+    />
   );
 }
+
+SkillCard.propTypes = {
+  skill: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string,
+    tags: PropTypes.arrayOf(PropTypes.string)
+  }).isRequired,
+  onDetails: PropTypes.func.isRequired,
+  onEdit: PropTypes.func.isRequired,
+  onDelete: PropTypes.func.isRequired,
+  onAddToCanvas: PropTypes.func.isRequired,
+  idx: PropTypes.number.isRequired
+};
 
 function SkillListRow({ skill, onDetails, onEdit, onDelete, onAddToCanvas, idx }) {
-  const [showMore, setShowMore] = useState(false);
-
   const moreActions = [
     { label: 'Edit', icon: <FiEdit size={14} />, onClick: () => onEdit(skill) },
     { label: 'Delete', icon: <FiTrash2 size={14} />, onClick: () => onDelete(skill.id), variant: 'danger' },
   ];
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: idx * 0.03 }}
-      style={{
-        background: 'white',
-        border: `1px solid var(--border-light)`,
-        borderRadius: 16,
-        padding: '12px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 20,
-        position: 'relative',
-        zIndex: showMore ? 10 : 1,
-        cursor: 'pointer',
-        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-      }}
+    <LibraryListRow
+      icon={<FiBookOpen size={22} />}
+      title={skill.name.replace(/-/g, ' ')}
+      description={skill.description}
+      tags={(skill.tags || []).map(t => ({ label: t, type: 'Tag' }))}
+      primaryAction={{ label: '+ Add', onClick: () => onAddToCanvas(skill) }}
+      secondaryAction={{ label: 'SOP', onClick: () => onDetails(skill) }}
+      moreActions={moreActions}
+      idx={idx}
       onClick={() => onDetails(skill)}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = 'var(--shadow-md)';
-        e.currentTarget.style.borderColor = '#E5E7EB';
-        e.currentTarget.style.transform = 'translateX(4px)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = 'none';
-        e.currentTarget.style.borderColor = 'var(--border-light)';
-        e.currentTarget.style.transform = 'translateX(0)';
-        setShowMore(false);
-      }}
-    >
-      {/* Accent bar */}
-      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: 'var(--theme-primary)', borderTopLeftRadius: 16, borderBottomLeftRadius: 16 }} />
-
-      <div style={{
-        width: 44, height: 44, borderRadius: 12,
-        background: 'var(--theme-primary-glow)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexShrink: 0,
-        color: 'var(--theme-primary)',
-        boxShadow: '0 4px 12px -2px var(--theme-primary-glow)'
-      }}>
-        <FiBookOpen size={22} />
-      </div>
-
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 10, textTransform: 'capitalize' }}>
-          {skill.name.replace(/-/g, ' ')}
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {skill.description || "No description provided."}
-          </span>
-          {skill.tags && skill.tags.length > 0 && (
-            <>
-              <span style={{ width: 1, height: 12, background: 'var(--border)' }} />
-              <div style={{ display: 'flex', gap: 4 }}>
-                {skill.tags.map(tag => (
-                  <span key={tag} style={{ fontSize: 10, color: 'var(--text-muted)' }}>#{tag}</span>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }} onClick={e => e.stopPropagation()}>
-        <button
-          onClick={() => onAddToCanvas(skill)}
-          style={{
-            height: 32, border: 'none', borderRadius: 8,
-            background: 'var(--theme-primary-glow)', color: 'var(--theme-primary)', padding: '0 14px', display: 'flex', alignItems: 'center',
-            gap: 6, fontSize: 11, fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'var(--theme-primary)'; e.currentTarget.style.color = 'white'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'var(--theme-primary-glow)'; e.currentTarget.style.color = 'var(--theme-primary)'; }}
-        >
-          <span>+ Add</span>
-        </button>
-
-        <button
-          onClick={() => onDetails(skill)}
-          style={{
-            height: 32, border: '1px solid #E5E7EB', borderRadius: 8,
-            background: 'white', color: '#111827', padding: '0 12px', display: 'flex', alignItems: 'center',
-            gap: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = '#F3F4F6'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-        >
-          <span>SOP</span>
-        </button>
-
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={() => setShowMore(!showMore)}
-            title="More Options"
-            style={{
-              width: 32, height: 32, borderRadius: 8, border: '1px solid #E5E7EB',
-              background: 'white', color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#F3F4F6'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-          >
-            <FiMoreHorizontal size={16} />
-          </button>
-          <ActionDropdown actions={moreActions} isOpen={showMore} onClose={() => setShowMore(false)} />
-        </div>
-      </div>
-    </motion.div>
+    />
   );
 }
+
+SkillListRow.propTypes = {
+  skill: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string,
+    tags: PropTypes.arrayOf(PropTypes.string)
+  }).isRequired,
+  onDetails: PropTypes.func.isRequired,
+  onEdit: PropTypes.func.isRequired,
+  onDelete: PropTypes.func.isRequired,
+  onAddToCanvas: PropTypes.func.isRequired,
+  idx: PropTypes.number.isRequired
+};
 
 function SkillDetailsModal({ skill, onClose, onAddToCanvas }) {
   if (!skill) return null;
@@ -428,6 +184,10 @@ export default function SkillsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const pageSize = 12;
+
   const [selectedSkill, setSelectedSkill] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddCanvasOpen, setIsAddCanvasOpen] = useState(false);
@@ -484,47 +244,20 @@ export default function SkillsPage() {
     return errors;
   };
 
-  const [searchOpen, setSearchOpen] = useState(searchQuery?.length > 0);
-  const searchInputRef = useRef(null);
-
-  useEffect(() => {
-    if (searchOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [searchOpen]);
-
   // Keydown listener for 's' keyboard shortcut
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      const activeEl = document.activeElement;
-      if (
-        activeEl &&
-        (activeEl.tagName === 'INPUT' ||
-         activeEl.tagName === 'TEXTAREA' ||
-         activeEl.isContentEditable)
-      ) {
-        return;
-      }
-      if (e.key === 's' || e.key === 'S') {
-        e.preventDefault();
-        setSearchOpen(true);
-        setTimeout(() => {
-          if (searchInputRef.current) {
-            searchInputRef.current.focus();
-          }
-        }, 50);
-      }
-    };
-    globalThis.addEventListener('keydown', handleKeyDown);
-    return () => globalThis.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  // (Optional keydown search trigger can be added if desired, keeping clean for now)
 
   const fetchSkills = async () => {
     setLoading(true);
     try {
-      const data = await listAvailableSkills();
+      const data = await listAvailableSkills({
+        page: currentPage,
+        limit: pageSize,
+        search: searchQuery
+      });
       if (data?.skills) {
         setSkills(data.skills);
+        setTotal(data.total || 0);
       }
       setError(null);
     } catch (err) {
@@ -537,7 +270,7 @@ export default function SkillsPage() {
 
   useEffect(() => {
     fetchSkills();
-  }, []);
+  }, [currentPage, searchQuery]);
 
   const handleOpenCreate = () => {
     setIsEditing(false);
@@ -572,10 +305,9 @@ export default function SkillsPage() {
     if (!skillToDelete) return;
     try {
       await deleteSkill(skillToDelete);
-      const updated = skills.filter(s => s.id !== skillToDelete);
-      setSkills(updated);
+      fetchSkills();
       if (selectedSkill && selectedSkill.id === skillToDelete) {
-        setSelectedSkill(updated[0] || null);
+        setSelectedSkill(null);
       }
     } catch (err) {
       alert(err.message || 'Failed to delete skill.');
@@ -645,14 +377,8 @@ export default function SkillsPage() {
       const result = await createSkill(payload);
       if (result?.skill) {
         const savedSkill = result.skill;
-        if (isEditing) {
-          const updatedList = skills.map(s => s.id === savedSkill.id ? savedSkill : s);
-          setSkills(updatedList);
-          setSelectedSkill(savedSkill);
-        } else {
-          setSkills([savedSkill, ...skills]);
-          setSelectedSkill(savedSkill);
-        }
+        fetchSkills();
+        setSelectedSkill(savedSkill);
         setIsModalOpen(false);
       }
     } catch (err) {
@@ -662,13 +388,7 @@ export default function SkillsPage() {
     }
   };
 
-  const filteredSkills = skills.filter(skill => {
-    const query = searchQuery.toLowerCase();
-    const nameMatch = skill.name.toLowerCase().includes(query);
-    const descMatch = (skill.description || '').toLowerCase().includes(query);
-    const tagsMatch = (skill.tags || []).some(t => t.toLowerCase().includes(query));
-    return nameMatch || descMatch || tagsMatch;
-  });
+  const filteredSkills = skills;
 
   return (
     <div style={{
@@ -679,55 +399,18 @@ export default function SkillsPage() {
       fontFamily: "'Google Sans','Roboto',sans-serif",
       overflow: 'hidden'
     }}>
-      {/* Header Banner */}
-      <div style={{
-        padding: '16px 32px',
-        borderBottom: '1px solid var(--border-light)',
-        background: 'white',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        boxShadow: 'var(--shadow-xs)'
-      }}>
-        <PageHeader 
-          title="Skills" 
-          description="Define and refine Standard Operating Procedures (SOPs) that guide agent execution behaviors." 
-        />
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* Search bar collapsible (Standard Layout) */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', transition: 'width 0.2s', width: (searchOpen || searchQuery) ? 320 : 36 }}>
-            {(!searchOpen && !searchQuery) && (
-              <button
-                onClick={() => setSearchOpen(true)}
-                title="Search skills..."
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8
-                }}
-              >
-                <FiSearch size={18} color="#6B7280" />
-              </button>
-            )}
-            {(searchOpen || searchQuery) && (
-              <div style={{ position: 'relative', width: '100%' }}>
-                <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} size={16} />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search skills..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onBlur={() => { if (!searchQuery) setSearchOpen(false); }}
-                  style={{
-                    width: '100%', padding: '8px 12px 8px 36px', border: '1px solid #E5E7EB', borderRadius: 10,
-                    fontSize: 14, outline: 'none', background: 'white', color: '#111827'
-                  }}
-                />
-              </div>
-            )}
-          </div>
-
+      <LibraryHeader
+        title="Skills"
+        description="Define and refine Standard Operating Procedures (SOPs) that guide agent execution behaviors."
+        search={searchQuery}
+        onSearchChange={val => { setSearchQuery(val); setCurrentPage(1); }}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        showFilters={false}
+        placeholder="Search skills..."
+        actions={
           <button
+            type="button"
             onClick={handleOpenCreate}
             style={{
               display: 'flex',
@@ -754,13 +437,8 @@ export default function SkillsPage() {
           >
             <FiPlus strokeWidth={2.5} /> Add Skill
           </button>
-
-          <div style={{ display: 'flex', gap: 2, background: 'var(--bg-canvas)', border: '1px solid var(--border)', borderRadius: 10, padding: '4px' }}>
-            <button onClick={() => setViewMode('cards')} style={{ background: viewMode === 'cards' ? 'var(--theme-primary)' : 'transparent', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', color: viewMode === 'cards' ? 'white' : '#6B7280' }}><FiGrid size={16} /></button>
-            <button onClick={() => setViewMode('list')} style={{ background: viewMode === 'list' ? 'var(--theme-primary)' : 'transparent', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', color: viewMode === 'list' ? 'white' : '#6B7280' }}><FiList size={16} /></button>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Main Panel (Grid of Cards) */}
       <div style={{
@@ -847,6 +525,15 @@ export default function SkillsPage() {
                 }}
               />
             ))}
+          </div>
+        )}
+        {total > pageSize && (
+          <div style={{ marginTop: 40 }}>
+            <Pagination 
+              currentPage={currentPage} 
+              totalPages={Math.ceil(total / pageSize)} 
+              onPageChange={setCurrentPage} 
+            />
           </div>
         )}
       </div>

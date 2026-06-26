@@ -1,6 +1,7 @@
 import React from 'react';
 import { useUIStore } from '../../../store';
 import AgentsPage from './AgentsPage';
+import NodesPage from './NodesPage';
 import ToolsPage from './ToolsPage';
 import APIsPage from './APIsPage';
 import SkillsPage from './SkillsPage';
@@ -29,6 +30,7 @@ export default function LibraryPage() {
       }}>
         <div style={{ width: '100%', height: '100%' }}>
           {activeLibraryTab === 'agents' && <AgentsPage />}
+          {activeLibraryTab === 'nodes' && <NodesPage />}
           {activeLibraryTab === 'tools' && <ToolsPage />}
           {activeLibraryTab === 'apis' && <APIsPage />}
           {activeLibraryTab === 'skills' && <SkillsPage />}
