@@ -5,7 +5,7 @@ import tantorOldLogo from '../../assets/data/Tantor old logo.png';
 import {
   FiGrid, FiGitBranch, FiBarChart2, FiBox, FiBookOpen,
   FiSettings, FiLifeBuoy, FiChevronLeft, FiChevronRight, FiBell, FiMessageSquare,
-  FiList, FiActivity, FiLink, FiCpu
+  FiList, FiActivity, FiLink, FiCpu, FiLayers
 } from 'react-icons/fi';
 
 const NAV_ITEMS = [
@@ -83,6 +83,7 @@ export default function Sidebar() {
           // Library sub-items
           const LIBRARY_SUBS = [
             { id: 'agents', label: 'Agents', icon: FiCpu },
+            { id: 'nodes', label: 'Nodes', icon: FiLayers },
             { id: 'tools', label: 'Tools', icon: FiBox },
             { id: 'apis', label: 'APIs', icon: FiLink },
             { id: 'skills', label: 'Skills', icon: FiBookOpen },

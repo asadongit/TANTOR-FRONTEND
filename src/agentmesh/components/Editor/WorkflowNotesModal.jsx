@@ -390,15 +390,14 @@ export default function WorkflowNotesModal() {
           <div className="sidebar-header">
             <div className="sidebar-title-container">
               <FiBookOpen className="sidebar-logo" size={20} />
-              <h2 className="sidebar-title">Workflow Journal</h2>
+              <h2 className="sidebar-title">Notes</h2>
             </div>
             <button
-              className="add-note-btn"
+              className="add-note-btn icon-only"
               onClick={handleCreate}
               title="Create Note"
             >
               <FiPlus size={18} />
-              <span>New Note</span>
             </button>
           </div>
 
@@ -628,7 +627,7 @@ export default function WorkflowNotesModal() {
               <button
                 className="toolbar-btn close-modal-btn"
                 onClick={toggleNotes}
-                title="Close Journal"
+                title="Close Notes"
               >
                 <FiX size={18} />
               </button>
@@ -774,6 +773,14 @@ export default function WorkflowNotesModal() {
           transition: all 0.2s ease;
         }
 
+        .add-note-btn.icon-only {
+          width: 32px;
+          height: 32px;
+          padding: 0;
+          border-radius: 50%;
+          justify-content: center;
+        }
+
         .add-note-btn:hover {
           opacity: 0.9;
           transform: translateY(-1px);
@@ -883,6 +890,7 @@ export default function WorkflowNotesModal() {
           padding: 40px 20px;
           color: var(--text-muted);
           font-size: 13px;
+          flex: 1;
         }
 
         .note-item {

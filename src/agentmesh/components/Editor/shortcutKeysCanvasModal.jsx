@@ -239,7 +239,7 @@ export default function ShortcutKeysCanvasModal({ isOpen, onClose }) {
           border-radius: 10px;
           background: #ffffff;
           border: 1px solid #e2e8f0;
-          color: #6366f1;
+          color: var(--theme-primary, #a78bfa);
           display: flex;
           align-items: center;
           justify-content: center;
