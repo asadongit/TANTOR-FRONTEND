@@ -7,7 +7,7 @@ const NODE_DEFAULTS = {
   end: { label: 'END' },
   chat_model: { label: 'Chat Model', provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 },
   memory: { label: 'Memory', type_name: 'buffer_memory', window_size: 10 },
-  llm_agent: { label: 'LLM Agent', task: '', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 }, iteration_policy: { enabled: false, max_iterations: 3, target_score: 0.8, evaluator_task: '', inject_feedback_as: 'human' }, memory: null, tools: [], tool_configs: {}, return_direct: false, interrupt_before: false, interrupt_after: false, allowed_transitions: null, agent_input_prefix: 'agent_input_', output_key_prefix: 'cd_output_' },
+  llm_agent: { label: 'LLM Agent', task: '', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 }, iteration_policy: { enabled: false, max_iterations: 3, target_score: 0.8, evaluator_task: '', inject_feedback_as: 'human' }, memory: null, tools: [], tool_configs: {}, return_direct: false, interrupt_before: false, interrupt_after: false, allowed_transitions: null, agent_input_prefix: 'agent_input_', output_key_prefix: 'cd_output_', context_mode: 'smart' },
   deep_agent: { label: 'Deep Agent', task: '', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 }, tools: [], tool_configs: {}, skills: [], deep_agent_backend: 'postgres', deep_agent_root_dir: './mnt/deep_agents', interrupt_before: false, interrupt_after: false },
   tool_node: { label: 'Tool Node', tools: [], tool_configs: {}, return_direct: false, interrupt_before: false, interrupt_after: false },
   direct_tool: { label: 'Direct Tool', direct_tool_name: '', tool_arguments: {}, destination_key: '', return_direct: false, interrupt_before: false, interrupt_after: false },
@@ -1024,7 +1024,9 @@ export const useWorkflowStore = create((set, get) => ({
           // DB Engine
           'db_engine',
           // Group Node config fields
-          'name', 'description', 'internal_nodes', 'internal_edges', 'original_edges'
+          'name', 'description', 'internal_nodes', 'internal_edges', 'original_edges',
+          // Context Management
+          'context_mode', 'max_context_chars'
         ];
 
         const nodeConfig = {};
