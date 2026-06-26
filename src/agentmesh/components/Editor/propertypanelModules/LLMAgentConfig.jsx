@@ -330,6 +330,57 @@ const LLMAgentConfig = memo(function LLMAgentConfig({
             />
           </Field>
         </div>
+
+        <div
+          style={{
+            height: "1px",
+            background: "var(--border)",
+            margin: "16px 0",
+          }}
+        />
+
+        <div style={{ marginBottom: 20 }}>
+          <div
+            style={{
+              fontSize: 10,
+              fontWeight: 800,
+              color: "var(--text-muted)",
+              marginBottom: 12,
+              textTransform: "uppercase",
+            }}
+          >
+            Context Management
+          </div>
+          <Field
+            label="Context Mode"
+            hint="Smart: auto-calculates safe limit per model. Strict: aggressive truncation. Passthrough: sends full context (may exceed token limits)."
+          >
+            <Select
+              value={data.context_mode || "smart"}
+              onChange={(v) => update({ context_mode: v })}
+              options={[
+                { value: "smart", label: "Smart (Auto)" },
+                { value: "strict", label: "Strict (500 chars)" },
+                { value: "passthrough", label: "Passthrough (Full)" },
+              ]}
+            />
+          </Field>
+          <Field
+            label="Max Context Length (chars)"
+            hint="Optional override for the context character limit. Leave empty for backend auto-calculation."
+          >
+            <Input
+              type="number"
+              value={data.max_context_chars || ""}
+              onChange={(v) =>
+                update({
+                  max_context_chars: v ? parseInt(v) || 20000 : undefined,
+                })
+              }
+              placeholder="20000"
+            />
+          </Field>
+        </div>
       </AdvancedSection>
 
       {nodes.some(
