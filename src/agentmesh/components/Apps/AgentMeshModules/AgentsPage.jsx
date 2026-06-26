@@ -13,6 +13,7 @@ import PageHeader from '../../Common/PageHeader';
 import LibraryHeader from '../../Common/LibraryHeader';
 import LibraryCard from '../../Common/LibraryCard';
 import LibraryListRow from '../../Common/LibraryListRow';
+import ConfirmationModal from '../../Common/ConfirmationModal';
 
 const PURPLE_THEME = {
   primary: 'var(--theme-primary)',
@@ -379,6 +380,7 @@ export default function AgentsPage() {
   const [categories, setCategories] = useState(['All']);
   const [selectedGroup, setSelectedGroup] = useState('All');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const handleUseTemplate = (template) => {
     setTemplateToUse(template);
@@ -472,13 +474,19 @@ export default function AgentsPage() {
     load();
   }, [currentPage, search, selectedGroup, selectedCategory]);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this agent template?')) return;
+  const handleDelete = (id) => {
+    setConfirmDeleteId(id);
+  };
+
+  const confirmDeleteTemplate = async () => {
+    if (!confirmDeleteId) return;
     try {
-      await deleteAgentTemplate(id);
+      await deleteAgentTemplate(confirmDeleteId);
       load();
     } catch (e) {
       alert('Delete failed: ' + e.message);
+    } finally {
+      setConfirmDeleteId(null);
     }
   };
 
@@ -661,6 +669,17 @@ export default function AgentsPage() {
           />
         )}
       </AnimatePresence>
+
+      <ConfirmationModal
+        isOpen={confirmDeleteId !== null}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={confirmDeleteTemplate}
+        title="Delete Agent Template"
+        message="Are you sure you want to delete this agent template? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   );
 }

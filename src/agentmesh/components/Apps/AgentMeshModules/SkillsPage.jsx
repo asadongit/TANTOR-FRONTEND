@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import LibraryHeader from '../../Common/LibraryHeader';
 import LibraryCard from '../../Common/LibraryCard';
 import LibraryListRow from '../../Common/LibraryListRow';
+import Pagination from '../../Common/Pagination';
 
 function SkillCard({ skill, onDetails, onEdit, onDelete, onAddToCanvas, idx }) {
   const moreActions = [
@@ -183,6 +184,10 @@ export default function SkillsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const pageSize = 12;
+
   const [selectedSkill, setSelectedSkill] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddCanvasOpen, setIsAddCanvasOpen] = useState(false);
@@ -245,9 +250,14 @@ export default function SkillsPage() {
   const fetchSkills = async () => {
     setLoading(true);
     try {
-      const data = await listAvailableSkills();
+      const data = await listAvailableSkills({
+        page: currentPage,
+        limit: pageSize,
+        search: searchQuery
+      });
       if (data?.skills) {
         setSkills(data.skills);
+        setTotal(data.total || 0);
       }
       setError(null);
     } catch (err) {
@@ -260,7 +270,7 @@ export default function SkillsPage() {
 
   useEffect(() => {
     fetchSkills();
-  }, []);
+  }, [currentPage, searchQuery]);
 
   const handleOpenCreate = () => {
     setIsEditing(false);
@@ -295,10 +305,9 @@ export default function SkillsPage() {
     if (!skillToDelete) return;
     try {
       await deleteSkill(skillToDelete);
-      const updated = skills.filter(s => s.id !== skillToDelete);
-      setSkills(updated);
+      fetchSkills();
       if (selectedSkill && selectedSkill.id === skillToDelete) {
-        setSelectedSkill(updated[0] || null);
+        setSelectedSkill(null);
       }
     } catch (err) {
       alert(err.message || 'Failed to delete skill.');
@@ -368,14 +377,8 @@ export default function SkillsPage() {
       const result = await createSkill(payload);
       if (result?.skill) {
         const savedSkill = result.skill;
-        if (isEditing) {
-          const updatedList = skills.map(s => s.id === savedSkill.id ? savedSkill : s);
-          setSkills(updatedList);
-          setSelectedSkill(savedSkill);
-        } else {
-          setSkills([savedSkill, ...skills]);
-          setSelectedSkill(savedSkill);
-        }
+        fetchSkills();
+        setSelectedSkill(savedSkill);
         setIsModalOpen(false);
       }
     } catch (err) {
@@ -385,13 +388,7 @@ export default function SkillsPage() {
     }
   };
 
-  const filteredSkills = skills.filter(skill => {
-    const query = searchQuery.toLowerCase();
-    const nameMatch = skill.name.toLowerCase().includes(query);
-    const descMatch = (skill.description || '').toLowerCase().includes(query);
-    const tagsMatch = (skill.tags || []).some(t => t.toLowerCase().includes(query));
-    return nameMatch || descMatch || tagsMatch;
-  });
+  const filteredSkills = skills;
 
   return (
     <div style={{
@@ -406,7 +403,7 @@ export default function SkillsPage() {
         title="Skills"
         description="Define and refine Standard Operating Procedures (SOPs) that guide agent execution behaviors."
         search={searchQuery}
-        onSearchChange={setSearchQuery}
+        onSearchChange={val => { setSearchQuery(val); setCurrentPage(1); }}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         showFilters={false}
@@ -528,6 +525,15 @@ export default function SkillsPage() {
                 }}
               />
             ))}
+          </div>
+        )}
+        {total > pageSize && (
+          <div style={{ marginTop: 40 }}>
+            <Pagination 
+              currentPage={currentPage} 
+              totalPages={Math.ceil(total / pageSize)} 
+              onPageChange={setCurrentPage} 
+            />
           </div>
         )}
       </div>
