@@ -223,7 +223,17 @@ export default function RunPanel({ onClose }) {
         const pausedOriginalNodeId = res.next_node?.replace(/^(gate_|pre_gate_|post_gate_)/, '') || res.next_node;
         const storeNodes = useWorkflowStore.getState().nodes;
         const pausedNode = storeNodes.find(n => n.id === pausedOriginalNodeId);
-        const enabledActions = pausedNode?.hitl_actions || pausedNode?.data?.hitl_actions || ['approve', 'rework', 'reject'];
+        
+        let nodeType = pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type);
+        let nodeConfig = pausedNode?.data || {};
+        
+        // Handle child subgraph pause mapping
+        if (pausedNode && nodeType === 'subgraph' && res.context?.paused_subgraph_node_id) {
+          nodeType = res.context.paused_subgraph_node_type;
+          nodeConfig = res.context.paused_subgraph_node_config || {};
+        }
+        
+        const enabledActions = (nodeConfig?.hitl_actions) || pausedNode?.hitl_actions || pausedNode?.data?.hitl_actions || ['approve', 'rework', 'reject'];
 
         console.log(`DEBUG [RunPanel]: Pause detected at ${res.next_node} (Original: ${pausedOriginalNodeId}). Enabled actions:`, enabledActions);
 
@@ -234,8 +244,8 @@ export default function RunPanel({ onClose }) {
           pausedNodeOutput: pausedOutput,
           threadId: tid,
           enabledActions: enabledActions,
-          nodeType: pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type),
-          nodeConfig: pausedNode?.data || {},
+          nodeType: nodeType,
+          nodeConfig: nodeConfig,
           context: res.context || {}
         });
       }
@@ -437,7 +447,17 @@ export default function RunPanel({ onClose }) {
         const resumeOriginalNodeId = res.next_node?.replace(/^(gate_|pre_gate_|post_gate_)/, '') || res.next_node;
         const storeNodes = useWorkflowStore.getState().nodes;
         const pausedNode = storeNodes.find(n => n.id === resumeOriginalNodeId);
-        const enabledActions = pausedNode?.hitl_actions || pausedNode?.data?.hitl_actions || ['approve', 'rework', 'reject'];
+        
+        let nodeType = pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type);
+        let nodeConfig = pausedNode?.data || {};
+        
+        // Handle child subgraph pause mapping
+        if (pausedNode && nodeType === 'subgraph' && res.context?.paused_subgraph_node_id) {
+          nodeType = res.context.paused_subgraph_node_type;
+          nodeConfig = res.context.paused_subgraph_node_config || {};
+        }
+        
+        const enabledActions = (nodeConfig?.hitl_actions) || pausedNode?.hitl_actions || pausedNode?.data?.hitl_actions || ['approve', 'rework', 'reject'];
 
         setPausedInfo({
           isPaused: true,
@@ -447,8 +467,8 @@ export default function RunPanel({ onClose }) {
           threadId: threadId,
           enabledActions: enabledActions,
           showReworkForm: false,
-          nodeType: pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type),
-          nodeConfig: pausedNode?.data || {},
+          nodeType: nodeType,
+          nodeConfig: nodeConfig,
           context: res.context || {}
         });
       } else if (res.status === 'rejected') {
@@ -593,7 +613,17 @@ export default function RunPanel({ onClose }) {
 
         const storeNodes = useWorkflowStore.getState().nodes;
         const pausedNode = storeNodes.find(n => n.id === originalNodeId);
-        const enabledActions = pausedNode?.hitl_actions || pausedNode?.data?.hitl_actions || ['approve', 'rework', 'reject'];
+        
+        let nodeType = pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type);
+        let nodeConfig = pausedNode?.data || {};
+        
+        // Handle child subgraph pause mapping
+        if (pausedNode && nodeType === 'subgraph' && res.context?.paused_subgraph_node_id) {
+          nodeType = res.context.paused_subgraph_node_type;
+          nodeConfig = res.context.paused_subgraph_node_config || {};
+        }
+        
+        const enabledActions = (nodeConfig?.hitl_actions) || pausedNode?.hitl_actions || pausedNode?.data?.hitl_actions || ['approve', 'rework', 'reject'];
 
         const lastAiMsg = [...messages].reverse().find(m => m.type === 'AIMessage');
 
@@ -604,8 +634,8 @@ export default function RunPanel({ onClose }) {
           pausedNodeOutput: lastAiMsg?.content || 'Ready for approval...',
           threadId: tid,
           enabledActions: enabledActions,
-          nodeType: pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type),
-          nodeConfig: pausedNode,
+          nodeType: nodeType,
+          nodeConfig: nodeConfig,
           context: res.context || {}
         });
       }
@@ -1122,10 +1152,15 @@ export default function RunPanel({ onClose }) {
               }}>
                 {(() => {
                   const nextNodeId = pausedInfo.nextNode;
-                  const outgoingEdges = edges ? edges.filter(e => e.source === nextNodeId) : [];
-                  const choiceButtons = outgoingEdges
-                    .map(e => nodes.find(n => n.id === e.target || (n.data && n.data.id === e.target)))
-                    .filter(n => n && (n.type === 'button_trigger' || n.data?.type === 'button_trigger'));
+                  let choiceButtons = [];
+                  if (pausedInfo.context?.paused_subgraph_buttons) {
+                    choiceButtons = pausedInfo.context.paused_subgraph_buttons;
+                  } else {
+                    const outgoingEdges = edges ? edges.filter(e => e.source === nextNodeId) : [];
+                    choiceButtons = outgoingEdges
+                      .map(e => nodes.find(n => n.id === e.target || (n.data && n.data.id === e.target)))
+                      .filter(n => n && (n.type === 'button_trigger' || n.data?.type === 'button_trigger'));
+                  }
 
                   if (choiceButtons.length > 0) {
                     return choiceButtons.map((btn) => {
