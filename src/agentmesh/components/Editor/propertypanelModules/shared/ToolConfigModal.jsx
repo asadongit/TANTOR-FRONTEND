@@ -67,28 +67,28 @@ export const ToolConfigModal = memo(function ToolConfigModal({ toolName, config 
 
         <div className="p-5 max-h-[76vh] overflow-y-auto">
           <CollapsibleSection title="Advanced Options">
+            <div className="text-[11px] font-bold text-[var(--text-muted)] mb-3.5 uppercase tracking-wide">Tool Rename & Description Overrides</div>
+            <Field label="Custom Tool Name (Alias)" hint="Specify a unique alias for this tool instance (e.g. hr_rag, student_rag) so the agent calls this specific name.">
+              <Input
+                value={config.alias_override || ''}
+                onChange={(v) => set('alias_override', v)}
+                placeholder="e.g. hr_rag"
+              />
+            </Field>
+            <div className="mt-3" />
+            <Field label="Custom Tool Description" hint="Provide a specific description so the agent knows when to use this instance over others.">
+              <Textarea
+                value={config.description_override || ''}
+                onChange={(v) => set('description_override', v)}
+                placeholder="e.g. Use this instance to search human resources documents."
+                rows={3}
+              />
+            </Field>
+            <div className="h-px bg-[var(--border)] my-4" />
             <Toggle checked={config.return_direct || false} onChange={(v) => set('return_direct', v)} label="Return result direct to user" />
             <div className="h-px bg-[var(--border)] my-3" />
             <Toggle checked={config.interrupt_before || false} onChange={(v) => set('interrupt_before', v)} label="Pause before execution (Human approval)" />
           </CollapsibleSection>
-
-          <div className="h-px bg-[var(--border)] my-4" />
-          <div className="text-[11px] font-bold text-[var(--text-muted)] mb-3.5 uppercase tracking-wide">Tool Rename & Description Overrides</div>
-          <Field label="Custom Tool Name (Alias)" hint="Specify a unique alias for this tool instance (e.g. hr_rag, student_rag) so the agent calls this specific name.">
-            <Input
-              value={config.alias_override || ''}
-              onChange={(v) => set('alias_override', v)}
-              placeholder="e.g. hr_rag"
-            />
-          </Field>
-          <Field label="Custom Tool Description" hint="Provide a specific description so the agent knows when to use this instance over others.">
-            <Textarea
-              value={config.description_override || ''}
-              onChange={(v) => set('description_override', v)}
-              placeholder="e.g. Use this instance to search human resources documents."
-              rows={3}
-            />
-          </Field>
 
           {toolName === 'chart_generator' && (
             <>
