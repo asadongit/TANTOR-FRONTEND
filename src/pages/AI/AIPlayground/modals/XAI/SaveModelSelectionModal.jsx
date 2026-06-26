@@ -733,30 +733,32 @@ export function SaveModelSelectionModal({ isOpen, onClose, onSave, readonly, mod
                             className="mt-1 w-4 h-4 border-gray-300 rounded cursor-pointer"
                             style={{ accentColor: '#8e78b7' }}
                           />
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <label
                               htmlFor={`model-${model.run_id}`}
                               className="block text-sm font-medium text-gray-900 cursor-pointer"
                               title={model.run_name}
                             >
-                              <span className="block truncate max-w-[500px]">
-                                {searchQuery ? (
-                                  (() => {
-                                    const name = model.run_name;
-                                    const idx = name.toLowerCase().indexOf(searchQuery.toLowerCase());
-                                    if (idx === -1) return name;
-                                    return (
-                                      <>
-                                        {name.slice(0, idx)}
-                                        {name.slice(idx, idx + searchQuery.length)}
-                                        {name.slice(idx + searchQuery.length)}
-                                      </>
-                                    );
-                                  })()
-                                ) : (
-                                  model.run_name
-                                )}
-                              </span>
+                              <div className="w-full">
+                                <span className="block whitespace-normal break-words">
+                                  {searchQuery ? (
+                                    (() => {
+                                      const name = model.run_name;
+                                      const idx = name.toLowerCase().indexOf(searchQuery.toLowerCase());
+                                      if (idx === -1) return name;
+                                      return (
+                                        <>
+                                          {name.slice(0, idx)}
+                                          {name.slice(idx, idx + searchQuery.length)}
+                                          {name.slice(idx + searchQuery.length)}
+                                        </>
+                                      );
+                                    })()
+                                  ) : (
+                                    model.run_name
+                                  )}
+                                </span>
+                              </div>
                             </label>
 
                             {currentSelectedModels[model.run_name] && (

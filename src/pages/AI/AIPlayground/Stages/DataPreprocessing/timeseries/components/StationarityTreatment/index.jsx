@@ -115,7 +115,7 @@ const VariantDataTable = ({ variantKey, displayData }) => {
 
 
 
-function StationarityTreatmentComponent({readonly,onValidationChange,onApiCall, showPreview})
+function StationarityTreatmentComponent({readonly,onValidationChange,onApiCall, showPreview, isDataPreprocessingAuto})
 {  
   //Context Data
   const {
@@ -303,7 +303,13 @@ function StationarityTreatmentComponent({readonly,onValidationChange,onApiCall, 
   {/*Preview-Only Render Mode*/}
   if (showPreview) {
     // Determine data source and structure
-    let cleanedDfData = workflowState.dataPreprocessing?.step6?.apiResponse?.cleaned_df;
+    let cleanedDfData = workflowState?.dataPreprocessing?.step6?.apiResponse?.cleaned_df;
+
+    // Fallback to genesis response in auto-preprocessing mode
+    if (!cleanedDfData && isDataPreprocessingAuto && workflowState?.modelGenesis?.apiResponse) {
+      const genesisResponse = workflowState.modelGenesis.apiResponse;
+      cleanedDfData = genesisResponse?.cleaned_df_preview || genesisResponse?.cleaned_df;
+    }
 
     // If no data available, show message
     if (!cleanedDfData) {

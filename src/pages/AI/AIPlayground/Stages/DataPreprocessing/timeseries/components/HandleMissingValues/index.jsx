@@ -328,11 +328,25 @@ const getHighMissingError = () => {
       return isOpen ? allClosed : { ...allClosed, [section]: true };
     });
   };
+  const openSection = (section) => {
+    setExpandedSections(
+      Object.keys({ handleHighMissing: false, handleOriginalMissing: false, handleGeneratedMissing: false })
+        .reduce((acc, key) => ({ ...acc, [key]: key === section }), {})
+    );
+  };
+
   // Submit the step configuration to the preprocessing API.
   const makeApiCall = useCallback(async () => {
     if (readonly) return true;
     if (!validateStep()) {
       setShowFieldErrors(true);
+      if (getHighMissingError()) {
+        openSection('handleHighMissing');
+      } else if (getOriginalMissingError()) {
+        openSection('handleOriginalMissing');
+      } else if (getGeneratedMissingError()) {
+        openSection('handleGeneratedMissing');
+      }
       return false;
     }
 
@@ -433,24 +447,9 @@ const getHighMissingError = () => {
       isGeneratedMissingMandatory,
     ]);
   // Surface validation feedback only after the user attempts to process the step.
+  const highMissingError = showFieldErrors ? getHighMissingError() : '';
   const originalMissingError = showFieldErrors ? getOriginalMissingError() : '';
   const generatedMissingError = showFieldErrors ? getGeneratedMissingError() : '';
-  console.log("savedConfig", savedConfig);
-
-console.log(
-  "generatedMissingConfig",
-  generatedMissingConfig
-);
-
-console.log(
-  "originalMissingConfig",
-  originalMissingConfig
-);
-
-console.log(
-  "toggles",
-  toggles
-);
   return (
     <div className="space-y-4 p-4">
       {/*High missing values card.*/}
