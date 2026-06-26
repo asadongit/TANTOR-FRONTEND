@@ -304,22 +304,119 @@
 
         /**
          * Special handling for step 5 preview (univariate timeseries):
-         * Exit preview mode and move to model selection.
+         * Call the API to execute stationarity treatment, fetch job if available.
          */
         if (currentStep === 5 && isUnivariatePreview) {
+          // Only call the live API when preprocessing is manual.
+          // In auto mode, genesis already handled this — calling it again causes AxiosError.
+          if (!isDataPreprocessingAuto) {
+            const apiCallFn = step5ApiCallRef.current;
+            if (typeof apiCallFn === 'function') {
+              const result = await apiCallFn();
+              if (!result) return false;
+            }
+          }
+
+          try {
+            // Job ID from auto preprocessing response
+            const autoModeJobId =
+              workflowState?.modelGenesis?.apiResponse?.job_id ??
+              null;
+
+            // StationarityTreatment always writes its response to 'step6' internally,
+            // even when rendered as step 5 in the univariate flow.
+            // Select correct job ID based on preprocessing mode
+            const jobId = isDataPreprocessingAuto
+              ? autoModeJobId
+              : workflowState?.dataPreprocessing?.step6
+                  ?.apiResponse?.job_id;
+
+            // Fetch completed job details
+            if (jobId && hostnameAI) {
+              const response = await fetch(
+                `${hostnameAI}/jobs/${jobId}`,
+                {
+                  method: 'GET',
+                  headers: { accept: 'application/json' },
+                }
+              );
+
+              if (response.ok) {
+                const data = await response.json();
+
+                // Save completed job response
+                updateWorkflowStage?.('completedJobs', {
+                  config: { job_id: jobId },
+                  apiResponse: data,
+                });
+              }
+            }
+          } catch (error) {
+            console.error(
+              'Error fetching job details:',
+              error
+            );
+          }
+
           return true;
         }
 
         /**
          * Special handling for step 8 preview (time series):
-         * Exit preview mode and move to model selection.
+         * Call the API to execute scaling and encoding, fetch job if available.
          */
         if (currentStep === 8 && isStep8Preview) {
+          // Only call the live API when preprocessing is manual.
+          // In auto mode, genesis already handled this — calling it again causes AxiosError.
+          if (!isDataPreprocessingAuto) {
+            const apiCallFn = step8ApiCallRef.current;
+            if (typeof apiCallFn === 'function') {
+              const result = await apiCallFn();
+              if (!result) return false;
+            }
+          }
+
+          try {
+            // Job ID from auto preprocessing response
+            const autoModeJobId =
+              workflowState?.modelGenesis?.apiResponse?.job_id ??
+              null;
+
+            // Select correct job ID based on preprocessing mode
+            const jobId = isDataPreprocessingAuto
+              ? autoModeJobId
+              : workflowState?.dataPreprocessing?.step8
+                  ?.apiResponse?.job_id;
+
+            // Fetch completed job details
+            if (jobId && hostnameAI) {
+              const response = await fetch(
+                `${hostnameAI}/jobs/${jobId}`,
+                {
+                  method: 'GET',
+                  headers: { accept: 'application/json' },
+                }
+              );
+
+              if (response.ok) {
+                const data = await response.json();
+
+                // Save completed job response
+                updateWorkflowStage?.('completedJobs', {
+                  config: { job_id: jobId },
+                  apiResponse: data,
+                });
+              }
+            }
+          } catch (error) {
+            console.error(
+              'Error fetching job details:',
+              error
+            );
+          }
+
           return true;
         }
-
-        // Prevent duplicate execution in step 8 preview mode
-        if (currentStep === 8 && isStep8Preview) return true;
 
         /**
          * Array mapping step number
@@ -425,6 +522,7 @@
               (step5ApiCallRef.current = fn)
             }
             showPreview={isUnivariatePreview}
+            isDataPreprocessingAuto={isDataPreprocessingAuto}
           />
         );
 
@@ -520,6 +618,7 @@
               predictionType === 'univariate_timeseries' &&
               isUnivariatePreview
             }
+            isDataPreprocessingAuto={isDataPreprocessingAuto}
           />
         );
       }

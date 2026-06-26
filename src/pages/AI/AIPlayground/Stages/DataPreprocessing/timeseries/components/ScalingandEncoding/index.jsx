@@ -458,7 +458,7 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview, is
       return (
         <div className="space-y-4 -mx-6">
           <CleanDataTable
-            title="Scaled & Encoded Data Preview"
+            title="Cleaned Data Preview"
             data={cleanedDfData}
           />
         </div>

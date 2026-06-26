@@ -59,8 +59,10 @@
     "backend_key": "EncoderDecoderLSTM",
     "info": "Sequence-to-sequence architecture consisting of encoder and decoder LSTM networks, commonly used for multi-step forecasting tasks.",
     "hyperparameters": {
-      "encoder_units": { "low": "32", "high": "512" },
-      "decoder_units": { "low": "32", "high": "512" },
+       "encoder_decoder units": {
+      "low": "32",
+      "high": "512"
+    },
       "attention": "true, false"
     }
   },
@@ -182,6 +184,40 @@
 
 
 
+  "ARIMA": {
+    "category": "Statistical",
+    "backend_key": "ARIMA",
+    "info": "Autoregressive Integrated Moving Average model for univariate time-series forecasting, combining autoregression, differencing, and moving average components.",
+    "hyperparameters": {
+      "order": {
+        "p": { "low": "0", "high": "5" },
+        "d": { "low": "0", "high": "2" },
+        "q": { "low": "0", "high": "5" }
+      },
+      "trend": "n, c, t, ct"
+    }
+  },
+
+  "SARIMA": {
+    "category": "Statistical",
+    "backend_key": "SARIMA",
+    "info": "Seasonal ARIMA extends ARIMA with seasonal autoregressive, differencing, and moving average terms to capture periodic patterns in time-series data.",
+    "hyperparameters": {
+      "order": {
+        "p": { "low": "0", "high": "5" },
+        "d": { "low": "0", "high": "2" },
+        "q": { "low": "0", "high": "5" }
+      },
+      "seasonal_order": {
+        "P": { "low": "0", "high": "3" },
+        "D": { "low": "0", "high": "2" },
+        "Q": { "low": "0", "high": "3" },
+        "s": { "low": "2", "high": "24" }
+      },
+      "trend": "n, c, t, ct"
+    }
+  },
+
   "Prophet": {
     "category": "Statistical",
     "backend_key": "Prophet",
@@ -190,6 +226,28 @@
       "growth": "linear",
       "changepoint_prior_scale": { "low": "0.001", "high": "0.5" },
       "seasonality_mode": "additive, multiplicative"
+    }
+  },
+
+  "TBATS": {
+    "category": "Statistical",
+    "backend_key": "TBATS",
+    "info": "Trigonometric seasonality, Box-Cox transformation, ARMA errors, Trend and Seasonal components model designed for complex seasonal time series.",
+    "hyperparameters": {
+      "use_box_cox": "true, false",
+      "use_trend": "true, false",
+      "use_arma_errors": "true, false"
+    }
+  },
+
+  "BATS": {
+    "category": "Statistical",
+    "backend_key": "BATS",
+    "info": "Box-Cox transformation, ARMA errors, Trend and Seasonal components model for handling multiple seasonalities in time-series forecasting.",
+    "hyperparameters": {
+      "use_box_cox": "true, false",
+      "use_trend": "true, false",
+      "use_damped_trend": "true, false"
     }
   },
 
@@ -289,6 +347,7 @@
       "trend": "n, c, t, ct"
     }
   }
+  
 }
 
   
