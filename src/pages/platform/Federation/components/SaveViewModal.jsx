@@ -7,18 +7,27 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
   const [isMaterializedView, setIsMaterializedView] = useState(finalPayload.isMateralizedView === true);
   const [isCaching, setIsCaching] = useState(finalPayload.isCaching === true);
   const [refreshPeriod, setRefreshPeriod] = useState();
+  const [cacheTtl, setCacheTtl] = useState("");
 
 
   useEffect(() => {
     if (finalPayload) {
-      handleFinalPayload({
+      const updatedPayload = {
         ...finalPayload,
         isMateralizedView: isMaterializedView,
         isCaching: isCaching,
-        grace_period: refreshPeriod
-      });
+        grace_period: refreshPeriod,
+      };
+
+      if (isCaching && cacheTtl !== "" && cacheTtl !== null) {
+        updatedPayload.cache_ttl = Number(cacheTtl);
+      } else {
+        delete updatedPayload.cache_ttl;
+      }
+
+      handleFinalPayload(updatedPayload);
     }
-  }, [isMaterializedView, isCaching, refreshPeriod]);
+  }, [isMaterializedView, isCaching, refreshPeriod, cacheTtl]);
 
   const handleViewTypeChange = (event) => {
     setIsMaterializedView(event.target.checked);
@@ -26,6 +35,9 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
 
   const handleCachingChange = (event) => {
     setIsCaching(event.target.checked);
+    if (!event.target.checked) {
+      setCacheTtl("");
+    }
   };
 
   return (
@@ -40,7 +52,7 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
 
         <div>
           {finalPayload?.view_type === "Integrated View" && (
-            <div className="flex text-black items-center mb-3">
+            <div className="flex flex-wrap text-black items-center mb-3 gap-3">
               {!isCaching && (
                 <div>
                   <label className="inline-flex items-center space-x-2 mr-4">
@@ -80,6 +92,23 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
                     />
                     <span>Caching</span>
                   </label>
+                </div>
+              )}
+
+              {isCaching && (
+                <div className="w-full mt-1">
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    Cache Expiry Duration (mins)
+                  </label>
+                  <input
+                    id="cache-ttl"
+                    type="number"
+                    min="1"
+                    value={cacheTtl}
+                    onChange={(e) => setCacheTtl(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md text-gray-700 focus:ring-2 focus:ring-[#8E77BB] focus:outline-none"
+                    placeholder="e.g. 15"
+                  />
                 </div>
               )}
             </div>
