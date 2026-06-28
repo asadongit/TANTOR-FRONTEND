@@ -66,19 +66,40 @@ export function BusinessFooter() {
 
     return Object.entries(selectedViews || {}).flatMap(([view, columns]) =>
       Object.entries(columns).flatMap(([colName, colProps]) => {
+        const fieldRef = hasOperation ? colName : `${view}.${colName}`;
         let fields = [];
+
         if (colProps.aggregate) {
           fields.push({
-            field: `${colProps.aggregate}(${hasOperation ? colName : `${view}.${colName}`})`,
+            field: `${colProps.aggregate}(${fieldRef})`,
             alias: colProps.alias || ""
           });
         }
+
         if (colProps.output === "Yes") {
-          fields.push({
-            field: hasOperation ? colName : `${view}.${colName}`,
-            alias: colProps.aggregate ? "" : colProps.alias || ""
-          });
+          const hasAlias = colProps.alias && colProps.alias.trim() !== "";
+          const includeAs = colProps.includeAs || "alias";
+
+          if (hasAlias && includeAs === "both") {
+            // Original column (no alias)
+            fields.push({ field: fieldRef, alias: "" });
+            // Aliased column only if not aggregate (aggregate already added it)
+            if (!colProps.aggregate) {
+              fields.push({ field: fieldRef, alias: colProps.alias });
+            }
+          } else if (hasAlias && includeAs === "original") {
+            // Only original, ignore alias
+            if (!colProps.aggregate) {
+              fields.push({ field: fieldRef, alias: "" });
+            }
+          } else {
+            // Default: alias only (or no alias)
+            if (!colProps.aggregate) {
+              fields.push({ field: fieldRef, alias: colProps.alias || "" });
+            }
+          }
         }
+
         return fields;
       })
     );
@@ -259,14 +280,16 @@ export function BusinessFooter() {
     sortColumns = [...sortColumns];
 
     if (modalState.queryType === "Regular") {
-      const invalidSelectColumns = selectColumns.filter(col => !groupByColumns.includes(col));
+      const invalidSelectColumns = selectColumns.filter(
+        col => !groupByColumns.includes(col) && !aggregateColumns.includes(col)
+      );
       if (groupByColumns.length > 0 && selectColumns.length > 0 && invalidSelectColumns.length > 0) {
         setToast({ show: true, message: `${invalidSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`, type: "error" });
         setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
         return;
       }
 
-      const nonAggregatedSelectColumns = selectColumns;
+      const nonAggregatedSelectColumns = selectColumns.filter(col => !aggregateColumns.includes(col));
       if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0 && nonAggregatedSelectColumns.length > 0) {
         setToast({ show: true, message: `${nonAggregatedSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`, type: "error" });
         setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);

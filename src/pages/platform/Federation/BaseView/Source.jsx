@@ -188,11 +188,39 @@ export default function Source() {
         });
       }
       if (item.output === "Yes") {
-        basePayload.select_fields.push({
-          field: item.name,
-          alias: item.aggregate ? "" : item.alias,
-          type: item.type,
-        });
+        const hasAlias = item.alias && item.alias.trim() !== "";
+        const includeAs = item.includeAs || "alias";
+
+        if (hasAlias && includeAs === "both") {
+          basePayload.select_fields.push({
+            field: item.name,
+            alias: "",
+            type: item.type,
+          });
+          if (!item.aggregate) {
+            basePayload.select_fields.push({
+              field: item.name,
+              alias: item.alias,
+              type: item.type,
+            });
+          }
+        } else if (hasAlias && includeAs === "original") {
+          if (!item.aggregate) {
+            basePayload.select_fields.push({
+              field: item.name,
+              alias: "",
+              type: item.type,
+            });
+          }
+        } else {
+          if (!item.aggregate) {
+            basePayload.select_fields.push({
+              field: item.name,
+              alias: item.alias || "",
+              type: item.type,
+            });
+          }
+        }
       }
 
       if (item.groupBy === "Yes") {
