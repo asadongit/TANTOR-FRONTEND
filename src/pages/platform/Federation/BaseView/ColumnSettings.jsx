@@ -8,6 +8,7 @@ export const defaultSetting = {
   type: "",
   output: "Yes",
   alias: "",
+  includeAs: "alias",
   order: "",
   sort: "",
   aggregate: "",
@@ -70,10 +71,26 @@ const ColumnSettings = ({ columnSetting, queryType }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setSettings((prevSettings) => ({
-      ...prevSettings,
-      [name]: value,
-    }));
+    setSettings((prevSettings) => {
+      let updates = {
+        ...prevSettings,
+        [name]: value,
+        ...(name === "alias" && !value.trim() ? { includeAs: "alias" } : {}),
+      };
+
+      // When sort is set and order is empty/0, default order to 1
+      if (name === "sort" && value && (!prevSettings.order || Number(prevSettings.order) < 1)) {
+        updates.order = 1;
+      }
+
+      // Clamp order to minimum 1
+      if (name === "order") {
+        const num = Number(value);
+        updates.order = num < 1 ? 1 : num;
+      }
+
+      return updates;
+    });
   };
 
   const handleExecute = async (event) => {
@@ -201,13 +218,29 @@ const ColumnSettings = ({ columnSetting, queryType }) => {
             </div>
           </div>
 
+          {settings.alias && (
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Include As</label>
+              <select
+                name="includeAs"
+                value={settings.includeAs || "alias"}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500"
+              >
+                <option value="alias">Alias Only ({settings.alias?.length > 20 ? settings.alias.slice(0, 20) + "…" : settings.alias})</option>
+                <option value="original">Original Only ({settings.name?.length > 20 ? settings.name.slice(0, 20) + "…" : settings.name})</option>
+                <option value="both">Both ({settings.name?.length > 15 ? settings.name.slice(0, 15) + "…" : settings.name} + {settings.alias?.length > 15 ? settings.alias.slice(0, 15) + "…" : settings.alias})</option>
+              </select>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm text-gray-600 mb-1">Order</label>
               <input
                 type="number"
                 name="order"
-                value={settings.order}
+                value={settings.order || 1}
                 onChange={handleChange}
                 min={1}
                 onWheel={(e) => e.target.blur()}
@@ -290,6 +323,22 @@ const ColumnSettings = ({ columnSetting, queryType }) => {
             </div>
           </div>
 
+          {settings.alias && (
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Include As</label>
+              <select
+                name="includeAs"
+                value={settings.includeAs || "alias"}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500"
+              >
+                <option value="alias">Alias Only ({settings.alias?.length > 20 ? settings.alias.slice(0, 20) + "…" : settings.alias})</option>
+                <option value="original">Original Only ({settings.name?.length > 20 ? settings.name.slice(0, 20) + "…" : settings.name})</option>
+                <option value="both">Both ({settings.name?.length > 15 ? settings.name.slice(0, 15) + "…" : settings.name} + {settings.alias?.length > 15 ? settings.alias.slice(0, 15) + "…" : settings.alias})</option>
+              </select>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm text-gray-600 mb-1">Output</label>
@@ -367,6 +416,7 @@ const ColumnSettings = ({ columnSetting, queryType }) => {
               { label: "Name", text: "Displays the selected column name." },
               { label: "Type", text: "Displays the selected column type." },
               { label: "Alias", text: "Allows you to specify the column alias." },
+              { label: "Include As", text: "When alias is set: choose Alias Only, Original Only, or Both to control which column names appear in SELECT." },
               { label: "Output", text: "Choose whether to include the column in the query." },
               { label: "Sort", text: "Specifies the sort order of column values." },
               { label: "Order", text: "Specifies the order in which columns are sorted." },

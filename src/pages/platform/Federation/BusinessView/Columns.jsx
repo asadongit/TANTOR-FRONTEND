@@ -18,6 +18,7 @@ export function Columns({ id, columnName, dataType, toggleModal }) {
       const defaultSettings = {
         output: "No",
         alias: "",
+        includeAs: "alias",
         order: "",
         sort: "",
         aggregate: "",
@@ -38,16 +39,35 @@ export function Columns({ id, columnName, dataType, toggleModal }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setColumnSettings((prev) => ({
-      ...prev,
-      [id]: {
-        ...prev[id],
-        [columnName]: {
-          ...prev[id][columnName],
-          [name]: value,
+    setColumnSettings((prev) => {
+      const current = prev[id]?.[columnName] || {};
+      let updates = { [name]: value };
+
+      // When alias is cleared, reset includeAs to default
+      if (name === "alias" && !value.trim()) updates.includeAs = "alias";
+
+      // When sort is set and order is empty/0, default order to 1
+      if (name === "sort" && value && (!current.order || Number(current.order) < 1)) {
+        updates.order = 1;
+      }
+
+      // Clamp order to minimum 1
+      if (name === "order") {
+        const num = Number(value);
+        updates.order = num < 1 ? 1 : num;
+      }
+
+      return {
+        ...prev,
+        [id]: {
+          ...prev[id],
+          [columnName]: {
+            ...current,
+            ...updates,
+          },
         },
-      },
-    }));
+      };
+    });
   };
 
   const handleSave = () => {
@@ -59,6 +79,7 @@ export function Columns({ id, columnName, dataType, toggleModal }) {
       const defaultSettings = {
         output: "No",
         alias: "",
+        includeAs: "alias",
         order: "",
         sort: "",
         aggregate: "",
@@ -149,6 +170,22 @@ export function Columns({ id, columnName, dataType, toggleModal }) {
                 </div>
               </div>
 
+              {columnSettings[id][columnName].alias && (
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Include As</label>
+                  <select
+                    name="includeAs"
+                    value={columnSettings[id][columnName].includeAs || "alias"}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
+                  >
+                    <option value="alias">Alias Only ({columnSettings[id][columnName].alias?.length > 20 ? columnSettings[id][columnName].alias.slice(0, 20) + "…" : columnSettings[id][columnName].alias})</option>
+                    <option value="original">Original Only ({columnName?.length > 20 ? columnName.slice(0, 20) + "…" : columnName})</option>
+                    <option value="both">Both ({columnName?.length > 15 ? columnName.slice(0, 15) + "…" : columnName} + {columnSettings[id][columnName].alias?.length > 15 ? columnSettings[id][columnName].alias.slice(0, 15) + "…" : columnSettings[id][columnName].alias})</option>
+                  </select>
+                </div>
+              )}
+
               {modalState.queryType != "Complex" && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -156,8 +193,10 @@ export function Columns({ id, columnName, dataType, toggleModal }) {
                     <input
                       type="number"
                       name="order"
-                      value={columnSettings[id][columnName].order || 0}
+                      value={columnSettings[id][columnName].order || 1}
                       onChange={handleChange}
+                      min={1}
+                      onWheel={(e) => e.target.blur()}
                       className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
                     />
                   </div>
