@@ -133,7 +133,7 @@ export function BaseNode({ id, data }) {
         });
 
         const data = await response.json();
-        if (response.ok) setApiViews(data.result.sort((a, b) => a.localeCompare(b)));
+        if (response.ok) setApiViews(data.result.map(v => v.view_name).sort((a, b) => a.localeCompare(b)));
         else showToast('Error fetching views', 'error');
       } catch (error) {
         console.error("Fetch error", error);

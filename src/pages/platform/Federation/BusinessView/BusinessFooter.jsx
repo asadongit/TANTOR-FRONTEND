@@ -360,7 +360,7 @@ export function BusinessFooter() {
       if (numberOfConsolidationNodes !== expectedConsolidationNodes * 2)
         throw new Error(`Please connect all consolidation nodes properly!`);
       if (joinsKeyExists && (joins.length === 0 || expectedConsolidationNodes !== joins.length))
-        throw new Error(`Please configure all Consolidation nodes! Expected: ${expectedConsolidationNodes}, Configured: ${joins.length}`);
+        throw new Error(`Please configure all Consolidation nodes!`);
       if (expectedConsolidationNodes >= 0 && !finalPayload?.joins && !finalPayload?.union)
         throw new Error(`Please configure Consolidation nodes! No joins or unions found in the configuration.`);
     } catch (err) {
