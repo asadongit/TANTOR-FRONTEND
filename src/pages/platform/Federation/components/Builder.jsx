@@ -116,6 +116,8 @@ export default function Builder({ handleSwitch, checked }) {
     const [curl, setCurl] = useState("pervious curl is");
     const [selectedView, setSelectedView] = useState("");
     const [shownViews, setShownViews] = useState([]);
+    const [viewsMeta, setViewsMeta] = useState([]);
+    const [refreshing, setRefreshing] = useState(false);
     const [toast, setToast] = useState({ show: false, message: '', type: '' });
 
     const [pageSize, setPageSize] = useState(100);
@@ -129,6 +131,7 @@ export default function Builder({ handleSwitch, checked }) {
     const [queryLoading, setQueryLoading] = useState(false);
     const [isQueryModalOpen, setIsQueryModalOpen] = useState(false);
     const [viewsDetails, setViewsDetails] = useState(null);
+    const ExternalAPI= window._env_?.VITE_EXTERNAL_API;
 
     const [colOrder, setColOrder] = useState([]);
     const [dragOverCol, setDragOverCol] = useState(null);
@@ -169,7 +172,8 @@ export default function Builder({ handleSwitch, checked }) {
                 const response = await fetch(`${hostnameV2}/get-all-views_v2?${params}`);
                 const data = await response.json();
                 if (data && data.result) {
-                    setShownViews(data.result);
+                    setViewsMeta(data.result);
+                    setShownViews(data.result.map(v => v.view_name));
                 } else {
                     console.error("Invalid response from the API");
                 }
@@ -242,7 +246,7 @@ export default function Builder({ handleSwitch, checked }) {
 
                 let response;
                 if (cachingData.result) {
-                    response = await fetch(`${hostnameV1}/view/${selectedView}`, {
+                    response = await fetch(`${hostnameV1}/execute_view/${selectedView}`, {
                         method: "POST",
                         headers: { accept: "application/json", "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
                         body: JSON.stringify(payload),
@@ -253,7 +257,7 @@ export default function Builder({ handleSwitch, checked }) {
                     if (rows.length < batchSize) morePages = false;
                     else currentPage++;
                 } else {
-                    response = await fetch(`${hostnameV1}/view/${selectedView}`, {
+                    response = await fetch(`${hostnameV1}/execute_view/${selectedView}`, {
                         method: "POST",
                         headers: { accept: "application/json", "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
                         body: JSON.stringify(payload),
@@ -299,7 +303,7 @@ export default function Builder({ handleSwitch, checked }) {
             const cachingData = await cachingResponse.json();
 
             if (cachingData.result) {
-                fetch(`${hostnameV1}/view/${selectedView}`, {
+                fetch(`${hostnameV1}/execute_view/${selectedView}`, {
                     method: "POST",
                     headers: { accept: "application/json", "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
                     body: JSON.stringify(pay),
@@ -333,7 +337,7 @@ export default function Builder({ handleSwitch, checked }) {
                     })
                     .finally(() => setLoading(false));
             } else {
-                fetch(`${hostnameV1}/view/${selectedView}`, {
+                fetch(`${hostnameV1}/execute_view/${selectedView}`, {
                     method: "POST",
                     headers: { accept: "application/json", "Content-Type": "application/json", 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify(pay),
@@ -385,7 +389,7 @@ export default function Builder({ handleSwitch, checked }) {
         setViewsDetails(null);
         const payload = { page, page_size: pageSize };
         checkCaching(payload);
-        const url = `${hostnameV1}/view/${selectedView}`;
+        const url = `${ExternalAPI}/view/${selectedView}`;
         fetch(`${hostnameV1}/generate_curl`, {
             method: "POST",
             headers: { accept: "application/json", "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
@@ -446,14 +450,33 @@ export default function Builder({ handleSwitch, checked }) {
         }
     }, [pageSize]);
 
+    const isSelectedMV = viewsMeta.find(v => v.view_name === selectedView)?.ismaterializedview === true;
 
+    const handleRefreshMV = async () => {
+        if (!selectedView) return;
+        setRefreshing(true);
+        try {
+            const response = await fetch(`${hostnameV1}/refresh_view/${selectedView}`, {
+                method: "POST",
+                headers: { accept: "application/json", "Authorization": `Bearer ${token}` },
+            });
+            const result = await response.json();
+            setToast({ show: true, message: "View refreshed successfully", type: "success" });
+        } catch (error) {
+            console.error("Error refreshing view:", error);
+            setToast({ show: true, message: "Failed to refresh materialized view", type: "error" });
+        } finally {
+            setRefreshing(false);
+            setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+        }
+    };
 
     return (
         <>
             <div className="w-full h-full flex flex-col overflow-hidden">
                 {/* ── Top bar ─────────────────────────────────────────────── */}
                 <div className="w-full flex justify-between flex-none items-center py-2" style={{ minHeight: "60px" }}>
-                    <div className="flex items-center ml-4">
+                    <div className="flex items-center ml-4 gap-3">
                         <CustomSelect
                             options={shownViews}
                             value={selectedView}
@@ -463,17 +486,41 @@ export default function Builder({ handleSwitch, checked }) {
                         <button
                             type="button"
                             onClick={executeQuery}
-                            className="ml-10 text-white px-8 py-2 bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+                            disabled={refreshing}
+                            className="text-white px-8 py-2 bg-[#8e78b7] hover:bg-[#7a63a8] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Execute
                         </button>
+
+
+                        {isSelectedMV && (
+                            <>
+                                <div className="w-px h-6 bg-gray-300" />
+                                <button
+                                    type="button"
+                                    onClick={handleRefreshMV}
+                                    title="Refresh materialized view"
+                                    disabled={refreshing || loading}
+                                    className="px-4 py-2 border border-[#8e78b7] text-[#8e78b7] hover:bg-[#f3f0f9] rounded-lg text-sm focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                                >
+                                    {refreshing ? (
+                                        <>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]" />
+                                            <span>Refreshing…</span>
+                                        </>
+                                    ) : (
+                                        <span>Refresh View Data</span>
+                                    )}
+                                </button>
+                            </>
+                        )}
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="relative" ref={downloadMenuRef}>
                             <button
                                 type="button"
                                 onClick={() => setShowDownloadMenu((prev) => !prev)}
-                                disabled={fullDataLoading}
+                                disabled={fullDataLoading || refreshing}
                                 title="Download CSV"
                                 className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-1.5 bg-white focus:outline-none flex items-center gap-1 transition-colors"
                             >

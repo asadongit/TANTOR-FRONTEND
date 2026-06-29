@@ -152,7 +152,7 @@ export function SourceViewNode({ id, onSave }) {
         const data = await response.json();
 
         if (data && data.result) {
-          setViews(data.result);
+          setViews(data.result.map(v => v.view_name))
         } else {
           console.error("Invalid response from the API");
           showToast('Failed to fetch views', 'error');

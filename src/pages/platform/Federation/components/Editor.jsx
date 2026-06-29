@@ -58,6 +58,7 @@ export default function Editor() {
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [fullDataLoading, setFullDataLoading] = useState(false);
   const downloadMenuRef = useRef(null);
+  const ExternalAPI= window._env_?.VITE_EXTERNAL_API;
 
   // ── Inline table drag-reorder state ───────────────────────────────────────
   const [colOrder, setColOrder] = useState([]);
@@ -234,7 +235,7 @@ export default function Editor() {
 
   const generateCurl = async (viewName) => {
     try {
-      const url = `${hostnameV1}/view/${viewName}`;
+      const url = `${ExternalAPI}/view/${viewName}`;
       const response = await fetch(`${hostnameV1}/generate_curl`, {
         method: "POST",
         headers: { accept: "application/json", "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
