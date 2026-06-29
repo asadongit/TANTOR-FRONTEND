@@ -4,7 +4,7 @@ import {
   FiPlay, FiCpu, FiBox, FiGitMerge,
   FiTarget, FiShare2, FiBookOpen, FiLink,
   FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiAlertTriangle, FiZap, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiLayers, FiInbox, FiDatabase, FiServer,
-  FiCode, FiSliders, FiInfo
+  FiCode, FiSliders, FiInfo, FiMic
 } from 'react-icons/fi';
 
 export const NODE_TYPES = [
@@ -16,6 +16,7 @@ export const NODE_TYPES = [
   { type: 'polling',    icon: FiClock,     label: 'Polling Trigger', desc: 'Triggers the workflow by periodically querying an external tool.', detailedDesc: 'Periodically runs an external integration tool to fetch new items (like support tickets or emails) and feeds them into the workflow on a set cron schedule.', bg: '#FDF2F8', color: '#DB2777', category: 'Events & Triggers' },
   { type: 'button_trigger', icon: FiZap,     label: 'Button',       desc: 'Manually triggers the workflow from the dashboard UI.', detailedDesc: 'Creates a manual start button in the dashboard, enabling users to launch workflow runs on demand with optional input data.', bg: '#D1FAE5', color: '#059669', category: 'Events & Triggers' },
   { type: 'auto_trigger',   icon: FiPlay,    label: 'Auto Trigger', desc: 'Triggers the workflow instantly when it is compiled or deployed.', detailedDesc: 'Automatically runs the workflow immediately upon startup, compilation, or deployment. Ideal for one-off tasks or continuous processes.', bg: '#D1FAE5', color: '#059669', category: 'Events & Triggers' },
+  { type: 'stt_trigger', icon: FiMic, label: 'Speech to Text', desc: 'Captures voice input using the browser microphone.', detailedDesc: 'Pauses the workflow and activates the microphone in the Run Panel. Users speak naturally, and their speech is transcribed to text. Supports auto-stop on silence or manual click-to-stop.', bg: '#F0F9FF', color: '#0891B2', category: 'Events & Triggers' },
 
   // Autonomous Agents
   { type: 'llm_agent',  icon: FiCpu,       label: 'Agent',        desc: 'An LLM-powered agent with access to memory and tools.', detailedDesc: 'An advanced AI assistant utilizing language models (LLMs). It evaluates instructions, calls registered tools to fetch data or perform actions, uses context variables, and maintains conversation memory.', bg: '#C9DEFF', color: '#1A56DB', category: 'Autonomous Agents' },

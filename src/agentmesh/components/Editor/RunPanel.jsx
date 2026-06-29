@@ -17,11 +17,22 @@ import {
 import useAudioPlayer from './RunPanelModules/useAudioPlayer';
 import { MinimalButton, ActionButton, ActionButtonGroup, ReworkFormPanel } from './RunPanelModules/HitlControls';
 import FormRenderer from './RunPanelModules/FormRenderer';
+import SpeechRecorder from './RunPanelModules/SpeechRecorder';
 import TurnRenderer from './RunPanelModules/TurnRenderer';
 import ChatInput from './RunPanelModules/ChatInput';
 import { VfsExplorer, BlackboardModal, ProfilingModal } from './RunPanelModules/sessiontool';
 import { findStartingTriggers } from './RunPanelModules/utils';
 import HistorySidebar from './RunPanelModules/HistorySidebar';
+
+/**
+ * PAUSE_UI registry — add new pause-time node types here without touching RunPanel logic.
+ * hidesInput: true  → hides the normal bottom input bar entirely
+ * showsHitl:  false → skips the standard HITL approve/rework/reject controls
+ */
+const PAUSE_UI = {
+  form_node:   { hidesInput: true,  showsHitl: false },
+  stt_trigger: { hidesInput: true,  showsHitl: false },
+};
 
 export default function RunPanel({ onClose }) {
   const {
@@ -59,8 +70,13 @@ export default function RunPanel({ onClose }) {
     return findStartingTriggers(nodes, edges, 'auto_trigger');
   }, [nodes, edges]);
 
+  const startingSttNodes = useMemo(() => {
+    return findStartingTriggers(nodes, edges, 'stt_trigger');
+  }, [nodes, edges]);
+
   const hasButtonTriggers = startingButtonTriggers.length > 0;
   const hasAutoTriggers = startingAutoTriggers.length > 0;
+  const hasStartingSttNode = startingSttNodes.length > 0;
 
   const hasOcrNodes = useMemo(() => {
     return nodes.some(n => n.data?.type === 'ocr_node');
@@ -70,7 +86,7 @@ export default function RunPanel({ onClose }) {
     return streamEvents.some(e => ['node_start', 'token', 'user_message'].includes(e.type));
   }, [streamEvents]);
 
-  const hideInput = !isChatStarted && (hasButtonTriggers || hasAutoTriggers || hasOcrNodes);
+  const hideInput = !isChatStarted && (hasButtonTriggers || hasAutoTriggers || hasOcrNodes || hasStartingSttNode);
 
   const hasBlackboardTool = useMemo(() => {
     return nodes.some(n => {
@@ -1069,6 +1085,82 @@ export default function RunPanel({ onClose }) {
         </>
       )}
 
+      {/* STT Trigger Paused Overlay - Show SpeechRecorder when workflow is paused at stt_trigger */}
+      {pausedInfo.isPaused && pausedInfo.nodeType === 'stt_trigger' && (
+        <>
+          {/* Modal Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.4)',
+              backdropFilter: 'blur(2px)',
+              zIndex: 90,
+            }}
+          />
+
+          {/* Modal Container */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, x: '-50%', y: '-45%' }}
+            animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+            exit={{ opacity: 0, scale: 0.8, x: '-50%', y: '-45%' }}
+            transition={{ type: 'spring', damping: 28, stiffness: 350 }}
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              zIndex: 95,
+              width: '90%',
+              maxWidth: 450,
+              display: 'flex',
+              flexDirection: 'column',
+              background: '#FFFFFF',
+              borderRadius: 24,
+              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0,0,0,0.05)',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{
+              padding: '20px 24px 14px',
+              borderBottom: `1px solid ${THEME_BORDER}`,
+              background: '#FAFBFC',
+              flexShrink: 0
+            }}>
+              <div style={{
+                fontSize: 13,
+                fontWeight: 900,
+                color: THEME_TEXT,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10
+              }}>
+                <FiMic size={15} color={THEME_ACCENT} /> {pausedInfo.nodeConfig?.label || 'Speech Input Required'}
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '20px', flex: 1 }}>
+              <SpeechRecorder
+                autoStart={pausedInfo.nodeConfig?.auto_start === true}
+                autoStop={pausedInfo.nodeConfig?.auto_stop !== false}
+                silenceDelay={pausedInfo.nodeConfig?.silence_delay ?? 1500}
+                lang={pausedInfo.nodeConfig?.stt_lang || 'en-US'}
+                onTranscript={(text) => onResume({ user_input: text })}
+              />
+            </div>
+          </motion.div>
+        </>
+      )}
+
       <div style={{
         padding: '12px 24px 12px',
         background: 'linear-gradient(to top, #FFFFFF 0%, rgba(255,255,255,0.8) 100%)',
@@ -1079,10 +1171,10 @@ export default function RunPanel({ onClose }) {
         right: 0,
         zIndex: 100,
         pointerEvents: 'none',
-        display: (pausedInfo.isPaused && pausedInfo.nodeType === 'form_node') ? 'none' : 'block'
+        display: (() => { const ui = pausedInfo.isPaused && PAUSE_UI[pausedInfo.nodeType]; return ui?.hidesInput ? 'none' : 'block'; })()
       }}>
         <div style={{ margin: '0 auto', position: 'relative', pointerEvents: 'auto', maxWidth: 680, width: '100%' }}>
-          {pausedInfo.isPaused && pausedInfo.nodeType !== 'form_node' ? (
+          {pausedInfo.isPaused && !(PAUSE_UI[pausedInfo.nodeType]?.showsHitl === false) ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%' }}>
               <AnimatePresence>
                 {pausedInfo.showReworkForm && (
@@ -1339,7 +1431,20 @@ export default function RunPanel({ onClose }) {
                 </div>
               )}
 
-              {!hideInput && (
+              {/* STT Entry: Show mic recorder before chat starts when stt_node is the starting node */}
+              {canRun && !running && !isChatStarted && hasStartingSttNode && (
+                <div style={{ width: '100%' }}>
+                  <SpeechRecorder
+                    autoStart={startingSttNodes[0]?.data?.auto_start === true}
+                    autoStop={startingSttNodes[0]?.data?.auto_stop !== false}
+                    silenceDelay={startingSttNodes[0]?.data?.silence_delay ?? 1500}
+                    lang={startingSttNodes[0]?.data?.stt_lang || 'en-US'}
+                    onTranscript={(text) => onSend(text)}
+                  />
+                </div>
+              )}
+
+              {!hideInput && !hasStartingSttNode && !(pausedInfo.isPaused && pausedInfo.nodeType === 'stt_trigger') && (
                 <ChatInput
                   onSend={onSend}
                   running={running}
@@ -1352,6 +1457,16 @@ export default function RunPanel({ onClose }) {
                   hasOcrNodes={hasOcrNodes}
                   audioPlaying={audioPlaying}
                   stopAudio={stopAudio}
+                />
+              )}
+              {/* Ongoing STT chat: keep showing mic recorder instead of text box */}
+              {!hideInput && hasStartingSttNode && !running && (
+                <SpeechRecorder
+                  autoStart={startingSttNodes[0]?.data?.auto_start === true}
+                  autoStop={startingSttNodes[0]?.data?.auto_stop !== false}
+                  silenceDelay={startingSttNodes[0]?.data?.silence_delay ?? 1500}
+                  lang={startingSttNodes[0]?.data?.stt_lang || 'en-US'}
+                  onTranscript={(text) => onSend(text)}
                 />
               )}
             </div>

@@ -142,6 +142,7 @@ const LAZY_CONFIGS = {
   cardboard: lazy(() => import("./propertypanelModules/CardboardConfig")),
   button_trigger: lazy(() => import("./propertypanelModules/TriggerConfig")),
   auto_trigger: lazy(() => import("./propertypanelModules/TriggerConfig")),
+  stt_trigger: lazy(() => import("./propertypanelModules/SttNodeConfig")),
   textToAudio: lazy(() => import("./propertypanelModules/TextToAudioConfig")),
   group: lazy(() => import("./propertypanelModules/GroupConfig")),
 };
