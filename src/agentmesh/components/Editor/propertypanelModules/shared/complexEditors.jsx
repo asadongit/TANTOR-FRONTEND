@@ -173,6 +173,89 @@ export const FormFieldsEditor = memo(function FormFieldsEditor({ fields = [], on
                       </Field>
                     </div>
                   )}
+
+                  {f.type === 'file' && (
+                    <div className="mt-3 flex flex-col gap-3">
+                      <div className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wide">File Upload Config</div>
+
+                      <div>
+                        <Field label="Allowed Formats" hint="Leave all unchecked to allow any file type.">
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                            {[
+                              { key: 'pdf', label: 'PDF', color: '#EF4444' },
+                              { key: 'csv', label: 'CSV', color: '#10B981' },
+                              { key: 'excel', label: 'Excel', color: '#22C55E' },
+                              { key: 'word', label: 'Word', color: '#3B82F6' },
+                              { key: 'image', label: 'Image', color: '#8B5CF6' },
+                              { key: 'video', label: 'Video', color: '#F59E0B' },
+                              { key: 'zip', label: 'Zip', color: '#D97706' },
+                              { key: 'json', label: 'JSON', color: '#0D9488' },
+                            ].map(({ key, label, color }) => {
+                              const selected = f.allowed_types || [];
+                              const isOn = selected.includes(key);
+                              return (
+                                <button
+                                  key={key}
+                                  onClick={() => {
+                                    const next = isOn ? selected.filter(k => k !== key) : [...selected, key];
+                                    updateField(i, { allowed_types: next.length > 0 ? next : null });
+                                  }}
+                                  style={{
+                                    padding: '4px 10px',
+                                    borderRadius: 6,
+                                    border: `1.5px solid ${isOn ? color : '#E2E8F0'}`,
+                                    background: isOn ? `${color}15` : '#F8FAFC',
+                                    color: isOn ? color : '#94A3B8',
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s'
+                                  }}
+                                >
+                                  {label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </Field>
+                      </div>
+
+                      <div>
+                        <Field label="Storage Mode">
+                          <select
+                            value={f.file_storage_mode || 'path'}
+                            onChange={(e) => updateField(i, { file_storage_mode: e.target.value })}
+                            className="w-full px-2 py-1.5 bg-white border border-[var(--border)] rounded-lg text-xs outline-none text-[var(--text-primary)]"
+                          >
+                            <option value="path">Path (Save to temp server)</option>
+                            <option value="binary">Binary (Inline Base64)</option>
+                          </select>
+                        </Field>
+                      </div>
+
+                      <div className="flex gap-3 items-start">
+                        <div className="flex-1">
+                          <Field label="Max Size (MB)">
+                            <input
+                              type="number"
+                              min={1}
+                              max={100}
+                              value={f.max_size_mb ?? 10}
+                              onChange={(e) => updateField(i, { max_size_mb: Number(e.target.value) || 10 })}
+                              className="w-full px-2 py-1.5 border border-[var(--border)] rounded-lg text-xs outline-none bg-white text-[var(--text-primary)]"
+                            />
+                          </Field>
+                        </div>
+                        <div className="flex-1 pt-5">
+                          <Toggle
+                            checked={f.allow_multiple || false}
+                            onChange={(v) => updateField(i, { allow_multiple: v })}
+                            label="Multiple Files"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
             </ListAccordionItem>
           );
         })}
