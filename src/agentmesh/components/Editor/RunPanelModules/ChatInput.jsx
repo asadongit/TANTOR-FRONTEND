@@ -31,13 +31,22 @@ export default function ChatInput({
   // Auto-resize textarea logic
   useEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = "40px"; // Reset height
+      textareaRef.current.style.height = "40px";
       const scrollHeight = textareaRef.current.scrollHeight;
-      const maxHeight = 120; // Max 4 lines (assuming 20px line height + padding)
+      const maxHeight = 120;
       textareaRef.current.style.height =
         Math.min(scrollHeight, maxHeight) + "px";
     }
   }, [localInput]);
+
+  // Auto-refocus textarea when run finishes (disabled → enabled)
+  const prevRunning = useRef(running);
+  useEffect(() => {
+    if (prevRunning.current && !running) {
+      textareaRef.current?.focus();
+    }
+    prevRunning.current = running;
+  }, [running]);
 
   const handleSend = () => {
     if (!localInput.trim() || running || !canRun) return;
