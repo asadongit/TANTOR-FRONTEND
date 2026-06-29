@@ -1154,7 +1154,7 @@ export default function RunPanel({ onClose }) {
                 autoStop={pausedInfo.nodeConfig?.auto_stop !== false}
                 silenceDelay={pausedInfo.nodeConfig?.silence_delay ?? 1500}
                 lang={pausedInfo.nodeConfig?.stt_lang || 'en-US'}
-                onTranscript={(text) => onResume({ user_input: text })}
+                onTranscript={(text) => onResume({ stt_output: text })}
               />
             </div>
           </motion.div>
