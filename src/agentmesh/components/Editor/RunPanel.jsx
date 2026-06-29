@@ -237,19 +237,22 @@ export default function RunPanel({ onClose }) {
         }
 
         const pausedOriginalNodeId = res.next_node?.replace(/^(gate_|pre_gate_|post_gate_)/, '') || res.next_node;
-        const storeNodes = useWorkflowStore.getState().nodes;
-        const pausedNode = storeNodes.find(n => n.id === pausedOriginalNodeId);
-        
-        let nodeType = pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type);
-        let nodeConfig = pausedNode?.data || {};
-        
-        // Handle child subgraph pause mapping
-        if (pausedNode && nodeType === 'subgraph' && res.context?.paused_subgraph_node_id) {
+
+        // Resolve pause type/config: backend-provided (preferred) → subgraph → canvas fallback
+        let nodeType = res.pause_type;
+        let nodeConfig = res.pause_config;
+
+        if (res.context?.paused_subgraph_node_id) {
           nodeType = res.context.paused_subgraph_node_type;
           nodeConfig = res.context.paused_subgraph_node_config || {};
+        } else if (!nodeType) {
+          const storeNodes = useWorkflowStore.getState().nodes;
+          const pausedNode = storeNodes.find(n => n.id === pausedOriginalNodeId);
+          nodeType = pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type);
+          nodeConfig = pausedNode?.data || {};
         }
         
-        const enabledActions = (nodeConfig?.hitl_actions) || pausedNode?.hitl_actions || pausedNode?.data?.hitl_actions || ['approve', 'rework', 'reject'];
+        const enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
 
         console.log(`DEBUG [RunPanel]: Pause detected at ${res.next_node} (Original: ${pausedOriginalNodeId}). Enabled actions:`, enabledActions);
 
@@ -461,20 +464,23 @@ export default function RunPanel({ onClose }) {
         }
 
         const resumeOriginalNodeId = res.next_node?.replace(/^(gate_|pre_gate_|post_gate_)/, '') || res.next_node;
-        const storeNodes = useWorkflowStore.getState().nodes;
-        const pausedNode = storeNodes.find(n => n.id === resumeOriginalNodeId);
         
-        let nodeType = pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type);
-        let nodeConfig = pausedNode?.data || {};
+        // Resolve pause type/config: subgraph → backend-provided → canvas fallback
+        let nodeType = res.pause_type;
+        let nodeConfig = res.pause_config;
         
-        // Handle child subgraph pause mapping
-        if (pausedNode && nodeType === 'subgraph' && res.context?.paused_subgraph_node_id) {
+        if (res.context?.paused_subgraph_node_id) {
           nodeType = res.context.paused_subgraph_node_type;
           nodeConfig = res.context.paused_subgraph_node_config || {};
+        } else if (!nodeType) {
+          const storeNodes = useWorkflowStore.getState().nodes;
+          const pausedNode = storeNodes.find(n => n.id === resumeOriginalNodeId);
+          nodeType = pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type);
+          nodeConfig = pausedNode?.data || {};
         }
         
-        const enabledActions = (nodeConfig?.hitl_actions) || pausedNode?.hitl_actions || pausedNode?.data?.hitl_actions || ['approve', 'rework', 'reject'];
-
+        const enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
+        
         setPausedInfo({
           isPaused: true,
           nextNode: resumeOriginalNodeId,
@@ -627,19 +633,21 @@ export default function RunPanel({ onClose }) {
         const nextNode = res.next_node;
         const originalNodeId = nextNode?.replace(/^(gate_|pre_gate_|post_gate_)/, '') || nextNode;
 
-        const storeNodes = useWorkflowStore.getState().nodes;
-        const pausedNode = storeNodes.find(n => n.id === originalNodeId);
+        // Resolve pause type/config: subgraph → backend-provided → canvas fallback
+        let nodeType = res.pause_type;
+        let nodeConfig = res.pause_config;
         
-        let nodeType = pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type);
-        let nodeConfig = pausedNode?.data || {};
-        
-        // Handle child subgraph pause mapping
-        if (pausedNode && nodeType === 'subgraph' && res.context?.paused_subgraph_node_id) {
+        if (res.context?.paused_subgraph_node_id) {
           nodeType = res.context.paused_subgraph_node_type;
           nodeConfig = res.context.paused_subgraph_node_config || {};
+        } else if (!nodeType) {
+          const storeNodes = useWorkflowStore.getState().nodes;
+          const pausedNode = storeNodes.find(n => n.id === originalNodeId);
+          nodeType = pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type);
+          nodeConfig = pausedNode?.data || {};
         }
         
-        const enabledActions = (nodeConfig?.hitl_actions) || pausedNode?.hitl_actions || pausedNode?.data?.hitl_actions || ['approve', 'rework', 'reject'];
+        const enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
 
         const lastAiMsg = [...messages].reverse().find(m => m.type === 'AIMessage');
 
