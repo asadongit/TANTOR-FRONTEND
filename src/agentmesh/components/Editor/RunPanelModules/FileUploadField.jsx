@@ -6,10 +6,10 @@ export default function FileUploadField({ field, value, onChange, isLoading, thr
   const [error, setError] = React.useState('');
   const [isDragActive, setIsDragActive] = React.useState(false);
 
-  const allowMultiple = field.allowMultiple || false;
-  const storageMode = field.fileStorageMode || 'path';
-  const maxSizeMB = field.maxSizeMB || 10;
-  const allowedFormats = field.allowedTypes || [];
+  const allowMultiple = field.allow_multiple ?? field.allowMultiple ?? false;
+  const storageMode = field.file_storage_mode ?? field.fileStorageMode ?? 'path';
+  const maxSizeMB = field.max_size_mb ?? field.maxSizeMB ?? 10;
+  const allowedFormats = field.allowed_types ?? field.allowedTypes ?? [];
 
   const getAcceptAttribute = () => {
     if (allowedFormats.length === 0) return '*';

@@ -29,6 +29,46 @@ const STICKY_NOTE_COLORS = {
     text: '#15803D',
     accent: '#22C55E'
   },
+  teal: {
+    name: 'Teal',
+    headerBg: '#CCFBF1',
+    bg: 'rgba(240, 253, 250, 0.85)',
+    border: '#5EEAD4',
+    text: '#0F766E',
+    accent: '#14B8A6'
+  },
+  cyan: {
+    name: 'Cyan',
+    headerBg: '#CFFAFE',
+    bg: 'rgba(236, 254, 255, 0.85)',
+    border: '#67E8F9',
+    text: '#0E7490',
+    accent: '#06B6D4'
+  },
+  sky: {
+    name: 'Sky',
+    headerBg: '#E0F2FE',
+    bg: 'rgba(240, 249, 255, 0.85)',
+    border: '#7DD3FC',
+    text: '#075985',
+    accent: '#0EA5E9'
+  },
+  indigo: {
+    name: 'Indigo',
+    headerBg: '#E0E7FF',
+    bg: 'rgba(238, 242, 255, 0.85)',
+    border: '#A5B4FC',
+    text: '#3730A3',
+    accent: '#6366F1'
+  },
+  violet: {
+    name: 'Violet',
+    headerBg: '#EDE9FE',
+    bg: 'rgba(245, 243, 255, 0.85)',
+    border: '#C4B5FD',
+    text: '#5B21B6',
+    accent: '#8B5CF6'
+  },
   purple: {
     name: 'Purple',
     headerBg: '#F3E8FF',
@@ -37,13 +77,29 @@ const STICKY_NOTE_COLORS = {
     text: '#6B21A8',
     accent: '#A855F7'
   },
-  amber: {
-    name: 'Amber',
-    headerBg: '#FEF3C7',
-    bg: 'rgba(255, 251, 235, 0.85)',
-    border: '#FCD34D',
-    text: '#B45309',
-    accent: '#F59E0B'
+  fuchsia: {
+    name: 'Fuchsia',
+    headerBg: '#FAE8FF',
+    bg: 'rgba(253, 244, 255, 0.85)',
+    border: '#F0ABFC',
+    text: '#86198F',
+    accent: '#D946EF'
+  },
+  pink: {
+    name: 'Pink',
+    headerBg: '#FCE7F3',
+    bg: 'rgba(253, 242, 248, 0.85)',
+    border: '#F9A8D4',
+    text: '#BE185D',
+    accent: '#EC4899'
+  },
+  rose: {
+    name: 'Rose',
+    headerBg: '#FFE4E6',
+    bg: 'rgba(255, 241, 242, 0.85)',
+    border: '#FDA4AF',
+    text: '#BE123C',
+    accent: '#F43F5E'
   },
   red: {
     name: 'Red',
@@ -53,13 +109,45 @@ const STICKY_NOTE_COLORS = {
     text: '#B91C1C',
     accent: '#EF4444'
   },
-  pink: {
-    name: 'Pink',
-    headerBg: '#FCE7F3',
-    bg: 'rgba(253, 242, 248, 0.85)',
-    border: '#F9A8D4',
-    text: '#BE185D',
-    accent: '#EC4899'
+  orange: {
+    name: 'Orange',
+    headerBg: '#FFEDD5',
+    bg: 'rgba(255, 247, 237, 0.85)',
+    border: '#FDBA74',
+    text: '#C2410C',
+    accent: '#F97316'
+  },
+  amber: {
+    name: 'Amber',
+    headerBg: '#FEF3C7',
+    bg: 'rgba(255, 251, 235, 0.85)',
+    border: '#FCD34D',
+    text: '#B45309',
+    accent: '#F59E0B'
+  },
+  yellow: {
+    name: 'Yellow',
+    headerBg: '#FEF9C3',
+    bg: 'rgba(254, 252, 232, 0.85)',
+    border: '#FDE68A',
+    text: '#A16207',
+    accent: '#EAB308'
+  },
+  lime: {
+    name: 'Lime',
+    headerBg: '#ECFCCB',
+    bg: 'rgba(247, 254, 231, 0.85)',
+    border: '#BEF264',
+    text: '#4D7C0F',
+    accent: '#84CC16'
+  },
+  emerald: {
+    name: 'Emerald',
+    headerBg: '#D1FAE5',
+    bg: 'rgba(236, 253, 245, 0.85)',
+    border: '#6EE7B7',
+    text: '#065F46',
+    accent: '#10B981'
   }
 };
 
@@ -141,11 +229,6 @@ function StickyNoteNode({ id, data, selected }) {
     }
   };
 
-  const handleColorSelect = (e, colorKey) => {
-    e.stopPropagation();
-    setNodeData(id, { color: colorKey });
-  };
-
   const handleToggleLock = (e) => {
     e.stopPropagation();
     setNodeData(id, { locked: !data.locked });
@@ -211,7 +294,7 @@ function StickyNoteNode({ id, data, selected }) {
             background: colors.headerBg,
             borderBottom: `1px solid ${colors.border}`,
             userSelect: 'none',
-            cursor: data.locked ? 'default' : 'grab'
+            cursor: data.locked ? 'grab' : 'grab'
           }}
         >
           {/* Label & Title Editing */}
@@ -256,9 +339,9 @@ function StickyNoteNode({ id, data, selected }) {
                   whiteSpace: 'nowrap',
                   textOverflow: 'ellipsis',
                   overflow: 'hidden',
-                  cursor: 'text'
+                  cursor: data.locked ? 'grab' : 'text'
                 }}
-                title="Double click to rename"
+                title={data.locked ? 'This note is locked' : 'Double click to rename'}
               >
                 {data.label || 'Sticky Note'}
               </div>
@@ -298,40 +381,6 @@ function StickyNoteNode({ id, data, selected }) {
               marginLeft: 8
             }}
           >
-            {/* Color Dots */}
-            {!data.locked && (hovered || selected) && (
-              <div style={{ display: 'flex', gap: 4 }}>
-                {Object.keys(STICKY_NOTE_COLORS).map((colorKey) => {
-                  const isCurrent = colorKey === currentColorKey;
-                  const optColors = STICKY_NOTE_COLORS[colorKey];
-                  return (
-                    <button
-                      key={colorKey}
-                      onClick={(e) => handleColorSelect(e, colorKey)}
-                      style={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: '50%',
-                        background: optColors.accent,
-                        border: isCurrent ? '1.5px solid white' : 'none',
-                        boxShadow: isCurrent ? `0 0 0 1px ${optColors.accent}` : 'none',
-                        cursor: 'pointer',
-                        padding: 0,
-                        transform: isCurrent ? 'scale(1.15)' : 'scale(1)',
-                        transition: 'transform 0.15s'
-                      }}
-                      title={optColors.name}
-                    />
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Separator */}
-            {!data.locked && (hovered || selected) && (
-              <div style={{ width: 1, height: 12, background: colors.border }} />
-            )}
-
             {/* Lock / Unlock Toggle Button */}
             <button
               onClick={handleToggleLock}
@@ -457,11 +506,11 @@ function StickyNoteNode({ id, data, selected }) {
                 lineHeight: 1.5,
                 whiteSpace: 'pre-wrap',
                 fontStyle: 'italic',
-                cursor: 'text',
+                cursor: data.locked ? 'grab' : 'text',
                 flex: 1,
                 userSelect: 'none'
               }}
-              title="Double click to edit description"
+              title={data.locked ? 'This note is locked' : 'Double click to edit description'}
             >
               {data.description || (
                 (hovered || selected) && !data.locked ? (

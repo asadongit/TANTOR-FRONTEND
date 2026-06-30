@@ -174,7 +174,7 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
     else rfNodes.push({ id: `polling_${genId()}`, type: 'agentNode', position: systemPositions['polling'] || { x: 50, y: 190 }, data: { id: `polling_${genId()}`, type: 'polling', label: 'Polling Trigger', ...triggers.polling } });
   }
 
-  const restoredCardboards = (meta.cardboards || []).map(n => ({ ...n, type: 'cardboardNode', zIndex: n.zIndex ?? -10, draggable: !n.data?.locked }));
+  const restoredCardboards = (meta.cardboards || []).map(n => ({ ...n, type: 'cardboardNode', zIndex: n.zIndex ?? -10, draggable: !n.data?.locked, selectable: !n.data?.locked }));
   const allNodes = [...restoredCardboards, ...rfNodes];
 
   const startNode = rawNodes.find(n => n.type === 'start');
@@ -382,7 +382,7 @@ export const useWorkflowStore = create((set, get) => ({
           return {
             ...n,
             data: nextData,
-            ...(data.locked !== undefined ? { draggable: !data.locked } : {})
+            ...(data.locked !== undefined ? { draggable: !data.locked, selectable: !data.locked } : {})
           };
         }
         if (n.data?.type === 'group' && n.data?.internal_nodes) {
