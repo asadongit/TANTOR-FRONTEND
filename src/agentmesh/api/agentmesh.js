@@ -1,5 +1,9 @@
 const BASE = window._env_?.VITE_AGENT_MESH || import.meta.env.VITE_AGENT_MESH || 'http://localhost:8000/api/v1/agentmesh';
 
+export const getBackendUrl = () => {
+  return BASE.replace('/api/v1/agentmesh', '');
+};
+
 async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
     headers: { 'Content-Type': 'application/json', ...options.headers },

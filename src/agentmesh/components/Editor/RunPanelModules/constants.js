@@ -107,3 +107,16 @@ export const findProfileReportHtml = (ctx) => {
 
   return null;
 };
+
+/**
+ * PAUSE_UI registry — add new pause-time node types here without touching RunPanel logic.
+ * hidesInput: true  → hides the normal bottom input bar entirely
+ * showsHitl:  false → skips the standard HITL approve/rework/reject controls
+ */
+export const PAUSE_UI = {
+  form_node:   { hidesInput: true,  showsHitl: false },
+  stt_trigger: { hidesInput: true,  showsHitl: false },
+  camera:      { hidesInput: true,  showsHitl: false },
+  ocr_node:    { hidesInput: true,  showsHitl: false },
+};
+

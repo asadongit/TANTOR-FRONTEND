@@ -86,7 +86,7 @@ export default function CameraRenderer({ config, context, isLoading, onSubmit })
         </div>
         <h3 className="text-gray-900 m-0 text-lg font-semibold">Photo Submitted!</h3>
         <p className="text-gray-600 text-center max-w-[300px] m-0 text-sm leading-relaxed">
-          Your identity is now being verified against government databases. Please wait while the AML pipeline executes...
+          Please wait while we process your image.
         </p>
         <div className="mt-6">
           <div className="w-10 h-10 border-4 border-gray-100 border-t-[#BE185D] rounded-full animate-spin" />

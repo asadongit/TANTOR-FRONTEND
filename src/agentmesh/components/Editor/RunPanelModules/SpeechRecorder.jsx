@@ -454,12 +454,25 @@ export default function SpeechRecorder({
 
       {inModal ? (
         <>
-          {/* MODAL LAYOUT: transcript at top, action row at bottom */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: '100%', gap: 10 }}>
+          {/* MODAL LAYOUT: Mic centered, status, transcript, and actions */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', gap: 12 }}>
+            <MicButton size={76} />
+            
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.04em', color: isSuspended ? SUBTEXT : isListening ? RED : isTranscribed && finalText.trim() ? GREEN : isWaiting ? '#D97706' : SUBTEXT, marginBottom: 2 }}>
+                {statusLabel}
+              </div>
+              {status === 'idle' && (
+                <div style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 500 }}>
+                  {autoStop ? 'Auto-stops on silence' : 'Manual stop'} · {autoStart ? 'Auto-starts on voice' : 'Manual start'}
+                </div>
+              )}
+            </div>
+
             <TranscriptArea />
           </div>
 
-          {/* Bottom action row: Re-record + Mic + Send (only when transcribed) */}
+          {/* Bottom action row: Re-record + Send (only when transcribed) */}
           <AnimatePresence>
             {isTranscribed && finalText.trim() && !(autoStart && autoStop) && (
               <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 0 4px', borderTop: `1px solid ${BORDER}` }}>
@@ -467,7 +480,6 @@ export default function SpeechRecorder({
                   onMouseEnter={(e) => e.currentTarget.style.background = '#F3F4F6'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                   Re-record
                 </button>
-                <MicButton size={44} showRings={false} />
                 <button onClick={handleConfirm} style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', background: `rgba(${ACCENT_RGB}, 1)`, color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: `0 4px 14px rgba(${ACCENT_RGB}, 0.35)`, transition: 'opacity 0.15s' }}
                   onMouseEnter={(e) => e.currentTarget.style.opacity = '0.88'} onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}>
                   Send Now
