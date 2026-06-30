@@ -961,6 +961,7 @@ export default function RunPanel({ onClose }) {
         <CameraRenderer
           config={pausedInfo.nodeConfig || {}}
           context={pausedInfo.context || {}}
+          threadId={pausedInfo.threadId || threadId}
           isLoading={running}
           onSubmit={(data) => onResume(data)}
         />

@@ -1,8 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { FiCamera, FiCheck, FiRefreshCcw } from 'react-icons/fi';
+import { uploadTempFile } from '../../../api/agentmesh';
 
-export default function CameraRenderer({ config, context, isLoading, onSubmit }) {
+export default function CameraRenderer({ config, context, threadId, isLoading, onSubmit }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [imageCaptured, setImageCaptured] = useState(null);
@@ -33,11 +34,27 @@ export default function CameraRenderer({ config, context, isLoading, onSubmit })
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      
+      const MAX_WIDTH = 1920;
+      const MAX_HEIGHT = 1080;
+      let width = video.videoWidth;
+      let height = video.videoHeight;
+
+      if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+        if (width > height) {
+          height *= MAX_WIDTH / width;
+          width = MAX_WIDTH;
+        } else {
+          width *= MAX_HEIGHT / height;
+          height = MAX_HEIGHT;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg');
+      ctx.drawImage(video, 0, 0, width, height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
       setImageCaptured(dataUrl);
       
       if (stream) {
@@ -70,11 +87,34 @@ export default function CameraRenderer({ config, context, isLoading, onSubmit })
         console.error("Failed to fetch IP address:", err);
       }
 
-      onSubmit({ 
-        vcip_image_base64: imageCaptured,
-        user_ip: userIp,
-        device_fingerprint: userAgent
-      });
+      try {
+        const responseBlob = await fetch(imageCaptured);
+        const blob = await responseBlob.blob();
+        
+        const formData = new FormData();
+        const safeThreadId = threadId || context?.thread_id || 'default_thread';
+        formData.append('file', blob, `camera_capture_${Date.now()}.jpg`);
+        formData.append('thread_id', safeThreadId);
+        
+        const uploadRes = await uploadTempFile(formData);
+        
+        if (uploadRes?.vfs_path) {
+          onSubmit({
+            vcip_capture_path: uploadRes.vfs_path,
+            user_ip: userIp,
+            device_fingerprint: userAgent
+          });
+        } else {
+          throw new Error("Invalid response from upload-temp");
+        }
+      } catch (uploadErr) {
+        console.error("Upload failed, falling back to base64 submit:", uploadErr);
+        onSubmit({ 
+          vcip_image_base64: imageCaptured,
+          user_ip: userIp,
+          device_fingerprint: userAgent
+        });
+      }
     }
   };
 
@@ -153,6 +193,7 @@ export default function CameraRenderer({ config, context, isLoading, onSubmit })
 CameraRenderer.propTypes = {
   config: PropTypes.object.isRequired,
   context: PropTypes.object.isRequired,
+  threadId: PropTypes.string,
   isLoading: PropTypes.bool.isRequired,
   onSubmit: PropTypes.func.isRequired,
 };

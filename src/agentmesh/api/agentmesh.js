@@ -139,6 +139,19 @@ export const ingestData = (formData) => {
   });
 };
 
+export const uploadTempFile = (formData) => {
+  return fetch(`${BASE}/execution/upload-temp`, {
+    method: 'POST',
+    body: formData,
+  }).then(async (res) => {
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || 'Upload failed');
+    }
+    return res.json();
+  });
+};
+
 // ─── Logs ─────────────────────────────────────────────────────────────────────
 export const getExecutionLogs = (params = {}) => {
   const { workflowId, page = 1, limit = 100 } = params;
