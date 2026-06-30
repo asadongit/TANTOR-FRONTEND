@@ -22,96 +22,82 @@ before_script:
   - docker login registry.tantor.io:443 -u "$HARBOR_USER" -p "$HARBOR_PASSWORD"
 
 
-# check-disk-usage:
-#   stage: check   
-#   script: |
-#     ROOT_USAGE=$(df / --output=pcent | tail -1 | tr -d ' %')
-#     echo "Root usage: ${ROOT_USAGE}%"
-#     if [ "$ROOT_USAGE" -gt 80 ]; then
-#       echo "ERROR: Disk usage too high" >&2
-#       exit 1
-#     fi
-#   rules:
-#     - if: '$CI_COMMIT_BRANCH =~ /^(dev|testing|int)$/'
+check-disk-usage:
+  stage: check   
+  script: |
+    ROOT_USAGE=$(df / --output=pcent | tail -1 | tr -d ' %')
+    echo "Root usage: ${ROOT_USAGE}%"
+    if [ "$ROOT_USAGE" -gt 80 ]; then
+      echo "ERROR: Disk usage too high" >&2
+      exit 1
+    fi
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ /^(dev|testing|int)$/'
 
-# semgrep:
-#   stage: security
-#   image: semgrep/semgrep
-#   rules:
-#     - if: '$CI_COMMIT_BRANCH =~ /^(testing)$/'
-#   variables:
-#     # Enable GitLab SAST report format
-#     SEMGREP_GITLAB_JSON: "1"
-#   script:
-#     - semgrep scan --config=auto . --gitlab-sast -o gl-sast-report.json || true
-#     - semgrep scan --config=auto . --sarif -o semgrep-report.sarif || true
-#   artifacts:
-#     paths:
-#       - semgrep-report.sarif
-#       - gl-sast-report.json
-#     reports:
-#       sast: gl-sast-report.json
-
-trivy-package-scan:
-  stage: security-trivy
-
-  script:
-    - trivy fs --scanners vuln --format sarif --output trivy-fs.sarif .
-
-  artifacts:
-    when: always
-    paths:
-      - trivy-fs.sarif
-
+semgrep:
+  stage: security
+  image: semgrep/semgrep
   rules:
     - if: '$CI_COMMIT_BRANCH =~ /^(testing)$/'
+  variables:
+    # Enable GitLab SAST report format
+    SEMGREP_GITLAB_JSON: "1"
+  script:
+    - semgrep scan --config=auto . --gitlab-sast -o gl-sast-report.json || true
+    - semgrep scan --config=auto . --sarif -o semgrep-report.sarif || true
+  artifacts:
+    paths:
+      - semgrep-report.sarif
+      - gl-sast-report.json
+    reports:
+      sast: gl-sast-report.json
 
 
-# clone-deployment:
-#   stage: clone   
-#   script:
-#     - |
-#       set -e
-#       BRANCH="${CI_COMMIT_REF_NAME}"
-#       echo "Running on branch: $BRANCH"
+clone-deployment:
+  stage: clone   
+  script:
+    - |
+      set -e
+      BRANCH="${CI_COMMIT_REF_NAME}"
+      echo "Running on branch: $BRANCH"
 
-#       case "$BRANCH" in
-#         dev)
-#           IMAGE_NAME="tantorfront2-0-dev"
-#           ;;
-#         testing)
-#           IMAGE_NAME="tantorfront2-0-test"
-#           ;;
-#         int)
-#           IMAGE_NAME="tantorfront2-0-int"
-#           ;;
-#         *)
-#           echo "ERROR: Unsupported branch '$BRANCH'. Only 'dev', 'testing', 'int' allowed." >&2
-#           exit 1
-#           ;;
-#       esac
+      case "$BRANCH" in
+        dev)
+          IMAGE_NAME="tantorfront2-0-dev"
+          ;;
+        testing)
+          IMAGE_NAME="tantorfront2-0-test"
+          ;;
+        int)
+          IMAGE_NAME="tantorfront2-0-int"
+          ;;
+        *)
+          echo "ERROR: Unsupported branch '$BRANCH'. Only 'dev', 'testing', 'int' allowed." >&2
+          exit 1
+          ;;
+      esac
 
-#       echo "Environment config: DIR=$DEPLOYMENT_DIR | YAML=$YAML_FILE | IMAGE=$IMAGE_NAME"
+      echo "Environment config: DIR=$DEPLOYMENT_DIR | YAML=$YAML_FILE | IMAGE=$IMAGE_NAME"
 
-#       git clone -b "$BRANCH" "$DEPLOYMENT_REPO" "$DEPLOYMENT_DIR"
-#       echo "Cloned deployment repo into $DEPLOYMENT_DIR"
-#       cd "$DEPLOYMENT_DIR/deploy"
+      git clone -b "$BRANCH" "$DEPLOYMENT_REPO" "$DEPLOYMENT_DIR"
+      echo "Cloned deployment repo into $DEPLOYMENT_DIR"
+      cd "$DEPLOYMENT_DIR/deploy"
 
-#       CURRENT_IMAGE=$(grep 'image:' "$YAML_FILE" | awk '{print $2}')
-#       echo "Current image version: $CURRENT_IMAGE"
+      CURRENT_IMAGE=$(grep 'image:' "$YAML_FILE" | awk '{print $2}')
+      echo "Current image version: $CURRENT_IMAGE"
 
-#       cd ../..
-#       NEW_TAG=$(git rev-parse --short HEAD)
-#       NEW_IMAGE="$REGISTRY/$IMAGE_NAME:$NEW_TAG"
-#       docker build -t "$NEW_IMAGE" .
-#       docker push "$NEW_IMAGE"
+      cd ../..
+      NEW_TAG=$(git rev-parse --short HEAD)
+      NEW_IMAGE="$REGISTRY/$IMAGE_NAME:$NEW_TAG"
+      docker build -t "$NEW_IMAGE" .
+      docker push "$NEW_IMAGE"
 
-#       cd "$DEPLOYMENT_DIR/deploy"
-#       sed -i "s|$CURRENT_IMAGE|$NEW_IMAGE|g" "$YAML_FILE"
-#       cat "$YAML_FILE"
+      cd "$DEPLOYMENT_DIR/deploy"
+      sed -i "s|$CURRENT_IMAGE|$NEW_IMAGE|g" "$YAML_FILE"
+      cat "$YAML_FILE"
 
-#       git add "$YAML_FILE"
-#       git commit -m "[CI] Update $IMAGE_NAME to $NEW_TAG"
-#       git push origin "$BRANCH"
-#   rules:
-#     - if: '$CI_COMMIT_BRANCH =~ /^(dev|testing|int)$/'
+      git add "$YAML_FILE"
+      git commit -m "[CI] Update $IMAGE_NAME to $NEW_TAG"
+      git push origin "$BRANCH"
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ /^(dev|testing|int)$/'
