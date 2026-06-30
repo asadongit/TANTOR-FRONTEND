@@ -414,38 +414,70 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, isRegressi
 
         <div className="p-6 space-y-6">
 
-          {/* ── Model Name — 400 px, truncated, tooltip on hover ── */}
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">Model Name</label>
-            <div className="relative inline-block" style={{ width: '400px', maxWidth: '100%' }}>
-              <input
-                type="text"
-                value={modelName}
-                readOnly
-                onMouseEnter={() => setShowModelNameTooltip(true)}
-                onMouseLeave={() => setShowModelNameTooltip(false)}
-                title=""
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 cursor-not-allowed"
-                style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-              />
-              {showModelNameTooltip && modelName && (
-                <div
-                  className="absolute left-0 top-full mt-1 bg-[#332849] text-white text-xs px-3 py-2 rounded-lg shadow-xl z-50"
-                  style={{ maxWidth: '480px', wordBreak: 'break-word' }}
-                >
-                  {modelName}
-                </div>
-              )}
+          {/* ── Model Name — only shown standalone for non-timeseries ── */}
+          {!isTimeseries && (
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">Model Name</label>
+              <div className="relative inline-block" style={{ width: '400px', maxWidth: '100%' }}>
+                <input
+                  type="text"
+                  value={modelName}
+                  readOnly
+                  onMouseEnter={() => setShowModelNameTooltip(true)}
+                  onMouseLeave={() => setShowModelNameTooltip(false)}
+                  title=""
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 cursor-not-allowed"
+                  style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                />
+                {showModelNameTooltip && modelName && (
+                  <div
+                    className="absolute left-0 top-full mt-1 bg-[#332849] text-white text-xs px-3 py-2 rounded-lg shadow-xl z-50"
+                    style={{ maxWidth: '480px', wordBreak: 'break-word' }}
+                  >
+                    {modelName}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* ── Timeseries-specific fields ── */}
           {isTimeseries ? (
             <>
               <div className="grid grid-cols-2 gap-4">
+                {/* Model Name — left column */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-2">Model Name</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={
+                        modelName.length > 30
+                          ? '...' + modelName.slice(-27)
+                          : modelName
+                      }
+                      readOnly
+                      onMouseEnter={() => setShowModelNameTooltip(true)}
+                      onMouseLeave={() => setShowModelNameTooltip(false)}
+                      title=""
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 cursor-not-allowed"
+                      style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    />
+                    {showModelNameTooltip && modelName && (
+                      <div
+                        className="absolute left-0 top-full mt-1 bg-[#332849] text-white text-xs px-3 py-2 rounded-lg shadow-xl z-50"
+                        style={{ maxWidth: '480px', wordBreak: 'break-word', zIndex: 9999 }}
+                      >
+                        {modelName}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* CF Target Value — right column */}
                 <div>
                   <label className="flex items-center text-sm font-medium mb-2 text-gray-900">
-                    CF Target Value *
+                    CF Target Value <span className="text-red-500 ml-0.5">*</span>
                     <FieldTooltip lines={cfDesiredTooltip} position="right" />
                   </label>
                   <input
@@ -584,7 +616,7 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, isRegressi
                 value={isNaN(configData.cfInstanceIndex) ? '' : configData.cfInstanceIndex}
                 onChange={(e) => {
                   if (!readonly && !isGenerating) {
-                    const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                    const val = parseInt(e.target.value);
                     setConfigData({ ...configData, cfInstanceIndex: val });
                   }
                 }}
@@ -611,7 +643,7 @@ function ConfigurationModal({ isOpen, onClose, onGenerate, xaiConfig, isRegressi
                 value={isNaN(configData.limeInstanceIndex) ? '' : configData.limeInstanceIndex}
                 onChange={(e) => {
                   if (!readonly && !isGenerating) {
-                    const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                    const val = parseInt(e.target.value);
                     setConfigData({ ...configData, limeInstanceIndex: val });
                   }
                 }}

@@ -337,6 +337,12 @@ function XAI() {
           }
           config = await response.json();
         }
+        const applicability = config?.xai_applicability;
+        const hasAnyApplicable = applicability && Object.values(applicability).some(Boolean);
+        if (!hasAnyApplicable) {
+          toast.error('XAI methods are not applicable for this model. Please choose another model.', { duration: 5000, position: 'top-right' });
+          return;
+        }
         setXaiConfig(config);
         setConfiguredModel(selectedModel);
         setShowConfigModal(true);
@@ -412,9 +418,9 @@ function XAI() {
           run_name: selectedModel,
           run_shap: true,
           run_pdp: false,
-          run_lime: false,
+          run_lime: true,
           run_counterfactuals: true,
-          run_feature_flip: false,
+          run_feature_flip: true,
           algorithm_name: xaiConfig?.algorithm_name ?? '',
           lookback_window: null,
           date_column: dateColumn,
@@ -439,7 +445,7 @@ function XAI() {
           workflow_id: activeWorkflowId,
           run_name: selectedModel,
           run_shap: true,
-          run_pdp: true,
+          run_pdp: false,
           run_feature_flip: false,
           run_counterfactuals: true,
           run_lime: true,
@@ -590,6 +596,15 @@ function XAI() {
     { key: 'direction', label: 'Direction', sortable: true }
   ];
 
+  const featureFlipColumnsTs = [
+    { key: 'id', label: 'Sno', sortable: true, width: '80px' },
+    { key: 'feature', label: 'Feature', sortable: true },
+    { key: 'changeUp', label: 'Avg % Forecast Change (↑)', sortable: true },
+    { key: 'changeDown', label: 'Avg % Forecast Change (↓)', sortable: true },
+    { key: 'direction', label: 'Dominant Direction', sortable: true },
+    { key: 'delta', label: 'Delta Applied', sortable: true }
+  ];
+
   const counterfactualColumns = [
     { key: 'id', label: 'Sno', sortable: true, width: '80px' },
     { key: 'feature', label: 'Feature', sortable: true },
@@ -606,6 +621,16 @@ function XAI() {
 
   const getFeatureFlipData = () => {
     if (!reportData?.feature_flip_summary) return [];
+    if (isTimeseries) {
+      return reportData.feature_flip_summary.map((item, index) => ({
+        id: index + 1,
+        feature: item.Feature,
+        changeUp: item['Avg % Forecast Change (↑)'],
+        changeDown: item['Avg % Forecast Change (↓)'],
+        direction: item['Dominant Direction'],
+        delta: item['Delta Applied']
+      }));
+    }
     return reportData.feature_flip_summary.map((item, index) => ({
       id: index + 1,
       feature: item.Feature,
@@ -629,7 +654,8 @@ function XAI() {
   const getLimeData = () => {
   const explanation =
     reportData?.lime_report?.explanation_for_class ||
-    reportData?.lime_report?.explanation_for_prediction;
+    reportData?.lime_report?.explanation_for_prediction ||
+    reportData?.lime_report?.explanation;
 
   if (!explanation) return [];
 
@@ -1011,7 +1037,7 @@ function XAI() {
           {reportData.feature_flip_summary && reportData.feature_flip_summary.length > 0 && (
             <div className="bg-white rounded-lg p-6 border border-gray-200">
               <h3 className="text-base font-semibold text-gray-900 mb-4">Feature Flip Summary</h3>
-              <DataTable columns={featureFlipColumns} data={getFeatureFlipData()} isLoading={false} isError={false} />
+              <DataTable columns={isTimeseries ? featureFlipColumnsTs : featureFlipColumns} data={getFeatureFlipData()} isLoading={false} isError={false} />
             </div>
           )}
 
