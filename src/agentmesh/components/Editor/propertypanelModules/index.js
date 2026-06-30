@@ -52,6 +52,7 @@ import BeneficiaryRiskConfig from './BeneficiaryRiskConfig';
 import CardboardConfig from './CardboardConfig';
 import TriggerConfig from './TriggerConfig';
 import TextToAudioConfig from './TextToAudioConfig';
+import CameraNodeConfig from './CameraNodeConfig';
 
 export {
   LLMAgentConfig,
@@ -107,7 +108,8 @@ export {
   BeneficiaryRiskConfig,
   CardboardConfig,
   TriggerConfig,
-  TextToAudioConfig
+  TextToAudioConfig,
+  CameraNodeConfig
 };
 
 export { ToolConfigModal } from './shared/ToolConfigModal';

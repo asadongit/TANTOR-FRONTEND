@@ -84,6 +84,7 @@ const LAZY_CONFIGS = {
   ),
   api_node: lazy(() => import("./propertypanelModules/ApiNodeConfig")),
   form_node: lazy(() => import("./propertypanelModules/FormNodeConfig")),
+  camera: lazy(() => import("./propertypanelModules/CameraNodeConfig")),
   file_store: lazy(() => import("./propertypanelModules/FileStoreConfig")),
   debug_node: lazy(() => import("./propertypanelModules/DebugNodeConfig")),
   error_router: lazy(() => import("./propertypanelModules/ErrorRouterConfig")),

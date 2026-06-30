@@ -6,7 +6,7 @@ import {
   FiSend, FiRotateCcw, FiPaperclip, FiMic, FiChevronDown, FiChevronUp, FiArrowUp,
   FiAlertCircle, FiCpu, FiBox, FiActivity,
   FiMessageSquare, FiX, FiCheck, FiEdit, FiTrash, FiUser, FiMicOff, FiClock, FiPlus,
-  FiFolder, FiZap, FiStar, FiBriefcase, FiCheckSquare, FiRefreshCw, FiList
+  FiFolder, FiZap, FiStar, FiBriefcase, FiCheckSquare, FiRefreshCw, FiList, FiCamera
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 // Import RunPanelModules submodules
@@ -18,6 +18,7 @@ import useAudioPlayer from './RunPanelModules/useAudioPlayer';
 import { MinimalButton, ActionButton, ActionButtonGroup, ReworkFormPanel } from './RunPanelModules/HitlControls';
 import FormRenderer from './RunPanelModules/FormRenderer';
 import SpeechRecorder from './RunPanelModules/SpeechRecorder';
+import CameraRenderer from './RunPanelModules/CameraRenderer';
 import TurnRenderer from './RunPanelModules/TurnRenderer';
 import ChatInput from './RunPanelModules/ChatInput';
 import { VfsExplorer, BlackboardModal, ProfilingModal } from './RunPanelModules/sessiontool';
@@ -32,6 +33,7 @@ import HistorySidebar from './RunPanelModules/HistorySidebar';
 const PAUSE_UI = {
   form_node:   { hidesInput: true,  showsHitl: false },
   stt_trigger: { hidesInput: true,  showsHitl: false },
+  camera:      { hidesInput: true,  showsHitl: false },
 };
 
 export default function RunPanel({ onClose }) {
@@ -74,9 +76,14 @@ export default function RunPanel({ onClose }) {
     return findStartingTriggers(nodes, edges, 'stt_trigger');
   }, [nodes, edges]);
 
+  const startingCameraNodes = useMemo(() => {
+    return findStartingTriggers(nodes, edges, 'camera');
+  }, [nodes, edges]);
+
   const hasButtonTriggers = startingButtonTriggers.length > 0;
   const hasAutoTriggers = startingAutoTriggers.length > 0;
   const hasStartingSttNode = startingSttNodes.length > 0;
+  const hasStartingCameraNode = startingCameraNodes.length > 0;
 
   const hasOcrNodes = useMemo(() => {
     return nodes.some(n => n.data?.type === 'ocr_node');
@@ -86,7 +93,7 @@ export default function RunPanel({ onClose }) {
     return streamEvents.some(e => ['node_start', 'token', 'user_message'].includes(e.type));
   }, [streamEvents]);
 
-  const hideInput = !isChatStarted && (hasButtonTriggers || hasAutoTriggers || hasOcrNodes || hasStartingSttNode);
+  const hideInput = !isChatStarted && (hasButtonTriggers || hasAutoTriggers || hasOcrNodes || hasStartingSttNode || hasStartingCameraNode);
 
   const hasBlackboardTool = useMemo(() => {
     return nodes.some(n => {
@@ -1125,44 +1132,120 @@ export default function RunPanel({ onClose }) {
               left: '50%',
               zIndex: 95,
               width: '90%',
-              maxWidth: 450,
+              maxWidth: 380,
               display: 'flex',
               flexDirection: 'column',
               background: '#FFFFFF',
-              borderRadius: 24,
-              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0,0,0,0.05)',
+              borderRadius: 16,
+              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0,0,0,0.05)',
               overflow: 'hidden'
             }}
           >
             {/* Modal Header */}
             <div style={{
-              padding: '20px 24px 14px',
+              padding: '14px 18px 10px',
               borderBottom: `1px solid ${THEME_BORDER}`,
               background: '#FAFBFC',
               flexShrink: 0
             }}>
               <div style={{
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 900,
                 color: THEME_TEXT,
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 10
+                gap: 8
               }}>
-                <FiMic size={15} color={THEME_ACCENT} /> {pausedInfo.nodeConfig?.label || 'Speech Input Required'}
+                <FiMic size={14} color={THEME_ACCENT} /> {pausedInfo.nodeConfig?.label || 'Speech Input Required'}
               </div>
             </div>
 
             {/* Modal Body */}
-            <div style={{ padding: '20px', flex: 1 }}>
+            <div style={{ padding: '0', flex: 1 }}>
               <SpeechRecorder
+                inModal
                 autoStart={pausedInfo.nodeConfig?.auto_start === true}
                 autoStop={pausedInfo.nodeConfig?.auto_stop !== false}
                 silenceDelay={pausedInfo.nodeConfig?.silence_delay ?? 1500}
                 lang={pausedInfo.nodeConfig?.stt_lang || 'en-US'}
                 onTranscript={(text) => onResume({ stt_output: text })}
+              />
+            </div>
+          </motion.div>
+        </>
+      )}
+
+      {/* Camera Paused Overlay - Show CameraRenderer when workflow is paused at camera */}
+      {pausedInfo.isPaused && pausedInfo.nodeType === 'camera' && (
+        <>
+          {/* Modal Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.4)',
+              backdropFilter: 'blur(2px)',
+              zIndex: 90,
+            }}
+          />
+
+          {/* Modal Container */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, x: '-50%', y: '-45%' }}
+            animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+            exit={{ opacity: 0, scale: 0.8, x: '-50%', y: '-45%' }}
+            transition={{ type: 'spring', damping: 28, stiffness: 350 }}
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              zIndex: 95,
+              width: '90%',
+              maxWidth: 450,
+              display: 'flex',
+              flexDirection: 'column',
+              background: '#FFFFFF',
+              borderRadius: 16,
+              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0,0,0,0.05)',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{
+              padding: '14px 18px 10px',
+              borderBottom: `1px solid ${THEME_BORDER}`,
+              background: '#FAFBFC',
+              flexShrink: 0
+            }}>
+              <div style={{
+                fontSize: 12,
+                fontWeight: 900,
+                color: THEME_TEXT,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8
+              }}>
+                <FiCamera size={14} color={THEME_ACCENT} /> {pausedInfo.nodeConfig?.form_title || 'Camera Verification'}
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '20px', flex: 1 }}>
+              <CameraRenderer
+                config={pausedInfo.nodeConfig || {}}
+                context={pausedInfo.context || {}}
+                isLoading={running}
+                onSubmit={(data) => onResume(data)}
               />
             </div>
           </motion.div>
@@ -1452,7 +1535,33 @@ export default function RunPanel({ onClose }) {
                 </div>
               )}
 
-              {!hideInput && !hasStartingSttNode && !(pausedInfo.isPaused && pausedInfo.nodeType === 'stt_trigger') && (
+              {/* Camera Entry: Show capture button before chat starts when camera is the starting node */}
+              {canRun && !running && !isChatStarted && hasStartingCameraNode && (
+                <motion.button
+                  whileHover={{ scale: 1.02, y: -1 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => onSend('camera_capture')}
+                  style={{
+                    padding: '16px 32px',
+                    borderRadius: 16,
+                    background: '#BE185D',
+                    color: 'white',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 14,
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    boxShadow: '0 10px 25px rgba(190,24,93,0.35)',
+                    letterSpacing: '0.02em',
+                  }}
+                >
+                  <FiCamera size={18} strokeWidth={3} /> CAPTURE PHOTO
+                </motion.button>
+              )}
+
+              {!hideInput && !hasStartingSttNode && !hasStartingCameraNode && !(pausedInfo.isPaused && pausedInfo.nodeType === 'stt_trigger') && !(pausedInfo.isPaused && pausedInfo.nodeType === 'camera') && (
                 <ChatInput
                   onSend={onSend}
                   running={running}
@@ -1476,6 +1585,30 @@ export default function RunPanel({ onClose }) {
                   lang={startingSttNodes[0]?.data?.stt_lang || 'en-US'}
                   onTranscript={(text) => onSend(text)}
                 />
+              )}
+              {/* Ongoing camera: show capture button after chat started */}
+              {!hideInput && hasStartingCameraNode && !running && (
+                <motion.button
+                  whileHover={{ scale: 1.02, y: -1 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => onSend('camera_capture')}
+                  style={{
+                    padding: '10px 24px',
+                    borderRadius: 12,
+                    background: '#BE185D',
+                    color: 'white',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    boxShadow: '0 6px 16px rgba(190,24,93,0.3)',
+                  }}
+                >
+                  <FiCamera size={16} strokeWidth={3} /> Capture Photo
+                </motion.button>
               )}
             </div>
           )}

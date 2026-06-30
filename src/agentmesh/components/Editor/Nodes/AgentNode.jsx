@@ -45,6 +45,7 @@ const NODE_CONFIGS = {
   notification: { bg: '#F0F4FF', color: '#6366F1', icon: FiBell, round: 14 },
   set_data: { bg: '#F5F3FF', color: '#7C3AED', icon: FiEdit, round: 16 },
   form_node: { bg: '#F5F3FF', color: '#7C3AED', icon: FiEdit, round: 16 },
+  camera: { bg: '#FCE7F3', color: '#BE185D', icon: FiCamera, round: 16 },
   template_node: { bg: '#FDF2F8', color: '#DB2777', icon: FiFileText, round: 14 },
   report_generator: { bg: '#E0E7FF', color: '#4338CA', icon: FiFileText, round: 14 },
   error_router: { bg: '#FEF2F2', color: '#DC2626', icon: FiAlertTriangle, round: 14 },

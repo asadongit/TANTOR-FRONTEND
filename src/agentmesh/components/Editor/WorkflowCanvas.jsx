@@ -1253,7 +1253,10 @@ export default function WorkflowCanvas() {
           <ReactFlow
             nodes={nodes}
             edges={renderedEdges}
-            selectionKeyCode="Control"
+            selectionKeyCode={null}
+            selectionMode="partial"
+            selectionOnDrag
+            panOnDrag={false}
             onNodesChange={(changes) => {
               // Prevent start and end nodes from being deleted
               const filteredChanges = changes.filter(

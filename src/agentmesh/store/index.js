@@ -23,6 +23,7 @@ const NODE_DEFAULTS = {
   splitter: { label: 'Splitter', split_field: 'items', batch_size: 1, destination_field: 'item', discovery_keys: '' },
   aggregator: { label: 'Aggregator', action: 'append', field_to_aggregate: 'item', destination_field: 'aggregated_results' },
   form_node: { label: 'Form Submission', form_title: 'Information Required', form_description: 'Please fill out the following form.', form_fields: [{ id: 'feedback', label: 'Your Feedback', type: 'text', required: true }], form_submit_label: 'Submit' },
+  camera: { label: 'Camera Capture', form_title: 'Camera Verification', form_description: 'Please align your face in the frame and capture a live image for verification.', form_fields: [], form_submit_label: 'Submit Photo' },
   notification: { label: 'Notification', notification_title: 'Workflow Alert', notification_message: 'The workflow has reached this point.', notification_type: 'info' },
   error_router: { label: 'Error Router', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 } },
   set_data: { label: 'Set Data', message: '' },
