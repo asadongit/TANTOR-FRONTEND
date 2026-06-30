@@ -1038,7 +1038,9 @@ export const useWorkflowStore = create((set, get) => ({
           // Group Node config fields
           'name', 'description', 'internal_nodes', 'internal_edges', 'original_edges',
           // Context Management
-          'context_mode', 'max_context_chars'
+          'context_mode', 'max_context_chars',
+          // Code Execution
+          'ce_language', 'ce_code', 'ce_input_key', 'ce_output_key', 'ce_mode'
         ];
 
         const nodeConfig = {};
