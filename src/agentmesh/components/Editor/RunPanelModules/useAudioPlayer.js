@@ -16,7 +16,13 @@ export default function useAudioPlayer() {
 
   const playAudio = (filename) => {
     if (!filename) return;
-    const url = `${getBackendUrl()}/audio/${filename.replace(/\\/g, '/')}`;
+    let url;
+    if (filename.startsWith('/temp/') || filename.startsWith('temp/')) {
+      const cleanPath = filename.startsWith('/') ? filename : `/${filename}`;
+      url = `${getBackendUrl()}${cleanPath}`;
+    } else {
+      url = `${getBackendUrl()}/audio/${filename.replace(/\\/g, '/')}`;
+    }
     console.log("[AudioEngine] Attempting playback from:", url);
 
     if (audioRef.current) {
