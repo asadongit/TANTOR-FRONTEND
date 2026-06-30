@@ -57,6 +57,14 @@ const NODE_DEFAULTS = {
     label: 'Flatten JSON (VA)',
     transform_operation: 'flatten', transform_separator: '/', transform_pick_fields: [], transform_rename_map: {}, transform_omit_keys: [], transform_input_key: 'payload', transform_output_key: 'transformed_json'
   },
+  code_execution: {
+    label: 'Code',
+    ce_language: 'python',
+    ce_code: '',
+    ce_input_key: 'latest_api_result',
+    ce_output_key: 'code_result',
+    ce_mode: 'run_once',
+  },
   button_trigger: {
     label: 'Button Trigger',
     button_label: 'Start Workflow',

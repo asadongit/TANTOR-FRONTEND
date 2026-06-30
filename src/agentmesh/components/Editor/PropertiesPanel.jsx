@@ -147,6 +147,7 @@ const LAZY_CONFIGS = {
   stt_trigger: lazy(() => import("./propertypanelModules/SttNodeConfig")),
   textToAudio: lazy(() => import("./propertypanelModules/TextToAudioConfig")),
   signature_stamp_extractor: lazy(() => import("./propertypanelModules/SignatureStampExtractorConfig")),
+  code_execution: lazy(() => import("./propertypanelModules/CodeExecutionConfig")),
   group: lazy(() => import("./propertypanelModules/GroupConfig")),
 };
 
@@ -581,6 +582,7 @@ export default function PropertiesPanel() {
     condition: FiHelpCircle,
     group: FiLayers,
     signature_stamp_extractor: FiEdit,
+    code_execution: FiCode,
   };
   const Icon = nodeIcons[data.type] || FiLayers;
 

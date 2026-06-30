@@ -54,6 +54,7 @@ import TriggerConfig from './TriggerConfig';
 import TextToAudioConfig from './TextToAudioConfig';
 import CameraNodeConfig from './CameraNodeConfig';
 import SignatureStampExtractorConfig from './SignatureStampExtractorConfig';
+import CodeExecutionConfig from './CodeExecutionConfig';
 
 export {
   LLMAgentConfig,
@@ -111,7 +112,8 @@ export {
   TriggerConfig,
   TextToAudioConfig,
   CameraNodeConfig,
-  SignatureStampExtractorConfig
+  SignatureStampExtractorConfig,
+  CodeExecutionConfig,
 };
 
 export { ToolConfigModal } from './shared/ToolConfigModal';

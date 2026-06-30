@@ -53,6 +53,7 @@ const NODE_CONFIGS = {
   output_parser: { bg: '#FEF3C7', color: '#D97706', icon: FiFilter, round: 14 },
   json_transform: { bg: '#F5F3FF', color: '#7C3AED', icon: FiCode, round: 14 },
   json_transform_va: { bg: '#E0F2FE', color: '#0369A1', icon: FiCode, round: 14 },
+  code_execution: { bg: '#F1F5F9', color: '#475569', icon: FiCode, round: 14 },
   pii_node: { bg: '#FFEBEE', color: '#D32F2F', icon: FiShield, round: 14 },
   data_cleaning: { bg: '#ECFDF5', color: '#059669', icon: FiFilter, round: 14 },
   graph_ingestion: { bg: '#EFF6FF', color: '#1D4ED8', icon: FiDatabase, round: 14 },
