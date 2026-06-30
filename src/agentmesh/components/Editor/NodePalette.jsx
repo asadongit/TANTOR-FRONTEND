@@ -4,7 +4,7 @@ import {
   FiPlay, FiCpu, FiBox, FiGitMerge,
   FiTarget, FiShare2, FiBookOpen, FiLink,
   FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiAlertTriangle, FiZap, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiLayers, FiInbox, FiDatabase, FiServer,
-  FiCode, FiSliders, FiInfo, FiMic
+  FiCode, FiSliders, FiInfo, FiMic, FiEye, FiVideo
 } from 'react-icons/fi';
 
 export const NODE_TYPES = [
@@ -16,7 +16,7 @@ export const NODE_TYPES = [
   { type: 'polling',    icon: FiClock,     label: 'Polling Trigger', desc: 'Triggers the workflow by periodically querying an external tool.', detailedDesc: 'Periodically runs an external integration tool to fetch new items (like support tickets or emails) and feeds them into the workflow on a set cron schedule.', bg: '#FDF2F8', color: '#DB2777', category: 'Events & Triggers' },
   { type: 'button_trigger', icon: FiZap,     label: 'Button',       desc: 'Manually triggers the workflow from the dashboard UI.', detailedDesc: 'Creates a manual start button in the dashboard, enabling users to launch workflow runs on demand with optional input data.', bg: '#D1FAE5', color: '#059669', category: 'Events & Triggers' },
   { type: 'auto_trigger',   icon: FiPlay,    label: 'Auto Trigger', desc: 'Triggers the workflow instantly when it is compiled or deployed.', detailedDesc: 'Automatically runs the workflow immediately upon startup, compilation, or deployment. Ideal for one-off tasks or continuous processes.', bg: '#D1FAE5', color: '#059669', category: 'Events & Triggers' },
-  { type: 'stt_trigger', icon: FiMic, label: 'Speech to Text', desc: 'Captures voice input using the browser microphone.', detailedDesc: 'Pauses the workflow and activates the microphone in the Run Panel. Users speak naturally, and their speech is transcribed to text. Supports auto-stop on silence or manual click-to-stop.', bg: '#F0F9FF', color: '#0891B2', category: 'Events & Triggers' },
+  { type: 'stt_trigger', icon: FiMic, label: 'Speech to Text', desc: 'Captures voice input using the browser microphone.', detailedDesc: 'Pauses the workflow and activates the microphone in the Run Panel. Users speak naturally, and their speech is transcribed to text. Supports auto-stop on silence or manual click-to-stop.', bg: '#F0F9FF', color: '#0891B2', category: 'Media Services' },
 
   // Autonomous Agents
   { type: 'llm_agent',  icon: FiCpu,       label: 'Agent',        desc: 'An LLM-powered agent with access to memory and tools.', detailedDesc: 'An advanced AI assistant utilizing language models (LLMs). It evaluates instructions, calls registered tools to fetch data or perform actions, uses context variables, and maintains conversation memory.', bg: '#C9DEFF', color: '#1A56DB', category: 'Autonomous Agents' },
@@ -28,7 +28,7 @@ export const NODE_TYPES = [
   // Knowledge & RAG
   { type: 'rag_node',   icon: FiBookOpen,  label: 'RAG',          desc: 'Retrieves relevant context from a vector search database.', detailedDesc: 'Retrieves relevant reference chunks from knowledge collection vector databases using similarity searches to ground AI prompts and prevent hallucinations.', bg: '#FFF3B8', color: '#92400E', category: 'Knowledge & RAG' },
   { type: 'vector_ingestion', icon: FiBox,      label: 'Vector Ingestion',    desc: 'Indexes external document collections into the RAG vector store.', detailedDesc: 'Processes, chunks, embeds, and uploads directories of documents into the vector store database for use by RAG retrieval systems.', bg: '#E0F2FE', color: '#0EA5E9', category: 'Knowledge & RAG' },
-  { type: 'ocr_node',       icon: FiCamera,   label: 'OCR Node',     desc: 'Extract text from images or PDF documents.', detailedDesc: 'Uses advanced vision models or OCR engines to convert scanned files, PDFs, or images into raw text. The extracted text is saved to context variables.', bg: '#FDF2F8', color: '#DB2777', category: 'Knowledge & RAG' },
+  { type: 'ocr_node',       icon: FiEye,   label: 'OCR Node',     desc: 'Extract text from images or PDF documents.', detailedDesc: 'Uses advanced vision models or OCR engines to convert scanned files, PDFs, or images into raw text. The extracted text is saved to context variables.', bg: '#FDF2F8', color: '#DB2777', category: 'Media Services' },
 
   // External Integrations
   { type: 'tool_node',  icon: FiBox,       label: 'Tool',         desc: 'Executes database or utility functions as requested by agents.', detailedDesc: 'Serves as the execution bridge for LLM tools, running functions (e.g., sending emails, database queries, arithmetic calculations) and returning the results directly to the calling agent.', bg: '#FFE4B8', color: '#B45309', category: 'External Integrations' },
@@ -48,7 +48,7 @@ export const NODE_TYPES = [
   { type: 'join',       icon: FiCheck,     label: 'Join',           desc: 'Merges multiple parallel paths into a single path.', detailedDesc: 'Waits for all parallel execution paths or incoming edges to complete before allowing the next step in the workflow to proceed.', bg: '#ECFDF5', color: '#059669', category: 'Flow Control' },
   { type: 'subgraph',   icon: FiLink,      label: 'Subgraph',     desc: 'Runs another workflow as a sub-process.', detailedDesc: 'Triggers and executes a separate compiled workflow from the registry, passing variables in and returning results to the parent workflow.', bg: '#C9F5F5', color: '#065555', category: 'Flow Control' },
   { type: 'form_node',  icon: FiEdit,      label: 'Form Submission', desc: 'Pauses the workflow for manual form submission.', detailedDesc: 'Halts execution and presents a customizable interactive form to users in the dashboard UI. The workflow resumes once the form is submitted with the input data.', bg: '#F5F3FF', color: '#7C3AED', category: 'Flow Control' },
-  { type: 'camera',     icon: FiCamera,    label: 'Camera Capture', desc: 'Captures a live webcam image.', detailedDesc: 'Pauses workflow to capture a live webcam photo from the user.', bg: '#FCE7F3', color: '#BE185D', category: 'Flow Control' },
+  { type: 'camera',     icon: FiVideo,    label: 'Camera Capture', desc: 'Captures a live webcam image.', detailedDesc: 'Pauses workflow to capture a live webcam photo from the user.', bg: '#E0F2FE', color: '#0369A1', category: 'Media Services' },
 
   // Document Processing
   { type: 'template_node', icon: FiFileText,  label: 'Template Engine',   desc: 'Renders text/markdown templates using context variables.', detailedDesc: 'Takes a markdown or text template and uses Jinja2 formatting to render values dynamically (e.g. creating a personalized email body or document template).', bg: '#FDF2F8', color: '#DB2777', category: 'Document Processing' },

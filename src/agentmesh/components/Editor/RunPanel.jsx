@@ -19,6 +19,7 @@ import { MinimalButton, ActionButton, ActionButtonGroup, ReworkFormPanel } from 
 import FormRenderer from './RunPanelModules/FormRenderer';
 import SpeechRecorder from './RunPanelModules/SpeechRecorder';
 import CameraRenderer from './RunPanelModules/CameraRenderer';
+import OcrRenderer from './RunPanelModules/OcrRenderer';
 import TurnRenderer from './RunPanelModules/TurnRenderer';
 import ChatInput from './RunPanelModules/ChatInput';
 import { VfsExplorer, BlackboardModal, ProfilingModal } from './RunPanelModules/sessiontool';
@@ -34,6 +35,7 @@ const PAUSE_UI = {
   form_node:   { hidesInput: true,  showsHitl: false },
   stt_trigger: { hidesInput: true,  showsHitl: false },
   camera:      { hidesInput: true,  showsHitl: false },
+  ocr_node:    { hidesInput: true,  showsHitl: false },
 };
 
 export default function RunPanel({ onClose }) {
@@ -80,10 +82,20 @@ export default function RunPanel({ onClose }) {
     return findStartingTriggers(nodes, edges, 'camera');
   }, [nodes, edges]);
 
+  const startingOcrNodes = useMemo(() => {
+    return findStartingTriggers(nodes, edges, 'ocr_node');
+  }, [nodes, edges]);
+
+  const startingFormNodes = useMemo(() => {
+    return findStartingTriggers(nodes, edges, 'form_node');
+  }, [nodes, edges]);
+
   const hasButtonTriggers = startingButtonTriggers.length > 0;
   const hasAutoTriggers = startingAutoTriggers.length > 0;
   const hasStartingSttNode = startingSttNodes.length > 0;
   const hasStartingCameraNode = startingCameraNodes.length > 0;
+  const hasStartingOcrNode = startingOcrNodes.length > 0;
+  const hasStartingFormNode = startingFormNodes.length > 0;
 
   const hasOcrNodes = useMemo(() => {
     return nodes.some(n => n.data?.type === 'ocr_node');
@@ -93,7 +105,7 @@ export default function RunPanel({ onClose }) {
     return streamEvents.some(e => ['node_start', 'token', 'user_message'].includes(e.type));
   }, [streamEvents]);
 
-  const hideInput = !isChatStarted && (hasButtonTriggers || hasAutoTriggers || hasOcrNodes || hasStartingSttNode || hasStartingCameraNode);
+  const hideInput = !isChatStarted && (hasButtonTriggers || hasAutoTriggers || hasStartingOcrNode || hasStartingSttNode || hasStartingCameraNode || hasStartingFormNode);
 
   const hasBlackboardTool = useMemo(() => {
     return nodes.some(n => {
@@ -1242,6 +1254,81 @@ export default function RunPanel({ onClose }) {
             {/* Modal Body */}
             <div style={{ padding: '20px', flex: 1 }}>
               <CameraRenderer
+                config={pausedInfo.nodeConfig || {}}
+                context={pausedInfo.context || {}}
+                isLoading={running}
+                onSubmit={(data) => onResume(data)}
+              />
+            </div>
+          </motion.div>
+        </>
+      )}
+
+      {/* OCR Paused Overlay - Show OcrRenderer when workflow is paused at ocr_node */}
+      {pausedInfo.isPaused && pausedInfo.nodeType === 'ocr_node' && (
+        <>
+          {/* Modal Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.4)',
+              backdropFilter: 'blur(2px)',
+              zIndex: 90,
+            }}
+          />
+
+          {/* Modal Container */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, x: '-50%', y: '-45%' }}
+            animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+            exit={{ opacity: 0, scale: 0.8, x: '-50%', y: '-45%' }}
+            transition={{ type: 'spring', damping: 28, stiffness: 350 }}
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              zIndex: 95,
+              width: '90%',
+              maxWidth: 480,
+              display: 'flex',
+              flexDirection: 'column',
+              background: '#FFFFFF',
+              borderRadius: 16,
+              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0,0,0,0.05)',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{
+              padding: '14px 18px 10px',
+              borderBottom: `1px solid ${THEME_BORDER}`,
+              background: '#FAFBFC',
+              flexShrink: 0
+            }}>
+              <div style={{
+                fontSize: 12,
+                fontWeight: 900,
+                color: THEME_TEXT,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8
+              }}>
+                <FiPaperclip size={14} color={THEME_ACCENT} /> {pausedInfo.nodeConfig?.form_title || 'Document OCR'}
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '20px', flex: 1 }}>
+              <OcrRenderer
                 config={pausedInfo.nodeConfig || {}}
                 context={pausedInfo.context || {}}
                 isLoading={running}
