@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { ChevronDown, ChevronUp, Info, X } from 'lucide-react';
 import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 import InfoButton from '../../../components/InfoButton';
+import { SearchableDropdown } from '../timeseries/components/Dropdowns';
 
 const OUTLIER_OPTIONS_CONFIG = [
     {
@@ -142,6 +143,112 @@ const ENCODING_OPTIONS_CONFIG = [
     }
 ];
 
+const TIME_SERIES_TYPE_OPTIONS = [
+    { value: 'lag',  label: 'Lag',          paramType: 'period' },
+    { value: 'lead', label: 'Lead',         paramType: 'period' },
+    { value: 'mean', label: 'Rolling Mean', paramType: 'window' },
+    { value: 'std',  label: 'Rolling Std',  paramType: 'window' },
+    { value: 'min',  label: 'Rolling Min',  paramType: 'window' },
+    { value: 'max',  label: 'Rolling Max',  paramType: 'window' },
+    { value: 'sum',  label: 'Rolling Sum',  paramType: 'window' },
+];
+
+const createOperation = () => ({
+    id: crypto.randomUUID(),
+    col: '',
+    type: 'lag',
+    period: 1,
+    window: 5,
+});
+
+const computeNewCol = (op) => {
+    if (!op.col || !op.type) return '';
+    const paramType = TIME_SERIES_TYPE_OPTIONS.find(t => t.value === op.type)?.paramType || 'period';
+    const paramVal = paramType === 'period' ? op.period : op.window;
+    return `${op.col}_${op.type}_${paramVal}`;
+};
+
+const TYPE_LABELS = TIME_SERIES_TYPE_OPTIONS.map(t => t.label);
+
+const TimeSeriesOperationRow = ({ op, numericColumns, readonly, showErrors, onChange, onRemove, canRemove, isDuplicate }) => {
+    const selectedTypeOption = TIME_SERIES_TYPE_OPTIONS.find(t => t.value === op.type);
+    const paramType = selectedTypeOption?.paramType || 'period';
+    const currentTypeLabel = selectedTypeOption?.label || '';
+    const colError = showErrors && !op.col;
+    const paramError = showErrors && (paramType === 'period' ? !op.period : !op.window);
+
+    const inputClass = (hasError) =>
+        `w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
+            hasError ? 'border-[#EF4D5F] bg-[#FFF7F8] focus:ring-red-300' : 'border-gray-300 focus:ring-[#8e78b7]'
+        } ${readonly ? 'opacity-50 cursor-not-allowed' : ''}`;
+
+    return (
+        <div className={`relative border rounded-lg p-3 space-y-2 ${isDuplicate ? 'border-red-400 bg-red-50' : 'bg-white border-gray-200'}`}>
+            {!readonly && canRemove && (
+                <button
+                    onClick={onRemove}
+                    className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                    <X size={14} />
+                </button>
+            )}
+            <div className="grid grid-cols-3 gap-3">
+                <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Column</label>
+                    <SearchableDropdown
+                        selectedColumn={op.col}
+                        onSelect={(val) => onChange('col', val)}
+                        availableOptions={numericColumns}
+                        placeholder="Select column"
+                        readonly={readonly}
+                        hasError={colError}
+                    />
+                    {colError && <p className="text-xs text-red-500 mt-1">Required</p>}
+                </div>
+                <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
+                    <SearchableDropdown
+                        selectedColumn={currentTypeLabel}
+                        onSelect={(label) => {
+                            const val = TIME_SERIES_TYPE_OPTIONS.find(t => t.label === label)?.value || label;
+                            onChange('type', val);
+                        }}
+                        availableOptions={TYPE_LABELS}
+                        placeholder="Select type"
+                        readonly={readonly}
+                        hasError={false}
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                        {paramType === 'period' ? 'Period' : 'Window'}
+                    </label>
+                    <input
+                        type="number"
+                        min="1"
+                        value={paramType === 'period' ? op.period : op.window}
+                        onChange={e => !readonly && onChange(paramType, e.target.value)}
+                        disabled={readonly}
+                        className={inputClass(paramError)}
+                    />
+                    {paramError && <p className="text-xs text-red-500 mt-1">Required</p>}
+                </div>
+            </div>
+
+            {op.col && op.type && (
+                <p className="text-xs text-gray-400">
+                    Generated column: <span className="font-medium text-gray-600">{computeNewCol(op)}</span>
+                </p>
+            )}
+
+            {isDuplicate && (
+                <p className="text-xs text-red-500">This combination already exists. Choose a different column, type, or parameter value.</p>
+            )}
+
+        </div>
+    );
+};
+
 const ToggleSwitch = ({ checked, onChange, readonly }) => (
     <label className={`relative inline-flex items-center ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
         <input
@@ -169,7 +276,8 @@ const FeatureSection = ({
 }) => {
     const sectionDescriptions = {
         outlierTreatment: "Outlier Treatment refers to techniques used to identify and handle extreme or abnormal data values that deviate significantly from the rest of the dataset. These methods help reduce noise, prevent model distortion, and improve overall model stability and performance.",
-        categoricalEncoding: "Encode categorical variables for machine learning."
+        categoricalEncoding: "Encode categorical variables for machine learning.",
+        timeSeries: "Time Series Features generate lag, lead, or rolling aggregation columns (mean, std, min, max, sum) from numeric columns. These features capture temporal patterns per entity group."
     };
 
     return (
@@ -222,12 +330,16 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
     const [toggles, setToggles] = useState({
         outlierTreatment: false,
         categoricalEncoding: false,
+        timeSeries: false,
     });
 
     const [expandedSections, setExpandedSections] = useState({
         outlierTreatment: false,
         categoricalEncoding: false,
+        timeSeries: false,
     });
+
+    const [timeSeriesOperations, setTimeSeriesOperations] = useState([createOperation()]);
 
     const [outlierStrategy, setOutlierStrategy] = useState('cap_95');
     const [encodingStrategy, setEncodingStrategy] = useState('onehot');
@@ -235,6 +347,7 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
     const [isLoading, setIsLoading] = useState(false);
     const [showFieldErrors, setShowFieldErrors] = useState(false);
 
+    const numericColumns = workflowState?.dataPreprocessing?.step1?.apiResponse?.numerical_columns || [];
     const categoricalColumns = workflowState?.dataPreprocessing?.step2?.apiResponse?.categorical_columns || [];
     const hasCategoricalColumns = categoricalColumns.length > 0;
 
@@ -255,13 +368,26 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
             setToggles({
                 outlierTreatment: hasOutliers ? (step3Config.outlier_treatment || false) : false,
                 categoricalEncoding: hasCategoricalColumns ? true : (step3Config.categorical_encoding || false),
+                timeSeries: step3Config.time_series_active || false,
             });
             if (step3Config.outlier_treatment_strategy) setOutlierStrategy(step3Config.outlier_treatment_strategy);
             if (step3Config.categorical_encoding_method) setEncodingStrategy(step3Config.categorical_encoding_method);
+            if (step3Config.time_series_operations?.length) {
+                setTimeSeriesOperations(
+                    step3Config.time_series_operations.map(op => ({
+                        id: crypto.randomUUID(),
+                        col: op.col || '',
+                        type: op.type || op.agg || 'lag',
+                        period: op.period || 1,
+                        window: op.window || 5,
+                    }))
+                );
+            }
         } else {
             setToggles({
                 outlierTreatment: false,
                 categoricalEncoding: hasCategoricalColumns,
+                timeSeries: false,
             });
             if (hasCategoricalColumns) {
                 setExpandedSections(prev => ({ ...prev, categoricalEncoding: true }));
@@ -269,17 +395,39 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
         }
     }, [workflowState?.dataPreprocessing?.step3, mode, hasCategoricalColumns, hasOutliers]);
 
+    const getDuplicateKeys = () => {
+        const seen = new Set();
+        const dupes = new Set();
+        timeSeriesOperations.forEach(op => {
+            const key = computeNewCol(op);
+            if (key && seen.has(key)) dupes.add(key);
+            else if (key) seen.add(key);
+        });
+        return dupes;
+    };
+
     // Auto-clear errors when user fixes them
     useEffect(() => {
         if (!showFieldErrors) return;
         const outlierError = toggles.outlierTreatment && !outlierStrategy;
         const encodingError = toggles.categoricalEncoding && !encodingStrategy;
-        if (!outlierError && !encodingError) setShowFieldErrors(false);
-    }, [outlierStrategy, encodingStrategy, toggles, showFieldErrors]);
+        const tsFieldError = toggles.timeSeries && timeSeriesOperations.some(op => {
+            const paramType = TIME_SERIES_TYPE_OPTIONS.find(t => t.value === op.type)?.paramType || 'period';
+            return !op.col || (paramType === 'period' ? !op.period : !op.window);
+        });
+        const tsDupeError = toggles.timeSeries && getDuplicateKeys().size > 0;
+        if (!outlierError && !encodingError && !tsFieldError && !tsDupeError) setShowFieldErrors(false);
+    }, [outlierStrategy, encodingStrategy, toggles, showFieldErrors, timeSeriesOperations]);
 
     // Derived error flags — only active after Next is clicked
     const outlierStrategyError = showFieldErrors && toggles.outlierTreatment && !outlierStrategy;
     const encodingStrategyError = showFieldErrors && toggles.categoricalEncoding && !encodingStrategy;
+    const timeSeriesError = showFieldErrors && toggles.timeSeries && (
+        timeSeriesOperations.some(op => {
+            const paramType = TIME_SERIES_TYPE_OPTIONS.find(t => t.value === op.type)?.paramType || 'period';
+            return !op.col || (paramType === 'period' ? !op.period : !op.window);
+        }) || getDuplicateKeys().size > 0
+    );
 
     const handleApiCall = async () => {
         if (readonly) return true;
@@ -292,6 +440,16 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
             setShowFieldErrors(true);
             return false;
         }
+        if (toggles.timeSeries) {
+            const opsInvalid = timeSeriesOperations.length === 0 || timeSeriesOperations.some(op => {
+                const paramType = TIME_SERIES_TYPE_OPTIONS.find(t => t.value === op.type)?.paramType || 'period';
+                return !op.col || (paramType === 'period' ? !op.period : !op.window);
+            });
+            if (opsInvalid || getDuplicateKeys().size > 0) {
+                setShowFieldErrors(true);
+                return false;
+            }
+        }
 
         try {
             setIsLoading(true);
@@ -303,7 +461,17 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
                 outlier_threshold: 3,
                 categorical_encoding: toggles.categoricalEncoding,
                 categorical_encoding_method: toggles.categoricalEncoding ? encodingStrategy : "",
-                categorical_encoding_base: 2
+                categorical_encoding_base: 2,
+                time_series_active: toggles.timeSeries,
+                time_series_operations: toggles.timeSeries
+                    ? timeSeriesOperations.map(op =>
+                        ['lag', 'lead'].includes(op.type)
+                            ? { col: op.col, type: op.type, period: Number(op.period), new_col: computeNewCol(op) }
+                            : { col: op.col, window: Number(op.window), agg: op.type, new_col: computeNewCol(op) }
+                    )
+                    : [],
+                time_series_entity_cols: ['brand', 'category'],
+                time_series_sort_col: 'date',
             };
 
             if (!requestBody.ensemble_id || !requestBody.workflow_id) {
@@ -324,7 +492,9 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
                     outlier_treatment: toggles.outlierTreatment,
                     outlier_treatment_strategy: outlierStrategy,
                     categorical_encoding: toggles.categoricalEncoding,
-                    categorical_encoding_method: encodingStrategy
+                    categorical_encoding_method: encodingStrategy,
+                    time_series_active: toggles.timeSeries,
+                    time_series_operations: timeSeriesOperations,
                 },
                 apiResponse: data
             });
@@ -341,7 +511,7 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
 
     useEffect(() => {
         if (onApiCall) onApiCall(handleApiCall);
-    }, [toggles, outlierStrategy, encodingStrategy, datasetState?.ensembleId, currentWorkflowId]);
+    }, [toggles, outlierStrategy, encodingStrategy, timeSeriesOperations, datasetState?.ensembleId, currentWorkflowId]);
 
     const availableOutlierOptions = getAvailableOptions(OUTLIER_OPTIONS_CONFIG, modellingType);
     const availableEncodingOptions = getAvailableOptions(ENCODING_OPTIONS_CONFIG, modellingType);
@@ -360,7 +530,7 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
         setToggles(prev => ({ ...prev, [key]: newToggleState }));
 
         if (newToggleState) {
-            setExpandedSections({ outlierTreatment: false, categoricalEncoding: false, [key]: true });
+            setExpandedSections({ outlierTreatment: false, categoricalEncoding: false, timeSeries: false, [key]: true });
         } else {
             setExpandedSections(prev => ({ ...prev, [key]: false }));
             setShowFieldErrors(false);
@@ -371,9 +541,17 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
         setExpandedSections({
             outlierTreatment: false,
             categoricalEncoding: false,
+            timeSeries: false,
             [section]: !expandedSections[section]
         });
     };
+
+    const addOperation = () => setTimeSeriesOperations(prev => [...prev, createOperation()]);
+    const removeOperation = (id) => setTimeSeriesOperations(prev => prev.filter(op => op.id !== id));
+    const updateOperation = (id, field, value) =>
+        setTimeSeriesOperations(prev =>
+            prev.map(op => op.id === id ? { ...op, [field]: value } : op)
+        );
 
     const getOutlierInfoMessage = () => {
         if (!detectOutliersEnabled || outlierCount === 0) return "No outliers were detected in your dataset";
@@ -531,6 +709,47 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
                     </div>
                 </FeatureSection>
             )}
+            {/* ── Time Series Features ── */}
+            <FeatureSection
+                title="Time Series Features"
+                isToggled={toggles.timeSeries}
+                isExpanded={expandedSections.timeSeries}
+                onToggle={() => toggleSwitch('timeSeries')}
+                onExpand={() => toggleSection('timeSeries')}
+                readonly={readonly}
+                sectionKey="timeSeries"
+                hasError={timeSeriesError}
+            >
+                <div className="space-y-3">
+                    {(() => {
+                        const duplicateKeys = getDuplicateKeys();
+                        return timeSeriesOperations.map(op => (
+                            <TimeSeriesOperationRow
+                                key={op.id}
+                                op={op}
+                                numericColumns={numericColumns}
+                                readonly={readonly}
+                                showErrors={showFieldErrors}
+                                onChange={(field, value) => updateOperation(op.id, field, value)}
+                                onRemove={() => removeOperation(op.id)}
+                                canRemove={timeSeriesOperations.length > 1}
+                                isDuplicate={!!op.col && duplicateKeys.has(computeNewCol(op))}
+                            />
+                        ));
+                    })()}
+                    {!readonly && (
+                        <button
+                            onClick={addOperation}
+                            className="text-sm text-[#8e78b7] hover:underline font-medium"
+                        >
+                            + Add Operation
+                        </button>
+                    )}
+                    {timeSeriesError && (
+                        <p className="text-xs text-red-500 mt-1">Please complete all operation fields</p>
+                    )}
+                </div>
+            </FeatureSection>
         </div>
     );
 }

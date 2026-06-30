@@ -311,41 +311,6 @@
       "adjust": "true, false",
       "min_periods": { "low": "1", "high": "50" }
     }
-  },
-  "ARIMAX": {
-    "category": "Statistical",
-    "backend_key": "ARIMAX",
-    "info": "Autoregressive Integrated Moving Average with Exogenous Variables extends ARIMA by incorporating external predictors into the forecasting process.",
-    "hyperparameters": {
-      "order": {
-        "p": { "low": "0", "high": "5" },
-        "d": { "low": "0", "high": "2" },
-        "q": { "low": "0", "high": "5" }
-      },
-      "exog": "true, false",
-      "trend": "n, c, t, ct"
-    }
-  },
-
-  "SARIMAX": {
-    "category": "Statistical",
-    "backend_key": "SARIMAX",
-    "info": "Seasonal ARIMAX extends ARIMAX by modeling both seasonal and non-seasonal patterns while supporting exogenous variables.",
-    "hyperparameters": {
-      "order": {
-        "p": { "low": "0", "high": "5" },
-        "d": { "low": "0", "high": "2" },
-        "q": { "low": "0", "high": "5" }
-      },
-      "seasonal_order": {
-        "P": { "low": "0", "high": "3" },
-        "D": { "low": "0", "high": "2" },
-        "Q": { "low": "0", "high": "3" },
-        "s": { "low": "2", "high": "24" }
-      },
-      "exog": "true, false",
-      "trend": "n, c, t, ct"
-    }
   }
   
 }
