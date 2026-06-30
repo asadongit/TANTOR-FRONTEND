@@ -4,7 +4,7 @@ import {
   FiPlay, FiCpu, FiBox, FiGitMerge,
   FiTarget, FiShare2, FiBookOpen, FiLink,
   FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiAlertTriangle, FiZap, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiLayers, FiInbox, FiDatabase, FiServer,
-  FiCode, FiSliders, FiInfo, FiMic, FiEye, FiVideo
+  FiCode, FiSliders, FiInfo, FiMic, FiEye, FiVideo, FiMail
 } from 'react-icons/fi';
 
 export const NODE_TYPES = [
@@ -35,6 +35,7 @@ export const NODE_TYPES = [
   { type: 'tool_node',  icon: FiBox,       label: 'Tool',         desc: 'Executes database or utility functions as requested by agents.', detailedDesc: 'Serves as the execution bridge for LLM tools, running functions (e.g., sending emails, database queries, arithmetic calculations) and returning the results directly to the calling agent.', bg: '#FFE4B8', color: '#B45309', category: 'External Integrations' },
   { type: 'direct_tool', icon: FiBox,       label: 'Direct Tool',  desc: 'Runs a single integration tool directly without an agent.', detailedDesc: 'Executes a specific utility function directly in the workflow using input parameters, saving the output to a designated context variable.', bg: '#FFF7ED', color: '#F97316', category: 'External Integrations' },
   { type: 'api_node',   icon: FiGlobe,     label: 'API Request',  desc: 'Triggers HTTP requests to external APIs with dynamic values.', detailedDesc: 'Triggers HTTP requests (GET, POST, PUT, etc.) to external APIs with dynamic values interpolated from context variables. Supports REST/SOAP/GraphQL protocols, OAuth/Basic auth connections, and sequential or parallel execution. Results are saved to context.api_result_<node_id> (and latest_api_result) for use in prompts via {{api_result_<node_id>.field}}.', bg: '#E0F2FE', color: '#0EA5E9', category: 'External Integrations' },
+  { type: 'email_node',  icon: FiMail,      label: 'SMTP Email Sender', desc: 'Sends an email via any custom SMTP server.', detailedDesc: 'Sends an email with support for HTML templates, Jinja2 rendering, and custom SMTP server configuration. Sensitive credentials are encrypted at rest.', bg: '#EFF6FF', color: '#1D4ED8', category: 'External Integrations' },
   
   // Logic & Routing
   { type: 'router',     icon: FiGitMerge,  label: 'Router',       desc: 'Evaluates edge conditions to route the workflow.', detailedDesc: 'Routes execution path dynamically by evaluating conditions (key, operator, value) on outbound connections. Ideal for branching based on agent output.', bg: '#E5D9FF', color: '#7C3AED', category: 'Logic & Routing' },

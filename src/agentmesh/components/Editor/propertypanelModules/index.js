@@ -55,6 +55,7 @@ import TextToAudioConfig from './TextToAudioConfig';
 import CameraNodeConfig from './CameraNodeConfig';
 import SignatureStampExtractorConfig from './SignatureStampExtractorConfig';
 import CodeExecutionConfig from './CodeExecutionConfig';
+import EmailNodeConfig from './EmailNodeConfig';
 
 export {
   LLMAgentConfig,
@@ -114,6 +115,7 @@ export {
   CameraNodeConfig,
   SignatureStampExtractorConfig,
   CodeExecutionConfig,
+  EmailNodeConfig,
 };
 
 export { ToolConfigModal } from './shared/ToolConfigModal';

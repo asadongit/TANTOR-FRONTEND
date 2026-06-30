@@ -39,6 +39,7 @@ import {
   FiHelpCircle,
   FiCode,
   FiEdit,
+  FiMail,
 } from "react-icons/fi";
 import {
   FONT,
@@ -148,6 +149,7 @@ const LAZY_CONFIGS = {
   textToAudio: lazy(() => import("./propertypanelModules/TextToAudioConfig")),
   signature_stamp_extractor: lazy(() => import("./propertypanelModules/SignatureStampExtractorConfig")),
   code_execution: lazy(() => import("./propertypanelModules/CodeExecutionConfig")),
+  email_node: lazy(() => import("./propertypanelModules/EmailNodeConfig")),
   group: lazy(() => import("./propertypanelModules/GroupConfig")),
 };
 
@@ -583,6 +585,7 @@ export default function PropertiesPanel() {
     group: FiLayers,
     signature_stamp_extractor: FiEdit,
     code_execution: FiCode,
+    email_node: FiMail,
   };
   const Icon = nodeIcons[data.type] || FiLayers;
 

@@ -65,6 +65,23 @@ const NODE_DEFAULTS = {
     ce_output_key: 'code_result',
     ce_mode: 'run_once',
   },
+  email_node: {
+    label: 'SMTP Email Sender',
+    email_provider: 'Custom',
+    email_to: '',
+    email_cc: '',
+    email_bcc: '',
+    email_subject: '',
+    email_body: '',
+    email_html: false,
+    email_smtp_server: 'smtp.gmail.com',
+    email_smtp_port: 587,
+    email_user: '',
+    email_password: '',
+    email_attachments: '',
+    email_headers: {},
+    email_smtp_timeout: 15
+  },
   button_trigger: {
     label: 'Button Trigger',
     button_label: 'Start Workflow',
@@ -1040,7 +1057,9 @@ export const useWorkflowStore = create((set, get) => ({
           // Context Management
           'context_mode', 'max_context_chars',
           // Code Execution
-          'ce_language', 'ce_code', 'ce_input_key', 'ce_output_key', 'ce_mode'
+          'ce_language', 'ce_code', 'ce_input_key', 'ce_output_key', 'ce_mode',
+          // SMTP Email Node
+          'email_provider', 'email_to', 'email_cc', 'email_bcc', 'email_subject', 'email_body', 'email_html', 'email_smtp_server', 'email_smtp_port', 'email_user', 'email_password', 'email_attachments', 'email_headers', 'email_smtp_timeout'
         ];
 
         const nodeConfig = {};
