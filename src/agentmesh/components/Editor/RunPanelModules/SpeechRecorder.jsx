@@ -31,6 +31,7 @@ export default function SpeechRecorder({
   lang = 'en-US',
   onTranscript,
   inModal = false,
+  isAudioPlaying = false,
 }) {
   const [status, setStatus] = useState('idle'); // idle | waiting | listening | transcribed | error
   const [finalText, setFinalText] = useState('');
@@ -42,6 +43,7 @@ export default function SpeechRecorder({
   // Refs to escape stale closures in recognition callbacks
   const isListeningRef = useRef(false);
   const recognitionRef = useRef(null);
+  const activeRecognitionRef = useRef(null);
   const finalTextRef = useRef('');
   const submitTimerRef = useRef(null);
 
@@ -70,7 +72,11 @@ export default function SpeechRecorder({
   const stopRecording = useCallback(() => {
     isListeningRef.current = false;
     if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch (_) { /* ignore */ }
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        /* ignore */
+      }
       recognitionRef.current = null;
     }
     setInterimText('');
@@ -88,6 +94,9 @@ export default function SpeechRecorder({
   }, []);
 
   const startRecording = useCallback(() => {
+    if (isAudioPlaying) {
+      return;
+    }
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
       setErrorMsg('Speech recognition is not supported. Please use Chrome or Edge.');
@@ -125,6 +134,7 @@ export default function SpeechRecorder({
 
     recognition.onend = () => {
       recognitionRef.current = null;
+      activeRecognitionRef.current = null;
       setInterimText('');
       if (isListeningRef.current) {
         isListeningRef.current = false;
@@ -134,20 +144,39 @@ export default function SpeechRecorder({
 
     recognition.onerror = (event) => {
       recognitionRef.current = null;
+      activeRecognitionRef.current = null;
       setInterimText('');
       isListeningRef.current = false;
-      if (event.error === 'no-speech') { setStatus('transcribed'); return; }
-      if (event.error === 'aborted') return;
+      if (event.error === 'no-speech') {
+        setStatus('transcribed');
+        return;
+      }
+      if (event.error === 'aborted') {
+        return;
+      }
       setErrorMsg(`Microphone error: ${event.error}`);
       setStatus('error');
     };
 
     recognitionRef.current = recognition;
-    recognition.start();
-  }, [autoStop, selectedLang]);
+    activeRecognitionRef.current = recognition;
+    try {
+      recognition.start();
+    } catch (e) {
+      try { recognition.abort(); } catch (_) {}
+      setTimeout(() => {
+        try {
+          recognition.start();
+        } catch (err) {
+          setErrorMsg(`Microphone error: ${err.message}`);
+          setStatus('error');
+        }
+      }, 150);
+    }
+  }, [autoStop, selectedLang, isAudioPlaying]);
 
   const startVad = useCallback(async () => {
-    if (!autoStart || isListeningRef.current || vadTriggeredRef.current) return;
+    if (!autoStart || isListeningRef.current || vadTriggeredRef.current || isAudioPlaying) return;
 
     setStatus('waiting');
 
@@ -185,9 +214,10 @@ export default function SpeechRecorder({
       setErrorMsg(`Microphone access denied: ${err.message}`);
       setStatus('error');
     }
-  }, [autoStart, startRecording, stopVad]);
+  }, [autoStart, startRecording, stopVad, isAudioPlaying]);
 
   const handleMicClick = useCallback(() => {
+    if (isAudioPlaying) return;
     if (status === 'listening') {
       stopRecording();
       setStatus('transcribed');
@@ -195,7 +225,6 @@ export default function SpeechRecorder({
       stopVad();
       setStatus('idle');
     } else if (status === 'transcribed' && !autoStop) {
-      // Continue recording — keep existing transcript, just restart recognition
       clearSubmitTimer();
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) return;
@@ -222,6 +251,7 @@ export default function SpeechRecorder({
       };
       recognition.onend = () => {
         recognitionRef.current = null;
+        activeRecognitionRef.current = null;
         setInterimText('');
         if (isListeningRef.current) {
           isListeningRef.current = false;
@@ -230,6 +260,7 @@ export default function SpeechRecorder({
       };
       recognition.onerror = (event) => {
         recognitionRef.current = null;
+        activeRecognitionRef.current = null;
         setInterimText('');
         isListeningRef.current = false;
         if (event.error === 'no-speech') { setStatus('transcribed'); return; }
@@ -238,12 +269,25 @@ export default function SpeechRecorder({
         setStatus('error');
       };
       recognitionRef.current = recognition;
-      recognition.start();
+      activeRecognitionRef.current = recognition;
+      try {
+        recognition.start();
+      } catch (e) {
+        try { recognition.abort(); } catch (_) {}
+        setTimeout(() => {
+          try {
+            recognition.start();
+          } catch (err) {
+            setErrorMsg(`Microphone error: ${err.message}`);
+            setStatus('error');
+          }
+        }, 150);
+      }
     } else {
       setIsSuspended(false);
       startRecording();
     }
-  }, [status, autoStop, selectedLang, startRecording, stopRecording, stopVad]);
+  }, [status, autoStop, selectedLang, startRecording, stopRecording, stopVad, isAudioPlaying]);
 
   const handleConfirm = useCallback(() => {
     clearSubmitTimer();
@@ -291,6 +335,23 @@ export default function SpeechRecorder({
     return clearSubmitTimer;
   }, [status, scheduleSubmit, autoStop]);
 
+  // Monitor isAudioPlaying to automatically stop and prevent recording while TTS plays
+  useEffect(() => {
+    if (isAudioPlaying) {
+      if (activeRecognitionRef.current) {
+        try { activeRecognitionRef.current.abort(); } catch (_) {}
+        activeRecognitionRef.current = null;
+      }
+      stopRecording();
+      stopVad();
+      setStatus('idle');
+    } else {
+      if (autoStart && !isSuspended) {
+        startVad();
+      }
+    }
+  }, [isAudioPlaying, autoStart, isSuspended, stopRecording, stopVad, startVad]);
+
   // VAD trigger on mount / settings changes / suspension change
   useEffect(() => {
     if (autoStart && !isSuspended) {
@@ -298,7 +359,15 @@ export default function SpeechRecorder({
     } else {
       stopVad();
     }
-    return () => { stopRecording(); stopVad(); clearSubmitTimer(); };
+    return () => {
+      if (activeRecognitionRef.current) {
+        try { activeRecognitionRef.current.abort(); } catch (_) {}
+        activeRecognitionRef.current = null;
+      }
+      stopRecording();
+      stopVad();
+      clearSubmitTimer();
+    };
   }, [autoStart, isSuspended]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isListening = status === 'listening';
@@ -308,19 +377,21 @@ export default function SpeechRecorder({
   const displayText = finalText + (interimText ? (finalText ? ' ' : '') + interimText : '');
 
   // Mic styling
-  const micBg = isSuspended
+  const micBg = isAudioPlaying
     ? 'linear-gradient(135deg, #9CA3AF, #6B7280)'
-    : isListening
-      ? `linear-gradient(135deg, #DC2626, ${RED})`
-      : isTranscribed
-        ? `linear-gradient(135deg, #059669, ${GREEN})`
-        : isWaiting
-          ? `linear-gradient(135deg, #D97706, #F59E0B)`
-          : isError
-            ? 'linear-gradient(135deg, #9CA3AF, #6B7280)'
-            : `linear-gradient(135deg, rgba(${ACCENT_RGB},0.9), rgba(${ACCENT_RGB},0.7))`;
+    : isSuspended
+      ? 'linear-gradient(135deg, #9CA3AF, #6B7280)'
+      : isListening
+        ? `linear-gradient(135deg, #DC2626, ${RED})`
+        : isTranscribed
+          ? `linear-gradient(135deg, #059669, ${GREEN})`
+          : isWaiting
+            ? `linear-gradient(135deg, #D97706, #F59E0B)`
+            : isError
+              ? 'linear-gradient(135deg, #9CA3AF, #6B7280)'
+              : `linear-gradient(135deg, rgba(${ACCENT_RGB},0.9), rgba(${ACCENT_RGB},0.7))`;
 
-  const micShadow = isSuspended
+  const micShadow = isAudioPlaying || isSuspended
     ? 'none'
     : isListening
       ? '0 8px 30px rgba(239,68,68,0.35)'
@@ -328,22 +399,25 @@ export default function SpeechRecorder({
         ? '0 8px 30px rgba(16,185,129,0.3)'
         : `0 8px 30px rgba(${ACCENT_RGB},0.25)`;
 
-  const statusLabel = isSuspended
-    ? 'Listening Paused'
-    : isListening
-      ? (autoStop ? 'Listening — speak now' : 'Recording — click to stop')
-      : isWaiting
-        ? 'Waiting for voice…'
-        : isTranscribed
-          ? (finalText.trim() ? `Sending in ${(silenceDelay / 1000).toFixed(1)}s…` : 'No speech detected')
-          : isError
-            ? 'Tap to retry'
-            : autoStart
-              ? 'Initialising microphone…'
-              : 'Tap mic to speak';
+  const statusLabel = isAudioPlaying
+    ? 'Playing audio…'
+    : isSuspended
+      ? 'Listening Paused'
+      : isListening
+        ? (autoStop ? 'Listening — speak now' : 'Recording — click to stop')
+        : isWaiting
+          ? 'Waiting for voice…'
+          : isTranscribed
+            ? (finalText.trim() ? `Sending in ${(silenceDelay / 1000).toFixed(1)}s…` : 'No speech detected')
+            : isError
+              ? 'Tap to retry'
+              : autoStart
+                ? 'Initialising microphone…'
+                : 'Tap mic to speak';
 
   // Reusable mic icon JSX for any button size
   const MicIcon = ({ size = 28 }) => {
+    if (isAudioPlaying) return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" /></svg>;
     if (isSuspended) return <svg width={size} height={size} viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z" /></svg>;
     if (isTranscribed) return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>;
     if (isError) return <svg width={size-2} height={size-2} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 .49-3.48" /></svg>;

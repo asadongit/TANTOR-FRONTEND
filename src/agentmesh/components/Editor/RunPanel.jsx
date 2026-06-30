@@ -1262,6 +1262,7 @@ export default function RunPanel({ onClose }) {
                     silenceDelay={startingSttNodes[0]?.data?.silence_delay ?? 1500}
                     lang={startingSttNodes[0]?.data?.stt_lang || 'en-US'}
                     onTranscript={(text) => onSend(text)}
+                    isAudioPlaying={audioPlaying}
                   />
                 </div>
               )}
@@ -1317,6 +1318,7 @@ export default function RunPanel({ onClose }) {
                     silenceDelay={pausedInfo.nodeConfig?.silence_delay ?? 1500}
                     lang={pausedInfo.nodeConfig?.stt_lang || 'en-US'}
                     onTranscript={(text) => onResume({ stt_output: text })}
+                    isAudioPlaying={audioPlaying}
                   />
                 </div>
               )}
@@ -1329,6 +1331,7 @@ export default function RunPanel({ onClose }) {
                   silenceDelay={startingSttNodes[0]?.data?.silence_delay ?? 1500}
                   lang={startingSttNodes[0]?.data?.stt_lang || 'en-US'}
                   onTranscript={(text) => onSend(text)}
+                  isAudioPlaying={audioPlaying}
                 />
               )}
               {/* Ongoing camera: show capture button after chat started */}
