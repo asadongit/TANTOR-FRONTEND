@@ -1,6 +1,7 @@
 stages:
   - check
   - security
+  - security-trivy
   - clone
 
 variables:
@@ -50,6 +51,20 @@ semgrep:
       - gl-sast-report.json
     reports:
       sast: gl-sast-report.json
+
+trivy-package-scan:
+  stage: security-trivy
+
+  script:
+    - trivy fs --scanners vuln --format sarif --output trivy-fs.sarif .
+
+  artifacts:
+    when: always
+    paths:
+      - trivy-fs.sarif
+
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ /^(testing)$/'
 
 
 clone-deployment:
