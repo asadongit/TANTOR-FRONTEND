@@ -53,6 +53,7 @@ import CardboardConfig from './CardboardConfig';
 import TriggerConfig from './TriggerConfig';
 import TextToAudioConfig from './TextToAudioConfig';
 import CameraNodeConfig from './CameraNodeConfig';
+import SignatureStampExtractorConfig from './SignatureStampExtractorConfig';
 
 export {
   LLMAgentConfig,
@@ -109,7 +110,8 @@ export {
   CardboardConfig,
   TriggerConfig,
   TextToAudioConfig,
-  CameraNodeConfig
+  CameraNodeConfig,
+  SignatureStampExtractorConfig
 };
 
 export { ToolConfigModal } from './shared/ToolConfigModal';

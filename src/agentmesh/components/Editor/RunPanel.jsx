@@ -75,6 +75,10 @@ export default function RunPanel({ onClose }) {
     return findStartingTriggers(nodes, edges, 'ocr_node');
   }, [nodes, edges]);
 
+  const startingExtractorNodes = useMemo(() => {
+    return findStartingTriggers(nodes, edges, 'signature_stamp_extractor');
+  }, [nodes, edges]);
+
   const startingFormNodes = useMemo(() => {
     return findStartingTriggers(nodes, edges, 'form_node');
   }, [nodes, edges]);
@@ -83,11 +87,11 @@ export default function RunPanel({ onClose }) {
   const hasAutoTriggers = startingAutoTriggers.length > 0;
   const hasStartingSttNode = startingSttNodes.length > 0;
   const hasStartingCameraNode = startingCameraNodes.length > 0;
-  const hasStartingOcrNode = startingOcrNodes.length > 0;
+  const hasStartingOcrNode = startingOcrNodes.length > 0 || startingExtractorNodes.length > 0;
   const hasStartingFormNode = startingFormNodes.length > 0;
 
   const hasOcrNodes = useMemo(() => {
-    return nodes.some(n => n.data?.type === 'ocr_node');
+    return nodes.some(n => n.data?.type === 'ocr_node' || n.data?.type === 'signature_stamp_extractor');
   }, [nodes]);
 
   const isChatStarted = useMemo(() => {
@@ -631,11 +635,11 @@ export default function RunPanel({ onClose }) {
         const filePath = res.file_path;
         addEvent({ type: 'system_log', message: 'UPLOAD SUCCESS', content: `Document ${file.name} uploaded successfully.` });
 
-        const ocrNode = nodes.find(n => n.data?.type === 'ocr_node');
+        const targetNode = nodes.find(n => n.data?.type === 'ocr_node' || n.data?.type === 'signature_stamp_extractor');
         onSend(`Processing uploaded file: ${file.name}`, {
           latest_file_path: filePath,
           latest_file_name: file.name
-        }, ocrNode?.id);
+        }, targetNode?.id);
       }
     } catch (err) {
       setError("Upload failed: " + err.message);

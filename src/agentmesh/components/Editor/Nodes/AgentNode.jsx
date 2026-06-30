@@ -30,6 +30,7 @@ const NODE_CONFIGS = {
   banking_enrichment: { bg: '#F5F3FF', color: '#7C3AED', icon: FiServer, round: 14 },
   beneficiary_risk: { bg: '#FEF2F2', color: '#EF4444', icon: FiGitBranch, round: 14 },
   ocr_node: { bg: '#FDF2F8', color: '#DB2777', icon: FiEye, round: 14 },
+  signature_stamp_extractor: { bg: '#FDF2F8', color: '#DB2777', icon: FiEdit, round: 14 },
   subgraph: { bg: '#F0FDFA', color: '#14B8A6', icon: FiLink, round: 14 },
   guardrail: { bg: '#FEFCE8', color: '#EAB308', icon: FiSearch, round: 14 },
   webhook: { bg: '#E0F2FE', color: '#0EA5E9', icon: FiGlobe, round: 14 },
