@@ -66,7 +66,11 @@ const NODE_DEFAULTS = {
     ce_mode: 'run_once',
   },
   email_node: {
-    label: 'SMTP Email Sender',
+    label: 'Email Sender',
+    email_auth_method: 'smtp',
+    email_tenant_id: '',
+    email_client_id: '',
+    email_client_secret: '',
     email_provider: 'Custom',
     email_to: '',
     email_cc: '',
@@ -81,6 +85,13 @@ const NODE_DEFAULTS = {
     email_attachments: '',
     email_headers: {},
     email_smtp_timeout: 15
+  },
+  stt_trigger: {
+    label: 'Speech to Text',
+    auto_start: false,
+    auto_stop: true,
+    silence_delay: 1500,
+    stt_lang: 'en-US'
   },
   button_trigger: {
     label: 'Button Trigger',
@@ -99,6 +110,15 @@ const NODE_DEFAULTS = {
     internal_nodes: [],
     internal_edges: [],
     original_edges: []
+  },
+  textToAudio: {
+    label: 'Text to Speech',
+    tts_library: 'piper',
+    audio_voice: 'en-US-GuyNeural',
+    kittentts_model: 'KittenML/kitten-tts-micro-0.8',
+    audio_speed: 1.0,
+    mute_audio: false,
+    audio_input_text: ''
   }
 };
 
@@ -1004,7 +1024,7 @@ export const useWorkflowStore = create((set, get) => ({
           'chunk_size', 'chunk_overlap', 'ingestion_source_key',
           'k_results', 'threshold', 'chunking_strategy', 'search_type',
           'interrupt_before', 'interrupt_after', 'hitl_actions',
-          'audio_voice', 'mute_audio',
+          'audio_voice', 'mute_audio', 'tts_library', 'kittentts_model', 'audio_speed', 'audio_input_text',
           'split_field', 'batch_size',
           'file_format', 'file_name', 'file_data_key', 'file_overwrite',
           'api_method', 'api_url', 'api_headers', 'api_params', 'api_body', 'api_auth_type', 'api_auth_config', 'api_response_format', 'connection_id', 'api_protocol', 'graphql_query', 'use_curl', 'curl_command',
@@ -1059,7 +1079,8 @@ export const useWorkflowStore = create((set, get) => ({
           // Code Execution
           'ce_language', 'ce_code', 'ce_input_key', 'ce_output_key', 'ce_mode',
           // SMTP Email Node
-          'email_provider', 'email_to', 'email_cc', 'email_bcc', 'email_subject', 'email_body', 'email_html', 'email_smtp_server', 'email_smtp_port', 'email_user', 'email_password', 'email_attachments', 'email_headers', 'email_smtp_timeout'
+          'email_provider', 'email_to', 'email_cc', 'email_bcc', 'email_subject', 'email_body', 'email_html', 'email_smtp_server', 'email_smtp_port', 'email_user', 'email_password', 'email_attachments', 'email_headers', 'email_smtp_timeout',
+          'email_auth_method', 'email_tenant_id', 'email_client_id', 'email_client_secret'
         ];
 
         const nodeConfig = {};
