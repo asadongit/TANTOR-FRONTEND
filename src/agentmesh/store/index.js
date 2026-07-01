@@ -71,6 +71,8 @@ const NODE_DEFAULTS = {
     email_tenant_id: '',
     email_client_id: '',
     email_client_secret: '',
+    email_google_service_account_json: '',
+    email_google_delegated_user: '',
     email_provider: 'Custom',
     email_to: '',
     email_cc: '',
@@ -1080,7 +1082,8 @@ export const useWorkflowStore = create((set, get) => ({
           'ce_language', 'ce_code', 'ce_input_key', 'ce_output_key', 'ce_mode',
           // SMTP Email Node
           'email_provider', 'email_to', 'email_cc', 'email_bcc', 'email_subject', 'email_body', 'email_html', 'email_smtp_server', 'email_smtp_port', 'email_user', 'email_password', 'email_attachments', 'email_headers', 'email_smtp_timeout',
-          'email_auth_method', 'email_tenant_id', 'email_client_id', 'email_client_secret'
+          'email_auth_method', 'email_tenant_id', 'email_client_id', 'email_client_secret',
+          'email_google_service_account_json', 'email_google_delegated_user'
         ];
 
         const nodeConfig = {};

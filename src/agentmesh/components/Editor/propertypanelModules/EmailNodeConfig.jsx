@@ -120,11 +120,12 @@ const EmailNodeConfig = memo(function EmailNodeConfig({ data, update }) {
               options={[
                 { value: "smtp", label: "SMTP (Traditional Host/Port)" },
                 { value: "oauth", label: "OAuth (Microsoft Graph API)" },
+                { value: "gmail_oauth", label: "OAuth (Google Gmail API)" },
               ]}
             />
           </Field>
 
-          {(data.email_auth_method === "smtp" || !data.email_auth_method) ? (
+          {(data.email_auth_method === "smtp" || !data.email_auth_method) && (
             <>
               <Field label="SMTP Provider Preset">
                 <Select
@@ -177,7 +178,9 @@ const EmailNodeConfig = memo(function EmailNodeConfig({ data, update }) {
                 />
               </Field>
             </>
-          ) : (
+          )}
+
+          {data.email_auth_method === "oauth" && (
             <>
               <Field label="Tenant ID" hint="Azure AD / Microsoft Entra Tenant ID">
                 <Input
@@ -206,6 +209,26 @@ const EmailNodeConfig = memo(function EmailNodeConfig({ data, update }) {
                   value={data.email_user || ""}
                   onChange={(v) => update({ email_user: v })}
                   placeholder="sender@yourdomain.com"
+                />
+              </Field>
+            </>
+          )}
+
+          {data.email_auth_method === "gmail_oauth" && (
+            <>
+              <Field label="Service Account JSON Key" hint="Paste the Google Cloud Service Account credentials JSON">
+                <Textarea
+                  value={data.email_google_service_account_json || ""}
+                  onChange={(v) => update({ email_google_service_account_json: v })}
+                  placeholder={`{\n  "type": "service_account",\n  "project_id": "...",\n  "private_key_id": "...",\n  "private_key": "-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n",\n  "client_email": "..."\n}`}
+                  rows={6}
+                />
+              </Field>
+              <Field label="Sender Email (Impersonated User)" hint="Email address of the Workspace user to send on behalf of (requires Domain-Wide Delegation)">
+                <Input
+                  value={data.email_google_delegated_user || ""}
+                  onChange={(v) => update({ email_google_delegated_user: v })}
+                  placeholder="user@yourdomain.com"
                 />
               </Field>
             </>
@@ -396,6 +419,8 @@ EmailNodeConfig.propTypes = {
     email_tenant_id: PropTypes.string,
     email_client_id: PropTypes.string,
     email_client_secret: PropTypes.string,
+    email_google_service_account_json: PropTypes.string,
+    email_google_delegated_user: PropTypes.string,
     email_provider: PropTypes.string,
     email_smtp_server: PropTypes.string,
     email_smtp_port: PropTypes.number,
