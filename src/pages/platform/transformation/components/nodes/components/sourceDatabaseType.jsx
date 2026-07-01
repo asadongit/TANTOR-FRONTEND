@@ -229,77 +229,79 @@ export const SourceDatabaseType = ({
         )}
       </div>
 
-      <div>
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-semibold text-black mb-0.5 block">
-            Schema
-          </label>
-          {dataFetchStatus.schemas === 'loading' && (
-            <div className="flex items-center">
-              <Loader size={10} className="animate-spin text-[#8E77BB] mr-1" />
-              <span className="text-[10px] text-gray-500">Loading...</span>
-            </div>
+      {selectedConnection.type?.toLowerCase() !== "mongodb" && (
+        <div>
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-black mb-0.5 block">
+              Schema
+            </label>
+            {dataFetchStatus.schemas === 'loading' && (
+              <div className="flex items-center">
+                <Loader size={10} className="animate-spin text-[#8E77BB] mr-1" />
+                <span className="text-[10px] text-gray-500">Loading...</span>
+              </div>
+            )}
+          </div>
+          <div className="relative" ref={schemaDropdownRef}>
+            <button
+              type="button"
+              className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+              onClick={() => setSchemaDropdownOpen(v => !v)}
+              disabled={!selectedConnection.name || loading.schemas}
+            >
+              {selectedSchema
+                ? selectedSchema
+                : !selectedConnection.name
+                  ? 'Select connection first'
+                  : dataFetchStatus.schemas === 'loading'
+                    ? 'Loading schemas...'
+                    : 'Select schema'}
+              <span className="ml-auto pl-2">&#9662;</span>
+            </button>
+            {schemaDropdownOpen && (
+              <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-52 overflow-auto">
+                <input
+                  type="search"
+                  placeholder="Search schemas..."
+                  className="w-full p-1 text-[11px] text-black border-b border-gray-200"
+                  value={schemaSearch}
+                  onChange={e => setSchemaSearch(e.target.value)}
+                  autoFocus
+                />
+                {filteredSchemas.length === 0 && (
+                  <div className="p-2 text-xs text-gray-500">No schemas found</div>
+                )}
+                {filteredSchemas.map((schema, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${selectedSchema === schema.table_schema ? "bg-gray-100" : ""}`}
+                    onClick={() => {
+                      setSelectedSchema(schema.table_schema);
+                      setSelectedTable("");
+                      setSelectedColumns([]);
+                      fetchTablesAndColumns(selectedConnection.name, schema.table_schema);
+                      setSchemaDropdownOpen(false);
+                    }}
+                  >
+                    {schema.table_schema}
+                  </div>
+                ))}
+              </div>
+            )}
+            {loading.schemas && (
+              <div className="absolute right-2 top-2">
+                <Loader size={12} className="animate-spin text-gray-400" />
+              </div>
+            )}
+          </div>
+          {dataFetchStatus.schemas === 'error' && (
+            <p className="text-[10px] text-red-500 mt-1">Failed to load schemas</p>
+          )}
+          {dataFetchStatus.schemas === 'success' && schemas.length === 0 && (
+            <p className="text-[10px] text-amber-500 mt-1">No schemas found</p>
           )}
         </div>
-        <div className="relative" ref={schemaDropdownRef}>
-          <button
-            type="button"
-            className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
-            onClick={() => setSchemaDropdownOpen(v => !v)}
-            disabled={!selectedConnection.name || loading.schemas}
-          >
-            {selectedSchema
-              ? selectedSchema
-              : !selectedConnection.name
-                ? 'Select connection first'
-                : dataFetchStatus.schemas === 'loading'
-                  ? 'Loading schemas...'
-                  : 'Select schema'}
-            <span className="ml-auto pl-2">&#9662;</span>
-          </button>
-          {schemaDropdownOpen && (
-            <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-52 overflow-auto">
-              <input
-                type="search"
-                placeholder="Search schemas..."
-                className="w-full p-1 text-[11px] text-black border-b border-gray-200"
-                value={schemaSearch}
-                onChange={e => setSchemaSearch(e.target.value)}
-                autoFocus
-              />
-              {filteredSchemas.length === 0 && (
-                <div className="p-2 text-xs text-gray-500">No schemas found</div>
-              )}
-              {filteredSchemas.map((schema, idx) => (
-                <div
-                  key={idx}
-                  className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${selectedSchema === schema.table_schema ? "bg-gray-100" : ""}`}
-                  onClick={() => {
-                    setSelectedSchema(schema.table_schema);
-                    setSelectedTable("");
-                    setSelectedColumns([]);
-                    fetchTablesAndColumns(selectedConnection.name, schema.table_schema);
-                    setSchemaDropdownOpen(false);
-                  }}
-                >
-                  {schema.table_schema}
-                </div>
-              ))}
-            </div>
-          )}
-          {loading.schemas && (
-            <div className="absolute right-2 top-2">
-              <Loader size={12} className="animate-spin text-gray-400" />
-            </div>
-          )}
-        </div>
-        {dataFetchStatus.schemas === 'error' && (
-          <p className="text-[10px] text-red-500 mt-1">Failed to load schemas</p>
-        )}
-        {dataFetchStatus.schemas === 'success' && schemas.length === 0 && (
-          <p className="text-[10px] text-amber-500 mt-1">No schemas found</p>
-        )}
-      </div>
+      )}
 
       {selectedSchema && (
         <>
@@ -471,21 +473,6 @@ export const SourceDatabaseType = ({
                       ).length === 0 && (
                         <div className="p-2 text-[11px] text-gray-500">No tables found</div>
                       )}                  
-                      
-                      {filteredTables.map((table) => (
-                        <div
-                          key={table.table_name}
-                          className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${
-                            sourceQueryTable === table.table_name ? "bg-gray-100 font-medium" : ""
-                          }`}
-                          onClick={() => {
-                            setSourceQueryTable(table.table_name);
-                            setSourceQueryTableDropdownOpen(false);
-                          }}
-                        >
-                          {table.table_name}
-                        </div>
-                      ))}
                     </div>
                   )}
                 </div>
@@ -532,9 +519,7 @@ export const SourceDatabaseType = ({
                         <select
                           className="flex-1 p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
                           value={column.datatype === 'custom' ? (column.customDatatype || 'custom') : column.datatype}
-                          // onChange={e => updateFileColumn(column.id, 'datatype', e.target.value)}
                           onChange={e => handleDatatypeChange(column.id, e.target.value)}
-
                         >
                           <option value="string">string</option>
                           <option value="integer">integer</option>
@@ -542,8 +527,7 @@ export const SourceDatabaseType = ({
                           <option value="boolean">boolean</option>
                           <option value="date">date</option>
                           <option value="datetime">datetime</option>
-                                          <option value="timestamp">timestamp</option>
-
+                          <option value="timestamp">timestamp</option>
                           <option value="custom">custom</option>
                           {column.datatype === 'custom' && column.customDatatype && (
                             <option value={column.customDatatype}>{column.customDatatype}</option>
