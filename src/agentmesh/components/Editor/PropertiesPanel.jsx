@@ -38,6 +38,8 @@ import {
   FiSave,
   FiHelpCircle,
   FiCode,
+  FiEdit,
+  FiMail,
 } from "react-icons/fi";
 import {
   FONT,
@@ -84,6 +86,7 @@ const LAZY_CONFIGS = {
   ),
   api_node: lazy(() => import("./propertypanelModules/ApiNodeConfig")),
   form_node: lazy(() => import("./propertypanelModules/FormNodeConfig")),
+  camera: lazy(() => import("./propertypanelModules/CameraNodeConfig")),
   file_store: lazy(() => import("./propertypanelModules/FileStoreConfig")),
   debug_node: lazy(() => import("./propertypanelModules/DebugNodeConfig")),
   error_router: lazy(() => import("./propertypanelModules/ErrorRouterConfig")),
@@ -144,6 +147,9 @@ const LAZY_CONFIGS = {
   auto_trigger: lazy(() => import("./propertypanelModules/TriggerConfig")),
   stt_trigger: lazy(() => import("./propertypanelModules/SttNodeConfig")),
   textToAudio: lazy(() => import("./propertypanelModules/TextToAudioConfig")),
+  signature_stamp_extractor: lazy(() => import("./propertypanelModules/SignatureStampExtractorConfig")),
+  code_execution: lazy(() => import("./propertypanelModules/CodeExecutionConfig")),
+  email_node: lazy(() => import("./propertypanelModules/EmailNodeConfig")),
   group: lazy(() => import("./propertypanelModules/GroupConfig")),
 };
 
@@ -577,6 +583,9 @@ export default function PropertiesPanel() {
     json_transform_va: FiCode,
     condition: FiHelpCircle,
     group: FiLayers,
+    signature_stamp_extractor: FiEdit,
+    code_execution: FiCode,
+    email_node: FiMail,
   };
   const Icon = nodeIcons[data.type] || FiLayers;
 

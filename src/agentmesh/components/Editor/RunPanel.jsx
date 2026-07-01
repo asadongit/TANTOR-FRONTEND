@@ -1,38 +1,31 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { useWorkflowStore, useRunStore, useUIStore } from '../../store';
-import { executeWorkflow, compileWorkflow, listThreads, getThreadHistory, deleteThread } from '../../api/agentmesh';
+import { executeWorkflow, compileWorkflow, listThreads, getThreadHistory, deleteThread, listVfsFiles } from '../../api/agentmesh';
 import {
   FiSend, FiRotateCcw, FiPaperclip, FiMic, FiChevronDown, FiChevronUp, FiArrowUp,
   FiAlertCircle, FiCpu, FiBox, FiActivity,
   FiMessageSquare, FiX, FiCheck, FiEdit, FiTrash, FiUser, FiMicOff, FiClock, FiPlus,
-  FiFolder, FiZap, FiStar, FiBriefcase, FiCheckSquare, FiRefreshCw, FiList
+  FiFolder, FiZap, FiStar, FiBriefcase, FiCheckSquare, FiRefreshCw, FiList, FiCamera
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 // Import RunPanelModules submodules
 import {
   THEME_BG, THEME_GRAY, THEME_BORDER, THEME_TEXT, THEME_ACCENT, THEME_SECONDARY, THEME_USER_BUBBLE, FONT,
-  getButtonCategoryStyles, genThreadId, findProfileReportHtml
+  getButtonCategoryStyles, genThreadId, findProfileReportHtml, PAUSE_UI
 } from './RunPanelModules/constants';
 import useAudioPlayer from './RunPanelModules/useAudioPlayer';
 import { MinimalButton, ActionButton, ActionButtonGroup, ReworkFormPanel } from './RunPanelModules/HitlControls';
 import FormRenderer from './RunPanelModules/FormRenderer';
 import SpeechRecorder from './RunPanelModules/SpeechRecorder';
+import CameraRenderer from './RunPanelModules/CameraRenderer';
+import OcrRenderer from './RunPanelModules/OcrRenderer';
 import TurnRenderer from './RunPanelModules/TurnRenderer';
 import ChatInput from './RunPanelModules/ChatInput';
 import { VfsExplorer, BlackboardModal, ProfilingModal } from './RunPanelModules/sessiontool';
-import { findStartingTriggers } from './RunPanelModules/utils';
+import { findStartingTriggers, resolvePauseConfig, processWorkflowMessages } from './RunPanelModules/utils';
 import HistorySidebar from './RunPanelModules/HistorySidebar';
-
-/**
- * PAUSE_UI registry — add new pause-time node types here without touching RunPanel logic.
- * hidesInput: true  → hides the normal bottom input bar entirely
- * showsHitl:  false → skips the standard HITL approve/rework/reject controls
- */
-const PAUSE_UI = {
-  form_node:   { hidesInput: true,  showsHitl: false },
-  stt_trigger: { hidesInput: true,  showsHitl: false },
-};
+import PauseModal from './RunPanelModules/PauseModal';
 
 export default function RunPanel({ onClose }) {
   const {
@@ -74,19 +67,38 @@ export default function RunPanel({ onClose }) {
     return findStartingTriggers(nodes, edges, 'stt_trigger');
   }, [nodes, edges]);
 
+  const startingCameraNodes = useMemo(() => {
+    return findStartingTriggers(nodes, edges, 'camera');
+  }, [nodes, edges]);
+
+  const startingOcrNodes = useMemo(() => {
+    return findStartingTriggers(nodes, edges, 'ocr_node');
+  }, [nodes, edges]);
+
+  const startingExtractorNodes = useMemo(() => {
+    return findStartingTriggers(nodes, edges, 'signature_stamp_extractor');
+  }, [nodes, edges]);
+
+  const startingFormNodes = useMemo(() => {
+    return findStartingTriggers(nodes, edges, 'form_node');
+  }, [nodes, edges]);
+
   const hasButtonTriggers = startingButtonTriggers.length > 0;
   const hasAutoTriggers = startingAutoTriggers.length > 0;
   const hasStartingSttNode = startingSttNodes.length > 0;
+  const hasStartingCameraNode = startingCameraNodes.length > 0;
+  const hasStartingOcrNode = startingOcrNodes.length > 0 || startingExtractorNodes.length > 0;
+  const hasStartingFormNode = startingFormNodes.length > 0;
 
   const hasOcrNodes = useMemo(() => {
-    return nodes.some(n => n.data?.type === 'ocr_node');
+    return nodes.some(n => n.data?.type === 'ocr_node' || n.data?.type === 'signature_stamp_extractor');
   }, [nodes]);
 
   const isChatStarted = useMemo(() => {
     return streamEvents.some(e => ['node_start', 'token', 'user_message'].includes(e.type));
   }, [streamEvents]);
 
-  const hideInput = !isChatStarted && (hasButtonTriggers || hasAutoTriggers || hasOcrNodes || hasStartingSttNode);
+  const hideInput = !isChatStarted && (hasButtonTriggers || hasAutoTriggers || hasStartingOcrNode || hasStartingSttNode || hasStartingCameraNode || hasStartingFormNode);
 
   const hasBlackboardTool = useMemo(() => {
     return nodes.some(n => {
@@ -107,8 +119,7 @@ export default function RunPanel({ onClose }) {
     try {
       const daNode = nodes.find(n => n.data?.type === 'deep_agent');
       const rootDir = daNode?.data?.deep_agent_root_dir || './mnt/deep_agents';
-      const res = await fetch(`http://localhost:8000/api/v1/agentmesh/deep-agent/vfs/list?root_dir=${encodeURIComponent(rootDir)}&thread_id=${tid}`);
-      const data = await res.json();
+      const data = await listVfsFiles(rootDir, tid);
       if (data.status === 'success') {
         setArtifactCount(data.files?.length || 0);
       }
@@ -238,19 +249,8 @@ export default function RunPanel({ onClose }) {
 
         const pausedOriginalNodeId = res.next_node?.replace(/^(gate_|pre_gate_|post_gate_)/, '') || res.next_node;
 
-        // Resolve pause type/config: backend-provided (preferred) → subgraph → canvas fallback
-        let nodeType = res.pause_type;
-        let nodeConfig = res.pause_config;
-
-        if (res.context?.paused_subgraph_node_id) {
-          nodeType = res.context.paused_subgraph_node_type;
-          nodeConfig = res.context.paused_subgraph_node_config || {};
-        } else if (!nodeType) {
-          const storeNodes = useWorkflowStore.getState().nodes;
-          const pausedNode = storeNodes.find(n => n.id === pausedOriginalNodeId);
-          nodeType = pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type);
-          nodeConfig = pausedNode?.data || {};
-        }
+        const storeNodes = useWorkflowStore.getState().nodes;
+        const { nodeType, nodeConfig } = resolvePauseConfig(res, storeNodes, pausedOriginalNodeId);
         
         const enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
 
@@ -281,36 +281,9 @@ export default function RunPanel({ onClose }) {
       }
       const newMessages = userMsgIdx >= 0 ? messages.slice(userMsgIdx + 1) : messages;
 
-      const hasArtifact = (str) =>
-        typeof str === 'string' && (str.includes('```chart') || str.includes('```mermaid'));
-
-      let chartCount = 0;
-      let lastActiveAgent = null;
-      let lastActiveAgentName = null;
-
-      for (const msg of newMessages) {
-        const nodeId = msg.metadata?.active_agent;
-        const agentName = msg.metadata?.agent_name;
-
-        if (nodeId && nodeId !== lastActiveAgent) {
-          addEvent({ type: 'node_start', node: nodeId, agent_name: agentName });
-          lastActiveAgent = nodeId;
-          lastActiveAgentName = agentName;
-        }
-
-        // AGENT OUTPUTS (from AIMessages)
-        if (msg.type === 'AIMessage') {
-          if (hasArtifact(msg.content)) {
-            addEvent({ type: 'tool_result', tool: 'chart_generator', content: msg.content });
-            chartCount++;
-          }
-
-          const isNotLast = msg !== newMessages[newMessages.length - 1];
-          if (isNotLast && msg.content && typeof msg.content === 'string' && msg.content.trim()) {
-            addEvent({ type: 'token', content: msg.content, node: nodeId, agent_name: agentName });
-          }
-        }
-      }
+      const { chartCount, lastActiveAgent: processedAgent, lastActiveAgentName: processedAgentName } = processWorkflowMessages(newMessages, addEvent, null);
+      let lastActiveAgent = processedAgent;
+      let lastActiveAgentName = processedAgentName;
 
       // Show final text summary for the latest agent
       const rawOutput = res.output;
@@ -465,19 +438,8 @@ export default function RunPanel({ onClose }) {
 
         const resumeOriginalNodeId = res.next_node?.replace(/^(gate_|pre_gate_|post_gate_)/, '') || res.next_node;
         
-        // Resolve pause type/config: subgraph → backend-provided → canvas fallback
-        let nodeType = res.pause_type;
-        let nodeConfig = res.pause_config;
-        
-        if (res.context?.paused_subgraph_node_id) {
-          nodeType = res.context.paused_subgraph_node_type;
-          nodeConfig = res.context.paused_subgraph_node_config || {};
-        } else if (!nodeType) {
-          const storeNodes = useWorkflowStore.getState().nodes;
-          const pausedNode = storeNodes.find(n => n.id === resumeOriginalNodeId);
-          nodeType = pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type);
-          nodeConfig = pausedNode?.data || {};
-        }
+        const storeNodes = useWorkflowStore.getState().nodes;
+        const { nodeType, nodeConfig } = resolvePauseConfig(res, storeNodes, resumeOriginalNodeId);
         
         const enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
         
@@ -512,36 +474,10 @@ export default function RunPanel({ onClose }) {
 
       // ── Process messages from resume response ──
       const messages = res.messages || [];
-      const hasArtifact = (str) =>
-        typeof str === 'string' && (str.includes('```chart') || str.includes('```mermaid'));
 
-      let chartCount = 0;
-      let lastActiveAgent = res.active_agent || null;
-      let lastActiveAgentName = null;
-
-      for (const msg of messages) {
-        const nodeId = msg.metadata?.active_agent;
-        const agentName = msg.metadata?.agent_name;
-
-        if (nodeId && nodeId !== lastActiveAgent) {
-          addEvent({ type: 'node_start', node: nodeId, agent_name: agentName });
-          lastActiveAgent = nodeId;
-          lastActiveAgentName = agentName;
-        }
-
-        // AGENT OUTPUTS
-        if (msg.type === 'AIMessage') {
-          if (hasArtifact(msg.content)) {
-            addEvent({ type: 'tool_result', tool: 'chart_generator', content: msg.content });
-            chartCount++;
-          }
-
-          const isNotLast = msg !== messages[messages.length - 1];
-          if (isNotLast && msg.content && typeof msg.content === 'string' && msg.content.trim()) {
-            addEvent({ type: 'token', content: msg.content, node: nodeId, agent_name: agentName });
-          }
-        }
-      }
+      const { chartCount, lastActiveAgent: processedAgent, lastActiveAgentName: processedAgentName } = processWorkflowMessages(messages, addEvent, res.active_agent || null);
+      let lastActiveAgent = processedAgent;
+      let lastActiveAgentName = processedAgentName;
 
       // Handle output
       const rawOutput = res.output;
@@ -633,19 +569,8 @@ export default function RunPanel({ onClose }) {
         const nextNode = res.next_node;
         const originalNodeId = nextNode?.replace(/^(gate_|pre_gate_|post_gate_)/, '') || nextNode;
 
-        // Resolve pause type/config: subgraph → backend-provided → canvas fallback
-        let nodeType = res.pause_type;
-        let nodeConfig = res.pause_config;
-        
-        if (res.context?.paused_subgraph_node_id) {
-          nodeType = res.context.paused_subgraph_node_type;
-          nodeConfig = res.context.paused_subgraph_node_config || {};
-        } else if (!nodeType) {
-          const storeNodes = useWorkflowStore.getState().nodes;
-          const pausedNode = storeNodes.find(n => n.id === originalNodeId);
-          nodeType = pausedNode?.type === 'customNode' ? pausedNode.data?.type : (pausedNode?.data?.type || pausedNode?.type);
-          nodeConfig = pausedNode?.data || {};
-        }
+        const storeNodes = useWorkflowStore.getState().nodes;
+        const { nodeType, nodeConfig } = resolvePauseConfig(res, storeNodes, originalNodeId);
         
         const enabledActions = (nodeConfig?.hitl_actions) || ['approve', 'rework', 'reject'];
 
@@ -710,11 +635,11 @@ export default function RunPanel({ onClose }) {
         const filePath = res.file_path;
         addEvent({ type: 'system_log', message: 'UPLOAD SUCCESS', content: `Document ${file.name} uploaded successfully.` });
 
-        const ocrNode = nodes.find(n => n.data?.type === 'ocr_node');
+        const targetNode = nodes.find(n => n.data?.type === 'ocr_node' || n.data?.type === 'signature_stamp_extractor');
         onSend(`Processing uploaded file: ${file.name}`, {
           latest_file_path: filePath,
           latest_file_name: file.name
-        }, ocrNode?.id);
+        }, targetNode?.id);
       }
     } catch (err) {
       setError("Upload failed: " + err.message);
@@ -724,6 +649,8 @@ export default function RunPanel({ onClose }) {
   const reportHtml = useMemo(() => {
     return findProfileReportHtml(pausedInfo?.context) || findProfileReportHtml(latestContext);
   }, [pausedInfo?.context, latestContext]);
+
+  const shouldHideInput = pausedInfo.isPaused && PAUSE_UI[pausedInfo.nodeType]?.hidesInput && pausedInfo.nodeType !== 'stt_trigger';
 
   return (
     <div style={{
@@ -1012,162 +939,53 @@ export default function RunPanel({ onClose }) {
       />
 
       {/* Form Modal Portal - Renders outside stacking context */}
-      {pausedInfo.isPaused && pausedInfo.nodeType === 'form_node' && (
-        <>
-          {/* Modal Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0, 0, 0, 0.4)',
-              backdropFilter: 'blur(2px)',
-              zIndex: 90,
-            }}
-          />
+      <PauseModal
+        isOpen={pausedInfo.isPaused && pausedInfo.nodeType === 'form_node'}
+        title={pausedInfo.nodeConfig?.form_title || 'Information Required'}
+        icon={FiEdit}
+        maxWidth={600}
+      >
+        <FormRenderer
+          config={pausedInfo.nodeConfig || {}}
+          context={pausedInfo.context || {}}
+          isLoading={running}
+          onSubmit={(data) => onResume(data)}
+        />
+      </PauseModal>
 
-          {/* Modal Container */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, x: '-50%', y: '-45%' }}
-            animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
-            exit={{ opacity: 0, scale: 0.8, x: '-50%', y: '-45%' }}
-            transition={{ type: 'spring', damping: 28, stiffness: 350 }}
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              zIndex: 95,
-              width: '90%',
-              maxWidth: 600,
-              minHeight: 450,
-              maxHeight: '80vh',
-              display: 'flex',
-              flexDirection: 'column',
-              background: '#FFFFFF',
-              borderRadius: 24,
-              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0,0,0,0.05)',
-              overflow: 'hidden'
-            }}
-          >
-            {/* Modal Header */}
-            <div style={{
-              padding: '24px 24px 16px',
-              borderBottom: `1px solid ${THEME_BORDER}`,
-              background: '#FAFBFC',
-              flexShrink: 0
-            }}>
-              <div style={{
-                fontSize: 14,
-                fontWeight: 900,
-                color: THEME_TEXT,
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10
-              }}>
-                <FiEdit size={16} color={THEME_ACCENT} /> {pausedInfo.nodeConfig?.form_title || 'Information Required'}
-              </div>
-            </div>
 
-            {/* Modal Body (Scrollable) */}
-            <div style={{
-              padding: '24px',
-              overflow: 'auto',
-              flex: 1,
-              overscrollBehavior: 'contain'
-            }}>
-              <FormRenderer
-                config={pausedInfo.nodeConfig || {}}
-                context={pausedInfo.context || {}}
-                isLoading={running}
-                onSubmit={(data) => onResume(data)}
-              />
-            </div>
-          </motion.div>
-        </>
-      )}
+      {/* Camera Paused Overlay - Show CameraRenderer when workflow is paused at camera */}
+      <PauseModal
+        isOpen={pausedInfo.isPaused && pausedInfo.nodeType === 'camera'}
+        title={pausedInfo.nodeConfig?.form_title || 'Camera Verification'}
+        icon={FiCamera}
+        maxWidth={450}
+        bodyPadding="20px"
+      >
+        <CameraRenderer
+          config={pausedInfo.nodeConfig || {}}
+          context={pausedInfo.context || {}}
+          threadId={pausedInfo.threadId || threadId}
+          isLoading={running}
+          onSubmit={(data) => onResume(data)}
+        />
+      </PauseModal>
 
-      {/* STT Trigger Paused Overlay - Show SpeechRecorder when workflow is paused at stt_trigger */}
-      {pausedInfo.isPaused && pausedInfo.nodeType === 'stt_trigger' && (
-        <>
-          {/* Modal Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0, 0, 0, 0.4)',
-              backdropFilter: 'blur(2px)',
-              zIndex: 90,
-            }}
-          />
-
-          {/* Modal Container */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, x: '-50%', y: '-45%' }}
-            animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
-            exit={{ opacity: 0, scale: 0.8, x: '-50%', y: '-45%' }}
-            transition={{ type: 'spring', damping: 28, stiffness: 350 }}
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              zIndex: 95,
-              width: '90%',
-              maxWidth: 450,
-              display: 'flex',
-              flexDirection: 'column',
-              background: '#FFFFFF',
-              borderRadius: 24,
-              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0,0,0,0.05)',
-              overflow: 'hidden'
-            }}
-          >
-            {/* Modal Header */}
-            <div style={{
-              padding: '20px 24px 14px',
-              borderBottom: `1px solid ${THEME_BORDER}`,
-              background: '#FAFBFC',
-              flexShrink: 0
-            }}>
-              <div style={{
-                fontSize: 13,
-                fontWeight: 900,
-                color: THEME_TEXT,
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10
-              }}>
-                <FiMic size={15} color={THEME_ACCENT} /> {pausedInfo.nodeConfig?.label || 'Speech Input Required'}
-              </div>
-            </div>
-
-            {/* Modal Body */}
-            <div style={{ padding: '20px', flex: 1 }}>
-              <SpeechRecorder
-                autoStart={pausedInfo.nodeConfig?.auto_start === true}
-                autoStop={pausedInfo.nodeConfig?.auto_stop !== false}
-                silenceDelay={pausedInfo.nodeConfig?.silence_delay ?? 1500}
-                lang={pausedInfo.nodeConfig?.stt_lang || 'en-US'}
-                onTranscript={(text) => onResume({ stt_output: text })}
-              />
-            </div>
-          </motion.div>
-        </>
-      )}
+      {/* OCR Paused Overlay - Show OcrRenderer when workflow is paused at ocr_node */}
+      <PauseModal
+        isOpen={pausedInfo.isPaused && pausedInfo.nodeType === 'ocr_node'}
+        title={pausedInfo.nodeConfig?.form_title || 'Document OCR'}
+        icon={FiPaperclip}
+        maxWidth={480}
+        bodyPadding="20px"
+      >
+        <OcrRenderer
+          config={pausedInfo.nodeConfig || {}}
+          context={pausedInfo.context || {}}
+          isLoading={running}
+          onSubmit={(data) => onResume(data)}
+        />
+      </PauseModal>
 
       <div style={{
         padding: '12px 24px 12px',
@@ -1179,7 +997,7 @@ export default function RunPanel({ onClose }) {
         right: 0,
         zIndex: 100,
         pointerEvents: 'none',
-        display: (() => { const ui = pausedInfo.isPaused && PAUSE_UI[pausedInfo.nodeType]; return ui?.hidesInput ? 'none' : 'block'; })()
+        display: shouldHideInput ? 'none' : 'block'
       }}>
         <div style={{ margin: '0 auto', position: 'relative', pointerEvents: 'auto', maxWidth: 680, width: '100%' }}>
           {pausedInfo.isPaused && !(PAUSE_UI[pausedInfo.nodeType]?.showsHitl === false) ? (
@@ -1440,7 +1258,7 @@ export default function RunPanel({ onClose }) {
               )}
 
               {/* STT Entry: Show mic recorder before chat starts when stt_node is the starting node */}
-              {canRun && !running && !isChatStarted && hasStartingSttNode && (
+              {canRun && !running && !isChatStarted && hasStartingSttNode && !pausedInfo.isPaused && (
                 <div style={{ width: '100%' }}>
                   <SpeechRecorder
                     autoStart={startingSttNodes[0]?.data?.auto_start === true}
@@ -1448,11 +1266,38 @@ export default function RunPanel({ onClose }) {
                     silenceDelay={startingSttNodes[0]?.data?.silence_delay ?? 1500}
                     lang={startingSttNodes[0]?.data?.stt_lang || 'en-US'}
                     onTranscript={(text) => onSend(text)}
+                    isAudioPlaying={audioPlaying}
                   />
                 </div>
               )}
 
-              {!hideInput && !hasStartingSttNode && !(pausedInfo.isPaused && pausedInfo.nodeType === 'stt_trigger') && (
+              {/* Camera Entry: Show capture button before chat starts when camera is the starting node */}
+              {canRun && !running && !isChatStarted && hasStartingCameraNode && (
+                <motion.button
+                  whileHover={{ scale: 1.02, y: -1 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => onSend('camera_capture')}
+                  style={{
+                    padding: '16px 32px',
+                    borderRadius: 16,
+                    background: '#BE185D',
+                    color: 'white',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 14,
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    boxShadow: '0 10px 25px rgba(190,24,93,0.35)',
+                    letterSpacing: '0.02em',
+                  }}
+                >
+                  <FiCamera size={18} strokeWidth={3} /> CAPTURE PHOTO
+                </motion.button>
+              )}
+
+              {!hideInput && !hasStartingSttNode && !hasStartingCameraNode && !(pausedInfo.isPaused && pausedInfo.nodeType === 'stt_trigger') && !(pausedInfo.isPaused && pausedInfo.nodeType === 'camera') && (
                 <ChatInput
                   onSend={onSend}
                   running={running}
@@ -1467,15 +1312,55 @@ export default function RunPanel({ onClose }) {
                   stopAudio={stopAudio}
                 />
               )}
+
+              {/* Midway STT: Show mic recorder inline when workflow is paused at stt_trigger */}
+              {pausedInfo.isPaused && pausedInfo.nodeType === 'stt_trigger' && !running && (
+                <div style={{ width: '100%' }}>
+                  <SpeechRecorder
+                    autoStart={pausedInfo.nodeConfig?.auto_start === true}
+                    autoStop={pausedInfo.nodeConfig?.auto_stop !== false}
+                    silenceDelay={pausedInfo.nodeConfig?.silence_delay ?? 1500}
+                    lang={pausedInfo.nodeConfig?.stt_lang || 'en-US'}
+                    onTranscript={(text) => onResume({ stt_output: text })}
+                    isAudioPlaying={audioPlaying}
+                  />
+                </div>
+              )}
+
               {/* Ongoing STT chat: keep showing mic recorder instead of text box */}
-              {!hideInput && hasStartingSttNode && !running && (
+              {!hideInput && hasStartingSttNode && !running && !pausedInfo.isPaused && (
                 <SpeechRecorder
                   autoStart={startingSttNodes[0]?.data?.auto_start === true}
                   autoStop={startingSttNodes[0]?.data?.auto_stop !== false}
                   silenceDelay={startingSttNodes[0]?.data?.silence_delay ?? 1500}
                   lang={startingSttNodes[0]?.data?.stt_lang || 'en-US'}
                   onTranscript={(text) => onSend(text)}
+                  isAudioPlaying={audioPlaying}
                 />
+              )}
+              {/* Ongoing camera: show capture button after chat started */}
+              {!hideInput && hasStartingCameraNode && !running && !pausedInfo.isPaused && (
+                <motion.button
+                  whileHover={{ scale: 1.02, y: -1 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => onSend('camera_capture')}
+                  style={{
+                    padding: '10px 24px',
+                    borderRadius: 12,
+                    background: '#BE185D',
+                    color: 'white',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    boxShadow: '0 6px 16px rgba(190,24,93,0.3)',
+                  }}
+                >
+                  <FiCamera size={16} strokeWidth={3} /> Capture Photo
+                </motion.button>
               )}
             </div>
           )}

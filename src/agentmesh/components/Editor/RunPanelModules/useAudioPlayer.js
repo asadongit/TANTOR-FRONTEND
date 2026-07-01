@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { getBackendUrl } from '../../../api/agentmesh';
 
 export default function useAudioPlayer() {
   const [audioPlaying, setAudioPlaying] = useState(false);
@@ -15,7 +16,13 @@ export default function useAudioPlayer() {
 
   const playAudio = (filename) => {
     if (!filename) return;
-    const url = `http://localhost:8000/audio/${filename.replace(/\\/g, '/')}`;
+    let url;
+    if (filename.startsWith('/temp/') || filename.startsWith('temp/')) {
+      const cleanPath = filename.startsWith('/') ? filename : `/${filename}`;
+      url = `${getBackendUrl()}${cleanPath}`;
+    } else {
+      url = `${getBackendUrl()}/audio/${filename.replace(/\\/g, '/')}`;
+    }
     console.log("[AudioEngine] Attempting playback from:", url);
 
     if (audioRef.current) {

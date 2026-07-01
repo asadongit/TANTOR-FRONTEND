@@ -52,6 +52,10 @@ import BeneficiaryRiskConfig from './BeneficiaryRiskConfig';
 import CardboardConfig from './CardboardConfig';
 import TriggerConfig from './TriggerConfig';
 import TextToAudioConfig from './TextToAudioConfig';
+import CameraNodeConfig from './CameraNodeConfig';
+import SignatureStampExtractorConfig from './SignatureStampExtractorConfig';
+import CodeExecutionConfig from './CodeExecutionConfig';
+import EmailNodeConfig from './EmailNodeConfig';
 
 export {
   LLMAgentConfig,
@@ -107,7 +111,11 @@ export {
   BeneficiaryRiskConfig,
   CardboardConfig,
   TriggerConfig,
-  TextToAudioConfig
+  TextToAudioConfig,
+  CameraNodeConfig,
+  SignatureStampExtractorConfig,
+  CodeExecutionConfig,
+  EmailNodeConfig,
 };
 
 export { ToolConfigModal } from './shared/ToolConfigModal';

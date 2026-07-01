@@ -23,6 +23,7 @@ const NODE_DEFAULTS = {
   splitter: { label: 'Splitter', split_field: 'items', batch_size: 1, destination_field: 'item', discovery_keys: '' },
   aggregator: { label: 'Aggregator', action: 'append', field_to_aggregate: 'item', destination_field: 'aggregated_results' },
   form_node: { label: 'Form Submission', form_title: 'Information Required', form_description: 'Please fill out the following form.', form_fields: [{ id: 'feedback', label: 'Your Feedback', type: 'text', required: true }], form_submit_label: 'Submit' },
+  camera: { label: 'Camera Capture', form_title: 'Camera Verification', form_description: 'Please align your face in the frame and capture a live image for verification.', form_fields: [], form_submit_label: 'Submit Photo' },
   notification: { label: 'Notification', notification_title: 'Workflow Alert', notification_message: 'The workflow has reached this point.', notification_type: 'info' },
   error_router: { label: 'Error Router', llm: { provider: 'groq', model: 'llama-3.3-70b-versatile', temperature: 0 } },
   set_data: { label: 'Set Data', message: '' },
@@ -31,6 +32,7 @@ const NODE_DEFAULTS = {
   data_cleaning: { label: 'Data Cleaning', data_cleaning_rules: ['GEN_TRIM_WHITESPACE'], data_cleaning_target: 'latest_message', data_cleaning_input_key: '', data_cleaning_output_key: 'cleaned_data' },
   graph_ingestion: { label: 'Graph Ingestion', graph_target_key: 'latest_message', graph_neo4j_uri: '', graph_neo4j_user: '', graph_neo4j_password: '', graph_ingestion_mode: 'visual', graph_cypher_query: '', graph_nodes_schema: [], graph_relations_schema: [] },
   ocr_node: { label: 'OCR Node', ocr_input_key: 'latest_file_path', ocr_prompt: 'Please perform OCR on this document and return the full text accurately.', llm: { provider: 'groq', model: 'llama-3.2-90b-vision-preview', temperature: 0 }, interrupt_before: false, interrupt_after: false },
+  signature_stamp_extractor: { label: 'Signature & Stamp Extractor', extractor_input_key: 'latest_file_path', extractor_output_key: 'extracted_elements', llm: { provider: 'groq', model: 'meta-llama/llama-4-scout-17b-16e-instruct', temperature: 0 }, interrupt_before: false, interrupt_after: false },
   pattern_extract: { label: 'Pattern Extractor', extract_mode: 'identifier', extract_patterns: [], extract_input_key: 'flattened_json', extract_output_key: 'extracted_identifiers', identifiers_input_key: 'extracted_identifiers' },
   api_node: { label: 'API Request', method: 'GET', url: '', headers: {}, params: {}, body: '', auth_method: 'none', api_auth_config: {}, use_curl: false, curl_command: '' },
   vector_ingestion: { label: 'Vector Ingestion', vector_store: 'chroma', vector_collection: 'default', chunk_size: 1000, chunk_overlap: 100, chunking_strategy: 'recursive', ingestion_source_key: 'latest_ocr_output' },
@@ -54,6 +56,31 @@ const NODE_DEFAULTS = {
   json_transform_va: {
     label: 'Flatten JSON (VA)',
     transform_operation: 'flatten', transform_separator: '/', transform_pick_fields: [], transform_rename_map: {}, transform_omit_keys: [], transform_input_key: 'payload', transform_output_key: 'transformed_json'
+  },
+  code_execution: {
+    label: 'Code',
+    ce_language: 'python',
+    ce_code: '',
+    ce_input_key: 'latest_api_result',
+    ce_output_key: 'code_result',
+    ce_mode: 'run_once',
+  },
+  email_node: {
+    label: 'SMTP Email Sender',
+    email_provider: 'Custom',
+    email_to: '',
+    email_cc: '',
+    email_bcc: '',
+    email_subject: '',
+    email_body: '',
+    email_html: false,
+    email_smtp_server: 'smtp.gmail.com',
+    email_smtp_port: 587,
+    email_user: '',
+    email_password: '',
+    email_attachments: '',
+    email_headers: {},
+    email_smtp_timeout: 15
   },
   button_trigger: {
     label: 'Button Trigger',
@@ -149,6 +176,8 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           jt_pass_through: n.jt_pass_through ?? n.data?.jt_pass_through ?? false,
           weightage_categories: n.weightage_categories || n.data?.weightage_categories || [],
           weightage_output_key: n.weightage_output_key || n.data?.weightage_output_key || 'weightage_result',
+          extractor_input_key: n.extractor_input_key || n.data?.extractor_input_key || 'latest_file_path',
+          extractor_output_key: n.extractor_output_key || n.data?.extractor_output_key || 'extracted_elements',
         },
       };
     });
@@ -1026,7 +1055,11 @@ export const useWorkflowStore = create((set, get) => ({
           // Group Node config fields
           'name', 'description', 'internal_nodes', 'internal_edges', 'original_edges',
           // Context Management
-          'context_mode', 'max_context_chars'
+          'context_mode', 'max_context_chars',
+          // Code Execution
+          'ce_language', 'ce_code', 'ce_input_key', 'ce_output_key', 'ce_mode',
+          // SMTP Email Node
+          'email_provider', 'email_to', 'email_cc', 'email_bcc', 'email_subject', 'email_body', 'email_html', 'email_smtp_server', 'email_smtp_port', 'email_user', 'email_password', 'email_attachments', 'email_headers', 'email_smtp_timeout'
         ];
 
         const nodeConfig = {};
