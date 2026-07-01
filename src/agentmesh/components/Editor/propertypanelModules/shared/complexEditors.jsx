@@ -1244,6 +1244,60 @@ export const WeightageCategoriesEditor = memo(function WeightageCategoriesEditor
                 </Field>
               </div>
 
+              <div className="flex gap-2.5 flex-wrap">
+                <div className="flex-[1_1_120px]">
+                  <Field label="Category Weight" hint="Multiplier for category score.">
+                    <Input
+                      type="number"
+                      value={cat.weight ?? 1.0}
+                      onChange={(v) => updateCategory(catIdx, { weight: parseFloat(v) || 1.0 })}
+                      placeholder="1.0"
+                      disabled={!isCatEnabled}
+                    />
+                  </Field>
+                </div>
+                <div className="flex-[1_1_120px]">
+                  <Field label="Fail Threshold (%)" hint="Min normalized score required to pass.">
+                    <Input
+                      type="number"
+                      value={cat.fail_threshold ?? ''}
+                      onChange={(v) => updateCategory(catIdx, { fail_threshold: v !== '' ? parseFloat(v) : null })}
+                      placeholder="Optional"
+                      disabled={!isCatEnabled}
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              <div className="flex gap-4 items-center my-2">
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    id={`cat-kill-${catIdx}`}
+                    checked={cat.is_kill_switch || false}
+                    onChange={(e) => updateCategory(catIdx, { is_kill_switch: e.target.checked })}
+                    className="cursor-pointer"
+                    disabled={!isCatEnabled}
+                  />
+                  <label htmlFor={`cat-kill-${catIdx}`} className="text-xs font-semibold text-[var(--text-primary)] cursor-pointer">
+                    Is Kill Switch Category
+                  </label>
+                </div>
+                {(cat.is_kill_switch) && (
+                  <div className="flex-1 max-w-[150px]">
+                    <Field label="Kill Switch Score">
+                      <Input
+                        type="number"
+                        value={cat.kill_switch_score ?? 100}
+                        onChange={(v) => updateCategory(catIdx, { kill_switch_score: parseFloat(v) || 0.0 })}
+                        placeholder="100"
+                        disabled={!isCatEnabled}
+                      />
+                    </Field>
+                  </div>
+                )}
+              </div>
+
               <div className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wide mt-1">Fields in {cat.name}</div>
 
               <div className="flex flex-col gap-3">
@@ -1305,6 +1359,17 @@ export const WeightageCategoriesEditor = memo(function WeightageCategoriesEditor
                             />
                           </Field>
                         </div>
+                        <div className="flex-[1_1_80px]">
+                          <Field label="Cap Score">
+                            <Input
+                              type="number"
+                              value={field.cap_score ?? ''}
+                              onChange={(v) => updateField(catIdx, fieldIdx, { cap_score: v !== '' ? parseFloat(v) : null })}
+                              placeholder="Optional"
+                              disabled={!isFieldEnabled || !isCatEnabled}
+                            />
+                          </Field>
+                        </div>
                       </div>
 
                       {/* Conditions */}
@@ -1314,53 +1379,65 @@ export const WeightageCategoriesEditor = memo(function WeightageCategoriesEditor
                           {(field.conditions || []).map((cond, condIdx) => {
                             const isCondEnabled = cond.enabled !== false;
                             return (
-                              <div key={condIdx} className={`flex gap-0 items-center p-1.5 px-2 bg-slate-50 rounded-lg border border-slate-100 transition-opacity duration-200 ${isCondEnabled && isFieldEnabled && isCatEnabled ? 'opacity-100' : 'opacity-60'}`}>
-                                <div className="shrink-0 pr-1 box-border" style={{ width: `${conditionWidthPct}%` }}>
-                                  <textarea
-                                    value={cond.condition}
-                                    onChange={(v) => updateCondition(catIdx, fieldIdx, condIdx, { condition: v.target.value })}
-                                    placeholder="Condition (e.g. loan_amount > 5000)"
-                                    disabled={!isCondEnabled || !isFieldEnabled || !isCatEnabled}
-                                    rows={1}
-                                    style={{ resize: "vertical" }}
-                                    className="w-full min-h-[34px] px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-white text-xs outline-none box-border focus:border-[var(--accent-btn)]"
-                                  />
-                                </div>
-
-                                {/* Drag Handle */}
-                                <div
-                                  onMouseDown={(e) => handleMouseDown(e, e.currentTarget.parentNode)}
-                                  className="w-3 cursor-col-resize flex justify-center items-center self-stretch select-none mx-1 relative"
-                                  title="Drag to resize horizontally"
-                                >
-                                  <div className="w-0.5 h-[85%] bg-slate-300 rounded-sm" />
-                                </div>
-
-                                <div className="flex-1 pr-2 box-border">
-                                  <Input
-                                    value={cond.weight}
-                                    onChange={(v) => {
-                                      const parsed = parseFloat(v);
-                                      const val = isNaN(parsed) ? v : parsed;
-                                      updateCondition(catIdx, fieldIdx, condIdx, { weight: val });
-                                    }}
-                                    placeholder="Weight"
-                                    disabled={!isCondEnabled || !isFieldEnabled || !isCatEnabled}
-                                  />
-                                </div>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                  <div title="Toggle Condition Enabled" className="flex items-center">
-                                    <MiniatureToggle
-                                      checked={isCondEnabled}
-                                      onChange={(v) => updateCondition(catIdx, fieldIdx, condIdx, { enabled: v })}
+                              <div key={condIdx} className={`flex flex-col gap-1.5 p-2 bg-slate-50 rounded-lg border border-slate-100 transition-opacity duration-200 ${isCondEnabled && isFieldEnabled && isCatEnabled ? 'opacity-100' : 'opacity-60'}`}>
+                                <div className="flex gap-0 items-center w-full">
+                                  <div className="shrink-0 pr-1 box-border" style={{ width: `${conditionWidthPct}%` }}>
+                                    <textarea
+                                      value={cond.condition}
+                                      onChange={(v) => updateCondition(catIdx, fieldIdx, condIdx, { condition: v.target.value })}
+                                      placeholder="Condition (e.g. loan_amount > 5000)"
+                                      disabled={!isCondEnabled || !isFieldEnabled || !isCatEnabled}
+                                      rows={1}
+                                      style={{ resize: "vertical" }}
+                                      className="w-full min-h-[34px] px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-white text-xs outline-none box-border focus:border-[var(--accent-btn)]"
                                     />
                                   </div>
-                                  <button
-                                    onClick={() => removeCondition(catIdx, fieldIdx, condIdx)}
-                                    className="bg-transparent border-none text-red-500 cursor-pointer p-1"
+
+                                  {/* Drag Handle */}
+                                  <div
+                                    onMouseDown={(e) => handleMouseDown(e, e.currentTarget.parentNode)}
+                                    className="w-3 cursor-col-resize flex justify-center items-center self-stretch select-none mx-1 relative"
+                                    title="Drag to resize horizontally"
                                   >
-                                    <FiTrash2 size={12} />
-                                  </button>
+                                    <div className="w-0.5 h-[85%] bg-slate-300 rounded-sm" />
+                                  </div>
+
+                                  <div className="flex-1 pr-2 box-border">
+                                    <Input
+                                      value={cond.weight}
+                                      onChange={(v) => {
+                                        const parsed = parseFloat(v);
+                                        const val = isNaN(parsed) ? v : parsed;
+                                        updateCondition(catIdx, fieldIdx, condIdx, { weight: val });
+                                      }}
+                                      placeholder="Weight"
+                                      disabled={!isCondEnabled || !isFieldEnabled || !isCatEnabled}
+                                    />
+                                  </div>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <div title="Toggle Condition Enabled" className="flex items-center">
+                                      <MiniatureToggle
+                                        checked={isCondEnabled}
+                                        onChange={(v) => updateCondition(catIdx, fieldIdx, condIdx, { enabled: v })}
+                                      />
+                                    </div>
+                                    <button
+                                      onClick={() => removeCondition(catIdx, fieldIdx, condIdx)}
+                                      className="bg-transparent border-none text-red-500 cursor-pointer p-1"
+                                    >
+                                      <FiTrash2 size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                                <div className="w-full">
+                                  <input
+                                    type="text"
+                                    value={cond.rule_id || ''}
+                                    onChange={(e) => updateCondition(catIdx, fieldIdx, condIdx, { rule_id: e.target.value })}
+                                    placeholder="Rule ID / Code for Audit (e.g. SANCTIONS_01)"
+                                    disabled={!isCondEnabled || !isFieldEnabled || !isCatEnabled}
+                                    className="w-full px-2 py-1 rounded-md border border-[var(--border)] bg-white text-[10px] text-[var(--text-primary)] outline-none focus:border-[var(--accent-btn)]"
+                                  />
                                 </div>
                               </div>
                             );
