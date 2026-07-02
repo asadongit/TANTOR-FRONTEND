@@ -534,7 +534,7 @@ const ModeSelection = ({ config, setConfig, readonly, onNotebookModeSelect }) =>
   );
 };
 
-const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, columnNames, hasError, errorMessage, sectionRef, activeWorkflowId, isValidating, setIsValidating, isTimeSeriesValidated, setIsTimeSeriesValidated, validationError, supervisedTargetFeatureError, timeSeriesTargetFeatureError, timeSeriesTimeColumnError, setValidationErrors }) => {
+const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, columnNames, tsColumnNames, hasError, errorMessage, sectionRef, activeWorkflowId, isValidating, setIsValidating, isTimeSeriesValidated, setIsTimeSeriesValidated, validationError, supervisedTargetFeatureError, timeSeriesTargetFeatureError, timeSeriesTimeColumnError, setValidationErrors }) => {
   const hostnameAI = window._env_?.VITE_AI_API;
   const { datasetState } = useAIPlayground();
   // frequency modal state for validation in timeseries
@@ -544,7 +544,9 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
 
   const getAvailableTargetColumns = () => {
     const dropColumns = config.drop_columns || [];
-    return columnNames.filter(name => !dropColumns.includes(name));
+    const isTsFeatureScoped = config.predictionType === 'Time Series' && ['Univariate', 'Multivariate'].includes(config.timeSeriesType);
+    const sourceColumns = isTsFeatureScoped ? (tsColumnNames || []) : columnNames;
+    return sourceColumns.filter(name => !dropColumns.includes(name));
   };
 
   const getAvailableTimeColumns = () => {
@@ -1944,7 +1946,12 @@ function ModelGenesis() {
 // call the initial clean api for univariate for timeseries in this step
 // but only for manual data preprocessing mode, not for auto modes (Swift, Standard, Comprehensive)
 
-if (storedModellingType === 'univariate_timeseries' && config.dataPreprocessing === 'Manual') {
+if (
+  (storedModellingType === 'univariate_timeseries' ||
+   storedModellingType === 'multivariate_timeseries' ||
+   storedModellingType === 'multiseries_timeseries') &&
+  config.dataPreprocessing === 'Manual'
+) {
   const cleanResponse = await cleanTimeSeriesData({
     ensembleId: datasetState.ensembleId,
     workflowId: activeWorkflowId,
@@ -2054,6 +2061,7 @@ if (storedModellingType === 'univariate_timeseries' && config.dataPreprocessing 
             }}
             readonly={isInteractionLocked}
             columnNames={datasetState.columnNames}
+            tsColumnNames={datasetState.tsColumnsName}
             hasError={!!validationErrors.predictionType}
             errorMessage={validationErrors.predictionType}
             supervisedTargetFeatureError={validationErrors.supervisedTargetFeature}
@@ -2074,7 +2082,7 @@ if (storedModellingType === 'univariate_timeseries' && config.dataPreprocessing 
   config={config}
   setConfig={setConfig}
   readonly={isInteractionLocked}
-  columnNames={datasetState.columnNames}
+  columnNames={datasetState.tsColumnsName}
   hasError={!!validationErrors.multivariateColumns}
   errorMessage={validationErrors.multivariateColumns}
   sectionRef={multivariateColumnsRef}

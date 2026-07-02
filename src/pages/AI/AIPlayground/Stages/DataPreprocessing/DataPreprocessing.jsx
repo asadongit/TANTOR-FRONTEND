@@ -47,14 +47,13 @@
       predictionType === 'multiseries_timeseries'
     ) {
       return [
-        { id: 1, label: 'Data Cleaning', isTimeSeries: true },
-        { id: 2, label: 'Handle Missing Values', isTimeSeries: true },
-        { id: 3, label: 'Feature Integrity', isTimeSeries: true },
-        { id: 4, label: 'Data Stabilization', isTimeSeries: true },
-        { id: 5, label: 'Seasonality Treatment', isTimeSeries: true },
-        { id: 6, label: 'Stationarity Treatment', isTimeSeries: true },
-        { id: 7, label: 'Feature Dependency', isTimeSeries: true },
-        { id: 8, label: 'Scaling & Encoding', isTimeSeries: true },
+        { id: 1, label: 'Handle Missing Values', isTimeSeries: true },
+        { id: 2, label: 'Feature Integrity', isTimeSeries: true },
+        { id: 3, label: 'Data Stabilization', isTimeSeries: true },
+        { id: 4, label: 'Seasonality Treatment', isTimeSeries: true },
+        { id: 5, label: 'Stationarity Treatment', isTimeSeries: true },
+        { id: 6, label: 'Feature Dependency', isTimeSeries: true },
+        { id: 7, label: 'Scaling & Encoding', isTimeSeries: true },
       ];
     }
 
@@ -145,7 +144,7 @@
     if (
       predictionType === 'multivariate_timeseries' ||
       predictionType === 'multiseries_timeseries'
-    ) return 8;
+    ) return 7;
     return 7;
   }
 
@@ -178,12 +177,12 @@
      * Auto-advance from step 6 if stationarity analysis was not enabled in step 5 and it's not univariate timeseries
      */
     useEffect(() => {
-      if (currentStep === 6) {
+      if (currentStep === 5) {
         const step5Config = workflowState?.dataPreprocessing?.step5?.config;
         const wasStationarityAnalysisEnabledInStep5 = step5Config?.stationarity_analysis_active ?? false;
         const isMultivariateTimeseries = predictionType === 'multivariate_timeseries';
         if (!wasStationarityAnalysisEnabledInStep5 && isMultivariateTimeseries) {
-          setCurrentStep(7);
+          setCurrentStep(6);
         }
       }
     }, [currentStep, workflowState?.dataPreprocessing?.step5?.config]);
@@ -198,7 +197,7 @@
           'multivariate_timeseries'
         ].includes(predictionType);
 
-      if (isTimeSeries && currentStep === 8 && isDataPreprocessingAuto) {
+      if (isTimeSeries && currentStep === 7 && isDataPreprocessingAuto) {
         setIsStep8Preview(true);
       }
     }, [currentStep, isDataPreprocessingAuto, predictionType]);
@@ -365,7 +364,7 @@
          * Special handling for step 8 preview (time series):
          * Call the API to execute scaling and encoding, fetch job if available.
          */
-        if (currentStep === 8 && isStep8Preview) {
+        if (currentStep === 7 && isStep8Preview) {
           // Only call the live API when preprocessing is manual.
           // In auto mode, genesis already handled this — calling it again causes AxiosError.
           if (!isDataPreprocessingAuto) {
@@ -545,9 +544,9 @@
     switch (currentStep) {
       case 1:
         return (
-          <TimeSeriesDataCleaning
+          <HandleMissingValues
             readonly={isInteractionLocked}
-            onValidationChange={setIsStep1Valid}
+            onValidationChange={setIsStep2Valid}
             onApiCall={(fn) =>
               (step1ApiCallRef.current = fn)
             }
@@ -557,9 +556,8 @@
 
       case 2:
         return (
-          <HandleMissingValues
+          <FeatureIntegrity
             readonly={isInteractionLocked}
-            onValidationChange={setIsStep2Valid}
             onApiCall={(fn) =>
               (step2ApiCallRef.current = fn)
             }
@@ -569,7 +567,7 @@
 
       case 3:
         return (
-          <FeatureIntegrity
+          <DataStabilization
             readonly={isInteractionLocked}
             onApiCall={(fn) =>
               (step3ApiCallRef.current = fn)
@@ -580,7 +578,7 @@
 
       case 4:
         return (
-          <DataStabilization
+          <Seasonality
             readonly={isInteractionLocked}
             onApiCall={(fn) =>
               (step4ApiCallRef.current = fn)
@@ -589,22 +587,11 @@
           />
         );
 
-      case 5:
-        return (
-          <Seasonality
-            readonly={isInteractionLocked}
-            onApiCall={(fn) =>
-              (step5ApiCallRef.current = fn)
-            }
-            predictionType={predictionType}
-          />
-        );
+      case 5: {
+        const step5Config = workflowState?.dataPreprocessing?.step5?.config;
+        const wasStationarityAnalysisEnabledInStep5 = step5Config?.stationarity_analysis_active ?? false;
 
-      case 6: {
-        const step5Config =workflowState?.dataPreprocessing?.step5?.config;
-        const wasStationarityAnalysisEnabledInStep5 =step5Config?.stationarity_analysis_active ?? false;
-        
-        if (!wasStationarityAnalysisEnabledInStep5  ) {
+        if (!wasStationarityAnalysisEnabledInStep5) {
           return null;
         }
 
@@ -612,36 +599,34 @@
           <StationarityTreatment
             readonly={isInteractionLocked}
             onApiCall={(fn) =>
-              (step6ApiCallRef.current = fn)
+              (step5ApiCallRef.current = fn)
             }
-            showPreview={
-              predictionType === 'univariate_timeseries' &&
-              isUnivariatePreview
-            }
+            showPreview={false}
             isDataPreprocessingAuto={isDataPreprocessingAuto}
           />
         );
       }
 
-      case 7:
+      case 6:
         return (
           <FeatureDependency
             readonly={isInteractionLocked}
             onApiCall={(fn) =>
-              (step7ApiCallRef.current = fn)
+              (step6ApiCallRef.current = fn)
             }
           />
         );
 
-      case 8:
+      case 7:
         return (
           <ScalingandEncoding
             readonly={isInteractionLocked}
             onApiCall={(fn) =>
-              (step8ApiCallRef.current = fn)
+              (step7ApiCallRef.current = fn)
             }
             showPreview={isStep8Preview}
             isDataPreprocessingAuto={isDataPreprocessingAuto}
+            predictionType={predictionType}
           />
         );
 
@@ -760,7 +745,7 @@
     };
     const isPreviewMode =
   (currentStep === 7 && isStep7Preview) ||
-  (currentStep === 8 && isStep8Preview) ||
+  (currentStep === 7 && isStep8Preview) ||
   (
     predictionType === 'univariate_timeseries' &&
     currentStep === 5 &&

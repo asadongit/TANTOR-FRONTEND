@@ -96,7 +96,7 @@ const VariantDataTable = ({ variantKey, displayData }) => {
   );
 };
 
-function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview, isDataPreprocessingAuto }) {
+function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview, isDataPreprocessingAuto, predictionType }) {
   /**
    * =======================================================
    * Context Data
@@ -112,6 +112,10 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview, is
 
   // Override readonly based on mode
   const isReadonly = readonlyProp || mode === 'view';
+
+  const isMultiTimeSeries =
+    predictionType === 'multivariate_timeseries' ||
+    predictionType === 'multiseries_timeseries';
 
   /**
    * Get current workflow state
@@ -136,7 +140,7 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview, is
   const hasCategoricalColumns = Array.isArray(categoricalColumns) && categoricalColumns.length > 0;
 
   useEffect(() => {
-  if (hasCategoricalColumns) {
+  if (hasCategoricalColumns && !isMultiTimeSeries) {
     setToggles(prev => ({
       ...prev,
       encoding: true
@@ -147,7 +151,7 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview, is
       encoding: true
     }));
   }
-}, [hasCategoricalColumns]);
+}, [hasCategoricalColumns, isMultiTimeSeries]);
 
   /**
    * Get numerical columns from step 7 (Feature Dependency)
@@ -343,10 +347,12 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview, is
        * Create Config Object
        * ---------------------------------------------------
        */
+      const encodingActive = isMultiTimeSeries ? false : toggles.encoding;
+
       const config = {
         scaling_active: toggles.scaling,
-        encoding_active: toggles.encoding,
-        encoding_type: toggles.encoding ? selectedMethods.encodingMethod : null,
+        encoding_active: encodingActive,
+        encoding_type: encodingActive ? selectedMethods.encodingMethod : null,
         scaling_method: toggles.scaling ? selectedMethods.scalingMethod : null,
         handle_unknown: 'ignore'
       };
@@ -360,8 +366,8 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview, is
         ensembleId: datasetState.ensembleId,
         workflowId: activeWorkflowId,
         scalingActive: toggles.scaling,
-        encodingActive: toggles.encoding,
-        encodingType: toggles.encoding ? selectedMethods.encodingMethod : null,
+        encodingActive: encodingActive,
+        encodingType: encodingActive ? selectedMethods.encodingMethod : null,
         scalingMethod: toggles.scaling ? selectedMethods.scalingMethod : null,
         handleUnknown: 'ignore'
       });
@@ -513,19 +519,21 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview, is
       )}
 
 
-      {/* Categorical Encoding Section */}
-      <CategoricalEncoding
-        isToggled={toggles.encoding}
-        isExpanded={expandedSections.encoding}
-        onToggle={() => toggleSwitch('encoding')}
-        onExpand={() => toggleSection('encoding')}
-        selectedEncoding={selectedMethods.encodingMethod}
-        onEncodingChange={handleEncodingChange}
-        readonly={isReadonly || !hasCategoricalColumns}
-        hasError={encodingError}
-        sectionDescriptions={dataPreprocessingDescriptions}
-        hasCategoricalColumns={hasCategoricalColumns}
-      />
+      {/* Categorical Encoding Section — hidden for multivariate/multiseries */}
+      {!isMultiTimeSeries && (
+        <CategoricalEncoding
+          isToggled={toggles.encoding}
+          isExpanded={expandedSections.encoding}
+          onToggle={() => toggleSwitch('encoding')}
+          onExpand={() => toggleSection('encoding')}
+          selectedEncoding={selectedMethods.encodingMethod}
+          onEncodingChange={handleEncodingChange}
+          readonly={isReadonly || !hasCategoricalColumns}
+          hasError={encodingError}
+          sectionDescriptions={dataPreprocessingDescriptions}
+          hasCategoricalColumns={hasCategoricalColumns}
+        />
+      )}
 
       {/* Feature Scaling Section */}
       <FeatureScaling

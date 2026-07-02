@@ -276,8 +276,9 @@ onUnivariatePreview
 
     const isPreprocessingPage = location.pathname === '/ai/playground/data-preprocessing';
     // preview page
-    const isOnStep7 = isPreprocessingPage && currentPreprocessingStep === totalPreprocessingSteps && totalPreprocessingSteps === 7;
-    const isOnStep8 = isPreprocessingPage && currentPreprocessingStep === totalPreprocessingSteps && totalPreprocessingSteps === 8;
+    const isMultivariateTimeSeries = predictionType === 'multivariate_timeseries' || predictionType === 'multiseries_timeseries';
+    const isOnStep7 = isPreprocessingPage && currentPreprocessingStep === totalPreprocessingSteps && totalPreprocessingSteps === 7 && !isMultivariateTimeSeries;
+    const isOnStep8 = isPreprocessingPage && currentPreprocessingStep === totalPreprocessingSteps && (totalPreprocessingSteps === 8 || (totalPreprocessingSteps === 7 && isMultivariateTimeSeries));
     const isOnUnivariatePreviewStep = isPreprocessingPage && predictionType === 'univariate_timeseries' && currentPreprocessingStep === totalPreprocessingSteps;
 
     const shouldShowCancel = currentStageIndex >= 0 && currentStageIndex <= 3;
