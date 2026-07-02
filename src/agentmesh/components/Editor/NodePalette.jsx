@@ -1,11 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import PropTypes from 'prop-types';
 import { useWorkflowStore } from '../../store';
 import {
   FiPlay, FiCpu, FiBox, FiGitMerge,
   FiTarget, FiShare2, FiBookOpen, FiLink,
-  FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiAlertTriangle, FiZap, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiLayers, FiInbox, FiDatabase, FiServer,
-  FiCode, FiSliders, FiInfo, FiMic, FiEye, FiVideo, FiMail
+  FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiAlertTriangle, FiZap, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiLayers, FiInbox, FiDatabase, FiServer,
+  FiCode, FiSliders, FiInfo, FiMic, FiEye, FiVideo, FiMail, FiChevronDown
 } from 'react-icons/fi';
+import { 
+  listAgentTemplates, 
+  getAgentTemplate,
+  listComponentTemplates, 
+  listTools, 
+  listAvailableSkills, 
+  listWorkflowTemplates,
+  getWorkflowTemplate 
+} from '../../api/agentmesh';
+import AddToolModal from '../Apps/AgentMeshModules/addToolModal';
+import AddSkillModal from '../Apps/AgentMeshModules/addSkillModal';
 
 export const NODE_TYPES = [
   // Events & Triggers
@@ -93,9 +105,26 @@ export const NODE_TYPES = [
 export default function NodePalette({ onClose }) {
   const addNode = useWorkflowStore((s) => s.addNode);
   const setNodeData = useWorkflowStore((s) => s.setNodeData);
+  const mergeTemplateIntoEditor = useWorkflowStore((s) => s.mergeTemplateIntoEditor);
+  
+  const [viewMode, setViewMode] = useState('nodes'); // 'nodes' | 'agents' | 'apis' | 'tools' | 'skills' | 'templates'
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const fetchingPageRef = useRef(1);
+
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [collapsed, setCollapsed] = useState({});
   const [tooltipData, setTooltipData] = useState(null); // { node, x, y }
+
+  // Modals state
+  const [toolToAdd, setToolToAdd] = useState(null);
+  const [skillToAdd, setSkillToAdd] = useState(null);
+  const [agentTypeToSelect, setAgentTypeToSelect] = useState(null);
 
   const toggleCategory = (cat) => {
     setCollapsed(prev => ({ ...prev, [cat]: !prev[cat] }));
@@ -107,6 +136,7 @@ export default function NodePalette({ onClose }) {
     n.label.toLowerCase().includes(search.toLowerCase()) || 
     n.desc.toLowerCase().includes(search.toLowerCase())
   );
+
   const CATEGORY_ORDER = [
     'Events & Triggers', 
     'Visual Organizers',
@@ -142,107 +172,421 @@ export default function NodePalette({ onClose }) {
     onClose?.();
   };
 
+  // Debounce search input changes and reset page
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setCurrentPage(1);
+      fetchingPageRef.current = 1;
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Fetch logic for backend libraries (executed immediately on dependencies change)
+  useEffect(() => {
+    if (viewMode === 'nodes') {
+      setItems([]);
+      return;
+    }
+    const fetchLibrary = async () => {
+      setLoading(true);
+      try {
+        let res;
+        const limit = 25;
+        let newItems = [];
+        let total = 0;
+        if (viewMode === 'agents') {
+          res = await listAgentTemplates({ page: currentPage, limit, search: debouncedSearch });
+          newItems = res.templates || [];
+          total = res.total || 0;
+        } else if (viewMode === 'apis') {
+          res = await listComponentTemplates({ type: 'api_node', page: currentPage, limit, search: debouncedSearch });
+          newItems = res.templates || [];
+          total = res.total || 0;
+        } else if (viewMode === 'tools') {
+          res = await listTools({ page: currentPage, limit, search: debouncedSearch });
+          newItems = res.tools || [];
+          total = res.total || 0;
+        } else if (viewMode === 'skills') {
+          res = await listAvailableSkills({ page: currentPage, limit, search: debouncedSearch });
+          newItems = res.skills || [];
+          total = res.total || 0;
+        } else if (viewMode === 'templates') {
+          res = await listWorkflowTemplates({ page: currentPage, limit, search: debouncedSearch });
+          newItems = res.templates || [];
+          total = res.total || 0;
+        }
+        setTotalCount(total);
+        setTotalPages(Math.ceil(total / limit));
+        if (currentPage === 1) {
+          setItems(newItems);
+        } else {
+          setItems(prev => [...prev, ...newItems]);
+        }
+      } catch (err) {
+        console.error("Error fetching library items:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLibrary();
+  }, [viewMode, debouncedSearch, currentPage]);
+
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+    setCurrentPage(1);
+    fetchingPageRef.current = 1;
+    setSearch('');
+    setDropdownOpen(false);
+  };
+
+  const handleScroll = (e) => {
+    if (viewMode === 'nodes' || loading) return;
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    // Check if scrolled near the bottom (with 50px buffer for responsiveness)
+    if (scrollHeight - scrollTop - clientHeight < 50) {
+      if (currentPage < totalPages && fetchingPageRef.current === currentPage) {
+        fetchingPageRef.current = currentPage + 1;
+        setCurrentPage(prev => prev + 1);
+      }
+    }
+  };
+
+  const handleBackendDragStart = (e, item, mode) => {
+    if (mode === 'agents') {
+      e.dataTransfer.setData('application/agentmesh-node', 'llm_agent');
+      if (item.config) {
+        e.dataTransfer.setData('application/agentmesh-config', JSON.stringify({
+          ...item.config,
+          label: item.name || item.config.label
+        }));
+      }
+    } else if (mode === 'apis') {
+      e.dataTransfer.setData('application/agentmesh-node', 'api_node');
+      if (item.config) {
+        e.dataTransfer.setData('application/agentmesh-config', JSON.stringify({
+          ...item.config,
+          label: item.name || item.config.label
+        }));
+      }
+    } else if (mode === 'tools') {
+      e.dataTransfer.setData('application/agentmesh-node', 'tool_node');
+      e.dataTransfer.setData('application/agentmesh-config', JSON.stringify({
+        label: item.display_name || item.name,
+        tools: [item.name]
+      }));
+    } else if (mode === 'skills') {
+      e.dataTransfer.setData('application/agentmesh-node', 'deep_agent');
+      e.dataTransfer.setData('application/agentmesh-config', JSON.stringify({
+        label: 'Deep Agent',
+        skills: [item.name]
+      }));
+    }
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleBackendClick = async (item, mode) => {
+    if (mode === 'agents') {
+      setAgentTypeToSelect(item);
+    } else if (mode === 'apis') {
+      const config = item.config || {};
+      const id = addNode('api_node', { x: 200 + Math.random() * 300, y: 100 + Math.random() * 200 });
+      if (id) {
+        setNodeData(id, {
+          ...config,
+          id,
+          type: 'api_node',
+          label: item.name || config.label || 'API Node'
+        });
+      }
+      onClose?.();
+    } else if (mode === 'tools') {
+      setToolToAdd(item);
+    } else if (mode === 'skills') {
+      setSkillToAdd(item);
+    } else if (mode === 'templates') {
+      try {
+        const res = await getWorkflowTemplate(item.id);
+        if (res.status === 'success') {
+          mergeTemplateIntoEditor(res);
+        }
+      } catch (e) {
+        alert('Failed to merge template: ' + e.message);
+      }
+      onClose?.();
+    }
+  };
+
+  const finalizeUseAgent = async (type) => {
+    if (!agentTypeToSelect) return;
+    let config = agentTypeToSelect.config;
+    if (!config) {
+      try {
+        const full = await getAgentTemplate(agentTypeToSelect.id);
+        config = full?.config || {};
+      } catch { config = {}; }
+    }
+    const id = addNode(type, { x: 200 + Math.random() * 300, y: 100 + Math.random() * 200 });
+    if (id) {
+      setNodeData(id, {
+        ...config,
+        id,
+        type,
+        label: agentTypeToSelect.name || config.label || type
+      });
+    }
+    setAgentTypeToSelect(null);
+    onClose?.();
+  };
+
   return (
     <div className="h-full flex flex-col bg-white relative font-sans">
-      {/* Header */}
-      <div className="p-5 pb-4 border-b border-slate-200">
-        <div className="text-sm font-bold text-slate-800">Node library ({filteredNodes.length})</div>
+      {/* Header with Selector */}
+      <div className="p-5 pb-4 border-b border-slate-200 z-10 relative">
+        <div className="relative">
+          <button 
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="flex items-center gap-2 text-sm font-bold text-slate-800 hover:text-indigo-600 transition-colors focus:outline-none"
+          >
+            <span>
+              {viewMode === 'nodes' && `Node library (${filteredNodes.length})`}
+              {viewMode === 'agents' && `Agents (${totalCount})`}
+              {viewMode === 'apis' && `APIs (${totalCount})`}
+              {viewMode === 'tools' && `Tools (${totalCount})`}
+              {viewMode === 'skills' && `Skills (${totalCount})`}
+              {viewMode === 'templates' && `Templates (${totalCount})`}
+            </span>
+            <FiChevronDown className={`transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : 'rotate-0'}`} />
+          </button>
+
+          {dropdownOpen && (
+            <div className="absolute left-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1.5 animate-fade-in">
+              {[
+                { id: 'nodes', label: 'Node Library', icon: FiBox },
+                { id: 'agents', label: 'Agents', icon: FiCpu },
+                { id: 'apis', label: 'APIs', icon: FiGlobe },
+                { id: 'tools', label: 'Tools', icon: FiSliders },
+                { id: 'skills', label: 'Skills', icon: FiBookOpen },
+                { id: 'templates', label: 'Templates', icon: FiLayers },
+              ].map(opt => {
+                const Icon = opt.icon;
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => handleViewModeChange(opt.id)}
+                    className={`w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-left transition-colors ${viewMode === opt.id ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    <Icon size={14} />
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
         
         {/* Search Bar */}
         <div className="relative mt-2">
           <FiSearch size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input 
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search nodes..."
+            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+            placeholder={viewMode === 'nodes' ? "Search nodes..." : "Search library..."}
             className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none transition-all focus:border-indigo-500 focus:bg-white font-sans"
           />
         </div>
       </div>
 
-      {/* Node list grouped by category */}
-      <div className="flex-1 overflow-y-auto px-2 py-3 msg-scrollbar">
-        {categories.map(category => {
-          const categoryNodes = filteredNodes.filter(n => n.category === category);
-          if (categoryNodes.length === 0) return null;
-          
-          const isCollapsed = collapsed[category];
+      {/* List Content */}
+      <div onScroll={handleScroll} className="flex-1 overflow-y-auto px-2 py-3 msg-scrollbar">
+        {viewMode === 'nodes' ? (
+          categories.map(category => {
+            const categoryNodes = filteredNodes.filter(n => n.category === category);
+            if (categoryNodes.length === 0) return null;
+            
+            const isCollapsed = collapsed[category];
 
-          return (
-            <div key={category} className="mb-2">
-              {/* Category Header */}
-              <button
-                onClick={() => toggleCategory(category)}
-                className="w-full flex items-center justify-between px-2.5 py-2 bg-transparent border-none cursor-pointer outline-none"
-              >
-                <div className="text-[10px] font-extrabold tracking-wider uppercase text-slate-400 flex items-center gap-1">
-                  {category} <span className="text-slate-400 font-semibold">({categoryNodes.length})</span>
-                </div>
-                <div className={`text-[10px] text-slate-400 transition-transform duration-200 ${isCollapsed ? '-rotate-90' : 'rotate-0'}`}>
-                  ▼
-                </div>
-              </button>
+            return (
+              <div key={category} className="mb-2">
+                <button
+                  onClick={() => toggleCategory(category)}
+                  className="w-full flex items-center justify-between px-2.5 py-2 bg-transparent border-none cursor-pointer outline-none"
+                >
+                  <div className="text-[10px] font-extrabold tracking-wider uppercase text-slate-400 flex items-center gap-1">
+                    {category} <span className="text-slate-400 font-semibold">({categoryNodes.length})</span>
+                  </div>
+                  <div className={`text-[10px] text-slate-400 transition-transform duration-200 ${isCollapsed ? '-rotate-90' : 'rotate-0'}`}>
+                    ▼
+                  </div>
+                </button>
 
-              {/* Category Content */}
-              {!isCollapsed && (
-                <div className="flex flex-col gap-0.5 mt-1">
-                  {categoryNodes.map((n) => {
-                    const Icon = n.icon;
-                    return (
-                      <div
-                        key={n.isTemplate ? `template_${n.label}` : n.type}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, n)}
-                        onClick={() => handleAdd(n)}
-                        className="node-palette-item group flex items-center gap-3 p-2.5 rounded-lg bg-white border border-transparent cursor-grab transition-all hover:bg-slate-50 hover:border-slate-200 relative"
-                      >
-                        <div 
-                          style={{ backgroundColor: n.bg, color: n.color }}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                        >
-                          <Icon size={16} strokeWidth={2} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold text-slate-800 truncate">{n.label}</div>
-                          <div className="text-[11px] text-slate-400 mt-0.5 truncate">{n.desc}</div>
-                        </div>
+                {!isCollapsed && (
+                  <div className="flex flex-col gap-0.5 mt-1">
+                    {categoryNodes.map((n) => {
+                      const Icon = n.icon;
+                      return (
                         <div
-                          className="info-icon opacity-0 group-hover:opacity-100 flex items-center justify-center p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-all duration-150 shrink-0 cursor-pointer"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
-                          onMouseEnter={(e) => {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setTooltipData({
-                              node: n,
-                              x: rect.right + 10,
-                              y: rect.top - 10,
-                            });
-                          }}
-                          onMouseLeave={() => {
-                            setTooltipData(null);
-                          }}
+                          key={n.isTemplate ? `template_${n.label}` : n.type}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, n)}
+                          onClick={() => handleAdd(n)}
+                          className="node-palette-item group flex items-center gap-3 p-2.5 rounded-lg bg-white border border-transparent cursor-grab transition-all hover:bg-slate-50 hover:border-slate-200 relative"
                         >
-                          <FiInfo size={14} />
+                          <div 
+                            style={{ backgroundColor: n.bg, color: n.color }}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                          >
+                            <Icon size={16} strokeWidth={2} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-semibold text-slate-800 truncate">{n.label}</div>
+                            <div className="text-[11px] text-slate-400 mt-0.5 truncate">{n.desc}</div>
+                          </div>
+                          <div
+                            className="info-icon opacity-0 group-hover:opacity-100 flex items-center justify-center p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-all duration-150 shrink-0 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
+                            onMouseEnter={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setTooltipData({
+                                node: n,
+                                x: rect.right + 10,
+                                y: rect.top - 10,
+                              });
+                            }}
+                            onMouseLeave={() => {
+                              setTooltipData(null);
+                            }}
+                          >
+                            <FiInfo size={14} />
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        ) : (loading && items.length === 0) ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-2 text-slate-400">
+            <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-500 border-t-transparent" />
+            <div className="text-[11px]">Loading items...</div>
+          </div>
+        ) : items.length === 0 ? (
+          <div style={{ minHeight: '250px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} className="py-10 px-5 text-center text-slate-400 text-xs">
+            <FiSearch size={24} className="text-slate-300 mb-2" />
+            No items found
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1">
+            {items.map((item, idx) => {
+              let Icon = FiBox;
+              let bg = '#F1F5F9';
+              let color = '#64748B';
+              let title = item.name || '';
+              let desc = item.description || '';
+              let typeLabel = '';
+
+              if (viewMode === 'agents') {
+                Icon = FiCpu;
+                bg = '#C9DEFF';
+                color = '#1A56DB';
+                typeLabel = item.category || 'Agent';
+              } else if (viewMode === 'apis') {
+                Icon = FiGlobe;
+                bg = '#E0F2FE';
+                color = '#0EA5E9';
+                typeLabel = item.category_name || 'API';
+              } else if (viewMode === 'tools') {
+                Icon = FiSliders;
+                bg = '#FFE4B8';
+                color = '#B45309';
+                title = item.display_name || item.name;
+                typeLabel = item.category || 'Tool';
+              } else if (viewMode === 'skills') {
+                Icon = FiBookOpen;
+                bg = '#FFF3B8';
+                color = '#92400E';
+                title = item.name ? item.name.replace(/-/g, ' ') : '';
+                typeLabel = 'Skill';
+              } else if (viewMode === 'templates') {
+                Icon = FiLayers;
+                bg = '#E5D9FF';
+                color = '#7C3AED';
+                typeLabel = item.category || 'Template';
+              }
+
+              const tooltipNode = {
+                bg,
+                color,
+                icon: Icon,
+                label: title,
+                category: typeLabel,
+                desc: desc || 'Custom template resource'
+              };
+
+              return (
+                <div
+                  key={item.id || item.name || idx}
+                  draggable={viewMode !== 'templates'}
+                  onDragStart={(e) => handleBackendDragStart(e, item, viewMode)}
+                  onClick={() => handleBackendClick(item, viewMode)}
+                  className="group flex items-center gap-3 p-2.5 rounded-lg bg-white border border-transparent cursor-grab transition-all hover:bg-slate-50 hover:border-slate-200 relative"
+                >
+                  <div 
+                    style={{ backgroundColor: bg, color: color }}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                  >
+                    <Icon size={16} strokeWidth={2} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-semibold text-slate-800 truncate">{title}</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5 truncate">{desc || typeLabel}</div>
+                  </div>
+                  <div
+                    className="info-icon opacity-0 group-hover:opacity-100 flex items-center justify-center p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-all duration-150 shrink-0 cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                    onMouseEnter={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setTooltipData({
+                        node: tooltipNode,
+                        x: rect.right + 10,
+                        y: rect.top - 10,
+                      });
+                    }}
+                    onMouseLeave={() => {
+                      setTooltipData(null);
+                    }}
+                  >
+                    <FiInfo size={14} />
+                  </div>
                 </div>
-              )}
-            </div>
-          );
-        })}
-        
-        {filteredNodes.length === 0 && (
-          <div className="py-10 px-5 text-center text-slate-400 text-xs">
-            <div className="text-2xl mb-3">🔍</div>
+              );
+            })}
+            
+            {loading && (
+              <div className="flex items-center justify-center py-2 gap-1.5 text-slate-400 text-[10px]">
+                <div className="animate-spin rounded-full h-3.5 w-3.5 border border-indigo-500 border-t-transparent" />
+                <span>Loading more...</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {viewMode === 'nodes' && filteredNodes.length === 0 && (
+          <div style={{ minHeight: '250px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} className="py-10 px-5 text-center text-slate-400 text-xs">
+            <FiSearch size={24} className="text-slate-300 mb-2" />
             No nodes match your search
           </div>
         )}
       </div>
 
-      {/* Shared Portal/Tooltip Overlay */}
+
+      {/* Tooltip Overlay */}
       {tooltipData && (
         <div 
           style={{
@@ -251,7 +595,6 @@ export default function NodePalette({ onClose }) {
           }}
           className="fixed w-80 bg-white rounded-xl shadow-xl z-[99999] p-4 pointer-events-none flex flex-col gap-3 border border-slate-200 animate-fade-in font-sans"
         >
-          {/* Header */}
           <div className="flex items-center gap-2.5">
             <div 
               style={{ backgroundColor: tooltipData.node.bg, color: tooltipData.node.color }}
@@ -272,18 +615,86 @@ export default function NodePalette({ onClose }) {
 
           <div className="h-px bg-slate-100" />
 
-          {/* Description */}
           <div className="text-[11.5px] text-slate-600 leading-relaxed whitespace-normal break-word">
             {tooltipData.node.detailedDesc || tooltipData.node.desc}
           </div>
 
-          {/* Footer tip */}
           <div className="flex items-center gap-1.5 text-[9px] text-slate-400 mt-1">
             <FiZap size={10} className="text-indigo-500" />
             <span>Drag to canvas or click to add</span>
           </div>
         </div>
       )}
+
+      {/* Tool Addition Modal */}
+      <AddToolModal
+        isOpen={!!toolToAdd}
+        onClose={() => setToolToAdd(null)}
+        tool={toolToAdd}
+      />
+
+      {/* Skill Addition Modal */}
+      <AddSkillModal
+        isOpen={!!skillToAdd}
+        onClose={() => setSkillToAdd(null)}
+        skill={skillToAdd}
+      />
+
+      {/* Agent Type Selector Popover */}
+      {agentTypeToSelect && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 11000,
+          background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
+        }} onClick={() => setAgentTypeToSelect(null)}>
+          <div style={{
+            width: '100%', maxWidth: 450, background: 'white', borderRadius: 20,
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', padding: '24px'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', marginBottom: 4 }}>Select Node Type</h3>
+              <p style={{ fontSize: 12, color: '#64748B' }}>Choose how you want to deploy this agent on the canvas.</p>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {[
+                { id: 'llm_agent', label: 'Standard Agent', desc: 'LLM node with tools.', color: '#3B82F6' },
+                { id: 'deep_agent', label: 'Deep Agent', desc: 'Postgres memory agent.', color: '#8B5CF6' },
+                { id: 'supervisor', label: 'Supervisor', desc: 'Orchestrates workers.', color: '#10B981' },
+                { id: 'swarm', label: 'Swarm Agent', desc: 'Multi-agent network.', color: '#EC4899' },
+              ].map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => finalizeUseAgent(t.id)}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                    padding: '16px 12px', borderRadius: 12, border: '1px solid #F1F5F9',
+                    background: 'white', cursor: 'pointer', transition: 'all 0.2s', textAlign: 'center'
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = t.color; e.currentTarget.style.background = `${t.color}05`; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#F1F5F9'; e.currentTarget.style.background = 'white'; }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}>{t.label}</div>
+                  <div style={{ fontSize: 10, color: '#64748B', lineHeight: 1.3 }}>{t.desc}</div>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setAgentTypeToSelect(null)}
+              style={{
+                marginTop: 16, width: '100%', padding: '10px', borderRadius: 10, border: 'none',
+                background: '#F1F5F9', color: '#64748B', fontSize: 12, fontWeight: 700, cursor: 'pointer'
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+NodePalette.propTypes = {
+  onClose: PropTypes.func
+};
+
