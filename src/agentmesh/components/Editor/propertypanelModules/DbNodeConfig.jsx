@@ -13,8 +13,27 @@ export default function DbNodeConfig({ data, update }) {
   const [testResult, setTestResult] = useState(null);
   const [testError, setTestError] = useState(null);
 
+  // Modal editor states
+  const [showModal, setShowModal] = useState(false);
+  const [modalField, setModalField] = useState("db_query"); // "db_query" or "db_document"
+
   const handleTestQuery = async () => {
     const op = data.db_operation || (engine === "mongodb" ? "insert_one" : "query");
+    
+    // Automatically determine whether we are focusing on document or query/filter
+    if (isSql) {
+      setModalField("db_query");
+    } else {
+      if (["insert_one", "insert_many", "update_one"].includes(op)) {
+        setModalField("db_document");
+      } else {
+        setModalField("db_query");
+      }
+    }
+    
+    // Auto-open modal to display test state/result
+    setShowModal(true);
+
     const isWrite = engine === "mongodb"
       ? ["insert_one", "insert_many", "update_one", "delete_one"].includes(op)
       : op === "execute";
@@ -23,7 +42,10 @@ export default function DbNodeConfig({ data, update }) {
       const confirmed = globalThis.confirm(
         `Warning: This is a write/destructive operation (${op}). Running it will modify the database. Are you sure you want to proceed?`
       );
-      if (!confirmed) return;
+      if (!confirmed) {
+        setShowModal(false);
+        return;
+      }
     }
 
     setTesting(true);
@@ -299,35 +321,156 @@ export default function DbNodeConfig({ data, update }) {
             </>
           )}
         </button>
-
-        {testError && (
-          <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs flex items-start gap-2">
-            <FiAlertCircle className="mt-0.5 flex-shrink-0 text-red-500" size={14} />
-            <div>
-              <div className="font-bold mb-1">Execution Error</div>
-              <pre className="font-mono m-0 overflow-auto max-h-40 whitespace-pre-wrap">{testError}</pre>
-            </div>
-          </div>
-        )}
-
-        {testResult && (
-          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs flex items-start gap-2">
-            <FiCheckCircle className="mt-0.5 flex-shrink-0 text-emerald-600" size={14} />
-            <div className="w-full overflow-hidden">
-              <div className="font-bold mb-1">Execution Success</div>
-              <div className="text-emerald-700 font-semibold mb-2">{testResult.summary}</div>
-              {testResult.result !== undefined && (
-                <>
-                  <div className="font-semibold text-slate-500 mb-1">Response Data:</div>
-                  <pre className="font-mono m-0 p-2 bg-slate-900 text-slate-100 rounded overflow-auto max-h-60 text-[10px] leading-relaxed">
-                    {JSON.stringify(testResult.result, null, 2)}
-                  </pre>
-                </>
-              )}
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* --- Fullscreen/Expanded Editor and Query Runner Modal --- */}
+      {showModal && (
+        <div 
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-fade-in"
+          style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}
+        >
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div>
+                <h3 className="text-sm font-bold text-slate-800 m-0">
+                  {isSql ? "SQL Query Editor & Runner" : "NoSQL Document Editor & Runner"}
+                </h3>
+                <p className="text-[11px] text-slate-500 m-0 mt-0.5">
+                  Engine: <span className="font-semibold capitalize text-slate-700">{engine}</span> | Operation: <span className="font-semibold text-slate-700">{data.db_operation || "query"}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors bg-transparent border-none cursor-pointer text-lg font-bold p-1"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-hidden p-6 flex flex-col md:flex-row gap-6 min-h-0">
+              {/* Left Side: Editor */}
+              <div className="flex-1 flex flex-col gap-2 min-h-0">
+                <div className="text-xs font-bold text-slate-600 flex items-center justify-between">
+                  <span>Editor ({modalField === "db_document" ? "Document Template" : isSql ? "SQL Query" : "Query Filter"})</span>
+                  <span className="text-[10px] font-normal text-slate-400">Supports variable interpolation</span>
+                </div>
+                <textarea
+                  value={
+                    modalField === "db_document"
+                      ? (typeof data.db_document === "string" ? data.db_document : JSON.stringify(data.db_document || {}, null, 2))
+                      : (typeof data.db_query === "string" ? data.db_query : JSON.stringify(data.db_query || {}, null, 2))
+                  }
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (modalField === "db_document") {
+                      try {
+                        update({ db_document: JSON.parse(val) });
+                      } catch {
+                        update({ db_document: val });
+                      }
+                    } else {
+                      if (isSql) {
+                        update({ db_query: val });
+                      } else {
+                        try {
+                          update({ db_query: JSON.parse(val) });
+                        } catch {
+                          update({ db_query: val });
+                        }
+                      }
+                    }
+                  }}
+                  className="w-full flex-1 p-3 font-mono text-xs border border-slate-200 rounded-lg outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none min-h-0"
+                  placeholder={
+                    isSql
+                      ? "SELECT * FROM table WHERE column = {{variable}}"
+                      : "{\n  \"key\": \"{{value}}\"\n}"
+                  }
+                />
+                
+                <button
+                  onClick={handleTestQuery}
+                  disabled={testing}
+                  className="w-full py-2.5 px-4 bg-[#065F46] hover:bg-[#047857] disabled:bg-[#a7f3d0] text-white text-xs font-bold rounded-lg border-none flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                >
+                  {testing ? (
+                    <>
+                      <FiLoader className="animate-spin" size={14} />
+                      Executing Query...
+                    </>
+                  ) : (
+                    <>
+                      <FiPlay size={14} />
+                      Re-run / Test Query
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Right Side: Results */}
+              <div className="w-full md:w-[480px] flex flex-col gap-2 min-h-0">
+                <div className="text-xs font-bold text-slate-600">Test Execution Output</div>
+                <div className="flex-1 border border-slate-200 rounded-lg bg-slate-950 p-4 font-mono text-xs text-slate-100 overflow-auto flex flex-col justify-start min-h-0">
+                  {testing && (
+                    <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-2">
+                      <FiLoader className="animate-spin" size={18} />
+                      <span>Executing query on backend...</span>
+                    </div>
+                  )}
+
+                  {!testing && !testError && !testResult && (
+                    <div className="flex-1 flex flex-col items-center justify-center text-slate-500 text-center px-4">
+                      <span>No query output yet. Configure settings and click "Run Test Query" to execute.</span>
+                    </div>
+                  )}
+
+                  {!testing && testError && (
+                    <div className="text-red-400">
+                      <div className="font-bold text-red-500 mb-2 flex items-center gap-1">
+                        <FiAlertCircle size={14} /> Execution Error:
+                      </div>
+                      <pre className="m-0 whitespace-pre-wrap overflow-auto max-h-[350px] text-[11px] leading-relaxed">
+                        {testError}
+                      </pre>
+                    </div>
+                  )}
+
+                  {!testing && testResult && (
+                    <div className="flex flex-col h-full min-h-0">
+                      <div className="text-emerald-400 font-bold mb-1 flex items-center gap-1">
+                        <FiCheckCircle size={14} /> Success:
+                      </div>
+                      <div className="text-slate-300 font-semibold mb-3 text-[11px]">{testResult.summary}</div>
+                      {testResult.result !== undefined && (
+                        <div className="flex-1 flex flex-col min-h-0">
+                          <div className="text-slate-500 font-bold mb-1 text-[10px] uppercase tracking-wider">Result Dataset:</div>
+                          <pre className="flex-1 m-0 p-3 bg-slate-900/60 rounded border border-slate-800 overflow-auto text-[10px] leading-relaxed text-emerald-300">
+                            {JSON.stringify(testResult.result, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="px-6 py-3 border-t border-slate-100 bg-slate-50 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-lg text-xs font-semibold text-slate-700 cursor-pointer transition-colors"
+              >
+                Close Editor
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
