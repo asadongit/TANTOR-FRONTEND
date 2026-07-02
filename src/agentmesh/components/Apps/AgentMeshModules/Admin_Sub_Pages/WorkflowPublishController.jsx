@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  FiGitBranch, FiClock, FiCheckCircle, FiSearch, FiRefreshCw, FiTag, 
+  FiGitBranch, FiSearch, FiRefreshCw, FiTag, 
   FiFilter, FiX, FiCheck, FiTrash2, FiMessageSquare, FiGrid, FiList,
   FiPlay, FiPause, FiArrowRight, FiInfo, FiMoreHorizontal, FiFolder
 } from 'react-icons/fi';
@@ -22,25 +23,15 @@ function ActionDropdown({ actions, isOpen, onClose }) {
     <motion.div
       initial={{ opacity: 0, scale: 0.9, y: -10 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      style={{
-        position: 'absolute', bottom: '100%', right: 0, marginBottom: 8,
-        background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
-        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', zIndex: 50,
-        minWidth: 140, padding: '6px'
-      }}
+      className="absolute bottom-full right-0 mb-2 bg-white border border-gray-200 rounded-xl shadow-lg z-50 min-w-[140px] p-1.5"
     >
       {actions.map((a, i) => (
         <button
           key={i}
           onClick={(e) => { e.stopPropagation(); a.onClick(); onClose(); }}
-          style={{
-            width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-            padding: '8px 10px', borderRadius: 8, border: 'none', background: 'none',
-            fontSize: 12, fontWeight: 500, color: a.variant === 'danger' ? '#EF4444' : '#374151',
-            cursor: 'pointer', transition: 'all 0.15s'
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = a.variant === 'danger' ? '#FEF2F2' : '#F3F4F6'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+          className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border-none bg-transparent text-xs font-medium cursor-pointer transition-all duration-150 ${
+            a.variant === 'danger' ? 'text-red-500 hover:bg-red-50' : 'text-gray-700 hover:bg-gray-100'
+          }`}
         >
           {a.icon} {a.label}
         </button>
@@ -49,8 +40,23 @@ function ActionDropdown({ actions, isOpen, onClose }) {
   );
 }
 
-function PublishRequestCard({ u, idx, handlePause, handleResume, handleOpenWorkflow, handleUpdateStatus, setShowRemarksModal, setShowDetailsModal, handleDelete, actionInProgress, getStatusBadge }) {
+const PublishRequestCard = React.memo(function PublishRequestCard({ u, idx, handlePause, handleResume, handleOpenWorkflow, handleUpdateStatus, setShowRemarksModal, setShowDetailsModal, handleDelete, actionInProgress, getStatusBadge }) {
   const [showMore, setShowMore] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLaunch = async (e) => {
+    e.stopPropagation();
+    if (u.launch_mode === 'navigation' && u.navigation_path) {
+      navigate(u.navigation_path, { state: { fromMarketplace: true, usecaseName: u.name } });
+    } else if (u.launch_url) {
+      globalThis.open(u.launch_url, '_blank', 'noopener,noreferrer');
+    } else {
+      await handleOpenWorkflow(u.id);
+      setTimeout(() => {
+        useUIStore.getState().setRunOpen(true);
+      }, 300);
+    }
+  };
 
   const moreActions = [
     { label: 'Details', icon: <FiInfo size={14} />, onClick: () => setShowDetailsModal(u) },
@@ -63,25 +69,7 @@ function PublishRequestCard({ u, idx, handlePause, handleResume, handleOpenWorkf
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: idx * 0.05, ease: [0.23, 1, 0.32, 1] }}
-      style={{
-        background: 'white',
-        border: '1px solid #F0F0EE',
-        borderRadius: 24,
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.02)',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        overflow: 'hidden',
-        transition: 'all 0.2s ease',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05)';
-        e.currentTarget.style.borderColor = '#E5E7EB';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.02)';
-        e.currentTarget.style.borderColor = '#F0F0EE';
-      }}
+      className="bg-white border border-[#F0F0EE] rounded-3xl shadow-sm flex flex-col relative overflow-hidden transition-all duration-200 cursor-pointer hover:shadow-md hover:border-gray-300"
       onClick={() => setShowDetailsModal(u)}
     >
       <div style={{ padding: '24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -151,13 +139,7 @@ function PublishRequestCard({ u, idx, handlePause, handleResume, handleOpenWorkf
           borderTop: '1px solid #F3F4F6', borderBottom: '1px solid #F3F4F6',
           padding: '12px 0', margin: '12px 0'
         }}>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Rating</span>
-            <span style={{ fontSize: 13, color: '#4B5563', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ color: '#D97706' }}>★</span> {u.rating !== undefined && u.rating !== null ? u.rating.toFixed(1) : '0.0'}
-            </span>
-          </div>
-          <div style={{ color: '#E5E7EB', fontWeight: 300 }}>|</div>
+
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <span style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Status</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -200,13 +182,7 @@ function PublishRequestCard({ u, idx, handlePause, handleResume, handleOpenWorkf
             onClick={() => handlePause(u.id)}
             title="Pause Workflow"
             disabled={actionInProgress === u.id}
-            style={{
-              width: 36, height: 36, borderRadius: 8, border: '1px solid #E5E7EB',
-              background: 'white', color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#F3F4F6'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+            className="w-9 h-9 rounded-lg border border-gray-200 bg-white text-gray-500 flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-gray-100"
           >
             <FiPause size={16} />
           </button>
@@ -215,13 +191,7 @@ function PublishRequestCard({ u, idx, handlePause, handleResume, handleOpenWorkf
             onClick={() => handleResume(u.id)}
             title="Resume Workflow"
             disabled={actionInProgress === u.id}
-            style={{
-              width: 36, height: 36, borderRadius: 8, border: '1px solid #A7F3D0',
-              background: '#ECFDF5', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#A7F3D0'}
-            onMouseLeave={(e) => e.currentTarget.style.background = '#ECFDF5'}
+            className="w-9 h-9 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-emerald-200"
           >
             <FiPlay size={16} />
           </button>
@@ -231,52 +201,41 @@ function PublishRequestCard({ u, idx, handlePause, handleResume, handleOpenWorkf
         <button
           onClick={() => handleOpenWorkflow(u.id)}
           title="Open in Editor"
-          style={{
-            width: 36, height: 36, borderRadius: 8, border: '1px solid #E5E7EB',
-            background: 'white', color: '#111827', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', transition: 'all 0.2s'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = '#F3F4F6'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+          className="w-9 h-9 rounded-lg border border-gray-200 bg-white text-gray-900 flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-gray-100"
         >
           <FiArrowRight size={18} />
         </button>
 
-        <div style={{ flex: 1 }} />
+        {/* Launch button */}
+        <button
+          onClick={handleLaunch}
+          title="Launch / Preview Usecase"
+          className="px-3 h-9 rounded-lg border-none flex items-center justify-center gap-1.5 text-[11px] font-extrabold cursor-pointer transition-all duration-200 bg-[var(--theme-primary-glow)] text-[var(--theme-primary)] hover:bg-[var(--theme-primary)] hover:text-white"
+        >
+          <FiPlay size={12} /> Launch
+        </button>
 
-        {/* Approve Button */}
-        {u.admin_status !== 'approved' && (
-          <button
-            onClick={() => handleUpdateStatus(u.id, 'approved')}
-            disabled={actionInProgress === u.id}
-            style={{
-              padding: '8px 14px', borderRadius: 8, border: '1px solid #A7F3D0',
-              background: '#ECFDF5', color: '#10B981', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700,
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#A7F3D0'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = '#ECFDF5'; }}
-          >
-            <FiCheck /> Approve
-          </button>
-        )}
+        <div style={{ flex: 1 }} />
 
         {/* Reject Button */}
         {u.admin_status !== 'rejected' && (
           <button
             onClick={() => setShowRemarksModal(u)}
             disabled={actionInProgress === u.id}
-            style={{
-              padding: '8px 14px', borderRadius: 8, border: '1px solid #FCA5A5',
-              background: '#FEF2F2', color: '#EF4444', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700,
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#FCA5A5'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = '#FEF2F2'; }}
+            className="px-3.5 py-2 rounded-lg border border-red-300 bg-red-50 text-red-700 cursor-pointer flex items-center gap-1.5 text-xs font-bold transition-all duration-200 hover:bg-red-200"
           >
             <FiX /> Reject
+          </button>
+        )}
+
+        {/* Approve Button */}
+        {u.admin_status !== 'approved' && (
+          <button
+            onClick={() => handleUpdateStatus(u.id, 'approved')}
+            disabled={actionInProgress === u.id}
+            className="px-3.5 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 cursor-pointer flex items-center gap-1.5 text-xs font-bold transition-all duration-200 hover:bg-emerald-200"
+          >
+            <FiCheck /> Approve
           </button>
         )}
 
@@ -285,13 +244,7 @@ function PublishRequestCard({ u, idx, handlePause, handleResume, handleOpenWorkf
           <button
             onClick={(e) => { e.stopPropagation(); setShowMore(!showMore); }}
             title="More Options"
-            style={{
-              width: 36, height: 36, borderRadius: 8, border: '1px solid #E5E7EB',
-              background: 'white', color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#F3F4F6'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+            className="w-9 h-9 rounded-lg border border-gray-200 bg-white text-gray-500 flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-gray-100"
           >
             <FiMoreHorizontal size={18} />
           </button>
@@ -300,9 +253,24 @@ function PublishRequestCard({ u, idx, handlePause, handleResume, handleOpenWorkf
       </div>
     </motion.div>
   );
-}
+});
+
+const getStatusBadge = (status) => {
+  let bgClass = 'bg-[#FEF3C7] text-[#D97706]', label = 'Pending';
+  if (status === 'approved') {
+    bgClass = 'bg-[#ECFDF5] text-[#10B981]'; label = 'Approved';
+  } else if (status === 'rejected') {
+    bgClass = 'bg-[#FEF2F2] text-[#EF4444]'; label = 'Rejected';
+  }
+  return (
+    <span className={`px-2 py-0.5 rounded-xl text-[10px] font-bold uppercase tracking-wider ${bgClass}`}>
+      {label}
+    </span>
+  );
+};
 
 export default function WorkflowPublishController() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('pending'); // pending, approved, rejected, all
   const [viewMode, setViewMode] = useState('card'); // card, list
   const [usecases, setUsecases] = useState([]);
@@ -320,44 +288,6 @@ export default function WorkflowPublishController() {
   const [showRemarksModal, setShowRemarksModal] = useState(null); // holds usecase object
   const [showDetailsModal, setShowDetailsModal] = useState(null); // holds usecase object for details modal
 
-  const handlePause = async (id) => {
-    setActionInProgress(id);
-    try {
-      await dispatchScheduleAction(id, 'pause');
-      loadUsecases();
-    } catch (err) { 
-      alert('Pause failed: ' + err.message); 
-    } finally {
-      setActionInProgress(null);
-    }
-  };
-
-  const handleResume = async (id) => {
-    setActionInProgress(id);
-    try {
-      await dispatchScheduleAction(id, 'resume');
-      loadUsecases();
-    } catch (err) { 
-      alert('Resume failed: ' + err.message); 
-    } finally {
-      setActionInProgress(null);
-    }
-  };
-
-  const handleOpenWorkflow = async (workflowId) => {
-    try {
-      const full = await getWorkflow(workflowId);
-      if (full && full.config) {
-        useWorkflowStore.getState().loadWorkflowIntoEditor(full.config);
-        useUIStore.getState().setActivePage('canvas');
-      } else {
-        alert("Workflow details could not be loaded.");
-      }
-    } catch (err) {
-      alert("Error opening workflow: " + err.message);
-    }
-  };
-
   const [filterOpen, setFilterOpen] = useState(false);
   const filterPanelRef = useRef(null);
   const searchInputRef = useRef(null);
@@ -371,19 +301,20 @@ export default function WorkflowPublishController() {
   const [totalUsecases, setTotalUsecases] = useState(0);
 
   const totalPages = Math.ceil(totalUsecases / pageSize);
+  const lastFetchedRef = useRef({ page: null, category: null, group: null, search: null, tab: null });
 
-  const loadUsecases = async () => {
+  const loadUsecases = useCallback(async (pageToLoad = currentPage, signal = null) => {
     setLoading(true);
     setError(null);
     try {
       const res = await listMarketplaceUsecases({
-        page: currentPage,
+        page: pageToLoad,
         limit: pageSize,
         group: selectedGroupFilter,
         category: selectedCategory,
         search: debouncedSearch,
         adminStatus: activeTab
-      });
+      }, { signal });
       if (res.status === 'success') {
         setUsecases(res.workflows || []);
         setTotalUsecases(res.total || 0);
@@ -397,15 +328,125 @@ export default function WorkflowPublishController() {
         }
       }
     } catch (e) {
+      if (e.name === 'AbortError') return;
       setError(e.message || 'Failed to load publish requests.');
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
-  };
+  }, [currentPage, pageSize, selectedGroupFilter, selectedCategory, debouncedSearch, activeTab]);
+
+  const handlePause = useCallback(async (id) => {
+    setActionInProgress(id);
+    try {
+      await dispatchScheduleAction(id, 'pause');
+      await loadUsecases();
+    } catch (err) { 
+      alert('Pause failed: ' + err.message); 
+    } finally {
+      setActionInProgress(null);
+    }
+  }, [loadUsecases]);
+
+  const handleResume = useCallback(async (id) => {
+    setActionInProgress(id);
+    try {
+      await dispatchScheduleAction(id, 'resume');
+      await loadUsecases();
+    } catch (err) { 
+      alert('Resume failed: ' + err.message); 
+    } finally {
+      setActionInProgress(null);
+    }
+  }, [loadUsecases]);
+
+  const handleOpenWorkflow = useCallback(async (workflowId) => {
+    try {
+      const full = await getWorkflow(workflowId);
+      if (full && full.config) {
+        useWorkflowStore.getState().loadWorkflowIntoEditor(full.config);
+        useUIStore.getState().setActivePage('canvas');
+      } else {
+        alert("Workflow details could not be loaded.");
+      }
+    } catch (err) {
+      alert("Error opening workflow: " + err.message);
+    }
+  }, []);
+
+  const handleUpdateStatus = useCallback(async (id, status, remarks = null) => {
+    setActionInProgress(id);
+    try {
+      const res = await updateMarketplaceUsecaseStatus(id, status, remarks);
+      if (res.status === 'success') {
+        await loadUsecases();
+        setShowRemarksModal(null);
+        setRemarksInput('');
+      }
+    } catch (e) {
+      alert('Failed to update publish status: ' + e.message);
+    } finally {
+      setActionInProgress(null);
+    }
+  }, [loadUsecases]);
+
+  const handleDelete = useCallback(async (id) => {
+    if (!globalThis.confirm("Are you sure you want to delete this publish request? This will remove it from the marketplace queue.")) return;
+    setActionInProgress(id);
+    try {
+      const res = await deleteMarketplaceUsecase(id);
+      if (res.status === 'success') {
+        await loadUsecases();
+      }
+    } catch (e) {
+      alert('Failed to delete request: ' + e.message);
+    } finally {
+      setActionInProgress(null);
+    }
+  }, [loadUsecases]);
 
   useEffect(() => {
-    loadUsecases();
-  }, [currentPage, selectedCategory, selectedGroupFilter, debouncedSearch, activeTab]);
+    const controller = new AbortController();
+    const { signal } = controller;
+
+    const prev = lastFetchedRef.current;
+    const filtersChanged =
+      selectedCategory !== prev.category ||
+      selectedGroupFilter !== prev.group ||
+      debouncedSearch !== prev.search ||
+      activeTab !== prev.tab;
+
+    let targetPage = currentPage;
+    if (filtersChanged) {
+      targetPage = 1;
+      setCurrentPage(1);
+    }
+
+    if (
+      prev.page === targetPage &&
+      prev.category === selectedCategory &&
+      prev.group === selectedGroupFilter &&
+      prev.search === debouncedSearch &&
+      prev.tab === activeTab
+    ) {
+      return;
+    }
+
+    lastFetchedRef.current = {
+      page: targetPage,
+      category: selectedCategory,
+      group: selectedGroupFilter,
+      search: debouncedSearch,
+      tab: activeTab
+    };
+
+    loadUsecases(targetPage, signal);
+
+    return () => {
+      controller.abort();
+    };
+  }, [currentPage, selectedCategory, selectedGroupFilter, debouncedSearch, activeTab, loadUsecases]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -413,10 +454,6 @@ export default function WorkflowPublishController() {
     }, 500);
     return () => clearTimeout(timer);
   }, [search]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedCategory, selectedGroupFilter, debouncedSearch, activeTab]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -429,54 +466,6 @@ export default function WorkflowPublishController() {
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [filterOpen]);
-
-  const handleUpdateStatus = async (id, status, remarks = null) => {
-    setActionInProgress(id);
-    try {
-      const res = await updateMarketplaceUsecaseStatus(id, status, remarks);
-      if (res.status === 'success') {
-        loadUsecases();
-        setShowRemarksModal(null);
-        setRemarksInput('');
-      }
-    } catch (e) {
-      alert('Failed to update publish status: ' + e.message);
-    } finally {
-      setActionInProgress(null);
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this publish request? This will remove it from the marketplace queue.")) return;
-    setActionInProgress(id);
-    try {
-      const res = await deleteMarketplaceUsecase(id);
-      if (res.status === 'success') {
-        loadUsecases();
-      }
-    } catch (e) {
-      alert('Failed to delete request: ' + e.message);
-    } finally {
-      setActionInProgress(null);
-    }
-  };
-
-  const getStatusBadge = (status) => {
-    let bg = '#FEF3C7', text = '#D97706', label = 'Pending';
-    if (status === 'approved') {
-      bg = '#ECFDF5'; text = '#10B981'; label = 'Approved';
-    } else if (status === 'rejected') {
-      bg = '#FEF2F2'; text = '#EF4444'; label = 'Rejected';
-    }
-    return (
-      <span style={{ 
-        padding: '3px 8px', borderRadius: 12, fontSize: 10, fontWeight: 700, 
-        background: bg, color: text, textTransform: 'uppercase', letterSpacing: '0.04em' 
-      }}>
-        {label}
-      </span>
-    );
-  };
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#F8FAFC', height: '100%', overflow: 'hidden', fontFamily: "'Google Sans','Roboto',sans-serif" }}>
@@ -668,7 +657,7 @@ export default function WorkflowPublishController() {
         ) : (
           !loading && (
             viewMode === 'card' ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24, marginBottom: 24 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: 24, marginBottom: 24 }}>
                 {usecases.map((u, idx) => (
                   <PublishRequestCard
                     key={u.id}
@@ -693,13 +682,7 @@ export default function WorkflowPublishController() {
                     key={u.id}
                     initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2, delay: idx * 0.02 }}
-                    style={{
-                      background: 'white', border: '1px solid #EAEAEA', borderRadius: 12, padding: '14px 20px',
-                      display: 'flex', alignItems: 'center', gap: 16, transition: 'all 0.2s',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.04)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#EAEAEA'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.02)'; }}
+                    className="bg-white border border-[#EAEAEA] rounded-xl py-3.5 px-5 flex items-center gap-4 transition-all duration-200 shadow-[0_1px_3px_rgba(0,0,0,0.02)] hover:border-slate-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)]"
                   >
                     <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--theme-primary-glow)', color: 'var(--theme-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <FiGitBranch size={18} />
@@ -734,7 +717,7 @@ export default function WorkflowPublishController() {
                           onClick={() => handlePause(u.id)}
                           title="Pause Workflow"
                           disabled={actionInProgress === u.id}
-                          style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #E5E7EB', background: 'white', color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                          className="px-2 py-1.5 rounded-md border border-gray-200 bg-white text-gray-500 cursor-pointer flex items-center transition-all duration-200 hover:bg-gray-100"
                         >
                           <FiPause size={12} />
                         </button>
@@ -743,7 +726,7 @@ export default function WorkflowPublishController() {
                           onClick={() => handleResume(u.id)}
                           title="Resume Workflow"
                           disabled={actionInProgress === u.id}
-                          style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #DCFCE7', background: '#F0FDF4', color: '#16A34A', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                          className="px-2 py-1.5 rounded-md border border-emerald-100 bg-[#F0FDF4] text-emerald-700 cursor-pointer flex items-center transition-all duration-200 hover:bg-emerald-100"
                         >
                           <FiPlay size={12} />
                         </button>
@@ -753,42 +736,63 @@ export default function WorkflowPublishController() {
                       <button
                         onClick={() => handleOpenWorkflow(u.id)}
                         title="Open in Editor"
-                        style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #E5E7EB', background: 'white', color: '#111827', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                        className="px-2 py-1.5 rounded-md border border-gray-200 bg-white text-gray-900 cursor-pointer flex items-center transition-all duration-200 hover:bg-gray-100"
                       >
                         <FiArrowRight size={12} />
+                      </button>
+
+                      {/* Launch Usecase */}
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (u.launch_mode === 'navigation' && u.navigation_path) {
+                            navigate(u.navigation_path, { state: { fromMarketplace: true, usecaseName: u.name } });
+                          } else if (u.launch_url) {
+                            globalThis.open(u.launch_url, '_blank', 'noopener,noreferrer');
+                          } else {
+                            await handleOpenWorkflow(u.id);
+                            setTimeout(() => {
+                              useUIStore.getState().setRunOpen(true);
+                            }, 300);
+                          }
+                        }}
+                        title="Launch Usecase"
+                        className="px-2.5 py-1.5 rounded-md border-none cursor-pointer text-[11px] font-bold bg-[var(--theme-primary-glow)] text-[var(--theme-primary)] hover:bg-[var(--theme-primary)] hover:text-white transition-all duration-200"
+                      >
+                        Launch
                       </button>
 
                       {/* View details */}
                       <button
                         onClick={() => setShowDetailsModal(u)}
                         title="View Details"
-                        style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #E5E7EB', background: 'white', color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                        className="px-2 py-1.5 rounded-md border border-gray-200 bg-white text-gray-500 cursor-pointer flex items-center transition-all duration-200 hover:bg-gray-100"
                       >
                         <FiInfo size={12} />
                       </button>
 
-                      {u.admin_status !== 'approved' && (
-                        <button
-                          onClick={() => handleUpdateStatus(u.id, 'approved')}
-                          disabled={actionInProgress === u.id}
-                          style={{ padding: '6px 10px', borderRadius: 6, background: '#D1FAE5', color: '#059669', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}
-                        >
-                          Approve
-                        </button>
-                      )}
                       {u.admin_status !== 'rejected' && (
                         <button
                           onClick={() => setShowRemarksModal(u)}
                           disabled={actionInProgress === u.id}
-                          style={{ padding: '6px 10px', borderRadius: 6, background: '#FEE2E2', color: '#DC2626', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}
+                          className="px-2.5 py-1.5 rounded-md bg-red-50 text-red-700 border border-red-200 cursor-pointer text-[11px] font-bold hover:bg-red-100 transition-all duration-200"
                         >
                           Reject
+                        </button>
+                      )}
+                      {u.admin_status !== 'approved' && (
+                        <button
+                          onClick={() => handleUpdateStatus(u.id, 'approved')}
+                          disabled={actionInProgress === u.id}
+                          className="px-2.5 py-1.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-pointer text-[11px] font-bold hover:bg-emerald-100 transition-all duration-200"
+                        >
+                          Approve
                         </button>
                       )}
                       <button
                         onClick={() => handleDelete(u.id)}
                         disabled={actionInProgress === u.id}
-                        style={{ padding: '6px 8px', borderRadius: 6, background: '#F1F5F9', color: '#64748B', border: 'none', cursor: 'pointer' }}
+                        className="px-2 py-1.5 rounded-md bg-slate-50 text-slate-500 border border-slate-200 cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-all duration-200"
                       >
                         <FiTrash2 size={12} />
                       </button>

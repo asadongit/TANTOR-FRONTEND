@@ -1,4 +1,4 @@
-const BASE = window._env_?.VITE_AGENT_MESH || import.meta.env.VITE_AGENT_MESH || 'http://localhost:8000/api/v1/agentmesh';
+const BASE = globalThis._env_?.VITE_AGENT_MESH || import.meta.env.VITE_AGENT_MESH || 'http://localhost:8000/api/v1/agentmesh';
 
 export const getBackendUrl = () => {
   return BASE.replace('/api/v1/agentmesh', '');
@@ -45,7 +45,7 @@ export const publishWorkflow = (id, params = {}) =>
 export const getMarketplaceUsecase = (id) =>
   request(`/workflow/${id}/marketplace`);
 
-export const listMarketplaceUsecases = (params = {}) => {
+export const listMarketplaceUsecases = (params = {}, options = {}) => {
   const { page = 1, limit = 100, group, category, search, tag, adminStatus } = params;
   const p = new URLSearchParams({ page, limit });
   if (group && group !== 'All') p.set('group', group);
@@ -53,7 +53,7 @@ export const listMarketplaceUsecases = (params = {}) => {
   if (search) p.set('search', search);
   if (tag && tag !== 'All') p.set('tag', tag);
   if (adminStatus && adminStatus !== 'All') p.set('admin_status', adminStatus);
-  return request(`/marketplace/usecases?${p}`);
+  return request(`/marketplace/usecases?${p}`, options);
 };
 
 export const updateMarketplaceUsecaseStatus = (workflowId, status, remarks = null) =>
