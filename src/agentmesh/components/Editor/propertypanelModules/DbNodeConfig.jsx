@@ -23,12 +23,10 @@ export default function DbNodeConfig({ data, update }) {
     // Automatically determine whether we are focusing on document or query/filter
     if (isSql) {
       setModalField("db_query");
+    } else if (["insert_one", "insert_many", "update_one"].includes(op)) {
+      setModalField("db_document");
     } else {
-      if (["insert_one", "insert_many", "update_one"].includes(op)) {
-        setModalField("db_document");
-      } else {
-        setModalField("db_query");
-      }
+      setModalField("db_query");
     }
     
     // Auto-open modal to display test state/result
