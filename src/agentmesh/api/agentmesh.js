@@ -105,13 +105,13 @@ export const streamWorkflow = (workflowId, payload, onEvent) => {
 };
 
 // ─── Tools ────────────────────────────────────────────────────────────────────
-export const listTools = (params = {}) => {
+export const listTools = (params = {}, options = {}) => {
   const { page = 1, limit = 100, search, category, package: pkg } = params;
   const p = new URLSearchParams({ page, limit });
   if (search) p.set('search', search);
   if (category) p.set('category', category);
   if (pkg) p.set('package', pkg);
-  return request(`/tools?${p}`);
+  return request(`/tools?${p}`, options);
 };
 export const listToolPackages = (params = {}) => {
   const { page = 1, limit = 10, search } = params;
@@ -226,11 +226,11 @@ export const readVfsFile = (rootDir, filePath, threadId) => {
   const p = new URLSearchParams({ root_dir: rootDir, file_path: filePath, thread_id: threadId });
   return request(`/deep-agent/vfs/read?${p}`);
 };
-export const listAvailableSkills = (params = {}) => {
+export const listAvailableSkills = (params = {}, options = {}) => {
   const { page = 1, limit = 1000, search } = params;
   const p = new URLSearchParams({ page, limit });
   if (search) p.set('search', search);
-  return request(`/skills/list?${p}`);
+  return request(`/skills/list?${p}`, options);
 };
 export const createSkill = (payload) => request('/skills/create', { method: 'POST', body: JSON.stringify(payload) });
 export const deleteSkill = (id) => request(`/skills/${id}`, { method: 'DELETE' });
@@ -238,13 +238,13 @@ export const listAvailableModels = () => request('/models/available');
 export const testConnection = (payload) => request('/models/test-connection', { method: 'POST', body: JSON.stringify(payload) });
 
 // ─── Agent Templates ──────────────────────────────────────────────────────────
-export const listAgentTemplates = (params = {}) => {
+export const listAgentTemplates = (params = {}, options = {}) => {
   const { page = 1, limit = 50, group, category, search } = params;
   const p = new URLSearchParams({ page, limit });
   if (group) p.set('group', group);
   if (category) p.set('category', category);
   if (search) p.set('search', search);
-  return request(`/agent-templates?${p}`);
+  return request(`/agent-templates?${p}`, options);
 };
 export const saveAgentTemplate = (payload) =>
   request('/agent-templates', { method: 'POST', body: JSON.stringify(payload) });
@@ -279,7 +279,7 @@ export const listComponentTemplateFilters = (params) => {
   return request(`/component-templates/filters?${p}`);
 };
 
-export const listComponentTemplates = (params = {}) => {
+export const listComponentTemplates = (params = {}, options = {}) => {
   const { page = 1, limit = 50, group, category_id, category_name, type, search, exclude_type } = params;
   const p = new URLSearchParams({ page, limit });
   if (group) p.set('group', group);

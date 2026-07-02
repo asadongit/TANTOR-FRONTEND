@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
+import toast from 'react-hot-toast';
 import { useWorkflowStore } from '../../store';
 import {
   FiPlay, FiCpu, FiBox, FiGitMerge,
@@ -18,6 +19,7 @@ import {
 } from '../../api/agentmesh';
 import AddToolModal from '../Apps/AgentMeshModules/addToolModal';
 import AddSkillModal from '../Apps/AgentMeshModules/addSkillModal';
+import AgentTypeSelectorModal from './AgentTypeSelectorModal';
 
 export const NODE_TYPES = [
   // Events & Triggers
@@ -111,15 +113,20 @@ export default function NodePalette({ onClose }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [mergingTemplateId, setMergingTemplateId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const fetchingPageRef = useRef(1);
+
+  const isFetchingRef = useRef(false);
+  const tooltipRef = useRef(null);
 
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [collapsed, setCollapsed] = useState({});
   const [tooltipData, setTooltipData] = useState(null); // { node, x, y }
+  const [windowHeight, setWindowHeight] = useState(window.innerHeight);
+  const [tooltipHeight, setTooltipHeight] = useState(240);
 
   // Modals state
   const [toolToAdd, setToolToAdd] = useState(null);
@@ -130,9 +137,7 @@ export default function NodePalette({ onClose }) {
     setCollapsed(prev => ({ ...prev, [cat]: !prev[cat] }));
   };
 
-  const allNodes = [...NODE_TYPES];
-
-  const filteredNodes = allNodes.filter(n => 
+  const filteredNodes = NODE_TYPES.filter(n => 
     n.label.toLowerCase().includes(search.toLowerCase()) || 
     n.desc.toLowerCase().includes(search.toLowerCase())
   );
@@ -158,17 +163,11 @@ export default function NodePalette({ onClose }) {
 
   const handleDragStart = (e, n) => {
     e.dataTransfer.setData('application/agentmesh-node', n.type);
-    if (n.isTemplate && n.config) {
-       e.dataTransfer.setData('application/agentmesh-config', JSON.stringify(n.config));
-    }
     e.dataTransfer.effectAllowed = 'move';
   };
 
   const handleAdd = (n) => {
-    const id = addNode(n.type, { x: 200 + Math.random() * 300, y: 100 + Math.random() * 200 });
-    if (n.isTemplate && n.config && id) {
-       setNodeData(id, n.config);
-    }
+    addNode(n.type, { x: 200 + Math.random() * 300, y: 100 + Math.random() * 200 });
     onClose?.();
   };
 
@@ -177,10 +176,23 @@ export default function NodePalette({ onClose }) {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
       setCurrentPage(1);
-      fetchingPageRef.current = 1;
     }, 300);
     return () => clearTimeout(timer);
   }, [search]);
+
+  // Monitor window resize to recalculate screen limits for tooltips
+  useEffect(() => {
+    const handleResize = () => setWindowHeight(window.innerHeight);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Recalculate tooltip offset height when tooltip contents change
+  useEffect(() => {
+    if (tooltipRef.current) {
+      setTooltipHeight(tooltipRef.current.offsetHeight);
+    }
+  }, [tooltipData]);
 
   // Fetch logic for backend libraries (executed immediately on dependencies change)
   useEffect(() => {
@@ -188,7 +200,12 @@ export default function NodePalette({ onClose }) {
       setItems([]);
       return;
     }
+
+    const controller = new AbortController();
+    const signal = controller.signal;
+
     const fetchLibrary = async () => {
+      isFetchingRef.current = true;
       setLoading(true);
       try {
         let res;
@@ -196,57 +213,70 @@ export default function NodePalette({ onClose }) {
         let newItems = [];
         let total = 0;
         if (viewMode === 'agents') {
-          res = await listAgentTemplates({ page: currentPage, limit, search: debouncedSearch });
+          res = await listAgentTemplates({ page: currentPage, limit, search: debouncedSearch }, { signal });
           newItems = res.templates || [];
           total = res.total || 0;
         } else if (viewMode === 'apis') {
-          res = await listComponentTemplates({ type: 'api_node', page: currentPage, limit, search: debouncedSearch });
+          res = await listComponentTemplates({ type: 'api_node', page: currentPage, limit, search: debouncedSearch }, { signal });
           newItems = res.templates || [];
           total = res.total || 0;
         } else if (viewMode === 'tools') {
-          res = await listTools({ page: currentPage, limit, search: debouncedSearch });
+          res = await listTools({ page: currentPage, limit, search: debouncedSearch }, { signal });
           newItems = res.tools || [];
           total = res.total || 0;
         } else if (viewMode === 'skills') {
-          res = await listAvailableSkills({ page: currentPage, limit, search: debouncedSearch });
+          res = await listAvailableSkills({ page: currentPage, limit, search: debouncedSearch }, { signal });
           newItems = res.skills || [];
           total = res.total || 0;
         } else if (viewMode === 'templates') {
-          res = await listWorkflowTemplates({ page: currentPage, limit, search: debouncedSearch });
+          res = await listWorkflowTemplates({ page: currentPage, limit, search: debouncedSearch }, { signal });
           newItems = res.templates || [];
           total = res.total || 0;
         }
-        setTotalCount(total);
-        setTotalPages(Math.ceil(total / limit));
-        if (currentPage === 1) {
-          setItems(newItems);
-        } else {
-          setItems(prev => [...prev, ...newItems]);
+
+        if (!signal.aborted) {
+          setTotalCount(total);
+          setTotalPages(Math.ceil(total / limit));
+          if (currentPage === 1) {
+            setItems(newItems);
+          } else {
+            setItems(prev => [...prev, ...newItems]);
+          }
         }
       } catch (err) {
-        console.error("Error fetching library items:", err);
+        if (err.name !== 'AbortError') {
+          console.error("Error fetching library items:", err);
+          toast.error("Failed to load library items: " + err.message);
+        }
       } finally {
-        setLoading(false);
+        if (!signal.aborted) {
+          setLoading(false);
+          isFetchingRef.current = false;
+        }
       }
     };
     fetchLibrary();
+
+    return () => {
+      controller.abort();
+    };
   }, [viewMode, debouncedSearch, currentPage]);
 
   const handleViewModeChange = (mode) => {
     setViewMode(mode);
     setCurrentPage(1);
-    fetchingPageRef.current = 1;
     setSearch('');
+    setDebouncedSearch('');
     setDropdownOpen(false);
   };
 
   const handleScroll = (e) => {
-    if (viewMode === 'nodes' || loading) return;
+    if (viewMode === 'nodes' || loading || isFetchingRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = e.target;
     // Check if scrolled near the bottom (with 50px buffer for responsiveness)
     if (scrollHeight - scrollTop - clientHeight < 50) {
-      if (currentPage < totalPages && fetchingPageRef.current === currentPage) {
-        fetchingPageRef.current = currentPage + 1;
+      if (currentPage < totalPages) {
+        isFetchingRef.current = true;
         setCurrentPage(prev => prev + 1);
       }
     }
@@ -305,15 +335,21 @@ export default function NodePalette({ onClose }) {
     } else if (mode === 'skills') {
       setSkillToAdd(item);
     } else if (mode === 'templates') {
+      setMergingTemplateId(item.id);
       try {
         const res = await getWorkflowTemplate(item.id);
         if (res.status === 'success') {
           mergeTemplateIntoEditor(res);
+          toast.success('Template merged successfully!');
+          onClose?.();
+        } else {
+          toast.error('Failed to merge template: ' + (res.message || 'Unknown error'));
         }
       } catch (e) {
-        alert('Failed to merge template: ' + e.message);
+        toast.error('Failed to merge template: ' + e.message);
+      } finally {
+        setMergingTemplateId(null);
       }
-      onClose?.();
     }
   };
 
@@ -346,7 +382,7 @@ export default function NodePalette({ onClose }) {
         <div className="relative">
           <button 
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center gap-2 text-sm font-bold text-slate-800 hover:text-indigo-600 transition-colors focus:outline-none"
+            className="flex items-center gap-2 text-sm font-bold text-slate-800 hover:text-indigo-600 transition-colors focus:outline-none bg-transparent border-0 cursor-pointer p-0"
           >
             <span>
               {viewMode === 'nodes' && `Node library (${filteredNodes.length})`}
@@ -374,7 +410,7 @@ export default function NodePalette({ onClose }) {
                   <button
                     key={opt.id}
                     onClick={() => handleViewModeChange(opt.id)}
-                    className={`w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-left transition-colors ${viewMode === opt.id ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                    className={`w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-left transition-colors border-0 cursor-pointer ${viewMode === opt.id ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
                   >
                     <Icon size={14} />
                     {opt.label}
@@ -390,7 +426,7 @@ export default function NodePalette({ onClose }) {
           <FiSearch size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input 
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder={viewMode === 'nodes' ? "Search nodes..." : "Search library..."}
             className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none transition-all focus:border-indigo-500 focus:bg-white font-sans"
           />
@@ -426,7 +462,7 @@ export default function NodePalette({ onClose }) {
                       const Icon = n.icon;
                       return (
                         <div
-                          key={n.isTemplate ? `template_${n.label}` : n.type}
+                          key={n.type}
                           draggable
                           onDragStart={(e) => handleDragStart(e, n)}
                           onClick={() => handleAdd(n)}
@@ -475,7 +511,7 @@ export default function NodePalette({ onClose }) {
             <div className="text-[11px]">Loading items...</div>
           </div>
         ) : items.length === 0 ? (
-          <div style={{ minHeight: '250px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} className="py-10 px-5 text-center text-slate-400 text-xs">
+          <div className="min-h-[250px] flex flex-col items-center justify-center py-10 px-5 text-center text-slate-400 text-xs">
             <FiSearch size={24} className="text-slate-300 mb-2" />
             No items found
           </div>
@@ -527,19 +563,25 @@ export default function NodePalette({ onClose }) {
                 desc: desc || 'Custom template resource'
               };
 
+              const isMerging = mergingTemplateId === item.id;
+
               return (
                 <div
                   key={item.id || item.name || idx}
-                  draggable={viewMode !== 'templates'}
+                  draggable={viewMode !== 'templates' && !isMerging}
                   onDragStart={(e) => handleBackendDragStart(e, item, viewMode)}
-                  onClick={() => handleBackendClick(item, viewMode)}
-                  className="group flex items-center gap-3 p-2.5 rounded-lg bg-white border border-transparent cursor-grab transition-all hover:bg-slate-50 hover:border-slate-200 relative"
+                  onClick={() => !isMerging && handleBackendClick(item, viewMode)}
+                  className={`group flex items-center gap-3 p-2.5 rounded-lg bg-white border border-transparent cursor-grab transition-all hover:bg-slate-50 hover:border-slate-200 relative ${isMerging ? 'opacity-60 cursor-not-allowed' : ''}`}
                 >
                   <div 
                     style={{ backgroundColor: bg, color: color }}
                     className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                   >
-                    <Icon size={16} strokeWidth={2} />
+                    {isMerging ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-indigo-500 border-t-transparent" />
+                    ) : (
+                      <Icon size={16} strokeWidth={2} />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-semibold text-slate-800 truncate">{title}</div>
@@ -578,20 +620,20 @@ export default function NodePalette({ onClose }) {
         )}
 
         {viewMode === 'nodes' && filteredNodes.length === 0 && (
-          <div style={{ minHeight: '250px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} className="py-10 px-5 text-center text-slate-400 text-xs">
+          <div className="min-h-[250px] flex flex-col items-center justify-center py-10 px-5 text-center text-slate-400 text-xs">
             <FiSearch size={24} className="text-slate-300 mb-2" />
             No nodes match your search
           </div>
         )}
       </div>
 
-
       {/* Tooltip Overlay */}
       {tooltipData && (
         <div 
+          ref={tooltipRef}
           style={{
             left: tooltipData.x,
-            top: Math.max(10, Math.min(window.innerHeight - 240, tooltipData.y)),
+            top: Math.max(10, Math.min(windowHeight - tooltipHeight, tooltipData.y)),
           }}
           className="fixed w-80 bg-white rounded-xl shadow-xl z-[99999] p-4 pointer-events-none flex flex-col gap-3 border border-slate-200 animate-fade-in font-sans"
         >
@@ -640,56 +682,12 @@ export default function NodePalette({ onClose }) {
         skill={skillToAdd}
       />
 
-      {/* Agent Type Selector Popover */}
-      {agentTypeToSelect && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 11000,
-          background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
-        }} onClick={() => setAgentTypeToSelect(null)}>
-          <div style={{
-            width: '100%', maxWidth: 450, background: 'white', borderRadius: 20,
-            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', padding: '24px'
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{ textAlign: 'center', marginBottom: 20 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', marginBottom: 4 }}>Select Node Type</h3>
-              <p style={{ fontSize: 12, color: '#64748B' }}>Choose how you want to deploy this agent on the canvas.</p>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              {[
-                { id: 'llm_agent', label: 'Standard Agent', desc: 'LLM node with tools.', color: '#3B82F6' },
-                { id: 'deep_agent', label: 'Deep Agent', desc: 'Postgres memory agent.', color: '#8B5CF6' },
-                { id: 'supervisor', label: 'Supervisor', desc: 'Orchestrates workers.', color: '#10B981' },
-                { id: 'swarm', label: 'Swarm Agent', desc: 'Multi-agent network.', color: '#EC4899' },
-              ].map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => finalizeUseAgent(t.id)}
-                  style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-                    padding: '16px 12px', borderRadius: 12, border: '1px solid #F1F5F9',
-                    background: 'white', cursor: 'pointer', transition: 'all 0.2s', textAlign: 'center'
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = t.color; e.currentTarget.style.background = `${t.color}05`; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#F1F5F9'; e.currentTarget.style.background = 'white'; }}
-                >
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}>{t.label}</div>
-                  <div style={{ fontSize: 10, color: '#64748B', lineHeight: 1.3 }}>{t.desc}</div>
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setAgentTypeToSelect(null)}
-              style={{
-                marginTop: 16, width: '100%', padding: '10px', borderRadius: 10, border: 'none',
-                background: '#F1F5F9', color: '#64748B', fontSize: 12, fontWeight: 700, cursor: 'pointer'
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Agent Type Selector popover component */}
+      <AgentTypeSelectorModal
+        isOpen={!!agentTypeToSelect}
+        onClose={() => setAgentTypeToSelect(null)}
+        onSelect={finalizeUseAgent}
+      />
     </div>
   );
 }
@@ -697,4 +695,3 @@ export default function NodePalette({ onClose }) {
 NodePalette.propTypes = {
   onClose: PropTypes.func
 };
-
