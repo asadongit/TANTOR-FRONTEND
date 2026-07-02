@@ -337,11 +337,13 @@ function XAI() {
           }
           config = await response.json();
         }
-        const applicability = config?.xai_applicability;
-        const hasAnyApplicable = applicability && Object.values(applicability).some(Boolean);
-        if (!hasAnyApplicable) {
-          toast.error('XAI methods are not applicable for this model. Please choose another model.', { duration: 5000, position: 'top-right' });
-          return;
+        if (isTimeseries) {
+          const applicability = config?.xai_applicability;
+          const hasAnyApplicable = applicability && Object.values(applicability).some(Boolean);
+          if (!hasAnyApplicable) {
+            toast.error('XAI methods are not applicable for this model. Please choose another model.', { duration: 5000, position: 'top-right' });
+            return;
+          }
         }
         setXaiConfig(config);
         setConfiguredModel(selectedModel);

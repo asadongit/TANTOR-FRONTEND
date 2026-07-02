@@ -132,7 +132,8 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
       setDatasetState({
         tableName: selectedTable, ensembleId: data.ensemble_id,
         columnNames: data.column_names || [], profileReportHtml: data.profile_report_html || '',
-        ...(data.datetime_convertible_columns && { 
+        tsColumnsName: data.ts_columns_name || [],
+        ...(data.datetime_convertible_columns && {
           datetimeConvertibleColumns: data.datetime_convertible_columns
           }),
       });

@@ -39,15 +39,13 @@ const DataPreviewModal = ({ isOpen, onClose, currentStep, predictionType }) => {
     };
 
     const multivariatePrefixMap = {
-        1: 'genesis',
-        2: 'initial_clean',
-        3: 'handle_missing_values',
-        4: 'feature_integrity_validation',
-        5: 'data_stabalization',
-        6: 'data_seasonalization',
-        7: 'data_stationarity_treatment',
-        8: 'feature_dependency_analysis',
-        9: 'scaling_and_encoding'
+        1: 'initial_clean',
+        2: 'handle_missing_values',
+        3: 'feature_integrity_validation',
+        4: 'data_stabalization',
+        5: 'data_seasonalization',
+        6: 'data_stationarity_treatment',
+        7: 'feature_dependency_analysis'
     };
 
     if (isUnivariate) {
