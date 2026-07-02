@@ -56,6 +56,7 @@ const NODE_CONFIGS = {
   code_execution: { bg: '#F1F5F9', color: '#475569', icon: FiCode, round: 14 },
   pii_node: { bg: '#FFEBEE', color: '#D32F2F', icon: FiShield, round: 14 },
   data_cleaning: { bg: '#ECFDF5', color: '#059669', icon: FiFilter, round: 14 },
+  db_node: { bg: '#D1FAE5', color: '#065F46', icon: FiDatabase, round: 14 },
   graph_ingestion: { bg: '#EFF6FF', color: '#1D4ED8', icon: FiDatabase, round: 14 },
   sensitivity_classifier: { bg: '#FEF3C7', color: '#B45309', icon: FiShield, round: 14 },
   rule_engine: { bg: '#FEE2E2', color: '#DC2626', icon: FiShield, round: 14 },

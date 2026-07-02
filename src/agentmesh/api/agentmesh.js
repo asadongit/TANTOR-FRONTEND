@@ -339,3 +339,7 @@ export const uploadJsonVariable = (workflowId, formData) => fetch(`${BASE}/workf
 // ─── Blackboard / Tasks ──────────────────────────────────────────────────────
 export const getBlackboardTasks = (threadId) =>
   request(`/workflow/thread/${threadId}/blackboard`);
+
+// ─── Database Operations ─────────────────────────────────────────────────────
+export const runDbQuery = (payload) =>
+  request('/db/run-query', { method: 'POST', body: JSON.stringify(payload) });
