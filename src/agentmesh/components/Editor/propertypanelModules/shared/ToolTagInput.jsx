@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, memo } from 'react';
 import { FiPlus, FiX, FiSearch, FiSettings, FiTool } from 'react-icons/fi';
 import { ToolConfigModal } from './ToolConfigModal';
 import { FONT } from './primitives';
+import { listTools } from '../../../../api/agentmesh';
 
 export const ToolTagInput = memo(function ToolTagInput({ value = [], configs = {}, onUpdate, availableTools = [] }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,6 +10,12 @@ export const ToolTagInput = memo(function ToolTagInput({ value = [], configs = {
   const [configTool, setConfigTool] = useState(null);
   const containerRef = useRef(null);
   const searchInputRef = useRef(null);
+
+  // Dynamic loading and scroll pagination states
+  const [pickerTools, setPickerTools] = useState([]);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -26,6 +33,47 @@ export const ToolTagInput = memo(function ToolTagInput({ value = [], configs = {
     }
     if (!isOpen) setSearchTerm('');
   }, [isOpen]);
+
+  const fetchTools = async (pageNum, searchVal, isAppend = false) => {
+    setLoading(true);
+    try {
+      const res = await listTools({
+        page: pageNum,
+        limit: 20,
+        search: searchVal,
+      });
+      const newTools = res.tools || [];
+      setPickerTools(prev => isAppend ? [...prev, ...newTools] : newTools);
+      setHasMore(newTools.length === 20);
+    } catch (err) {
+      console.error("Failed to load tools for picker:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isOpen) {
+      setPickerTools([]);
+      return;
+    }
+    
+    setPage(1);
+    const delayDebounce = setTimeout(() => {
+      fetchTools(1, searchTerm, false);
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchTerm, isOpen]);
+
+  const handleScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    if (scrollHeight - scrollTop <= clientHeight + 10 && !loading && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchTools(nextPage, searchTerm, true);
+    }
+  };
 
   const add = (tName) => {
     let uniqueName = tName;
@@ -69,13 +117,6 @@ export const ToolTagInput = memo(function ToolTagInput({ value = [], configs = {
     delete nextConfigs[tName];
     onUpdate(nextTools, nextConfigs);
   };
-
-  const filteredTools = availableTools.filter(t =>
-    t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (t.display_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (t.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (t.category && t.category.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
 
   return (
     <div className="relative" ref={containerRef}>
@@ -140,23 +181,33 @@ export const ToolTagInput = memo(function ToolTagInput({ value = [], configs = {
             </div>
           </div>
 
-          <div className="max-h-[220px] overflow-y-auto p-1">
-            {filteredTools.length === 0 ? (
+          <div
+            className="max-h-[220px] overflow-y-auto p-1"
+            onScroll={handleScroll}
+          >
+            {pickerTools.length === 0 && !loading ? (
               <div className="p-6 text-xs text-[var(--text-muted)] text-center">
                 <FiTool size={20} className="block mx-auto mb-2 opacity-30" />
                 {searchTerm ? `No tools matching "${searchTerm}"` : (availableTools.length === 0 ? 'No tools registered. Go to Tools page to add some.' : 'All tools already added.')}
               </div>
             ) : (
-              filteredTools.map(t => (
-                <div
-                  key={t.name}
-                  onClick={() => add(t.name)}
-                  className="p-2.5 px-3.5 rounded-lg cursor-pointer transition-all duration-150 m-0.5 flex flex-col hover:bg-[#F0F4FF] hover:translate-x-1"
-                >
-                  <div className="text-xs font-semibold text-[var(--text-primary)]">{t.display_name || t.name}</div>
-                  {t.description && <div className="text-[10px] text-[var(--text-muted)] mt-0.5 line-clamp-1">{t.description}</div>}
-                </div>
-              ))
+              <>
+                {pickerTools.map(t => (
+                  <div
+                    key={t.name}
+                    onClick={() => add(t.name)}
+                    className="p-2.5 px-3.5 rounded-lg cursor-pointer transition-all duration-150 m-0.5 flex flex-col hover:bg-[#F0F4FF] hover:translate-x-1"
+                  >
+                    <div className="text-xs font-semibold text-[var(--text-primary)]">{t.display_name || t.name}</div>
+                    {t.description && <div className="text-[10px] text-[var(--text-muted)] mt-0.5 line-clamp-1">{t.description}</div>}
+                  </div>
+                ))}
+                {loading && (
+                  <div className="p-2 text-center text-xs text-[var(--text-muted)]">
+                    Loading...
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

@@ -25,7 +25,7 @@ export const ToolConfigModal = memo(function ToolConfigModal({ toolName, config 
     }
   }, [toolName]);
 
-  const fields = (toolConfigs.length > 0
+  let fields = (toolConfigs.length > 0
     ? toolConfigs
     : (toolName.toLowerCase().includes('rag') || toolName.toLowerCase().includes('memory'))
       ? [
@@ -34,6 +34,21 @@ export const ToolConfigModal = memo(function ToolConfigModal({ toolName, config 
         { name: 'threshold', type: 'number', description: 'Similarity threshold (0.0 to 1.0)' }
       ]
       : []).filter(f => !(toolName === 'chart_generator' && f.name.startsWith('llm_')));
+
+  // Generic conditional rendering based on visible_if metadata
+  fields = fields.filter(f => {
+    if (!f.visible_if) return true;
+    const { field, value, values } = f.visible_if;
+    const currentVal = config[field];
+    
+    if (values && Array.isArray(values)) {
+      return values.includes(currentVal);
+    }
+    if (value !== undefined) {
+      return currentVal === value;
+    }
+    return true;
+  });
 
   const toolLlm = {
     provider: config.llm_provider || 'openai',
@@ -113,6 +128,12 @@ export const ToolConfigModal = memo(function ToolConfigModal({ toolName, config 
                       value={config[f.name] || f.default}
                       onChange={(v) => set(f.name, f.type === 'number' ? parseFloat(v) : v)}
                       options={f.options.map(o => ({ value: o, label: o }))}
+                    />
+                  ) : f.type === 'textarea' ? (
+                    <Textarea
+                      value={config[f.name] || ''}
+                      onChange={(v) => set(f.name, v)}
+                      rows={4}
                     />
                   ) : (
                     <Input

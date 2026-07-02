@@ -66,7 +66,13 @@ const NODE_DEFAULTS = {
     ce_mode: 'run_once',
   },
   email_node: {
-    label: 'SMTP Email Sender',
+    label: 'Email Sender',
+    email_auth_method: 'smtp',
+    email_tenant_id: '',
+    email_client_id: '',
+    email_client_secret: '',
+    email_google_service_account_json: '',
+    email_google_delegated_user: '',
     email_provider: 'Custom',
     email_to: '',
     email_cc: '',
@@ -81,6 +87,13 @@ const NODE_DEFAULTS = {
     email_attachments: '',
     email_headers: {},
     email_smtp_timeout: 15
+  },
+  stt_trigger: {
+    label: 'Speech to Text',
+    auto_start: false,
+    auto_stop: true,
+    silence_delay: 1500,
+    stt_lang: 'en-US'
   },
   button_trigger: {
     label: 'Button Trigger',
@@ -99,6 +112,15 @@ const NODE_DEFAULTS = {
     internal_nodes: [],
     internal_edges: [],
     original_edges: []
+  },
+  textToAudio: {
+    label: 'Text to Speech',
+    tts_library: 'piper',
+    audio_voice: 'en-US-GuyNeural',
+    kittentts_model: 'KittenML/kitten-tts-micro-0.8',
+    audio_speed: 1.0,
+    mute_audio: false,
+    audio_input_text: ''
   }
 };
 
@@ -176,6 +198,11 @@ const _reconstructRFNodesAndEdges = (rawNodes, rawEdges, meta, triggers) => {
           jt_pass_through: n.jt_pass_through ?? n.data?.jt_pass_through ?? false,
           weightage_categories: n.weightage_categories || n.data?.weightage_categories || [],
           weightage_output_key: n.weightage_output_key || n.data?.weightage_output_key || 'weightage_result',
+          weightage_approve_threshold: n.weightage_approve_threshold ?? n.data?.weightage_approve_threshold ?? 80,
+          weightage_review_threshold: n.weightage_review_threshold ?? n.data?.weightage_review_threshold ?? 50,
+          weightage_risk_bands: n.weightage_risk_bands || n.data?.weightage_risk_bands || [],
+          weightage_output_flags: n.weightage_output_flags || n.data?.weightage_output_flags || [],
+          weightage_cross_rules: n.weightage_cross_rules || n.data?.weightage_cross_rules || [],
           extractor_input_key: n.extractor_input_key || n.data?.extractor_input_key || 'latest_file_path',
           extractor_output_key: n.extractor_output_key || n.data?.extractor_output_key || 'extracted_elements',
         },
@@ -1004,7 +1031,7 @@ export const useWorkflowStore = create((set, get) => ({
           'chunk_size', 'chunk_overlap', 'ingestion_source_key',
           'k_results', 'threshold', 'chunking_strategy', 'search_type',
           'interrupt_before', 'interrupt_after', 'hitl_actions',
-          'audio_voice', 'mute_audio',
+          'audio_voice', 'mute_audio', 'tts_library', 'kittentts_model', 'audio_speed', 'audio_input_text',
           'split_field', 'batch_size',
           'file_format', 'file_name', 'file_data_key', 'file_overwrite',
           'api_method', 'api_url', 'api_headers', 'api_params', 'api_body', 'api_auth_type', 'api_auth_config', 'api_response_format', 'connection_id', 'api_protocol', 'graphql_query', 'use_curl', 'curl_command',
@@ -1027,6 +1054,8 @@ export const useWorkflowStore = create((set, get) => ({
           'button_label', 'button_input', 'button_category',
           'jt_input_key', 'jt_output_key', 'jt_mode', 'jt_query', 'jt_operations', 'jt_expression', 'jt_pass_through',
           'weightage_categories', 'weightage_output_key',
+          'weightage_approve_threshold', 'weightage_review_threshold',
+          'weightage_risk_bands', 'weightage_output_flags', 'weightage_cross_rules',
           'db_connection_string', 'db_database', 'db_collection', 'db_operation', 'db_document', 'db_query', 'db_output_key', 'db_limit',
           'transform_operation', 'transform_separator', 'transform_pick_fields', 'transform_rename_map', 'transform_omit_keys', 'transform_input_key', 'transform_output_key',
           'ocr_service_url', 'ocr_service_params', 'ocr_service_headers', 'ocr_service_response_type', 'ocr_service_file_field', 'ocr_service_text_path', 'ocr_multi_file_key',
@@ -1059,7 +1088,9 @@ export const useWorkflowStore = create((set, get) => ({
           // Code Execution
           'ce_language', 'ce_code', 'ce_input_key', 'ce_output_key', 'ce_mode',
           // SMTP Email Node
-          'email_provider', 'email_to', 'email_cc', 'email_bcc', 'email_subject', 'email_body', 'email_html', 'email_smtp_server', 'email_smtp_port', 'email_user', 'email_password', 'email_attachments', 'email_headers', 'email_smtp_timeout'
+          'email_provider', 'email_to', 'email_cc', 'email_bcc', 'email_subject', 'email_body', 'email_html', 'email_smtp_server', 'email_smtp_port', 'email_user', 'email_password', 'email_attachments', 'email_headers', 'email_smtp_timeout',
+          'email_auth_method', 'email_tenant_id', 'email_client_id', 'email_client_secret',
+          'email_google_service_account_json', 'email_google_delegated_user'
         ];
 
         const nodeConfig = {};

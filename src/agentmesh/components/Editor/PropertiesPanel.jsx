@@ -229,7 +229,7 @@ export default function PropertiesPanel() {
   );
 
   useEffect(() => {
-    listTools()
+    listTools({ limit: 1000 })
       .then((res) => {
         setAvailableTools(res.tools || []);
       })
