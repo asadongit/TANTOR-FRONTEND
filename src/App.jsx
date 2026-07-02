@@ -1,5 +1,5 @@
 import "../env-injector";
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { ReactFlowProvider } from "reactflow";
 import Header from "./components/Header";
@@ -49,6 +49,10 @@ const getSectionFromPath = (path) => {
 // ─── Inner layout — needs useLocation so must be inside <Router> ──────────────
 function MainLayout({ isSidebarCollapsed, toggleSidebar }) {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const fromMarketplace = location.state?.fromMarketplace || new URLSearchParams(location.search).get('from_marketplace') === 'true';
+  const usecaseName = location.state?.usecaseName || new URLSearchParams(location.search).get('usecase_name');
 
   // Lazy initializer: correct section on FIRST render — no flash/flicker
   const [activeSection, setActiveSection] = useState(
@@ -87,6 +91,45 @@ function MainLayout({ isSidebarCollapsed, toggleSidebar }) {
                 isAgentMesh ? 'overflow-hidden' : 'overflow-y-auto'
               }`}
             >
+              {fromMarketplace && (
+                <div style={{
+                  padding: '12px 24px',
+                  background: '#ffffff',
+                  borderBottom: '1px solid #e2e8f0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontSize: 13,
+                  color: '#64748b',
+                  fontWeight: 500,
+                  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                  zIndex: 20,
+                  position: 'relative'
+                }}>
+                  <button
+                    onClick={() => navigate('/ai/agent-mesh')}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      color: '#8b5cf6', // Light Purple
+                      fontWeight: 700,
+                      fontFamily: 'inherit',
+                      fontSize: 'inherit',
+                      transition: 'color 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#a78bfa'}
+                    onMouseLeave={e => e.currentTarget.style.color = '#8b5cf6'}
+                  >
+                    Marketplace
+                  </button>
+                  <span style={{ color: '#cbd5e1', fontSize: 11 }}>&gt;</span>
+                  <span style={{ color: '#1e293b', fontWeight: 600 }}>
+                    {usecaseName || 'Usecase Page'}
+                  </span>
+                </div>
+              )}
               <Routes>
                 <Route path="/datagovernance" element={<Navigate to="/" replace />} />
                 <Route

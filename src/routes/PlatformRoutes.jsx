@@ -39,11 +39,13 @@ import Audit from '../pages/platform/Audit/Audit';
 import Migration from '../pages/platform/migration/Migration';
 import Dedup from '../pages/platform/dedup/Dedup';
 import DedupResults from '../pages/platform/dedup/DedupResults';
+import CustomNavigationTestPage from '../pages/platform/CustomNavigationTestPage';
 
 
 export function PlatformRoutes() {
   return (
     <Routes>
+      <Route path="/custom-navigation-test" element={<CustomNavigationTestPage />} />
       <Route path="/audit" element={<Audit />} />
       <Route path="/project" element={<Project />} />
       <Route path="/connections" element={<Connections />} />
