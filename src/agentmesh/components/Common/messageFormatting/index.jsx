@@ -684,7 +684,9 @@ export const formatMessage = (msg, isCell = false, isLast = false) => {
     let pauseConfig = null;
     if (typeof cleanedMsg === 'object' && cleanedMsg !== null) {
         content = cleanedMsg.content || cleanedMsg.text || '';
-        if (cleanedMsg.additional_kwargs && cleanedMsg.additional_kwargs.pause_config) {
+        if (cleanedMsg.metadata && cleanedMsg.metadata.pause_config) {
+            pauseConfig = cleanedMsg.metadata.pause_config;
+        } else if (cleanedMsg.additional_kwargs && cleanedMsg.additional_kwargs.pause_config) {
             pauseConfig = cleanedMsg.additional_kwargs.pause_config;
         }
     } else if (typeof cleanedMsg === 'string') {
@@ -693,7 +695,9 @@ export const formatMessage = (msg, isCell = false, isLast = false) => {
         content = cleanedMsg.map(m => {
             if (typeof m === 'string') return m;
             if (m && typeof m === 'object') {
-                if (m.additional_kwargs && m.additional_kwargs.pause_config) {
+                if (m.metadata && m.metadata.pause_config) {
+                    pauseConfig = m.metadata.pause_config;
+                } else if (m.additional_kwargs && m.additional_kwargs.pause_config) {
                     pauseConfig = m.additional_kwargs.pause_config;
                 }
                 return m.content || m.text || JSON.stringify(m);
