@@ -73,6 +73,12 @@ function XAI() {
     return typeof value === 'number' ? value.toFixed(3) : value;
   };
 
+  const formatContribution = (value) => {
+    if (typeof value !== 'number') return value;
+    if (value !== 0 && Math.abs(value) < 0.0005) return value.toExponential(2);
+    return value.toFixed(3);
+  };
+
   const isRegression = xaiConfig?.modeling_type === 'regression';
 
   useEffect(() => {
@@ -664,7 +670,7 @@ function XAI() {
   return explanation.map((item, index) => ({
     id: index + 1,
     rule: item[0],
-    contribution: formatToThreeDecimals(item[1])
+    contribution: formatContribution(item[1])
   }));
 };
 

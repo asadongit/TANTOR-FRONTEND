@@ -534,7 +534,7 @@ const ModeSelection = ({ config, setConfig, readonly, onNotebookModeSelect }) =>
   );
 };
 
-const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, columnNames, tsColumnNames, hasError, errorMessage, sectionRef, activeWorkflowId, isValidating, setIsValidating, isTimeSeriesValidated, setIsTimeSeriesValidated, validationError, supervisedTargetFeatureError, timeSeriesTargetFeatureError, timeSeriesTimeColumnError, setValidationErrors }) => {
+const PredictionType = ({ config, setConfig, isValidated, onValidate, readonly, columnNames, tsColumnNames, entityColumnNames, hasError, errorMessage, sectionRef, activeWorkflowId, isValidating, setIsValidating, isTimeSeriesValidated, setIsTimeSeriesValidated, validationError, supervisedTargetFeatureError, timeSeriesTargetFeatureError, timeSeriesTimeColumnError, setValidationErrors }) => {
   const hostnameAI = window._env_?.VITE_AI_API;
   const { datasetState } = useAIPlayground();
   // frequency modal state for validation in timeseries
@@ -554,6 +554,12 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
     return (datasetState.datetimeConvertibleColumns || []).filter(name => !dropColumns.includes(name));
   };
 
+  const getAvailableEntityColumns = () => {
+    const dropColumns = config.drop_columns || [];
+    const excludeColumns = [config.targetFeature, config.timeColumn, ...dropColumns];
+    return (entityColumnNames || []).filter(name => !excludeColumns.includes(name));
+  };
+
   const handleValidate = async () => {
     await validateSupervisedLearning(config, datasetState, activeWorkflowId, hostnameAI, setIsValidating, onValidate);
   };
@@ -565,6 +571,7 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
         ...newConfig,
         targetFeature: '',
         timeColumn: '',
+        entity_cols: [],
 
       };
       setIsTimeSeriesValidated(false);
@@ -619,6 +626,7 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
   !config.targetFeature ||
   !config.timeColumn ||
   !config.frequency ||
+  (config.timeSeriesType === 'Multiseries' && !(config.entity_cols?.length > 0)) ||
   isValidating;
 
   return (
@@ -642,24 +650,28 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
                     newConfig.timeSeriesType = '';
                     newConfig.timeColumn = '';
                     newConfig.multivariate_columns = [];
+                    newConfig.entity_cols = [];
                   } else if (tab === 'Time Series') {
                     newConfig.classification = null;
                     newConfig.targetFeature = '';
                     newConfig.timeSeriesType = '';
                     newConfig.timeColumn = '';
                     newConfig.multivariate_columns = [];
+                    newConfig.entity_cols = [];
                   } else if (tab === 'Unsupervised') {
                     newConfig.classification = null;
                     newConfig.targetFeature = '';
                     newConfig.timeSeriesType = '';
                     newConfig.timeColumn = '';
                     newConfig.multivariate_columns = [];
+                    newConfig.entity_cols = [];
                   } else if (tab === 'Anomaly Detection') {
                     newConfig.classification = null;
                     newConfig.targetFeature = '';
                     newConfig.timeSeriesType = '';
                     newConfig.timeColumn = '';
                     newConfig.multivariate_columns = [];
+                    newConfig.entity_cols = [];
                   }
                   setConfig(newConfig);
                   // Clear validation errors when switching prediction types
@@ -800,21 +812,21 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
                   <RadioButton
                     label="Univariate"
                     checked={config.timeSeriesType === 'Univariate'}
-                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Univariate', multivariate_columns: [] ,  })}
+                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Univariate', multivariate_columns: [], entity_cols: [] })}
                     name="timeseries-type"
                     readonly={readonly}
                   />
                   <RadioButton
                     label="Multivariate"
                     checked={config.timeSeriesType === 'Multivariate'}
-                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Multivariate',  })}
+                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Multivariate', entity_cols: [] })}
                     name="timeseries-type"
                     readonly={readonly}
                   />
                   <RadioButton
                     label="Multiseries"
                     checked={config.timeSeriesType === 'Multiseries'}
-                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Multiseries', multivariate_columns: [] })}
+                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Multiseries', multivariate_columns: [], entity_cols: [] })}
                     name="timeseries-type"
                     readonly={readonly}
                   />
@@ -822,7 +834,10 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
               </div>
 
               {/* Dropdowns for Target and Time Column */}
-              <div className="flex flex-col gap-2" style={{ width: '340px' }}>
+              <div
+                className={config.timeSeriesType === 'Multiseries' ? 'grid grid-cols-2 gap-2' : 'flex flex-col gap-2'}
+                style={{ width: config.timeSeriesType === 'Multiseries' ? '520px' : '340px' }}
+              >
                 {/* Target Column */}
                 <div className="bg-white rounded-lg p-3">
                   <label className="block text-xs font-medium text-gray-700 mb-2">Target Column</label>
@@ -885,7 +900,7 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
                   )}
                 </div>
 
-                {['Univariate', 'Multivariate'].includes(config.timeSeriesType) && (
+                {['Univariate', 'Multivariate', 'Multiseries'].includes(config.timeSeriesType) && (
   <div className="bg-white rounded-lg p-3">
     <label className="block text-xs font-medium text-gray-700 mb-2">
       Frequency
@@ -903,6 +918,29 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
       placeholder="Select frequency."
       disabled={readonly}
       readonly={readonly}
+    />
+  </div>
+)}
+
+                {config.timeSeriesType === 'Multiseries' && (
+  <div className="bg-white rounded-lg p-3">
+    <label className="block text-xs font-medium text-gray-700 mb-2">
+      Entity Columns
+    </label>
+
+    <SearchableMultiSelect
+      selectedOptions={config.entity_cols || []}
+      onChange={(newEntityCols) => {
+        handleConfigChange({
+          ...config,
+          entity_cols: newEntityCols
+        });
+      }}
+      options={getAvailableEntityColumns()}
+      maxSelections={2}
+      disabled={readonly}
+      readonly={readonly}
+      excludeOption=""
     />
   </div>
 )}
@@ -1194,7 +1232,7 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
                 <input
                     type="range"
                     min="6"
-                    max="18"
+                    max="12"
                     value={config.timeSeriesLookback || 7}
                     disabled={readonly}
                     onChange={
@@ -1210,8 +1248,8 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
                       background: `linear-gradient(
                         to right,
                         #8e78b7 0%,
-                        #8e78b7 ${(((config.timeSeriesLookback || 7) - 6) / (18 - 6)) * 100}%,
-                        #E5E5E5 ${(((config.timeSeriesLookback || 7) - 6) / (18 - 6)) * 100}%,
+                        #8e78b7 ${(((config.timeSeriesLookback || 7) - 6) / (12 - 6)) * 100}%,
+                        #E5E5E5 ${(((config.timeSeriesLookback || 7) - 6) / (12 - 6)) * 100}%,
                         #E5E5E5 100%
                       )`
                     }}
@@ -1222,7 +1260,7 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
               </div>
               <div className="flex justify-between mt-3 text-xs text-gray-500">
               <span>6</span>
-              <span>18</span>
+              <span>12</span>
             </div>
           </div>
         </div>
@@ -1694,6 +1732,7 @@ function ModelGenesis() {
         timeColumn: savedConfig.time_column || '',
         frequency: savedConfig.frequency || '',
         multivariate_columns: savedConfig.selected_columns || [],
+        entity_cols: savedConfig.entity_cols || [],
         timeSeriesLookback: savedConfig.timeSeriesLookback || 7,
 
         trainSplit: Math.round((savedConfig.train_size || 0.7) * 100),
@@ -1717,6 +1756,7 @@ function ModelGenesis() {
       timeColumn: '',
       frequency: savedConfig?.frequency || '',
       multivariate_columns: [],
+      entity_cols: [],
       timeSeriesLookback: 7,
 
       trainSplit: 90,
@@ -1894,6 +1934,7 @@ function ModelGenesis() {
         frequency: config.predictionType === 'Time Series' ? config.frequency || null : null,
         timeseries_split: config.predictionType === 'Time Series' ? config.timeSeriesLookback : null,
         selected_columns: config.predictionType === 'Time Series' && config.timeSeriesType === 'Multivariate' ? (config.multivariate_columns || []) : [],
+        entity_cols: config.predictionType === 'Time Series' && config.timeSeriesType === 'Multiseries' ? (config.entity_cols || []) : [],
         fairness_columns: config.fairness_columns,
         data_preprocessing_mode: config.dataPreprocessing,
         model_mode: config.modelSelection,
@@ -1932,15 +1973,15 @@ function ModelGenesis() {
         });
         
         updateWorkflowStage('modelGenesis', {
-  config: {
-    ...config,
-    classification: config.predictionType === 'Time Series' ? '' : config.classification,
-    modelling_type: storedModellingType,
-    trainSize,
-    testSize
-  },
-  apiResponse: data
-});
+          config: {
+            ...config,
+            classification: config.predictionType === 'Time Series' ? '' : config.classification,
+            modelling_type: storedModellingType,
+            trainSize,
+            testSize
+          },
+          apiResponse: data
+        });
 
 
 // call the initial clean api for univariate for timeseries in this step
@@ -2062,6 +2103,7 @@ if (
             readonly={isInteractionLocked}
             columnNames={datasetState.columnNames}
             tsColumnNames={datasetState.tsColumnsName}
+            entityColumnNames={datasetState.entityColumns}
             hasError={!!validationErrors.predictionType}
             errorMessage={validationErrors.predictionType}
             supervisedTargetFeatureError={validationErrors.supervisedTargetFeature}
@@ -2079,15 +2121,15 @@ if (
 
           {config.predictionType === 'Time Series' && config.timeSeriesType === 'Multivariate' && isTimeSeriesValidated && (
            <SelectColumnsMultivariate
-  config={config}
-  setConfig={setConfig}
-  readonly={isInteractionLocked}
-  columnNames={datasetState.tsColumnsName}
-  hasError={!!validationErrors.multivariateColumns}
-  errorMessage={validationErrors.multivariateColumns}
-  sectionRef={multivariateColumnsRef}
-  setValidationErrors={setValidationErrors}
-/>
+          config={config}
+          setConfig={setConfig}
+          readonly={isInteractionLocked}
+          columnNames={datasetState.tsColumnsName}
+          hasError={!!validationErrors.multivariateColumns}
+          errorMessage={validationErrors.multivariateColumns}
+          sectionRef={multivariateColumnsRef}
+          setValidationErrors={setValidationErrors}
+        />
           )}
 
           <SplitSetting config={config} setConfig={setConfig} readonly={isInteractionLocked} />

@@ -94,7 +94,7 @@
     "backend_key": "Transformer",
     "info": "Transformer architecture relies on self-attention mechanisms to capture long-range dependencies and relationships within sequential data.",
     "hyperparameters": {
-      "d_model": { "low": "32", "high": "512" },
+      "d_model": { "low": "32", "high": "512", "warning": "d_model must be exactly divisible by nhead." },
       "nhead": { "low": "1", "high": "16" },
       "num_layers": { "low": "1", "high": "12" }
     }
@@ -105,7 +105,7 @@
     "backend_key": "Informer",
     "info": "Informer is an efficient Transformer variant specifically designed for long-sequence time-series forecasting using ProbSparse attention.",
     "hyperparameters": {
-      "d_model": { "low": "32", "high": "512" },
+      "d_model": { "low": "32", "high": "512", "warning": "d_model must be exactly divisible by n_heads." },
       "n_heads": { "low": "1", "high": "16" },
       "e_layers": { "low": "1", "high": "6" }
     }
@@ -116,7 +116,7 @@
     "backend_key": "FEDformer",
     "info": "Frequency Enhanced Decomposed Transformer improves long-term forecasting by combining decomposition methods with frequency-domain attention.",
     "hyperparameters": {
-      "d_model": { "low": "32", "high": "512" },
+      "d_model": { "low": "32", "high": "512", "warning": "d_model must be exactly divisible by n_heads." },
       "n_heads": { "low": "1", "high": "16" },
       "modes": { "low": "8", "high": "128" }
     }

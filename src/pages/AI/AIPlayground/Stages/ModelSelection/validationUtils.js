@@ -70,6 +70,47 @@ export const validateHyperparameterValue = (paramName, paramValue, value, silent
     return true;
 };
 
+export const validateMinPeriodsAgainstWindow = (hyperparameters, hyperparameterValues) => {
+    const minPeriodsConfig = hyperparameters?.min_periods;
+    if (!isRangeParameter(minPeriodsConfig) || !minPeriodsConfig.warning) {
+        return true;
+    }
+
+    const minPeriods = Number(hyperparameterValues?.min_periods);
+    const window = Number(hyperparameterValues?.window);
+
+    if (!Number.isFinite(minPeriods) || !Number.isFinite(window)) {
+        return true;
+    }
+
+    return minPeriods > window ? minPeriodsConfig.warning : true;
+};
+
+export const validateDModelAgainstHeads = (hyperparameters, hyperparameterValues) => {
+    const dModelConfig = hyperparameters?.d_model;
+    if (!isRangeParameter(dModelConfig) || !dModelConfig.warning) {
+        return true;
+    }
+
+    const headsParam = hyperparameters?.nhead
+        ? 'nhead'
+        : hyperparameters?.n_heads
+            ? 'n_heads'
+            : null;
+    if (!headsParam) {
+        return true;
+    }
+
+    const dModel = Number(hyperparameterValues?.d_model);
+    const heads = Number(hyperparameterValues?.[headsParam]);
+
+    if (!Number.isFinite(dModel) || !Number.isFinite(heads) || heads === 0) {
+        return true;
+    }
+
+    return dModel % heads !== 0 ? dModelConfig.warning : true;
+};
+
 const isFilled = (value) => (
     value !== null &&
     value !== undefined &&
@@ -107,6 +148,14 @@ export const validateAlgorithm = (algo) => {
                     }
                 }
             }
+        }
+
+        if (validateMinPeriodsAgainstWindow(algo.hyperparameters, algo.hyperparameterValues) !== true) {
+            return false;
+        }
+
+        if (validateDModelAgainstHeads(algo.hyperparameters, algo.hyperparameterValues) !== true) {
+            return false;
         }
 
         return true;

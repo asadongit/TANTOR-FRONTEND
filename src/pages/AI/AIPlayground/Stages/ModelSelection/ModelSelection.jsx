@@ -499,11 +499,11 @@ const REVERSE_METRIC_MAPPING = isTimeSeries
     // Reset metrics when problem type changes (regression vs classification)
     useEffect(() => {
         const savedMetrics = workflowState?.modelSelection?.config?.performance_metrics;
-        if (readonly && Array.isArray(savedMetrics) && savedMetrics.length > 0) {
+        if (Array.isArray(savedMetrics) && savedMetrics.length > 0) {
             return;
         }
         setMetrics(getInitialMetrics());
-    }, [isRegression,isTimeSeries, readonly, workflowState?.modelSelection?.config?.performance_metrics]);
+    }, [isRegression,isTimeSeries, workflowState?.modelSelection?.config?.performance_metrics]);
 
     const updateAlgorithmState = (algoId, updates) => {
         setAllAlgorithmsState(prevState => ({
