@@ -1074,40 +1074,29 @@ export default function RunPanel({ onClose }) {
                   </motion.div>
                 )}
               </AnimatePresence>
-
-              <div style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 10,
-                background: '#F3F4F6',
-                padding: 10,
-                borderRadius: 20,
-                border: `1px solid ${THEME_BORDER}`,
-                boxShadow: '0 8px 30px rgba(0,0,0,0.04)',
-                opacity: running ? 0.6 : 1,
-                pointerEvents: running ? 'none' : 'auto',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                justifyContent: 'center'
-              }}>
-                {(() => {
-                  if (pausedInfo.nodeType === 'followup_selection') {
+              {pausedInfo.nodeType !== 'followup_selection' && (
+                <ActionButtonGroup
+                  actions={pausedInfo.enabledActions || ['approve', 'rework', 'reject']}
+                  onApprove={() => onResume('approve')}
+                  onRework={() => setPausedInfo({ ...pausedInfo, showReworkForm: !pausedInfo.showReworkForm })}
+                  onReject={() => onResume('reject')}
+                  isLoading={running}
+                />
+              )}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', pointerEvents: 'auto' }}>
+              {pausedInfo.isPaused && pausedInfo.nodeType === 'followup_selection' && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, background: '#F3F4F6', padding: 10, borderRadius: 20, border: `1px solid ${THEME_BORDER}`, boxShadow: '0 8px 30px rgba(0,0,0,0.04)', opacity: running ? 0.6 : 1, pointerEvents: running ? 'none' : 'auto', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', justifyContent: 'center' }}>
+                  {(() => {
                     const questionText = pausedInfo.nodeConfig?.question || pausedInfo.pausedNodeOutput?.replace('__WAIT_FOR_HUMAN__', '').trim();
                     const options = pausedInfo.nodeConfig?.options || [];
                     const allowCustom = pausedInfo.nodeConfig?.allow_custom;
-                    
                     if (showCustomInput || options.length === 0) {
                       return (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', alignItems: 'center', padding: '4px 8px' }}>
                           {questionText && (
-                            <div style={{
-                              fontSize: '13.5px',
-                              color: '#1F2937',
-                              fontWeight: '600',
-                              textAlign: 'center',
-                              lineHeight: '1.5',
-                              maxWidth: '600px',
-                              marginBottom: '4px'
-                            }}>
+                            <div style={{ fontSize: '13.5px', color: '#1F2937', fontWeight: '600', textAlign: 'center', lineHeight: '1.5', maxWidth: '600px', marginBottom: '4px' }}>
                               {questionText}
                             </div>
                           )}
@@ -1115,62 +1104,22 @@ export default function RunPanel({ onClose }) {
                             {options.length > 0 && (
                               <button
                                 onClick={() => setShowCustomInput(false)}
-                                style={{
-                                  padding: '8px 12px',
-                                  borderRadius: '10px',
-                                  border: '1px solid #D1D5DB',
-                                  background: '#FFFFFF',
-                                  color: '#4B5563',
-                                  fontSize: '12px',
-                                  fontWeight: '600',
-                                  cursor: 'pointer'
-                                }}
+                                style={{ padding: '8px 12px', borderRadius: '10px', border: '1px solid #D1D5DB', background: '#FFFFFF', color: '#4B5563', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
                               >
                                 Back
                               </button>
                             )}
                             <input
-                              type="text"
-                              value={customInputText}
+                              type="text" value={customInputText}
                               onChange={(e) => setCustomInputText(e.target.value)}
                               placeholder="Type your custom answer..."
-                              style={{
-                                flex: 1,
-                                padding: '8px 12px',
-                                borderRadius: '10px',
-                                border: '1px solid #D1D5DB',
-                                fontSize: '12.5px',
-                                outline: 'none',
-                                background: '#FFFFFF',
-                                color: '#1F2937'
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && customInputText.trim()) {
-                                  const val = customInputText;
-                                  addEvent({ type: 'user_message', content: val });
-                                  onResume('approve', { selected_option: val });
-                                }
-                              }}
+                              style={{ flex: 1, padding: '8px 12px', borderRadius: '10px', border: '1px solid #D1D5DB', fontSize: '12.5px', outline: 'none', background: '#FFFFFF', color: '#1F2937' }}
+                              onKeyDown={(e) => { if (e.key === 'Enter' && customInputText.trim()) { const val = customInputText; addEvent({ type: 'user_message', content: val }); onResume('approve', { selected_option: val }); } }}
                             />
                             <button
-                              onClick={() => {
-                                if (customInputText.trim()) {
-                                  const val = customInputText;
-                                  addEvent({ type: 'user_message', content: val });
-                                  onResume('approve', { selected_option: val });
-                                }
-                              }}
+                              onClick={() => { if (customInputText.trim()) { const val = customInputText; addEvent({ type: 'user_message', content: val }); onResume('approve', { selected_option: val }); } }}
                               disabled={!customInputText.trim()}
-                              style={{
-                                padding: '8px 16px',
-                                borderRadius: '10px',
-                                border: 'none',
-                                background: customInputText.trim() ? THEME_ACCENT : '#E5E7EB',
-                                color: '#FFFFFF',
-                                fontSize: '12.5px',
-                                fontWeight: '600',
-                                cursor: customInputText.trim() ? 'pointer' : 'not-allowed'
-                              }}
+                              style={{ padding: '8px 16px', borderRadius: '10px', border: 'none', background: customInputText.trim() ? THEME_ACCENT : '#E5E7EB', color: '#FFFFFF', fontSize: '12.5px', fontWeight: '600', cursor: customInputText.trim() ? 'pointer' : 'not-allowed' }}
                             >
                               Send
                             </button>
@@ -1178,95 +1127,35 @@ export default function RunPanel({ onClose }) {
                         </div>
                       );
                     }
-
                     return (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', alignItems: 'center', padding: '4px 8px' }}>
                         {questionText && (
-                          <div style={{
-                            fontSize: '13.5px',
-                            color: '#1F2937',
-                            fontWeight: '600',
-                            textAlign: 'center',
-                            lineHeight: '1.5',
-                            maxWidth: '600px',
-                            marginBottom: '4px'
-                          }}>
+                          <div style={{ fontSize: '13.5px', color: '#1F2937', fontWeight: '600', textAlign: 'center', lineHeight: '1.5', maxWidth: '600px', marginBottom: '4px' }}>
                             {questionText}
                           </div>
                         )}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', width: '100%' }}>
-                          {options.map((option) => {
-                            return (
-                              <motion.button
-                                key={option}
-                                whileHover={{ y: -1, scale: 1.01 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => {
-                                  addEvent({
-                                    type: 'user_message',
-                                    content: option
-                                  });
-                                  onResume('approve', {
-                                    selected_option: option
-                                  });
-                                }}
-                                style={{
-                                  padding: '8px 16px',
-                                  borderRadius: '10px',
-                                  border: '1px solid #E5E7EB',
-                                  background: '#FFFFFF',
-                                  color: '#1F2937',
-                                  fontWeight: '600',
-                                  fontSize: '12.5px',
-                                  cursor: 'pointer',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '6px',
-                                  transition: 'all 0.2s',
-                                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.background = '#F9FAFB';
-                                  e.currentTarget.style.borderColor = '#D1D5DB';
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.background = '#FFFFFF';
-                                  e.currentTarget.style.borderColor = '#E5E7EB';
-                                }}
-                              >
-                                <span>{option}</span>
-                              </motion.button>
-                            );
-                          })}
-
+                          {options.map((option) => (
+                            <motion.button
+                              key={option}
+                              whileHover={{ y: -1, scale: 1.01 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => { addEvent({ type: 'user_message', content: option }); onResume('approve', { selected_option: option }); }}
+                              style={{ padding: '8px 16px', borderRadius: '10px', border: '1px solid #E5E7EB', background: '#FFFFFF', color: '#1F2937', fontWeight: '600', fontSize: '12.5px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = '#F9FAFB'; e.currentTarget.style.borderColor = '#D1D5DB'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.borderColor = '#E5E7EB'; }}
+                            >
+                              <span>{option}</span>
+                            </motion.button>
+                          ))}
                           {allowCustom && (
                             <motion.button
                               whileHover={{ y: -1, scale: 1.01 }}
                               whileTap={{ scale: 0.98 }}
                               onClick={() => setShowCustomInput(true)}
-                              style={{
-                                padding: '8px 16px',
-                                borderRadius: '10px',
-                                border: `1px dashed ${THEME_ACCENT}`,
-                                background: 'rgba(142, 119, 187, 0.05)',
-                                color: THEME_ACCENT,
-                                fontWeight: '600',
-                                fontSize: '12.5px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                transition: 'all 0.2s',
-                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(142, 119, 187, 0.1)';
-                                e.currentTarget.style.borderColor = THEME_ACCENT;
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(142, 119, 187, 0.05)';
-                                e.currentTarget.style.borderColor = THEME_ACCENT;
-                              }}
+                              style={{ padding: '8px 16px', borderRadius: '10px', border: `1px dashed ${THEME_ACCENT}`, background: 'rgba(142, 119, 187, 0.05)', color: THEME_ACCENT, fontWeight: '600', fontSize: '12.5px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(142, 119, 187, 0.1)'; e.currentTarget.style.borderColor = THEME_ACCENT; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(142, 119, 187, 0.05)'; e.currentTarget.style.borderColor = THEME_ACCENT; }}
                             >
                               <span>Custom Answer...</span>
                             </motion.button>
@@ -1274,114 +1163,9 @@ export default function RunPanel({ onClose }) {
                         </div>
                       </div>
                     );
-                  }
-
-                  const nextNodeId = pausedInfo.nextNode;
-                  let choiceButtons = [];
-                  if (pausedInfo.context?.paused_subgraph_buttons) {
-                    choiceButtons = pausedInfo.context.paused_subgraph_buttons;
-                  } else {
-                    const outgoingEdges = edges ? edges.filter(e => e.source === nextNodeId) : [];
-                    choiceButtons = outgoingEdges
-                      .map(e => nodes.find(n => n.id === e.target || (n.data && n.data.id === e.target)))
-                      .filter(n => n && (n.type === 'button_trigger' || n.data?.type === 'button_trigger'));
-                  }
-
-                  if (choiceButtons.length > 0) {
-                    return choiceButtons.map((btn) => {
-                      const catStyles = getButtonCategoryStyles(btn.data?.button_category || btn.button_category || btn.data?.category || btn.category);
-                      return (
-                        <motion.button
-                          key={btn.id}
-                          whileHover={{ y: -1, scale: 1.01 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => onResume('approve', { clicked_button_id: btn.id })}
-                          style={{
-                            flex: 1,
-                            maxWidth: '200px',
-                            padding: '10px 18px',
-                            borderRadius: '10px',
-                            background: catStyles.bg,
-                            color: catStyles.color,
-                            border: `1px solid ${catStyles.border}`,
-                            fontWeight: '600',
-                            fontSize: '12.5px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '6px',
-                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = catStyles.bgHover;
-                            e.currentTarget.style.borderColor = catStyles.borderHover;
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = catStyles.bg;
-                            e.currentTarget.style.borderColor = catStyles.border;
-                          }}
-                        >
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: catStyles.dotColor, opacity: 0.8 }} />
-                          {btn.data?.button_label || btn.button_label || btn.label || btn.data?.label || 'Proceed'}
-                        </motion.button>
-                      );
-                    });
-                  }
-
-                  if (pausedInfo.nodeType === 'button_trigger') {
-                    const catStyles = getButtonCategoryStyles(pausedInfo.nodeConfig?.data?.button_category || pausedInfo.nodeConfig?.button_category);
-                    return (
-                      <motion.button
-                        whileHover={{ y: -1, scale: 1.01 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => onResume('approve')}
-                        style={{
-                          flex: 1,
-                          maxWidth: '200px',
-                          padding: '10px 18px',
-                          borderRadius: '10px',
-                          background: catStyles.bg,
-                          color: catStyles.color,
-                          border: `1px solid ${catStyles.border}`,
-                          fontWeight: '600',
-                          fontSize: '12.5px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px',
-                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = catStyles.bgHover;
-                          e.currentTarget.style.borderColor = catStyles.borderHover;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = catStyles.bg;
-                          e.currentTarget.style.borderColor = catStyles.border;
-                        }}
-                      >
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: catStyles.dotColor, opacity: 0.8 }} />
-                        {pausedInfo.nodeConfig?.data?.button_label || pausedInfo.nodeConfig?.button_label || 'Proceed'}
-                      </motion.button>
-                    );
-                  }
-
-                  return (
-                    <ActionButtonGroup
-                      actions={pausedInfo.enabledActions || ['approve', 'rework', 'reject']}
-                      onApprove={() => onResume('approve')}
-                      onRework={() => setPausedInfo({ ...pausedInfo, showReworkForm: !pausedInfo.showReworkForm })}
-                      onReject={() => onResume('reject')}
-                      isLoading={running}
-                    />
-                  );
-                })()}
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', pointerEvents: 'auto' }}>
+                  })()}
+                </div>
+              )}
               {canRun && !running && !isChatStarted && (hasButtonTriggers || hasOcrNodes) && (
                 <div style={{
                   display: 'flex',
@@ -1504,7 +1288,7 @@ export default function RunPanel({ onClose }) {
                 </motion.button>
               )}
 
-              {!hideInput && !hasStartingSttNode && !hasStartingCameraNode && !(pausedInfo.isPaused && pausedInfo.nodeType === 'stt_trigger') && !(pausedInfo.isPaused && pausedInfo.nodeType === 'camera') && (
+              {!hideInput && !hasStartingSttNode && !hasStartingCameraNode && !(pausedInfo.isPaused && pausedInfo.nodeType === 'stt_trigger') && !(pausedInfo.isPaused && pausedInfo.nodeType === 'camera') && !(pausedInfo.isPaused && pausedInfo.nodeType === 'followup_selection') && (
                 <ChatInput
                   onSend={onSend}
                   running={running}

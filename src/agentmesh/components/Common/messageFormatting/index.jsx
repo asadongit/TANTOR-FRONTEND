@@ -691,6 +691,30 @@ export const formatMessage = (msg, isCell = false, isLast = false) => {
         content = JSON.stringify(cleanedMsg, null, 2);
     }
 
+    if (typeof content === 'string') {
+        if (content.includes('__FOLLOWUP_SELECTION__{SPLIT}')) {
+            // Already split or handled
+        } else if (content.includes('__FOLLOWUP_SELECTION__:')) {
+            try {
+                const parts = content.split('__FOLLOWUP_SELECTION__:', 2);
+                const payloadStr = parts[1] || '';
+                const payload = JSON.parse(payloadStr.trim());
+                content = payload.question || '';
+            } catch (e) {
+                content = content.replace(/__FOLLOWUP_SELECTION__:[\s\S]*/g, '').replace('__WAIT_FOR_HUMAN__', '').trim();
+            }
+        } else if (content.includes('__FOLLOWUP__:')) {
+            try {
+                const parts = content.split('__FOLLOWUP__:', 2);
+                const payloadStr = parts[1] || '';
+                const payload = JSON.parse(payloadStr.trim());
+                content = `Form: ${payload.title || 'Information Required'}`;
+            } catch (e) {
+                content = 'Information Required';
+            }
+        }
+    }
+
     // Detect if content is HTML to render it directly
     const trimmedContent = typeof content === 'string' ? content.trim() : '';
     const isHtml = trimmedContent.startsWith('<') && 
