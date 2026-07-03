@@ -111,6 +111,7 @@ export default function Navbar() {
   const [customMarketplaceDesc, setCustomMarketplaceDesc] = React.useState('');
   const [launchMode, setLaunchMode] = React.useState('default');
   const [customLaunchUrl, setCustomLaunchUrl] = React.useState('');
+  const [navigationPath, setNavigationPath] = React.useState('');
   const [currentVersion, setCurrentVersion] = React.useState(null);
   const [showMetadataPrompt, setShowMetadataPrompt] = React.useState(false);
   const [promptName, setPromptName] = React.useState('');
@@ -144,7 +145,9 @@ export default function Navbar() {
         tags: tagsList,
         marketplace_name: useWorkflowMeta ? null : customMarketplaceName,
         marketplace_description: useWorkflowMeta ? null : customMarketplaceDesc,
-        launch_url: launchMode === 'default' ? null : customLaunchUrl
+        launch_url: launchMode === 'custom' ? customLaunchUrl : null,
+        launch_mode: launchMode,
+        navigation_path: launchMode === 'navigation' ? navigationPath : null
       });
       setStatus('compiled');
       setShowPublishModal(false);
@@ -709,8 +712,9 @@ export default function Navbar() {
                             setCustomMarketplaceName(res.marketplace_name || workflowName);
                             setCustomMarketplaceDesc(res.marketplace_description || workflowDescription);
                             setPublishTags(res.tags ? res.tags.join(', ') : '');
-                            setLaunchMode(res.launch_url && res.launch_url !== 'swagger' ? 'custom' : 'default');
+                            setLaunchMode(res.launch_mode || (res.launch_url && res.launch_url !== 'swagger' ? 'custom' : 'default'));
                             setCustomLaunchUrl(res.launch_url && res.launch_url !== 'swagger' ? res.launch_url : '');
+                            setNavigationPath(res.navigation_path || '');
                             setCurrentVersion(res.version);
                           } else {
                             setUseWorkflowMeta(true);
@@ -719,6 +723,7 @@ export default function Navbar() {
                             setPublishTags('');
                             setLaunchMode('default');
                             setCustomLaunchUrl('');
+                            setNavigationPath('');
                             setCurrentVersion(null);
                           }
                         } catch (err) {
@@ -1470,6 +1475,19 @@ export default function Navbar() {
                   >
                     Custom URL
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setLaunchMode('navigation')}
+                    style={{
+                      flex: 1, padding: '8px 12px', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: launchMode === 'navigation' ? 700 : 500,
+                      background: launchMode === 'navigation' ? 'white' : 'transparent',
+                      boxShadow: launchMode === 'navigation' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
+                      color: launchMode === 'navigation' ? 'var(--theme-primary)' : 'var(--text-secondary)',
+                      cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit'
+                    }}
+                  >
+                    Navigation
+                  </button>
                 </div>
                 {launchMode === 'custom' && (
                   <input
@@ -1477,6 +1495,29 @@ export default function Navbar() {
                     value={customLaunchUrl}
                     onChange={(e) => setCustomLaunchUrl(e.target.value)}
                     placeholder="https://example.com/custom-launch-endpoint"
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      background: 'white',
+                      border: '1px solid var(--border)',
+                      borderRadius: 10,
+                      color: 'var(--text-primary)',
+                      fontSize: 13,
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      transition: 'border-color 0.2s',
+                      fontFamily: 'inherit'
+                    }}
+                    onFocus={e => e.target.style.borderColor = 'var(--theme-primary)'}
+                    onBlur={e => e.target.style.borderColor = 'var(--border)'}
+                  />
+                )}
+                {launchMode === 'navigation' && (
+                  <input
+                    type="text"
+                    value={navigationPath}
+                    onChange={(e) => setNavigationPath(e.target.value)}
+                    placeholder="/custom-navigation-test"
                     style={{
                       width: '100%',
                       padding: '10px 14px',

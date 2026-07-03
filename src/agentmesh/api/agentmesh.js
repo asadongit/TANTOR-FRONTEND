@@ -1,4 +1,4 @@
-const BASE = window._env_?.VITE_AGENT_MESH || import.meta.env.VITE_AGENT_MESH || 'http://localhost:8000/api/v1/agentmesh';
+const BASE = globalThis._env_?.VITE_AGENT_MESH || import.meta.env.VITE_AGENT_MESH || 'http://localhost:8000/api/v1/agentmesh';
 
 export const getBackendUrl = () => {
   return BASE.replace('/api/v1/agentmesh', '');
@@ -45,7 +45,7 @@ export const publishWorkflow = (id, params = {}) =>
 export const getMarketplaceUsecase = (id) =>
   request(`/workflow/${id}/marketplace`);
 
-export const listMarketplaceUsecases = (params = {}) => {
+export const listMarketplaceUsecases = (params = {}, options = {}) => {
   const { page = 1, limit = 100, group, category, search, tag, adminStatus } = params;
   const p = new URLSearchParams({ page, limit });
   if (group && group !== 'All') p.set('group', group);
@@ -53,7 +53,7 @@ export const listMarketplaceUsecases = (params = {}) => {
   if (search) p.set('search', search);
   if (tag && tag !== 'All') p.set('tag', tag);
   if (adminStatus && adminStatus !== 'All') p.set('admin_status', adminStatus);
-  return request(`/marketplace/usecases?${p}`);
+  return request(`/marketplace/usecases?${p}`, options);
 };
 
 export const updateMarketplaceUsecaseStatus = (workflowId, status, remarks = null) =>
@@ -105,13 +105,13 @@ export const streamWorkflow = (workflowId, payload, onEvent) => {
 };
 
 // ─── Tools ────────────────────────────────────────────────────────────────────
-export const listTools = (params = {}) => {
+export const listTools = (params = {}, options = {}) => {
   const { page = 1, limit = 100, search, category, package: pkg } = params;
   const p = new URLSearchParams({ page, limit });
   if (search) p.set('search', search);
   if (category) p.set('category', category);
   if (pkg) p.set('package', pkg);
-  return request(`/tools?${p}`);
+  return request(`/tools?${p}`, options);
 };
 export const listToolPackages = (params = {}) => {
   const { page = 1, limit = 10, search } = params;
@@ -226,11 +226,11 @@ export const readVfsFile = (rootDir, filePath, threadId) => {
   const p = new URLSearchParams({ root_dir: rootDir, file_path: filePath, thread_id: threadId });
   return request(`/deep-agent/vfs/read?${p}`);
 };
-export const listAvailableSkills = (params = {}) => {
+export const listAvailableSkills = (params = {}, options = {}) => {
   const { page = 1, limit = 1000, search } = params;
   const p = new URLSearchParams({ page, limit });
   if (search) p.set('search', search);
-  return request(`/skills/list?${p}`);
+  return request(`/skills/list?${p}`, options);
 };
 export const createSkill = (payload) => request('/skills/create', { method: 'POST', body: JSON.stringify(payload) });
 export const deleteSkill = (id) => request(`/skills/${id}`, { method: 'DELETE' });
@@ -238,13 +238,13 @@ export const listAvailableModels = () => request('/models/available');
 export const testConnection = (payload) => request('/models/test-connection', { method: 'POST', body: JSON.stringify(payload) });
 
 // ─── Agent Templates ──────────────────────────────────────────────────────────
-export const listAgentTemplates = (params = {}) => {
+export const listAgentTemplates = (params = {}, options = {}) => {
   const { page = 1, limit = 50, group, category, search } = params;
   const p = new URLSearchParams({ page, limit });
   if (group) p.set('group', group);
   if (category) p.set('category', category);
   if (search) p.set('search', search);
-  return request(`/agent-templates?${p}`);
+  return request(`/agent-templates?${p}`, options);
 };
 export const saveAgentTemplate = (payload) =>
   request('/agent-templates', { method: 'POST', body: JSON.stringify(payload) });
@@ -279,7 +279,7 @@ export const listComponentTemplateFilters = (params) => {
   return request(`/component-templates/filters?${p}`);
 };
 
-export const listComponentTemplates = (params = {}) => {
+export const listComponentTemplates = (params = {}, options = {}) => {
   const { page = 1, limit = 50, group, category_id, category_name, type, search, exclude_type } = params;
   const p = new URLSearchParams({ page, limit });
   if (group) p.set('group', group);
@@ -339,3 +339,7 @@ export const uploadJsonVariable = (workflowId, formData) => fetch(`${BASE}/workf
 // ─── Blackboard / Tasks ──────────────────────────────────────────────────────
 export const getBlackboardTasks = (threadId) =>
   request(`/workflow/thread/${threadId}/blackboard`);
+
+// ─── Database Operations ─────────────────────────────────────────────────────
+export const runDbQuery = (payload) =>
+  request('/db/run-query', { method: 'POST', body: JSON.stringify(payload) });

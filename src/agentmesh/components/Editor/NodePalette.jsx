@@ -1,11 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import PropTypes from 'prop-types';
+import toast from 'react-hot-toast';
 import { useWorkflowStore } from '../../store';
 import {
   FiPlay, FiCpu, FiBox, FiGitMerge,
   FiTarget, FiShare2, FiBookOpen, FiLink,
-  FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiAlertTriangle, FiZap, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiCamera, FiLayers, FiInbox, FiDatabase, FiServer,
-  FiCode, FiSliders, FiInfo, FiMic, FiEye, FiVideo, FiMail
+  FiSearch, FiGlobe, FiClock, FiVolume2, FiRepeat, FiFileText, FiBell, FiAlertTriangle, FiZap, FiGitBranch, FiActivity, FiCheck, FiEdit, FiFilter, FiShield, FiLayers, FiInbox, FiDatabase, FiServer,
+  FiCode, FiSliders, FiInfo, FiMic, FiEye, FiVideo, FiMail, FiChevronDown
 } from 'react-icons/fi';
+import { 
+  listAgentTemplates, 
+  getAgentTemplate,
+  listComponentTemplates, 
+  listTools, 
+  listAvailableSkills, 
+  listWorkflowTemplates,
+  getWorkflowTemplate 
+} from '../../api/agentmesh';
+import AddToolModal from '../Apps/AgentMeshModules/addToolModal';
+import AddSkillModal from '../Apps/AgentMeshModules/addSkillModal';
+import AgentTypeSelectorModal from './AgentTypeSelectorModal';
 
 export const NODE_TYPES = [
   // Events & Triggers
@@ -61,7 +75,7 @@ export const NODE_TYPES = [
   { type: 'output_parser', icon: FiFilter,  label: 'Output Parser',  desc: 'Repairs and validates malformed JSON text outputs.', detailedDesc: 'Analyzes raw agent text outputs, extracts JSON strings, repairs syntax errors, and validates schema format to ensure robust structured data downstream.', bg: '#FEF3C7', color: '#D97706', category: 'Data & Storage' },
   { type: 'payload_builder', icon: FiBox,  label: 'Payload Builder',  desc: 'Constructs structured JSON objects from templates.', detailedDesc: 'Builds custom JSON payloads by mapping keys and values from context variables, preparing data to be sent to external webhooks or APIs.', bg: '#E0F2FE', color: '#0369A1', category: 'Data & Storage' },
   { type: 'pattern_extract', icon: FiSearch, label: 'Pattern Extractor', desc: 'Extracts specific values using Regex or keywords.', detailedDesc: 'Searches text data for specific patterns (like dates, invoice numbers, or amounts) using regular expressions or keyword match lists and saves them as structured variables.', bg: '#FDF2F8', color: '#DB2777', category: 'Data & Storage' },
-  { type: 'db_node',    icon: FiBox,       label: 'MongoDB',        desc: 'Reads or writes data to MongoDB collections.', detailedDesc: 'Directly queries, updates, inserts, or deletes documents in a MongoDB database using connection strings and query parameters.', bg: '#D1FAE5', color: '#065F46', category: 'Data & Storage' },
+  { type: 'db_node',    icon: FiDatabase,  label: 'Database',       desc: 'Reads or writes data to SQL (Postgres, SQLite) or NoSQL (MongoDB) databases.', detailedDesc: 'Directly executes queries, updates, inserts, or deletes in PostgreSQL, SQLite, or MongoDB using connection strings and parameterized inputs.', bg: '#D1FAE5', color: '#065F46', category: 'Data & Storage' },
   { type: 'json_transform', icon: FiCode,   label: 'JSON Transform', desc: 'Reshapes JSON data using JMESPath queries or Python.', detailedDesc: 'Applies JMESPath query syntax or lightweight Python code to filter, reshape, map, and transform complex JSON payloads into the desired format.', bg: '#F5F3FF', color: '#7C3AED', category: 'Data & Storage' },
   { type: 'json_transform_va', icon: FiCode,   label: 'Flatten JSON (VA)', desc: 'Flattens, picks, renames, or omits JSON fields.', detailedDesc: 'A simplified utility to flatten nested objects, select specific fields, rename keys, or omit sensitive values from JSON datasets.', bg: '#E0F2FE', color: '#0369A1', category: 'Data & Storage' },
   { type: 'code_execution', icon: FiCode,   label: 'Code',         desc: 'Executes custom Python scripts for data processing and transformation.', detailedDesc: 'Write and run Python code directly in your workflow. Full multi-line script support with sandboxed execution. Available variables: input_data, input_items, context. Set the result variable to produce output.', bg: '#F1F5F9', color: '#475569', category: 'Data & Storage' },
@@ -93,20 +107,41 @@ export const NODE_TYPES = [
 export default function NodePalette({ onClose }) {
   const addNode = useWorkflowStore((s) => s.addNode);
   const setNodeData = useWorkflowStore((s) => s.setNodeData);
+  const mergeTemplateIntoEditor = useWorkflowStore((s) => s.mergeTemplateIntoEditor);
+  
+  const [viewMode, setViewMode] = useState('nodes'); // 'nodes' | 'agents' | 'apis' | 'tools' | 'skills' | 'templates'
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [mergingTemplateId, setMergingTemplateId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
+  const isFetchingRef = useRef(false);
+  const tooltipRef = useRef(null);
+
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [collapsed, setCollapsed] = useState({});
   const [tooltipData, setTooltipData] = useState(null); // { node, x, y }
+  const [windowHeight, setWindowHeight] = useState(window.innerHeight);
+  const [tooltipHeight, setTooltipHeight] = useState(240);
+
+  // Modals state
+  const [toolToAdd, setToolToAdd] = useState(null);
+  const [skillToAdd, setSkillToAdd] = useState(null);
+  const [agentTypeToSelect, setAgentTypeToSelect] = useState(null);
 
   const toggleCategory = (cat) => {
     setCollapsed(prev => ({ ...prev, [cat]: !prev[cat] }));
   };
 
-  const allNodes = [...NODE_TYPES];
-
-  const filteredNodes = allNodes.filter(n => 
+  const filteredNodes = NODE_TYPES.filter(n => 
     n.label.toLowerCase().includes(search.toLowerCase()) || 
     n.desc.toLowerCase().includes(search.toLowerCase())
   );
+
   const CATEGORY_ORDER = [
     'Events & Triggers', 
     'Visual Organizers',
@@ -128,25 +163,263 @@ export default function NodePalette({ onClose }) {
 
   const handleDragStart = (e, n) => {
     e.dataTransfer.setData('application/agentmesh-node', n.type);
-    if (n.isTemplate && n.config) {
-       e.dataTransfer.setData('application/agentmesh-config', JSON.stringify(n.config));
-    }
     e.dataTransfer.effectAllowed = 'move';
   };
 
   const handleAdd = (n) => {
-    const id = addNode(n.type, { x: 200 + Math.random() * 300, y: 100 + Math.random() * 200 });
-    if (n.isTemplate && n.config && id) {
-       setNodeData(id, n.config);
+    addNode(n.type, { x: 200 + Math.random() * 300, y: 100 + Math.random() * 200 });
+    onClose?.();
+  };
+
+  // Debounce search input changes and reset page
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Monitor window resize to recalculate screen limits for tooltips
+  useEffect(() => {
+    const handleResize = () => setWindowHeight(window.innerHeight);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Recalculate tooltip offset height when tooltip contents change
+  useEffect(() => {
+    if (tooltipRef.current) {
+      setTooltipHeight(tooltipRef.current.offsetHeight);
     }
+  }, [tooltipData]);
+
+  // Fetch logic for backend libraries (executed immediately on dependencies change)
+  useEffect(() => {
+    if (viewMode === 'nodes') {
+      setItems([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    const fetchLibrary = async () => {
+      isFetchingRef.current = true;
+      setLoading(true);
+      try {
+        let res;
+        const limit = 25;
+        let newItems = [];
+        let total = 0;
+        if (viewMode === 'agents') {
+          res = await listAgentTemplates({ page: currentPage, limit, search: debouncedSearch }, { signal });
+          newItems = res.templates || [];
+          total = res.total || 0;
+        } else if (viewMode === 'apis') {
+          res = await listComponentTemplates({ type: 'api_node', page: currentPage, limit, search: debouncedSearch }, { signal });
+          newItems = res.templates || [];
+          total = res.total || 0;
+        } else if (viewMode === 'tools') {
+          res = await listTools({ page: currentPage, limit, search: debouncedSearch }, { signal });
+          newItems = res.tools || [];
+          total = res.total || 0;
+        } else if (viewMode === 'skills') {
+          res = await listAvailableSkills({ page: currentPage, limit, search: debouncedSearch }, { signal });
+          newItems = res.skills || [];
+          total = res.total || 0;
+        } else if (viewMode === 'templates') {
+          res = await listWorkflowTemplates({ page: currentPage, limit, search: debouncedSearch }, { signal });
+          newItems = res.templates || [];
+          total = res.total || 0;
+        }
+
+        if (!signal.aborted) {
+          setTotalCount(total);
+          setTotalPages(Math.ceil(total / limit));
+          if (currentPage === 1) {
+            setItems(newItems);
+          } else {
+            setItems(prev => [...prev, ...newItems]);
+          }
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error("Error fetching library items:", err);
+          toast.error("Failed to load library items: " + err.message);
+        }
+      } finally {
+        if (!signal.aborted) {
+          setLoading(false);
+          isFetchingRef.current = false;
+        }
+      }
+    };
+    fetchLibrary();
+
+    return () => {
+      controller.abort();
+    };
+  }, [viewMode, debouncedSearch, currentPage]);
+
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+    setCurrentPage(1);
+    setSearch('');
+    setDebouncedSearch('');
+    setDropdownOpen(false);
+  };
+
+  const handleScroll = (e) => {
+    if (viewMode === 'nodes' || loading || isFetchingRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    // Check if scrolled near the bottom (with 50px buffer for responsiveness)
+    if (scrollHeight - scrollTop - clientHeight < 50) {
+      if (currentPage < totalPages) {
+        isFetchingRef.current = true;
+        setCurrentPage(prev => prev + 1);
+      }
+    }
+  };
+
+  const handleBackendDragStart = (e, item, mode) => {
+    if (mode === 'agents') {
+      e.dataTransfer.setData('application/agentmesh-node', 'llm_agent');
+      if (item.config) {
+        e.dataTransfer.setData('application/agentmesh-config', JSON.stringify({
+          ...item.config,
+          label: item.name || item.config.label
+        }));
+      }
+    } else if (mode === 'apis') {
+      e.dataTransfer.setData('application/agentmesh-node', 'api_node');
+      if (item.config) {
+        e.dataTransfer.setData('application/agentmesh-config', JSON.stringify({
+          ...item.config,
+          label: item.name || item.config.label
+        }));
+      }
+    } else if (mode === 'tools') {
+      e.dataTransfer.setData('application/agentmesh-node', 'tool_node');
+      e.dataTransfer.setData('application/agentmesh-config', JSON.stringify({
+        label: item.display_name || item.name,
+        tools: [item.name]
+      }));
+    } else if (mode === 'skills') {
+      e.dataTransfer.setData('application/agentmesh-node', 'deep_agent');
+      e.dataTransfer.setData('application/agentmesh-config', JSON.stringify({
+        label: 'Deep Agent',
+        skills: [item.name]
+      }));
+    }
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleBackendClick = async (item, mode) => {
+    if (mode === 'agents') {
+      setAgentTypeToSelect(item);
+    } else if (mode === 'apis') {
+      const config = item.config || {};
+      const id = addNode('api_node', { x: 200 + Math.random() * 300, y: 100 + Math.random() * 200 });
+      if (id) {
+        setNodeData(id, {
+          ...config,
+          id,
+          type: 'api_node',
+          label: item.name || config.label || 'API Node'
+        });
+      }
+      onClose?.();
+    } else if (mode === 'tools') {
+      setToolToAdd(item);
+    } else if (mode === 'skills') {
+      setSkillToAdd(item);
+    } else if (mode === 'templates') {
+      setMergingTemplateId(item.id);
+      try {
+        const res = await getWorkflowTemplate(item.id);
+        if (res.status === 'success') {
+          mergeTemplateIntoEditor(res);
+          toast.success('Template merged successfully!');
+          onClose?.();
+        } else {
+          toast.error('Failed to merge template: ' + (res.message || 'Unknown error'));
+        }
+      } catch (e) {
+        toast.error('Failed to merge template: ' + e.message);
+      } finally {
+        setMergingTemplateId(null);
+      }
+    }
+  };
+
+  const finalizeUseAgent = async (type) => {
+    if (!agentTypeToSelect) return;
+    let config = agentTypeToSelect.config;
+    if (!config) {
+      try {
+        const full = await getAgentTemplate(agentTypeToSelect.id);
+        config = full?.config || {};
+      } catch { config = {}; }
+    }
+    const id = addNode(type, { x: 200 + Math.random() * 300, y: 100 + Math.random() * 200 });
+    if (id) {
+      setNodeData(id, {
+        ...config,
+        id,
+        type,
+        label: agentTypeToSelect.name || config.label || type
+      });
+    }
+    setAgentTypeToSelect(null);
     onClose?.();
   };
 
   return (
     <div className="h-full flex flex-col bg-white relative font-sans">
-      {/* Header */}
-      <div className="p-5 pb-4 border-b border-slate-200">
-        <div className="text-sm font-bold text-slate-800">Node library ({filteredNodes.length})</div>
+      {/* Header with Selector */}
+      <div className="p-5 pb-4 border-b border-slate-200 z-10 relative">
+        <div className="relative">
+          <button 
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="flex items-center gap-2 text-sm font-bold text-slate-800 hover:text-indigo-600 transition-colors focus:outline-none bg-transparent border-0 cursor-pointer p-0"
+          >
+            <span>
+              {viewMode === 'nodes' && `Node library (${filteredNodes.length})`}
+              {viewMode === 'agents' && `Agents (${totalCount})`}
+              {viewMode === 'apis' && `APIs (${totalCount})`}
+              {viewMode === 'tools' && `Tools (${totalCount})`}
+              {viewMode === 'skills' && `Skills (${totalCount})`}
+              {viewMode === 'templates' && `Templates (${totalCount})`}
+            </span>
+            <FiChevronDown className={`transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : 'rotate-0'}`} />
+          </button>
+
+          {dropdownOpen && (
+            <div className="absolute left-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1.5 animate-fade-in">
+              {[
+                { id: 'nodes', label: 'Node Library', icon: FiBox },
+                { id: 'agents', label: 'Agents', icon: FiCpu },
+                { id: 'apis', label: 'APIs', icon: FiGlobe },
+                { id: 'tools', label: 'Tools', icon: FiSliders },
+                { id: 'skills', label: 'Skills', icon: FiBookOpen },
+                { id: 'templates', label: 'Templates', icon: FiLayers },
+              ].map(opt => {
+                const Icon = opt.icon;
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => handleViewModeChange(opt.id)}
+                    className={`w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-left transition-colors border-0 cursor-pointer ${viewMode === opt.id ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    <Icon size={14} />
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
         
         {/* Search Bar */}
         <div className="relative mt-2">
@@ -154,104 +427,216 @@ export default function NodePalette({ onClose }) {
           <input 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search nodes..."
+            placeholder={viewMode === 'nodes' ? "Search nodes..." : "Search library..."}
             className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none transition-all focus:border-indigo-500 focus:bg-white font-sans"
           />
         </div>
       </div>
 
-      {/* Node list grouped by category */}
-      <div className="flex-1 overflow-y-auto px-2 py-3 msg-scrollbar">
-        {categories.map(category => {
-          const categoryNodes = filteredNodes.filter(n => n.category === category);
-          if (categoryNodes.length === 0) return null;
-          
-          const isCollapsed = collapsed[category];
+      {/* List Content */}
+      <div onScroll={handleScroll} className="flex-1 overflow-y-auto px-2 py-3 msg-scrollbar">
+        {viewMode === 'nodes' ? (
+          categories.map(category => {
+            const categoryNodes = filteredNodes.filter(n => n.category === category);
+            if (categoryNodes.length === 0) return null;
+            
+            const isCollapsed = collapsed[category];
 
-          return (
-            <div key={category} className="mb-2">
-              {/* Category Header */}
-              <button
-                onClick={() => toggleCategory(category)}
-                className="w-full flex items-center justify-between px-2.5 py-2 bg-transparent border-none cursor-pointer outline-none"
-              >
-                <div className="text-[10px] font-extrabold tracking-wider uppercase text-slate-400 flex items-center gap-1">
-                  {category} <span className="text-slate-400 font-semibold">({categoryNodes.length})</span>
-                </div>
-                <div className={`text-[10px] text-slate-400 transition-transform duration-200 ${isCollapsed ? '-rotate-90' : 'rotate-0'}`}>
-                  ▼
-                </div>
-              </button>
+            return (
+              <div key={category} className="mb-2">
+                <button
+                  onClick={() => toggleCategory(category)}
+                  className="w-full flex items-center justify-between px-2.5 py-2 bg-transparent border-none cursor-pointer outline-none"
+                >
+                  <div className="text-[10px] font-extrabold tracking-wider uppercase text-slate-400 flex items-center gap-1">
+                    {category} <span className="text-slate-400 font-semibold">({categoryNodes.length})</span>
+                  </div>
+                  <div className={`text-[10px] text-slate-400 transition-transform duration-200 ${isCollapsed ? '-rotate-90' : 'rotate-0'}`}>
+                    ▼
+                  </div>
+                </button>
 
-              {/* Category Content */}
-              {!isCollapsed && (
-                <div className="flex flex-col gap-0.5 mt-1">
-                  {categoryNodes.map((n) => {
-                    const Icon = n.icon;
-                    return (
-                      <div
-                        key={n.isTemplate ? `template_${n.label}` : n.type}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, n)}
-                        onClick={() => handleAdd(n)}
-                        className="node-palette-item group flex items-center gap-3 p-2.5 rounded-lg bg-white border border-transparent cursor-grab transition-all hover:bg-slate-50 hover:border-slate-200 relative"
-                      >
-                        <div 
-                          style={{ backgroundColor: n.bg, color: n.color }}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                        >
-                          <Icon size={16} strokeWidth={2} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold text-slate-800 truncate">{n.label}</div>
-                          <div className="text-[11px] text-slate-400 mt-0.5 truncate">{n.desc}</div>
-                        </div>
+                {!isCollapsed && (
+                  <div className="flex flex-col gap-0.5 mt-1">
+                    {categoryNodes.map((n) => {
+                      const Icon = n.icon;
+                      return (
                         <div
-                          className="info-icon opacity-0 group-hover:opacity-100 flex items-center justify-center p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-all duration-150 shrink-0 cursor-pointer"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
-                          onMouseEnter={(e) => {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setTooltipData({
-                              node: n,
-                              x: rect.right + 10,
-                              y: rect.top - 10,
-                            });
-                          }}
-                          onMouseLeave={() => {
-                            setTooltipData(null);
-                          }}
+                          key={n.type}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, n)}
+                          onClick={() => handleAdd(n)}
+                          className="node-palette-item group flex items-center gap-3 p-2.5 rounded-lg bg-white border border-transparent cursor-grab transition-all hover:bg-slate-50 hover:border-slate-200 relative"
                         >
-                          <FiInfo size={14} />
+                          <div 
+                            style={{ backgroundColor: n.bg, color: n.color }}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                          >
+                            <Icon size={16} strokeWidth={2} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-semibold text-slate-800 truncate">{n.label}</div>
+                            <div className="text-[11px] text-slate-400 mt-0.5 truncate">{n.desc}</div>
+                          </div>
+                          <div
+                            className="info-icon opacity-0 group-hover:opacity-100 flex items-center justify-center p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-all duration-150 shrink-0 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
+                            onMouseEnter={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setTooltipData({
+                                node: n,
+                                x: rect.right + 10,
+                                y: rect.top - 10,
+                              });
+                            }}
+                            onMouseLeave={() => {
+                              setTooltipData(null);
+                            }}
+                          >
+                            <FiInfo size={14} />
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        ) : (loading && items.length === 0) ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-2 text-slate-400">
+            <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-500 border-t-transparent" />
+            <div className="text-[11px]">Loading items...</div>
+          </div>
+        ) : items.length === 0 ? (
+          <div className="min-h-[250px] flex flex-col items-center justify-center py-10 px-5 text-center text-slate-400 text-xs">
+            <FiSearch size={24} className="text-slate-300 mb-2" />
+            No items found
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1">
+            {items.map((item, idx) => {
+              let Icon = FiBox;
+              let bg = '#F1F5F9';
+              let color = '#64748B';
+              let title = item.name || '';
+              let desc = item.description || '';
+              let typeLabel = '';
+
+              if (viewMode === 'agents') {
+                Icon = FiCpu;
+                bg = '#C9DEFF';
+                color = '#1A56DB';
+                typeLabel = item.category || 'Agent';
+              } else if (viewMode === 'apis') {
+                Icon = FiGlobe;
+                bg = '#E0F2FE';
+                color = '#0EA5E9';
+                typeLabel = item.category_name || 'API';
+              } else if (viewMode === 'tools') {
+                Icon = FiSliders;
+                bg = '#FFE4B8';
+                color = '#B45309';
+                title = item.display_name || item.name;
+                typeLabel = item.category || 'Tool';
+              } else if (viewMode === 'skills') {
+                Icon = FiBookOpen;
+                bg = '#FFF3B8';
+                color = '#92400E';
+                title = item.name ? item.name.replace(/-/g, ' ') : '';
+                typeLabel = 'Skill';
+              } else if (viewMode === 'templates') {
+                Icon = FiLayers;
+                bg = '#E5D9FF';
+                color = '#7C3AED';
+                typeLabel = item.category || 'Template';
+              }
+
+              const tooltipNode = {
+                bg,
+                color,
+                icon: Icon,
+                label: title,
+                category: typeLabel,
+                desc: desc || 'Custom template resource'
+              };
+
+              const isMerging = mergingTemplateId === item.id;
+
+              return (
+                <div
+                  key={item.id || item.name || idx}
+                  draggable={viewMode !== 'templates' && !isMerging}
+                  onDragStart={(e) => handleBackendDragStart(e, item, viewMode)}
+                  onClick={() => !isMerging && handleBackendClick(item, viewMode)}
+                  className={`group flex items-center gap-3 p-2.5 rounded-lg bg-white border border-transparent cursor-grab transition-all hover:bg-slate-50 hover:border-slate-200 relative ${isMerging ? 'opacity-60 cursor-not-allowed' : ''}`}
+                >
+                  <div 
+                    style={{ backgroundColor: bg, color: color }}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                  >
+                    {isMerging ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-indigo-500 border-t-transparent" />
+                    ) : (
+                      <Icon size={16} strokeWidth={2} />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-semibold text-slate-800 truncate">{title}</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5 truncate">{desc || typeLabel}</div>
+                  </div>
+                  <div
+                    className="info-icon opacity-0 group-hover:opacity-100 flex items-center justify-center p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-all duration-150 shrink-0 cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                    onMouseEnter={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setTooltipData({
+                        node: tooltipNode,
+                        x: rect.right + 10,
+                        y: rect.top - 10,
+                      });
+                    }}
+                    onMouseLeave={() => {
+                      setTooltipData(null);
+                    }}
+                  >
+                    <FiInfo size={14} />
+                  </div>
                 </div>
-              )}
-            </div>
-          );
-        })}
-        
-        {filteredNodes.length === 0 && (
-          <div className="py-10 px-5 text-center text-slate-400 text-xs">
-            <div className="text-2xl mb-3">🔍</div>
+              );
+            })}
+            
+            {loading && (
+              <div className="flex items-center justify-center py-2 gap-1.5 text-slate-400 text-[10px]">
+                <div className="animate-spin rounded-full h-3.5 w-3.5 border border-indigo-500 border-t-transparent" />
+                <span>Loading more...</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {viewMode === 'nodes' && filteredNodes.length === 0 && (
+          <div className="min-h-[250px] flex flex-col items-center justify-center py-10 px-5 text-center text-slate-400 text-xs">
+            <FiSearch size={24} className="text-slate-300 mb-2" />
             No nodes match your search
           </div>
         )}
       </div>
 
-      {/* Shared Portal/Tooltip Overlay */}
+      {/* Tooltip Overlay */}
       {tooltipData && (
         <div 
+          ref={tooltipRef}
           style={{
             left: tooltipData.x,
-            top: Math.max(10, Math.min(window.innerHeight - 240, tooltipData.y)),
+            top: Math.max(10, Math.min(windowHeight - tooltipHeight, tooltipData.y)),
           }}
           className="fixed w-80 bg-white rounded-xl shadow-xl z-[99999] p-4 pointer-events-none flex flex-col gap-3 border border-slate-200 animate-fade-in font-sans"
         >
-          {/* Header */}
           <div className="flex items-center gap-2.5">
             <div 
               style={{ backgroundColor: tooltipData.node.bg, color: tooltipData.node.color }}
@@ -272,18 +657,41 @@ export default function NodePalette({ onClose }) {
 
           <div className="h-px bg-slate-100" />
 
-          {/* Description */}
           <div className="text-[11.5px] text-slate-600 leading-relaxed whitespace-normal break-word">
             {tooltipData.node.detailedDesc || tooltipData.node.desc}
           </div>
 
-          {/* Footer tip */}
           <div className="flex items-center gap-1.5 text-[9px] text-slate-400 mt-1">
             <FiZap size={10} className="text-indigo-500" />
             <span>Drag to canvas or click to add</span>
           </div>
         </div>
       )}
+
+      {/* Tool Addition Modal */}
+      <AddToolModal
+        isOpen={!!toolToAdd}
+        onClose={() => setToolToAdd(null)}
+        tool={toolToAdd}
+      />
+
+      {/* Skill Addition Modal */}
+      <AddSkillModal
+        isOpen={!!skillToAdd}
+        onClose={() => setSkillToAdd(null)}
+        skill={skillToAdd}
+      />
+
+      {/* Agent Type Selector popover component */}
+      <AgentTypeSelectorModal
+        isOpen={!!agentTypeToSelect}
+        onClose={() => setAgentTypeToSelect(null)}
+        onSelect={finalizeUseAgent}
+      />
     </div>
   );
 }
+
+NodePalette.propTypes = {
+  onClose: PropTypes.func
+};

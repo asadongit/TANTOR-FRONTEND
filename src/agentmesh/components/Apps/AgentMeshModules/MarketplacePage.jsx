@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useWorkflowStore, useUIStore, useRunStore } from '../../../store';
 import { listMarketplaceUsecases, listWorkflowCategories, getWorkflow } from '../../../api/agentmesh';
 import { FiSearch, FiUser, FiMessageSquare, FiInfo, FiTag, FiGrid, FiList, FiFilter, FiX, FiZap, FiBookOpen } from 'react-icons/fi';
@@ -506,6 +507,7 @@ function MarketplaceCard({ w, onChat, onDetails, isRunning, idx }) {
 }
 
 export default function MarketplacePage() {
+  const navigate = useNavigate();
   const { workflows, setWorkflows, loadWorkflowIntoEditor } = useWorkflowStore();
   const { setRunOpen } = useUIStore();
   const [loading, setLoading] = useState(false);
@@ -594,6 +596,10 @@ export default function MarketplacePage() {
   const [swaggerWorkflow, setSwaggerWorkflow] = useState(null);
 
   const handleChat = async (w) => {
+    if (w.launch_mode === 'navigation' && w.navigation_path) {
+      navigate(w.navigation_path, { state: { fromMarketplace: true, usecaseName: w.name } });
+      return;
+    }
     if (w.launch_url === 'swagger') {
       let fullWorkflow = w;
       if (!w.config) {
