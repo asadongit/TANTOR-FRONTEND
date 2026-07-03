@@ -294,7 +294,7 @@ export function UnifiedAgentTurn({
             fontWeight: 400,
           }}
         >
-          {formatMessage(finalAgent.content)}
+          {formatMessage(finalAgent.content, false, isLast && !running)}
         </div>
 
         {/* Action Row */}
