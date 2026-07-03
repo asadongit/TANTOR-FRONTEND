@@ -119,5 +119,6 @@ export const PAUSE_UI = {
   camera:      { hidesInput: true,  showsHitl: false },
   ocr_node:    { hidesInput: true,  showsHitl: false },
   followup:    { hidesInput: true,  showsHitl: false },
+  followup_form: { hidesInput: true,  showsHitl: false },
   followup_selection: { hidesInput: false, showsHitl: false },
 };

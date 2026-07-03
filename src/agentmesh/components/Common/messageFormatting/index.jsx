@@ -681,18 +681,37 @@ export const formatMessage = (msg, isCell = false, isLast = false) => {
     }
 
     let content = '';
-    if (typeof cleanedMsg === 'string') {
+    let pauseConfig = null;
+    if (typeof cleanedMsg === 'object' && cleanedMsg !== null) {
+        content = cleanedMsg.content || cleanedMsg.text || '';
+        if (cleanedMsg.additional_kwargs && cleanedMsg.additional_kwargs.pause_config) {
+            pauseConfig = cleanedMsg.additional_kwargs.pause_config;
+        }
+    } else if (typeof cleanedMsg === 'string') {
         content = cleanedMsg;
-    } else if (cleanedMsg.content || cleanedMsg.text) {
-        content = cleanedMsg.content || cleanedMsg.text;
     } else if (Array.isArray(cleanedMsg)) {
-        content = cleanedMsg.map(m => (typeof m === 'string' ? m : (m.content || m.text || JSON.stringify(m)))).join('\n\n');
+        content = cleanedMsg.map(m => {
+            if (typeof m === 'string') return m;
+            if (m && typeof m === 'object') {
+                if (m.additional_kwargs && m.additional_kwargs.pause_config) {
+                    pauseConfig = m.additional_kwargs.pause_config;
+                }
+                return m.content || m.text || JSON.stringify(m);
+            }
+            return '';
+        }).join('\n\n');
     } else {
         content = JSON.stringify(cleanedMsg, null, 2);
     }
 
     if (typeof content === 'string') {
-        if (content.includes('__FOLLOWUP_SELECTION__{SPLIT}')) {
+        if (content === '__HUMAN_INTERACTION__' && pauseConfig) {
+            if (pauseConfig.type === 'followup_selection') {
+                content = pauseConfig.question || '';
+            } else if (pauseConfig.type === 'followup_form') {
+                content = `Form: ${pauseConfig.title || 'Information Required'}`;
+            }
+        } else if (content.includes('__FOLLOWUP_SELECTION__{SPLIT}')) {
             // Already split or handled
         } else if (content.includes('__FOLLOWUP_SELECTION__:')) {
             try {

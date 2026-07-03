@@ -995,8 +995,9 @@ export default function RunPanel({ onClose }) {
       </PauseModal>
       {/* Followup Paused Overlay - LLM asked structured questions */}
       <PauseModal
-        isOpen={pausedInfo.isPaused && pausedInfo.nodeType === 'followup'}
-        title={pausedInfo.nodeConfig?.title || 'Additional Information Required'}
+        isOpen={pausedInfo.isPaused && (pausedInfo.nodeType === 'followup' || pausedInfo.nodeType === 'followup_form')}
+        onClose={() => setPausedInfo({ ...pausedInfo, isPaused: false })}
+        title="Follow-up Questions"
         icon={FiList}
         maxWidth={600}
       >
