@@ -787,6 +787,7 @@ function Models() {
             ensembleId,
             columnNames: ingestionData.column_names || [],
             tsColumnsName: ingestionData.ts_columns_name || [],
+            entityColumns: ingestionData.entity_columns || [],
             profileReportHtml: ingestionData.profile_report_html || '',
             datetimeConvertibleColumns: ingestionData.datetime_convertible_columns || [],
             isEnsemble: false,

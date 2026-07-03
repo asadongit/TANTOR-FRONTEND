@@ -133,6 +133,7 @@ export const SelectDataViewModal = ({ isOpen, onClose, onProceed }) => {
         tableName: selectedTable, ensembleId: data.ensemble_id,
         columnNames: data.column_names || [], profileReportHtml: data.profile_report_html || '',
         tsColumnsName: data.ts_columns_name || [],
+        entityColumns: data.entity_columns || [],
         ...(data.datetime_convertible_columns && {
           datetimeConvertibleColumns: data.datetime_convertible_columns
           }),

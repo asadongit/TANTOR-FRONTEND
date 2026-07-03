@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 
 const FrequencyAlignmentModal = ({
@@ -12,6 +12,20 @@ const FrequencyAlignmentModal = ({
   onClose
 }) => {
   const [isAligning, setIsAligning] = useState(false);
+  const [selectedEntity, setSelectedEntity] = useState(null);
+
+  const entityLabels = validationData?.entity_labels || [];
+  const isMultiEntity = Array.isArray(entityLabels) && entityLabels.length > 0;
+
+  useEffect(() => {
+    if (!isMultiEntity) {
+      setSelectedEntity(null);
+      return;
+    }
+
+    setSelectedEntity(entityLabels[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [validationData]);
 
   if (!isOpen || !validationData) return null;
 
@@ -20,6 +34,18 @@ const FrequencyAlignmentModal = ({
   const irregularIssue = validationData?.frequency_issues?.find(issue => issue.issue_type === 'irregular');
   const hasIrregularIssue = validationData?.frequency_issues?.some(issue => issue.issue_type === 'irregular');
   const duplicateGroups = duplicateIssue?.duplicate_groups || [];
+
+  const entityDuplicate = validationData?.frequency_issues_by_entity?.duplicate?.find(
+    issue => issue.entity === selectedEntity
+  );
+  const entityMissing = validationData?.frequency_issues_by_entity?.missing?.find(
+    issue => issue.entity === selectedEntity
+  );
+  const entityDuplicateGroups = entityDuplicate?.duplicate_groups || [];
+
+  const displayDuplicateIssue = isMultiEntity ? entityDuplicate : duplicateIssue;
+  const displayMissingIssue = isMultiEntity ? entityMissing : missingIssue;
+  const displayDuplicateGroups = isMultiEntity ? entityDuplicateGroups : duplicateGroups;
 
   const handleAlign = async () => {
     try {
@@ -37,8 +63,7 @@ const FrequencyAlignmentModal = ({
             workflow_id: activeWorkflowId,
             time_column: config.timeColumn,
             frequency: config.frequency,
-            mode: 'auto',
-            selected_rows: {}
+            ...(isMultiEntity && { entity_cols: config.entity_cols || [] })
           })
         }
       );
@@ -87,18 +112,34 @@ const FrequencyAlignmentModal = ({
 
         {/* Body */}
         <div className="p-6 overflow-y-auto flex-1 space-y-4">
+          {/* Entity Selector */}
+          {isMultiEntity && (
+            <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Entity</label>
+              <select
+                value={selectedEntity || ''}
+                onChange={(e) => setSelectedEntity(e.target.value)}
+                className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent"
+              >
+                {entityLabels.map(label => (
+                  <option key={label} value={label}>{label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Duplicate Section */}
-          {!hasIrregularIssue && duplicateIssue && (
+          {displayDuplicateIssue && (
             <div className="bg-white border border-gray-200 rounded-lg p-4">
               <h3 className="font-semibold text-gray-900 mb-2">
                 Duplicate Timestamps
               </h3>
               <p className="text-sm text-gray-600 mb-3">
-                Found {duplicateGroups.length} duplicate timestamp{duplicateGroups.length !== 1 ? 's' : ''}. Cleanliness score will be calculated for these rows and the row with the highest will be retained.
+                Found {displayDuplicateGroups.length} duplicate timestamp{displayDuplicateGroups.length !== 1 ? 's' : ''}. Cleanliness score will be calculated for these rows and the row with the highest will be retained.
               </p>
 
               <div className="border border-gray-200 rounded-md p-3 max-h-32 overflow-y-auto bg-[#FAFAFA]">
-                {duplicateGroups.map((group, index) => (
+                {displayDuplicateGroups.map((group, index) => (
                   <div
                     key={index}
                     className="text-sm text-gray-700 py-1 font-mono"
@@ -111,17 +152,17 @@ const FrequencyAlignmentModal = ({
           )}
 
           {/* Missing Timestamps Section */}
-          {!hasIrregularIssue && missingIssue && (
+          {displayMissingIssue && (
             <div className="bg-white border border-gray-200 rounded-lg p-4">
               <h3 className="font-semibold text-gray-900 mb-2">
                 Missing Timestamps
               </h3>
               <p className="text-sm text-gray-600 mb-3">
-                {missingIssue.description}
+                {displayMissingIssue.description}
               </p>
 
               <div className="border border-gray-200 rounded-md p-3 max-h-32 overflow-y-auto bg-[#FAFAFA]">
-                {missingIssue.timestamps?.map((timestamp, index) => (
+                {displayMissingIssue.timestamps?.map((timestamp, index) => (
                   <div
                     key={index}
                     className="text-sm text-gray-700 py-1 font-mono"

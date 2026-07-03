@@ -3,7 +3,9 @@ import { ChevronDown, ChevronUp, Info, X, Plus } from 'lucide-react';
 import {
     isNestedParameter,
     isRangeParameter,
-    validateHyperparameterValue
+    validateHyperparameterValue,
+    validateMinPeriodsAgainstWindow,
+    validateDModelAgainstHeads
 } from './validationUtils';
 import { tw } from '../../../../../components/themeContext';
 
@@ -275,18 +277,42 @@ function AlgorithmCard({ algo, readonly, disabled, onToggle, onExpand, onUpdate,
     };
 
     const handleHyperparameterBlur = (paramName, paramValue, currentValue) => {
+        const newErrors = { ...algo.errors };
+
         if (currentValue && currentValue.trim() !== '') {
             const validationResult = validateHyperparameterValue(paramName, paramValue, currentValue);
-
             if (validationResult !== true) {
-                onUpdate(algo.id, {
-                    errors: {
-                        ...algo.errors,
-                        [paramName]: validationResult
-                    }
-                });
+                newErrors[paramName] = validationResult;
             }
         }
+
+        if (paramName === 'min_periods' || paramName === 'window') {
+            const crossResult = validateMinPeriodsAgainstWindow(algo.hyperparameters, {
+                ...algo.hyperparameterValues,
+                [paramName]: currentValue
+            });
+
+            if (crossResult !== true) {
+                newErrors.min_periods = crossResult;
+            } else if (!newErrors.min_periods || newErrors.min_periods === algo.hyperparameters?.min_periods?.warning) {
+                delete newErrors.min_periods;
+            }
+        }
+
+        if (paramName === 'd_model' || paramName === 'nhead' || paramName === 'n_heads') {
+            const headsResult = validateDModelAgainstHeads(algo.hyperparameters, {
+                ...algo.hyperparameterValues,
+                [paramName]: currentValue
+            });
+
+            if (headsResult !== true) {
+                newErrors.d_model = headsResult;
+            } else if (!newErrors.d_model || newErrors.d_model === algo.hyperparameters?.d_model?.warning) {
+                delete newErrors.d_model;
+            }
+        }
+
+        onUpdate(algo.id, { errors: newErrors });
     };
 
     const handleNestedHyperparameterChange = (paramName, subParam, newValue) => {

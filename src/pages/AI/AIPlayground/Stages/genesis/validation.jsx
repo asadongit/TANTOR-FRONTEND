@@ -79,7 +79,8 @@ export const validateTimeSeriesLearning = async (config, datasetState, activeWor
         target_column: targetColumn,
         modelling_type: modellingType,
         time_column: timeColumn,
-        frequency: config.frequency || '' // Include frequency if available, otherwise send an empty string
+        frequency: config.frequency || '', // Include frequency if available, otherwise send an empty string
+        entity_cols: modellingType === 'multiseries_timeseries' ? (config.entity_cols || []) : undefined
       })
     });
 

@@ -23,6 +23,7 @@ const defaultDatasetState = {
     ensembleId: '',
     columnNames: [],
     tsColumnsName: [],
+    entityColumns: [],
     profileReportHtml: '',
     isEnsemble: false,
     WorkflowCount: 1
