@@ -1122,7 +1122,6 @@ export default function Editor() {
           <Builder
             handleSwitch={() => { setDataBuffer([]); setColumnDefs([]); setQuery(""); setChecked(!checked); }}
             checked={checked}
-            views={originalViews}
           />
         )}
       </div>

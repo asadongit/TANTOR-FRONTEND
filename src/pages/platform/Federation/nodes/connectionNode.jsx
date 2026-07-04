@@ -226,28 +226,36 @@ export function ConnectionNode({ id, onSave }) {
   };
 
   const handleColumnChange = (column) => {
-    setSelectedColumns((prev) => {
-      if (prev.includes(column)) {
-        setColumnSettings((prevSettings) => {
-          const updatedSettings = { ...prevSettings };
-          if (updatedSettings[colId]) {
-            delete updatedSettings[colId][column];
-            if (Object.keys(updatedSettings[colId]).length === 0) delete updatedSettings[colId];
-          }
-          return updatedSettings;
-        });
-        setSelectedColumnsOrder((prevOrder) => prevOrder.filter((col) => col !== column));
-        return prev.filter((col) => col !== column);
+    const isColumnChecked = selectedColumns.includes(column);
+    const updatedCheckedColumns = isColumnChecked
+      ? selectedColumns.filter((col) => col !== column)
+      : [...selectedColumns, column];
+
+    setSelectedColumns(updatedCheckedColumns);
+    setSelectedColumnsOrder(updatedCheckedColumns);
+
+    setColumnSettings((prevSettings) => {
+      if (isColumnChecked) {
+        const updatedSettings = { ...prevSettings };
+        if (updatedSettings[colId]) {
+          updatedSettings[colId] = { ...updatedSettings[colId] };
+          delete updatedSettings[colId][column];
+          if (Object.keys(updatedSettings[colId]).length === 0) delete updatedSettings[colId];
+        }
+        return updatedSettings;
       } else {
-        setColumnSettings((prevSettings) => ({
+        const currentConfig = prevSettings[colId]?.[column];
+        const newConfig = Array.isArray(currentConfig) 
+          ? [ { ...currentConfig[0], originalOutput: "Yes" }, ...currentConfig.slice(1) ]
+          : { ...currentConfig, originalOutput: "Yes" };
+
+        return {
           ...prevSettings,
           [colId]: {
             ...(prevSettings[colId] || {}),
-            [column]: { ...(prevSettings[colId]?.[column] || {}), output: "Yes" },
+            [column]: newConfig,
           },
-        }));
-        setSelectedColumnsOrder((prevOrder) => [...prevOrder, column]);
-        return [...prev, column];
+        };
       }
     });
   };
@@ -271,9 +279,14 @@ export function ConnectionNode({ id, onSave }) {
       setColumnSettings((prevSettings) => {
         const updatedSettings = { ...prevSettings };
         visibleColumnNames.forEach((column) => {
+          const currentConfig = updatedSettings[colId]?.[column];
+          const newConfig = Array.isArray(currentConfig)
+            ? [ { ...currentConfig[0], originalOutput: "Yes" }, ...currentConfig.slice(1) ]
+            : { ...currentConfig, originalOutput: "Yes" };
+
           updatedSettings[colId] = {
             ...updatedSettings[colId],
-            [column]: { ...(updatedSettings[colId]?.[column] || {}), output: "Yes" },
+            [column]: newConfig,
           };
         });
         return updatedSettings;
@@ -298,8 +311,13 @@ export function ConnectionNode({ id, onSave }) {
   useEffect(() => {
     if (colId && columnSettings[colId]) {
       const columnsWithOutputOrAggregate = Object.keys(columnSettings[colId]).filter((column) => {
-        const columnData = columnSettings[colId][column] || {};
-        return columnData.output === "Yes" || (columnData.aggregate && columnData.aggregate.trim() !== "");
+        const columnData = columnSettings[colId][column];
+        if (Array.isArray(columnData)) {
+          return columnData[0]?.originalOutput === "Yes" || columnData[0]?.output === "Yes" || columnData.some(c => c.aggregate || c.alias);
+        } else if (columnData) {
+          return columnData.originalOutput === "Yes" || columnData.output === "Yes" || (columnData.aggregate && columnData.aggregate.trim() !== "");
+        }
+        return false;
       });
       setSelectedColumns(columnsWithOutputOrAggregate);
     }
@@ -542,13 +560,22 @@ export function ConnectionNode({ id, onSave }) {
         `}</style>
       </div>
 
-      <Modal open={isModalOpen} onClose={() => toggleModal(false)} BackdropProps={{ style: { backgroundColor: "transparent" } }}>
-        <div className="absolute top-0 right-0 h-full w-full sm:w-1/2 md:w-1/3 lg:w-[22%]">
+      <Modal
+        open={isModalOpen}
+        onClose={(event, reason) => {
+          if (reason !== 'backdropClick') {
+            toggleModal(false);
+          }
+        }}
+        BackdropProps={{ style: { backgroundColor: "transparent" } }}>
+        <div className="absolute top-0 right-0 h-full w-[450px]">
           <Columns
             id={colId}
             columnName={selectedColumn}
             dataType={columns.find((col) => col?.column?.toLowerCase() === selectedColumn?.toLowerCase())?.datatype || "unknown"}
             toggleModal={toggleModal}
+            selectedColumns={selectedColumns}
+            setSelectedColumns={setSelectedColumns}
           />
         </div>
       </Modal>

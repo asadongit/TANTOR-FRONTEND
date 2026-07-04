@@ -75,13 +75,25 @@ export default function Source() {
     const groupByColumns = [];
     const aggregateColumns = [];
     const orderByColumns = [];
+    const processedOriginalSorts = new Set();
 
     settings.forEach((item) => {
-      if (item.groupBy === "Yes") groupByColumns.push(item.name);
-      if (item.aggregate) aggregateColumns.push(item.name);
-      if (item.sort) {
+      if (item.groupBy === "Yes" && !groupByColumns.includes(item.name)) groupByColumns.push(item.name);
+      if (item.aggregate && !aggregateColumns.includes(item.name)) aggregateColumns.push(item.name);
+      
+      if (item.originalSort && !processedOriginalSorts.has(item.name)) {
+        processedOriginalSorts.add(item.name);
         orderByColumns.push({
-          field: item.name,
+          field: item.originalAlias ? `"${item.originalAlias}"` : item.name,
+          sortType: item.originalSort,
+          order: item.originalOrder ? item.originalOrder : 1,
+        });
+      }
+
+      if (item.sort) {
+        const distinctStr = item.aggregateDistinct === "Yes" ? "distinct " : "";
+        orderByColumns.push({
+          field: item.alias ? `"${item.alias}"` : (item.aggregate ? `${item.aggregate.toLowerCase()}(${distinctStr}${item.name})` : item.name),
           sortType: item.sort,
           order: item.order ? item.order : 1,
         });
@@ -179,51 +191,36 @@ export default function Source() {
       basePayload.complex_query = userSelections.get("complex_query");
     }
 
+    const processedOriginals = new Set();
+
     settings.forEach((item) => {
+      if (item.originalOutput === "Yes" && !processedOriginals.has(item.name)) {
+        processedOriginals.add(item.name);
+        basePayload.select_fields.push({
+          field: item.name,
+          is_distinct: item.originalDistinct === "Yes",
+          alias: item.originalAlias || "",
+          type: item.type,
+        });
+      }
+
       if (item.aggregate) {
         basePayload.select_fields.push({
-          field: `${item.aggregate.toLowerCase()}(${item.name})`,
+          field: item.name,
+          aggregation: item.aggregate.toLowerCase(),
+          is_distinct: item.aggregateDistinct === "Yes",
+          alias: item.alias || "",
+          type: item.type,
+        });
+      } else if (item.alias) {
+        basePayload.select_fields.push({
+          field: item.name,
           alias: item.alias,
           type: item.type,
         });
       }
-      if (item.output === "Yes") {
-        const hasAlias = item.alias && item.alias.trim() !== "";
-        const includeAs = item.includeAs || "alias";
 
-        if (hasAlias && includeAs === "both") {
-          basePayload.select_fields.push({
-            field: item.name,
-            alias: "",
-            type: item.type,
-          });
-          if (!item.aggregate) {
-            basePayload.select_fields.push({
-              field: item.name,
-              alias: item.alias,
-              type: item.type,
-            });
-          }
-        } else if (hasAlias && includeAs === "original") {
-          if (!item.aggregate) {
-            basePayload.select_fields.push({
-              field: item.name,
-              alias: "",
-              type: item.type,
-            });
-          }
-        } else {
-          if (!item.aggregate) {
-            basePayload.select_fields.push({
-              field: item.name,
-              alias: item.alias || "",
-              type: item.type,
-            });
-          }
-        }
-      }
-
-      if (item.groupBy === "Yes") {
+      if (item.groupBy === "Yes" && !basePayload.group_by.includes(item.name)) {
         basePayload.group_by.push(item.name);
       }
     });
@@ -241,10 +238,10 @@ export default function Source() {
     if (!validateColumns(userCheckedColumns, settings)) return null;
 
     const columnSettings = processColumnSettings(settings, userCheckedColumns);
-    if (modalState.queryType === "Regular") {
-      if (!validateAggregateAndGroupBy(userCheckedColumns, columnSettings))
-        return null;
-    }
+    // if (modalState.queryType === "Regular") {
+    //   if (!validateAggregateAndGroupBy(userCheckedColumns, columnSettings))
+    //     return null;
+    // }
 
     const updatedUserSelections = new Map(userSelections);
     updatedUserSelections.set("viewType", viewType);

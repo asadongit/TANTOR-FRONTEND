@@ -169,7 +169,7 @@ export function ConsolidationNode({ id }) {
     if (columnSettings?.Union) {
       setSelectedUnionColumns(
         Object.entries(columnSettings.Union)
-          .filter(([_, value]) => (value.output === "Yes" || value.aggregate != ""))
+          .filter(([_, value]) => (value.originalOutput === "Yes" || value.aggregate != ""))
           .map(([key]) => key)
       );
     } else {
@@ -405,31 +405,37 @@ export function ConsolidationNode({ id }) {
   }
  
   const handleColumnChange = (column) => {
-    setSelectedUnionColumns((prev) => {
-      if (prev.includes(column)) {
-        setColumnSettings((prevSettings) => {
-          const updatedSettings = { ...prevSettings };
-          if (updatedSettings[colId]) {
-            delete updatedSettings[colId][column];
-            if (Object.keys(updatedSettings[colId]).length === 0) {
-              delete updatedSettings[colId];
-            }
+    const isColumnChecked = selectedUnionColumns.includes(column);
+    const updatedCheckedColumns = isColumnChecked
+      ? selectedUnionColumns.filter((col) => col !== column)
+      : [...selectedUnionColumns, column];
+
+    setSelectedUnionColumns(updatedCheckedColumns);
+
+    setColumnSettings((prevSettings) => {
+      if (isColumnChecked) {
+        const updatedSettings = { ...prevSettings };
+        if (updatedSettings[colId]) {
+          updatedSettings[colId] = { ...updatedSettings[colId] };
+          delete updatedSettings[colId][column];
+          if (Object.keys(updatedSettings[colId]).length === 0) {
+            delete updatedSettings[colId];
           }
-          return updatedSettings;
-        });
-        return prev.filter((col) => col !== column);
+        }
+        return updatedSettings;
       } else {
-        setColumnSettings((prevSettings) => ({
+        const currentConfig = prevSettings[colId]?.[column];
+        const newConfig = Array.isArray(currentConfig) 
+          ? [ { ...currentConfig[0], originalOutput: "Yes" }, ...currentConfig.slice(1) ]
+          : { ...currentConfig, originalOutput: "Yes" };
+
+        return {
           ...prevSettings,
           [colId]: {
             ...(prevSettings[colId] || {}),
-            [column]: {
-              ...(prevSettings[colId]?.[column] || {}),
-              output: "Yes",
-            },
+            [column]: newConfig,
           },
-        }));
-        return [...prev, column];
+        };
       }
     });
   };
@@ -446,12 +452,14 @@ export function ConsolidationNode({ id }) {
       setColumnSettings((prevSettings) => {
         const updatedSettings = { ...prevSettings };
         columns.forEach((column) => {
+          const currentConfig = updatedSettings[colId]?.[column];
+          const newConfig = Array.isArray(currentConfig)
+            ? [ { ...currentConfig[0], originalOutput: "Yes" }, ...currentConfig.slice(1) ]
+            : { ...currentConfig, originalOutput: "Yes" };
+
           updatedSettings[colId] = {
             ...updatedSettings[colId],
-            [column]: {
-              ...(updatedSettings[colId]?.[column] || {}),
-              output: "Yes",
-            },
+            [column]: newConfig,
           };
         });
         return updatedSettings;
@@ -465,7 +473,7 @@ export function ConsolidationNode({ id }) {
             ...updatedSettings[colId],
             [column]: {
               ...(updatedSettings[colId]?.[column] || {}),
-              output: "No",
+              originalOutput: "No",
             },
           };
         });
@@ -480,8 +488,13 @@ export function ConsolidationNode({ id }) {
     if (columnSettings["Union"]) {
       const columnsWithOutputOrAggregate = Object.keys(columnSettings["Union"]).filter(
         column => {
-          const columnData = columnSettings["Union"][column] || {};
-          return columnData.output === "Yes" || (columnData.aggregate && columnData.aggregate.trim() !== "");
+          const columnData = columnSettings["Union"][column];
+          if (Array.isArray(columnData)) {
+            return columnData[0]?.originalOutput === "Yes" || columnData[0]?.output === "Yes" || columnData.some(c => c.aggregate || c.alias);
+          } else if (columnData) {
+            return columnData.originalOutput === "Yes" || columnData.output === "Yes" || (columnData.aggregate && columnData.aggregate.trim() !== "");
+          }
+          return false;
         }
       );
       setSelectedUnionColumns(columnsWithOutputOrAggregate);
@@ -827,14 +840,18 @@ export function ConsolidationNode({ id }) {
       </Modal>
       <Modal
         open={isModalOpen}
-        onClose={() => toggleModal(false)}
+        onClose={(event, reason) => {
+          if (reason !== 'backdropClick') {
+            toggleModal(false);
+          }
+        }}
         BackdropProps={{
           style: {
             backgroundColor: 'transparent',
           },
         }}
       >
-        <div className="absolute top-0 right-0 h-full w-full sm:w-1/2 md:w-1/3 lg:w-[22%]">
+        <div className="absolute top-0 right-0 h-full w-[450px]">
           <Columns
             id={"Union"}
             columnName={selectedColumn}
@@ -846,6 +863,8 @@ export function ConsolidationNode({ id }) {
             }
  
             toggleModal={toggleModal}
+            selectedColumns={selectedUnionColumns}
+            setSelectedColumns={setSelectedUnionColumns}
           />
  
         </div>
