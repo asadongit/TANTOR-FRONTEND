@@ -1,12 +1,13 @@
 import CircularProgress from "@mui/material/CircularProgress";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import Switch from "@mui/material/Switch";
-import { ChevronDown, X, Download, ArrowUpDown, GripVertical, Play, Info } from "lucide-react";
+import { ChevronDown, X, Download, ArrowUpDown, GripVertical, Play, Info, RefreshCw } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "../../../../context/AuthContext";
 import { QueryDetailsModal, EditorToast } from "./EditorModals";
+import { useFederationBaseViewsV2, useFederationPolicyIds } from "../../../../hooks/platform/federation";
 
-function CustomSelect({ options, value, onChange, placeholder = "Select View" }) {
+function CustomSelect({ options, value, onChange, placeholder = "Select View", isLoading = false }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const ref = useRef(null);
@@ -33,20 +34,27 @@ function CustomSelect({ options, value, onChange, placeholder = "Select View" })
         <div ref={ref} className="relative w-56">
             {/* Trigger */}
             <div
-                onClick={() => setOpen((p) => !p)}
+                onClick={() => !isLoading && setOpen((p) => !p)}
                 title={value || ""}
-                className="flex items-center justify-between px-3 py-1.5 bg-white border border-gray-200 rounded-md cursor-pointer select-none text-[13px] hover:border-[#8e78b7] transition-colors"
+                className={`flex items-center justify-between px-3 py-1.5 bg-white border border-gray-200 rounded-md cursor-pointer select-none text-[13px] hover:border-[#8e78b7] transition-colors ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
                 <span className={`truncate max-w-[170px] ${value ? "text-gray-700" : "text-gray-400"}`}>
                     {value || placeholder}
                 </span>
-                <svg
-                    width="14" height="14" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" strokeWidth="2"
-                    className={`flex-shrink-0 text-gray-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-                >
-                    <polyline points="6 9 12 15 18 9" />
-                </svg>
+                {isLoading ? (
+                    <svg className="animate-spin h-3.5 w-3.5 text-gray-400 flex-shrink-0" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                ) : (
+                    <svg
+                        width="14" height="14" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" strokeWidth="2"
+                        className={`flex-shrink-0 text-gray-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+                    >
+                        <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                )}
             </div>
 
             {/* Dropdown */}
@@ -217,8 +225,32 @@ const ResultsTable = ({
 /* ─────────────────────────────────────────────
    Builder
 ──────────────────────────────────────────────── */
-export default function Builder({ handleSwitch, checked, views = [] }) {
-    const { token, hostnameV1 } = useAuth();
+export default function Builder({ handleSwitch, checked }) {
+    const { token, project, decodedToken, hostnameV1 } = useAuth();
+    
+    const paramsStr = new URLSearchParams({
+        project: (project === "default" || project === "none") ? "default" : project,
+        created_by: decodedToken?.preferred_username,
+    }).toString();
+
+    const { isFetching: isFetchingPolicies, refetch: refetchPolicyIds } = useFederationPolicyIds();
+    const { data: apiViewsRaw, isFetching: isLoadingViews, refetch: refetchViews } = useFederationBaseViewsV2(paramsStr);
+
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const handleRefresh = async (e) => {
+        if (e) e.stopPropagation();
+        setIsRefreshing(true);
+        try {
+            await refetchPolicyIds();
+            await refetchViews();
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
+
+    const views = (apiViewsRaw && apiViewsRaw.result) 
+        ? apiViewsRaw.result.map(v => typeof v === 'string' ? v : (v.view_name || v)).sort((a,b) => a.localeCompare(b)) 
+        : [];
 
     const [loading, setLoading] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -478,12 +510,18 @@ export default function Builder({ handleSwitch, checked, views = [] }) {
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-white">
                 {/* ── Toolbar ── */}
                 <div className="flex items-center gap-2 px-3 py-1.5 border-b border-gray-200 bg-white flex-shrink-0">
-                    <CustomSelect
-                        options={views}
-                        value={selectedView}
-                        onChange={handleViewChange}
-                        placeholder="Select View"
-                    />
+                    <div className="flex items-center gap-1">
+                        <CustomSelect
+                            options={views}
+                            value={selectedView}
+                            onChange={handleViewChange}
+                            placeholder="Select View"
+                            isLoading={isLoadingViews || isFetchingPolicies}
+                        />
+                        <button onClick={handleRefresh} className="p-1.5 rounded-md hover:bg-gray-200 transition-colors" title="Refresh Views">
+                            <RefreshCw className={`h-4 w-4 text-gray-500 ${isRefreshing ? 'animate-spin' : ''}`} />
+                        </button>
+                    </div>
 
                     <button
                         type="button"

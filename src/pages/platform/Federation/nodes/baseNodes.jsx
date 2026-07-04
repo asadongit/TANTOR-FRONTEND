@@ -120,6 +120,7 @@ export function BaseNode({ id, data }) {
     created_by: decodedToken?.preferred_username,
   }).toString();
 
+  const { isFetching: isFetchingPolicies, refetch: refetchPolicyIds } = useFederationPolicyIds();
   const { data: apiViewsRaw, isFetching: isLoadingViews, refetch: refetchViews } = useFederationBaseViewsV2(paramsStr);
   const { data: apiColumnsRaw, isFetching: isLoadingColumns, refetch: refetchColumns } = useFederationViewColumns(selectedView);
 
@@ -128,6 +129,7 @@ export function BaseNode({ id, data }) {
     e.stopPropagation();
     setIsRefreshing(true);
     try {
+      await refetchPolicyIds();
       const promises = [refetchViews()];
       if (selectedView) promises.push(refetchColumns());
       await Promise.all(promises);
@@ -176,11 +178,11 @@ export function BaseNode({ id, data }) {
 
     setSettingsList((prev) => {
       const updatedSettingsList = prev.map((item) => {
-        if (item.name === columnName) return { ...item, output: isColumnChecked ? "No" : "Yes" };
+        if (item.name === columnName) return { ...item, originalOutput: isColumnChecked ? "No" : "Yes" };
         return item;
       });
       if (!isColumnChecked && !prev.some((item) => item.name === columnName)) {
-        updatedSettingsList.push({ ...defaultSetting, name: columnName, type: dataType });
+        updatedSettingsList.push({ ...defaultSetting, id: Date.now().toString(36) + Math.random().toString(36).substr(2), name: columnName, type: dataType, originalOutput: "Yes" });
       }
       return updatedSettingsList;
     });
@@ -210,20 +212,20 @@ export function BaseNode({ id, data }) {
     if (isAllSelected) {
       const targetNames = targetColumns.map((c) => c.column_name);
       setUserCheckedColumns((prev) => prev.filter((c) => !targetNames.includes(c)));
-      setSettingsList((prev) => prev.map((item) => ({ ...item, output: "No" })));
+      setSettingsList((prev) => prev.map((item) => ({ ...item, originalOutput: "No" })));
     } else {
       const updatedCheckedColumns = [];
       const newSettingList = [];
 
       targetColumns.forEach((item) => {
         updatedCheckedColumns.push(item.column_name);
-        newSettingList.push({ ...defaultSetting, name: item.column_name, type: item.data_type });
+        newSettingList.push({ ...defaultSetting, id: Date.now().toString(36) + Math.random().toString(36).substr(2), name: item.column_name, type: item.data_type, originalOutput: "Yes" });
       });
 
       const updatedSettingsList = [...settingsList];
       newSettingList.forEach((newSetting) => {
         const existingIndex = updatedSettingsList.findIndex((s) => s.name === newSetting.name);
-        if (existingIndex !== -1) updatedSettingsList[existingIndex] = { ...updatedSettingsList[existingIndex], output: "Yes" };
+        if (existingIndex !== -1) updatedSettingsList[existingIndex] = { ...updatedSettingsList[existingIndex], originalOutput: "Yes" };
         else updatedSettingsList.push(newSetting);
       });
       setUserCheckedColumns((prev) => [...new Set([...prev, ...updatedCheckedColumns])]);
@@ -264,7 +266,7 @@ export function BaseNode({ id, data }) {
                 <RefreshCw className={`h-3.5 w-3.5 text-gray-500 ${isRefreshing ? 'animate-spin' : ''}`} />
               </button>
             </div>
-            <SearchableSelect id="view" openDropdownId={openDropdownId} setOpenDropdownId={setOpenDropdownId} options={apiViews} value={selectedView} onChange={handleChangeView} placeholder="Select View" isLoading={isLoadingViews} />
+            <SearchableSelect id="view" openDropdownId={openDropdownId} setOpenDropdownId={setOpenDropdownId} options={apiViews} value={selectedView} onChange={handleChangeView} placeholder="Select View" isLoading={isLoadingViews || isFetchingPolicies} />
           </div>
 
           {isLoadingColumns && (
@@ -441,11 +443,11 @@ export function ConnectionNode({ id, data }) {
 
     setSettingsList((prev) => {
       const updatedSettingsList = prev.map((item) => {
-        if (item.name === columnName) return { ...item, output: isColumnChecked ? "No" : "Yes" };
+        if (item.name === columnName) return { ...item, originalOutput: isColumnChecked ? "No" : "Yes" };
         return item;
       });
       if (!isColumnChecked && !prev.some((item) => item.name === columnName)) {
-        updatedSettingsList.push({ ...defaultSetting, name: columnName, type: dataType });
+        updatedSettingsList.push({ ...defaultSetting, id: Date.now().toString(36) + Math.random().toString(36).substr(2), name: columnName, type: dataType, originalOutput: "Yes" });
       }
       return updatedSettingsList;
     });
@@ -471,15 +473,15 @@ export function ConnectionNode({ id, data }) {
     if (isAllSelected) {
       const targetNames = targetColumns.map((c) => c.column);
       setUserCheckedColumns((prev) => prev.filter((c) => !targetNames.includes(c)));
-      setSettingsList((prev) => prev.map((item) => ({ ...item, output: "No" })));
+      setSettingsList((prev) => prev.map((item) => ({ ...item, originalOutput: "No" })));
     } else {
       const updatedCheckedColumns = targetColumns.map((item) => item.column);
-      const newSettingList = targetColumns.map((item) => ({ ...defaultSetting, name: item.column, type: item.datatype }));
+      const newSettingList = targetColumns.map((item) => ({ ...defaultSetting, id: Date.now().toString(36) + Math.random().toString(36).substr(2), name: item.column, type: item.datatype, originalOutput: "Yes" }));
 
       const updatedSettingsList = [...settingsList];
       newSettingList.forEach((newSetting) => {
         const existingIndex = updatedSettingsList.findIndex((s) => s.name === newSetting.name);
-        if (existingIndex !== -1) updatedSettingsList[existingIndex] = { ...updatedSettingsList[existingIndex], output: "Yes" };
+        if (existingIndex !== -1) updatedSettingsList[existingIndex] = { ...updatedSettingsList[existingIndex], originalOutput: "Yes" };
         else updatedSettingsList.push(newSetting);
       });
       setUserCheckedColumns((prev) => [...new Set([...prev, ...updatedCheckedColumns])]);

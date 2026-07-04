@@ -65,40 +65,32 @@ export function BusinessFooter() {
       : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
 
     return Object.entries(selectedViews || {}).flatMap(([view, columns]) =>
-      Object.entries(columns).flatMap(([colName, colProps]) => {
-        const fieldRef = hasOperation ? colName : `${view}.${colName}`;
+      Object.entries(columns).flatMap(([colName, colPropsArray]) => {
+        const configs = Array.isArray(colPropsArray) ? colPropsArray : [colPropsArray];
         let fields = [];
 
-        if (colProps.aggregate) {
-          fields.push({
-            field: `${colProps.aggregate}(${fieldRef})`,
-            alias: colProps.alias || ""
+        if (configs[0]?.originalOutput === "Yes") {
+          fields.push({ 
+            field: hasOperation ? colName : `${view}.${colName}`, 
+            is_distinct: configs[0]?.originalDistinct === "Yes",
+            alias: configs[0]?.originalAlias || "" 
           });
         }
+        
+        configs.forEach(colProps => {
+          const fieldRef = hasOperation ? colName : `${view}.${colName}`;
 
-        if (colProps.output === "Yes") {
-          const hasAlias = colProps.alias && colProps.alias.trim() !== "";
-          const includeAs = colProps.includeAs || "alias";
-
-          if (hasAlias && includeAs === "both") {
-            // Original column (no alias)
-            fields.push({ field: fieldRef, alias: "" });
-            // Aliased column only if not aggregate (aggregate already added it)
-            if (!colProps.aggregate) {
-              fields.push({ field: fieldRef, alias: colProps.alias });
-            }
-          } else if (hasAlias && includeAs === "original") {
-            // Only original, ignore alias
-            if (!colProps.aggregate) {
-              fields.push({ field: fieldRef, alias: "" });
-            }
-          } else {
-            // Default: alias only (or no alias)
-            if (!colProps.aggregate) {
-              fields.push({ field: fieldRef, alias: colProps.alias || "" });
-            }
+          if (colProps.aggregate) {
+            fields.push({
+              field: fieldRef,
+              aggregation: colProps.aggregate.toLowerCase(),
+              is_distinct: colProps.aggregateDistinct === "Yes",
+              alias: colProps.alias || ""
+            });
+          } else if (colProps.alias) {
+            fields.push({ field: fieldRef, alias: colProps.alias });
           }
-        }
+        });
 
         return fields;
       })
@@ -266,11 +258,19 @@ export function BusinessFooter() {
     }
 
     Object.entries(source).forEach(([tableOrColumn, columnsOrProperties]) => {
-      Object.entries(columnsOrProperties).forEach(([column, properties]) => {
-        if (properties.output === "Yes") selectColumns.add(column);
-        if (properties.groupBy === "Yes") groupByColumns.add(column);
-        if (properties.aggregate) aggregateColumns.add(column);
-        if (parseInt(properties.order, 10) > 0 && properties.sort.trim() !== "") sortColumns.add(column);
+      Object.entries(columnsOrProperties).forEach(([column, propertiesArray]) => {
+        const configs = Array.isArray(propertiesArray) ? propertiesArray : [propertiesArray];
+        
+        if (configs[0]?.originalOutput === "Yes") {
+          selectColumns.add(column);
+        }
+
+        configs.forEach(properties => {
+          if (properties.aggregate || properties.alias) selectColumns.add(column);
+          if (properties.groupBy === "Yes") groupByColumns.add(column);
+          if (properties.aggregate) aggregateColumns.add(column);
+          if (parseInt(properties.order, 10) > 0 && properties.sort.trim() !== "") sortColumns.add(column);
+        });
       });
     });
 
@@ -279,30 +279,30 @@ export function BusinessFooter() {
     aggregateColumns = [...aggregateColumns];
     sortColumns = [...sortColumns];
 
-    if (modalState.queryType === "Regular") {
-      const invalidSelectColumns = selectColumns.filter(
-        col => !groupByColumns.includes(col) && !aggregateColumns.includes(col)
-      );
-      if (groupByColumns.length > 0 && selectColumns.length > 0 && invalidSelectColumns.length > 0) {
-        setToast({ show: true, message: `${invalidSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`, type: "error" });
-        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-        return;
-      }
+    // if (modalState.queryType === "Regular") {
+    //   const invalidSelectColumns = selectColumns.filter(
+    //     col => !groupByColumns.includes(col) && !aggregateColumns.includes(col)
+    //   );
+    //   if (groupByColumns.length > 0 && selectColumns.length > 0 && invalidSelectColumns.length > 0) {
+    //     setToast({ show: true, message: `${invalidSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`, type: "error" });
+    //     setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+    //     return;
+    //   }
 
-      const nonAggregatedSelectColumns = selectColumns.filter(col => !aggregateColumns.includes(col));
-      if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0 && nonAggregatedSelectColumns.length > 0) {
-        setToast({ show: true, message: `${nonAggregatedSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`, type: "error" });
-        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-        return;
-      }
+    //   const nonAggregatedSelectColumns = selectColumns.filter(col => !aggregateColumns.includes(col));
+    //   if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0 && nonAggregatedSelectColumns.length > 0) {
+    //     setToast({ show: true, message: `${nonAggregatedSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`, type: "error" });
+    //     setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+    //     return;
+    //   }
 
-      const invalidSortColumns = sortColumns.filter(col => !groupByColumns.includes(col) && !aggregateColumns.includes(col));
-      if ((groupByColumns.length > 0 || aggregateColumns.length > 0) && invalidSortColumns.length > 0) {
-        setToast({ show: true, message: `${invalidSortColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`, type: "error" });
-        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-        return;
-      }
-    }
+    //   const invalidSortColumns = sortColumns.filter(col => !groupByColumns.includes(col) && !aggregateColumns.includes(col));
+    //   if ((groupByColumns.length > 0 || aggregateColumns.length > 0) && invalidSortColumns.length > 0) {
+    //     setToast({ show: true, message: `${invalidSortColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`, type: "error" });
+    //     setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+    //     return;
+    //   }
+    // }
 
     if (Object.keys(apiPayloadForApi).length > 0) {
       setPreview(true);
@@ -311,22 +311,43 @@ export function BusinessFooter() {
 
       const groupByArray = Object.entries(source).flatMap(([view, columns]) =>
         Object.entries(columns)
-          .filter(([col, settings]) => settings.groupBy === "Yes")
+          .filter(([col, settingsArray]) => {
+            const configs = Array.isArray(settingsArray) ? settingsArray : [settingsArray];
+            return configs.some(s => s.groupBy === "Yes");
+          })
           .map(([col]) => (hasOperation ? `${col}` : `${view}.${col}`))
       );
 
       let orderBy = [];
       Object.keys(source).forEach(table => {
-        Object.entries(source[table]).forEach(([key, column]) => {
-          if (column.order && parseInt(column.order, 10) > 0 && column.sort.trim() !== "") {
-            orderBy.push({ table, key, order: parseInt(column.order, 10), sort: column.sort.toLowerCase() });
-          }
+        Object.entries(source[table]).forEach(([key, columnArray]) => {
+          const configs = Array.isArray(columnArray) ? columnArray : [columnArray];
+          let hasProcessedOriginal = false;
+          configs.forEach(column => {
+            if (column.originalSort && !hasProcessedOriginal) {
+              const inner = hasOperation ? key : `${table}.${key}`;
+              orderBy.push({ key: inner, order: parseInt(column.originalOrder || 1, 10), sort: column.originalSort.toLowerCase() });
+              hasProcessedOriginal = true;
+            }
+            if (column.order && parseInt(column.order, 10) > 0 && column.sort.trim() !== "") {
+              let field = key;
+              if (column.alias) {
+                field = column.alias;
+              } else if (column.aggregate) {
+                const inner = hasOperation ? key : `${table}.${key}`;
+                field = `${column.aggregate.toLowerCase()}(${inner})`;
+              } else {
+                field = hasOperation ? key : `${table}.${key}`;
+              }
+              orderBy.push({ key: field, order: parseInt(column.order, 10), sort: column.sort.toLowerCase() });
+            }
+          });
         });
       });
       orderBy.sort((a, b) => a.order - b.order);
       const finalOrderBy = orderBy.map(col => {
         const sortOrder = col.sort.toLowerCase() === "ascending" ? "ASC" : "DESC";
-        return hasOperation ? `${col.key} ${sortOrder}` : `${col.table}.${col.key} ${sortOrder}`;
+        return `${col.key} ${sortOrder}`;
       });
 
       const selectFields = getSelectFields(columnSettings, hasOperation);
@@ -407,19 +428,27 @@ export function BusinessFooter() {
         Object.entries(source).forEach(([tableOrColumn, columnsOrProperties]) => {
           const columns = hasOperation ? columnsOrProperties : columnsOrProperties;
 
-          Object.entries(columns).forEach(([column, properties]) => {
-            if (properties.output === "Yes") {
+          Object.entries(columns).forEach(([column, propertiesArray]) => {
+            const configs = Array.isArray(propertiesArray) ? propertiesArray : [propertiesArray];
+            
+            if (configs[0]?.originalOutput === "Yes") {
               selectColumns.add(column);
             }
-            if (properties.groupBy === "Yes") {
-              groupByColumns.add(column);
-            }
-            if (properties.aggregate) {
-              aggregateColumns.add(column);
-            }
-            if (parseInt(properties.order, 10) > 0 && properties.sort.trim() !== "") {
-              sortColumns.add(column);
-            }
+
+            configs.forEach(properties => {
+              if (properties.aggregate || properties.alias) {
+                selectColumns.add(column);
+              }
+              if (properties.groupBy === "Yes") {
+                groupByColumns.add(column);
+              }
+              if (properties.aggregate) {
+                aggregateColumns.add(column);
+              }
+              if (parseInt(properties.order, 10) > 0 && properties.sort.trim() !== "") {
+                sortColumns.add(column);
+              }
+            });
           });
         });
 
@@ -435,22 +464,45 @@ export function BusinessFooter() {
 
           const groupByArray = Object.entries(source).flatMap(([view, columns]) =>
             Object.entries(columns)
-              .filter(([col, settings]) => settings.groupBy === "Yes")
+              .filter(([col, settingsArray]) => {
+                const configs = Array.isArray(settingsArray) ? settingsArray : [settingsArray];
+                return configs.some(s => s.groupBy === "Yes");
+              })
               .map(([col]) => (hasOperation ? `${col}` : `${view}.${col}`))
           );
 
           let orderBy = [];
           Object.keys(source).forEach(table => {
-            Object.entries(source[table]).forEach(([key, column]) => {
-              if (column.order && parseInt(column.order, 10) > 0 && column.sort.trim() !== "") {
-                orderBy.push({ table, key, order: parseInt(column.order, 10), sort: column.sort.toLowerCase() });
-              }
+            Object.entries(source[table]).forEach(([key, columnArray]) => {
+              const configs = Array.isArray(columnArray) ? columnArray : [columnArray];
+              let hasProcessedOriginal = false;
+              configs.forEach(column => {
+                if (column.originalSort && !hasProcessedOriginal) {
+                  const inner = hasOperation ? key : `${table}.${key}`;
+                  const field = column.originalAlias ? `"${column.originalAlias}"` : inner;
+                  orderBy.push({ key: field, order: parseInt(column.originalOrder || 1, 10), sort: column.originalSort.toLowerCase() });
+                  hasProcessedOriginal = true;
+                }
+                if (column.order && parseInt(column.order, 10) > 0 && column.sort.trim() !== "") {
+                  let field = key;
+                  if (column.alias) {
+                    field = `"${column.alias}"`;
+                  } else if (column.aggregate) {
+                    const distinctStr = column.aggregateDistinct === "Yes" ? "distinct " : "";
+                    const inner = hasOperation ? key : `${table}.${key}`;
+                    field = `${column.aggregate.toLowerCase()}(${distinctStr}${inner})`;
+                  } else {
+                    field = hasOperation ? key : `${table}.${key}`;
+                  }
+                  orderBy.push({ key: field, order: parseInt(column.order, 10), sort: column.sort.toLowerCase() });
+                }
+              });
             });
           });
           orderBy.sort((a, b) => a.order - b.order);
           const finalOrderBy = orderBy.map(col => {
             const sortOrder = col.sort.toLowerCase() === "ascending" ? "ASC" : "DESC";
-            return hasOperation ? `${col.key} ${sortOrder}` : `${col.table}.${col.key} ${sortOrder}`;
+            return `${col.key} ${sortOrder}`;
           });
 
           const selectFields = getSelectFields(columnSettings, hasOperation);

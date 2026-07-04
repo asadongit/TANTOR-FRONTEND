@@ -6,13 +6,17 @@ import { useAuth } from "../../context/AuthContext";
 export const useFederationDashboardData = () => {
   const { token, hostnameV1, decodedToken } = useAuth();
   const username = decodedToken?.preferred_username || "sabhyata";
+  const { data: policyIds } = useFederationPolicyIds();
 
   return useQuery({
-    queryKey: ["federationDashboard", username],
+    queryKey: ["federationDashboard", username, policyIds],
     queryFn: async () => {
+      if (!policyIds || policyIds.length === 0) return { result: [] };
+      const policy_id = policyIds[0];
+
       const res = await axios.post(
         `${hostnameV1}/user_views_summary`,
-        { username },
+        { username, policy_id },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -22,7 +26,7 @@ export const useFederationDashboardData = () => {
       );
       return res.data;
     },
-    enabled: !!token && !!hostnameV1 && !!username,
+    enabled: !!token && !!hostnameV1 && !!username && policyIds !== undefined,
     staleTime: 30 * 1000,
   });
 };
@@ -225,12 +229,18 @@ export const useFederationColumns = (connectionName, schemaName, tableName) => {
 
 export const useFederationBaseViewsV2 = (paramsStr) => {
   const { token, hostnameV2 } = useAuth();
+  const { data: policyIds } = useFederationPolicyIds();
 
   return useQuery({
-    queryKey: ["federationBaseViewsV2", paramsStr],
+    queryKey: ["federationBaseViewsV2", paramsStr, policyIds],
     queryFn: async () => {
+      if (!policyIds || policyIds.length === 0) return { result: [] };
+
+      const policyParam = policyIds.map(id => `policy_id=${id}`).join('&');
+      const finalParams = paramsStr ? `${paramsStr}&${policyParam}` : policyParam;
+
       const res = await axios.get(
-        `${hostnameV2}/get-all-views_v2?${paramsStr}`,
+        `${hostnameV2}/get-all-views_v2?${finalParams}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -240,7 +250,7 @@ export const useFederationBaseViewsV2 = (paramsStr) => {
       );
       return res.data;
     },
-    enabled: !!token && !!hostnameV2 && !!paramsStr,
+    enabled: !!token && !!hostnameV2 && !!paramsStr && policyIds !== undefined,
     staleTime: 30 * 1000,
   });
 };

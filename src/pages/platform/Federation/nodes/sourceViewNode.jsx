@@ -11,7 +11,7 @@ import { useLocation } from "react-router-dom";
 import { useAuth } from "../../../../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { secureQuery } from "../../../datagovernance/DataCatalogue/Components/function";
-import { useFederationBaseViewsV2, useFederationViewColumns } from "../../../../hooks/platform/federation";
+import { useFederationBaseViewsV2, useFederationViewColumns, useFederationPolicyIds } from "../../../../hooks/platform/federation";
 
 
 const SearchableSelect = ({ id, openDropdownId, setOpenDropdownId, options, value, onChange, placeholder, disabled = false, isLoading = false }) => {
@@ -145,6 +145,7 @@ export function SourceViewNode({ id, onSave }) {
     created_by: decodedToken?.preferred_username,
   }).toString();
 
+  const { isFetching: isFetchingPolicies, refetch: refetchPolicyIds } = useFederationPolicyIds();
   const { data: apiViewsRaw, isFetching: isLoadingViews, refetch: refetchViews } = useFederationBaseViewsV2(paramsStr);
   const { data: apiColumnsRaw, isFetching: isLoadingColumns, refetch: refetchColumns } = useFederationViewColumns(selectedView);
 
@@ -153,6 +154,7 @@ export function SourceViewNode({ id, onSave }) {
     e.stopPropagation();
     setIsRefreshing(true);
     try {
+      await refetchPolicyIds();
       const promises = [refetchViews()];
       if (selectedView) promises.push(refetchColumns());
       await Promise.all(promises);
@@ -207,34 +209,38 @@ export function SourceViewNode({ id, onSave }) {
   const [selectedColumnsOrder, setSelectedColumnsOrder] = useState([]);
 
   const handleColumnChange = (column) => {
-    setSelectedColumns((prev) => {
-      if (prev.includes(column)) {
-        setColumnSettings((prevSettings) => {
-          const updatedSettings = { ...prevSettings };
-          if (updatedSettings[selectedView]) {
-            delete updatedSettings[selectedView][column];
-            if (Object.keys(updatedSettings[selectedView]).length === 0) {
-              delete updatedSettings[selectedView];
-            }
+    const isColumnChecked = selectedColumns.includes(column);
+    const updatedCheckedColumns = isColumnChecked
+      ? selectedColumns.filter((col) => col !== column)
+      : [...selectedColumns, column];
+
+    setSelectedColumns(updatedCheckedColumns);
+    setSelectedColumnsOrder(updatedCheckedColumns);
+
+    setColumnSettings((prevSettings) => {
+      if (isColumnChecked) {
+        const updatedSettings = { ...prevSettings };
+        if (updatedSettings[selectedView]) {
+          updatedSettings[selectedView] = { ...updatedSettings[selectedView] };
+          delete updatedSettings[selectedView][column];
+          if (Object.keys(updatedSettings[selectedView]).length === 0) {
+            delete updatedSettings[selectedView];
           }
-          return updatedSettings;
-        });
-        setSelectedColumnsOrder((prevOrder) => prevOrder.filter((col) => col !== column));
-        return prev.filter((col) => col !== column);
+        }
+        return updatedSettings;
       } else {
-        setColumnSettings((prevSettings) => ({
+        const currentConfig = prevSettings[selectedView]?.[column];
+        const newConfig = Array.isArray(currentConfig) 
+          ? [ { ...currentConfig[0], originalOutput: "Yes" }, ...currentConfig.slice(1) ]
+          : { ...currentConfig, originalOutput: "Yes" };
+
+        return {
           ...prevSettings,
           [selectedView]: {
             ...(prevSettings[selectedView] || {}),
-            [column]: {
-              ...(prevSettings[selectedView]?.[column] || {}),
-              output: "Yes",
-            },
+            [column]: newConfig,
           },
-        }));
-
-        setSelectedColumnsOrder((prevOrder) => [...prevOrder, column]);
-        return [...prev, column];
+        };
       }
     });
   };
@@ -257,12 +263,14 @@ export function SourceViewNode({ id, onSave }) {
       setColumnSettings((prevSettings) => {
         const updatedSettings = { ...prevSettings };
         visibleColumns.forEach((column) => {
+          const currentConfig = updatedSettings[selectedView]?.[column];
+          const newConfig = Array.isArray(currentConfig)
+            ? [ { ...currentConfig[0], originalOutput: "Yes" }, ...currentConfig.slice(1) ]
+            : { ...currentConfig, originalOutput: "Yes" };
+
           updatedSettings[selectedView] = {
             ...updatedSettings[selectedView],
-            [column]: {
-              ...(updatedSettings[selectedView]?.[column] || {}),
-              output: "Yes",
-            },
+            [column]: newConfig,
           };
         });
         return updatedSettings;
@@ -294,8 +302,13 @@ export function SourceViewNode({ id, onSave }) {
     if (selectedView && columnSettings[selectedView]) {
       const columnsWithOutputOrAggregate = Object.keys(columnSettings[selectedView]).filter(
         column => {
-          const columnData = columnSettings[selectedView][column] || {};
-          return columnData.output === "Yes" || (columnData.aggregate && columnData.aggregate.trim() !== "");
+          const columnData = columnSettings[selectedView][column];
+          if (Array.isArray(columnData)) {
+            return columnData[0]?.originalOutput === "Yes" || columnData[0]?.output === "Yes" || columnData.some(c => c.aggregate || c.alias);
+          } else if (columnData) {
+            return columnData.originalOutput === "Yes" || columnData.output === "Yes" || (columnData.aggregate && columnData.aggregate.trim() !== "");
+          }
+          return false;
         }
       );
       setSelectedColumns(columnsWithOutputOrAggregate);
@@ -499,7 +512,7 @@ export function SourceViewNode({ id, onSave }) {
                   value={selectedView}
                   onChange={handleViewChange}
                   placeholder="Select View"
-                  isLoading={isLoadingViews}
+                  isLoading={isLoadingViews || isFetchingPolicies}
                 />
               </div>
 
@@ -625,19 +638,25 @@ export function SourceViewNode({ id, onSave }) {
       </div>
       <Modal
         open={isModalOpen}
-        onClose={() => toggleModal(false)}
+        onClose={(event, reason) => {
+          if (reason !== 'backdropClick') {
+            toggleModal(false);
+          }
+        }}
         BackdropProps={{
           style: {
             backgroundColor: 'transparent',
           },
         }}
       >
-        <div className="absolute top-0 right-0 h-full w-full sm:w-1/2 md:w-1/3 lg:w-[22%]">
+        <div className="absolute top-0 right-0 h-full w-[450px]">
           <Columns
             id={selectedView}
             columnName={selectedColumn}
             dataType={apiColumns.find(col => col.column_name === selectedColumn)?.data_type}
             toggleModal={toggleModal}
+            selectedColumns={selectedColumns}
+            setSelectedColumns={setSelectedColumns}
           />
         </div>
       </Modal>

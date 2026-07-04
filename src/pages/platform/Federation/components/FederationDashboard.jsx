@@ -27,7 +27,7 @@ import toast from "react-hot-toast";
 import Breadcrumb from "../../../../components/Breadcrumb";
 import CardGrid from "../../../../components/CardGrid";
 import DataTable from "../../../../components/DataTable";
-import { useFederationDashboardData } from "../../../../hooks/platform/federation";
+import { useFederationDashboardData, useFederationPolicyIds } from "../../../../hooks/platform/federation";
 
 const FederationDashBoard = () => {
   const navigate = useNavigate();
@@ -61,6 +61,7 @@ const FederationDashBoard = () => {
   const [copiedField, setCopiedField] = useState(null);
   const [showApiKey, setShowApiKey] = useState(false);
 
+  const { isFetching: isFetchingPolicies, refetch: fetchPolicyIds } = useFederationPolicyIds();
   const { data: dashboardDataRaw, isLoading, isFetching, refetch: fetchDashboardData } = useFederationDashboardData();
 
   const dashboardData = dashboardDataRaw || {
@@ -97,12 +98,13 @@ const FederationDashBoard = () => {
   useEffect(() => {
     if (autoRefreshInterval === 0) return;
 
-    const interval = setInterval(() => {
-      fetchDashboardData();
+    const interval = setInterval(async () => {
+      await fetchPolicyIds();
+      await fetchDashboardData();
     }, autoRefreshInterval);
 
     return () => clearInterval(interval);
-  }, [autoRefreshInterval, fetchDashboardData]);
+  }, [autoRefreshInterval, fetchDashboardData, fetchPolicyIds]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -303,12 +305,15 @@ const FederationDashBoard = () => {
               <div className="flex rounded-lg border border-gray-400 hover:bg-gray-50 h-10">
                 <button
                   className="w-10 flex items-center justify-center border-r border-gray-300"
-                  onClick={() => {
-                    fetchDashboardData().finally(() => {
+                  onClick={async () => {
+                    try {
+                      await fetchPolicyIds();
+                      await fetchDashboardData();
+                    } finally {
                       setSearchTerm("");
                       setResetSortTrigger(prev => prev + 1);
                       toast.success("Federation data refreshed successfully");
-                    });
+                    }
                   }}
                   title="Refresh data"
                   disabled={isCardsLoading || isTableLoading}
