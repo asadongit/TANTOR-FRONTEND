@@ -9,10 +9,12 @@ import {
   SquareKanban,
   Database,
   FileCode,
+  RefreshCw
 } from "lucide-react";
 import { useStateContext } from "../context/contextViewProvider";
 import { defaultSetting } from "../BaseView/ColumnSettings";
 import { useAuth } from "../../../../context/AuthContext";
+import { useFederationBaseViewsV2, useFederationViewColumns, useFederationConnectionsBaseNodes, useFederationSchemas, useFederationTables, useFederationColumns, useFederationPolicyIds } from "../../../../hooks/platform/federation";
 import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/function.js';
 import { useToast } from "../context/ToastContext";
 
@@ -105,8 +107,6 @@ export function BaseNode({ id, data }) {
   const [apiViews, setApiViews] = useState([]);
   const [selectedView, setSelectedView] = useState("");
   const [apiColumns, setApiColumns] = useState([]);
-  const [isLoadingViews, setIsLoadingViews] = useState(false);
-  const [isLoadingColumns, setIsLoadingColumns] = useState(false);
 
   // ── Column search state ───────────────────────────────────────────────────
   const [columnSearchTerm, setColumnSearchTerm] = useState("");
@@ -114,57 +114,42 @@ export function BaseNode({ id, data }) {
   const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
   const { settingsList, setSettingsList, userSelections, setUserSelections, userCheckedColumns, setUserCheckedColumns } = useStateContext();
 
+  const paramsStr = new URLSearchParams({
+    view_type: "Base",
+    project: (project === "default" || project === "none") ? "default" : project,
+    created_by: decodedToken?.preferred_username,
+  }).toString();
+
+  const { data: apiViewsRaw, isFetching: isLoadingViews, refetch: refetchViews } = useFederationBaseViewsV2(paramsStr);
+  const { data: apiColumnsRaw, isFetching: isLoadingColumns, refetch: refetchColumns } = useFederationViewColumns(selectedView);
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const handleRefresh = async (e) => {
+    e.stopPropagation();
+    setIsRefreshing(true);
+    try {
+      const promises = [refetchViews()];
+      if (selectedView) promises.push(refetchColumns());
+      await Promise.all(promises);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (apiViewsRaw?.result) {
+      setApiViews(apiViewsRaw.result.map(v => v.view_name).sort((a, b) => a.localeCompare(b)));
+    }
+  }, [apiViewsRaw]);
+
+  useEffect(() => {
+    if (apiColumnsRaw) {
+      setApiColumns(apiColumnsRaw);
+    }
+  }, [apiColumnsRaw]);
+
   const getFilterModalColumns = () =>
     apiColumns.length > 0 ? apiColumns.map((column) => ({ name: column.column_name, type: column.data_type })) : [];
-
-  useEffect(() => {
-    (async () => {
-      setIsLoadingViews(true);
-      try {
-        const params = new URLSearchParams({
-          view_type: "Base",
-          project: (project === "default" || project === "none") ? "default" : project,
-          created_by: decodedToken?.preferred_username,
-        });
-
-        const response = await fetch(`${hostnameV2}/get-all-views_v2?${params}`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json", authorization: `Bearer ${token}` },
-        });
-
-        const data = await response.json();
-        if (response.ok) setApiViews(data.result.map(v => v.view_name).sort((a, b) => a.localeCompare(b)));
-        else showToast('Error fetching views', 'error');
-      } catch (error) {
-        console.error("Fetch error", error);
-        showToast('Error fetching views', 'error');
-      } finally {
-        setIsLoadingViews(false);
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (selectedView) {
-      (async () => {
-        setIsLoadingColumns(true);
-        try {
-          const response = await fetch(`${hostnameV1}/fetch_view_columns`, {
-            headers: { "Content-Type": "application/json", authorization: `Bearer ${token}` },
-            body: JSON.stringify({ view_names: [selectedView] }),
-            method: "POST",
-          });
-          let data = await response.json();
-          if (response.status == 200) setApiColumns(data.result[selectedView]);
-          else showToast('Error occurred while trying to fetch columns', 'error');
-        } catch (error) {
-          showToast('Error occurred while trying to fetch columns', 'error');
-        } finally {
-          setIsLoadingColumns(false);
-        }
-      })();
-    }
-  }, [selectedView]);
 
   const handleChangeView = (event) => {
     const selectedViewName = event.target.value.toLowerCase();
@@ -273,7 +258,12 @@ export function BaseNode({ id, data }) {
       {!isCollapsed && (
         <div className="space-y-4">
           <div className="mb-4">
-            <label className="block text-gray-700 mb-1">View</label>
+            <div className="flex items-center space-x-2 mb-1">
+              <label className="block text-gray-700">View</label>
+              <button onClick={handleRefresh} className="p-1 rounded-md hover:bg-gray-200" title="Refresh Views">
+                <RefreshCw className={`h-3.5 w-3.5 text-gray-500 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
             <SearchableSelect id="view" openDropdownId={openDropdownId} setOpenDropdownId={setOpenDropdownId} options={apiViews} value={selectedView} onChange={handleChangeView} placeholder="Select View" isLoading={isLoadingViews} />
           </div>
 
@@ -377,10 +367,6 @@ export function ConnectionNode({ id, data }) {
   const [apiColumns, setApiColumns] = useState([]);
   const [allowedColumns, setAllowedColumns] = useState([]);
   const [isAllSelected, setIsAllSelected] = useState(false);
-  const [isLoadingConnections, setIsLoadingConnections] = useState(false);
-  const [isLoadingSchemas, setIsLoadingSchemas] = useState(false);
-  const [isLoadingTables, setIsLoadingTables] = useState(false);
-  const [isLoadingColumns, setIsLoadingColumns] = useState(false);
 
   // ── Column search state ───────────────────────────────────────────────────
   const [columnSearchTerm, setColumnSearchTerm] = useState("");
@@ -388,157 +374,63 @@ export function ConnectionNode({ id, data }) {
   const { settingsList, setSettingsList, userSelections, setUserSelections, userCheckedColumns, setUserCheckedColumns } = useStateContext();
   const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
 
+  const { isFetching: isFetchingPolicies, refetch: refetchPolicyIds } = useFederationPolicyIds();
+  const { data: apiConnectionsRaw, isFetching: isLoadingConnections, refetch: refetchConnections } = useFederationConnectionsBaseNodes();
+  const { data: apiSchemasRaw, isFetching: isLoadingSchemas, refetch: refetchSchemas } = useFederationSchemas(selectedConnection);
+  const { data: apiTablesRaw, isFetching: isLoadingTables, refetch: refetchTables } = useFederationTables(selectedConnection, selectedSchema);
+  const { data: apiColumnsRaw, isFetching: isLoadingColumns, refetch: refetchColumns } = useFederationColumns(selectedConnection, selectedSchema, selectedTable);
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const handleRefresh = async (e) => {
+    e.stopPropagation();
+    setIsRefreshing(true);
+    try {
+      await refetchPolicyIds();
+      const promises = [refetchConnections()];
+      if (selectedConnection) promises.push(refetchSchemas());
+      if (selectedSchema) promises.push(refetchTables());
+      if (selectedTable) promises.push(refetchColumns());
+      await Promise.all(promises);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (apiConnectionsRaw) setApiConnections(apiConnectionsRaw);
+  }, [apiConnectionsRaw]);
+
+  useEffect(() => {
+    if (apiSchemasRaw) setApiSchemas(apiSchemasRaw);
+  }, [apiSchemasRaw]);
+
+  useEffect(() => {
+    if (apiTablesRaw) setApiTables(apiTablesRaw);
+  }, [apiTablesRaw]);
+
+  useEffect(() => {
+    if (apiColumnsRaw) {
+      const mapped = apiColumnsRaw.map(c => ({ column: c.column, datatype: c.datatype }));
+      setApiColumns(mapped);
+      // We must also populate allowedColumns, mapping to column_name to match original behavior
+      setAllowedColumns(apiColumnsRaw.map(c => ({ column_name: c.column, datatype: c.datatype })));
+    }
+  }, [apiColumnsRaw]);
+
   const getFilterModalColumns = () => {
     if (apiColumns.length > 0 && allowedColumns.length > 0) {
       return apiColumns
-        .filter((column) => allowedColumns.some((allowedCol) => allowedCol.column_name.toLowerCase() === column.column.toLowerCase()))
+        .filter((column) => allowedColumns.some((allowedCol) => allowedCol?.column_name?.toLowerCase() === column?.column?.toLowerCase()))
         .map((column) => ({ name: column.column, type: column.datatype }));
     }
     return [];
   };
 
-  useEffect(() => {
-    const fetchConnections = async () => {
-      setIsLoadingConnections(true);
-      try {
-        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-        const policyIds = secureQueryResponse.matched_policy_ids || [];
-        if (policyIds.length === 0) { setApiConnections([]); return; }
-
-        const response = await fetch(`${hostnameV1}/federation/connections/list`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ matched_policy_ids: policyIds }),
-        });
-        if (!response.ok) throw new Error("Failed to fetch connections");
-        const connectionsData = await response.json();
-        setApiConnections(connectionsData.map((item) => item.connection_name));
-      } catch (error) {
-        console.error("Error fetching connections:", error);
-        showToast('Failed to load connections', 'error');
-        setApiConnections([]);
-      } finally {
-        setIsLoadingConnections(false);
-      }
-    };
-    fetchConnections();
-  }, [token, hostnameV1]);
-
-  useEffect(() => {
-    if (selectedConnection) {
-      const fetchSchemas = async () => {
-        setIsLoadingSchemas(true);
-        try {
-          const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-          const policyIds = secureQueryResponse.matched_policy_ids || [];
-          if (policyIds.length === 0) { setApiSchemas([]); return; }
-
-          const response = await fetch(`${hostnameV1}/schemas/list`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ matched_policy_ids: policyIds, connection_name: selectedConnection }),
-          });
-          if (!response.ok) throw new Error("Failed to fetch schemas");
-          const data = await response.json();
-          const connectionData = data.find((item) => item[selectedConnection]);
-          setApiSchemas(connectionData ? connectionData[selectedConnection] : []);
-        } catch (error) {
-          console.error("Error fetching schema data:", error);
-          showToast('Failed to load schemas', 'error');
-          setApiSchemas([]);
-        } finally {
-          setIsLoadingSchemas(false);
-        }
-      };
-      fetchSchemas();
-    }
-  }, [selectedConnection, token, hostnameV1]);
-
-  useEffect(() => {
-    if (selectedSchema) {
-      const fetchTables = async () => {
-        setIsLoadingTables(true);
-        try {
-          const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-          const policyIds = secureQueryResponse.matched_policy_ids || [];
-          if (policyIds.length === 0) { setApiTables([]); return; }
-
-          const response = await fetch(`${hostnameV1}/tables/list`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ matched_policy_ids: policyIds, connection_name: selectedConnection, schema_name: [selectedSchema] }),
-          });
-          if (!response.ok) throw new Error("Failed to fetch tables");
-          const data = await response.json();
-          const schemaData = data.schemas?.find((item) => item.connection_name === selectedConnection && item.schema === selectedSchema);
-          setApiTables(schemaData?.tables || []);
-        } catch (error) {
-          console.error("Error fetching table data:", error);
-          showToast('Failed to load tables', 'error');
-          setApiTables([]);
-        } finally {
-          setIsLoadingTables(false);
-        }
-      };
-      fetchTables();
-    }
-  }, [selectedSchema, selectedConnection, token, hostnameV1]);
-
-  useEffect(() => {
-    if (selectedTable) {
-      const fetchColumns = async () => {
-        setIsLoadingColumns(true);
-        try {
-          const detailedColumnsResponse = await fetch(
-            `${hostnameV1}/${selectedConnection}/schemas/${selectedSchema}/tables/${selectedTable}/columns`,
-            { method: "GET", headers: { authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
-          );
-          if (!detailedColumnsResponse.ok) throw new Error("Failed to fetch detailed columns");
-          const detailedColsData = await detailedColumnsResponse.json();
-          setApiColumns(detailedColsData);
-
-          const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-          const policyIds = secureQueryResponse.matched_policy_ids || [];
-          if (policyIds.length === 0) { setAllowedColumns([]); return; }
-
-          const allowedColumnsResponse = await fetch(`${hostnameV1}/columns/list`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ matched_policy_ids: policyIds, connection_name: selectedConnection, schema_name: [selectedSchema], table_name: [selectedTable] }),
-          });
-          if (!allowedColumnsResponse.ok) throw new Error("Failed to fetch allowed columns");
-          const allowedColumnsData = await allowedColumnsResponse.json();
-          if (allowedColumnsData?.columns) {
-            const columns = allowedColumnsData.columns
-              .find((item) => item.connection_name === selectedConnection && item.schema === selectedSchema && item.table_name === selectedTable)
-              ?.columns.map((col) => {
-                const datatype = detailedColsData.find((dc) => dc.column?.toLowerCase() === col.column_name?.toLowerCase())?.datatype
-                  || col.metadata?.DATA_TYPE
-                  || "unknown";
-                return { column_name: col.column_name, datatype };
-              }) || [];
-            setAllowedColumns(columns);
-          } else {
-            setAllowedColumns([]);
-          }
-        } catch (error) {
-          console.error("Error fetching columns:", error);
-          showToast('Failed to load columns', 'error');
-          setApiColumns([]);
-          setAllowedColumns([]);
-        } finally {
-          setIsLoadingColumns(false);
-        }
-      };
-      fetchColumns();
-    }
-  }, [selectedTable, selectedConnection, selectedSchema, token, hostnameV1]);
-
   // ── Derived: filtered visible columns ────────────────────────────────────
   const visibleColumns = apiColumns
-    .filter((col) => allowedColumns.some((allowedCol) => allowedCol.column_name.toLowerCase() === col.column.toLowerCase()))
-    .filter((col) => col.column.toLowerCase().includes(columnSearchTerm.toLowerCase()));
-
+    .filter((col) => allowedColumns.some((allowedCol) => allowedCol?.column_name?.toLowerCase() === col?.column?.toLowerCase()))
+    .filter((col) => col?.column?.toLowerCase().includes(columnSearchTerm?.toLowerCase() || ""));
+      
   const handleColumnChange = (column) => {
     const columnName = column.column;
     const dataType = column.datatype;
@@ -559,7 +451,7 @@ export function ConnectionNode({ id, data }) {
     });
     setUserCheckedColumns(updatedCheckedColumns);
     const currentApiColumnsConsidered = apiColumns.filter((col) =>
-      allowedColumns.some((allowedCol) => allowedCol.column_name.toLowerCase() === col.column.toLowerCase())
+      allowedColumns.some((allowedCol) => allowedCol?.column_name?.toLowerCase() === col?.column?.toLowerCase())
     );
     setIsAllSelected(updatedCheckedColumns.length === currentApiColumnsConsidered.length);
   };
@@ -664,8 +556,13 @@ export function ConnectionNode({ id, data }) {
         <>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-black mb-1">Connection</label>
-              <SearchableSelect id="connection" openDropdownId={openDropdownId} setOpenDropdownId={setOpenDropdownId} options={apiConnections} value={selectedConnection} onChange={handleConnectionChange} placeholder="Select a connection" isLoading={isLoadingConnections} />
+              <div className="flex items-center space-x-2 mb-1">
+                <label className="block text-sm font-medium text-black">Connection</label>
+                <button onClick={handleRefresh} className="p-1 rounded-md hover:bg-gray-200" title="Refresh Connections">
+                  <RefreshCw className={`h-3.5 w-3.5 text-gray-500 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+              <SearchableSelect id="connection" openDropdownId={openDropdownId} setOpenDropdownId={setOpenDropdownId} options={apiConnections} value={selectedConnection} onChange={handleConnectionChange} placeholder="Select a connection" isLoading={isLoadingConnections || isFetchingPolicies} />
             </div>
             <div>
               <label className="block text-sm font-medium text-black mb-1">Schema</label>
