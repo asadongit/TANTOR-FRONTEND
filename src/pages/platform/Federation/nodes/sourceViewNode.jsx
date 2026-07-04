@@ -2,14 +2,16 @@
 import React, { useEffect, useState, useRef } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position, useUpdateNodeInternals } from "reactflow";
-import { SquareKanban, X, ChevronDown, ChevronUp, Pencil, Search, FileCode } from "lucide-react";
+import { SquareKanban, X, ChevronDown, ChevronUp, Pencil, Search, FileCode, RefreshCw } from "lucide-react";
 import { useStateContext } from "../context/contextViewProvider";
 import { Modal } from "@mui/material";
 import { Columns } from "../BusinessView/Columns";
 import ComplexQueryEditor from "../components/ComplexQueryEditor";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../../../../context/AuthContext";
-import { useToast } from '../context/ToastContext';
+import { useToast } from "../context/ToastContext";
+import { secureQuery } from "../../../datagovernance/DataCatalogue/Components/function";
+import { useFederationBaseViewsV2, useFederationViewColumns } from "../../../../hooks/platform/federation";
 
 
 const SearchableSelect = ({ id, openDropdownId, setOpenDropdownId, options, value, onChange, placeholder, disabled = false, isLoading = false }) => {
@@ -111,14 +113,13 @@ export function SourceViewNode({ id, onSave }) {
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [selectedView, setSelectedView] = useState("");
   const [selectedColumns, setSelectedColumns] = useState([]);
-  const [views, setViews] = useState([])
+  const [apiViews, setApiViews] = useState([])
   const [columnsForViews, setColumnsForViews] = useState({});
   const [selectedColumn, setSelectedColumn] = useState("");
-  const [columnData, setColumnData] = useState([])
+  const [apiColumns, setApiColumns] = useState([])
+  const [allowedColumns, setAllowedColumns] = useState([])
   const [showQueryEditor, setShowQueryEditor] = useState(false);
   const [previousView, setPreviousView] = useState("");
-  const [isLoadingViews, setIsLoadingViews] = useState(false);
-  const [isLoadingColumns, setIsLoadingColumns] = useState(false);
   const hasIncrementedRef = useRef(false);
 
   const [columnSearchTerm, setColumnSearchTerm] = useState("");
@@ -138,36 +139,51 @@ export function SourceViewNode({ id, onSave }) {
     }));
   }, [])
 
+  const paramsStr = new URLSearchParams({
+    view_type: "Base",
+    project: (project === "default" || project === "none") ? "default" : project,
+    created_by: decodedToken?.preferred_username,
+  }).toString();
+
+  const { data: apiViewsRaw, isFetching: isLoadingViews, refetch: refetchViews } = useFederationBaseViewsV2(paramsStr);
+  const { data: apiColumnsRaw, isFetching: isLoadingColumns, refetch: refetchColumns } = useFederationViewColumns(selectedView);
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const handleRefresh = async (e) => {
+    e.stopPropagation();
+    setIsRefreshing(true);
+    try {
+      const promises = [refetchViews()];
+      if (selectedView) promises.push(refetchColumns());
+      await Promise.all(promises);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchViews = async () => {
-      setIsLoadingViews(true);
-      try {
-        const params = new URLSearchParams({
-          view_type: "Base",
-          project: (project === "default" || project === "none") ? "default" : project,
-          created_by: decodedToken?.preferred_username,
-        });
+    if (apiViewsRaw && apiViewsRaw.result) {
+      setApiViews(apiViewsRaw.result.map(v => typeof v === 'string' ? v : (v.view_name || v)).sort((a, b) => a.localeCompare(b)));
+    }
+  }, [apiViewsRaw]);
 
-        const response = await fetch(`${hostnameV2}/get-all-views_v2?${params}`);
-        const data = await response.json();
+  useEffect(() => {
+    if (apiColumnsRaw) {
+      setApiColumns(apiColumnsRaw);
+      setAllowedColumns(apiColumnsRaw);
+      setColumnsForViews(prev => ({
+        ...prev,
+        [selectedView]: apiColumnsRaw.map(c => c.column_name)
+      }));
+    }
+  }, [apiColumnsRaw, selectedView]);
 
-        if (data && data.result) {
-          setViews(data.result.map(v => v.view_name))
-        } else {
-          console.error("Invalid response from the API");
-          showToast('Failed to fetch views', 'error');
-        }
-      } catch (error) {
-        console.error("Error fetching views:", error);
-        showToast('Failed to fetch views', 'error');
-      } finally {
-        setIsLoadingViews(false);
-      }
-    };
-
-    fetchViews();
-  }, []);
-
+  const getFilterModalColumns = () => {
+    if (apiColumns.length > 0) {
+      return apiColumns.map((column) => ({ name: column.column_name, type: column.data_type }));
+    }
+    return [];
+  };
 
   useEffect(() => {
     if (!hasIncrementedRef.current) {
@@ -187,47 +203,7 @@ export function SourceViewNode({ id, onSave }) {
       return updatedSettings;
     });
     setSelectedView(e.target.value.toLowerCase())
-    fetchColumnsForView(e.target.value.toLowerCase());
   }
-
-  const fetchColumnsForView = async (viewName) => {
-    if (columnsForViews[viewName]) return;
-
-    setIsLoadingColumns(true);
-    const temp = {
-      "view_names": [viewName]
-    }
-    try {
-      const response = await fetch(`${hostnameV1}/fetch_view_columns`, {
-        method: "POST",
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(temp)
-      });
-      const data = await response.json();
-      if (data && data.result) {
-        setColumnData(data.result[viewName])
-        const columnNames = data.result[viewName].map(col => col.column_name);
-        setColumnsForViews(prevState => ({
-          ...prevState,
-          [viewName]: columnNames,
-        }));
-        updateNodeInternals(id);
-      } else {
-        console.error(`Invalid response for columns of view `);
-        showToast('Failed to fetch columns', 'error');
-      }
-    }
-    catch (error) {
-      console.error("Error fetching columns for view:", error);
-      showToast('Failed to fetch columns', 'error');
-    } finally {
-      setIsLoadingColumns(false);
-    }
-  };
-
   const [selectedColumnsOrder, setSelectedColumnsOrder] = useState([]);
 
   const handleColumnChange = (column) => {
@@ -363,7 +339,7 @@ export function SourceViewNode({ id, onSave }) {
       type: "Source",
       view,
       selectedColumns,
-      Columns: columnData
+      Columns: apiColumns
     };
 
     const currentPayloads = viewPayload || [];
@@ -455,6 +431,10 @@ export function SourceViewNode({ id, onSave }) {
 
   const updateNodeInternals = useUpdateNodeInternals();
 
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [id, updateNodeInternals, selectedView, apiColumns, isCollapsed, columnSearchTerm]);
+
   const handleCollapse = () => {
     setIsCollapsed(!isCollapsed);
     updateNodeInternals(id);
@@ -505,12 +485,17 @@ export function SourceViewNode({ id, onSave }) {
           <>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-black mb-1">View</label>
+                <div className="flex items-center space-x-2 mb-1">
+                  <label className="block text-sm font-medium text-black">View</label>
+                  <button onClick={handleRefresh} className="p-1 rounded-md hover:bg-gray-200" title="Refresh Views">
+                    <RefreshCw className={`h-3.5 w-3.5 text-gray-500 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
                 <SearchableSelect
                   id="view"
                   openDropdownId={openDropdownId}
                   setOpenDropdownId={setOpenDropdownId}
-                  options={views}
+                  options={apiViews}
                   value={selectedView}
                   onChange={handleViewChange}
                   placeholder="Select View"
@@ -651,7 +636,7 @@ export function SourceViewNode({ id, onSave }) {
           <Columns
             id={selectedView}
             columnName={selectedColumn}
-            dataType={columnData.find(col => col.column_name === selectedColumn)?.data_type}
+            dataType={apiColumns.find(col => col.column_name === selectedColumn)?.data_type}
             toggleModal={toggleModal}
           />
         </div>

@@ -1,36 +1,33 @@
 /*eslint-disable*/
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Icon } from "@iconify-icon/react";
 import { Link } from 'react-router-dom';
-import { AgGridReact } from 'ag-grid-react';
-import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
 import CreateViewDialog from "./createViewDailog";
 import {
   Trash2,
-  MoreHorizontal,
   RotateCw,
-  List,
-  RefreshCcw,
   Code,
   Plus,
-  LinkIcon,
-  ChevronLeft,
-  ChevronRight,
   Search,
   ChevronDown,
-  CheckCircle
+  CheckCircle,
+  RefreshCcw,
+  Globe,
+  Copy,
+  Check,
+  Eye,
+  EyeOff,
+  ShieldAlert,
+  X,
+  Loader2,
 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
-import { Modal } from "@mui/material";
-import { MenuItem, Select, InputLabel, FormControl } from "@mui/material";
 import { useAuth } from "../../../../context/AuthContext";
-import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/function.js';
 import toast from "react-hot-toast";
 import Breadcrumb from "../../../../components/Breadcrumb";
-
-ModuleRegistry.registerModules([AllCommunityModule]);
+import CardGrid from "../../../../components/CardGrid";
+import DataTable from "../../../../components/DataTable";
+import { useFederationDashboardData } from "../../../../hooks/platform/federation";
 
 const FederationDashBoard = () => {
   const navigate = useNavigate();
@@ -49,16 +46,34 @@ const FederationDashBoard = () => {
     setIsModalOpen(!isModalOpen);
   };
 
-  const [data, setData] = useState([]);
-  const [connectionData, setConnectionData] = useState([]);
-  const [schemaList, setSchemaList] = useState([]);
-  const [tableList, setTableList] = useState([]);
-  const [viewList, setViewList] = useState([]);
-  const { token, project, decodedToken, hostnameV1, hostnameV2 } = useAuth();
-  const [count, setCount] = useState({});
-  const [isCardsLoading, setIsCardsLoading] = useState(false);
-  const [isTableLoading, setIsTableLoading] = useState(false);
-  const [refreshingRow, setRefreshingRow] = useState(null);
+  const { token, decodedToken, hostnameV1 } = useAuth();
+  const ExternalAPI = window._env_?.VITE_EXTERNAL_API;
+  const KongAPI = window._env_?.VITE_KONG_API;
+
+  const [isApiModalOpen, setIsApiModalOpen] = useState(false);
+  const [apiModalData, setApiModalData] = useState({
+    viewName: "",
+    curlCommand: "",
+    apiKey: "",
+    endpoint: "",
+  });
+  const [apiModalLoading, setApiModalLoading] = useState(false);
+  const [copiedField, setCopiedField] = useState(null);
+  const [showApiKey, setShowApiKey] = useState(false);
+
+  const { data: dashboardDataRaw, isLoading, isFetching, refetch: fetchDashboardData } = useFederationDashboardData();
+
+  const dashboardData = dashboardDataRaw || {
+    total_view: 0,
+    base_view: 0,
+    business_view: 0,
+    materalized_view: 0,
+    views_details: []
+  };
+
+  const isCardsLoading = isLoading || isFetching;
+  const isTableLoading = isLoading || isFetching;
+  const [resetSortTrigger, setResetSortTrigger] = useState(0);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState("both");
@@ -83,11 +98,11 @@ const FederationDashBoard = () => {
     if (autoRefreshInterval === 0) return;
 
     const interval = setInterval(() => {
-      fetchConnectionDetails();
+      fetchDashboardData();
     }, autoRefreshInterval);
 
     return () => clearInterval(interval);
-  }, [autoRefreshInterval, token, project, decodedToken]);
+  }, [autoRefreshInterval, fetchDashboardData]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -99,302 +114,171 @@ const FederationDashBoard = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const fetchConnectionDetails = async () => {
-    setIsLoading(true);
-    setIsCardsLoading(true);
-    setIsTableLoading(true);
+  const handleRefreshMV = async (viewName) => {
+    try {
+      const response = await fetch(`${hostnameV1}/refresh_view/${viewName}`, {
+        method: "POST",
+        headers: { accept: "application/json", "Authorization": `Bearer ${token}` },
+      });
+      if (response.ok) {
+        toast.success("View refreshed successfully");
+        await fetchDashboardData();
+      } else {
+        toast.error("Failed to refresh view");
+      }
+    } catch (error) {
+      console.error("Error refreshing view:", error);
+      toast.error("Failed to refresh view");
+    }
+  };
+
+  const handleDeleteView = (viewName) => {
+    // For now do nothing as per user request
+    console.log("Delete view clicked for:", viewName);
+  };
+
+  const handleViewExposedAPI = async (row) => {
+    const viewName = row.view_name;
+    setShowApiKey(false);
+    setCopiedField(null);
+    setApiModalData({ viewName, curlCommand: "", apiKey: "", endpoint: "" });
+    setApiModalLoading(true);
+    setIsApiModalOpen(true);
 
     try {
-      const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-      const policyIds = secureQueryResponse.matched_policy_ids || [];
-
-      if (policyIds.length === 0) {
-        return;
+      const endpoint = `${ExternalAPI}/view/${viewName}`;
+      let curlCommand = "";
+      try {
+        const curlResponse = await fetch(`${hostnameV1}/generate_curl`, {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ url: endpoint, page: 1 }),
+        });
+        curlCommand = await curlResponse.text();
+      } catch (e) {
+        curlCommand = `curl --location '${endpoint}'`;
       }
 
-      const response = await fetch(`${hostnameV1}/policy-connection-details`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ policy_id: policyIds })
-      });
-      const data = await response.json();
+      let apiKey = "";
+      try {
+        const username = decodedToken?.preferred_username || "sanitycheck";
+        const keyResponse = await fetch(
+          `${KongAPI}/consumers/${username}/key-auth`,
+          { method: "GET" }
+        );
+        if (keyResponse.ok) {
+          const keyData = await keyResponse.json();
+          apiKey = keyData?.data?.[0]?.key || "";
+        }
+      } catch (e) {
+        console.error("Error fetching API key:", e);
+        apiKey = "";
+      }
 
-      const connections = [...new Set(data.map(item => item.connection_name))];
-      const schemaList = {};
-      const tableList = {};
-
-      connections.forEach(conn => {
-        const connData = data.filter(item => item.connection_name === conn);
-        schemaList[conn] = [...new Set(connData.map(item => item.table_schema))];
-        tableList[conn] = {};
-        schemaList[conn].forEach(schema => {
-          tableList[conn][schema] = [...new Set(connData
-            .filter(item => item.table_schema === schema)
-            .map(item => item.table_name))];
-        });
-      });
-
-      setConnectionData(data);
-      setSchemaList(schemaList);
-      setTableList(tableList);
-      setCount(prev => ({
-        ...prev,
-        connections,
-        totalSchemaCount: Object.values(schemaList).reduce((sum, schemas) => sum + schemas.length, 0),
-        totalTableCount: Object.values(tableList).reduce((sum, schemas) =>
-          sum + Object.values(schemas).reduce((s, tables) => s + tables.length, 0), 0)
-      }));
+      setApiModalData({ viewName, curlCommand, apiKey, endpoint });
     } catch (error) {
-      console.error("Error fetching connection details:", error);
+      console.error("Error fetching API details:", error);
     } finally {
-      setIsLoading(false);
-      setIsCardsLoading(false);
-      setIsTableLoading(false);
+      setApiModalLoading(false);
     }
   };
 
-  const refreshConnection = async (connectionName) => {
-    setRefreshingRow(connectionName);
-    try {
-      const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-      const policyIds = secureQueryResponse.matched_policy_ids || [];
-
-      if (policyIds.length === 0) return;
-
-      const response = await fetch(`${hostnameV1}/policy-connection-details`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ policy_id: policyIds })
-      });
-      const data = await response.json();
-
-      const updatedConnectionData = connectionData.map(conn =>
-        conn.connection_name === connectionName ?
-          data.find(item => item.connection_name === connectionName) || conn :
-          conn
-      );
-
-      setConnectionData(updatedConnectionData);
-
-      const connections = [...new Set(data.map(item => item.connection_name))];
-      const schemaList = {};
-      const tableList = {};
-
-      connections.forEach(conn => {
-        const connData = data.filter(item => item.connection_name === conn);
-        schemaList[conn] = [...new Set(connData.map(item => item.table_schema))];
-        tableList[conn] = {};
-        schemaList[conn].forEach(schema => {
-          tableList[conn][schema] = [...new Set(connData
-            .filter(item => item.table_schema === schema)
-            .map(item => item.table_name))];
-        });
-      });
-
-      setSchemaList(schemaList);
-      setTableList(tableList);
-      setCount(prev => ({
-        ...prev,
-        connections,
-        totalSchemaCount: Object.values(schemaList).reduce((sum, schemas) => sum + schemas.length, 0),
-        totalTableCount: Object.values(tableList).reduce((sum, schemas) =>
-          sum + Object.values(schemas).reduce((s, tables) => s + tables.length, 0), 0)
-      }));
-
-    } catch (error) {
-      console.error("Error refreshing connection:", error);
-    } finally {
-      setRefreshingRow(null);
-    }
-  };
-
-  const fetchViewCount = async (connectionNames) => {
-    try {
-      const response = await fetch(`${hostnameV2}/connections/views`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          connection_names: connectionNames,
-          created_by: decodedToken?.preferred_username || "",
-          project: project || "default"
-        })
-      });
-
-      let data = await response.json();
-      setViewList(data);
-      setCount(prev => ({
-        ...prev,
-        totalViewsCount: Object.values(data).reduce((sum, views) => sum + views.length, 0)
-      }));
-    } catch (error) {
-      console.error("Error fetching views:", error);
-    }
-  };
-
-  useEffect(() => {
-    fetchConnectionDetails();
-  }, [token, project, decodedToken]);
-
-  useEffect(() => {
-    if (connectionData.length > 0) {
-      const connectionNames = [...new Set(connectionData.map(item => item.connection_name))];
-      fetchViewCount(connectionNames);
-    }
-  }, [connectionData]);
-
-  const [rowData, setRowData] = useState([]);
-  const [activeMenu, setActiveMenu] = useState(null);
-
-  const handleClickOutside = () => {
-    setActiveMenu(null);
-  };
-
-  const [connectionsOpen, setConnectionsOpen] = useState(false);
-  const handleConnectionsOpen = () => setConnectionsOpen(true);
-  const handleConnectionsClose = () => setConnectionsOpen(false);
-
-  const [searchConnection, setSearchConnection] = useState("");
-  const filteredConnections = count.connections?.filter((name) =>
-    name.toLowerCase().includes(searchConnection.toLowerCase())
-  );
-
-  const [schemasOpen, setSchemasOpen] = useState(false);
-  const [selectedConnection, setSelectedConnection] = useState("");
-  const [schemas, setSchemas] = useState([]);
-
-  const handleSchemasOpen = () => {
-    setSchemasOpen(true);
-    setSelectedConnection("");
-    setSchemas([]);
-  };
-
-  const handleSchemasClose = () => {
-    setSchemasOpen(false);
-    setSelectedConnection("");
-  };
-
-  const handleConnectionSelect = (event) => {
-    const connectionName = event.target.value;
-    setSelectedConnection(connectionName);
-    setSchemas(schemaList[connectionName] || []);
-  };
-
-  const [tablesOpen, setTablesOpen] = useState(false);
-  const [selectedTableConnection, setSelectedTableConnection] = useState('');
-  const [selectedTableSchema, setSelectedTableSchema] = useState('');
-  const [tables, setTables] = useState([]);
-
-  const handleTablesOpen = () => {
-    setTablesOpen(true);
-    setSelectedTableConnection('');
-    setSelectedTableSchema('');
-    setTables([]);
-  };
-
-  const handleTablesClose = () => {
-    setTablesOpen(false);
-  };
-
-  const handleTableConnectionSelect = (event) => {
-    const connectionName = event.target.value;
-    setSelectedTableConnection(connectionName);
-    setSelectedTableSchema('');
-  };
-
-  const handleTableSchemaSelect = (event) => {
-    const schemaName = event.target.value;
-    setSelectedTableSchema(schemaName);
-    setTables(tableList[selectedTableConnection]?.[schemaName] || []);
-  };
-
-  const [selectedView, setSelectedView] = useState("");
-  const [viewOpen, setViewOpen] = useState(false);
-  const handleViewsOpen = () => setViewOpen(true);
-  const handleViewsClose = () => setViewOpen(false);
-
-  const handleConnectionChange = (e) => {
-    setSelectedConnection(e.target.value);
-    setSelectedView("");
-  };
-
-  const handleViewChange = (e) => {
-    setSelectedView(e.target.value);
-  };
-
-  const [page, setPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-
-  const filteredData = useMemo(() => {
-    let filtered = rowData;
-    if (searchTerm.trim()) {
-      const search = searchTerm.toLowerCase();
-      filtered = filtered.filter(row =>
-        Object.values(row).some(value =>
-          String(value).toLowerCase().includes(search)
-        )
-      );
-    }
-    return filtered;
-  }, [rowData, searchTerm]);
-
-  const handleItemsPerPageChange = (e) => {
-    setItemsPerPage(Number(e.target.value));
-    setPage(1);
-  };
-
-  const handlePrevPage = () => {
-    if (page > 1) setPage(page - 1);
-  };
-
-  const handleNextPage = () => {
-    const maxPage = Math.ceil(filteredData.length / itemsPerPage);
-    if (page < maxPage) setPage(page + 1);
-  };
-
-  const totalItems = filteredData.length;
-  const startItem = totalItems === 0 ? 0 : (page - 1) * itemsPerPage + 1;
-  const endItem = Math.min(page * itemsPerPage, totalItems);
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [cards, setCards] = useState([]);
-
-  useEffect(() => {
-    if (!connectionData.length) return;
-
-    const updatedRowData = [...new Set(connectionData.map(item => item.connection_name))].map(connectionName => {
-      const connectionItems = connectionData.filter(item => item.connection_name === connectionName);
-      return {
-        Connections: connectionName,
-        Schema: schemaList[connectionName]?.length || 0,
-        Tables: Object.values(tableList[connectionName] || {}).reduce((sum, tables) => sum + tables.length, 0),
-        Views: viewList[connectionName]?.length || 0,
-      };
+  const handleCopy = (text, field) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
     });
+  };
 
-    setRowData(updatedRowData);
+  useEffect(() => {
+    // Initial fetch is handled automatically by useFederationDashboardData hook
+  }, [token, decodedToken]);
 
-    setCards([
-      { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#d8d3e4]", iconcolor: "text-purple-700", title: "Connections", count: count.connections?.length || 0 },
-      { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#d8d3e4]", iconcolor: "text-purple-700", title: "Schemas", count: count.totalSchemaCount || 0 },
-      { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#d8d3e4]", iconcolor: "text-purple-700", title: "Tables", count: count.totalTableCount || 0 },
-      { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#d8d3e4]", iconcolor: "text-purple-700", title: "Views", count: count.totalViewsCount || 0 }
-    ]);
-  }, [connectionData, schemaList, tableList, viewList, count]);
+  const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+  };
 
-  const paginatedData = useMemo(() => {
-    const startIndex = (page - 1) * itemsPerPage;
-    return filteredData.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredData, page, itemsPerPage]);
+  const columns = [
+    { label: "View Name", key: "view_name", sortable: true },
+    { label: "View Type", key: "type", sortable: true, render: (row) => <span className="capitalize">{row.type}</span> },
+    {
+      label: "Materialized",
+      key: "materalized",
+      sortable: true,
+      render: (row) => row.materalized ? (
+        <span className="px-3 py-1 bg-green-100 text-green-800 rounded-md text-xs font-medium flex items-center w-fit">True</span>
+      ) : (
+        <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-md text-xs font-medium">False</span>
+      )
+    },
+    {
+      label: "Status",
+      key: "status",
+      sortable: true,
+      render: (row) => row.status ? (
+        <span className={`px-2 py-1 rounded-md text-xs font-medium capitalize ${row.status === 'refreshing' ? 'bg-yellow-100 text-yellow-800' : row.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+          {row.status}
+        </span>
+      ) : (
+        <span className="text-gray-500">-</span>
+      )
+    },
+    { 
+      label: "MV Expired In", 
+      key: "expiry_time_left", 
+      sortable: true,
+      render: (row) => row.status === 'refreshing' ? '-' : (row.expiry_time_left || '-')
+    },
+    {
+      label: "Created At",
+      key: "created_at",
+      sortable: true,
+      render: (row) => formatDate(row.created_at)
+    },
+    { label: "Action", sortable: false }
+  ];
+
+  const actions = [
+    {
+      label: "View Exposed API",
+      icon: <Globe size={16} />,
+      onClick: (row) => handleViewExposedAPI(row)
+    },
+    {
+      label: "Refresh MV",
+      icon: <RotateCw size={16} />,
+      show: (row) => row.materalized,
+      onClick: (row) => handleRefreshMV(row.view_name)
+    },
+    {
+      label: "Delete",
+      icon: <Trash2 size={16} />,
+      onClick: (row) => handleDeleteView(row.view_name)
+    }
+  ];
+
+  const cards = [
+    { icon: "lucide:layout-dashboard", bgcolor: "bg-[#d8d3e4] bg-opacity-25", iconcolor: "text-purple-700", title: "Total Views", count: dashboardData.total_view || 0 },
+    { icon: "lucide:database", bgcolor: "bg-[#96CF7B] bg-opacity-25", iconcolor: "text-green-700", title: "Base Views", count: dashboardData.base_view || 0 },
+    { icon: "lucide:briefcase", bgcolor: "bg-[#FFC93F] bg-opacity-25", iconcolor: "text-orange-700", title: "Business Views", count: dashboardData.business_view || 0 },
+    { icon: "lucide:layers", bgcolor: "bg-[#16ABC2] bg-opacity-25", iconcolor: "text-cyan-700", title: "Materialized Views", count: dashboardData.materalized_view || 0 }
+  ];
+
+  const handleCardClick = () => {};
 
   return (
     <>
@@ -420,11 +304,9 @@ const FederationDashBoard = () => {
                 <button
                   className="w-10 flex items-center justify-center border-r border-gray-300"
                   onClick={() => {
-                    setIsCardsLoading(true);
-                    setIsTableLoading(true);
-                    fetchConnectionDetails().finally(() => {
-                      setIsCardsLoading(false);
-                      setIsTableLoading(false);
+                    fetchDashboardData().finally(() => {
+                      setSearchTerm("");
+                      setResetSortTrigger(prev => prev + 1);
                       toast.success("Federation data refreshed successfully");
                     });
                   }}
@@ -432,7 +314,7 @@ const FederationDashBoard = () => {
                   disabled={isCardsLoading || isTableLoading}
                 >
                   <RefreshCcw
-                    className={`h-5 w-5 text-gray-600 ${(isCardsLoading || isTableLoading) ? "icon-rotate" : ""}`}
+                    className={`h-5 w-5 text-gray-600 ${(isCardsLoading || isTableLoading) ? "animate-spin" : ""}`}
                   />
                 </button>
                 <button
@@ -516,200 +398,32 @@ const FederationDashBoard = () => {
         </div>
 
         {viewMode !== "list" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 justify-center lg:grid-cols-4 gap-12 mt-6">
-            {isCardsLoading ? (
-              Array(4).fill().map((_, index) => (
-                <div key={index} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                  <div className="flex items-center mb-2">
-                    <div className="flex items-center justify-center aspect-square w-8 md:w-8 bg-gray-200 rounded-full mr-2 animate-pulse"></div>
-                    <div className="h-6 w-24 bg-gray-200 rounded animate-pulse"></div>
-                  </div>
-                  <div className="h-12 w-20 bg-gray-200 rounded animate-pulse mb-4"></div>
-                  <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
-                </div>
-              ))
-            ) : (
-              cards.map((card) => (
-                <div
-                  key={card.title}
-                  className={`bg-white p-6 rounded-lg shadow-sm border border-gray-200 transition-transform transform hover:scale-105 hover:shadow-md`}
-                >
-                  <div className="flex items-center mb-2">
-                    <div
-                      className={`flex items-center justify-center aspect-square w-8 md:w-8 ${card.bgcolor} rounded-full ${card.iconcolor} mr-2`}
-                    >
-                      <Icon icon={card.icon} />
-                    </div>
-                    <h3 className="text-lg font-semibold">{card.title}</h3>
-                  </div>
-                  <p className="text-black text-5xl font-bold">{card.count || 0}</p>
-                  <div className="flex items-center justify-between">
-                    {card.title === "Schemas" && (
-                      <button
-                        onClick={handleSchemasOpen}
-                        className="mt-4 text-purple-600 text-sm hover:text-purple-700"
-                      >
-                        See details
-                      </button>
-                    )}
-                    {card.title === "Connections" && (
-                      <button
-                        onClick={handleConnectionsOpen}
-                        className="mt-4 text-purple-600 text-sm hover:text-purple-700"
-                      >
-                        See details
-                      </button>
-                    )}
-                    {card.title === "Tables" && (
-                      <button
-                        onClick={handleTablesOpen}
-                        className="mt-4 text-purple-600 text-sm hover:text-purple-700"
-                      >
-                        See details
-                      </button>
-                    )}
-                    {card.title === "Views" && (
-                      <button
-                        onClick={handleViewsOpen}
-                        className="mt-4 text-purple-600 text-sm hover:text-purple-700"
-                      >
-                        See details
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
+          <div className="mb-6 mt-6">
+            <CardGrid
+              cards={cards}
+              onCardClick={handleCardClick}
+              isLoading={isCardsLoading}
+              showDetails={false}
+            />
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow overflow-auto mt-10 mb-4"
-          style={{ maxHeight: "calc(100vh - 240px)" }}>
-          <table className="w-full">
-            <thead className="text-sm">
-              <tr className="bg-[#29304a] text-white">
-                <th className="text-center p-4">Id</th>
-                <th className="text-center p-4">Connections</th>
-                <th className="text-center p-4">Schema</th>
-                <th className="text-center p-4">Tables</th>
-                <th className="text-center p-4">Views</th>
-                <th className="text-center p-4 last:rounded-tr-lg">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="text-sm">
-              {isTableLoading && !refreshingRow ? (
-                Array(5).fill().map((_, index) => (
-                  <tr key={index} className="border-b">
-                    {Array(6).fill().map((_, colIndex) => (
-                      <td key={colIndex} className="p-4 text-center">
-                        <div className="h-4 bg-gray-200 rounded animate-pulse mx-auto" style={{ width: '80%' }}></div>
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              ) : (
-                paginatedData.map((user, index) => (
-                  <tr key={index} className="border-b">
-                    {refreshingRow === user.Connections ? (
-                      Array(6).fill().map((_, colIndex) => (
-                        <td key={colIndex} className="p-4 text-center">
-                          <div className="h-4 bg-gray-200 rounded animate-pulse mx-auto" style={{ width: '80%' }}></div>
-                        </td>
-                      ))
-                    ) : (
-                      <>
-                        <td className="p-4 text-center">{startItem + index}</td>
-                        <td className="p-4 text-center">{user.Connections}</td>
-                        <td className="p-4 text-center">{user.Schema}</td>
-                        <td className="p-4 text-center">{user.Tables}</td>
-                        <td className="p-4 text-center">{user.Views}</td>
-                        <td className="p-4 text-center">
-                          <div className="relative">
-                            <button
-                              onClick={() =>
-                                setActiveMenu(activeMenu === index ? null : index)
-                              }
-                              className="p-1.5 rounded-full hover:bg-gray-100"
-                              disabled={refreshingRow === user.Connections}
-                            >
-                              <MoreHorizontal className="h-5 w-5" />
-                            </button>
-
-                            {activeMenu === index && (
-                              <>
-                                <div
-                                  className="fixed inset-0 z-10"
-                                  onClick={handleClickOutside}
-                                />
-                                <div className="absolute top-0 right-14 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
-                                  <div className="flex items-center p-1 gap-1">
-                                    <button
-                                      className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                                      onClick={() => {
-                                        refreshConnection(user.Connections);
-                                        setActiveMenu(null);
-                                      }}
-                                    >
-                                      <RotateCw className="h-4 w-4" />
-                                    </button>
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </>
-                    )}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex flex-col md:flex-row items-center justify-between">
-          <div className="text-sm text-gray-500 mb-2 md:mb-0">
-            {isLoading ? (
-              <div className="h-4 w-40 bg-gray-200 rounded animate-pulse"></div>
-            ) : totalItems > 0 ? (
-              `Showing ${startItem} to ${endItem} of ${totalItems} results`
-            ) : (
-              "No results found"
-            )}
-          </div>
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-500">Show per page</span>
-            <select
-              className="border rounded p-1 text-sm"
-              value={itemsPerPage}
-              onChange={handleItemsPerPageChange}
-              aria-label="Show per page"
-              disabled={isLoading}
-            >
-              {[10, 25, 50].map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-            <div className="flex items-center">
-              <button
-                onClick={handlePrevPage}
-                className="p-1 border rounded-l hover:bg-gray-100 disabled:opacity-50"
-                disabled={page === 1 || isLoading}
-                aria-label="Previous page"
-              >
-                <ChevronLeft size={20} />
-              </button>
-              <button
-                onClick={handleNextPage}
-                className="p-1 border rounded-r border-l-0 hover:bg-gray-100 disabled:opacity-50"
-                disabled={page >= totalPages || isLoading}
-                aria-label="Next page"
-              >
-                <ChevronRight size={20} />
-              </button>
-            </div>
-          </div>
-        </div>
+        <DataTable
+          columns={columns}
+          data={
+            searchTerm.trim()
+              ? dashboardData.views_details?.filter(row =>
+                  Object.values(row).some(value =>
+                    String(value).toLowerCase().includes(searchTerm.toLowerCase())
+                  )
+                ) || []
+              : dashboardData.views_details || []
+          }
+          actions={actions}
+          isLoading={isTableLoading}
+          refetch={fetchDashboardData}
+          resetSortTrigger={resetSortTrigger}
+        />
       </div>
 
       {isModalOpen && (
@@ -720,205 +434,159 @@ const FederationDashBoard = () => {
           setModalState={setModalState}
         />
       )}
-      <Modal open={connectionsOpen} onClose={handleConnectionsClose}>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-lg px-6 pb-5 pt-3 rounded-2xl shadow-xl max-h-[90vh] w-96 border border-gray-200 flex flex-col">
-          <div className="flex text-center justify-center mb-4">
-            <h2 className="text-xl font-bold text-gray-900">Connections Details</h2>
-          </div>
 
-          <input
-            type="text"
-            placeholder="Search connections..."
-            value={searchConnection}
-            onChange={(e) => setSearchConnection(e.target.value)}
-            className="mt-3 w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
-          />
-
-          <div className="mt-4 flex-1 overflow-y-auto py-2 pr-4 space-y-3">
-            {filteredConnections?.length > 0 ? (
-              filteredConnections.map((name, index) => (
-                <div
-                  key={index}
-                  className="p-3 bg-white border border-gray-300 rounded-lg shadow-md hover:shadow-lg hover:bg-gray-50 transition flex items-center gap-2"
-                >
-                  <span className="text-gray-800 font-medium">{name}</span>
+      {isApiModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden"
+            style={{ maxHeight: "90vh" }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 bg-[#282F49] text-white rounded-t-2xl flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-white bg-opacity-15 flex items-center justify-center">
+                  <Globe size={18} className="text-white" />
                 </div>
-              ))
-            ) : (
-              <p className="text-gray-500 text-center py-4">No connections found</p>
-            )}
-          </div>
-
-          <button
-            onClick={handleConnectionsClose}
-            className="mt-6 w-full bg-[#8E77BB] text-white py-2 rounded-lg hover:opacity-90 font-medium shadow-md"
-          >
-            Close
-          </button>
-        </div>
-      </Modal>
-
-      <Modal open={schemasOpen} onClose={handleSchemasClose}>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-lg px-6 pb-5 pt-3 rounded-2xl shadow-xl max-h-[90vh] w-96 border border-gray-200 flex flex-col">
-          <div className="flex text-center justify-center">
-            <h2 className="text-xl font-bold text-gray-900">Schemas Details</h2>
-          </div>
-
-          <FormControl fullWidth variant="outlined" margin="normal">
-            <InputLabel id="connection-select-label">Select Connection</InputLabel>
-            <Select
-              labelId="connection-select-label"
-              value={selectedConnection}
-              onChange={handleConnectionSelect}
-              label="Select Connection"
-            >
-              {Object.keys(schemaList).map((connection, index) => (
-                <MenuItem key={index} value={connection}>
-                  {connection}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {selectedConnection && (
-            <div className="mt-4 flex-1 overflow-y-auto py-2 pr-4 space-y-3">
-              {schemas.length > 0 ? (
-                schemas.map((schema, index) => (
-                  <div
-                    key={index}
-                    className="p-3 bg-white border border-gray-300 rounded-lg shadow-md hover:shadow-lg hover:bg-gray-50 transition flex items-center gap-2"
-                  >
-                    <span className="text-gray-800 font-medium">{schema}</span>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-500 text-center py-4">No schemas found</p>
-              )}
-            </div>
-          )}
-
-          <button
-            onClick={handleSchemasClose}
-            className="mt-6 w-full bg-[#8E77BB] text-white py-2 rounded-lg hover:opacity-90 font-medium shadow-md"
-          >
-            Close
-          </button>
-        </div>
-      </Modal>
-
-      <Modal open={tablesOpen} onClose={handleTablesClose}>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-lg px-6 pb-5 pt-3 rounded-2xl shadow-xl max-h-[90vh] w-96 border border-gray-200 flex flex-col">
-          <div className="flex text-center justify-center">
-            <h2 className="text-xl font-bold text-gray-900">Tables Details</h2>
-          </div>
-
-          <FormControl fullWidth variant="outlined" margin="normal">
-            <InputLabel id="table-connection-select-label">Select Connection</InputLabel>
-            <Select
-              labelId="table-connection-select-label"
-              value={selectedTableConnection}
-              onChange={handleTableConnectionSelect}
-              label="Select Connection"
-            >
-              {Object.keys(tableList).map((connection, index) => (
-                <MenuItem key={index} value={connection}>
-                  {connection}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {selectedTableConnection && (
-            <FormControl fullWidth variant="outlined" margin="normal">
-              <InputLabel id="table-schema-select-label">Select Schema</InputLabel>
-              <Select
-                labelId="table-schema-select-label"
-                value={selectedTableSchema}
-                onChange={handleTableSchemaSelect}
-                label="Select Schema"
+                <div>
+                  <h2 className="text-base font-semibold leading-tight">Exposed API</h2>
+                  <p className="text-xs text-gray-300 mt-0.5 font-mono truncate max-w-xs">
+                    {apiModalData.viewName}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsApiModalOpen(false)}
+                className="w-8 h-8 rounded-lg hover:bg-white hover:bg-opacity-15 flex items-center justify-center transition-colors"
               >
-                {Object.keys(tableList[selectedTableConnection] || {}).map((schema, index) => (
-                  <MenuItem key={index} value={schema}>
-                    {schema}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
+                <X size={18} />
+              </button>
+            </div>
 
-          {selectedTableSchema && (
-            <div className="mt-4 flex-1 overflow-y-auto py-2 pr-4 space-y-3">
-              {tables.length > 0 ? (
-                tables.map((table, index) => (
-                  <div
-                    key={index}
-                    className="p-3 bg-white border border-gray-300 rounded-lg shadow-md hover:shadow-lg hover:bg-gray-50 transition flex items-center gap-2"
-                  >
-                    <span className="text-gray-800 font-medium break-words max-w-full overflow-x-auto">{table}</span>
-                  </div>
-                ))
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              {apiModalLoading ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <Loader2 size={32} className="animate-spin text-[#8e78b7]" />
+                  <p className="text-sm text-gray-500">Fetching API details…</p>
+                </div>
               ) : (
-                <p className="text-gray-500 text-center py-4">No tables found</p>
+                <>
+                  {/* Endpoint row */}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                      Endpoint
+                    </p>
+                    <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+                      <span className="text-xs font-bold bg-[#8e78b7] text-white rounded-md px-2 py-0.5 flex-shrink-0">
+                        POST
+                      </span>
+                      <span className="text-sm text-gray-700 font-mono break-all flex-1">
+                        /api/v1/view/{apiModalData.viewName}
+                      </span>
+                      <button
+                        onClick={() => handleCopy(`/api/v1/view/${apiModalData.viewName}`, "endpoint")}
+                        className="flex-shrink-0 p-1.5 rounded-lg hover:bg-gray-200 transition-colors"
+                        title="Copy endpoint"
+                      >
+                        {copiedField === "endpoint" ? (
+                          <Check size={15} className="text-green-600" />
+                        ) : (
+                          <Copy size={15} className="text-gray-500" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* cURL Command */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        cURL Command
+                      </p>
+                      <button
+                        onClick={() => handleCopy(apiModalData.curlCommand, "curl")}
+                        className="flex items-center gap-1.5 text-xs text-[#8e78b7] hover:text-[#7a63a8] font-medium transition-colors"
+                      >
+                        {copiedField === "curl" ? (
+                          <><Check size={13} /> Copied</>
+                        ) : (
+                          <><Copy size={13} /> Copy</>
+                        )}
+                      </button>
+                    </div>
+                    <div className="bg-[#1e2235] rounded-xl p-4 overflow-x-auto">
+                      <pre className="text-xs text-green-300 font-mono whitespace-pre-wrap leading-relaxed">
+                        {apiModalData.curlCommand || `curl --location '${apiModalData.endpoint || ExternalAPI + "/view/" + apiModalData.viewName}'`}
+                      </pre>
+                    </div>
+                  </div>
+
+                  {/* API Key */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        API Key
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setShowApiKey(!showApiKey)}
+                          className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 font-medium transition-colors"
+                        >
+                          {showApiKey ? <EyeOff size={13} /> : <Eye size={13} />}
+                          {showApiKey ? "Hide" : "Reveal"}
+                        </button>
+                        {apiModalData.apiKey && (
+                          <button
+                            onClick={() => handleCopy(apiModalData.apiKey, "apiKey")}
+                            className="flex items-center gap-1.5 text-xs text-[#8e78b7] hover:text-[#7a63a8] font-medium transition-colors"
+                          >
+                            {copiedField === "apiKey" ? (
+                              <><Check size={13} /> Copied</>
+                            ) : (
+                              <><Copy size={13} /> Copy</>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+                      <span className="flex-1 text-sm font-mono text-gray-800 break-all">
+                        {apiModalData.apiKey
+                          ? showApiKey
+                            ? apiModalData.apiKey
+                            : "•".repeat(Math.min(apiModalData.apiKey.length, 32))
+                          : <span className="text-gray-400 italic text-xs">No API key found</span>
+                        }
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Confidentiality Note */}
+                  <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3.5">
+                    <ShieldAlert size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-semibold text-amber-800 mb-0.5">Confidential</p>
+                      <p className="text-xs text-amber-700 leading-relaxed">
+                        Use this key to authenticate calls to the endpoint above. This key is <strong>confidential</strong> and should <strong>not be shared</strong> with unauthorized parties.
+                      </p>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
-          )}
 
-          <button
-            onClick={handleTablesClose}
-            className="mt-6 w-full bg-[#8E77BB] text-white py-2 rounded-lg hover:opacity-90 font-medium shadow-md"
-          >
-            Close
-          </button>
-        </div>
-      </Modal>
-
-      <Modal open={viewOpen} onClose={handleViewsClose}>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-lg px-6 pb-5 pt-3 rounded-2xl shadow-xl max-h-[90vh] w-96 border border-gray-200 flex flex-col">
-          <div className="flex text-center justify-center">
-            <h2 className="text-xl font-bold text-gray-900">Views Details</h2>
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 flex-shrink-0">
+              <button
+                onClick={() => setIsApiModalOpen(false)}
+                className="px-5 py-2 rounded-lg text-sm font-medium bg-[#8e78b7] text-white hover:bg-[#7a63a8] transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
-
-          <FormControl fullWidth variant="outlined" margin="normal">
-            <InputLabel id="connection-select-label">Select Connection</InputLabel>
-            <Select
-              labelId="connection-select-label"
-              value={selectedConnection}
-              onChange={handleConnectionChange}
-              label="Select Connection"
-            >
-              {Object.keys(schemaList).map((connection, index) => (
-                <MenuItem key={index} value={connection}>
-                  {connection}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {selectedConnection && (
-            <div className="mt-4 flex-1 overflow-y-auto py-2 pr-4 space-y-3">
-              {viewList[selectedConnection]?.length > 0 ? (
-                viewList[selectedConnection].map((view, index) => (
-                  <div
-                    key={index}
-                    className="p-3 bg-white border border-gray-300 rounded-lg shadow-md hover:shadow-lg hover:bg-gray-50 transition flex items-center gap-2"
-                  >
-                    <span className="text-gray-800 font-medium">{view}</span>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-500 text-center py-4">No views found</p>
-              )}
-            </div>
-          )}
-
-          <button
-            onClick={handleViewsClose}
-            className="mt-6 w-full bg-[#8E77BB] text-white py-2 rounded-lg hover:opacity-90 font-medium shadow-md"
-          >
-            Close
-          </button>
         </div>
-      </Modal>
+      )}
     </>
   );
 };

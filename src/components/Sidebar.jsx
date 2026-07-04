@@ -1,5 +1,5 @@
-import { NavLink, useNavigate } from 'react-router-dom';
-import { useState, useEffect, useMemo } from 'react';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Bot, Copy } from "lucide-react";
 import {
   ChartBarIcon,
@@ -59,7 +59,7 @@ const INACTIVE_TEXT_COLOR = '#282F49';
 const ACTIVE_FILTER = 'brightness(0) saturate(100%) invert(54%) sepia(25%) saturate(471%) hue-rotate(223deg)';
 const INACTIVE_FILTER = 'brightness(0) saturate(100%) invert(53%) sepia(6%) saturate(300%) hue-rotate(190deg) brightness(90%)';
 
-const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
+const Sidebar = ({ activeSection, isCollapsed, toggleSidebar, setIsSidebarCollapsed }) => {
   const [expandedItem, setExpandedItem] = useState(null);
   const [expandedSubItem, setExpandedSubItem] = useState(null);
   const [currentActiveSection, setCurrentActiveSection] = useState(activeSection);
@@ -78,6 +78,20 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const workflowState = activeWorkflowId
   ? (workflowsState[activeWorkflowId] ?? null)
   : null; 
+
+  const location = useLocation();
+  const hasAutoCollapsedForEditor = useRef(false);
+
+  useEffect(() => {
+    if (location.pathname === '/editor') {
+      if (!hasAutoCollapsedForEditor.current && setIsSidebarCollapsed) {
+        setIsSidebarCollapsed(true);
+        hasAutoCollapsedForEditor.current = true;
+      }
+    } else {
+      hasAutoCollapsedForEditor.current = false;
+    }
+  }, [location.pathname, setIsSidebarCollapsed]);
 
   const isF1ModeActive = !!F1ModeCtx?.session_id;
   const f1SessionId = F1ModeCtx?.session_id ?? null;

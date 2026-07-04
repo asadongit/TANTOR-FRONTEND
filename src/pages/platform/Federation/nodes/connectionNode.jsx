@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position, useUpdateNodeInternals } from "reactflow";
-import { Cable, X, ChevronDown, ChevronUp, Pencil, FileCode, Search, Loader2 } from "lucide-react";
+import { Cable, X, ChevronDown, ChevronUp, Pencil, FileCode, Search, Loader2, RefreshCw } from "lucide-react";
 import { useStateContext } from "../context/contextViewProvider";
 import { Columns } from "../BusinessView/Columns";
 import { Modal } from "@mui/material";
@@ -11,6 +11,7 @@ import { useLocation } from "react-router-dom";
 import { useAuth } from "../../../../context/AuthContext";
 import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/function.js';
 import { useToast } from "../context/ToastContext";
+import { useFederationPolicyIds, useFederationConnectionsBaseNodes, useFederationSchemas, useFederationTables, useFederationColumns } from "../../../../hooks/platform/federation";
 
 
 const SearchableSelect = ({ id, openDropdownId, setOpenDropdownId, options, value, onChange, placeholder, disabled = false, isLoading = false }) => {
@@ -121,16 +122,9 @@ export function ConnectionNode({ id, onSave }) {
   const [previousColId, setPreviousColId] = useState("");
   const [colId, setColId] = useState("");
   const [selectedColumnsOrder, setSelectedColumnsOrder] = useState([]);
-  const [policyIds, setPolicyIds] = useState([]);
   const hasIncrementedRef = useRef(false);
 
   const [columnSearchTerm, setColumnSearchTerm] = useState("");
-
-  // Loading states
-  const [isLoadingConnections, setIsLoadingConnections] = useState(false);
-  const [isLoadingSchemas, setIsLoadingSchemas] = useState(false);
-  const [isLoadingTables, setIsLoadingTables] = useState(false);
-  const [isLoadingColumns, setIsLoadingColumns] = useState(false);
 
   const modalState = useLocation().state || {
     queryType: "Regular",
@@ -151,49 +145,50 @@ export function ConnectionNode({ id, onSave }) {
     }
   }, []);
 
-  const fetchConnections = async () => {
-    setIsLoadingConnections(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { isFetching: isFetchingPolicies, refetch: refetchPolicyIds } = useFederationPolicyIds();
+  const { data: apiConnectionsRaw, isFetching: isLoadingConnections, refetch: refetchConnections } = useFederationConnectionsBaseNodes();
+  const { data: apiSchemasRaw, isFetching: isLoadingSchemas, refetch: refetchSchemas } = useFederationSchemas(selectedConnection);
+  const { data: apiTablesRaw, isFetching: isLoadingTables, refetch: refetchTables } = useFederationTables(selectedConnection, selectedSchema);
+  const { data: apiColumnsRaw, isFetching: isLoadingColumns, refetch: refetchColumns } = useFederationColumns(selectedConnection, selectedSchema, selectedTable);
+
+  const handleRefresh = async (e) => {
+    e.stopPropagation();
+    setIsRefreshing(true);
     try {
-      const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-      const fetchedPolicyIds = secureQueryResponse.matched_policy_ids || [];
-      setPolicyIds(fetchedPolicyIds);
-
-      if (fetchedPolicyIds.length === 0) {
-        setConnections([]);
-        return;
-      }
-
-      const response = await fetch(`${hostnameV1}/federation/connections/list`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ matched_policy_ids: fetchedPolicyIds }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to fetch connections: ${errorText}`);
-      }
-
-      const connectionsData = await response.json();
-      const names = connectionsData.map((item) => item.connection_name);
-      setConnections(names);
-    } catch (error) {
-      console.error("Error fetching connections:", error);
-      showToast('Failed to load connections', 'error');
-      setConnections([]);
+      await refetchPolicyIds();
+      const promises = [refetchConnections()];
+      if (selectedConnection) promises.push(refetchSchemas());
+      if (selectedSchema) promises.push(refetchTables());
+      if (selectedTable) promises.push(refetchColumns());
+      await Promise.all(promises);
     } finally {
-      setIsLoadingConnections(false);
+      setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchConnections();
-  }, [token, hostnameV1]);
+    if (apiConnectionsRaw) setConnections(apiConnectionsRaw);
+  }, [apiConnectionsRaw]);
 
-  const handleConnectionChange = async (event) => {
+  useEffect(() => {
+    if (apiSchemasRaw) setSchemas(apiSchemasRaw);
+  }, [apiSchemasRaw]);
+
+  useEffect(() => {
+    if (apiTablesRaw) setTables(apiTablesRaw);
+  }, [apiTablesRaw]);
+
+  useEffect(() => {
+    if (apiColumnsRaw) {
+      const processedCols = apiColumnsRaw.map(c => ({ column_name: c.column, datatype: c.datatype }));
+      setAllowedColumns(processedCols);
+      setColumns(processedCols.map(c => ({ column: c.column_name, datatype: c.datatype }))); // compatibility map
+      setColumnData(processedCols);
+    }
+  }, [apiColumnsRaw]);
+
+  const handleConnectionChange = (event) => {
     const conn = event.target.value;
     setSelectedConnection(conn);
     setSelectedSchema("");
@@ -204,32 +199,9 @@ export function ConnectionNode({ id, onSave }) {
     setColumnData([]);
     setColId("");
     setColumnSearchTerm("");
-
-    setIsLoadingSchemas(true);
-    try {
-      if (policyIds.length === 0) { setSchemas([]); return; }
-
-      const response = await fetch(`${hostnameV1}/schemas/list`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ matched_policy_ids: policyIds, connection_name: conn }),
-      });
-
-      if (!response.ok) throw new Error(`Failed to fetch schemas: ${await response.text()}`);
-
-      const data = await response.json();
-      const connectionData = data.find((item) => item[conn]);
-      setSchemas(connectionData ? connectionData[conn] : []);
-    } catch (error) {
-      console.error("Error fetching schema data:", error);
-      setSchemas([]);
-      showToast('Failed to load schemas', 'error');
-    } finally {
-      setIsLoadingSchemas(false);
-    }
   };
 
-  const handleSchemaChange = async (event) => {
+  const handleSchemaChange = (event) => {
     const schema = event.target.value;
     setSelectedSchema(schema);
     setSelectedTable("");
@@ -239,36 +211,9 @@ export function ConnectionNode({ id, onSave }) {
     setColumnData([]);
     setColId("");
     setColumnSearchTerm("");
-
-    setIsLoadingTables(true);
-    try {
-      if (policyIds.length === 0) { setTables([]); return; }
-
-      const response = await fetch(`${hostnameV1}/tables/list`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ matched_policy_ids: policyIds, connection_name: selectedConnection, schema_name: [schema] }),
-      });
-
-      if (!response.ok) throw new Error(`Failed to fetch tables: ${await response.text()}`);
-
-      const data = await response.json();
-      if (!data || !data.schemas || !Array.isArray(data.schemas)) throw new Error("Invalid response structure from /tables/list");
-
-      const schemaData = data.schemas.find(
-        (item) => item.connection_name === selectedConnection && item.schema === schema
-      );
-      setTables(schemaData?.tables || []);
-    } catch (error) {
-      console.error("Error fetching table data:", error);
-      setTables([]);
-      showToast('Failed to load tables', 'error');
-    } finally {
-      setIsLoadingTables(false);
-    }
   };
 
-  const handleTableChange = async (event) => {
+  const handleTableChange = (event) => {
     const table = event.target.value;
     const unique = `${selectedConnection}_${selectedSchema}_${table}`;
     setColId(unique);
@@ -277,58 +222,7 @@ export function ConnectionNode({ id, onSave }) {
     setAllowedColumns([]);
     setSelectedColumns([]);
     setColumnData([]);
-    setColumnSearchTerm(""); // reset column search
-
-    setIsLoadingColumns(true);
-    try {
-      const detailedColumnsResponse = await fetch(
-        `${hostnameV1}/${selectedConnection}/schemas/${selectedSchema}/tables/${table}/columns`,
-        { method: "GET", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
-      );
-
-      if (!detailedColumnsResponse.ok) throw new Error(`Failed to fetch detailed columns: ${await detailedColumnsResponse.text()}`);
-      const detailedColumnsData = await detailedColumnsResponse.json();
-      setColumns(detailedColumnsData);
-
-      const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-      const fetchedPolicyIds = secureQueryResponse.matched_policy_ids || [];
-
-      if (fetchedPolicyIds.length === 0) { setAllowedColumns([]); setColumnData([]); return; }
-
-      const allowedColumnsResponse = await fetch(`${hostnameV1}/columns/list`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ matched_policy_ids: fetchedPolicyIds, connection_name: selectedConnection, schema_name: [selectedSchema], table_name: [table] }),
-      });
-
-      if (!allowedColumnsResponse.ok) throw new Error(`Failed to fetch allowed columns: ${await allowedColumnsResponse.text()}`);
-
-      const allowedColumnsData = await allowedColumnsResponse.json();
-      if (!allowedColumnsData || !allowedColumnsData.columns) { setAllowedColumns([]); setColumnData([]); return; }
-
-      const columnData = allowedColumnsData.columns.find(
-        (item) =>
-          item.connection_name.toLowerCase() === selectedConnection.toLowerCase() &&
-          item.schema.toLowerCase() === selectedSchema.toLowerCase() &&
-          item.table_name.toLowerCase() === table.toLowerCase()
-      );
-
-      const formattedColumns = columnData?.columns
-        ? columnData.columns.map((item) => ({ column: item.column_name, datatype: item.metadata?.DATA_TYPE || "unknown" }))
-        : [];
-
-      setAllowedColumns(formattedColumns);
-      setColumnData(formattedColumns);
-      updateNodeInternals(id);
-    } catch (error) {
-      console.error("Error fetching columns:", error);
-      setColumns([]);
-      setAllowedColumns([]);
-      setColumnData([]);
-      showToast('Failed to load columns', 'error');
-    } finally {
-      setIsLoadingColumns(false);
-    }
+    setColumnSearchTerm("");
   };
 
   const handleColumnChange = (column) => {
@@ -363,9 +257,9 @@ export function ConnectionNode({ id, onSave }) {
     setSelectedColumn(column);
   };
 
-  const visibleColumns = allowedColumns
-    .filter((col) => columns.some((c) => c.column.toLowerCase() === col.column.toLowerCase()))
-    .filter((col) => col.column.toLowerCase().includes(columnSearchTerm.toLowerCase()));
+  const visibleColumns = columns
+    .filter((col) => allowedColumns.some((allowedCol) => (allowedCol.column_name || allowedCol.column)?.toLowerCase() === col.column?.toLowerCase()))
+    .filter((col) => col.column?.toLowerCase().includes(columnSearchTerm?.toLowerCase() || ""));
 
   const handleSelectAllChange = (isChecked) => {
     const visibleColumnNames = visibleColumns.map((col) => col.column);
@@ -436,10 +330,10 @@ export function ConnectionNode({ id, onSave }) {
     }
 
     const filteredColumns = allowedColumns
-      .filter((col) => columns.some((c) => c.column.toLowerCase() === col.column.toLowerCase()))
+      .filter((col) => columns.some((c) => c?.column?.toLowerCase() === col?.column_name?.toLowerCase()))
       .map((col) => ({
-        column: col.column,
-        datatype: columns.find((c) => c.column.toLowerCase() === col.column.toLowerCase())?.datatype || "unknown",
+        column: col.column_name,
+        datatype: columns.find((c) => c?.column?.toLowerCase() === col?.column_name?.toLowerCase())?.datatype || "unknown",
       }));
 
     const newPayload = {
@@ -501,6 +395,10 @@ export function ConnectionNode({ id, onSave }) {
 
   const updateNodeInternals = useUpdateNodeInternals();
 
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [id, updateNodeInternals, selectedConnection, selectedSchema, selectedTable, columns, isCollapsed, columnSearchTerm]);
+
   const handleCollapse = () => {
     setIsCollapsed(!isCollapsed);
     updateNodeInternals(id);
@@ -535,8 +433,13 @@ export function ConnectionNode({ id, onSave }) {
           <>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-black mb-1">Connection</label>
-                <SearchableSelect id="connection" openDropdownId={openDropdownId} setOpenDropdownId={setOpenDropdownId} options={connections} value={selectedConnection} onChange={handleConnectionChange} placeholder="Select a connection" isLoading={isLoadingConnections} />
+                <div className="flex items-center space-x-2 mb-1">
+                  <label className="block text-sm font-medium text-black">Connection</label>
+                  <button onClick={handleRefresh} className="p-1 rounded-md hover:bg-gray-200" title="Refresh Connections">
+                    <RefreshCw className={`h-3.5 w-3.5 text-gray-500 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+                <SearchableSelect id="connection" openDropdownId={openDropdownId} setOpenDropdownId={setOpenDropdownId} options={connections} value={selectedConnection} onChange={handleConnectionChange} placeholder="Select a connection" isLoading={isLoadingConnections || isFetchingPolicies} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-black mb-1">Schema</label>
@@ -644,7 +547,7 @@ export function ConnectionNode({ id, onSave }) {
           <Columns
             id={colId}
             columnName={selectedColumn}
-            dataType={columns.find((col) => col.column.toLowerCase() === selectedColumn.toLowerCase())?.datatype || "unknown"}
+            dataType={columns.find((col) => col?.column?.toLowerCase() === selectedColumn?.toLowerCase())?.datatype || "unknown"}
             toggleModal={toggleModal}
           />
         </div>
