@@ -61,6 +61,12 @@ const FederationDashBoard = () => {
   const [copiedField, setCopiedField] = useState(null);
   const [showApiKey, setShowApiKey] = useState(false);
 
+  const [deleteModalState, setDeleteModalState] = useState({
+    isOpen: false,
+    viewData: null,
+    isDeleting: false
+  });
+
   const { isFetching: isFetchingPolicies, refetch: fetchPolicyIds } = useFederationPolicyIds();
   const { data: dashboardDataRaw, isLoading, isFetching, refetch: fetchDashboardData } = useFederationDashboardData();
 
@@ -134,9 +140,50 @@ const FederationDashBoard = () => {
     }
   };
 
-  const handleDeleteView = (viewName) => {
-    // For now do nothing as per user request
-    console.log("Delete view clicked for:", viewName);
+  const handleDeleteView = (row) => {
+    setDeleteModalState({
+      isOpen: true,
+      viewData: row,
+      isDeleting: false
+    });
+  };
+
+  const confirmDeleteView = async () => {
+    const row = deleteModalState.viewData;
+    if (!row) return;
+
+    setDeleteModalState(prev => ({ ...prev, isDeleting: true }));
+    try {
+      const payload = {
+        view_name: row.view_name,
+        ismaterializedview: row.materalized || false,
+        iscached: row.cached || false
+      };
+      
+      const response = await fetch(`${hostnameV1}/delete_view`, {
+        method: "DELETE",
+        headers: {
+          accept: "application/json",
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        toast.success(`View ${row.view_name} deleted successfully`);
+        await fetchDashboardData();
+        setDeleteModalState({ isOpen: false, viewData: null, isDeleting: false });
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        toast.error(errorData.detail || "Failed to delete view");
+        setDeleteModalState(prev => ({ ...prev, isDeleting: false }));
+      }
+    } catch (error) {
+      console.error("Error deleting view:", error);
+      toast.error("Failed to delete view");
+      setDeleteModalState(prev => ({ ...prev, isDeleting: false }));
+    }
   };
 
   const handleViewExposedAPI = async (row) => {
@@ -269,7 +316,7 @@ const FederationDashBoard = () => {
     {
       label: "Delete",
       icon: <Trash2 size={16} />,
-      onClick: (row) => handleDeleteView(row.view_name)
+      onClick: (row) => handleDeleteView(row)
     }
   ];
 
@@ -588,6 +635,93 @@ const FederationDashBoard = () => {
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteModalState.isOpen && deleteModalState.viewData && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden transform transition-all">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0 bg-white">
+              <div className="flex items-center gap-2">
+                 {deleteModalState.viewData.dependent_views && deleteModalState.viewData.dependent_views.length > 0 ? (
+                    <ShieldAlert size={20} className="text-red-500" />
+                 ) : (
+                    <Trash2 size={20} className="text-red-500" />
+                 )}
+                <h2 className="text-lg font-semibold text-gray-800">
+                  {deleteModalState.viewData.dependent_views && deleteModalState.viewData.dependent_views.length > 0 
+                    ? "Deletion Blocked" 
+                    : "Delete View"}
+                </h2>
+              </div>
+              <button
+                onClick={() => setDeleteModalState({ isOpen: false, viewData: null, isDeleting: false })}
+                className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors text-gray-400 hover:text-gray-600"
+                disabled={deleteModalState.isDeleting}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="p-6 bg-white">
+              {deleteModalState.viewData.dependent_views && deleteModalState.viewData.dependent_views.length > 0 ? (
+                <div className="flex flex-col">
+                  <div className="flex items-start gap-3 bg-red-50/80 border border-red-100 rounded-xl px-4 py-4 mb-6">
+                    <div className="flex flex-col">
+                      <p className="text-sm text-red-800 leading-relaxed">
+                        The view <span className="font-semibold text-red-900">'{deleteModalState.viewData.view_name}'</span> is currently being used as a source for other views. You must remove or modify these dependencies before proceeding.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                      Dependent Views ({deleteModalState.viewData.dependent_views.length})
+                    </h4>
+                    <div className="border border-gray-200 rounded-xl overflow-hidden max-h-[200px] overflow-y-auto bg-gray-50/50 shadow-inner">
+                      <div className="divide-y divide-gray-100">
+                        {deleteModalState.viewData.dependent_views.map((dv, idx) => (
+                          <div key={idx} className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-gray-50 transition-colors group">
+                            <div className="w-8 h-8 rounded-full bg-[#8e78b7]/10 flex items-center justify-center flex-shrink-0 group-hover:bg-[#8e78b7]/20 transition-colors">
+                               <Icon icon="lucide:layers" className="text-[#8e78b7]" width="16" />
+                            </div>
+                            <span className="text-sm font-medium text-gray-700">{dv}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col">
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Are you sure you want to delete the view <span className="font-semibold text-gray-800">'{deleteModalState.viewData.view_name}'</span>? This action cannot be undone.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100 flex-shrink-0">
+              <button
+                onClick={() => setDeleteModalState({ isOpen: false, viewData: null, isDeleting: false })}
+                className="px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm"
+                disabled={deleteModalState.isDeleting}
+              >
+                {deleteModalState.viewData.dependent_views && deleteModalState.viewData.dependent_views.length > 0 ? "Understood" : "Cancel"}
+              </button>
+              
+              {(!deleteModalState.viewData.dependent_views || deleteModalState.viewData.dependent_views.length === 0) && (
+                <button
+                  onClick={confirmDeleteView}
+                  disabled={deleteModalState.isDeleting}
+                  className="px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-colors flex items-center gap-2 shadow-sm shadow-red-200"
+                >
+                  {deleteModalState.isDeleting && <Loader2 size={16} className="animate-spin" />}
+                  {deleteModalState.isDeleting ? "Deleting..." : "Delete View"}
+                </button>
+              )}
             </div>
           </div>
         </div>
