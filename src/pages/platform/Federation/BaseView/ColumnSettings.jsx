@@ -428,18 +428,6 @@ const ColumnSettings = ({ columnSetting, queryType }) => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-600 mb-1">Distinct</label>
-                    <select
-                      name="originalDistinct"
-                      value={settings[0]?.originalDistinct || "No"}
-                      onChange={handleTopLevelChange}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#8E77BB] text-sm bg-white"
-                    >
-                      <option value="No">No</option>
-                      <option value="Yes">Yes</option>
-                    </select>
-                  </div>
-                  <div>
                     <label className="block text-sm text-gray-600 mb-1">Group by</label>
                     <select
                       name="groupBy"
