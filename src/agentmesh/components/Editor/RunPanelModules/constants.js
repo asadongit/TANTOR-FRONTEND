@@ -118,5 +118,6 @@ export const PAUSE_UI = {
   stt_trigger: { hidesInput: true,  showsHitl: false },
   camera:      { hidesInput: true,  showsHitl: false },
   ocr_node:    { hidesInput: true,  showsHitl: false },
+  followup_form:   { hidesInput: true,  showsHitl: false },
+  followup_selection: { hidesInput: false, showsHitl: false },
 };
-

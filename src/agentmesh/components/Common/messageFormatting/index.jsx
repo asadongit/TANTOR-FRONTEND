@@ -178,8 +178,40 @@ const CodeBlock = ({ part }) => {
 };
 
 // ─── Inline Formatter ──────────────────────────────────────────────────────────
-export const formatInlineStyles = (text) => {
+export const formatInlineStyles = (text, isLast = false) => {
     if (typeof text !== 'string') return text;
+
+    if (text.includes('__WAIT_FOR_HUMAN__')) {
+        const parts = text.split('__WAIT_FOR_HUMAN__');
+        return parts.map((part, idx) => (
+            <React.Fragment key={idx}>
+                {idx > 0 && isLast && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', margin: '0 4px', verticalAlign: 'middle' }}>
+                        <motion.span
+                            animate={{ opacity: [0.3, 1, 0.3] }}
+                            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                            style={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                background: 'rgba(142, 119, 187, 0.05)', 
+                                border: '1px solid #8E77BB', 
+                                padding: '4px', 
+                                borderRadius: '50%', 
+                                color: '#8E77BB' 
+                            }}
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                            </svg>
+                        </motion.span>
+                    </span>
+                )}
+                {formatInlineStyles(part, isLast)}
+            </React.Fragment>
+        ));
+    }
 
     if (isBase64Image(text)) {
         return renderBase64Image(text);
@@ -192,7 +224,7 @@ export const formatInlineStyles = (text) => {
         return brParts.map((segment, si) => (
             <React.Fragment key={si}>
                 {si > 0 && <br />}
-                {formatInlineStyles(segment)}
+                {formatInlineStyles(segment, isLast)}
             </React.Fragment>
         ));
     }
@@ -205,12 +237,12 @@ export const formatInlineStyles = (text) => {
 
         // 1. Bold
         if (part.startsWith('**') && part.endsWith('**')) {
-            return <strong key={i} style={{ fontWeight: 700, color: '#111827' }}>{formatInlineStyles(part.slice(2, -2))}</strong>;
+            return <strong key={i} style={{ fontWeight: 700, color: '#111827' }}>{formatInlineStyles(part.slice(2, -2), isLast)}</strong>;
         }
         
         // 2. Italic
         if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
-            return <em key={i} style={{ fontStyle: 'italic', color: '#374151' }}>{formatInlineStyles(part.slice(1, -1))}</em>;
+            return <em key={i} style={{ fontStyle: 'italic', color: '#374151' }}>{formatInlineStyles(part.slice(1, -1), isLast)}</em>;
         }
         
         // 3. Inline Code
@@ -382,7 +414,7 @@ export const formatInlineStyles = (text) => {
 };
 
 // ─── Block Formatter ───────────────────────────────────────────────────────────
-const renderBlockLine = (line, i) => {
+const renderBlockLine = (line, i, isLast = false) => {
     // Headings
     if (line.startsWith('#')) {
         let level = 0;
@@ -398,7 +430,7 @@ const renderBlockLine = (line, i) => {
                 paddingBottom: level <= 2 ? 8 : 0,
                 borderBottom: level <= 2 ? '1px solid #F3F4F6' : 'none',
             }}>
-                {formatInlineStyles(content)}
+                {formatInlineStyles(content, isLast)}
             </div>
         );
     }
@@ -417,7 +449,7 @@ const renderBlockLine = (line, i) => {
                     background: '#6366F1', flexShrink: 0, marginTop: 9,
                 }} />
                 <span style={{ fontSize: 15, lineHeight: 1.7, color: '#374151' }}>
-                    {formatInlineStyles(line.trim().replace(/^[-*•]\s/, ''))}
+                    {formatInlineStyles(line.trim().replace(/^[-*•]\s/, ''), isLast)}
                 </span>
             </div>
         );
@@ -438,7 +470,7 @@ const renderBlockLine = (line, i) => {
                     {numMatch[1]}
                 </span>
                 <span style={{ fontSize: 15, lineHeight: 1.7, color: '#374151' }}>
-                    {formatInlineStyles(numMatch[2])}
+                    {formatInlineStyles(numMatch[2], isLast)}
                 </span>
             </div>
         );
@@ -451,7 +483,7 @@ const renderBlockLine = (line, i) => {
                 borderLeft: '3px solid #6366F1', paddingLeft: 16,
                 margin: '8px 0', color: '#6B7280', fontStyle: 'italic', fontSize: 15, lineHeight: 1.7,
             }}>
-                {formatInlineStyles(line.slice(2))}
+                {formatInlineStyles(line.slice(2), isLast)}
             </div>
         );
     }
@@ -460,7 +492,7 @@ const renderBlockLine = (line, i) => {
     if (line.trim()) {
         return (
             <p key={i} style={{ fontSize: 15, lineHeight: 1.8, color: '#374151', margin: '8px 0' }}>
-                {formatInlineStyles(line)}
+                {formatInlineStyles(line, isLast)}
             </p>
         );
     }
@@ -469,7 +501,7 @@ const renderBlockLine = (line, i) => {
 };
 
 // ─── Block Parsing Logic ──────────────────────────────────────────────────────
-const parseTextBlocks = (content, bi) => {
+const parseTextBlocks = (content, bi, isLast = false) => {
     const lines = content.split('\n');
     const sections = [];
     let i = 0;
@@ -477,7 +509,7 @@ const parseTextBlocks = (content, bi) => {
 
     const flushText = () => {
         if (textBuffer.length === 0) return;
-        const items = textBuffer.filter(Boolean).map((l, li) => renderBlockLine(l, `${bi}-${li}`)).filter(Boolean);
+        const items = textBuffer.filter(Boolean).map((l, li) => renderBlockLine(l, `${bi}-${li}`, isLast)).filter(Boolean);
         if (items.length > 0) sections.push(<div key={`txt-${bi}-${sections.length}`}>{items}</div>);
         textBuffer = [];
     };
@@ -594,7 +626,7 @@ const parseTextBlocks = (content, bi) => {
 };
 
 // ─── Main formatMessage ────────────────────────────────────────────────────────
-export const formatMessage = (msg, isCell = false) => {
+export const formatMessage = (msg, isCell = false, isLast = false) => {
     if (!msg) return null;
 
     // Direct check to suppress raw profiling HTML content
@@ -649,14 +681,61 @@ export const formatMessage = (msg, isCell = false) => {
     }
 
     let content = '';
-    if (typeof cleanedMsg === 'string') {
+    let pauseConfig = null;
+    if (typeof cleanedMsg === 'object' && cleanedMsg !== null) {
+        content = cleanedMsg.content || cleanedMsg.text || '';
+        if (cleanedMsg.metadata && cleanedMsg.metadata.pause_config) {
+            pauseConfig = cleanedMsg.metadata.pause_config;
+        } else if (cleanedMsg.additional_kwargs && cleanedMsg.additional_kwargs.pause_config) {
+            pauseConfig = cleanedMsg.additional_kwargs.pause_config;
+        }
+    } else if (typeof cleanedMsg === 'string') {
         content = cleanedMsg;
-    } else if (cleanedMsg.content || cleanedMsg.text) {
-        content = cleanedMsg.content || cleanedMsg.text;
     } else if (Array.isArray(cleanedMsg)) {
-        content = cleanedMsg.map(m => (typeof m === 'string' ? m : (m.content || m.text || JSON.stringify(m)))).join('\n\n');
+        content = cleanedMsg.map(m => {
+            if (typeof m === 'string') return m;
+            if (m && typeof m === 'object') {
+                if (m.metadata && m.metadata.pause_config) {
+                    pauseConfig = m.metadata.pause_config;
+                } else if (m.additional_kwargs && m.additional_kwargs.pause_config) {
+                    pauseConfig = m.additional_kwargs.pause_config;
+                }
+                return m.content || m.text || JSON.stringify(m);
+            }
+            return '';
+        }).join('\n\n');
     } else {
         content = JSON.stringify(cleanedMsg, null, 2);
+    }
+
+    if (typeof content === 'string') {
+        if (content === '__HUMAN_INTERACTION__' && pauseConfig) {
+            if (pauseConfig.type === 'followup_selection') {
+                content = pauseConfig.question || '';
+            } else if (pauseConfig.type === 'followup_form') {
+                content = `Form: ${pauseConfig.title || 'Information Required'}`;
+            }
+        } else if (content.includes('__FOLLOWUP_SELECTION__{SPLIT}')) {
+            // Already split or handled
+        } else if (content.includes('__FOLLOWUP_SELECTION__:')) {
+            try {
+                const parts = content.split('__FOLLOWUP_SELECTION__:', 2);
+                const payloadStr = parts[1] || '';
+                const payload = JSON.parse(payloadStr.trim());
+                content = payload.question || '';
+            } catch (e) {
+                content = content.replace(/__FOLLOWUP_SELECTION__:[\s\S]*/g, '').replace('__WAIT_FOR_HUMAN__', '').trim();
+            }
+        } else if (content.includes('__FOLLOWUP__:')) {
+            try {
+                const parts = content.split('__FOLLOWUP__:', 2);
+                const payloadStr = parts[1] || '';
+                const payload = JSON.parse(payloadStr.trim());
+                content = `Form: ${payload.title || 'Information Required'}`;
+            } catch (e) {
+                content = 'Information Required';
+            }
+        }
     }
 
     // Detect if content is HTML to render it directly
@@ -694,7 +773,7 @@ export const formatMessage = (msg, isCell = false) => {
             if (block.type === 'code') {
                 return <CodeBlock key={`code-${bi}`} part={block.content} />;
             }
-            return parseTextBlocks(block.content, bi);
+            return parseTextBlocks(block.content, bi, isLast);
         });
 
         return <div style={{ wordBreak: 'break-word' }}>{rendered}</div>;
