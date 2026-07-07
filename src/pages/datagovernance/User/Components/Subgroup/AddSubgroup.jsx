@@ -11,7 +11,7 @@ function AddSubgroup({ showModal, setShowModal, onSubgroupAdded }) {
   const [loading, setLoading] = useState(false);
   const [groups, setGroups] = useState([]);
   const [error, setError] = useState("");
-  const { token } = useAuth();
+  const { token, decodedToken } = useAuth();
 
   // Add useEffect to reset form when modal is closed
   useEffect(() => {
@@ -71,13 +71,20 @@ function AddSubgroup({ showModal, setShowModal, onSubgroupAdded }) {
     setError("");
 
     try {
+      const payload = {
+        name: formData.name,
+        group: formData.group,
+        description: formData.description,
+        created_by: decodedToken?.preferred_username
+      };
+
       const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/addsubgroup`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {

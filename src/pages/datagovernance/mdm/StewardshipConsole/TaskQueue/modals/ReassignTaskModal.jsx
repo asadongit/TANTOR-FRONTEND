@@ -56,8 +56,10 @@ const ReassignTaskModal = ({
 
     const handleSubmit = async () => {
         const taskIds = isBulk
-            ? tableData.filter((r) => selectedRows.has(r.actual_task_id)).map((r) => r.actual_task_id)
-            : [row.actual_task_id];  // ← make sure row has actual_task_id not task_id
+            ? tableData
+                .filter((r) => selectedRows.has(String(r.actual_task_id)))
+                .map((r) => r.actual_task_id)
+            : [row.actual_task_id];
 
         const payload = {
             task_ids:      taskIds,
@@ -79,7 +81,11 @@ const ReassignTaskModal = ({
         }
     };
 
-    const isValid = formData.assigned_to;
+    const isValid =
+        formData.assigned_to &&
+        formData.assignment_method &&
+        formData.priority &&
+        (isBulk ? selectedRows.size > 0 : !!row?.actual_task_id);
     const bulkCount = selectedRows.size;
 
     if (!isOpen) return null;
@@ -87,7 +93,6 @@ const ReassignTaskModal = ({
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-            onClick={handleClose}
         >
             <div
                 className="w-[690px] bg-white rounded-2xl border border-[#CCCCCC] mx-4"
@@ -124,7 +129,9 @@ const ReassignTaskModal = ({
 
                     {/* Assignment Method */}
                     <div className="flex flex-col gap-1.5">
-                        <label className={labelClass}>Assignment Method</label>
+                        <label className={labelClass}>
+                            Assignment Method <span className="text-[#E05252]">*</span>
+                        </label>
                         <SearchableDropdown
                             value={formData.assignment_method}
                             onChange={(v) => setFormData((p) => ({ ...p, assignment_method: v }))}
@@ -148,7 +155,9 @@ const ReassignTaskModal = ({
 
                     {/* Priority */}
                     <div className="flex flex-col gap-1.5">
-                        <label className={labelClass}>Priority</label>
+                        <label className={labelClass}>
+                            Priority <span className="text-[#E05252]">*</span>
+                        </label>
                         <SearchableDropdown
                             value={formData.priority}
                             onChange={(v) => setFormData((p) => ({ ...p, priority: v }))}
@@ -158,7 +167,7 @@ const ReassignTaskModal = ({
                     </div>
 
                     {/* Due Date */}
-                    <div className="flex flex-col gap-1.5">
+                    {/* <div className="flex flex-col gap-1.5">
                         <label className={labelClass}>Due Date</label>
                         <input
                             type="date"
@@ -166,7 +175,7 @@ const ReassignTaskModal = ({
                             onChange={(e) => setFormData((p) => ({ ...p, due_date: e.target.value }))}
                             className={`${inputClass} h-10`}
                         />
-                    </div>
+                    </div> */}
 
                     {/* Notes */}
                     <div className="flex flex-col gap-1.5 col-span-2">

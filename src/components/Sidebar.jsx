@@ -338,17 +338,19 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar, setIsSidebarCollap
                 { name: 'SLA Dashboard', path: `${DATAGOVERNANCE_PREFIX}/mdm/stewardship-console/sla-dashboard` },
             ]
         },
-        {
-            name: 'Data Sync',
+        // {
+        //     name: 'Data Sync',
+        //     subItems: [
+        //         { name: 'Sync Configuration', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/sync-configuration` },
+        //         { name: 'Sync Monitor', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/sync-monitor` },
+        //         { name: 'Conflict Resolution', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/conflict-resolution` },
+        //         { name: 'API Gateway', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/api-gateway` },
+        //     ]
+        // },
+        { name: 'Processing Center', path: `${DATAGOVERNANCE_PREFIX}/mdm/processing-center` },
+        { 
+            name: 'Agent Mesh',
             subItems: [
-                { name: 'Sync Configuration', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/sync-configuration` },
-                { name: 'Sync Monitor', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/sync-monitor` },
-                { name: 'Conflict Resolution', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/conflict-resolution` },
-                { name: 'API Gateway', path: `${DATAGOVERNANCE_PREFIX}/mdm/data-sync/api-gateway` },
-            ]
-        },
-        { name: 'Agent Mesh',
-        subItems: [
                 { name: 'Agent Dashboard', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/agent-dashboard` },
                 { name: 'Agent Chat (NLQ)', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/agent-chat` },
                 { name: 'Agent Catalog', path: `${DATAGOVERNANCE_PREFIX}/mdm/agent-mesh/agent-catalog` },

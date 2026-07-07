@@ -58,7 +58,7 @@ const TrendIcon = ({ trend }) => {
 };
 
 
-const MetricCard = ({ iconSrc, label, value, delta, deltaLabel, deltaPositive, isLoading, iconBg }) => (
+const MetricCard = ({ iconSrc, label, value, delta, deltaPositive, isLoading, iconBg }) => (
     <div className="bg-white rounded-xl p-3.5 shadow-sm flex-1 min-w-0">
         <div className="flex items-center gap-3 mb-3">
             <div
@@ -74,12 +74,7 @@ const MetricCard = ({ iconSrc, label, value, delta, deltaLabel, deltaPositive, i
                 {isLoading ? <Skeleton className="h-7 w-20 inline-block" /> : value}
             </p>
             {delta && !isLoading && (
-                <span
-                    className="text-base font-medium mb-0.5"
-                    style={{ color: deltaPositive ? '#36AD8F' : '#EF4D5F' }}
-                >
-                    {deltaPositive ? '↑' : '↓'} {deltaLabel}
-                </span>
+                <TrendIcon trend={deltaPositive ? 'up' : 'down'} />
             )}
         </div>
     </div>
@@ -99,7 +94,8 @@ const SLADashboard = () => {
         fetchSLAConfig,
         updateSLAConfig,
         isUpdating,
-        updateError,
+        toastError,
+        setToastError,
     } = useSLAConfiguration();
 
     const [configureModalOpen, setConfigureModalOpen] = useState(false);
@@ -201,8 +197,7 @@ const SLADashboard = () => {
             iconSrc: DeterministicIcon,
             iconBg: '#2AC79240',
             delta: true,
-            deltaLabel: '2.1%',
-            deltaPositive: true,
+            deltaPositive: summary?.sla_compliance_trend === 'up',  // ← up = improving
         },
         {
             key: 'avg_resolution',
@@ -211,8 +206,7 @@ const SLADashboard = () => {
             iconSrc: AlarmIcon,
             iconBg: '#16ABC240',
             delta: true,
-            deltaLabel: '15min',
-            deltaPositive: false,
+            deltaPositive: summary?.avg_resolution_trend === 'down',  // ← down = improving
         },
         {
             key: 'at_risk',
@@ -258,7 +252,6 @@ const SLADashboard = () => {
                             label={m.label}
                             value={String(m.value)}
                             delta={!!m.delta}
-                            deltaLabel={m.deltaLabel}
                             deltaPositive={m.deltaPositive}
                             isLoading={isLoading}
                             iconBg={m.iconBg}
@@ -313,7 +306,8 @@ const SLADashboard = () => {
                 refetch={fetchSLAConfig}
                 updateSLAConfig={updateSLAConfig}
                 isUpdating={isUpdating}
-                updateError={updateError}
+                toastError={toastError}
+                setToastError={setToastError}
             />
         </div>
     );

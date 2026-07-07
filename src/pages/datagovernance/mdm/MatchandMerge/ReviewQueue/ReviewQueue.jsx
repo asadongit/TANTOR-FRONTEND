@@ -7,8 +7,6 @@ import PendingActionsIcon from '../../../../../assets/mdm/pending_actions.svg';
 import SpeedIcon from '../../../../../assets/mdm/speed.svg';
 import Flag2Icon from '../../../../../assets/mdm/flag_2.svg';
 import PersonAddIcon from '../../../../../assets/mdm/person_add.svg';
-import EditIcon from '../../../../../assets/mdm/edit_2.svg';
-import DeleteIcon from '../../../../../assets/mdm/delete.svg';
 import Breadcrumb from '../../../../../components/Breadcrumb';
 import SearchableDropdown from '../../components/SearchableDropdown';
 import DataTable from '../../../../../components/DataTable';
@@ -56,22 +54,6 @@ const ActionMenu = ({ row, onAssign, onEdit, onDelete }) => {
                         >
                             <img src={PersonAddIcon} alt="Assign" className="w-4 h-4" />
                             <span className="text-[#8e78b7] text-sm font-medium">Assign</span>
-                        </button>
-
-                        <button
-                            onClick={() => { onEdit?.(row); setIsOpen(false); }}
-                            className="flex items-center gap-3 px-3.5 py-2.5 rounded-[10px] border-none cursor-pointer bg-white w-full"
-                        >
-                            <img src={EditIcon} alt="Edit" className="w-4 h-4" />
-                            <span className="text-[#444] text-sm font-medium">Edit</span>
-                        </button>
-
-                        <button
-                            onClick={() => { onDelete?.(row); setIsOpen(false); }}
-                            className="flex items-center gap-3 px-3.5 py-2.5 rounded-[10px] border-none cursor-pointer bg-white w-full"
-                        >
-                            <img src={DeleteIcon} alt="Delete" className="w-4 h-4" />
-                            <span className="text-[#EF4D5F] text-sm font-medium">Delete</span>
                         </button>
                     </div>
                 </>

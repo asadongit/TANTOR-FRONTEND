@@ -76,10 +76,11 @@ export const useCompare = (pairId) => {
 export const useMergeResponse = () => {
     const [submitting, setSubmitting] = useState(false);
 
-    const resolve = useCallback(async ({ pairId, resolution, resolvedBy, comments = '' }) => {
+    const resolve = useCallback(async ({ taskId, pairId, resolution, resolvedBy, comments = '' }) => {
         setSubmitting(true);
         try {
             await api.post('/mdm/match_merge/merge_response', {
+                task_id:             taskId,
                 pair_id:             pairId,
                 resolution,
                 resolved_by:         resolvedBy,
@@ -87,7 +88,7 @@ export const useMergeResponse = () => {
             });
             return { ok: true };
         } catch (err) {
-            console.warn('Resolution error:', err);
+            console.error('merge_response error:', err);
             return { ok: false };
         } finally {
             setSubmitting(false);

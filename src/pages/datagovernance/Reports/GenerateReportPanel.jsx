@@ -152,8 +152,12 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
 
     const resourceTypeOptions = [
         { value: 'USER', label: 'User' },
+        { value: 'GROUP', label: 'Group' },
+        { value: 'SUB_GROUP', label: 'Sub-Group' },
+        { value: 'PERSONA', label: 'Persona' },
+        { value: 'CLIENT_ROLE', label: 'Client Role' },   
+        { value: 'GROUP_MEMBERSHIP', label: 'Group Membership' },           
         { value: 'CLIENT_ROLE_MAPPING', label: 'Client Role Mapping' },
-        { value: 'GROUP_MEMBERSHIP', label: 'Group Membership' }
     ];
 
     const getTodayDate = () => {
@@ -249,21 +253,34 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
         if (formData.resourceTypes.length === 0) return [];
 
         const hasUser = formData.resourceTypes.includes('USER');
-        const hasClientRole = formData.resourceTypes.includes('CLIENT_ROLE_MAPPING');
+        const hasClientRole = formData.resourceTypes.includes('CLIENT_ROLE');
+        const hasPersona = formData.resourceTypes.includes('PERSONA');
+        const hasGroup = formData.resourceTypes.includes('GROUP');
+        const hasSubGroup = formData.resourceTypes.includes('SUB_GROUP'); 
+        const hasClientRoleMapping = formData.resourceTypes.includes('CLIENT_ROLE_MAPPING');
         const hasGroupMembership = formData.resourceTypes.includes('GROUP_MEMBERSHIP');
 
-        const operations = [];
+        const operationSet = new Set();
 
-        if (hasClientRole || hasGroupMembership) {
-            operations.push({ value: 'CREATE', label: 'Create' });
-            operations.push({ value: 'DELETE', label: 'Delete' });
+        if (hasClientRole || hasPersona || hasGroup) {
+            operationSet.add('CREATE');
+            operationSet.add('UPDATE');
+            operationSet.add('DELETE');
+        }
+
+        if (hasClientRoleMapping || hasGroupMembership) {
+            operationSet.add('CREATE');
+            operationSet.add('DELETE');
         }
 
         if (hasUser) {
-            operations.push({ value: 'UPDATE', label: 'Update' });
+            operationSet.add('UPDATE');
         }
 
-        return operations;
+        return Array.from(operationSet).map(op => ({
+            value: op,
+            label: op.charAt(0).toUpperCase() + op.slice(1).toLowerCase()
+        }));
     };
 
     const getUserOptions = () => {
@@ -415,6 +432,14 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
             if (hasFilters) {
                 requestBody.filters = {};
 
+                if (formData.resourceTypes.length > 0) {
+                    requestBody.filters.resource_types = formData.resourceTypes;
+                }
+
+                if (formData.operationTypes.length > 0) {
+                    requestBody.filters.operation_types = formData.operationTypes;
+                }
+
                 if (formData.dateFrom) {
                     requestBody.filters.date_from = formData.dateFrom;
                 }
@@ -431,14 +456,6 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
                             username: user.username
                         };
                     });
-                }
-
-                if (formData.resourceTypes.length > 0) {
-                    requestBody.filters.resource_types = formData.resourceTypes;
-                }
-
-                if (formData.operationTypes.length > 0) {
-                    requestBody.filters.operation_types = formData.operationTypes;
                 }
             }
 
