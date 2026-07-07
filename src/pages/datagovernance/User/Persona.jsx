@@ -227,7 +227,8 @@ const Persona = () => {
           name: item.name,
           description: item.description || "No description available",
           status: item.attributes?.Status?.[0] === "Enabled" ? "Enabled" : "Disabled",
-          createdOn: createdFormatted,
+          createdOn: createdFormatted || "-",
+          createdBy: item.attributes?.created_by?.[0] || "-",
         };
       });
       setTableData(transformed);
@@ -409,7 +410,7 @@ const Persona = () => {
         setToast({ show: true, message: `Persona "${payload.new_name}" updated`, type: "success" });
       } else {
         // create
-        const payload = { name: formData.name.trim(), description: formData.description.trim(), status: formData.enabled ? "yes" : "no" };
+        const payload = { name: formData.name.trim(), description: formData.description.trim(), status: formData.enabled ? "yes" : "no", created_by: decodedToken?.preferred_username };
         const res = await fetch(`${window._env_?.VITE_FAST_API}/auth/createpersona`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -683,7 +684,8 @@ const Persona = () => {
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>Name</th>
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>Description</th>
                       <th className="text-center" style={{ padding: '16px 19.75px' }}>Status</th>
-                      <th className="text-left" style={{ padding: '16px 19.75px' }}>Created On</th>
+                      <th className="text-left" style={{ padding: '16px 19.75px' }}>Created By</th>
+                      <th className="text-left" style={{ padding: '16px 19.75px' }}>Created Date</th>
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>Action</th>
                     </tr>
                   </thead>
@@ -720,6 +722,7 @@ const Persona = () => {
                             )}
                           </div>
                         </td>
+                        <td style={{ padding: '16px 19.75px' }} className="text-gray-600">{row.createdBy}</td>
                         <td style={{ padding: '16px 19.75px' }} className="text-gray-600">{row.createdOn || "-"}</td>
                         <td style={{ padding: '16px 19.75px' }}>
                           <div className="relative">
@@ -764,7 +767,7 @@ const Persona = () => {
 
                     {!loading && displayedRows.length === 0 && (
                       <tr>
-                        <td colSpan="7" className="p-4 text-center text-gray-500">
+                        <td colSpan="8" className="p-4 text-center text-gray-500">
                           {searchTerm ? (
                             <div className="flex flex-col items-center justify-center py-8">
                               <Icon icon="material-symbols:search-off-outline" width="48" height="48" className="mb-4 text-gray-400" />

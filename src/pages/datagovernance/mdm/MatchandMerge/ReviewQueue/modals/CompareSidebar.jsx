@@ -36,6 +36,7 @@ const CompareSidebar = ({ row, onClose, onResolved, readOnly = false }) => {
 
     const handleResolution = async (resolution) => {
         const { ok } = await resolve({
+            taskId:     row.taskId,  
             pairId:     row.pairId,
             resolution,
             resolvedBy: decodedToken?.preferred_username ?? 'admin',

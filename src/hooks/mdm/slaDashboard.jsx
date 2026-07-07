@@ -51,7 +51,7 @@ export const useSLAConfiguration = () => {
     const [isError, setIsError] = useState(false);
     const [slaConfig, setSlaConfig] = useState([]);
     const [isUpdating, setIsUpdating] = useState(false);
-    const [updateError, setUpdateError] = useState(null);
+    const [toastError, setToastError] = useState(null);
 
     const fetchSLAConfig = useCallback(async () => {
         setIsLoading(true);
@@ -66,14 +66,12 @@ export const useSLAConfiguration = () => {
         }
     }, []);
 
-    const updateSLAConfig = useCallback(async (slaId, slaHours) => {
+    const updateSLAConfig = useCallback(async (slaId, payload) => {
         setIsUpdating(true);
-        setUpdateError(null);
+        setToastError(null);
         try {
             await api.patch(`/mdm/sla-configuration/${slaId}`, {
-                sla_updates: {
-                    sla_hours: Number(slaHours),
-                },
+                sla_updates: payload,
                 notification_settings: {
                     "email_at_risk": true,
                     "dashboard_alert": true,
@@ -82,7 +80,8 @@ export const useSLAConfiguration = () => {
             });
             await fetchSLAConfig();
         } catch (err) {
-            setUpdateError(err?.response?.data?.detail ?? 'Failed to update SLA');
+            const errorMsg = err?.response?.data?.detail ?? 'Failed to update SLA';
+            setToastError(errorMsg);
             throw err;
         } finally {
             setIsUpdating(false);
@@ -96,6 +95,7 @@ export const useSLAConfiguration = () => {
         fetchSLAConfig,
         updateSLAConfig,
         isUpdating,
-        updateError,
+        toastError,
+        setToastError,
     };
 };
