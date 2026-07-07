@@ -8,10 +8,12 @@ import FilterComponent from "../components/FilterComponent";
 import { useAuth } from "../../../../context/AuthContext";
 import { Icon } from "@iconify/react";
 import { X, ArrowUpDown, GripVertical } from "lucide-react";
+import { useFederationPolicyIds } from "../../../../hooks/platform/federation";
 
 export function BusinessFooter() {
   const navigate = useNavigate();
   const { finalPayload, handleFinalPayload, connectionPayload, viewPayload, columnSettings, consolidationPayload, nodeCount } = useStateContext("");
+    const { data: policyIds } = useFederationPolicyIds();
   const [preview, setPreview] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -351,9 +353,9 @@ export function BusinessFooter() {
       });
 
       const selectFields = getSelectFields(columnSettings, hasOperation);
-      const updatedPayload = { ...apiPayloadForApi, group_by: groupByArray, order_by: finalOrderBy, select_fields: selectFields, metadata };
+      const updatedPayload = { ...apiPayloadForApi, group_by: groupByArray, order_by: finalOrderBy, select_fields: selectFields, metadata, policy_id: policyIds || []  };
 
-      handleFinalPayload({ ...apiPayload, group_by: groupByArray, order_by: finalOrderBy, select_fields: selectFields, metadata });
+      handleFinalPayload({ ...apiPayload, group_by: groupByArray, order_by: finalOrderBy, select_fields: selectFields, metadata, policy_id: policyIds || [], });
       helperPreviewData(updatedPayload);
     }
   };
@@ -506,7 +508,7 @@ export function BusinessFooter() {
           });
 
           const selectFields = getSelectFields(columnSettings, hasOperation);
-          const updatedPayload = { ...finalPayload, group_by: groupByArray, order_by: finalOrderBy, select_fields: selectFields, metadata };
+          const updatedPayload = { ...finalPayload, group_by: groupByArray, order_by: finalOrderBy, select_fields: selectFields, metadata,  policy_id: policyIds || [],  };
 
           handleFinalPayload(updatedPayload);
           helperPreviewData(updatedPayload);
@@ -553,6 +555,8 @@ export function BusinessFooter() {
       ...finalPayload,
       project: (project === "default" || project === "none") ? "default" : project,
       created_by: decodedToken?.preferred_username,
+      policy_id: policyIds || [],
+
     };
 
     const response = await fetch(`${hostnameV2}/save-view`, {

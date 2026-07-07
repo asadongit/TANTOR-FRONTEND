@@ -21,6 +21,7 @@ import ComplexQueryEditor from "../components/ComplexQueryEditor";
 import FilterComponent from "../components/FilterComponent";
 import { useAuth } from "../../../../context/AuthContext";
 import { ToastProvider } from "../context/ToastContext";
+import { useFederationPolicyIds } from "../../../../hooks/platform/federation";
 
 const nodeTypes = {
   baseNode: BaseNode,
@@ -32,6 +33,7 @@ const getId = () => `node_${id++}`;
 
 export default function Source() {
   const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
+  const { data: policyIds } = useFederationPolicyIds();
   const modalState = useLocation().state || {
     queryType: "Regular",
     viewType: "Source",
@@ -322,6 +324,7 @@ export default function Source() {
     delete cleanApiPayload.skip_filter;
 
     try {
+      cleanApiPayload.policy_id = policyIds || [];
       const response = await fetch(
         `${hostnameV2}/generate-base-view?execute_query=true`,
         {
@@ -413,6 +416,7 @@ export default function Source() {
     }
 
     try {
+      apiPayload.policy_id = policyIds || [];
       const viewExistsResponse = await fetch(
         `${hostnameV2}/view-exists/${encodeURIComponent(newViewName)}`,
         {

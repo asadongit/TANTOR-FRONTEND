@@ -837,7 +837,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
 
     const togglePolicy = async (index) => {
         const filteredPolicy = filteredPolicyCards[index];
-        const policyIndex = policy.findIndex((p) => p.title === filteredPolicy.title);
+        const policyIndex = policy.findIndex((p) => p === filteredPolicy);
         if (policyIndex === -1) {
             console.error("Policy not found in full policy array");
             return;
