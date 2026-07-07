@@ -11,6 +11,7 @@ import { secureQuery, fetchConnectionDetails } from '../Components/function.js';
 import { useAuth } from "../../../../context/AuthContext.jsx";
 import MySQL from '../../../../assets/connector/mysql-connector.png';
 import MSSQL from '../../../../assets/connector/mssql-connector.png';
+import Elasticsearch from '../../../../assets/connector/elasticsearch-connector.svg';
 
 const rotateAnimation = `
   @keyframes rotate {
@@ -67,6 +68,7 @@ const Database = () => {
     { title: "MySQL", icon: MySQL, count: 0 },
     { title: "MSSQL", icon: MSSQL, count: 0 }, // Add MSSQL card
     { title: "Hive", icon: Hive, count: 0 },
+    { title: "Elasticsearch", icon: Elasticsearch, count: 0 },
     // { title: "Snowflake", icon: Snowflake, count: 0 },
   ]);
 
@@ -74,7 +76,7 @@ const Database = () => {
   const navigate = useNavigate();
 
   const processConnectionData = (data) => {
-    const counts = { oracle: 0, hive: 0, postgres: 0, mysql: 0, mssql: 0 }; // Add mssql to counts
+    const counts = { oracle: 0, hive: 0, postgres: 0, mysql: 0, mssql: 0, elasticsearch: 0 }; // Add elasticsearch to counts
     const uniqueConnections = new Set();
     data.forEach(item => {
       const connKey = `${item.connection_type}_${item.connection_id}`;

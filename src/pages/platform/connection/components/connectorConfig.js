@@ -8,6 +8,7 @@ import mssql from "../../../../assets/connector/mssql-connector.png";
 import db2 from "../../../../assets/connector/db2-connector.png";
 import kafka from "../../../../assets/connector/kafka-connector.png";
 import iris from "../../../../assets/connector/iris-connector.png";
+import elasticsearch from "../../../../assets/connector/elasticsearch-connector.svg";
 
 export const connectorConfig = {
     oracle: {
@@ -320,5 +321,59 @@ export const connectorConfig = {
         { name: "source_schema", label: "Schema", required: false },
       ],
       icon: iris
+    },
+    elasticsearch: {
+      fields: [
+        {
+          name: "extra_info.security",
+          label: "Security",
+          type: "select",
+          options: ["Unsecured", "Secured"],
+          required: true,
+        },
+        { name: "host_address", label: "Host", required: true },
+        { name: "port_number", label: "Port", type: "number", required: true },
+        {
+          name: "extra_info.truststore_location",
+          label: "Truststore File",
+          type: "file",
+          accept: ".p12",
+          required: true,
+          conditionalOn: {
+            field: "extra_info.security",
+            value: "Secured",
+          },
+        },
+        {
+          name: "extra_info.truststore_password",
+          label: "Truststore Password",
+          type: "password",
+          required: true,
+          conditionalOn: {
+            field: "extra_info.security",
+            value: "Secured",
+          },
+        },
+        {
+          name: "username",
+          label: "Username",
+          required: true,
+          conditionalOn: {
+            field: "extra_info.security",
+            value: "Secured",
+          },
+        },
+        {
+          name: "password",
+          label: "Password",
+          type: "password",
+          required: true,
+          conditionalOn: {
+            field: "extra_info.security",
+            value: "Secured",
+          },
+        },
+      ],
+      icon: elasticsearch
     },
   };

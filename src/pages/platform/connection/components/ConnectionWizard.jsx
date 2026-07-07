@@ -9,6 +9,7 @@ import { useAllConnectionData } from "../../../../hooks/platform/connection";
 import KafkaTopicManager from "./KafkaTopicManager";
 import KafkaTopicSelector from "./KafkaTopicSelector";
 import ClouderaHiveTableSelector from "./ClouderaHiveTableSelector";
+import ElasticsearchIndexSelector from "./ElasticsearchIndexSelector";
 import JSZip from "jszip";
 
 const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
@@ -45,6 +46,8 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
   const [selectedKafkaTopics, setSelectedKafkaTopics] = useState([]);
   const [clouderaHiveTables, setClouderaHiveTables] = useState([]);
   const [selectedClouderaHiveTables, setSelectedClouderaHiveTables] = useState([]);
+  const [elasticsearchIndices, setElasticsearchIndices] = useState([]);
+  const [selectedElasticsearchIndices, setSelectedElasticsearchIndices] = useState([]);
 
   const defaultFormData = {
     created_by: decodedToken.preferred_username,
@@ -88,6 +91,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     (kafkaType === "raw" || kafkaType === "avro");
   const isClouderaHive = selectedConnector === "clouderahive";
   const isHiveConnector = isClouderaHive;
+  const isElasticsearchConnector = selectedConnector === "elasticsearch";
 
   useEffect(() => {
     if (isEditMode && editConnectionData) {
@@ -329,6 +333,16 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
         extra_info: {
           ...filteredData.extra_info,
           tables: selectedClouderaHiveTables,
+        },
+      };
+    }
+
+    if (isElasticsearchConnector && selectedElasticsearchIndices.length > 0) {
+      filteredData = {
+        ...filteredData,
+        extra_info: {
+          ...filteredData.extra_info,
+          indices: selectedElasticsearchIndices,
         },
       };
     }
@@ -740,6 +754,9 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
     if (isHiveConnector) {
       setClouderaHiveTables([]);
     }
+    if (isElasticsearchConnector) {
+      setElasticsearchIndices([]);
+    }
     try {
       const response = await fetch(`${hostnameV1}/test-connection`, {
         method: "POST",
@@ -759,6 +776,12 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
             ? responseData.tables
             : [];
           setClouderaHiveTables(tableList);
+        }
+        if (isElasticsearchConnector) {
+          const indexList = Array.isArray(responseData.indices)
+            ? responseData.indices
+            : [];
+          setElasticsearchIndices(indexList);
         }
       } else {
         const errorData = await response.json();
@@ -809,6 +832,16 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       }));
       setTouchedFields((prev) => ({ ...prev, cloudera_tables: true }));
       toast.error("Please select at least one Hive table");
+      return;
+    }
+
+    if (isElasticsearchConnector && selectedElasticsearchIndices.length === 0) {
+      setErrors((prev) => ({
+        ...prev,
+        elasticsearch_indices: "At least one index must be selected",
+      }));
+      setTouchedFields((prev) => ({ ...prev, elasticsearch_indices: true }));
+      toast.error("Please select at least one Elasticsearch index");
       return;
     }
 
@@ -1438,6 +1471,27 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
               }}
               hasError={
                 touchedFields.cloudera_tables && !!errors.cloudera_tables
+              }
+            />
+          )}
+
+          {isElasticsearchConnector && (
+            <ElasticsearchIndexSelector
+              isTestSuccessful={isTestSuccessful}
+              indices={elasticsearchIndices}
+              isLoadingIndices={isTesting}
+              selectedIndices={selectedElasticsearchIndices}
+              onSelectedIndicesChange={(indices) => {
+                setSelectedElasticsearchIndices(indices);
+                if (indices.length > 0) {
+                  setErrors((prev) => {
+                    const { elasticsearch_indices: _ei, ...rest } = prev;
+                    return rest;
+                  });
+                }
+              }}
+              hasError={
+                touchedFields.elasticsearch_indices && !!errors.elasticsearch_indices
               }
             />
           )}
