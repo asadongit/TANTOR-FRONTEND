@@ -143,6 +143,9 @@ function ModelSelection() {
     String(predictionType).trim().toLowerCase() === 'univariate_timeseries' ||
     String(predictionType).trim().toLowerCase() === 'multivariate_timeseries';
 
+    // Forecast horizon is selected during Genesis; reuse it here rather than re-collecting it.
+    const forecastHorizon = modelGenesisConfig?.timeSeriesLookback ?? '';
+
     const isUnivariate =
     String(timeseriesType).trim().toLowerCase() ===
     'Univariate' || String(timeseriesType).trim().toLowerCase() === 'univariate' || String(timeseriesType).trim().toLowerCase() === 'univariate_timeseries' ;
@@ -251,7 +254,6 @@ const REVERSE_METRIC_MAPPING = isTimeSeries
     });
 
     const [normalizeData, setNormalizeData] = useState(false);
-    const [forecastHorizon, setForecastHorizon] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const isInteractionLocked = readonly || isSubmitting;
 
@@ -319,11 +321,6 @@ const REVERSE_METRIC_MAPPING = isTimeSeries
         if (savedConfig.normalize !== undefined) {
             setNormalizeData(savedConfig.normalize);
         }
-        if (savedConfig.forecast) {
-                setForecastHorizon(
-                    String(savedConfig.forecast)
-                );
-            }
         if (savedConfig.performance_metrics && Array.isArray(savedConfig.performance_metrics)) {
             const reverseMap = isTimeSeries
                 ? TIMESERIES_REVERSE_METRIC_MAPPING
@@ -765,18 +762,6 @@ const defaultPerformanceMetrics = isTimeSeries
 
             if (enabledAlgos.length === 0 || !hasEnabledMetrics) return false;
 
-            if (isTimeSeries) {
-                const forecastValue = Number(forecastHorizon);
-
-                if (
-                    !forecastHorizon ||
-                    forecastValue < 1 ||
-                    forecastValue > 15
-                ) {
-                    return false;
-                }
-            }
-
             return enabledAlgos.every(algo => validateAlgorithm(algo));
         };
 
@@ -787,26 +772,6 @@ const defaultPerformanceMetrics = isTimeSeries
         if (!isFormValid()) {
 
     setShowValidation(true);
-
-    const forecastValue = Number(forecastHorizon);
-
-        if (
-            isTimeSeries &&
-            (
-                !forecastHorizon ||
-                forecastValue < 1 ||
-                forecastValue > 15
-            )
-        ) {
-            toast.error(
-                'Forecast horizon must be between 1 and 15.',
-                {
-                    duration: 3000,
-                    position: 'top-right',
-                }
-            );
-            return false;
-}
 
             const enabledAlgos = Object.values(allAlgorithmsState).filter(algo => algo.enabled);
             const invalidAlgo = enabledAlgos.find(algo => !validateAlgorithm(algo));
@@ -1041,10 +1006,6 @@ const defaultPerformanceMetrics = isTimeSeries
                     hasEnabledMetrics={hasEnabledMetrics}
                     showValidation={showValidation}
                     metricFullFormMap={isRegression ? REGRESSION_METRIC_FULL_FORM : {}}
-
-                    forecastHorizon={forecastHorizon}
-                    setForecastHorizon={setForecastHorizon}
-                    isTimeSeries={isTimeSeries}
                 />
             </div>
         </AIPlaygroundLayout>
