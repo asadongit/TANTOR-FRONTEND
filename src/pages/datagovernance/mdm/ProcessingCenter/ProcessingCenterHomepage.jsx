@@ -1,17 +1,29 @@
 import React, { useState, useRef, useEffect  } from 'react';
 import DataTable from '../../../../components/DataTable.jsx';
 import { Play, ChevronDown  } from 'lucide-react';
+import { useAuth } from '../../../../context/AuthContext';
 import {
   useRecentRuns,
   useScheduledRuns,
   useActiveRules, 
+  useTriggerMdmDag,
+  useTriggerWorkflow,
+  useCheckDagStatus,
+  useCreateSchedule
 } from '../../../../hooks/mdm/processingCenter';
 import RunScopeDrawer from './modals/RunScopeDrawer';
+import toast from 'react-hot-toast';
+import Scheduler from './modals/scheduler';
 
+const ENGINE_STEP_KEY = {
+  1: 'data_quality',
+  2: 'match',
+  3: 'survivorship',
+};
 const ENGINE_RULES_KEY = {
   1: 'dq_engine',
   2: 'match_engine',
-  3: 'survivorship_merge',
+  3: 'survivorship_engine',
 };
 
 const FALLBACK_ENGINES = [
@@ -38,6 +50,8 @@ const FALLBACK_ENGINES = [
 const PIPELINE_TABS = ['Full Pipeline', 'Custom Selection', 'Single Engine'];
 
 const ProcessingCenterHomepage = () => {
+  const { decodedToken } = useAuth();
+  const { createSchedule } = useCreateSchedule();
   const [activeTab, setActiveTab] = useState('recent-run');
   const [pipelineMode, setPipelineMode] = useState('Full Pipeline');
   // const [dryRunEnabled, setDryRunEnabled] = useState(false);
@@ -45,23 +59,166 @@ const ProcessingCenterHomepage = () => {
   // Single Engine: only one can be active at a time, none selected by default
   const [singleSelected, setSingleSelected] = useState(null);
 
-  const { runs: recentRuns = [], isLoading: runsLoading, isError: runsError, fetchRuns } = useRecentRuns();
-  const { schedules: scheduledRuns = [], isLoading: schedulesLoading, isError: schedulesError, fetchSchedules } = useScheduledRuns();
+  const {
+  runs: recentRuns = [],
+  isLoading: runsLoading,
+  isError: runsError,
+  fetchRecentRuns: refetchRecentRuns,
+} = useRecentRuns();
+  const {
+  schedules: scheduledRuns = [],
+  isLoading: schedulesLoading,
+  isError: schedulesError,
+  fetchScheduledRuns: fetchSchedules,
+} = useScheduledRuns();
   const recentRunsRef = useRef(null);
   const engines = FALLBACK_ENGINES;
   const [scopeApplied, setScopeApplied] = useState(false);
   const { activeRules } = useActiveRules();
-
+  const [customEnabled, setCustomEnabled] = useState({ 1: false, 2: false, 3: false });
   const isEngineEnabled = (engine) => {
     if (pipelineMode === 'Full Pipeline') return true;
     if (pipelineMode === 'Custom Selection') return !!customEnabled[engine.id];
     if (pipelineMode === 'Single Engine') return singleSelected === engine.id;
     return false;
   };
+  const { triggerDag, isTriggering: isTriggeringDag } = useTriggerMdmDag();
+  const { triggerWorkflow, isTriggering: isTriggeringWorkflow } = useTriggerWorkflow();
+  const { checkDagExists } = useCheckDagStatus();
+  const isTriggering = isTriggeringDag || isTriggeringWorkflow;
 
-  const [customEnabled, setCustomEnabled] = useState({ 1: false, 2: false, 3: false });
+
+  const activeSteps = engines
+    .filter((engine) => isEngineEnabled(engine))
+    .map((engine) => ENGINE_STEP_KEY[engine.id]);
+
+  
   const [executeOpen, setExecuteOpen] = useState(false);
   const executeRef = useRef(null);
+  const [appliedScope, setAppliedScope] = useState(null);
+  const [runStatusMessage, setRunStatusMessage] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [runResetSignal, setRunResetSignal] = useState(0);
+  const [schedulerOpen, setSchedulerOpen] = useState(false);
+  const TriggerTypeBadge = ({ type }) => {
+    return (
+      <span
+        className="inline-block px-2 py-1 rounded text-xs font-normal"
+        style={{
+          color: '#8E77BB',
+          backgroundColor: 'rgba(142, 119, 187, 0.2)',
+        }}
+      >
+        {type}
+      </span>
+    );
+  };
+
+const runHistoryColumns = [
+  {
+    key: 'run_id',
+    label: 'Run ID',
+    render: (row) => (
+      <div style={{ width: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {row.run_id}
+      </div>
+    ),
+  },
+  {
+    key: 'type',
+    label: 'Type',
+    render: (row) => (
+      <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-700">
+        {row.type?.replace(/_/g, ' ')}
+      </span>
+    ),
+  },
+  {
+    key: 'trigger_type',
+    label: 'Trigger',
+    render: (row) => <TriggerTypeBadge type={row.trigger_type} />,
+  },
+  { key: 'domain', label: 'Domain' },
+  { key: 'records', label: 'Records' },
+  { key: 'result', label: 'Result' },
+  { key: 'duration', label: 'Duration' },
+  {
+    key: 'status',
+    label: 'Status',
+    render: (row) => <RunStatusBadge status={row.status} />,
+  },
+];
+  const RunStatusBadge = ({ status }) => {
+    const STATUS_STYLES = {
+      QUEUED: { color: '#B98900', backgroundColor: 'rgba(255, 193, 7, 0.25)' },
+      RUNNING: { color: '#069B68', backgroundColor: 'rgba(42, 199, 146, 0.25)' },
+      COMPLETED: { color: '#069B68', backgroundColor: 'rgba(42, 199, 146, 0.25)' },
+      FAILED: { color: '#EF4D5F', backgroundColor: 'rgba(242, 118, 167, 0.3)' },
+      CANCELLED: { color: '#16ABC2', backgroundColor: 'rgba(22, 171, 194, 0.25)' },
+      PARTIAL: { color: '#16ABC2', backgroundColor: 'rgba(22, 171, 194, 0.25)' },
+    };
+    const style = STATUS_STYLES[status] || { color: '#818181', backgroundColor: 'rgba(217, 217, 217, 0.5)' };
+
+    return (
+      <span
+        className="inline-block px-2 py-1 rounded text-xs font-normal"
+        style={style}
+      >
+        {status}
+      </span>
+    );
+  };
+
+  const waitForDagRegistered = async (dagId, { maxAttempts = 20, delayMs = 5000, onAttempt } = {}) => {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const exists = await checkDagExists(dagId);
+      if (exists) return true;
+      if (attempt === maxAttempts) throw new Error(`DAG '${dagId}' did not register in time`);
+      onAttempt?.(attempt, maxAttempts);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+};
+
+
+  const handleRunNow = async () => {
+    if (!appliedScope) return;
+    setIsProcessing(true);
+    setExecuteOpen(false);
+    setAppliedScope(null);
+    setScopeApplied(false);
+    setRunResetSignal((n) => n + 1);
+    try {
+      setRunStatusMessage('Triggering pipeline...');
+      const dagResponse = await triggerDag({
+        connectionName: appliedScope.connection,
+        domainName: appliedScope.domain,
+        steps: appliedScope.steps,
+        recordSelection: appliedScope.recordSelection,
+        createdBy: decodedToken?.sub,
+      });
+
+      setRunStatusMessage('Waiting for workflow to register...');
+      await waitForDagRegistered(dagResponse.workflow_name);
+
+      setRunStatusMessage('Starting workflow...');
+      await triggerWorkflow({ dagId: dagResponse.workflow_name });
+
+      setRunStatusMessage('');
+      setExecuteOpen(false);
+      refetchRecentRuns();
+      toast.success('Pipeline run started successfully.')
+    } catch (err) {
+      setRunStatusMessage('');
+      const message =
+        err?.response?.data?.detail?.message
+        || err?.response?.data?.detail
+        || err?.message
+        || 'Failed to run the pipeline. Please try again.';
+      toast.error(typeof message === 'string' ? message : 'Failed to run the pipeline. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+};
 
   useEffect(() => {
     const handler = (e) => {
@@ -86,43 +243,6 @@ const ProcessingCenterHomepage = () => {
 
   const isToggleDisabled = (engine) => pipelineMode === 'Full Pipeline';
 
-  const runHistoryColumns = [
-    { key: 'run_id', label: 'Run ID' },
-    {
-      key: 'type',
-      label: 'Type',
-      render: (row) => (
-        <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-700">
-          {row.type === 'full_pipeline' ? 'Full Pipeline' : row.type === 'dq_only' ? 'DQ only' : 'Match + Merge'}
-        </span>
-      ),
-    },
-    { key: 'domain', label: 'Domain' },
-    { key: 'records', label: 'Records' },
-    { key: 'result', label: 'Result' },
-    { key: 'duration', label: 'Duration' },
-    {
-      key: 'status',
-      label: 'Status',
-      render: (row) => {
-        const statusMap = {
-          completed: { bg: 'rgba(42, 199, 146, 0.25)', color: '#069B68', label: 'Completed' },
-          'in-progress': { bg: 'rgba(217, 217, 217, 0.5)', color: '#818181', label: 'In Progress' },
-          failed: { bg: 'rgba(242, 118, 167, 0.3)', color: '#EF4D5F', label: 'Failed' },
-          'on-hold': { bg: 'rgba(22, 171, 194, 0.25)', color: '#16ABC2', label: 'On Hold' },
-        };
-        const status = statusMap[row.status] || statusMap.completed;
-        return (
-          <span
-            className="inline-block px-2 py-1 rounded text-xs font-normal"
-            style={{ backgroundColor: status.bg, color: status.color }}
-          >
-            {status.label}
-          </span>
-        );
-      },
-    },
-  ];
 
   const bannerText = {
     'Full Pipeline': 'Runs all three engines in sequence — DQ → Match → Survivorship & Merge with one click. Recommended for daily processing.',
@@ -319,14 +439,15 @@ const ProcessingCenterHomepage = () => {
               {executeOpen && scopeApplied && (
                 <div className="absolute bottom-[calc(100%+4px)] right-0 min-w-full bg-white border border-[#CCCCCC] rounded-lg shadow-lg z-10 overflow-hidden">
                 <button
-                  onClick={() => { setExecuteOpen(false); }}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#332849] hover:bg-[#F2EBFF] transition-colors text-left"
+                  onClick={handleRunNow}
+                  disabled={isProcessing}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#332849] hover:bg-[#F2EBFF] transition-colors text-left disabled:opacity-50"
                 >
                   <Play size={14} className="text-[#8E77BB] shrink-0" />
-                  Run Now
+                  {isProcessing ? (runStatusMessage || 'Starting...') : 'Run Now'}
                 </button>
                 <button
-                  onClick={() => { setExecuteOpen(false); }}
+                  onClick={() => { setExecuteOpen(false); setSchedulerOpen(true); }}
                   className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#332849] hover:bg-[#F2EBFF] transition-colors text-left"
                 >
                   <img src="/src/assets/mdm/calendar_clock.svg" alt="" className="w-[14px] h-[14px] shrink-0" style={{ filter: 'invert(47%) sepia(40%) saturate(400%) hue-rotate(220deg)' }} />
@@ -382,14 +503,14 @@ const ProcessingCenterHomepage = () => {
       data={recentRuns}
       isLoading={runsLoading}
       isError={runsError}
-      refetch={fetchRuns}
+      refetch={refetchRecentRuns}
       title=""
     />
   )}
   {activeTab === 'schedule-run' && (
     <DataTable
       columns={[
-        { key: 'schedule_id', label: 'Schedule ID' },
+        { key: 'id', label: 'Schedule ID' },
         { key: 'schedule_name', label: 'Name' },
         { key: 'frequency', label: 'Frequency' },
         { key: 'next_run_at', label: 'Next Run' },
@@ -404,16 +525,56 @@ const ProcessingCenterHomepage = () => {
 </div>
 
       </div>
-      <RunScopeDrawer
-        open={runScopeOpen}
-        onClose={() => { setScopeApplied(false); setRunScopeOpen(false); }}
-        onApply={() => { setScopeApplied(true); setRunScopeOpen(false); }}
-        pipelineMode={pipelineMode}
-        engines={engines}
-        customEnabled={customEnabled}
-        singleSelected={singleSelected}
-      />
+        <RunScopeDrawer
+          open={runScopeOpen}
+          onClose={() => { setScopeApplied(false); setRunScopeOpen(false); }}
+          onApply={(scope) => {
+            setAppliedScope({ ...scope, steps: activeSteps });
+            setScopeApplied(true);
+            setRunScopeOpen(false);
+          }}
+          pipelineMode={pipelineMode}
+          engines={engines}
+          customEnabled={customEnabled}
+          singleSelected={singleSelected}
+          resetSignal={runResetSignal}
+        />
+        <Scheduler
+          open={schedulerOpen}
+          onClose={() => setSchedulerOpen(false)}
+          onSave={async (schedule) => {
+            try {
+              await createSchedule({
+                // Run Now 
+                connection_name: appliedScope.connection,
+                domain_name: appliedScope.domain,
+                steps: appliedScope.steps,
+                record_selection: appliedScope.recordSelection,
+                created_by: decodedToken?.sub,
+
+                // Scheduler fields
+                schedule_name: schedule.scheduleName,
+                run_type: pipelineMode,
+                frequency: schedule.frequency,
+                cron_expression: schedule.cronExpression,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                is_enabled: true,
+              });
+              toast.success('Schedule created successfully.');
+              setSchedulerOpen(false);
+              // Reset Run Scope
+              setAppliedScope(null);
+              setScopeApplied(false);
+              setRunResetSignal((n) => n + 1);
+              fetchSchedules();
+              refetchRecentRuns();
+            } catch (err) {
+              toast.error('Failed to create schedule.');
+            }
+          }}
+        />
     </div>
+
   );
 };
 
