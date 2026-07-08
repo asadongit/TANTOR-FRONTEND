@@ -328,7 +328,10 @@ export const connectorConfig = {
           name: "extra_info.security",
           label: "Security",
           type: "select",
-          options: ["Unsecured", "Secured"],
+          options: [
+            { value: "Unsecured", label: "HTTP" },
+            { value: "Secured", label: "HTTPS+Auth" },
+          ],
           required: true,
         },
         { name: "host_address", label: "Host", required: true },

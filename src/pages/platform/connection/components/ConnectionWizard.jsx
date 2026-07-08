@@ -123,6 +123,14 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       ) {
         setSelectedClouderaHiveTables(extra_info.tables);
       }
+
+      if (
+        extra_info.indices &&
+        Array.isArray(extra_info.indices) &&
+        extra_info.indices.length > 0
+      ) {
+        setSelectedElasticsearchIndices(extra_info.indices);
+      }
     }
   }, [isEditMode, editConnectionData]);
 
@@ -672,6 +680,41 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
             username: "",
             password: "",
           };
+        }
+
+        if (
+          key === "security" &&
+          value !== "Secured"
+        ) {
+          delete updatedExtraInfo.truststore_location;
+          delete updatedExtraInfo.truststore_password;
+          delete updatedExtraInfo.truststore_path;
+          delete updatedExtraInfo.truststore_type;
+
+          setFileObjects((prev) => {
+            const { truststore_location, ...rest } = prev;
+            return rest;
+          });
+
+          setErrors((prevErrors) => {
+            const {
+              "extra_info.truststore_location": _l,
+              "extra_info.truststore_password": _tp,
+              "extra_info.truststore_path": _tpath,
+              ...rest
+            } = prevErrors;
+            return rest;
+          });
+
+          setTouchedFields((prevTouched) => {
+            const {
+              "extra_info.truststore_location": _l,
+              "extra_info.truststore_password": _tp,
+              "extra_info.truststore_path": _tpath,
+              ...rest
+            } = prevTouched;
+            return rest;
+          });
         }
 
         return {
@@ -1225,11 +1268,15 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
               className={`${baseInputClass} appearance-none bg-white`}
             >
               <option value="">Select {field.label}</option>
-              {field.options.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
+              {field.options.map((opt) => {
+                const optValue = typeof opt === "string" ? opt : opt.value;
+                const optLabel = typeof opt === "string" ? opt : opt.label;
+                return (
+                  <option key={optValue} value={optValue}>
+                    {optLabel}
+                  </option>
+                );
+              })}
             </select>
             <ChevronDown
               className="absolute right-3 top-3 pointer-events-none text-gray-500"
