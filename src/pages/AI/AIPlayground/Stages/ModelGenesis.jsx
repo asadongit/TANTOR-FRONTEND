@@ -915,7 +915,7 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
         });
       }}
       options={['daily', 'weekly', 'monthly']}
-      placeholder="Select frequency."
+      placeholder="Select frequency..."
       disabled={readonly}
       readonly={readonly}
     />
@@ -1198,6 +1198,8 @@ const SelectColumnsMultivariate = ({
 };
 
 const SplitSetting = ({ config, setConfig, readonly }) => {
+  const [isLookbackHovered, setIsLookbackHovered] = useState(false);
+
   const handleSliderChange = (type, value) => {
     if (readonly) return;
 
@@ -1223,16 +1225,20 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
   // Time Series Split Setting
   if (config.predictionType === 'Time Series') {
     return (
-      <Section title="Split Setting" className="!bg-[#FAFAFA] p-4 rounded-lg">
+      <Section title="Forecast Horizon" className="!bg-[#FAFAFA] p-4 rounded-lg">
         <div >
           <div>
-            
+
             <div className="bg-white rounded-lg p-4 border border-gray-200">
-              <div className="flex items-center gap-4">
+              <div
+                className="flex items-center gap-4"
+                onMouseEnter={() => setIsLookbackHovered(true)}
+                onMouseLeave={() => setIsLookbackHovered(false)}
+              >
                 <input
                     type="range"
-                    min="6"
-                    max="12"
+                    min="2"
+                    max="15"
                     value={config.timeSeriesLookback || 7}
                     disabled={readonly}
                     onChange={
@@ -1248,19 +1254,21 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
                       background: `linear-gradient(
                         to right,
                         #8e78b7 0%,
-                        #8e78b7 ${(((config.timeSeriesLookback || 7) - 6) / (12 - 6)) * 100}%,
-                        #E5E5E5 ${(((config.timeSeriesLookback || 7) - 6) / (12 - 6)) * 100}%,
+                        #8e78b7 ${(((config.timeSeriesLookback || 7) - 2) / (15 - 2)) * 100}%,
+                        #E5E5E5 ${(((config.timeSeriesLookback || 7) - 2) / (15 - 2)) * 100}%,
                         #E5E5E5 100%
                       )`
                     }}
                   />
-                <div className="flex items-center justify-center bg-[#8e78b7] text-white rounded-md px-4 py-2 min-w-16">
-                  <span className="text-sm font-medium">{config.timeSeriesLookback || 7}</span>
-                </div>
+                {isLookbackHovered && (
+                  <div className="flex items-center justify-center bg-[#8e78b7] text-white rounded-md px-4 py-2 min-w-16">
+                    <span className="text-sm font-medium">{config.timeSeriesLookback || 7}</span>
+                  </div>
+                )}
               </div>
               <div className="flex justify-between mt-3 text-xs text-gray-500">
-              <span>6</span>
-              <span>12</span>
+              <span>2</span>
+              <span>15</span>
             </div>
           </div>
         </div>
