@@ -293,10 +293,12 @@ export const connectorConfig = {
 },
     mongodb: {
       fields: [
-        { name: "url", label: "Connection String", required: true },
+        { name: "host_address", label: "Host", required: true },
         { name: "database_name", label: "Database", required: true },
-        { name: "username", label: "Username" },
-        { name: "password", label: "Password", type: "password" },
+        { name: "port_number", label: "Port", type: "number", required: true },
+        { name: "username", label: "Username", required: true },
+        { name: "password", label: "Password", type: "password", required: true },
+        { name: "auth_source", label: "Auth Source", required: false, placeholder: "Enter auth source (e.g. admin)" },
       ],
       icon: mongodb
     },
