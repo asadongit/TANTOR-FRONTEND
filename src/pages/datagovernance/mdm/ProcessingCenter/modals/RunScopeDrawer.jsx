@@ -10,7 +10,7 @@ const RequiredLabel = ({ children }) => (
   </label>
 );
 
-const RunScopeDrawer = ({ open, onClose, onApply, pipelineMode, engines, customEnabled, singleSelected }) => {
+const RunScopeDrawer = ({ open, onClose, onApply, pipelineMode, engines, customEnabled, singleSelected, resetSignal }) => {
   const { decodedToken } = useAuth();
   const username = decodedToken?.preferred_username;
 
@@ -33,12 +33,20 @@ const RunScopeDrawer = ({ open, onClose, onApply, pipelineMode, engines, customE
   const [recordOpen, setRecordOpen] = useState(false);
   const recordRef = useRef(null);
 
-  const { domains, isLoading: domainsLoading } = useDomains();
-  const { connections, isLoading: connectionsLoading } = useConnections(username);
+  const { domains, isLoading: domainsLoading } = useDomains({ enabled: open });
+  const { connections, isLoading: connectionsLoading } = useConnections(username, { enabled: open });
 
   const recordOptions = ['Incremental', 'DQ Flagged', 'All Staged'];
 
   const allSelected = selectedConnection && selectedDomain && selectedRecord;
+
+  useEffect(() => {
+    if (resetSignal !== undefined) {
+      setSelectedConnection(null);
+      setSelectedDomain(null);
+      setSelectedRecord(null);
+    }
+  }, [resetSignal]);
 
   useEffect(() => {
     const handler = (e) => {
