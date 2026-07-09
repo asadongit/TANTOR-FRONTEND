@@ -626,7 +626,7 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
   !config.targetFeature ||
   !config.timeColumn ||
   !config.frequency ||
-  (config.timeSeriesType === 'Multiseries' && !(config.entity_cols?.length > 0)) ||
+  (['Multivariate Multiseries', 'Univariate Multiseries'].includes(config.timeSeriesType) && !(config.entity_cols?.length > 0)) ||
   isValidating;
 
   return (
@@ -824,9 +824,16 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
                     readonly={readonly}
                   />
                   <RadioButton
-                    label="Multiseries"
-                    checked={config.timeSeriesType === 'Multiseries'}
-                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Multiseries', multivariate_columns: [], entity_cols: [] })}
+                    label="Multivariate Multiseries"
+                    checked={config.timeSeriesType === 'Multivariate Multiseries'}
+                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Multivariate Multiseries', multivariate_columns: [], entity_cols: [] })}
+                    name="timeseries-type"
+                    readonly={readonly}
+                  />
+                  <RadioButton
+                    label="Univariate Multiseries"
+                    checked={config.timeSeriesType === 'Univariate Multiseries'}
+                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Univariate Multiseries', multivariate_columns: [], entity_cols: [] })}
                     name="timeseries-type"
                     readonly={readonly}
                   />
@@ -835,8 +842,8 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
 
               {/* Dropdowns for Target and Time Column */}
               <div
-                className={config.timeSeriesType === 'Multiseries' ? 'grid grid-cols-2 gap-2' : 'flex flex-col gap-2'}
-                style={{ width: config.timeSeriesType === 'Multiseries' ? '520px' : '340px' }}
+                className={['Multivariate Multiseries', 'Univariate Multiseries'].includes(config.timeSeriesType) ? 'grid grid-cols-2 gap-2' : 'flex flex-col gap-2'}
+                style={{ width: ['Multivariate Multiseries', 'Univariate Multiseries'].includes(config.timeSeriesType) ? '520px' : '340px' }}
               >
                 {/* Target Column */}
                 <div className="bg-white rounded-lg p-3">
@@ -900,7 +907,7 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
                   )}
                 </div>
 
-                {['Univariate', 'Multivariate', 'Multiseries'].includes(config.timeSeriesType) && (
+                {['Univariate', 'Multivariate', 'Multivariate Multiseries', 'Univariate Multiseries'].includes(config.timeSeriesType) && (
   <div className="bg-white rounded-lg p-3">
     <label className="block text-xs font-medium text-gray-700 mb-2">
       Frequency
@@ -922,7 +929,7 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
   </div>
 )}
 
-                {config.timeSeriesType === 'Multiseries' && (
+                {['Multivariate Multiseries', 'Univariate Multiseries'].includes(config.timeSeriesType) && (
   <div className="bg-white rounded-lg p-3">
     <label className="block text-xs font-medium text-gray-700 mb-2">
       Entity Columns
@@ -1706,7 +1713,8 @@ function ModelGenesis() {
     if (
       savedConfig.modelling_type === 'univariate_timeseries' ||
       savedConfig.modelling_type === 'multivariate_timeseries' ||
-      savedConfig.modelling_type === 'multiseries_timeseries'
+      savedConfig.modelling_type === 'multivariate_multiseries' ||
+      savedConfig.modelling_type === 'univariate_multiseries'
     ) {
       return 'Time Series';
     }
@@ -1736,7 +1744,8 @@ function ModelGenesis() {
         targetFeature: savedConfig.target_column || '',
         timeSeriesType: savedConfig.modelling_type === 'univariate_timeseries' ? 'Univariate' :
           savedConfig.modelling_type === 'multivariate_timeseries' ? 'Multivariate' :
-          savedConfig.modelling_type === 'multiseries_timeseries' ? 'Multiseries' : '',
+          savedConfig.modelling_type === 'multivariate_multiseries' ? 'Multivariate Multiseries' :
+          savedConfig.modelling_type === 'univariate_multiseries' ? 'Univariate Multiseries' : '',
         timeColumn: savedConfig.time_column || '',
         frequency: savedConfig.frequency || '',
         multivariate_columns: savedConfig.selected_columns || [],
@@ -1868,7 +1877,7 @@ function ModelGenesis() {
 
     if (
     config.predictionType === 'Time Series' &&
-    config.timeSeriesType === 'Multivariate' &&
+    ['Multivariate', 'Multivariate Multiseries'].includes(config.timeSeriesType) &&
     isTimeSeriesValidated &&
     (!config.multivariate_columns || config.multivariate_columns.length === 0)
   ) {
@@ -1935,14 +1944,15 @@ function ModelGenesis() {
           ? {
               'Univariate': 'univariate_timeseries',
               'Multivariate': 'multivariate_timeseries',
-              'Multiseries': 'multiseries_timeseries'
+              'Multivariate Multiseries': 'multivariate_multiseries',
+              'Univariate Multiseries': 'univariate_multiseries'
             }[config.timeSeriesType]
           : modellingTypeMap[config.classification],
         time_column: config.predictionType === 'Time Series' ? config.timeColumn : null,
         frequency: config.predictionType === 'Time Series' ? config.frequency || null : null,
         timeseries_split: config.predictionType === 'Time Series' ? config.timeSeriesLookback : null,
-        selected_columns: config.predictionType === 'Time Series' && config.timeSeriesType === 'Multivariate' ? (config.multivariate_columns || []) : [],
-        entity_cols: config.predictionType === 'Time Series' && config.timeSeriesType === 'Multiseries' ? (config.entity_cols || []) : [],
+        selected_columns: config.predictionType === 'Time Series' && ['Multivariate', 'Multivariate Multiseries'].includes(config.timeSeriesType) ? (config.multivariate_columns || []) : [],
+        entity_cols: config.predictionType === 'Time Series' && ['Multivariate Multiseries', 'Univariate Multiseries'].includes(config.timeSeriesType) ? (config.entity_cols || []) : [],
         fairness_columns: config.fairness_columns,
         data_preprocessing_mode: config.dataPreprocessing,
         model_mode: config.modelSelection,
@@ -1968,7 +1978,8 @@ function ModelGenesis() {
           const timeSeriesTypeMap = {
             'Univariate': 'univariate_timeseries',
             'Multivariate': 'multivariate_timeseries',
-            'Multiseries': 'multiseries_timeseries'
+            'Multivariate Multiseries': 'multivariate_multiseries',
+            'Univariate Multiseries': 'univariate_multiseries'
           };
           storedModellingType = timeSeriesTypeMap[config.timeSeriesType];
         } else {
@@ -1998,7 +2009,8 @@ function ModelGenesis() {
 if (
   (storedModellingType === 'univariate_timeseries' ||
    storedModellingType === 'multivariate_timeseries' ||
-   storedModellingType === 'multiseries_timeseries') &&
+   storedModellingType === 'multivariate_multiseries' ||
+   storedModellingType === 'univariate_multiseries') &&
   config.dataPreprocessing === 'Manual'
 ) {
   const cleanResponse = await cleanTimeSeriesData({
@@ -2127,7 +2139,7 @@ if (
             setValidationErrors={setValidationErrors}
           />
 
-          {config.predictionType === 'Time Series' && config.timeSeriesType === 'Multivariate' && isTimeSeriesValidated && (
+          {config.predictionType === 'Time Series' && ['Multivariate', 'Multivariate Multiseries'].includes(config.timeSeriesType) && isTimeSeriesValidated && (
            <SelectColumnsMultivariate
           config={config}
           setConfig={setConfig}
@@ -2142,7 +2154,7 @@ if (
 
           <SplitSetting config={config} setConfig={setConfig} readonly={isInteractionLocked} />
 
-          {!(config.predictionType === 'Time Series' && ['Multivariate', 'Univariate'].includes(config.timeSeriesType)) && (
+          {!(config.predictionType === 'Time Series' && ['Multivariate', 'Univariate', 'Multivariate Multiseries', 'Univariate Multiseries'].includes(config.timeSeriesType)) && (
             <FairnessAttribute
               config={config}
               setConfig={setConfig}

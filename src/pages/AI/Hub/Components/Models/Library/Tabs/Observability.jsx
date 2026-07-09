@@ -196,32 +196,32 @@ function Observability({ modelData }) {
                         <>
                             <StatsCard
                                 label="MAE"
-                                value={avgPerf.mae !== undefined ? `${(avgPerf.mae).toFixed(2)}` : 'N/A'}
+                                value={avgPerf.mae != null ? `${(avgPerf.mae).toFixed(2)}` : 'N/A'}
                                 icon={TrendingUp}
                             />
                             <StatsCard
                                 label="RMSE"
-                                value={avgPerf.rmse !== undefined ? `${(avgPerf.rmse).toFixed(2)}` : 'N/A'}
+                                value={avgPerf.rmse != null ? `${(avgPerf.rmse).toFixed(2)}` : 'N/A'}
                                 icon={Activity}
                             />
                             <StatsCard
                                 label="MAPE"
-                                value={avgPerf.mape !== undefined ? `${(avgPerf.mape).toFixed(2)}%` : 'N/A'}
+                                value={avgPerf.mape != null ? `${(avgPerf.mape).toFixed(2)}%` : 'N/A'}
                                 icon={Zap}
                             />
                             <StatsCard
                                 label="SMAPE"
-                                value={avgPerf.smape !== undefined ? `${(avgPerf.smape).toFixed(2)}%` : 'N/A'}
+                                value={avgPerf.smape != null ? `${(avgPerf.smape).toFixed(2)}%` : 'N/A'}
                                 icon={Target}
                             />
                             <StatsCard
                                 label="WMAPE"
-                                value={avgPerf.wmape !== undefined ? `${(avgPerf.wmape).toFixed(2)}%` : 'N/A'}
+                                value={avgPerf.wmape != null ? `${(avgPerf.wmape).toFixed(2)}%` : 'N/A'}
                                 icon={Gauge}
                             />
                             <StatsCard
                                 label="MASE"
-                                value={avgPerf.mase !== undefined ? `${(avgPerf.mase).toFixed(2)}` : 'N/A'}
+                                value={avgPerf.mase != null ? `${(avgPerf.mase).toFixed(2)}` : 'N/A'}
                                 icon={BookOpen}
                             />
                         </>
@@ -229,22 +229,22 @@ function Observability({ modelData }) {
                         <>
                             <StatsCard
                                 label="R² Score"
-                                value={avgPerf.r2 !== undefined ? `${(avgPerf.r2).toFixed(3)}` : 'N/A'}
+                                value={avgPerf.r2 != null ? `${(avgPerf.r2).toFixed(3)}` : 'N/A'}
                                 icon={Target}
                             />
                             <StatsCard
                                 label="MAE"
-                                value={avgPerf.mae !== undefined ? `${(avgPerf.mae).toFixed(2)}` : 'N/A'}
+                                value={avgPerf.mae != null ? `${(avgPerf.mae).toFixed(2)}` : 'N/A'}
                                 icon={TrendingUp}
                             />
                             <StatsCard
                                 label="RMSE"
-                                value={avgPerf.rmse !== undefined ? `${(avgPerf.rmse).toFixed(2)}` : 'N/A'}
+                                value={avgPerf.rmse != null ? `${(avgPerf.rmse).toFixed(2)}` : 'N/A'}
                                 icon={Activity}
                             />
                             <StatsCard
                                 label="MAPE"
-                                value={avgPerf.mape !== undefined ? `${(avgPerf.mape * 100).toFixed(2)}%` : 'N/A'}
+                                value={avgPerf.mape != null ? `${(avgPerf.mape * 100).toFixed(2)}%` : 'N/A'}
                                 icon={Zap}
                             />
                         </>
