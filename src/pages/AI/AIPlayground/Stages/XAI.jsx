@@ -693,7 +693,11 @@ function XAI() {
   );
 
   return (
-    <AIPlaygroundLayout onSaveModel={handleSaveModelFromLayout} isNextDisabled={readonly}>
+    <AIPlaygroundLayout
+      onSaveModel={handleSaveModelFromLayout}
+      isNextDisabled={readonly}
+      isSaveModelDisabled={initializing || jobLoading || loadingModels || modelsList.length === 0}
+    >
 
       {pendingTasks.length > 0 && (() => {
         const PREVIEW_COUNT = 12;

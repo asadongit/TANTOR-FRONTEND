@@ -115,7 +115,7 @@ function ScalingandEncoding({ readonly: readonlyProp, onApiCall, showPreview, is
 
   const isMultiTimeSeries =
     predictionType === 'multivariate_timeseries' ||
-    predictionType === 'multiseries_timeseries';
+    predictionType === 'multivariate_multiseries';
 
   /**
    * Get current workflow state

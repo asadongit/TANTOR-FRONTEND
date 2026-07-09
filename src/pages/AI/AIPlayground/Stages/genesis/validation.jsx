@@ -59,7 +59,8 @@ export const validateTimeSeriesLearning = async (config, datasetState, activeWor
     const timeSeriesTypeMap = {
       'Univariate': 'univariate_timeseries',
       'Multivariate': 'multivariate_timeseries',
-      'Multiseries': 'multiseries_timeseries'
+      'Multivariate Multiseries': 'multivariate_multiseries',
+      'Univariate Multiseries': 'univariate_multiseries'
     };
 
     const modellingType = timeSeriesTypeMap[config.timeSeriesType];
@@ -80,7 +81,7 @@ export const validateTimeSeriesLearning = async (config, datasetState, activeWor
         modelling_type: modellingType,
         time_column: timeColumn,
         frequency: config.frequency || '', // Include frequency if available, otherwise send an empty string
-        entity_cols: modellingType === 'multiseries_timeseries' ? (config.entity_cols || []) : undefined
+        entity_cols: ['multivariate_multiseries', 'univariate_multiseries'].includes(modellingType) ? (config.entity_cols || []) : undefined
       })
     });
 
