@@ -233,7 +233,7 @@ export default function Builder({ handleSwitch, checked }) {
         created_by: decodedToken?.preferred_username,
     }).toString();
 
-    const { isFetching: isFetchingPolicies, refetch: refetchPolicyIds } = useFederationPolicyIds();
+    const { data: policyIds, isFetching: isFetchingPolicies, refetch: refetchPolicyIds } = useFederationPolicyIds();
     const { data: apiViewsRaw, isFetching: isLoadingViews, refetch: refetchViews } = useFederationBaseViewsV2(paramsStr);
 
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -355,16 +355,23 @@ export default function Builder({ handleSwitch, checked }) {
     // ── Core fetch: one page of the selected view ────────────────────────────
     // Throws Error("EMPTY") when the table/page has no rows, so callers can
     // distinguish "nothing to show" from a real failure.
+    const getPolicyId = () => policyIds[0];
+
     const fetchViewData = async (page, size = pageSize) => {
+        const policyId = getPolicyId();
+
         const cachingResponse = await fetch(`${hostnameV1}/checkCaching/${selectedView}`);
         const cachingData = await cachingResponse.json();
         const payload = { page, page_size: size };
 
-        const response = await fetch(`${hostnameV1}/execute_view/${selectedView}`, {
-            method: "POST",
-            headers: { accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-            body: JSON.stringify(payload),
-        });
+        const response = await fetch(
+            `${hostnameV1}/execute_view/${selectedView}/${policyId}`,
+            {
+                method: "POST",
+                headers: { accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify(payload),
+            }
+        );
 
         if (cachingData.result) {
             const json = await response.json().catch(() => null);
