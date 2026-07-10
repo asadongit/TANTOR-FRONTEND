@@ -197,6 +197,11 @@ const REVERSE_METRIC_MAPPING = isTimeSeries
         const categories = {};
 
         Object.entries(algorithmData).forEach(([name, data]) => {
+            const isCnnLstm = name === 'CNN-LSTM' || data.backend_key === 'CNN_LSTM';
+            if (isCnnLstm && (isUnivariate || isMultivariate) && Number(forecastHorizon) < 4) {
+                return;
+            }
+
             const algo = {
                 name,
                 category: data.category,

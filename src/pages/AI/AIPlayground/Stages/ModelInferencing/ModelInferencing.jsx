@@ -646,24 +646,28 @@ trainHuberLoss: metrics.train_huber_loss?.toFixed(3) ?? 'N/A',
                 Performance
               </button>
               
-              <button
-                onClick={() => setActiveTab('fairness')}
-                className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'fairness'
-                  ? 'border-[#8e78b7] text-[#8e78b7]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                Fairness
-              </button>
-              <button
-                onClick={() => setActiveTab('charts')}
-                className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'charts'
-                  ? 'border-[#8e78b7] text-[#8e78b7]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                Charts
-              </button>
+              {!isTimeSeriesModel && (
+                <button
+                  onClick={() => setActiveTab('fairness')}
+                  className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'fairness'
+                    ? 'border-[#8e78b7] text-[#8e78b7]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                >
+                  Fairness
+                </button>
+              )}
+              {!isTimeSeriesModel && (
+                <button
+                  onClick={() => setActiveTab('charts')}
+                  className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'charts'
+                    ? 'border-[#8e78b7] text-[#8e78b7]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                >
+                  Charts
+                </button>
+              )}
               {!isRegressionModel && !isTimeSeriesModel && (
                 <button
                   onClick={() => setActiveTab('confusion_matrix')}
@@ -681,7 +685,7 @@ trainHuberLoss: metrics.train_huber_loss?.toFixed(3) ?? 'N/A',
           {activeTab === 'performance' && (
             <PerformanceTab algorithmData={algorithmData} isRegressionModel={isRegressionModel} />
           )}
-          {activeTab === 'fairness' && (
+          {!isTimeSeriesModel && activeTab === 'fairness' && (
             <FairnessTab
               apiResults={apiResults}
               selectedFairnessModel={selectedFairnessModel}
@@ -689,7 +693,7 @@ trainHuberLoss: metrics.train_huber_loss?.toFixed(3) ?? 'N/A',
               selectedModelFairnessData={selectedModelFairnessData}
             />
           )}
-          {activeTab === 'charts' && (
+          {!isTimeSeriesModel && activeTab === 'charts' && (
             <ChartsTab
               apiResults={apiResults}
               selectedChartsModel={selectedChartsModel}
