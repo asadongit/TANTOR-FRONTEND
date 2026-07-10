@@ -1204,9 +1204,7 @@ const SelectColumnsMultivariate = ({
   );
 };
 
-const SplitSetting = ({ config, setConfig, readonly }) => {
-  const [isLookbackHovered, setIsLookbackHovered] = useState(false);
-
+const SplitSetting = ({ config, setConfig, readonly, hasError = false, errorMessage = '', sectionRef = null }) => {
   const handleSliderChange = (type, value) => {
     if (readonly) return;
 
@@ -1226,63 +1224,147 @@ const SplitSetting = ({ config, setConfig, readonly }) => {
 
   const handleTimeSeriesLookbackChange = (value) => {
     if (readonly) return;
-    setConfig({ ...config, timeSeriesLookback: value });
+    const newMax = Math.max(2, value - 1);
+    const newConfig = { ...config, timeSeriesLookback: value };
+    if (newMax === 2 || (config.lookback !== undefined && config.lookback !== null && config.lookback > newMax)) {
+      newConfig.lookback = newMax;
+    }
+    setConfig(newConfig);
   };
+
+  const horizonPercent = Math.min(100, Math.max(0, (((config.timeSeriesLookback || 7) - 3) / (15 - 3)) * 100));
+
+  const seriesLookbackMax = Math.max(2, (config.timeSeriesLookback || 7) - 1);
+  const isSeriesLookbackFixed = seriesLookbackMax === 2;
+  const seriesLookbackPercent = seriesLookbackMax > 2
+    ? (((config.lookback ?? 2) - 2) / (seriesLookbackMax - 2)) * 100
+    : 100;
+
+  const handleSeriesLookbackChange = (value) => {
+    if (readonly) return;
+    setConfig({ ...config, lookback: value });
+  };
+
+  useEffect(() => {
+    if (readonly) return;
+    if (
+      config.predictionType === 'Time Series' &&
+      ['Univariate', 'Multivariate'].includes(config.timeSeriesType) &&
+      seriesLookbackMax === 2 &&
+      config.lookback !== 2
+    ) {
+      setConfig({ ...config, lookback: 2 });
+    }
+  }, [config.predictionType, config.timeSeriesType, seriesLookbackMax, config.lookback, readonly]);
 
   // Time Series Split Setting
   if (config.predictionType === 'Time Series') {
-    return (
-      <Section title="Forecast Horizon" className="!bg-[#FAFAFA] p-4 rounded-lg">
-        <div >
-          <div>
+    const horizonValue = config.timeSeriesLookback || 7;
+    const showHorizonLabel = horizonValue !== 3 && horizonValue !== 15;
 
-            <div className="bg-white rounded-lg p-4 border border-gray-200">
-              <div
-                className="flex items-center gap-4"
-                onMouseEnter={() => setIsLookbackHovered(true)}
-                onMouseLeave={() => setIsLookbackHovered(false)}
-              >
+    const lookbackValue = config.lookback ?? 2;
+    const showLookbackLabel = lookbackValue !== 2 && lookbackValue !== seriesLookbackMax;
+
+    return (
+      <>
+        <Section title="Forecast Horizon" className="!bg-[#FAFAFA] p-4 rounded-lg">
+          <div className="bg-white rounded-lg p-4 border border-gray-200">
+            <div className="relative">
+              <input
+                  type="range"
+                  min="3"
+                  max="15"
+                  value={horizonValue}
+                  disabled={readonly}
+                  onChange={
+                    readonly
+                      ? undefined
+                      : (e) => handleTimeSeriesLookbackChange(parseInt(e.target.value))
+                  }
+                  className={`slider-train w-full rounded-lg appearance-none ${
+                    readonly ? 'cursor-not-allowed' : 'cursor-pointer'
+                  }`}
+                  style={{
+                    height: '10px',
+                    background: `linear-gradient(
+                      to right,
+                      #8e78b7 0%,
+                      #8e78b7 ${horizonPercent}%,
+                      #E5E5E5 ${horizonPercent}%,
+                      #E5E5E5 100%
+                    )`
+                  }}
+                />
+              {showHorizonLabel && (
+                <span
+                  className="absolute top-full mt-1 -translate-x-1/2 text-xs font-medium text-[#8e78b7]"
+                  style={{ left: `${Math.min(97, Math.max(3, horizonPercent))}%` }}
+                >
+                  {horizonValue}
+                </span>
+              )}
+            </div>
+            <div className="flex justify-between mt-6 text-xs text-gray-500">
+              <span>3</span>
+              <span>15</span>
+            </div>
+          </div>
+        </Section>
+
+        {['Univariate', 'Multivariate'].includes(config.timeSeriesType) && (
+          <Section title="Lookback" className="!bg-[#FAFAFA] p-4 rounded-lg">
+            <div
+              ref={sectionRef}
+              className={`bg-white rounded-lg p-4 border ${hasError ? 'border-red-500' : 'border-gray-200'}`}
+            >
+              <div className="relative">
                 <input
                     type="range"
-                    min="2"
-                    max="15"
-                    value={config.timeSeriesLookback || 7}
-                    disabled={readonly}
+                    min={isSeriesLookbackFixed ? seriesLookbackMax - 1 : 2}
+                    max={seriesLookbackMax}
+                    value={lookbackValue}
+                    disabled={readonly || isSeriesLookbackFixed}
                     onChange={
                       readonly
                         ? undefined
-                        : (e) => handleTimeSeriesLookbackChange(parseInt(e.target.value))
+                        : (e) => handleSeriesLookbackChange(parseInt(e.target.value))
                     }
-                    className={`slider-train flex-1 rounded-lg appearance-none ${
-                      readonly ? 'cursor-not-allowed' : 'cursor-pointer'
+                    className={`slider-train w-full rounded-lg appearance-none ${
+                      readonly || isSeriesLookbackFixed ? 'cursor-not-allowed' : 'cursor-pointer'
                     }`}
                     style={{
                       height: '10px',
                       background: `linear-gradient(
                         to right,
                         #8e78b7 0%,
-                        #8e78b7 ${(((config.timeSeriesLookback || 7) - 2) / (15 - 2)) * 100}%,
-                        #E5E5E5 ${(((config.timeSeriesLookback || 7) - 2) / (15 - 2)) * 100}%,
+                        #8e78b7 ${seriesLookbackPercent}%,
+                        #E5E5E5 ${seriesLookbackPercent}%,
                         #E5E5E5 100%
                       )`
                     }}
                   />
-                {isLookbackHovered && (
-                  <div className="flex items-center justify-center bg-[#8e78b7] text-white rounded-md px-4 py-2 min-w-16">
-                    <span className="text-sm font-medium">{config.timeSeriesLookback || 7}</span>
-                  </div>
+                {showLookbackLabel && (
+                  <span
+                    className="absolute top-full mt-1 -translate-x-1/2 text-xs font-medium text-[#8e78b7]"
+                    style={{ left: `${Math.min(97, Math.max(3, seriesLookbackPercent))}%` }}
+                  >
+                    {lookbackValue}
+                  </span>
                 )}
               </div>
-              <div className="flex justify-between mt-3 text-xs text-gray-500">
-              <span>2</span>
-              <span>15</span>
+              <div className="flex justify-between mt-6 text-xs text-gray-500">
+                <span>2</span>
+                <span>{seriesLookbackMax}</span>
+              </div>
+              {hasError && errorMessage && (
+                <p className="mt-2 text-sm text-[#EF4D5F]">{errorMessage}</p>
+              )}
             </div>
-          </div>
-        </div>
-      </div>
-    </Section>
-  );
-}
+          </Section>
+        )}
+      </>
+    );
+  }
 
   // Supervised Split Setting (original)
   return (
@@ -1700,6 +1782,7 @@ function ModelGenesis() {
   const predictionTypeRef = useRef(null);
   const dropColumnsRef = useRef(null);
   const multivariateColumnsRef = useRef(null);
+  const lookbackRef = useRef(null);
 
   useEffect(() => {
     if (datasetState.ensembleId == '') {
@@ -1751,6 +1834,7 @@ function ModelGenesis() {
         multivariate_columns: savedConfig.selected_columns || [],
         entity_cols: savedConfig.entity_cols || [],
         timeSeriesLookback: savedConfig.timeSeriesLookback || 7,
+        lookback: savedConfig.lookback ?? undefined,
 
         trainSplit: Math.round((savedConfig.train_size || 0.7) * 100),
         testSplit: Math.round((savedConfig.test_size || 0.3) * 100),
@@ -1871,7 +1955,7 @@ function ModelGenesis() {
       }
     }
 
-    if (config.drop_columns_active && (!config.drop_columns || config.drop_columns.length === 0)) {
+    if (config.predictionType !== 'Time Series' && config.drop_columns_active && (!config.drop_columns || config.drop_columns.length === 0)) {
       errors.dropColumns = 'Please select at least one column to drop, or disable Drop Columns.';
     }
 
@@ -1882,6 +1966,15 @@ function ModelGenesis() {
     (!config.multivariate_columns || config.multivariate_columns.length === 0)
   ) {
     errors.multivariateColumns = 'Please select at least one column.';
+  }
+
+    if (
+    config.predictionType === 'Time Series' &&
+    ['Univariate', 'Multivariate'].includes(config.timeSeriesType) &&
+    isTimeSeriesValidated &&
+    (config.lookback === undefined || config.lookback === null)
+  ) {
+    errors.lookback = 'Please select a lookback value.';
   }
 
     if (Object.keys(errors).length > 0) {
@@ -1897,6 +1990,8 @@ function ModelGenesis() {
       behavior: 'smooth',
       block: 'center'
     });
+  } else if (errors.lookback && lookbackRef.current) {
+    lookbackRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 }, 50);
       return false;
@@ -1951,6 +2046,7 @@ function ModelGenesis() {
         time_column: config.predictionType === 'Time Series' ? config.timeColumn : null,
         frequency: config.predictionType === 'Time Series' ? config.frequency || null : null,
         timeseries_split: config.predictionType === 'Time Series' ? config.timeSeriesLookback : null,
+        lookback: config.predictionType === 'Time Series' && ['Univariate', 'Multivariate'].includes(config.timeSeriesType) ? config.lookback : null,
         selected_columns: config.predictionType === 'Time Series' && ['Multivariate', 'Multivariate Multiseries'].includes(config.timeSeriesType) ? (config.multivariate_columns || []) : [],
         entity_cols: config.predictionType === 'Time Series' && ['Multivariate Multiseries', 'Univariate Multiseries'].includes(config.timeSeriesType) ? (config.entity_cols || []) : [],
         fairness_columns: config.fairness_columns,
@@ -2092,25 +2188,27 @@ if (
             onNotebookModeSelect={handleNotebookModeSelect}
           />
 
-          <DropColumns
-            config={config}
-            setConfig={(newConfig) => {
-              setConfig(newConfig);
+          {config.predictionType !== 'Time Series' && (
+            <DropColumns
+              config={config}
+              setConfig={(newConfig) => {
+                setConfig(newConfig);
 
-              if (validationErrors.dropColumns && newConfig.drop_columns?.length > 0) {
-                setValidationErrors(prev => ({ ...prev, dropColumns: undefined }));
-              }
+                if (validationErrors.dropColumns && newConfig.drop_columns?.length > 0) {
+                  setValidationErrors(prev => ({ ...prev, dropColumns: undefined }));
+                }
 
-              if (!newConfig.drop_columns_active) {
-                setValidationErrors(prev => ({ ...prev, dropColumns: undefined }));
-              }
-            }}
-            readonly={isInteractionLocked}
-            columnNames={datasetState.columnNames}
-            hasError={!!validationErrors.dropColumns}
-            errorMessage={validationErrors.dropColumns}
-            sectionRef={dropColumnsRef}
-          />
+                if (!newConfig.drop_columns_active) {
+                  setValidationErrors(prev => ({ ...prev, dropColumns: undefined }));
+                }
+              }}
+              readonly={isInteractionLocked}
+              columnNames={datasetState.columnNames}
+              hasError={!!validationErrors.dropColumns}
+              errorMessage={validationErrors.dropColumns}
+              sectionRef={dropColumnsRef}
+            />
+          )}
 
           <PredictionType
             config={config}
@@ -2152,7 +2250,19 @@ if (
         />
           )}
 
-          <SplitSetting config={config} setConfig={setConfig} readonly={isInteractionLocked} />
+          <SplitSetting
+            config={config}
+            setConfig={(newConfig) => {
+              setConfig(newConfig);
+              if (validationErrors.lookback && newConfig.lookback !== undefined && newConfig.lookback !== null) {
+                setValidationErrors(prev => ({ ...prev, lookback: undefined }));
+              }
+            }}
+            readonly={isInteractionLocked}
+            hasError={!!validationErrors.lookback}
+            errorMessage={validationErrors.lookback}
+            sectionRef={lookbackRef}
+          />
 
           {!(config.predictionType === 'Time Series' && ['Multivariate', 'Univariate', 'Multivariate Multiseries', 'Univariate Multiseries'].includes(config.timeSeriesType)) && (
             <FairnessAttribute
