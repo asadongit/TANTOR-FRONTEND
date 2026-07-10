@@ -249,7 +249,7 @@ export const connectorConfig = {
       name: "extra_info.sasl_mechanism",
       label: "SASL Mechanism",
       type: "select",
-      options: ["PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512"],
+      options: ["PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512", "KERBEROS"],
       required: true,
       conditionalOn: {
         field: "extra_info.security_protocol",
@@ -261,8 +261,8 @@ export const connectorConfig = {
       label: "SASL Username",
       required: true,
       conditionalOn: {
-        field: "extra_info.security_protocol",
-        values: ["SASL_PLAINTEXT", "SASL_SSL"],
+        field: "extra_info.sasl_mechanism",
+        values: ["PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512"],
       },
     },
     {
@@ -271,8 +271,29 @@ export const connectorConfig = {
       type: "password",
       required: true,
       conditionalOn: {
-        field: "extra_info.security_protocol",
-        values: ["SASL_PLAINTEXT", "SASL_SSL"],
+        field: "extra_info.sasl_mechanism",
+        values: ["PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512"],
+      },
+    },
+    {
+      name: "extra_info.keytab_location",
+      label: "Keytab File",
+      type: "file",
+      fileType: "keytab",
+      accept: ".keytab",
+      required: true,
+      conditionalOn: {
+        field: "extra_info.sasl_mechanism",
+        value: "KERBEROS",
+      },
+    },
+    {
+      name: "extra_info.principal",
+      label: "Principal",
+      required: true,
+      conditionalOn: {
+        field: "extra_info.sasl_mechanism",
+        value: "KERBEROS",
       },
     },
      {

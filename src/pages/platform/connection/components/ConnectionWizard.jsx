@@ -250,18 +250,24 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       payload.append("truststore_file", truststoreFile);
     }
 
-    const hiveFiles = [keytabFile, coreSiteFile, hdfsSiteFile].filter(Boolean);
-    if (hiveFiles.length > 0) {
-      const zip = new JSZip();
-      if (keytabFile) zip.file(keytabFile.name, keytabFile);
-      if (coreSiteFile) zip.file("core-site.xml", coreSiteFile);
-      if (hdfsSiteFile) zip.file("hdfs-site.xml", hdfsSiteFile);
-      const zipBlob = await zip.generateAsync({
-        type: "blob",
-        compression: "DEFLATE",
-        compressionOptions: { level: 1 },
-      });
-      payload.append("hive_files_zip", zipBlob, "hive_files.zip");
+    if (isHiveConnector) {
+      const hiveFiles = [keytabFile, coreSiteFile, hdfsSiteFile].filter(Boolean);
+      if (hiveFiles.length > 0) {
+        const zip = new JSZip();
+        if (keytabFile) zip.file(keytabFile.name, keytabFile);
+        if (coreSiteFile) zip.file("core-site.xml", coreSiteFile);
+        if (hdfsSiteFile) zip.file("hdfs-site.xml", hdfsSiteFile);
+        const zipBlob = await zip.generateAsync({
+          type: "blob",
+          compression: "DEFLATE",
+          compressionOptions: { level: 1 },
+        });
+        payload.append("hive_files_zip", zipBlob, "hive_files.zip");
+      }
+    } else {
+      if (keytabFile) {
+        payload.append("keytab_file", keytabFile);
+      }
     }
 
     return payload;
@@ -371,25 +377,31 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       payload.append("truststore_file", truststoreFile);
     }
 
-    const hiveFiles = [keytabFile, coreSiteFile, hdfsSiteFile].filter(Boolean);
-    if (hiveFiles.length > 0) {
-      const zip = new JSZip();
-      if (keytabFile) zip.file(keytabFile.name, keytabFile);
-      if (coreSiteFile) zip.file("core-site.xml", coreSiteFile);
-      if (hdfsSiteFile) zip.file("hdfs-site.xml", hdfsSiteFile);
-      let zipBlob;
-      try {
-        zipBlob = await zip.generateAsync({
-          type: "blob",
-          compression: "DEFLATE",
-          compressionOptions: { level: 1 },
-        });
-      } catch (err) {
-        throw new Error(
-          "One or more files could not be read. Please re-select them and try again."
-        );
+    if (isHiveConnector) {
+      const hiveFiles = [keytabFile, coreSiteFile, hdfsSiteFile].filter(Boolean);
+      if (hiveFiles.length > 0) {
+        const zip = new JSZip();
+        if (keytabFile) zip.file(keytabFile.name, keytabFile);
+        if (coreSiteFile) zip.file("core-site.xml", coreSiteFile);
+        if (hdfsSiteFile) zip.file("hdfs-site.xml", hdfsSiteFile);
+        let zipBlob;
+        try {
+          zipBlob = await zip.generateAsync({
+            type: "blob",
+            compression: "DEFLATE",
+            compressionOptions: { level: 1 },
+          });
+        } catch (err) {
+          throw new Error(
+            "One or more files could not be read. Please re-select them and try again."
+          );
+        }
+        payload.append("hive_files_zip", zipBlob, "hive_files.zip");
       }
-      payload.append("hive_files_zip", zipBlob, "hive_files.zip");
+    } else {
+      if (keytabFile) {
+        payload.append("keytab_file", keytabFile);
+      }
     }
 
     if (customFiles.length > 0) {
@@ -791,7 +803,33 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
       return;
     }
 
-    const payload = await buildTestPayload(formData);
+    let updatedFormData = { ...formData };
+    let extraInfoChanged = false;
+    let newExtraInfo = { ...updatedFormData.extra_info };
+    
+    if (fileObjects["truststore_location"]) {
+       newExtraInfo.truststore_location = `${updatedFormData.connection_name}_${fileObjects["truststore_location"].name}`;
+       extraInfoChanged = true;
+    }
+    if (fileObjects["keytab_location"]) {
+       newExtraInfo.keytab_location = `${updatedFormData.connection_name}_${fileObjects["keytab_location"].name}`;
+       extraInfoChanged = true;
+    }
+    if (fileObjects["core_site_location"]) {
+       newExtraInfo.core_site_location = `${updatedFormData.connection_name}_${fileObjects["core_site_location"].name}`;
+       extraInfoChanged = true;
+    }
+    if (fileObjects["hdfs_site_location"]) {
+       newExtraInfo.hdfs_site_location = `${updatedFormData.connection_name}_${fileObjects["hdfs_site_location"].name}`;
+       extraInfoChanged = true;
+    }
+
+    if (extraInfoChanged) {
+       updatedFormData.extra_info = newExtraInfo;
+       setFormData(updatedFormData);
+    }
+
+    const payload = await buildTestPayload(updatedFormData);
 
     setIsTesting(true);
     if (isHiveConnector) {
@@ -1427,15 +1465,9 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
                 }`}
               >
                 <option value="">Select behaviour</option>
-                  {selectedConnector === "kafka" ? (
-                    <option value="source">Source</option>
-                  ) : (
-                    <>
                       <option value="source">Source</option>
                       <option value="target">Target</option>
                       <option value="both">Both</option>
-                    </>
-                  )}
               </select>
               <ChevronDown
                 className="absolute right-3 top-10 pointer-events-none text-gray-500"
