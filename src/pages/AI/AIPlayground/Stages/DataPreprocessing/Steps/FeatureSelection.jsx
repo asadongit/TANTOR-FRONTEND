@@ -3,6 +3,9 @@ import { ChevronDown, ChevronUp, Plus, X, AlertCircle, Info } from 'lucide-react
 import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 import InfoButton from '../../../components/InfoButton';
+import HandleGeneratedMissingValues from '../timeseries/components/HandleMissingValues/HandleGeneratedMissingValues';
+import HandleOriginalMissingValues from '../timeseries/components/HandleMissingValues/HandleOriginalMissingValues';
+import MethodParameterField from '../timeseries/components/HandleMissingValues/MethodParameterField';
 
 const ChevronSVG = () => (
   <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -213,14 +216,25 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
     : null;
   const currentWorkflowId = workflowState?.workflow_id || activeWorkflowId;
 
+  const modellingType = workflowState?.modelGenesis?.config?.modelling_type;
+  const isMultiseries = modellingType === 'multivariate_multiseries' || modellingType === 'univariate_multiseries';
+  const isMultivariateMultiseries = modellingType === 'multivariate_multiseries';
+
   const dropLowValueRef = useRef(null);
   const handleMissingRef = useRef(null);
+  const handleOriginalMissingRef = useRef(null);
+  const handleGeneratedMissingRef = useRef(null);
   const createBasicRef = useRef(null);
+  const detectOutliersRef = useRef(null);
 
-  const columns = workflowState?.dataPreprocessing?.step1?.apiResponse?.filtered_uniqueness_report?.map(item => ({
-    name: item.column,
-    uniqueness: `${(item.uniqueness_ratio * 100).toFixed(2)}%`
-  })) || [];
+  const entityColumns = workflowState?.modelGenesis?.config?.entity_cols || [];
+
+  const columns = workflowState?.dataPreprocessing?.step1?.apiResponse?.filtered_uniqueness_report
+    ?.filter(item => !entityColumns.includes(item.column))
+    ?.map(item => ({
+      name: item.column,
+      uniqueness: `${(item.uniqueness_ratio * 100).toFixed(2)}%`
+    })) || [];
 
   const numericalColumns = workflowState?.dataPreprocessing?.step1?.apiResponse?.numerical_columns || [];
   const categoricalColumns = workflowState?.dataPreprocessing?.step1?.apiResponse?.categorical_columns || [];
@@ -228,10 +242,10 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
   const allColumns = [...numericalColumns, ...categoricalColumns, ...datetimeColumns];
 
   const [expandedSections, setExpandedSections] = useState({
-    dropLowValue: false, handleMissing: false, createBasic: false, detectOutliers: false,
+    dropLowValue: false, handleMissing: false, handleOriginalMissing: false, handleGeneratedMissing: false, createBasic: false, detectOutliers: false,
   });
   const [toggles, setToggles] = useState({
-    dropLowValue: false, handleMissing: false, createBasic: false, detectOutliers: false,
+    dropLowValue: false, handleMissing: false, handleGeneratedMissing: false, createBasic: false, detectOutliers: false,
   });
   const [selectedColumns, setSelectedColumns] = useState({});
   const [selectAll, setSelectAll] = useState(false);
@@ -242,8 +256,20 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
   const [categoricalImputation, setCategoricalImputation] = useState('');
   const [timeSeriesImputation, setTimeSeriesImputation] = useState('');
   const [columnOverrides, setColumnOverrides] = useState([]);
+  const [generatedMissingConfig, setGeneratedMissingConfig] = useState({
+    numeric: '', categorical: '', datetime: '', rollingWindow: '',
+    numericSeasonalgeneratedPeriod: '', categoricalSeasonalgeneratedPeriod: '',
+  });
+  const [originalMissingConfig, setOriginalMissingConfig] = useState({
+    numeric: '', categorical: '', datetime: '',
+    polynomialDegree: '', splineOrder: '', categoricalSeasonalOriginalPeriod: '',
+  });
+  const [missingValuesSearchValues, setMissingValuesSearchValues] = useState({ originalNumeric: '', originalCategorical: '', originalDatetime: '' });
+  const [missingValuesShowDropdowns, setMissingValuesShowDropdowns] = useState({ originalNumeric: false, originalCategorical: false, originalDatetime: false });
   const [basicFeatures, setBasicFeatures] = useState([]);
   const [outlierMethod, setOutlierMethod] = useState('zscore');
+  const [outlierSeasonalPeriod, setOutlierSeasonalPeriod] = useState('');
+  const [outlierRollingWindow, setOutlierRollingWindow] = useState('');
   const [hoveredOutlier, setHoveredOutlier] = useState(null);
   const [searchNumerical, setSearchNumerical] = useState('');
   const [searchCategorical, setSearchCategorical] = useState('');
@@ -312,14 +338,50 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
     { value: 'dbscan', label: 'DBSCAN', description: 'A density-based clustering algorithm that identifies noise points as outliers. Points not belonging to any dense cluster are labeled as outliers. Effective for detecting clusters of arbitrary shape.' }
   ];
 
+  const multivariateMultiseriesOutlierMethods = [
+    { value: 'mahalanobis', label: 'Mahalanobis Distance', description: 'A multivariate method that measures how far an observation is from the mean of all series while accounting for correlations between them. Well suited for detecting outliers that only appear abnormal when multiple correlated series are considered together.' },
+    { value: 'robust_pca', label: 'Robust PCA', description: 'Decomposes the multivariate series into a low-rank component capturing normal shared structure and a sparse component capturing anomalies. Effective at surfacing outliers across many correlated series at once.' },
+    { value: 'copula_based', label: 'Copula-Based', description: 'Models the dependency structure between series independently of their individual distributions, then flags observations that violate the learned joint dependency pattern as outliers.' },
+    { value: 'stl_mad', label: 'STL + MAD', description: 'Decomposes each series into trend, seasonal, and residual components using STL, then flags outliers in the residual using the Median Absolute Deviation (MAD). Robust to trend and seasonality.' },
+    { value: 'rolling_median_iqr', label: 'Rolling Median + IQR', description: 'Computes a rolling median and interquartile range over a moving window and flags points that fall outside the local IQR bounds, adapting to changes in the series over time.' },
+    { value: 'hdbscan', label: 'HDBSCAN', description: 'A density-based clustering algorithm that automatically determines the number of clusters and flags points that do not belong to any dense cluster as outliers. Handles clusters of varying density well.' },
+    { value: 'isolation_forest', label: 'Isolation Forest', description: 'A tree-based anomaly detection algorithm that isolates outliers by randomly partitioning data. Outliers are detected because they require fewer splits to isolate. Effective for large and high-dimensional datasets.' }
+  ];
+
+  const activeOutlierMethods = isMultivariateMultiseries ? multivariateMultiseriesOutlierMethods : outlierMethods;
+
+  useEffect(() => {
+    if (workflowState?.dataPreprocessing?.step2?.config) return;
+    if (!activeOutlierMethods.some(m => m.value === outlierMethod)) {
+      setOutlierMethod(activeOutlierMethods[0]?.value || '');
+    }
+  }, [isMultivariateMultiseries, workflowState?.dataPreprocessing?.step2?.config]);
+
   useEffect(() => {
     if ((mode === 'view' || mode === 'edit') && workflowState?.dataPreprocessing?.step2?.config) {
       const config = workflowState.dataPreprocessing.step2.config;
       setToggles({
         dropLowValue: config.drop_high_uniqueness_active || false,
         handleMissing: config.drop_high_null_active || false,
+        handleGeneratedMissing: config.handle_generated_missing_active || false,
         createBasic: config.feature_creation_active || false,
         detectOutliers: config.outlier_detection_active || false,
+      });
+      setGeneratedMissingConfig({
+        numeric: config.generated_missing_numeric_method || '',
+        categorical: config.generated_missing_categorical_method || '',
+        datetime: config.generated_missing_datetime_method || '',
+        rollingWindow: config.generated_missing_rolling_window ?? '',
+        numericSeasonalgeneratedPeriod: config.generated_missing_numeric_seasonal_period || '',
+        categoricalSeasonalgeneratedPeriod: config.generated_missing_categorical_seasonal_period || '',
+      });
+      setOriginalMissingConfig({
+        numeric: config.raw_missing_numeric_method || '',
+        categorical: config.raw_missing_categorical_method || '',
+        datetime: config.raw_missing_datetime_method || '',
+        polynomialDegree: config.raw_missing_polynomial_order || '',
+        splineOrder: config.raw_missing_spline_order || '',
+        categoricalSeasonalOriginalPeriod: config.raw_missing_seasonal_period || '',
       });
       if (config.columns_to_drop_manually && config.columns_to_drop_manually.length > 0) {
         const newSelectedColumns = {};
@@ -347,6 +409,8 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
         })));
       }
       if (config.outlier_detection_method) setOutlierMethod(config.outlier_detection_method);
+      if (config.outlier_seasonal_period !== undefined) setOutlierSeasonalPeriod(String(config.outlier_seasonal_period));
+      if (config.outlier_rolling_window !== undefined) setOutlierRollingWindow(String(config.outlier_rolling_window));
       if (config.drop_high_null_active) { setDropColumnsEnabled(true); setImputationEnabled(true); }
     }
   }, [mode, workflowState?.dataPreprocessing?.step2?.config]);
@@ -363,7 +427,7 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
     if (!toggles.handleMissing) return '';
     const thresholdValue = parseFloat(threshold);
     if (threshold && (isNaN(thresholdValue) || thresholdValue < 1 || thresholdValue > 100)) return 'Threshold must be between 1 and 100';
-    if (columnOverrides.some(o => !o.column || !o.method)) return 'Please complete all column override configurations.';
+    if (!isMultiseries && columnOverrides.some(o => !o.column || !o.method)) return 'Please complete all column override configurations.';
     return '';
   };
 
@@ -391,36 +455,119 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
     return '';
   };
 
+  const getOriginalMissingError = () => {
+    if (!hasAnyOriginalMissing) return '';
+    if (hasOriginalMissingNumerical && !originalMissingConfig.numeric) return 'Select numeric imputation method';
+    if (hasOriginalMissingCategorical && !originalMissingConfig.categorical) return 'Select categorical imputation method';
+    if (hasOriginalMissingDatetime && !originalMissingConfig.datetime) return 'Select datetime imputation method';
+    if (originalMissingConfig.numeric === 'polynomial') {
+      const d = Number(originalMissingConfig.polynomialDegree);
+      if (!Number.isFinite(d) || d < 2 || d > 365) return 'Polynomial degree must be between 2 and 365';
+    }
+    if (originalMissingConfig.numeric === 'spline') {
+      const s = Number(originalMissingConfig.splineOrder);
+      if (!Number.isFinite(s) || s < 3 || s > 365) return 'Spline order must be between 3 and 365';
+    }
+    if (originalMissingConfig.categorical === 'mode_by_season') {
+      const p = Number(originalMissingConfig.categoricalSeasonalOriginalPeriod);
+      if (!Number.isFinite(p) || p < 7 || p > 365) return 'Seasonal period must be between 7 and 365';
+    }
+    return '';
+  };
+
+  const getGeneratedMissingError = () => {
+    if (!hasAnyGeneratedMissing) return '';
+    if (hasGeneratedMissingNumerical && !generatedMissingConfig.numeric) return 'Select numeric imputation method';
+    if (hasGeneratedMissingCategorical && !generatedMissingConfig.categorical) return 'Select categorical imputation method';
+    if (hasGeneratedMissingDatetime && !generatedMissingConfig.datetime) return 'Select datetime imputation method';
+    if (generatedMissingConfig.numeric === 'rolling_mean') {
+      const w = Number(generatedMissingConfig.rollingWindow);
+      if (!Number.isFinite(w) || w < 3 || w > 365) return 'Rolling window must be between 3 and 365';
+    }
+    if (generatedMissingConfig.numeric === 'mode_by_season' || generatedMissingConfig.numeric === 'seasonal_mean') {
+      const p = Number(generatedMissingConfig.numericSeasonalgeneratedPeriod);
+      if (!Number.isFinite(p) || p < 7 || p > 365) return 'Seasonal period must be between 7 and 365';
+    }
+    if (generatedMissingConfig.categorical === 'mode_by_season') {
+      const p = Number(generatedMissingConfig.categoricalSeasonalgeneratedPeriod);
+      if (!Number.isFinite(p) || p < 7 || p > 365) return 'Seasonal period must be between 7 and 365';
+    }
+    return '';
+  };
+
+  const handleOutlierMethodChange = (value) => {
+    setOutlierMethod(value);
+    setOutlierSeasonalPeriod('');
+    setOutlierRollingWindow('');
+  };
+
+  const getDetectOutliersError = () => {
+    if (!toggles.detectOutliers) return '';
+    if (outlierMethod === 'stl_mad') {
+      const p = Number(outlierSeasonalPeriod);
+      if (!outlierSeasonalPeriod) return 'Seasonal period is required for STL + MAD';
+      if (!Number.isFinite(p) || p < 7 || p > 365) return 'Seasonal period must be between 7 and 365';
+    }
+    if (outlierMethod === 'rolling_median_iqr') {
+      const w = Number(outlierRollingWindow);
+      if (!outlierRollingWindow) return 'Rolling window is required for Rolling Median + IQR';
+      if (!Number.isFinite(w) || w < 3 || w > 365) return 'Rolling window must be between 3 and 365';
+    }
+    return '';
+  };
+
+  const outlierSeasonalPeriodError = showFieldErrors && toggles.detectOutliers && outlierMethod === 'stl_mad' ? getDetectOutliersError() : '';
+  const outlierRollingWindowError = showFieldErrors && toggles.detectOutliers && outlierMethod === 'rolling_median_iqr' ? getDetectOutliersError() : '';
+
   useEffect(() => {
     if (!showFieldErrors) return;
-    if (!getDropLowValueError() && !getHandleMissingError() && !getCreateBasicError() && !getMissingValueRequirementError()) setShowFieldErrors(false);
-  }, [toggles, selectedColumns, threshold, columnOverrides, basicFeatures, numericalImputation, categoricalImputation, timeSeriesImputation]);
+    const missingErrors = isMultiseries
+      ? (getOriginalMissingError() || getGeneratedMissingError())
+      : (getHandleMissingError() || getMissingValueRequirementError());
+    if (!getDropLowValueError() && !missingErrors && !getCreateBasicError() && !getDetectOutliersError()) setShowFieldErrors(false);
+  }, [toggles, selectedColumns, threshold, columnOverrides, basicFeatures, numericalImputation, categoricalImputation, timeSeriesImputation, generatedMissingConfig, originalMissingConfig, outlierMethod, outlierSeasonalPeriod, outlierRollingWindow]);
 
-  const validateStep = () => !getDropLowValueError() && !getHandleMissingError() && !getCreateBasicError() && !getMissingValueRequirementError();
+  const validateStep = () => {
+    if (isMultiseries) {
+      return !getDropLowValueError() && !getOriginalMissingError() && !getGeneratedMissingError() && !getCreateBasicError() && !getDetectOutliersError();
+    }
+    return !getDropLowValueError() && !getHandleMissingError() && !getCreateBasicError() && !getMissingValueRequirementError() && !getDetectOutliersError();
+  };
 
   const makeApiCall = async () => {
     if (readonly) return true;
     const isValid = validateStep();
     if (!isValid) {
       const dropErr = getDropLowValueError();
-      const missingErr = getHandleMissingError() || getMissingValueRequirementError();
+      const originalErr = isMultiseries ? getOriginalMissingError() : '';
+      const generatedErr = isMultiseries ? getGeneratedMissingError() : '';
+      const missingErr = isMultiseries ? (originalErr || generatedErr) : (getHandleMissingError() || getMissingValueRequirementError());
       const basicErr = getCreateBasicError();
+      const outlierErr = getDetectOutliersError();
 
       setShowFieldErrors(true);
       setExpandedSections({
         dropLowValue: !!dropErr,
-        handleMissing: !!missingErr,
+        handleMissing: !isMultiseries && !!missingErr,
+        handleOriginalMissing: isMultiseries && !!originalErr,
+        handleGeneratedMissing: isMultiseries && !!generatedErr,
         createBasic: !!basicErr,
-        detectOutliers: false,
+        detectOutliers: !!outlierErr,
       });
 
       setTimeout(() => {
         if (dropErr && dropLowValueRef.current) {
           dropLowValueRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else if (missingErr && handleMissingRef.current) {
+        } else if (isMultiseries && originalErr && handleOriginalMissingRef.current) {
+          handleOriginalMissingRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (isMultiseries && generatedErr && handleGeneratedMissingRef.current) {
+          handleGeneratedMissingRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (!isMultiseries && missingErr && handleMissingRef.current) {
           handleMissingRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
         } else if (basicErr && createBasicRef.current) {
           createBasicRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (outlierErr && detectOutliersRef.current) {
+          detectOutliersRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, 50);
 
@@ -433,7 +580,9 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
       if (numericalImputation) imputationStrategyByType.numeric = numericalImputation;
       if (timeSeriesImputation) imputationStrategyByType.datetime = timeSeriesImputation;
       const imputationStrategyByColumn = {};
-      columnOverrides.forEach(override => { if (override.column && override.method) imputationStrategyByColumn[override.column] = override.method; });
+      if (!isMultiseries) {
+        columnOverrides.forEach(override => { if (override.column && override.method) imputationStrategyByColumn[override.column] = override.method; });
+      }
       const mathOps = basicFeatures.filter(f => f.column1 && f.column2 && f.operator && f.newColumnName).map(f => ({
         operation: f.operator === '+' ? 'add' : f.operator === '-' ? 'subtract' : f.operator === '*' ? 'multiply' : f.operator === '/' ? 'divide' : f.operator === '%' ? 'modulo' : 'add',
         col1: f.column1, col2: f.column2, new_col: f.newColumnName
@@ -443,15 +592,39 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
         workflow_id: currentWorkflowId,
         drop_high_uniqueness_active: toggles.dropLowValue,
         columns_to_drop_manually: columnsToDropManually,
-        drop_high_null_active: toggles.handleMissing,
-        null_threshold: parseFloat(threshold) / 100,
-        imputation_strategy_by_type: imputationStrategyByType,
-        imputation_strategy_by_column: imputationStrategyByColumn,
         feature_creation_active: toggles.createBasic,
         math_ops: mathOps,
         outlier_detection_active: toggles.detectOutliers,
-        outlier_detection_method: outlierMethod
+        outlier_detection_method: outlierMethod,
+        outlier_threshold: 3
       };
+      if (outlierMethod === 'stl_mad' && outlierSeasonalPeriod) {
+        requestBody.outlier_seasonal_period = parseInt(outlierSeasonalPeriod, 10);
+      }
+      if (outlierMethod === 'rolling_median_iqr' && outlierRollingWindow) {
+        requestBody.outlier_rolling_window = parseInt(outlierRollingWindow, 10);
+      }
+      if (isMultiseries) {
+        requestBody.handle_generated_missing_active = hasAnyGeneratedMissing;
+        requestBody.generated_missing_numeric_method = generatedMissingConfig.numeric || '';
+        requestBody.generated_missing_categorical_method = generatedMissingConfig.categorical || '';
+        requestBody.generated_missing_datetime_method = generatedMissingConfig.datetime || '';
+        requestBody.generated_missing_rolling_window = generatedMissingConfig.rollingWindow || 3;
+        requestBody.generated_missing_numeric_seasonal_period = generatedMissingConfig.numericSeasonalgeneratedPeriod || 7;
+        requestBody.generated_missing_categorical_seasonal_period = generatedMissingConfig.categoricalSeasonalgeneratedPeriod || 7;
+        requestBody.handle_raw_missing_active = hasAnyOriginalMissing;
+        requestBody.raw_missing_numeric_method = originalMissingConfig.numeric || '';
+        requestBody.raw_missing_categorical_method = originalMissingConfig.categorical || '';
+        requestBody.raw_missing_datetime_method = originalMissingConfig.datetime || '';
+        requestBody.raw_missing_polynomial_order = originalMissingConfig.polynomialDegree || 2;
+        requestBody.raw_missing_spline_order = originalMissingConfig.splineOrder || 3;
+        requestBody.raw_missing_seasonal_period = originalMissingConfig.categoricalSeasonalOriginalPeriod || 7;
+      } else {
+        requestBody.drop_high_null_active = toggles.handleMissing;
+        requestBody.null_threshold = parseFloat(threshold) / 100;
+        requestBody.imputation_strategy_by_type = imputationStrategyByType;
+        requestBody.imputation_strategy_by_column = imputationStrategyByColumn;
+      }
       if (!requestBody.ensemble_id || !requestBody.workflow_id) {
         throw new Error('Missing required identifiers: ensemble_id or workflow_id');
       }
@@ -477,10 +650,10 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
 
   useEffect(() => {
     if (onApiCall) onApiCall(makeApiCall);
-  }, [toggles, selectedColumns, dropColumnsEnabled, imputationEnabled, threshold, numericalImputation, categoricalImputation, timeSeriesImputation, columnOverrides, basicFeatures, outlierMethod, datasetState?.ensembleId, currentWorkflowId]);
+  }, [toggles, selectedColumns, dropColumnsEnabled, imputationEnabled, threshold, numericalImputation, categoricalImputation, timeSeriesImputation, columnOverrides, basicFeatures, generatedMissingConfig, originalMissingConfig, outlierMethod, outlierSeasonalPeriod, outlierRollingWindow, datasetState?.ensembleId, currentWorkflowId]);
 
   const toggleSection = (section) => {
-    setExpandedSections({ dropLowValue: false, handleMissing: false, createBasic: false, detectOutliers: false, [section]: !expandedSections[section] });
+    setExpandedSections({ dropLowValue: false, handleMissing: false, handleOriginalMissing: false, handleGeneratedMissing: false, createBasic: false, detectOutliers: false, [section]: !expandedSections[section] });
   };
 
   const toggleSwitch = (key) => {
@@ -566,7 +739,36 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
     };
   };
 
+  // ── Original vs Generated missing values (multiseries only) ──
+  const columnsToDropManually = Object.entries(selectedColumns).filter(([_, isSelected]) => isSelected).map(([key]) => key.substring(0, key.lastIndexOf('-')));
+
+  const missingOriginalNumericColumns = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_numeric_column_original || {};
+  const missingOriginalCategoricalColumns = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_categorical_column_original || {};
+  const missingOriginalDatetimeColumns = workflowState?.dataPreprocessing?.step1?.apiResponse?.missing_datetime_column_original || {};
+
+  const hasOriginalMissingNumerical = Object.entries(missingOriginalNumericColumns).some(([col, val]) => val === 1 && !columnsToDropManually.includes(col));
+  const hasOriginalMissingCategorical = Object.entries(missingOriginalCategoricalColumns).some(([col, val]) => val === 1 && !columnsToDropManually.includes(col));
+  const hasOriginalMissingDatetime = Object.entries(missingOriginalDatetimeColumns).some(([col, val]) => val === 1 && !columnsToDropManually.includes(col));
+  const hasAnyOriginalMissing = hasOriginalMissingNumerical || hasOriginalMissingCategorical || hasOriginalMissingDatetime;
+
+  const rowsInserted = workflowState?.dataPreprocessing?.step1?.apiResponse?.rows_inserted || 0;
+  const activeNumericalColumns = numericalColumns.filter(c => !columnsToDropManually.includes(c));
+  const activeCategoricalColumns = categoricalColumns.filter(c => !columnsToDropManually.includes(c));
+  const activeDatetimeColumns = datetimeColumns.filter(c => !columnsToDropManually.includes(c));
+  const hasGeneratedMissingNumerical = rowsInserted > 0 && activeNumericalColumns.length > 0;
+  const hasGeneratedMissingCategorical = rowsInserted > 0 && activeCategoricalColumns.length > 0;
+  const hasGeneratedMissingDatetime = rowsInserted > 0 && activeDatetimeColumns.length > 0;
+  const hasAnyGeneratedMissing = hasGeneratedMissingNumerical || hasGeneratedMissingCategorical || hasGeneratedMissingDatetime;
+
   useEffect(() => {
+    if (!isMultiseries) return;
+    setToggles(prev => ({ ...prev, handleGeneratedMissing: hasAnyGeneratedMissing }));
+    if (hasAnyGeneratedMissing) setExpandedSections(prev => ({ ...prev, handleGeneratedMissing: true }));
+    if (hasAnyOriginalMissing) setExpandedSections(prev => ({ ...prev, handleOriginalMissing: true }));
+  }, [isMultiseries, hasAnyGeneratedMissing, hasAnyOriginalMissing]);
+
+  useEffect(() => {
+    if (isMultiseries) return;
     const hasMissingValues = checkHasMissingValues();
     if (hasMissingValues && !toggles.handleMissing) {
       setToggles(prev => ({ ...prev, handleMissing: true }));
@@ -575,9 +777,10 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
       setImputationEnabled(true);
       if (!threshold || threshold === '') setThreshold('70');
     }
-  }, [selectedColumns, workflowState?.dataPreprocessing?.step1?.apiResponse]);
+  }, [isMultiseries, selectedColumns, workflowState?.dataPreprocessing?.step1?.apiResponse]);
 
   useEffect(() => {
+    if (isMultiseries) return;
     if (toggles.handleMissing) {
       const { hasNumericMissing, hasCategoricalMissing, hasDatetimeMissing } = getMissingValuesByType();
       setImputationWarnings({
@@ -746,31 +949,37 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
           {toggles.dropLowValue && expandedSections.dropLowValue && (
             <div className="px-4 pb-4 border-t border-gray-100">
               <div className="mt-4">
-                <div className="flex items-center justify-between mb-4">
-                  <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                    <input type="checkbox" checked={selectAll} onChange={handleSelectAll} disabled={readonly} className="w-4 h-4 border-gray-300 rounded" style={{ accentColor: '#8E77BB' }} />
-                    Select All
-                  </label>
-                  <span className="text-xs text-gray-400">Total Fields: {totalFields} | Selected: {selectedCount}</span>
-                </div>
-                <div className="grid grid-cols-3 gap-x-3 gap-y-3 max-h-96 overflow-y-auto pr-2">
-                  {columns.map((column, idx) => {
-                    const columnKey = `${column.name}-${idx}`;
-                    return (
-                      <div
-                        key={columnKey}
-                        onClick={() => !readonly && handleColumnToggle(columnKey)}
-                        className={`flex items-center gap-2 p-2 rounded transition-all ${selectedColumns[columnKey] ? 'border-[#8E77BB] bg-purple-50' : 'border-gray-200 bg-white hover:border-gray-300'} ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-                      >
-                        <input type="checkbox" checked={selectedColumns[columnKey] || false} onChange={() => {}} disabled={readonly} className="w-4 h-4 border-gray-300 rounded mt-0.5 pointer-events-none" style={{ accentColor: '#8E77BB' }} />
-                        <div className="flex-1">
-                          <div className="text-sm text-gray-700">{column.name}</div>
-                          <div className="text-xs text-gray-400">{column.uniqueness}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                {columns.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-4">No low-value columns found</p>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between mb-4">
+                      <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                        <input type="checkbox" checked={selectAll} onChange={handleSelectAll} disabled={readonly} className="w-4 h-4 border-gray-300 rounded" style={{ accentColor: '#8E77BB' }} />
+                        Select All
+                      </label>
+                      <span className="text-xs text-gray-400">Total Fields: {totalFields} | Selected: {selectedCount}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-x-3 gap-y-3 max-h-96 overflow-y-auto pr-2">
+                      {columns.map((column, idx) => {
+                        const columnKey = `${column.name}-${idx}`;
+                        return (
+                          <div
+                            key={columnKey}
+                            onClick={() => !readonly && handleColumnToggle(columnKey)}
+                            className={`flex items-center gap-2 p-2 rounded transition-all ${selectedColumns[columnKey] ? 'border-[#8E77BB] bg-purple-50' : 'border-gray-200 bg-white hover:border-gray-300'} ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                          >
+                            <input type="checkbox" checked={selectedColumns[columnKey] || false} onChange={() => {}} disabled={readonly} className="w-4 h-4 border-gray-300 rounded mt-0.5 pointer-events-none" style={{ accentColor: '#8E77BB' }} />
+                            <div className="flex-1">
+                              <div className="text-sm text-gray-700">{column.name}</div>
+                              <div className="text-xs text-gray-400">{column.uniqueness}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
                 {dropLowValueError && <p className="text-xs text-[#EF4D5F] mt-3 pl-0.5">{dropLowValueError}</p>}
               </div>
             </div>
@@ -783,6 +992,47 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
       )}
 
       {/* ── Handle Missing Values ── */}
+      {isMultiseries ? (
+        <>
+          <div ref={handleOriginalMissingRef}>
+            <HandleOriginalMissingValues
+              readonly={readonly}
+              expanded={expandedSections.handleOriginalMissing}
+              toggleSection={() => toggleSection('handleOriginalMissing')}
+              checked={hasAnyOriginalMissing}
+              hasNumericMissing={hasOriginalMissingNumerical}
+              hasCategoricalMissing={hasOriginalMissingCategorical}
+              hasDatetimeMissing={hasOriginalMissingDatetime}
+              missingOriginalNumericColumns={missingOriginalNumericColumns}
+              missingOriginalCategoricalColumns={missingOriginalCategoricalColumns}
+              missingOriginalDatetimeColumns={missingOriginalDatetimeColumns}
+              originalMissingConfig={originalMissingConfig}
+              setOriginalMissingConfig={setOriginalMissingConfig}
+              searchValues={missingValuesSearchValues}
+              setSearchValues={setMissingValuesSearchValues}
+              showDropdowns={missingValuesShowDropdowns}
+              setShowDropdowns={setMissingValuesShowDropdowns}
+              showFieldErrors={showFieldErrors}
+              originalMissingError={showFieldErrors ? getOriginalMissingError() : ''}
+            />
+          </div>
+          <div ref={handleGeneratedMissingRef}>
+            <HandleGeneratedMissingValues
+              readonly={readonly}
+              toggles={toggles}
+              setToggles={setToggles}
+              generatedMissingConfig={generatedMissingConfig}
+              setGeneratedMissingConfig={setGeneratedMissingConfig}
+              hasGeneratedMissingNumerical={hasGeneratedMissingNumerical}
+              hasGeneratedMissingCategorical={hasGeneratedMissingCategorical}
+              hasGeneratedMissingDatetime={hasGeneratedMissingDatetime}
+              showFieldErrors={showFieldErrors}
+              expanded={expandedSections.handleGeneratedMissing}
+              toggleSection={() => toggleSection('handleGeneratedMissing')}
+            />
+          </div>
+        </>
+      ) : (
       <div ref={handleMissingRef} className={sectionClass()}>
         <div className="p-4 flex items-center justify-between">
           <div className="flex-1 flex items-center gap-2">
@@ -893,6 +1143,7 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
                     )}
                   </div>
 
+                  {!isMultiseries && (
                   <div className="mt-2">
                     <div className="space-y-3">
                       {columnOverrides.map((override, index) => {
@@ -951,6 +1202,7 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
                       </button>
                     </div>
                   </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -961,6 +1213,7 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
           <div className="px-4 pb-3"><p className="text-xs text-[#EF4D5F]">{handleMissingError}</p></div>
         )}
       </div>
+      )}
 
       {/* ── Create Basic Features ── */}
       <div ref={createBasicRef} className={sectionClass()}>
@@ -1092,7 +1345,7 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
       </div>
 
       {/* ── Detect Outliers ── */}
-      <div className="bg-[#FAFAFA] rounded-lg">
+      <div ref={detectOutliersRef} className="bg-[#FAFAFA] rounded-lg">
         <div className="p-4 flex items-center justify-between">
           <div className="flex-1 flex items-center gap-2">
             <h4 className="text-sm font-medium text-gray-900">Detect Outliers</h4>
@@ -1111,7 +1364,7 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
         {toggles.detectOutliers && expandedSections.detectOutliers && (
           <div className="px-4 pb-4 border-t border-gray-100">
             <div className="mt-4 mb-20 grid grid-cols-2 gap-3">
-              {outlierMethods.map(method => (
+              {activeOutlierMethods.map(method => (
                 <div key={method.value} className="relative">
                   <label
                     className={`flex items-center gap-3 p-3 rounded-lg transition-all ${outlierMethod === method.value ? 'border-[#8E77BB] bg-purple-50' : 'border-gray-200 bg-white hover:border-gray-300'} ${readonly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
@@ -1123,7 +1376,7 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
                       name="outlierMethod"
                       value={method.value}
                       checked={outlierMethod === method.value}
-                      onChange={(e) => !readonly && setOutlierMethod(e.target.value)}
+                      onChange={(e) => !readonly && handleOutlierMethodChange(e.target.value)}
                       disabled={readonly}
                       className="w-4 h-4 border-gray-300 focus:ring-[#8E77BB]"
                       style={{ accentColor: '#8E77BB' }}
@@ -1136,6 +1389,36 @@ function FeatureSelection({ readonly: readonlyProp, onValidationChange, onApiCal
                     <div className="absolute left-0 top-full mt-2 z-50 w-80 p-3 bg-[#332849] text-white text-xs rounded-lg shadow-lg">
                       <div className="absolute -top-1 left-4 w-2 h-2 bg-[#332849] transform rotate-45"></div>
                       {method.description}
+                    </div>
+                  )}
+
+                  {outlierMethod === method.value && method.value === 'stl_mad' && (
+                    <div className="mt-2">
+                      <MethodParameterField
+                        label="Seasonal Period"
+                        value={outlierSeasonalPeriod}
+                        min={7}
+                        max={365}
+                        hasError={!!outlierSeasonalPeriodError}
+                        errorMessage={outlierSeasonalPeriodError}
+                        disabled={readonly}
+                        onChange={(value) => setOutlierSeasonalPeriod(value)}
+                      />
+                    </div>
+                  )}
+
+                  {outlierMethod === method.value && method.value === 'rolling_median_iqr' && (
+                    <div className="mt-2">
+                      <MethodParameterField
+                        label="Rolling Window"
+                        value={outlierRollingWindow}
+                        min={3}
+                        max={365}
+                        hasError={!!outlierRollingWindowError}
+                        errorMessage={outlierRollingWindowError}
+                        disabled={readonly}
+                        onChange={(value) => setOutlierRollingWindow(value)}
+                      />
                     </div>
                   )}
                 </div>

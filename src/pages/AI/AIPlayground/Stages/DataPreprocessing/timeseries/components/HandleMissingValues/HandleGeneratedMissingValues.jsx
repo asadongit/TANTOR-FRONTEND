@@ -352,6 +352,8 @@ const categoricalSeasonalPeriodError =
                       setGeneratedMissingConfig(prev => ({
                         ...prev,
                         categorical: value,
+                        // Clear previous submethod value
+                        categoricalSeasonalgeneratedPeriod: '',
                       }))
                     }
                     options={methodOptions.generatedCategorical}

@@ -255,6 +255,9 @@ function HandleOriginalMissingValues({
                     setOriginalMissingConfig(prev => ({
                       ...prev,
                       numeric: value,
+                      // Clear previous submethod values
+                      polynomialDegree: '',
+                      splineOrder: '',
                     }))
                   }
 
@@ -340,6 +343,8 @@ function HandleOriginalMissingValues({
                     setOriginalMissingConfig(prev => ({
                       ...prev,
                       categorical: value,
+                      // Clear previous submethod value
+                      categoricalSeasonalOriginalPeriod: '',
                     }))
                   }
 

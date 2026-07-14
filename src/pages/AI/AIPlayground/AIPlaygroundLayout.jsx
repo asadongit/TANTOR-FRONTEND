@@ -69,8 +69,10 @@ export function AIPlaygroundLayout({
     onPreprocessingStepChange,
     isStep7Preview,
     isStep8Preview,
+    isStep6MMSPreview,
     onPreviewData,
     onPreviewData8,
+    onPreviewData6MMS,
     isNextDisabled: isNextDisabledProp,
     onSaveModel,
     isSaveModelDisabled = false,
@@ -278,8 +280,10 @@ onUnivariatePreview
     const isPreprocessingPage = location.pathname === '/ai/playground/data-preprocessing';
     // preview page
     const isMultivariateTimeSeries = predictionType === 'multivariate_timeseries' || predictionType === 'multiseries_timeseries';
+    const isMultivariateMultiseries = predictionType === 'multivariate_multiseries';
     const isOnStep7 = isPreprocessingPage && currentPreprocessingStep === totalPreprocessingSteps && totalPreprocessingSteps === 7 && !isMultivariateTimeSeries;
     const isOnStep8 = isPreprocessingPage && currentPreprocessingStep === totalPreprocessingSteps && (totalPreprocessingSteps === 8 || (totalPreprocessingSteps === 7 && isMultivariateTimeSeries));
+    const isOnStep6MMS = isPreprocessingPage && currentPreprocessingStep === totalPreprocessingSteps && totalPreprocessingSteps === 6 && isMultivariateMultiseries;
     const isOnUnivariatePreviewStep = isPreprocessingPage && predictionType === 'univariate_timeseries' && currentPreprocessingStep === totalPreprocessingSteps;
 
     const shouldShowCancel = currentStageIndex >= 0 && currentStageIndex <= 3;
@@ -415,6 +419,25 @@ onUnivariatePreview
         }
 
         if (isOnStep8 && isStep8Preview) {
+            if (nextStage) {
+                navigate(nextStage.path, {
+                    state: {
+                        mode: readonly ? 'view' : 'edit',
+                        isEnsemble,
+                        ensembleCount: models.length,
+                        activeModelIndex: activeModelIndex
+                    }
+                });
+            }
+            return;
+        }
+
+        if (isOnStep6MMS && !isStep6MMSPreview) {
+            if (onPreviewData6MMS) onPreviewData6MMS(true);
+            return;
+        }
+
+        if (isOnStep6MMS && isStep6MMSPreview) {
             if (nextStage) {
                 navigate(nextStage.path, {
                     state: {
@@ -702,6 +725,8 @@ if (
         if (isOnStep7 && isStep7Preview) return `Continue to ${nextStage?.label || 'Next Stage'}`;
         if (isOnStep8 && !isStep8Preview) return 'Preview Data';
         if (isOnStep8 && isStep8Preview) return `Continue to ${nextStage?.label || 'Next Stage'}`;
+        if (isOnStep6MMS && !isStep6MMSPreview) return 'Preview Data';
+        if (isOnStep6MMS && isStep6MMSPreview) return `Continue to ${nextStage?.label || 'Next Stage'}`;
         if (isDeploymentStage && isEnsemble && activeModelIndex < models.length - 1) {
             return `Continue to ${truncateLabel(models[activeModelIndex + 1]?.label)}`;
         }
@@ -717,7 +742,7 @@ if (
         if (isDeploymentStage && isEnsemble && activeModelIndex < models.length - 1) {
             return false;
         }
-        return !isPreprocessingPage && currentStageIndex === workflowStages.length - 1 && !(isOnStep7 && !isStep7Preview) && !(isOnStep8 && !isStep8Preview);
+        return !isPreprocessingPage && currentStageIndex === workflowStages.length - 1 && !(isOnStep7 && !isStep7Preview) && !(isOnStep8 && !isStep8Preview) && !(isOnStep6MMS && !isStep6MMSPreview);
     };
 
     const getVisibleStages = () => {
@@ -1111,7 +1136,7 @@ if (
 
                 <div className="bg-white border-t border-gray-200 px-6 py-2 flex-shrink-0" style={{ background: '#FFFFFF', boxShadow: '0px -4px 9px 0px #0000001A' }}>
                     <div className="w-full flex justify-between items-center">
-                        {!(isOnStep7 && isStep7Preview) && !(isOnStep8 && isStep8Preview) && !isDeploymentStage ? (
+                        {!(isOnStep7 && isStep7Preview) && !(isOnStep8 && isStep8Preview) && !(isOnStep6MMS && isStep6MMSPreview) && !isDeploymentStage ? (
                             shouldShowCancel ? (
                                 <button
                                     onClick={handleCancel}

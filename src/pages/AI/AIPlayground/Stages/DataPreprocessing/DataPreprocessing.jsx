@@ -57,6 +57,17 @@
       ];
     }
 
+    if (predictionType === 'multivariate_multiseries') {
+      return [
+        { id: 1, label: 'Data Pre-processing' },
+        { id: 2, label: 'Feature Selection' },
+        { id: 3, label: 'Feature Engineering' },
+        { id: 4, label: 'Scaling & Transformation' },
+        { id: 5, label: 'Statistical Analysis' },
+        { id: 6, label: 'Feature Importance' },
+      ];
+    }
+
     // Standard ML workflow steps
     return [
       { id: 1, label: 'Data Pre-processing' },
@@ -80,6 +91,7 @@
       mode,
       datasetState,
       updateWorkflowStage,
+      updatePreprocessingStep,
     } = useAIPlayground();
 
     // Current workflow state
@@ -145,6 +157,7 @@
       predictionType === 'multivariate_timeseries' ||
       predictionType === 'multiseries_timeseries'
     ) return 7;
+    if (predictionType === 'multivariate_multiseries') return 6;
     return 7;
   }
 
@@ -155,6 +168,8 @@
     const [isStep7Preview, setIsStep7Preview] = useState(isDataPreprocessingAuto);
     // Whether preview screen is open on step 8 (time series)
     const [isStep8Preview, setIsStep8Preview] = useState(false);
+    // Whether preview screen is open on step 6 (multivariate_multiseries — its last step, no dedicated Imbalance Handling page)
+    const [isStep6MMSPreview, setIsStep6MMSPreview] = useState(isDataPreprocessingAuto && predictionType === 'multivariate_multiseries');
 
     //preview screen state for univariate time series
     const [isUnivariatePreview, setIsUnivariatePreview] = useState(false);
@@ -300,6 +315,7 @@
 
         // Prevent duplicate execution in preview mode
         if (currentStep === 7 && isStep7Preview) return true;
+        if (currentStep === 6 && isStep6MMSPreview && predictionType === 'multivariate_multiseries') return true;
 
         /**
          * Special handling for step 5 preview (univariate timeseries):
@@ -441,6 +457,53 @@
 
         // Execute current step API
         const apiResult = await apiCallFn();
+
+        /**
+         * Multivariate Multiseries has no dedicated Imbalance Handling page —
+         * fire that API (disabled) right after Feature Importance (the step
+         * that immediately precedes it in the standard ML flow) succeeds.
+         */
+        if (
+          apiResult &&
+          currentStep === 6 &&
+          predictionType === 'multivariate_multiseries'
+        ) {
+          try {
+            const requestBody = {
+              ensemble_id: datasetState?.ensembleId,
+              workflow_id: activeWorkflowId,
+              imbalance_handling: false,
+              imbalance_handling_method: 'smote',
+              use_class_weights: false,
+              sampling_strategy: 'auto',
+            };
+            const response = await fetch(
+              `${hostnameAI}/data/preprocess_supervised/imbalance_handling`,
+              {
+                method: 'POST',
+                headers: {
+                  accept: 'application/json',
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody),
+              }
+            );
+
+            if (!response.ok) return false;
+
+            // step7 is otherwise unused for multivariate_multiseries (its step
+            // list stops at 6) — reuse it to hold this response for the preview
+            // screen, mirroring how Step7.jsx itself persists to 'step7'.
+            const data = await response.json();
+            updatePreprocessingStep('step7', {
+              config: requestBody,
+              apiResponse: data,
+            });
+          } catch (error) {
+            console.error('Error calling imbalance handling API:', error);
+            return false;
+          }
+        }
 
         return apiResult;
       } finally {
@@ -647,6 +710,7 @@
           onApiCall={(fn) =>
             (step1ApiCallRef.current = fn)
           }
+          predictionType={predictionType}
         />
       );
 
@@ -668,6 +732,7 @@
           onApiCall={(fn) =>
             (step3ApiCallRef.current = fn)
           }
+          predictionType={predictionType}
         />
       );
 
@@ -700,6 +765,12 @@
           onApiCall={(fn) =>
             (step6ApiCallRef.current = fn)
           }
+          showPreview={
+            predictionType === 'multivariate_multiseries'
+              ? isStep6MMSPreview
+              : false
+          }
+          isDataPreprocessingAuto={isDataPreprocessingAuto}
         />
       );
 
@@ -725,6 +796,7 @@
           onApiCall={(fn) =>
             (step1ApiCallRef.current = fn)
           }
+          predictionType={predictionType}
         />
       );
   }
@@ -750,6 +822,11 @@
     predictionType === 'univariate_timeseries' &&
     currentStep === 5 &&
     isUnivariatePreview
+  ) ||
+  (
+    currentStep === 6 &&
+    isStep6MMSPreview &&
+    predictionType === 'multivariate_multiseries'
   );
     /**
      * Show preview button only after step 1
@@ -769,8 +846,10 @@
           onPreprocessingStepChange={setCurrentStep}
           isStep7Preview={isStep7Preview}
           isStep8Preview={isStep8Preview}
+          isStep6MMSPreview={isStep6MMSPreview}
           onPreviewData={setIsStep7Preview}
           onPreviewData8={setIsStep8Preview}
+          onPreviewData6MMS={setIsStep6MMSPreview}
           onNextClick={handleNextClick}
           isNextDisabled={getIsNextDisabled()}
           predictionType={predictionType}

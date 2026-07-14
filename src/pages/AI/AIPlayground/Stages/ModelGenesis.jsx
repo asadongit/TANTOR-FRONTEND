@@ -743,6 +743,9 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
                             )
                           };
                           handleConfigChange(updatedConfig);
+                          if (newTargetFeature) {
+                            setValidationErrors(prev => ({ ...prev, supervisedTargetFeature: undefined }));
+                          }
                         }}
                         options={getAvailableTargetColumns()}
                         placeholder="Select..."
@@ -812,28 +815,28 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
                   <RadioButton
                     label="Univariate"
                     checked={config.timeSeriesType === 'Univariate'}
-                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Univariate', multivariate_columns: [], entity_cols: [] })}
+                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Univariate', multivariate_columns: [], entity_cols: [], frequency: '' })}
                     name="timeseries-type"
                     readonly={readonly}
                   />
                   <RadioButton
                     label="Multivariate"
                     checked={config.timeSeriesType === 'Multivariate'}
-                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Multivariate', entity_cols: [] })}
+                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Multivariate', entity_cols: [], frequency: '' })}
                     name="timeseries-type"
                     readonly={readonly}
                   />
                   <RadioButton
                     label="Multivariate Multiseries"
                     checked={config.timeSeriesType === 'Multivariate Multiseries'}
-                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Multivariate Multiseries', multivariate_columns: [], entity_cols: [] })}
+                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Multivariate Multiseries', multivariate_columns: [], entity_cols: [], frequency: '' })}
                     name="timeseries-type"
                     readonly={readonly}
                   />
                   <RadioButton
                     label="Univariate Multiseries"
                     checked={config.timeSeriesType === 'Univariate Multiseries'}
-                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Univariate Multiseries', multivariate_columns: [], entity_cols: [] })}
+                    onChange={() => handleConfigChange({ ...config, timeSeriesType: 'Univariate Multiseries', multivariate_columns: [], entity_cols: [], frequency: '' })}
                     name="timeseries-type"
                     readonly={readonly}
                   />
@@ -858,6 +861,9 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
                               ...config,
                               targetFeature: newTargetFeature
                             });
+                            if (newTargetFeature) {
+                              setValidationErrors(prev => ({ ...prev, timeSeriesTargetFeature: undefined }));
+                            }
                           }}
                           options={getAvailableTargetColumns()}
                           placeholder="Select target column..."
@@ -889,6 +895,9 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
                               ...config,
                               timeColumn: newTimeColumn
                             });
+                            if (newTimeColumn) {
+                              setValidationErrors(prev => ({ ...prev, timeSeriesTimeColumn: undefined }));
+                            }
                           }}
                           options={getAvailableTimeColumns()}
                           placeholder="Select time column..."
@@ -908,49 +917,49 @@ const [frequencyValidationData, setFrequencyValidationData] = useState(null);
                 </div>
 
                 {['Univariate', 'Multivariate', 'Multivariate Multiseries', 'Univariate Multiseries'].includes(config.timeSeriesType) && (
-  <div className="bg-white rounded-lg p-3">
-    <label className="block text-xs font-medium text-gray-700 mb-2">
-      Frequency
-    </label>
+              <div className="bg-white rounded-lg p-3">
+                <label className="block text-xs font-medium text-gray-700 mb-2">
+                  Frequency
+                </label>
 
-    <SearchableSelect
-      value={config.frequency}
-      onChange={(newFrequency) => {
-        handleConfigChange({
-          ...config,
-          frequency: newFrequency
-        });
-      }}
-      options={['daily', 'weekly', 'monthly']}
-      placeholder="Select frequency..."
-      disabled={readonly}
-      readonly={readonly}
-    />
-  </div>
-)}
+                <SearchableSelect
+                  value={config.frequency}
+                  onChange={(newFrequency) => {
+                    handleConfigChange({
+                      ...config,
+                      frequency: newFrequency
+                    });
+                  }}
+                  options={['daily', 'weekly', 'monthly']}
+                  placeholder="Select frequency..."
+                  disabled={readonly}
+                  readonly={readonly}
+                />
+              </div>
+              )}
 
                 {['Multivariate Multiseries', 'Univariate Multiseries'].includes(config.timeSeriesType) && (
-  <div className="bg-white rounded-lg p-3">
-    <label className="block text-xs font-medium text-gray-700 mb-2">
-      Entity Columns
-    </label>
+              <div className="bg-white rounded-lg p-3">
+                <label className="block text-xs font-medium text-gray-700 mb-2">
+                  Entity Columns
+                </label>
 
-    <SearchableMultiSelect
-      selectedOptions={config.entity_cols || []}
-      onChange={(newEntityCols) => {
-        handleConfigChange({
-          ...config,
-          entity_cols: newEntityCols
-        });
-      }}
-      options={getAvailableEntityColumns()}
-      maxSelections={2}
-      disabled={readonly}
-      readonly={readonly}
-      excludeOption=""
-    />
-  </div>
-)}
+                <SearchableMultiSelect
+                  selectedOptions={config.entity_cols || []}
+                  onChange={(newEntityCols) => {
+                    handleConfigChange({
+                      ...config,
+                      entity_cols: newEntityCols
+                    });
+                  }}
+                  options={getAvailableEntityColumns()}
+                  maxSelections={2}
+                  disabled={readonly}
+                  readonly={readonly}
+                  excludeOption=""
+                />
+              </div>
+            )}
               </div>
             </div>
 
@@ -1834,7 +1843,7 @@ function ModelGenesis() {
         multivariate_columns: savedConfig.selected_columns || [],
         entity_cols: savedConfig.entity_cols || [],
         timeSeriesLookback: savedConfig.timeSeriesLookback || 7,
-        lookback: savedConfig.lookback ?? undefined,
+        lookback: savedConfig.lookback ?? 2,
 
         trainSplit: Math.round((savedConfig.train_size || 0.7) * 100),
         testSplit: Math.round((savedConfig.test_size || 0.3) * 100),
@@ -1859,6 +1868,7 @@ function ModelGenesis() {
       multivariate_columns: [],
       entity_cols: [],
       timeSeriesLookback: 7,
+      lookback: 2,
 
       trainSplit: 90,
       testSplit: 10,
@@ -1981,10 +1991,10 @@ function ModelGenesis() {
       setValidationErrors(errors);
       // Scroll to first error
       setTimeout(() => {
-  if (errors.dropColumns && dropColumnsRef.current) {
-    dropColumnsRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  } else if (errors.predictionType && predictionTypeRef.current) {
+  if (errors.predictionType && predictionTypeRef.current) {
     predictionTypeRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } else if (errors.dropColumns && dropColumnsRef.current) {
+    dropColumnsRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
   } else if (errors.multivariateColumns && multivariateColumnsRef.current) {
     multivariateColumnsRef.current.scrollIntoView({
       behavior: 'smooth',
@@ -2105,7 +2115,6 @@ function ModelGenesis() {
 if (
   (storedModellingType === 'univariate_timeseries' ||
    storedModellingType === 'multivariate_timeseries' ||
-   storedModellingType === 'multivariate_multiseries' ||
    storedModellingType === 'univariate_multiseries') &&
   config.dataPreprocessing === 'Manual'
 ) {
@@ -2188,28 +2197,6 @@ if (
             onNotebookModeSelect={handleNotebookModeSelect}
           />
 
-          {config.predictionType !== 'Time Series' && (
-            <DropColumns
-              config={config}
-              setConfig={(newConfig) => {
-                setConfig(newConfig);
-
-                if (validationErrors.dropColumns && newConfig.drop_columns?.length > 0) {
-                  setValidationErrors(prev => ({ ...prev, dropColumns: undefined }));
-                }
-
-                if (!newConfig.drop_columns_active) {
-                  setValidationErrors(prev => ({ ...prev, dropColumns: undefined }));
-                }
-              }}
-              readonly={isInteractionLocked}
-              columnNames={datasetState.columnNames}
-              hasError={!!validationErrors.dropColumns}
-              errorMessage={validationErrors.dropColumns}
-              sectionRef={dropColumnsRef}
-            />
-          )}
-
           <PredictionType
             config={config}
             setConfig={setConfig}
@@ -2236,6 +2223,28 @@ if (
             validationError={validationErrors.predictionType}
             setValidationErrors={setValidationErrors}
           />
+
+          {config.predictionType !== 'Time Series' && (
+            <DropColumns
+              config={config}
+              setConfig={(newConfig) => {
+                setConfig(newConfig);
+
+                if (validationErrors.dropColumns && newConfig.drop_columns?.length > 0) {
+                  setValidationErrors(prev => ({ ...prev, dropColumns: undefined }));
+                }
+
+                if (!newConfig.drop_columns_active) {
+                  setValidationErrors(prev => ({ ...prev, dropColumns: undefined }));
+                }
+              }}
+              readonly={isInteractionLocked}
+              columnNames={datasetState.columnNames}
+              hasError={!!validationErrors.dropColumns}
+              errorMessage={validationErrors.dropColumns}
+              sectionRef={dropColumnsRef}
+            />
+          )}
 
           {config.predictionType === 'Time Series' && ['Multivariate', 'Multivariate Multiseries'].includes(config.timeSeriesType) && isTimeSeriesValidated && (
            <SelectColumnsMultivariate
