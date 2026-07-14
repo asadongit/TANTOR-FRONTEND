@@ -147,13 +147,29 @@ const DynamicOptionValues = ({ condition, updateCondition }) => {
 
 const FilterComponent = ({ setIsOpen, columns, onApply }) => {
   const { userSelections, finalPayload } = useStateContext();
-  const [useComplexFilter, setUseComplexFilter] = useState(false);
-  const [complexFilterQuery, setComplexFilterQuery] = useState('');
-  const [toast, setToast] = useState({ show: false, message: '', type: '' }); // Added toast state
+  const getInitialFilterData = () => {
+    if (finalPayload?.view_type === "Integrated View") {
+      return finalPayload?.filter_data;
+    } else {
+      return userSelections?.get("apiPayload")?.filter_data;
+    }
+  };
+
+  const [useComplexFilter, setUseComplexFilter] = useState(() => {
+    const filterData = getInitialFilterData();
+    return filterData && !Array.isArray(filterData) && filterData.complex_query ? true : false;
+  });
+  
+  const [complexFilterQuery, setComplexFilterQuery] = useState(() => {
+    const filterData = getInitialFilterData();
+    return filterData && !Array.isArray(filterData) && filterData.complex_query ? filterData.complex_query : '';
+  });
+
+  const [toast, setToast] = useState({ show: false, message: '', type: '' });
 
   const [filterGroups, setFilterGroups] = useState(() => {
-    // Default empty group structure
-    const defaultGroup = [{
+    const filterData = getInitialFilterData();
+    return Array.isArray(filterData) ? filterData : [{
       id: Date.now(),
       joinType: 'AND',
       conditions: [{
@@ -167,22 +183,16 @@ const FilterComponent = ({ setIsOpen, columns, onApply }) => {
       }],
       depth: 0
     }];
-
-    // Safely check if finalPayload exists and has view_type
-    if (finalPayload?.view_type === "Integrated View") {
-      return Array.isArray(finalPayload?.filter_data) ? finalPayload.filter_data : defaultGroup;
-    } else {
-      const filterData = userSelections?.get("apiPayload")?.filter_data;
-      return Array.isArray(filterData) ? filterData : defaultGroup;
-    }
   });
 
   const [newGroupType, setNewGroupType] = useState('OR');
 
   useEffect(() => {
-    if (finalPayload.view_type === "Integrated View") {
-      const filterData = finalPayload?.filter_data;
-      setFilterGroups(Array.isArray(filterData) ? filterData : [{
+    const filterData = getInitialFilterData();
+    if (filterData && !Array.isArray(filterData) && filterData.complex_query) {
+      setUseComplexFilter(true);
+      setComplexFilterQuery(filterData.complex_query);
+      setFilterGroups([{
         id: Date.now(),
         joinType: 'AND',
         conditions: [{
@@ -197,7 +207,8 @@ const FilterComponent = ({ setIsOpen, columns, onApply }) => {
         depth: 0
       }]);
     } else {
-      const filterData = userSelections?.get("apiPayload")?.filter_data;
+      setUseComplexFilter(false);
+      setComplexFilterQuery('');
       setFilterGroups(Array.isArray(filterData) ? filterData : [{
         id: Date.now(),
         joinType: 'AND',

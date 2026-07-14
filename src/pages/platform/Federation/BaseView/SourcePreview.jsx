@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { ArrowUpDown, GripVertical } from "lucide-react";
+import { useStateContext } from "../context/contextViewProvider";
 
 const SourcePreview = ({ previewData, setPreviewData, setShowPreview, toggleModal }) => {
   const tableColumnNames = Object.keys(previewData[0]);
+  const { isEditMode } = useStateContext();
 
   const [colOrder, setColOrder] = useState(tableColumnNames.map((_, i) => i));
   const [dragOverCol, setDragOverCol] = useState(null);
@@ -210,7 +212,7 @@ const SourcePreview = ({ previewData, setPreviewData, setShowPreview, toggleModa
           onClick={toggleModal}
           className="px-4 py-2 bg-[#8E77BB] text-white rounded-lg hover:bg-[rgb(142,119,187,0.8)]"
         >
-          Create a View
+          {isEditMode ? "Edit view" : "Create a View"}
         </button>
       </div>
     </div>

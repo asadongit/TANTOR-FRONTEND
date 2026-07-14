@@ -1,9 +1,7 @@
 /*eslint-disable*/
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import ReactFlow, {
   addEdge,
-  useNodesState,
-  useEdgesState,
   Background,
   Controls,
 } from 'reactflow';
@@ -26,10 +24,39 @@ const getId = () => `node_${id++}`;
 
 export function ViewCanvas() {
 
-  const { handleConsolidationPayload, removeConsolidationPayloadByNode } = useStateContext("");
+  const { handleConsolidationPayload, removeConsolidationPayloadByNode, nodes, setNodes, onNodesChange, edges, setEdges, onEdgesChange, isEditMode } = useStateContext("");
 
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const hasRestoredRef = useRef(false);
+
+  useEffect(() => {
+    if (hasRestoredRef.current) return;
+    
+    const editFlowDataStr = sessionStorage.getItem("editFlowData");
+    
+    if (isEditMode && editFlowDataStr) {
+      try {
+        const editFlowData = JSON.parse(editFlowDataStr);
+        if (editFlowData.nodes) {
+          setNodes(editFlowData.nodes.map(n => ({
+            ...n,
+            data: {
+              ...n.data,
+              _isRestoring: true
+            }
+          })));
+        }
+        if (editFlowData.edges) {
+          setEdges(editFlowData.edges);
+          editFlowData.edges.forEach(edge => {
+            handleConsolidationPayload({ source: edge.source, target: edge.target });
+          });
+        }
+        hasRestoredRef.current = true;
+      } catch (err) {
+        console.error("Failed to parse edit flow data", err);
+      }
+    }
+  }, [setNodes, setEdges, handleConsolidationPayload]);
 
 
   // const onConnect = useCallback(
@@ -119,4 +146,3 @@ export function ViewCanvas() {
     </div>
   );
 }
-

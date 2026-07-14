@@ -106,13 +106,13 @@ const SearchableSelect = ({ id, openDropdownId, setOpenDropdownId, options, valu
   );
 };
 
-export function SourceViewNode({ id, onSave }) {
+export function SourceViewNode({ id, data, onSave }) {
   const encodedToken = window._env_?.VITE_FEDERATION_ACCESS_TOKEN;
-  const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, finalPayload, handleFinalPayload, incrementNodeCount, decrementNodeCount } = useStateContext("");
+  const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, finalPayload, handleFinalPayload, incrementNodeCount, decrementNodeCount, setNodes } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState(null);
-  const [selectedView, setSelectedView] = useState("");
-  const [selectedColumns, setSelectedColumns] = useState([]);
+  const [selectedView, setSelectedView] = useState(data?.selectedView || "");
+  const [selectedColumns, setSelectedColumns] = useState(data?.selectedColumns || []);
   const [apiViews, setApiViews] = useState([])
   const [columnsForViews, setColumnsForViews] = useState({});
   const [selectedColumn, setSelectedColumn] = useState("");
@@ -194,6 +194,25 @@ export function SourceViewNode({ id, onSave }) {
     }
   }, []);
 
+  const hasRestoredPayloadRef = useRef(false);
+  useEffect(() => {
+    if (data?._isRestoring && !hasRestoredPayloadRef.current && apiColumns.length > 0 && selectedView) {
+      const newPayload = {
+        id,
+        type: "Source",
+        view: selectedView,
+        selectedColumns,
+        Columns: apiColumns
+      };
+      
+      handleViewPayload(prev => {
+        if (prev && prev.some(p => p.id === id)) return prev;
+        return [...(prev || []), newPayload];
+      });
+      hasRestoredPayloadRef.current = true;
+    }
+  }, [data?._isRestoring, apiColumns, selectedView, selectedColumns]);
+
 
   const handleViewChange = (e) => {
     setSelectedColumns([])
@@ -204,7 +223,15 @@ export function SourceViewNode({ id, onSave }) {
 
       return updatedSettings;
     });
-    setSelectedView(e.target.value.toLowerCase())
+    setSelectedView(e.target.value.toLowerCase());
+    
+    handleFinalPayload((prevData) => {
+      const newData = { ...prevData };
+      if (newData.filter_data) {
+        delete newData.filter_data;
+      }
+      return newData;
+    });
   }
   const [selectedColumnsOrder, setSelectedColumnsOrder] = useState([]);
 
@@ -232,7 +259,7 @@ export function SourceViewNode({ id, onSave }) {
         const currentConfig = prevSettings[selectedView]?.[column];
         const newConfig = Array.isArray(currentConfig) 
           ? [ { ...currentConfig[0], originalOutput: "Yes" }, ...currentConfig.slice(1) ]
-          : { ...currentConfig, originalOutput: "Yes" };
+          : [{ ...currentConfig, originalOutput: "Yes" }];
 
         return {
           ...prevSettings,
@@ -266,7 +293,7 @@ export function SourceViewNode({ id, onSave }) {
           const currentConfig = updatedSettings[selectedView]?.[column];
           const newConfig = Array.isArray(currentConfig)
             ? [ { ...currentConfig[0], originalOutput: "Yes" }, ...currentConfig.slice(1) ]
-            : { ...currentConfig, originalOutput: "Yes" };
+            : [{ ...currentConfig, originalOutput: "Yes" }];
 
           updatedSettings[selectedView] = {
             ...updatedSettings[selectedView],
@@ -366,6 +393,22 @@ export function SourceViewNode({ id, onSave }) {
     }
 
     handleViewPayload(updatedPayloads);
+
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id === id
+          ? {
+              ...n,
+              data: {
+                ...n.data,
+                selectedView,
+                selectedColumns,
+              },
+            }
+          : n
+      )
+    );
+
     onSave?.(newPayload);
     showToast('Data Saved Successfully', 'success');
     setPreviousView(selectedView);

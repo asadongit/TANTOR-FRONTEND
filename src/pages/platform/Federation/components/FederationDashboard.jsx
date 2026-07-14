@@ -20,6 +20,7 @@ import {
   ShieldAlert,
   X,
   Loader2,
+  Pencil,
 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from "../../../../context/AuthContext";
@@ -65,6 +66,11 @@ const FederationDashBoard = () => {
     isOpen: false,
     viewData: null,
     isDeleting: false
+  });
+
+  const [editBlockModalState, setEditBlockModalState] = useState({
+    isOpen: false,
+    viewData: null
   });
 
   const { isFetching: isFetchingPolicies, refetch: fetchPolicyIds } = useFederationPolicyIds();
@@ -243,6 +249,55 @@ const FederationDashBoard = () => {
     });
   };
 
+  const handleEditView = async (row) => {
+    if (row.dependent_views && row.dependent_views.length > 0) {
+      setEditBlockModalState({
+        isOpen: true,
+        viewData: row
+      });
+      return;
+    }
+
+    const viewName = row.view_name;
+    const toastId = toast.loading("Loading view data...");
+    try {
+      const response = await fetch(`${hostnameV1}/get-view-details/${viewName}`, {
+        method: "GET",
+        headers: {
+          accept: "application/json",
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        sessionStorage.setItem("editMode", "true");
+        sessionStorage.setItem("editViewName", viewName);
+        sessionStorage.setItem("editOriginalPayload", JSON.stringify(data));
+        
+        if (data.extra_info?.edit_flow) {
+          sessionStorage.setItem("editFlowData", JSON.stringify(data.extra_info.edit_flow));
+        }
+
+        toast.success("View data loaded", { id: toastId });
+        
+        const queryType = data?.extra_info?.queryType || (data.complex_query ? "Complex" : "Regular");
+        
+        if (data.view_type === "Base") {
+          navigate("/federation/view/source", { state: { viewType: data.view_type, queryType: queryType } });
+        } else {
+          navigate("/viewcanvas", { state: { viewType: data.view_type, queryType: queryType } });
+        }
+      } else {
+        toast.error("Failed to load view details", { id: toastId });
+      }
+    } catch (error) {
+      console.error("Error loading view details:", error);
+      toast.error("An error occurred while fetching view data", { id: toastId });
+    }
+  };
+
   useEffect(() => {
     // Initial fetch is handled automatically by useFederationDashboardData hook
   }, [token, decodedToken]);
@@ -317,6 +372,11 @@ const FederationDashBoard = () => {
       label: "Delete",
       icon: <Trash2 size={16} />,
       onClick: (row) => handleDeleteView(row)
+    },
+    {
+      label: "Edit",
+      icon: <Pencil size={16} />,
+      onClick: (row) => handleEditView(row)
     }
   ];
 
@@ -652,7 +712,7 @@ const FederationDashBoard = () => {
                  )}
                 <h2 className="text-lg font-semibold text-gray-800">
                   {deleteModalState.viewData.dependent_views && deleteModalState.viewData.dependent_views.length > 0 
-                    ? "Deletion Blocked" 
+                    ? "Dependent Views Detected" 
                     : "Delete View"}
                 </h2>
               </div>
@@ -671,7 +731,7 @@ const FederationDashBoard = () => {
                   <div className="flex items-start gap-3 bg-red-50/80 border border-red-100 rounded-xl px-4 py-4 mb-6">
                     <div className="flex flex-col">
                       <p className="text-sm text-red-800 leading-relaxed">
-                        The view <span className="font-semibold text-red-900">'{deleteModalState.viewData.view_name}'</span> is currently being used as a source for other views. You must remove or modify these dependencies before proceeding.
+                        Deleting the view <span className="font-semibold text-red-900">'{deleteModalState.viewData.view_name}'</span> is not permitted because it is currently used as a source for other views. Please remove these dependencies before proceeding with deletion.
                       </p>
                     </div>
                   </div>
@@ -722,6 +782,66 @@ const FederationDashBoard = () => {
                   {deleteModalState.isDeleting ? "Deleting..." : "Delete View"}
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editBlockModalState.isOpen && editBlockModalState.viewData && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden transform transition-all">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0 bg-white">
+              <div className="flex items-center gap-2">
+                 <ShieldAlert size={20} className="text-amber-500" />
+                <h2 className="text-lg font-semibold text-gray-800">
+                  Dependent Views Detected
+                </h2>
+              </div>
+              <button
+                onClick={() => setEditBlockModalState({ isOpen: false, viewData: null })}
+                className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors text-gray-400 hover:text-gray-600"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="p-6 bg-white">
+                <div className="flex flex-col">
+                  <div className="flex items-start gap-3 bg-amber-50/80 border border-amber-100 rounded-xl px-4 py-4 mb-6">
+                    <div className="flex flex-col">
+                      <p className="text-sm text-amber-800 leading-relaxed">
+                        Editing the view <span className="font-semibold text-amber-900">'{editBlockModalState.viewData.view_name}'</span> is not permitted because it is currently used as a source for other views. Please remove these dependencies before proceeding with the edit.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                      Dependent Views ({editBlockModalState.viewData.dependent_views.length})
+                    </h4>
+                    <div className="border border-gray-200 rounded-xl overflow-hidden max-h-[200px] overflow-y-auto bg-gray-50/50 shadow-inner">
+                      <div className="divide-y divide-gray-100">
+                        {editBlockModalState.viewData.dependent_views.map((dv, idx) => (
+                          <div key={idx} className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-gray-50 transition-colors group">
+                            <div className="w-8 h-8 rounded-full bg-[#8e78b7]/10 flex items-center justify-center flex-shrink-0 group-hover:bg-[#8e78b7]/20 transition-colors">
+                               <Icon icon="lucide:layers" className="text-[#8e78b7]" width="16" />
+                            </div>
+                            <span className="text-sm font-medium text-gray-700">{dv}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100 flex-shrink-0">
+              <button
+                onClick={() => setEditBlockModalState({ isOpen: false, viewData: null })}
+                className="px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm"
+              >
+                Understood
+              </button>
             </div>
           </div>
         </div>

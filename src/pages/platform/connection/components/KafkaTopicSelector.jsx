@@ -19,6 +19,7 @@ const KafkaTopicSelector = ({
   onSelectedTopicsChange,
   hasError = false,
   savedTopics = [],
+  keytabFile = null,
 }) => {
   const [topics, setTopics] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,17 +43,19 @@ const KafkaTopicSelector = ({
       )
     );
 
-    const body = new URLSearchParams();
+    const body = new FormData();
     body.append("connection_json", JSON.stringify(filteredData));
+    if (keytabFile) {
+      body.append("keytab", keytabFile);
+    }
 
     try {
       const res = await fetch(`${hostnameV1}/kafka/topics`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: body.toString(),
+        body: body,
       });
 
       if (res.ok) {

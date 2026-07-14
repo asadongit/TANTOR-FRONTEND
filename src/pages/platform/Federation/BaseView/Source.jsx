@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import {
   Controls,
   Background,
   ReactFlow,
-  useNodesState,
-  useEdgesState,
   Panel,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -38,7 +36,7 @@ export default function Source() {
     queryType: "Regular",
     viewType: "Source",
   };
-  const { userSelections, setUserSelections } = useStateContext();
+  const { userSelections, setUserSelections, nodes, setNodes, onNodesChange, edges, setEdges, onEdgesChange, isEditMode, editViewName, clearEditMode } = useStateContext();
   const navigate = useNavigate();
   const [userSelection, setUserSelection] = useState({});
   const [columnSetting, setColumnSetting] = useState(null);
@@ -48,7 +46,7 @@ export default function Source() {
   const [previewData, setPreviewData] = useState([]);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filterModalColumns, setFilterModalColumns] = useState([]);
-  const [toast, setToast] = useState({ show: false, message: '', type: '' }); // Added toast state
+  const [toast, setToast] = useState({ show: false, message: '', type: '' });
 
   const toggleModal = () => {
     setIsModalOpen((prev) => !prev);
@@ -235,7 +233,7 @@ export default function Source() {
   };
 
   const handleOk = async (params) => {
-    const { settings, viewType, userCheckedColumns, userSelections } = params;
+    const { settings, viewType, userCheckedColumns, userSelections, selectedView, selectedConnection, selectedSchema, selectedTable } = params;
 
     if (!validateColumns(userCheckedColumns, settings)) return null;
 
@@ -247,6 +245,10 @@ export default function Source() {
 
     const updatedUserSelections = new Map(userSelections);
     updatedUserSelections.set("viewType", viewType);
+    if (selectedView) updatedUserSelections.set("viewName", selectedView);
+    if (selectedConnection) updatedUserSelections.set("connection", selectedConnection);
+    if (selectedSchema) updatedUserSelections.set("schema", selectedSchema);
+    if (selectedTable) updatedUserSelections.set("table", selectedTable);
 
     const apiPayload = createApiPayload(
       updatedUserSelections,
@@ -259,8 +261,14 @@ export default function Source() {
     await Promise.all([
       setUserSelections((prev) => {
         const newSelections = new Map(prev);
-        const filterData = newSelections?.get("apiPayload")?.filter_data;
-        if (filterData) apiPayload["filter_data"] = filterData;
+        const oldApiPayload = newSelections?.get("apiPayload");
+        if (oldApiPayload) {
+          if (oldApiPayload.filter_data) apiPayload["filter_data"] = oldApiPayload.filter_data;
+          if (oldApiPayload.view_name) apiPayload["view_name"] = oldApiPayload.view_name;
+          if (oldApiPayload.project) apiPayload["project"] = oldApiPayload.project;
+          if (oldApiPayload.created_by) apiPayload["created_by"] = oldApiPayload.created_by;
+          if (oldApiPayload.extra_info) apiPayload["extra_info"] = oldApiPayload.extra_info;
+        }
         newSelections.set("viewType", viewType);
         newSelections.set("apiPayload", apiPayload);
         return newSelections;
@@ -417,50 +425,82 @@ export default function Source() {
 
     try {
       apiPayload.policy_id = policyIds || [];
-      const viewExistsResponse = await fetch(
-        `${hostnameV2}/view-exists/${encodeURIComponent(newViewName)}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+
+      if (!isEditMode || (isEditMode && newViewName !== editViewName)) {
+        const viewExistsResponse = await fetch(
+          `${hostnameV2}/view-exists/${encodeURIComponent(newViewName)}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!viewExistsResponse.ok) {
+          setToast({
+            show: true,
+            message: "Error checking if view exists",
+            type: "error",
+          });
+          setTimeout(() => {
+            setToast({ show: false, message: "", type: "" });
+          }, 3000);
+          return null;
         }
-      );
 
-      if (!viewExistsResponse.ok) {
-        setToast({
-          show: true,
-          message: "Error checking if view exists",
-          type: "error",
-        });
-        setTimeout(() => {
-          setToast({ show: false, message: "", type: "" });
-        }, 3000);
-        return null;
+        const viewExists = await viewExistsResponse.json();
+
+        if (viewExists.result) {
+          setToast({
+            show: true,
+            message: "View already exists",
+            type: "error",
+          });
+          setTimeout(() => {
+            setToast({ show: false, message: "", type: "" });
+          }, 3000);
+          return null;
+        }
       }
 
-      const viewExists = await viewExistsResponse.json();
-
-      if (viewExists.result) {
-        setToast({
-          show: true,
-          message: "View already exists",
-          type: "error",
-        });
-        setTimeout(() => {
-          setToast({ show: false, message: "", type: "" });
-        }, 3000);
-        return null;
-      }
+      const cleanNodes = (nodes || []).map(n => {
+        const { _isRestoring, setUserSelection, setColumnSetting, handleOk, deleteNode, handleColumnSetting, setShowQueryEditor, queryType, setToast, ...cleanData } = n.data || {};
+        return { ...n, data: cleanData };
+      });
 
       const newPayload = {
         ...apiPayload,
         project: project,
         created_by: decodedToken?.preferred_username,
+        extra_info: {
+          queryType: modalState.queryType,
+          viewType: apiPayload.view_type,
+          view_name: apiPayload.view_name,
+          isMateralizedView: apiPayload.isMateralizedView ?? false,
+          isCaching: apiPayload.isCaching ?? false,
+          ...(apiPayload.complex_query !== undefined && { complex_query: apiPayload.complex_query }),
+          ...(apiPayload.grace_period !== undefined && { grace_period: apiPayload.grace_period }),
+          ...(apiPayload.cache_ttl !== undefined && { cache_ttl: apiPayload.cache_ttl }),
+          ...(apiPayload.view_type === "Connection" ? {
+            connection: apiPayload.connection_name,
+            schema: apiPayload.schema_name,
+            table: apiPayload.table_name,
+          } : {
+            view: apiPayload.view
+          }),
+          edit_flow: {
+            nodes: cleanNodes,
+            edges: edges || [],
+            filter_data: apiPayload.filter_data || []
+          }
+        }
       };
 
-      const response = await fetch(`${hostnameV2}/generate-base-view`, {
+      const endpoint = isEditMode ? `${hostnameV2}/edit-base-view` : `${hostnameV2}/generate-base-view`;
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -472,7 +512,7 @@ export default function Source() {
       if (!response.ok) {
         setToast({
           show: true,
-          message: "Error while saving view..",
+          message: isEditMode ? "Error while editing view.." : "Error while saving view..",
           type: "error",
         });
         setTimeout(() => {
@@ -486,9 +526,12 @@ export default function Source() {
       setShowPreview(false);
       setToast({
         show: true,
-        message: "View saved successfully",
+        message: isEditMode ? "View edited successfully" : "View saved successfully",
         type: "success",
       });
+      if (isEditMode) {
+        clearEditMode();
+      }
       setTimeout(() => {
         setToast({ show: false, message: "", type: "" });
         navigate("/federation");
@@ -509,8 +552,45 @@ export default function Source() {
     }
   };
 
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
+
+  const hasRestoredRef = useRef(false);
+
+  useEffect(() => {
+    if (hasRestoredRef.current) return;
+    
+    const editMode = sessionStorage.getItem("editMode");
+    const editFlowDataStr = sessionStorage.getItem("editFlowData");
+    
+    if (editMode === "true" && editFlowDataStr) {
+      try {
+        const editFlowData = JSON.parse(editFlowDataStr);
+        if (editFlowData.nodes) {
+          setNodes(editFlowData.nodes.map(n => ({
+            ...n,
+            data: {
+              ...n.data,
+              _isRestoring: true,
+              setUserSelection,
+              setColumnSetting,
+              handleOk,
+              deleteNode: (id) => setNodes((nds) => nds.filter((node) => node.id !== id)),
+              handleColumnSetting,
+              setShowQueryEditor,
+              queryType: modalState.queryType,
+              setToast
+            }
+          })));
+        }
+        if (editFlowData.edges) {
+          setEdges(editFlowData.edges);
+        }
+        hasRestoredRef.current = true;
+      } catch (err) {
+        console.error("Failed to parse edit flow data", err);
+      }
+    }
+  }, [setNodes, setEdges, setUserSelection, setColumnSetting, handleOk, handleColumnSetting, setShowQueryEditor, modalState.queryType, setToast]);
 
   const onDragOver = useCallback((event) => {
     event.preventDefault();
