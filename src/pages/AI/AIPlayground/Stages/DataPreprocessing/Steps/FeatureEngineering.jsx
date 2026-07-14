@@ -4,6 +4,7 @@ import { useAIPlayground } from '../../../../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
 import InfoButton from '../../../components/InfoButton';
 import { SearchableDropdown } from '../timeseries/components/Dropdowns';
+import MethodParameterField from '../timeseries/components/HandleMissingValues/MethodParameterField';
 
 const OUTLIER_OPTIONS_CONFIG = [
     {
@@ -35,8 +36,59 @@ const OUTLIER_OPTIONS_CONFIG = [
         label: 'Remove',
         description: 'Remove is an outlier handling approach that completely deletes records identified as outliers. This method is used when extreme values are invalid, erroneous, or likely to distort model performance.',
         availability: { binary: 'yes', multiclass: 'yes', regression: 'yes' }
+    },
+    {
+        value: 'soft_impute',
+        label: 'Soft Impute',
+        description: 'Soft Impute replaces detected outliers with values estimated via low-rank matrix completion, leveraging correlations across series to reconstruct plausible values in their place.',
+        availability: { multivariate_multiseries: 'yes' }
+    },
+    {
+        value: 'knn_impute',
+        label: 'KNN Impute',
+        description: 'KNN Impute replaces outlier values using the average of the nearest neighboring observations across similar time steps and series, preserving local patterns in the data.',
+        availability: { multivariate_multiseries: 'yes' }
+    },
+    {
+        value: 'mahalanobis_clip',
+        label: 'Mahalanobis Clip',
+        description: 'Mahalanobis Clip pulls multivariate outliers detected via Mahalanobis distance back to the boundary of the normal data distribution, reducing their influence while keeping the observation.',
+        availability: { multivariate_multiseries: 'yes' }
+    },
+    {
+        value: 'pchip',
+        label: 'PCHIP',
+        description: 'PCHIP replaces outliers using Piecewise Cubic Hermite Interpolating Polynomial interpolation, producing a smooth, shape-preserving estimate based on neighboring values.',
+        availability: { multivariate_multiseries: 'yes' }
+    },
+    {
+        value: 'seasonal_median',
+        label: 'Seasonal Median',
+        description: 'Seasonal Median replaces outliers with the median value observed for the same seasonal period (e.g. the same day-of-week or month) across the series history.',
+        availability: { multivariate_multiseries: 'yes' }
+    },
+    {
+        value: 'stl_reconstruction',
+        label: 'STL Reconstruction',
+        description: 'STL Reconstruction rebuilds outlier points from the trend and seasonal components produced by STL decomposition, removing the anomalous residual while preserving the series pattern.',
+        availability: { multivariate_multiseries: 'yes' }
+    },
+    {
+        value: 'rolling_median',
+        label: 'Rolling Median',
+        description: 'Rolling Median replaces outliers with the median value computed over a rolling window of neighboring observations, smoothing local anomalies.',
+        availability: { multivariate_multiseries: 'yes' }
+    },
+    {
+        value: 'flag_magnitude',
+        label: 'Flag Magnitude',
+        description: 'Flag Magnitude leaves outlier values in place but flags them with their magnitude/severity, allowing downstream models to weight or account for them without discarding data.',
+        availability: { multivariate_multiseries: 'yes' }
     }
 ];
+
+const OUTLIER_SEASON_PERIOD_STRATEGIES = ['seasonal_median', 'stl_reconstruction'];
+const OUTLIER_ROLLING_WINDOW_STRATEGIES = ['rolling_median', 'flag_magnitude'];
 
 const ENCODING_OPTIONS_CONFIG = [
     {
@@ -342,8 +394,11 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
     const [timeSeriesOperations, setTimeSeriesOperations] = useState([createOperation()]);
 
     const [outlierStrategy, setOutlierStrategy] = useState('cap_95');
+    const [outlierSeasonPeriod, setOutlierSeasonPeriod] = useState('');
+    const [outlierRollingWindow, setOutlierRollingWindow] = useState('');
     const [encodingStrategy, setEncodingStrategy] = useState('onehot');
     const [hoveredOption, setHoveredOption] = useState(null);
+    const [showEntityOutlierBreakdown, setShowEntityOutlierBreakdown] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [showFieldErrors, setShowFieldErrors] = useState(false);
 
@@ -353,6 +408,8 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
 
     const detectOutliersEnabled = workflowState?.dataPreprocessing?.step2?.config?.outlier_detection_active || false;
     const outlierCount = workflowState?.dataPreprocessing?.step2?.apiResponse?.outlier_count || 0;
+    const outlierCountByEntity = workflowState?.dataPreprocessing?.step2?.apiResponse?.outlier_count_by_entity || {};
+    const hasOutlierCountByEntity = Object.keys(outlierCountByEntity).length > 0;
     const hasOutliers = detectOutliersEnabled && outlierCount > 0;
 
     const modellingType = workflowState?.modelGenesis?.config?.modelling_type || 'binary';
@@ -371,6 +428,8 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
                 timeSeries: step3Config.time_series_active || false,
             });
             if (step3Config.outlier_treatment_strategy) setOutlierStrategy(step3Config.outlier_treatment_strategy);
+            if (step3Config.outlier_season_period !== undefined) setOutlierSeasonPeriod(String(step3Config.outlier_season_period));
+            if (step3Config.outlier_rolling_window !== undefined) setOutlierRollingWindow(String(step3Config.outlier_rolling_window));
             if (step3Config.categorical_encoding_method) setEncodingStrategy(step3Config.categorical_encoding_method);
             if (step3Config.time_series_operations?.length) {
                 setTimeSeriesOperations(
@@ -406,21 +465,45 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
         return dupes;
     };
 
+    const handleOutlierStrategyChange = (value) => {
+        setOutlierStrategy(value);
+        setOutlierSeasonPeriod('');
+        setOutlierRollingWindow('');
+    };
+
+    const getOutlierParamError = () => {
+        if (!toggles.outlierTreatment) return '';
+        if (OUTLIER_SEASON_PERIOD_STRATEGIES.includes(outlierStrategy)) {
+            const p = Number(outlierSeasonPeriod);
+            if (!outlierSeasonPeriod) return 'Season period is required for this strategy';
+            if (!Number.isFinite(p) || p < 7 || p > 365) return 'Season period must be between 7 and 365';
+        }
+        if (OUTLIER_ROLLING_WINDOW_STRATEGIES.includes(outlierStrategy)) {
+            const w = Number(outlierRollingWindow);
+            if (!outlierRollingWindow) return 'Rolling window is required for this strategy';
+            if (!Number.isFinite(w) || w < 3 || w > 365) return 'Rolling window must be between 3 and 365';
+        }
+        return '';
+    };
+
     // Auto-clear errors when user fixes them
     useEffect(() => {
         if (!showFieldErrors) return;
         const outlierError = toggles.outlierTreatment && !outlierStrategy;
+        const outlierParamErr = !!getOutlierParamError();
         const encodingError = toggles.categoricalEncoding && !encodingStrategy;
         const tsFieldError = toggles.timeSeries && timeSeriesOperations.some(op => {
             const paramType = TIME_SERIES_TYPE_OPTIONS.find(t => t.value === op.type)?.paramType || 'period';
             return !op.col || (paramType === 'period' ? !op.period : !op.window);
         });
         const tsDupeError = toggles.timeSeries && getDuplicateKeys().size > 0;
-        if (!outlierError && !encodingError && !tsFieldError && !tsDupeError) setShowFieldErrors(false);
-    }, [outlierStrategy, encodingStrategy, toggles, showFieldErrors, timeSeriesOperations]);
+        if (!outlierError && !outlierParamErr && !encodingError && !tsFieldError && !tsDupeError) setShowFieldErrors(false);
+    }, [outlierStrategy, outlierSeasonPeriod, outlierRollingWindow, encodingStrategy, toggles, showFieldErrors, timeSeriesOperations]);
 
     // Derived error flags — only active after Next is clicked
     const outlierStrategyError = showFieldErrors && toggles.outlierTreatment && !outlierStrategy;
+    const outlierSeasonPeriodError = showFieldErrors && toggles.outlierTreatment && OUTLIER_SEASON_PERIOD_STRATEGIES.includes(outlierStrategy) ? getOutlierParamError() : '';
+    const outlierRollingWindowError = showFieldErrors && toggles.outlierTreatment && OUTLIER_ROLLING_WINDOW_STRATEGIES.includes(outlierStrategy) ? getOutlierParamError() : '';
     const encodingStrategyError = showFieldErrors && toggles.categoricalEncoding && !encodingStrategy;
     const timeSeriesError = showFieldErrors && toggles.timeSeries && (
         timeSeriesOperations.some(op => {
@@ -433,6 +516,10 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
         if (readonly) return true;
 
         if (toggles.outlierTreatment && !outlierStrategy) {
+            setShowFieldErrors(true);
+            return false;
+        }
+        if (toggles.outlierTreatment && getOutlierParamError()) {
             setShowFieldErrors(true);
             return false;
         }
@@ -474,6 +561,13 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
                 time_series_sort_col: 'date',
             };
 
+            if (toggles.outlierTreatment && OUTLIER_SEASON_PERIOD_STRATEGIES.includes(outlierStrategy) && outlierSeasonPeriod) {
+                requestBody.outlier_season_period = parseInt(outlierSeasonPeriod, 10);
+            }
+            if (toggles.outlierTreatment && OUTLIER_ROLLING_WINDOW_STRATEGIES.includes(outlierStrategy) && outlierRollingWindow) {
+                requestBody.outlier_rolling_window = parseInt(outlierRollingWindow, 10);
+            }
+
             if (!requestBody.ensemble_id || !requestBody.workflow_id) {
                 throw new Error('Missing required identifiers: ensemble_id or workflow_id');
             }
@@ -491,6 +585,9 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
                 config: {
                     outlier_treatment: toggles.outlierTreatment,
                     outlier_treatment_strategy: outlierStrategy,
+                    outlier_threshold: requestBody.outlier_threshold,
+                    outlier_season_period: requestBody.outlier_season_period,
+                    outlier_rolling_window: requestBody.outlier_rolling_window,
                     categorical_encoding: toggles.categoricalEncoding,
                     categorical_encoding_method: encodingStrategy,
                     time_series_active: toggles.timeSeries,
@@ -511,10 +608,21 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
 
     useEffect(() => {
         if (onApiCall) onApiCall(handleApiCall);
-    }, [toggles, outlierStrategy, encodingStrategy, timeSeriesOperations, datasetState?.ensembleId, currentWorkflowId]);
+    }, [toggles, outlierStrategy, outlierSeasonPeriod, outlierRollingWindow, encodingStrategy, timeSeriesOperations, datasetState?.ensembleId, currentWorkflowId]);
 
     const availableOutlierOptions = getAvailableOptions(OUTLIER_OPTIONS_CONFIG, modellingType);
-    const availableEncodingOptions = getAvailableOptions(ENCODING_OPTIONS_CONFIG, modellingType);
+    // Categorical encoding doesn't depend on the target's shape, so multiseries
+    // (continuous-target forecasting) reuses whichever methods are marked regression-compatible.
+    const isMultiseriesModellingType = modellingType === 'multivariate_multiseries' || modellingType === 'univariate_multiseries';
+    const encodingModellingType = isMultiseriesModellingType ? 'regression' : modellingType;
+    const availableEncodingOptions = getAvailableOptions(ENCODING_OPTIONS_CONFIG, encodingModellingType);
+
+    useEffect(() => {
+        if (workflowState?.dataPreprocessing?.step3?.config) return;
+        if (!availableOutlierOptions.some(o => o.value === outlierStrategy)) {
+            setOutlierStrategy(availableOutlierOptions[0]?.value || '');
+        }
+    }, [modellingType, workflowState?.dataPreprocessing?.step3?.config]);
 
     const optionDescriptions = {};
     [...OUTLIER_OPTIONS_CONFIG, ...ENCODING_OPTIONS_CONFIG].forEach(option => {
@@ -576,7 +684,26 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
                     <>
                         <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-md">
                             <div className="flex items-center gap-2">
-                                <Info size={16} className="text-orange-500 flex-shrink-0" />
+                                <div
+                                    className="relative flex items-center"
+                                    onMouseEnter={() => hasOutlierCountByEntity && setShowEntityOutlierBreakdown(true)}
+                                    onMouseLeave={() => setShowEntityOutlierBreakdown(false)}
+                                >
+                                    <Info size={16} className={`text-orange-500 flex-shrink-0 ${hasOutlierCountByEntity ? 'cursor-pointer' : ''}`} />
+                                    {showEntityOutlierBreakdown && hasOutlierCountByEntity && (
+                                        <div className="absolute left-0 top-full mt-2 z-50 w-64 max-h-64 overflow-y-auto p-3 bg-[#332849] text-white text-xs rounded-lg shadow-lg">
+                                            <p className="font-semibold mb-2">Outliers by entity</p>
+                                            <div className="space-y-1">
+                                                {Object.entries(outlierCountByEntity).map(([entity, count]) => (
+                                                    <div key={entity} className="flex items-center justify-between gap-3">
+                                                        <span className="truncate">{entity}</span>
+                                                        <span className="font-medium">{count}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                                 <p className="text-sm text-orange-700">
                                     <span className="font-medium">{outlierCount}</span> outlier{outlierCount !== 1 ? 's' : ''} detected
                                 </p>
@@ -605,7 +732,7 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
                                             name="outlierStrategy"
                                             value={option.value}
                                             checked={outlierStrategy === option.value}
-                                            onChange={(e) => !readonly && setOutlierStrategy(e.target.value)}
+                                            onChange={(e) => !readonly && handleOutlierStrategyChange(e.target.value)}
                                             disabled={readonly}
                                             className="w-4 h-4 accent-[#8e78b7]"
                                         />
@@ -618,6 +745,36 @@ function FeatureEngineering({ readonly: readonlyProp, onApiCall }) {
                                         <div className="absolute left-0 top-full mt-2 z-50 w-80 p-3 bg-[#332849] text-white text-xs rounded-lg shadow-lg">
                                             <div className="absolute -top-1 left-4 w-2 h-2 bg-[#332849] transform rotate-45"></div>
                                             <p className="leading-relaxed">{optionDescriptions[option.value]}</p>
+                                        </div>
+                                    )}
+
+                                    {outlierStrategy === option.value && OUTLIER_SEASON_PERIOD_STRATEGIES.includes(option.value) && (
+                                        <div className="mt-2">
+                                            <MethodParameterField
+                                                label="Season Period"
+                                                value={outlierSeasonPeriod}
+                                                min={7}
+                                                max={365}
+                                                hasError={!!outlierSeasonPeriodError}
+                                                errorMessage={outlierSeasonPeriodError}
+                                                disabled={readonly}
+                                                onChange={(value) => setOutlierSeasonPeriod(value)}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {outlierStrategy === option.value && OUTLIER_ROLLING_WINDOW_STRATEGIES.includes(option.value) && (
+                                        <div className="mt-2">
+                                            <MethodParameterField
+                                                label="Rolling Window"
+                                                value={outlierRollingWindow}
+                                                min={3}
+                                                max={365}
+                                                hasError={!!outlierRollingWindowError}
+                                                errorMessage={outlierRollingWindowError}
+                                                disabled={readonly}
+                                                onChange={(value) => setOutlierRollingWindow(value)}
+                                            />
                                         </div>
                                     )}
                                 </div>

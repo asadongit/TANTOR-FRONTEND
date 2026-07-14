@@ -132,7 +132,11 @@ function ModelSelection() {
     // Determine if this is a regression or classification problem.
     // In view mode, saved config typically stores `modelling_type`.
     const classificationType = modelGenesisConfig?.modelling_type || modelGenesisConfig?.classification;
-    const isRegression = String(classificationType || '').trim().toLowerCase() === 'regression';
+    // Multiseries forecasting (multivariate_multiseries / univariate_multiseries) targets a
+    // continuous value, so it reuses the regression algorithm set and metrics throughout this page.
+    const isMultiseries = String(classificationType || '').trim().toLowerCase() === 'multivariate_multiseries' ||
+        String(classificationType || '').trim().toLowerCase() === 'univariate_multiseries';
+    const isRegression = String(classificationType || '').trim().toLowerCase() === 'regression' || isMultiseries;
     const predictionType =
     modelGenesisConfig?.modelling_type ||
     modelGenesisConfig?.predictionType ||'';

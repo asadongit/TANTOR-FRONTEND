@@ -5,7 +5,9 @@ import { toast } from 'react-hot-toast';
 import InfoButton from '../../../components/InfoButton';
 import { SearchableDropdown, MultiSelectDropdown, SelectedColumnsList } from '../timeseries/components/Dropdowns';
 
-function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall }) {
+function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall, predictionType }) {
+  const isMultivariateMultiseries = predictionType === 'multivariate_multiseries';
+  const isMultiseries = predictionType === 'multivariate_multiseries' || predictionType === 'univariate_multiseries';
   const hostnameAI = window._env_?.VITE_AI_API;
   const { workflowsState, activeWorkflowId, datasetState, updatePreprocessingStep, mode } = useAIPlayground();
   const readonly = readonlyProp || mode === 'view';
@@ -91,7 +93,7 @@ function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall })
         dataTypeColumns.some(col => (col.columnName && !col.newDataType) || (!col.columnName && col.newDataType))
       );
     const missingValueHasError =
-      toggles.missingValue && !missingValueColumns.some(col => col.columnName);
+      !isMultiseries && toggles.missingValue && !missingValueColumns.some(col => col.columnName);
 
     if (!changeDataTypeHasError && !missingValueHasError) {
       setShowFieldErrors(false);
@@ -106,7 +108,7 @@ function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall })
       );
       if (!hasAnyValidEntry || hasIncomplete) return false;
     }
-    if (toggles.missingValue) {
+    if (!isMultiseries && toggles.missingValue) {
       if (!missingValueColumns.some(col => col.columnName)) return false;
     }
     return true;
@@ -116,10 +118,10 @@ function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall })
     const payload = {
       ensemble_id: datasetState?.ensembleId,
       workflow_id: currentWorkflowId,
-      modify_data_types: toggles.changeDataType,
+      modify_data_types: isMultivariateMultiseries ? false : toggles.changeDataType,
       modify_data_types_map: {},
       drop_duplicates_rows: toggles.dropDuplicates,
-      missing_value_indicator: toggles.missingValue,
+      missing_value_indicator: isMultiseries ? false : toggles.missingValue,
       missing_value_indicator_cols: [],
       uniqueness_filter_active: toggles.uniquenessRatio,
       uniqueness_lower_threshold: 0.02,
@@ -132,7 +134,7 @@ function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall })
         }
       });
     }
-    if (toggles.missingValue) {
+    if (!isMultiseries && toggles.missingValue) {
       payload.missing_value_indicator_cols = missingValueColumns
         .filter(col => col.columnName)
         .map(col => col.columnName);
@@ -151,7 +153,7 @@ function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall })
         !dataTypeColumns.some(col => col.columnName && col.newDataType) ||
         dataTypeColumns.some(col => (col.columnName && !col.newDataType) || (!col.columnName && col.newDataType))
       );
-      const missingValueHasError = toggles.missingValue && !missingValueColumns.some(col => col.columnName);
+      const missingValueHasError = !isMultiseries && toggles.missingValue && !missingValueColumns.some(col => col.columnName);
 
       setExpandedSections(prev => ({
         ...prev,
@@ -272,13 +274,14 @@ function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall })
     !dataTypeColumns.some(col => col.columnName && col.newDataType) ||
     dataTypeColumns.some(col => (col.columnName && !col.newDataType) || (!col.columnName && col.newDataType))
   );
-  const missingValueSectionError = showFieldErrors && toggles.missingValue &&
+  const missingValueSectionError = !isMultiseries && showFieldErrors && toggles.missingValue &&
     !missingValueColumns.some(col => col.columnName);
 
   return (
     <div className="space-y-4 max-w-full">
 
       {/* ── Change Data Type ── */}
+      {!isMultivariateMultiseries && (
       <div ref={changeDataTypeSectionRef} className="rounded-lg transition-all bg-[#FAFAFA]">
         <div className="p-4 flex items-center justify-between">
           <div className="flex-1">
@@ -398,6 +401,7 @@ function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall })
           </div>
         )}
       </div>
+      )}
 
       {/* ── Drop Duplicate Rows ── */}
       <div className="bg-[#FAFAFA] rounded-lg">
@@ -428,6 +432,7 @@ function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall })
       </div>
 
       {/* ── Missing Value Indicator ── */}
+      {!isMultiseries && (
       <div ref={missingValueSectionRef} className="rounded-lg transition-all bg-[#FAFAFA]">
         <div className="p-4 flex items-center justify-between">
           <div className="flex-1 flex items-center gap-2">
@@ -497,6 +502,7 @@ function DataCleaning({ readonly: readonlyProp, onValidationChange, onApiCall })
           </div>
         )}
       </div>
+      )}
 
     </div>
   );
