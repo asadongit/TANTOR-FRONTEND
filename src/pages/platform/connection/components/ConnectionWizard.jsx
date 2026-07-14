@@ -1513,6 +1513,7 @@ const ConnectionWizard = ({ editConnectionData, closeLocalModal }) => {
           {isKafkaRawOrAvro && (
             <KafkaTopicSelector
               formData={formData}
+              keytabFile={getKeytabFile()}
               hostnameV1={hostnameV1}
               token={token}
               isTestSuccessful={isTestSuccessful}

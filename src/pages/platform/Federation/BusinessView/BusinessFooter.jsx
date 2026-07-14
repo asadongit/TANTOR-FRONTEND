@@ -12,7 +12,7 @@ import { useFederationPolicyIds } from "../../../../hooks/platform/federation";
 
 export function BusinessFooter() {
   const navigate = useNavigate();
-  const { finalPayload, handleFinalPayload, connectionPayload, viewPayload, columnSettings, consolidationPayload, nodeCount } = useStateContext("");
+  const { finalPayload, handleFinalPayload, connectionPayload, viewPayload, columnSettings, consolidationPayload, nodeCount, nodes, edges, isEditMode, editViewName, clearEditMode } = useStateContext("");
     const { data: policyIds } = useFederationPolicyIds();
   const [preview, setPreview] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -61,10 +61,23 @@ export function BusinessFooter() {
 
   useEffect(() => () => stopAutoScroll(), [stopAutoScroll]);
 
+  const getFinalNodeId = () => {
+    if (!nodes || !edges) return "Union";
+    const sourceEdges = new Set(edges.map(e => e.source));
+    const finalNodes = nodes.filter(n => 
+      (n.type === "consolidation" || n.type === "Join" || n.type === "Union") && 
+      !sourceEdges.has(n.id)
+    );
+    return finalNodes.length > 0 ? finalNodes[0].id : "Union";
+  };
+
   const getSelectFields = (columnSettings, hasOperation) => {
+    const finalNodeId = getFinalNodeId();
+    const targetColId = columnSettings[finalNodeId] ? finalNodeId : "Union";
+
     const selectedViews = hasOperation
-      ? { Union: columnSettings.Union }
-      : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
+      ? { [targetColId]: columnSettings[targetColId] }
+      : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== targetColId && key !== "Union"));
 
     return Object.entries(selectedViews || {}).flatMap(([view, columns]) =>
       Object.entries(columns).flatMap(([colName, colPropsArray]) => {
@@ -193,6 +206,13 @@ export function BusinessFooter() {
         try {
           const errorData = JSON.parse(responseText);
           let errorMessage = errorData.detail || "Unknown error occurred";
+          
+          if (Array.isArray(errorMessage)) {
+            errorMessage = errorMessage.map(err => err.msg || JSON.stringify(err)).join(', ');
+          } else if (typeof errorMessage === 'object') {
+            errorMessage = JSON.stringify(errorMessage);
+          }
+          
           setError(errorMessage);
           setToast({ show: true, message: errorMessage, type: "error" });
           setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
@@ -242,9 +262,11 @@ export function BusinessFooter() {
     let sortColumns = new Set();
 
     const hasOperation = apiPayloadForApi?.operation !== undefined;
+    const finalNodeId = getFinalNodeId();
+    const targetColId = columnSettings[finalNodeId] ? finalNodeId : "Union";
     const source = hasOperation
-      ? Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key === "Union"))
-      : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
+      ? Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key === targetColId))
+      : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== targetColId && key !== "Union"));
 
     if (!source || Object.keys(source).length === 0) {
       setToast({ show: true, message: "Please select columns first before proceeding.", type: "error" });
@@ -368,11 +390,15 @@ export function BusinessFooter() {
     const numberOfConnectionNodes = Array.isArray(connectionPayload) ? connectionPayload.length : 0;
     const numberOfViewNodes = Array.isArray(viewPayload) ? viewPayload.length : 0;
     const numberOfConsolidationNodes = Array.isArray(consolidationPayload) ? consolidationPayload.length : 0;
+    console.log("finalpayload is @@@ ", finalPayload)
 
     try {
       const expectedViewNodes = nodeCount?.sourceView || 0;
       const expectedConnectionNodes = nodeCount?.connection || 0;
       const expectedConsolidationNodes = nodeCount?.consolidation || 0;
+
+      console.log("numberOfConsolidationNodes is @@ ",numberOfConsolidationNodes)
+      console.log("expectedConsolidationNodes is @@ ",expectedConsolidationNodes)
 
       if (numberOfViewNodes !== expectedViewNodes)
         throw new Error(`Please configure all selected Source View nodes! Expected: ${expectedViewNodes}, Configured: ${numberOfViewNodes}`);
@@ -382,9 +408,9 @@ export function BusinessFooter() {
         throw new Error(`To combine ${totalNodeCounts} sources, you need exactly ${totalNodeCounts - 1} consolidation node(s). Currently configured: ${expectedConsolidationNodes}`);
       if (numberOfConsolidationNodes !== expectedConsolidationNodes * 2)
         throw new Error(`Please connect all consolidation nodes properly!`);
-      if (joinsKeyExists && (joins.length === 0 || expectedConsolidationNodes !== joins.length))
+      if (!finalPayload?.union && joinsKeyExists && (joins.length === 0 || expectedConsolidationNodes !== joins.length))
         throw new Error(`Please configure all Consolidation nodes!`);
-      if (expectedConsolidationNodes >= 0 && !finalPayload?.joins && !finalPayload?.union)
+      if (expectedConsolidationNodes > 0 && (!finalPayload?.joins || finalPayload.joins.length === 0) && !finalPayload?.union)
         throw new Error(`Please configure Consolidation nodes! No joins or unions found in the configuration.`);
     } catch (err) {
       setToast({ show: true, message: err?.message, type: "error" });
@@ -410,9 +436,11 @@ export function BusinessFooter() {
         let sortColumns = new Set();
 
         const hasOperation = finalPayload?.operation !== undefined;
+        const finalNodeId = getFinalNodeId();
+        const targetColId = columnSettings[finalNodeId] ? finalNodeId : "Union";
         const source = hasOperation
-          ? Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key === "Union"))
-          : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
+          ? Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key === targetColId))
+          : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== targetColId && key !== "Union"));
 
         if (!source || Object.keys(source).length === 0) {
           setToast({ show: true, message: "Please select columns first before proceeding.", type: "error" });
@@ -534,22 +562,30 @@ export function BusinessFooter() {
       delete finalPayload.skip_filter;
     }
 
-    const viewExistsResponse = await fetch(`${hostnameV2}/view-exists/${newViewName}`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    });
 
-    if (viewExistsResponse.status !== 200) {
-      setToast({ show: true, message: "Error checking if view exists", type: "error" });
-      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-      return null;
+    if (!isEditMode || (isEditMode && newViewName !== editViewName)) {
+      const viewExistsResponse = await fetch(`${hostnameV2}/view-exists/${newViewName}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      });
+
+      if (viewExistsResponse.status !== 200) {
+        setToast({ show: true, message: "Error checking if view exists", type: "error" });
+        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+        return null;
+      }
+      const viewExists = await viewExistsResponse.json();
+      if (viewExists["result"]) {
+        setToast({ show: true, message: "View already exists", type: "error" });
+        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+        return null;
+      }
     }
-    const viewExists = await viewExistsResponse.json();
-    if (viewExists["result"]) {
-      setToast({ show: true, message: "View already exists", type: "error" });
-      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
-      return null;
-    }
+
+    const cleanNodes = (nodes || []).map(n => {
+      const { _isRestoring, setUserSelection, setColumnSetting, updateNodeData, handleOk, deleteNode, handleColumnSetting, setShowQueryEditor, setToast, queryType, ...cleanData } = n.data || {};
+      return { ...n, data: cleanData };
+    });
 
     const newPayload = {
       ...finalPayload,
@@ -557,9 +593,34 @@ export function BusinessFooter() {
       created_by: decodedToken?.preferred_username,
       policy_id: policyIds || [],
 
+      extra_info: {
+        queryType: modalState.queryType,
+        view_name: finalPayload.view_name,
+        isMateralizedView: finalPayload.isMateralizedView ?? false,
+        isCaching: finalPayload.isCaching ?? false,
+        ...(finalPayload.complex_query !== undefined && { complex_query: finalPayload.complex_query }),
+        ...(finalPayload.grace_period !== undefined && { grace_period: finalPayload.grace_period }),
+        ...(finalPayload.cache_ttl !== undefined && { cache_ttl: finalPayload.cache_ttl }),
+        edit_flow: {
+          nodes: cleanNodes,
+          edges: edges || [],
+          columnSettings: columnSettings || {},
+          filter_data: finalPayload.filter_data || [],
+          columnsDataType: finalPayload.columnsDataType || [],
+          ...(finalPayload.joins && { joins: finalPayload.joins }),
+          ...(finalPayload.base_join && { base_join: finalPayload.base_join }),
+          ...(finalPayload.base_join_def && { base_join_def: finalPayload.base_join_def }),
+          ...(finalPayload.operation && { operation: finalPayload.operation }),
+          ...(finalPayload.union && { union: finalPayload.union }),
+          ...(finalPayload.union_fields && { union_fields: finalPayload.union_fields }),
+          ...(finalPayload.defs && { defs: finalPayload.defs }),
+        }
+      }
     };
 
-    const response = await fetch(`${hostnameV2}/save-view`, {
+    const endpoint = isEditMode ? `${hostnameV2}/edit-view` : `${hostnameV2}/save-view`;
+
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(newPayload),
@@ -567,11 +628,14 @@ export function BusinessFooter() {
 
     const data = await response.json();
 
-    if (response.status == 200) {
-      setToast({ show: true, message: "View Saved Successfully.", type: "success" });
+    if (response.ok) {
+      setToast({ show: true, message: isEditMode ? "View Edited Successfully." : "View Saved Successfully.", type: "success" });
+      if (isEditMode) {
+        clearEditMode();
+      }
       setTimeout(() => { setToast({ show: false, message: "", type: "" }); navigate("/federation"); }, 3000);
     } else {
-      setToast({ show: true, message: "Error while saving view..", type: "error" });
+      setToast({ show: true, message: isEditMode ? "Error while editing view.." : "Error while saving view..", type: "error" });
       setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
     }
   };
@@ -689,7 +753,7 @@ export function BusinessFooter() {
             onClick={preview === true ? toggleModal : handleClick}
             className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-8 py-1 mr-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
-            {preview ? "Create view" : "Next"}
+            {preview ? (isEditMode ? "Edit view" : "Create view") : "Next"}
           </button>
         </div>
       </div>
@@ -698,7 +762,43 @@ export function BusinessFooter() {
       {isFilterModalOpen && (
         <FilterComponent
           setIsOpen={setIsFilterModalOpen}
-          columns={finalPayload?.columnsDataType || []}
+          columns={(() => {
+            if (finalPayload?.columnsDataType && finalPayload.columnsDataType.length > 0) {
+              return finalPayload.columnsDataType;
+            }
+
+            const cols = [];
+            const seen = new Set();
+
+            [...(viewPayload || []), ...(connectionPayload || [])].forEach(item => {
+              if (Array.isArray(item.Columns) && item.view) {
+                item.Columns.forEach(col => {
+                  const colName = col.column_name || col.column;
+                  const colType = col.data_type || col.datatype || 'varchar';
+                  const fullName = `${item.view}.${colName}`;
+                  if (!seen.has(fullName)) {
+                    seen.add(fullName);
+                    cols.push({ name: fullName, type: colType });
+                  }
+                });
+              }
+            });
+
+            if (cols.length === 0) {
+              Object.entries(columnSettings || {}).forEach(([viewKey, viewCols]) => {
+                if (typeof viewCols !== 'object') return;
+                Object.keys(viewCols).forEach(colName => {
+                  const fullName = (viewKey === 'Union' || viewKey.startsWith('node_'))
+                    ? colName
+                    : `${viewKey}.${colName}`;
+                  if (!cols.some(c => c.name === fullName)) {
+                    cols.push({ name: fullName, type: 'varchar' });
+                  }
+                });
+              });
+            }
+            return cols;
+          })()}
           onApply={fetchPreviewData}
         />
       )}

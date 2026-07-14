@@ -105,14 +105,14 @@ export function BaseNode({ id, data }) {
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [isAllSelected, setIsAllSelected] = useState(false);
   const [apiViews, setApiViews] = useState([]);
-  const [selectedView, setSelectedView] = useState("");
+  const [selectedView, setSelectedView] = useState(data?.selectedView || "");
   const [apiColumns, setApiColumns] = useState([]);
 
   // ── Column search state ───────────────────────────────────────────────────
   const [columnSearchTerm, setColumnSearchTerm] = useState("");
 
   const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
-  const { settingsList, setSettingsList, userSelections, setUserSelections, userCheckedColumns, setUserCheckedColumns } = useStateContext();
+  const { setNodes, settingsList, setSettingsList, userSelections, setUserSelections, userCheckedColumns, setUserCheckedColumns } = useStateContext();
 
   const paramsStr = new URLSearchParams({
     view_type: "Base",
@@ -145,6 +145,13 @@ export function BaseNode({ id, data }) {
   }, [apiViewsRaw]);
 
   useEffect(() => {
+    if (data?._isRestoring) {
+      if (data?.userCheckedColumns) setUserCheckedColumns(data.userCheckedColumns);
+      if (data?.settingsList) setSettingsList(data.settingsList);
+    }
+  }, [data]);
+
+  useEffect(() => {
     if (apiColumnsRaw) {
       setApiColumns(apiColumnsRaw);
     }
@@ -161,8 +168,13 @@ export function BaseNode({ id, data }) {
     setIsAllSelected(false);
     setColumnSearchTerm(""); // reset column search on view change
     setUserSelections((prev) => {
-      const updatedSelections = new Map();
+      const updatedSelections = new Map(prev);
       updatedSelections.set("viewName", selectedViewName);
+      const apiPayload = updatedSelections.get("apiPayload");
+      if (apiPayload && apiPayload.filter_data) {
+        delete apiPayload.filter_data;
+        updatedSelections.set("apiPayload", apiPayload);
+      }
       return updatedSelections;
     });
     setSettingsList([]);
@@ -338,7 +350,16 @@ export function BaseNode({ id, data }) {
           )}
 
           <button
-            onClick={() => data.handleOk({ userCheckedColumns, viewType: "Source", settings: settingsList, userSelections, apiColumns: getFilterModalColumns() })}
+            onClick={() => {
+              setNodes((nds) =>
+                nds.map((n) =>
+                  n.id === id
+                    ? { ...n, data: { ...n.data, selectedView, userCheckedColumns, settingsList } }
+                    : n
+                )
+              );
+              data.handleOk({ userCheckedColumns, viewType: "Source", settings: settingsList, userSelections, apiColumns: getFilterModalColumns(), selectedView });
+            }}
             className="w-full p-3 text-white bg-[rgb(142,119,187)] hover:bg-[rgba(142,119,187,0.8)] rounded-lg text-center font-sans"
           >
             Ok
@@ -360,9 +381,9 @@ export function ConnectionNode({ id, data }) {
   const { showToast } = useToast();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState(null);
-  const [selectedConnection, setSelectedConnection] = useState("");
-  const [selectedSchema, setSelectedSchema] = useState("");
-  const [selectedTable, setSelectedTable] = useState("");
+  const [selectedConnection, setSelectedConnection] = useState(data?.selectedConnection || "");
+  const [selectedSchema, setSelectedSchema] = useState(data?.selectedSchema || "");
+  const [selectedTable, setSelectedTable] = useState(data?.selectedTable || "");
   const [apiConnections, setApiConnections] = useState([]);
   const [apiSchemas, setApiSchemas] = useState([]);
   const [apiTables, setApiTables] = useState([]);
@@ -373,7 +394,7 @@ export function ConnectionNode({ id, data }) {
   // ── Column search state ───────────────────────────────────────────────────
   const [columnSearchTerm, setColumnSearchTerm] = useState("");
 
-  const { settingsList, setSettingsList, userSelections, setUserSelections, userCheckedColumns, setUserCheckedColumns } = useStateContext();
+  const { setNodes, settingsList, setSettingsList, userSelections, setUserSelections, userCheckedColumns, setUserCheckedColumns } = useStateContext();
   const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
 
   const { isFetching: isFetchingPolicies, refetch: refetchPolicyIds } = useFederationPolicyIds();
@@ -401,6 +422,13 @@ export function ConnectionNode({ id, data }) {
   useEffect(() => {
     if (apiConnectionsRaw) setApiConnections(apiConnectionsRaw);
   }, [apiConnectionsRaw]);
+
+  useEffect(() => {
+    if (data?._isRestoring) {
+      if (data?.userCheckedColumns) setUserCheckedColumns(data.userCheckedColumns);
+      if (data?.settingsList) setSettingsList(data.settingsList);
+    }
+  }, [data]);
 
   useEffect(() => {
     if (apiSchemasRaw) setApiSchemas(apiSchemasRaw);
@@ -504,6 +532,11 @@ export function ConnectionNode({ id, data }) {
       updatedSelections.set("connection", event.target.value);
       updatedSelections.delete("schema");
       updatedSelections.delete("table");
+      const apiPayload = updatedSelections.get("apiPayload");
+      if (apiPayload && apiPayload.filter_data) {
+        delete apiPayload.filter_data;
+        updatedSelections.set("apiPayload", apiPayload);
+      }
       return updatedSelections;
     });
   };
@@ -517,6 +550,11 @@ export function ConnectionNode({ id, data }) {
       const updatedSelections = new Map(prev);
       updatedSelections.set("schema", event.target.value);
       updatedSelections.delete("table");
+      const apiPayload = updatedSelections.get("apiPayload");
+      if (apiPayload && apiPayload.filter_data) {
+        delete apiPayload.filter_data;
+        updatedSelections.set("apiPayload", apiPayload);
+      }
       return updatedSelections;
     });
   };
@@ -528,6 +566,11 @@ export function ConnectionNode({ id, data }) {
     setUserSelections((prev) => {
       const updatedSelections = new Map(prev);
       updatedSelections.set("table", event.target.value);
+      const apiPayload = updatedSelections.get("apiPayload");
+      if (apiPayload && apiPayload.filter_data) {
+        delete apiPayload.filter_data;
+        updatedSelections.set("apiPayload", apiPayload);
+      }
       return updatedSelections;
     });
   };
@@ -649,7 +692,16 @@ export function ConnectionNode({ id, data }) {
 
           <button
             type="button"
-            onClick={() => data.handleOk({ userCheckedColumns, viewType: "Connection", settings: settingsList, userSelections, apiColumns: getFilterModalColumns() })}
+            onClick={() => {
+              setNodes((nds) =>
+                nds.map((n) =>
+                  n.id === id
+                    ? { ...n, data: { ...n.data, selectedConnection, selectedSchema, selectedTable, userCheckedColumns, settingsList } }
+                    : n
+                )
+              );
+              data.handleOk({ userCheckedColumns, viewType: "Connection", settings: settingsList, userSelections, apiColumns: getFilterModalColumns(), selectedConnection, selectedSchema, selectedTable });
+            }}
             className="w-full text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-1.5 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] mt-3"
           >
             OK

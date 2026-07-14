@@ -102,25 +102,25 @@ const SearchableSelect = ({ id, openDropdownId, setOpenDropdownId, options, valu
   );
 };
 
-export function ConnectionNode({ id, onSave }) {
+export function ConnectionNode({ id, data, onSave }) {
   const { showToast } = useToast();
   const { token, hostnameV1 } = useAuth();
-  const { handleConnectionPayload, connectionPayload, setColumnSettings, columnSettings, complexCheck, finalPayload, handleFinalPayload, incrementNodeCount, decrementNodeCount } = useStateContext("");
+  const { handleConnectionPayload, connectionPayload, setColumnSettings, columnSettings, complexCheck, finalPayload, handleFinalPayload, incrementNodeCount, decrementNodeCount, setNodes } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [connections, setConnections] = useState([]);
-  const [selectedConnection, setSelectedConnection] = useState("");
+  const [selectedConnection, setSelectedConnection] = useState(data?.selectedConnection || "");
   const [schemas, setSchemas] = useState([]);
-  const [selectedSchema, setSelectedSchema] = useState("");
+  const [selectedSchema, setSelectedSchema] = useState(data?.selectedSchema || "");
   const [tables, setTables] = useState([]);
-  const [selectedTable, setSelectedTable] = useState("");
+  const [selectedTable, setSelectedTable] = useState(data?.selectedTable || "");
   const [columns, setColumns] = useState([]);
   const [allowedColumns, setAllowedColumns] = useState([]);
-  const [selectedColumns, setSelectedColumns] = useState([]);
+  const [selectedColumns, setSelectedColumns] = useState(data?.selectedColumns || []);
   const [selectedColumn, setSelectedColumn] = useState("");
   const [columnData, setColumnData] = useState([]);
-  const [previousColId, setPreviousColId] = useState("");
-  const [colId, setColId] = useState("");
+    const [previousColId, setPreviousColId] = useState("");
+    const [colId, setColId] = useState(data?._isRestoring && data?.selectedConnection && data?.selectedSchema && data?.selectedTable ? `${data.selectedConnection}_${data.selectedSchema}_${data.selectedTable}` : "");
   const [selectedColumnsOrder, setSelectedColumnsOrder] = useState([]);
   const hasIncrementedRef = useRef(false);
 
@@ -144,6 +144,31 @@ export function ConnectionNode({ id, onSave }) {
       hasIncrementedRef.current = true;
     }
   }, []);
+
+  const hasRestoredPayloadRef = useRef(false);
+  useEffect(() => {
+    if (data?._isRestoring && !hasRestoredPayloadRef.current && allowedColumns?.length > 0 && selectedConnection && selectedSchema && selectedTable) {
+      const filteredColumns = allowedColumns
+        .filter((col) => columns.some((c) => c?.column?.toLowerCase() === col?.column_name?.toLowerCase()))
+        .map((col) => ({
+          column: col.column_name,
+          datatype: columns.find((c) => c?.column?.toLowerCase() === col?.column_name?.toLowerCase())?.datatype || "unknown",
+        }));
+
+      const newPayload = {
+        id, type: "Connection", view: colId, selectedConnection, selectedSchema, selectedTable,
+        selectedColumns, def: `Select * from ${selectedConnection}.${selectedSchema}.${selectedTable}`,
+        Columns: filteredColumns,
+      };
+
+      handleConnectionPayload((prev) => {
+        if (prev && prev.some((p) => p.id === id)) return prev;
+        return [...(prev || []), newPayload];
+      });
+
+      hasRestoredPayloadRef.current = true;
+    }
+  }, [data?._isRestoring, allowedColumns, columns, colId, selectedConnection, selectedSchema, selectedTable, selectedColumns]);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { isFetching: isFetchingPolicies, refetch: refetchPolicyIds } = useFederationPolicyIds();
@@ -199,6 +224,11 @@ export function ConnectionNode({ id, onSave }) {
     setColumnData([]);
     setColId("");
     setColumnSearchTerm("");
+    handleFinalPayload((prevData) => {
+      const newData = { ...prevData };
+      if (newData.filter_data) delete newData.filter_data;
+      return newData;
+    });
   };
 
   const handleSchemaChange = (event) => {
@@ -211,6 +241,11 @@ export function ConnectionNode({ id, onSave }) {
     setColumnData([]);
     setColId("");
     setColumnSearchTerm("");
+    handleFinalPayload((prevData) => {
+      const newData = { ...prevData };
+      if (newData.filter_data) delete newData.filter_data;
+      return newData;
+    });
   };
 
   const handleTableChange = (event) => {
@@ -223,6 +258,11 @@ export function ConnectionNode({ id, onSave }) {
     setSelectedColumns([]);
     setColumnData([]);
     setColumnSearchTerm("");
+    handleFinalPayload((prevData) => {
+      const newData = { ...prevData };
+      if (newData.filter_data) delete newData.filter_data;
+      return newData;
+    });
   };
 
   const handleColumnChange = (column) => {
@@ -367,6 +407,24 @@ export function ConnectionNode({ id, onSave }) {
     else updatedPayloads.push(newPayload);
 
     handleConnectionPayload(updatedPayloads);
+
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id === id
+          ? {
+              ...n,
+              data: {
+                ...n.data,
+                selectedConnection,
+                selectedSchema,
+                selectedTable,
+                selectedColumns,
+              },
+            }
+          : n
+      )
+    );
+
     onSave?.(newPayload);
     showToast('Data Saved Successfully', 'success');
     setPreviousColId(colId);

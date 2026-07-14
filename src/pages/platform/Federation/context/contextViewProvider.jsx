@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { useNodesState, useEdgesState } from "reactflow";
 
 const StateContext = createContext();
 
@@ -37,19 +38,116 @@ export const ContextViewProvider = ({ children }) => {
     consolidation: 0
   });
 
-  const [finalPayload, setFinalPayload] = useState({});
+  const [isEditMode, setIsEditMode] = useState(
+    () => sessionStorage.getItem("editMode") === "true"
+  );
+  const [editViewName, setEditViewName] = useState(
+    () => sessionStorage.getItem("editViewName") || ""
+  );
+
+  const clearEditMode = () => {
+    setIsEditMode(false);
+    setEditViewName("");
+    sessionStorage.removeItem("editMode");
+    sessionStorage.removeItem("editViewName");
+    sessionStorage.removeItem("editFlowData");
+    sessionStorage.removeItem("editOriginalPayload");
+  };
+
+  const [finalPayload, setFinalPayload] = useState(() => {
+    const editMode = sessionStorage.getItem("editMode");
+    const editOriginalPayload = sessionStorage.getItem("editOriginalPayload");
+    if (editMode === "true" && editOriginalPayload) {
+      try {
+        const payload = JSON.parse(editOriginalPayload);
+        const editFlow = payload?.extra_info?.edit_flow || {};
+        const extraInfo = payload?.extra_info || {};
+        if (editFlow.filter_data) {
+          payload.filter_data = editFlow.filter_data;
+        }
+        if (editFlow.joins) payload.joins = editFlow.joins;
+        if (editFlow.base_join) payload.base_join = editFlow.base_join;
+        if (editFlow.base_join_def) payload.base_join_def = editFlow.base_join_def;
+        if (editFlow.operation) payload.operation = editFlow.operation;
+        if (editFlow.union) payload.union = editFlow.union;
+        if (editFlow.union_fields) payload.union_fields = editFlow.union_fields;
+        if (editFlow.defs) payload.defs = editFlow.defs;
+        const viewName = sessionStorage.getItem("editViewName") || extraInfo.view_name || editFlow.view_name;
+        if (viewName) payload.view_name = viewName;
+        if (extraInfo.isMateralizedView !== undefined) payload.isMateralizedView = extraInfo.isMateralizedView;
+        if (extraInfo.isCaching !== undefined) payload.isCaching = extraInfo.isCaching;
+        if (extraInfo.grace_period !== undefined) payload.grace_period = extraInfo.grace_period;
+        if (extraInfo.cache_ttl !== undefined) payload.cache_ttl = extraInfo.cache_ttl;
+        if (extraInfo.complex_query !== undefined) payload.complex_query = extraInfo.complex_query;
+        return payload;
+      } catch (e) {
+        return {};
+      }
+    }
+    return {};
+  });
   const handleFinalPayload = (val) => {
     setFinalPayload(val);
   };
 
 
-  const [columnSettings, setColumnSettings] = useState({});
+  const [columnSettings, setColumnSettings] = useState(() => {
+    const editMode = sessionStorage.getItem("editMode");
+    const editOriginalPayloadStr = sessionStorage.getItem("editOriginalPayload");
+    if (editMode === "true" && editOriginalPayloadStr) {
+      try {
+        const payload = JSON.parse(editOriginalPayloadStr);
+        if (payload?.extra_info?.edit_flow?.columnSettings) {
+          return payload.extra_info.edit_flow.columnSettings;
+        }
+      } catch (e) {
+        return {};
+      }
+    }
+    return {};
+  });
 
   // Source View States
-  const [userSelections, setUserSelections] = useState(new Map());
+  const [userSelections, setUserSelections] = useState(() => {
+    const map = new Map();
+    const editMode = sessionStorage.getItem("editMode");
+    const editOriginalPayloadStr = sessionStorage.getItem("editOriginalPayload");
+    if (editMode === "true" && editOriginalPayloadStr) {
+      try {
+        const payload = JSON.parse(editOriginalPayloadStr);
+        if (payload?.extra_info?.edit_flow?.filter_data) {
+          payload.filter_data = payload.extra_info.edit_flow.filter_data;
+        }
+        
+        const viewType = payload?.extra_info?.viewType || payload.view_type;
+        
+        if (viewType === "Connection") {
+          map.set("viewType", "Connection");
+          map.set("connection", payload?.extra_info?.connection || payload.connection_name);
+          map.set("schema", payload?.extra_info?.schema || payload.schema_name);
+          map.set("table", payload?.extra_info?.table || payload.table_name);
+        } else if (viewType === "Source") {
+          map.set("viewType", "Source");
+          map.set("viewName", payload?.extra_info?.view || payload?.extra_info?.view_name || payload.view || payload.view_name);
+        }
+        
+        const complexQuery = payload?.extra_info?.complex_query || payload.complex_query;
+        if (complexQuery) {
+          map.set("complex_query", complexQuery);
+        }
+        map.set("apiPayload", payload);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return map;
+  });
   const [settingsList, setSettingsList] = useState([]);
   const [userCheckedColumns, setUserCheckedColumns] = useState([]);
   const [consolidationTypeChange, setConsolidationTypeChange] = useState(null);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   useEffect(() => {
   }, [userSelections])
@@ -106,6 +204,11 @@ export const ContextViewProvider = ({ children }) => {
         resetNodeCount,
         consolidationTypeChange,
         setConsolidationTypeChange,
+        nodes, setNodes, onNodesChange,
+        edges, setEdges, onEdgesChange,
+        isEditMode,
+        editViewName,
+        clearEditMode,
       }}
     >
       {children}
