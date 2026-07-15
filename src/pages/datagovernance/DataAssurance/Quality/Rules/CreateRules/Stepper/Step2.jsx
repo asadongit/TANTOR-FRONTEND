@@ -524,11 +524,11 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
     })
       .then(response => response.json())
       .then(data => {
-        const connectionsArr = Array.isArray(data) ? data : [];
-        const formattedOptions = connectionsArr.map(conn => ({
-          value: conn.connection_name,
-          label: conn.connection_name,
-        }));
+        const connectionsArr = Array.isArray(data) ? data : (data.connections ?? []);
+        const formattedOptions = connectionsArr.map(conn => {
+          const connection_name = typeof conn === 'string' ? conn : conn.connection_name;
+          return { value: connection_name, label: connection_name };
+        });
         setConnectionOptions(formattedOptions);
       })
       .catch(error => {
