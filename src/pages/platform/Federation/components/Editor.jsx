@@ -196,6 +196,7 @@ export default function Editor() {
   const [pageSize, setPageSize]       = useState(100);
   const [nextUri, setNextUri]         = useState(null);
   const [hasMore, setHasMore]         = useState(false);
+  const [queryError, setQueryError]   = useState(null);
   
   const [checked, setChecked]         = useState(true); // true = Editor, false = Builder
   const [shownViews, setShownViews]   = useState([]);
@@ -544,6 +545,7 @@ export default function Editor() {
       setViewsDetails(null);
       setLoading(true);
       setNextUri(null);
+      setQueryError(null);
     }
     setShowResults(true);
 
@@ -572,7 +574,8 @@ export default function Editor() {
               }),
             });
           }
-          showToast(errData.detail || "Error in query validation");
+          const sqErrMsg = errData.detail || "Error in query validation";
+          setQueryError(sqErrMsg);
           throw new Error("secure-query failed");
         }
 
@@ -604,8 +607,9 @@ export default function Editor() {
 
       if (!runRes.ok) {
         const text = await runRes.text();
-        try { showToast(JSON.parse(text).detail || "Error in query execution"); }
-        catch { showToast(text || "Error in query execution"); }
+        let errMsg = "Error in query execution";
+        try { errMsg = JSON.parse(text).detail || errMsg; } catch { errMsg = text || errMsg; }
+        setQueryError(errMsg);
         throw new Error("runQuery failed");
       }
 
@@ -638,8 +642,23 @@ export default function Editor() {
              headers: { accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
              body: JSON.stringify({ next_uri: currentNextUri }),
            });
-           if (!pollRes.ok) break;
+           if (!pollRes.ok) {
+             const pollErrText = await pollRes.text();
+             let pollErrMsg = "Error in query execution";
+             try { pollErrMsg = JSON.parse(pollErrText).detail || pollErrMsg; } catch { pollErrMsg = pollErrText || pollErrMsg; }
+             setQueryError(pollErrMsg);
+             setDataBuffer([]);
+             setColumnDefs([]);
+             break;
+           }
            const pollData = await pollRes.json();
+           if (pollData.error) {
+             const pollErrMsg = pollData.error || "Query returned an error";
+             setQueryError(pollErrMsg);
+             setDataBuffer([]);
+             setColumnDefs([]);
+             break;
+           }
            
            if (!currentCols.length && pollData.columns) currentCols = pollData.columns;
            aggregatedRows = aggregatedRows.concat(mapRows(pollData.data, currentCols));
@@ -1082,6 +1101,16 @@ export default function Editor() {
                     {loading ? (
                       <div className="flex items-center justify-center h-full">
                         <CircularProgress sx={{ color: "#8e78b7" }} />
+                      </div>
+                    ) : queryError ? (
+                      <div className="flex flex-col items-center justify-center h-full select-none px-6">
+                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mb-3 opacity-80">
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="12" y1="8" x2="12" y2="12" />
+                          <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        <p className="text-[14px] font-medium text-gray-600 mb-2">Query failed</p>
+                        <p className="text-[12px] text-gray-500 font-mono text-center leading-relaxed max-w-xl break-words">{queryError}</p>
                       </div>
                     ) : data.length > 0 ? (
                       <ResultsTable
