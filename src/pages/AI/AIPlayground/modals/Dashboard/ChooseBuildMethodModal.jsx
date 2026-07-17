@@ -3,9 +3,15 @@ import { X, ArrowRight } from 'lucide-react';
 import { useAIPlayground } from '../../../../../context/AIPlaygroundContext';
 import { tw } from '../../../../../components/themeContext';
 import { toast } from 'react-hot-toast';
+import CustomDropdown from '../../../../../components/CustomDropdown';
 import ModelTrainingIcon from '../../../../../assets/ai/model_training.svg';
 import AccountTreeIcon from '../../../../../assets/ai/account_tree.svg';
 import ArrowRightIcon from '../../../../../assets/ai/arrow_right.svg';
+
+const ENSEMBLE_TYPE_OPTIONS = [
+    { value: 'parallel', label: 'Parallel' },
+    { value: 'series', label: 'Series' },
+];
 
 const headingCls = "font-['Satoshi'] font-medium text-[18px] leading-none tracking-normal";
 const bodyCls = "font-['Satoshi'] font-normal text-[16px] leading-none tracking-normal";
@@ -17,6 +23,8 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
     const [selectedMethod, setSelectedMethod] = useState(null);
     const [workflowNames, setWorkflowNames] = useState(['']);
     const [workflowNameErrors, setWorkflowNameErrors] = useState({});
+    const [ensembleType, setEnsembleType] = useState('');
+    const [ensembleTypeError, setEnsembleTypeError] = useState('');
     const { setMode, datasetState, workflowsState, createWorkflow, setEnsembleMode } = useAIPlayground();
 
     const validateWorkflowName = (name) => {
@@ -50,6 +58,8 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
         setSelectedMethod(null);
         setWorkflowNames(['']);
         setEnsembleCount(2);
+        setEnsembleType('');
+        setEnsembleTypeError('');
     };
 
     const handleClose = () => {
@@ -61,9 +71,23 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
     const handleSelectMethod = (method) => {
         if (isLoading) return;
 
+        if (method === 'ensemble' && !ensembleType) {
+            setEnsembleTypeError('Please select an ensemble type');
+            return;
+        }
+
         const workflowCount = method === 'ensemble' ? ensembleCount : 1;
         setSelectedMethod(method);
         setWorkflowNames(Array.from({ length: workflowCount }, (_, index) => workflowNames[index] || ''));
+    };
+
+    const handleEnsembleTypeChange = (e) => {
+        const val = e.target.value;
+        setEnsembleType(val);
+        setEnsembleTypeError('');
+        if (val === 'series' && ensembleCount > 2) {
+            setEnsembleCount(2);
+        }
     };
 
     const handleWorkflowNameChange = (index, value) => {
@@ -119,7 +143,8 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
                     body: JSON.stringify({
                         ensemble_id: datasetState.ensembleId,
                         no_of_workflows: workflowCount,
-                        workflow_names: preparedWorkflowNames
+                        workflow_names: preparedWorkflowNames,
+                        ...(method === 'ensemble' && { ensemble_type: ensembleType === 'series' ? 2 : 1 })
                     })
                 }
             );
@@ -148,9 +173,9 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
 
             // Set ensemble mode if ensemble is selected
             if (method === 'ensemble') {
-                setEnsembleMode(ensembleCount);
+                setEnsembleMode(ensembleCount, ensembleType);
             } else {
-                setEnsembleMode(1);
+                setEnsembleMode(1, '');
             }
 
             toast.success('Workflow created successfully!', {
@@ -186,12 +211,14 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
         }
     };
 
+    const maxEnsembleCount = ensembleType === 'series' ? 2 : 8;
+
     const decrementCount = () => {
         if (ensembleCount > 2) setEnsembleCount(ensembleCount - 1);
     };
 
     const incrementCount = () => {
-        if (ensembleCount < 8) setEnsembleCount(ensembleCount + 1);
+        if (ensembleCount < maxEnsembleCount) setEnsembleCount(ensembleCount + 1);
     };
 
     const workflowCount = selectedMethod === 'ensemble' ? ensembleCount : 1;
@@ -274,7 +301,7 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
                                     Choose how many models you want to build as part of this ensemble.
                                 </p>
 
-                                <div className="flex items-center gap-3 mt-3">
+                                <div className="flex items-end justify-between gap-3 mt-3">
                                     <div className="inline-flex items-center gap-6 bg-white p-2 rounded-lg">
                                         <button
                                             onClick={(e) => { e.stopPropagation(); decrementCount(); }}
@@ -288,11 +315,23 @@ export const ChooseBuildMethodModal = ({ isOpen, onClose, onProceed }) => {
                                         </div>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); incrementCount(); }}
-                                            disabled={ensembleCount >= 8 || isLoading}
+                                            disabled={ensembleCount >= maxEnsembleCount || isLoading}
                                             className="w-10 h-10 rounded-lg bg-[#FAFAFA] flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                         >
                                             <span className={`${headingCls} text-[#332849]`}>+</span>
                                         </button>
+                                    </div>
+
+                                    <div className="w-32" onClick={(e) => e.stopPropagation()}>
+                                        <CustomDropdown
+                                            value={ensembleType}
+                                            onChange={handleEnsembleTypeChange}
+                                            options={ENSEMBLE_TYPE_OPTIONS}
+                                            placeholder="Select"
+                                            disabled={isLoading}
+                                            error={ensembleTypeError}
+                                            compact
+                                        />
                                     </div>
                                 </div>
                             </div>

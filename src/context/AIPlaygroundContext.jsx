@@ -26,7 +26,8 @@ const defaultDatasetState = {
     entityColumns: [],
     profileReportHtml: '',
     isEnsemble: false,
-    WorkflowCount: 1
+    WorkflowCount: 1,
+    ensembleType: ''
 };
 
 const defaultSchedulerState = {
@@ -250,11 +251,12 @@ export const AIPlaygroundProvider = ({ children }) => {
     };
 
     // Set ensemble mode with workflow count
-    const setEnsembleMode = (ensembleCount = 1) => {
+    const setEnsembleMode = (ensembleCount = 1, ensembleType = '') => {
         setDatasetState(prev => ({
             ...prev,
             isEnsemble: ensembleCount > 1,
-            WorkflowCount: ensembleCount
+            WorkflowCount: ensembleCount,
+            ensembleType
         }));
     };
 
