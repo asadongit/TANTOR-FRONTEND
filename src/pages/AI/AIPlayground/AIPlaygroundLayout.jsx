@@ -19,6 +19,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAIPlayground } from '../../../context/AIPlaygroundContext';
 import { toast } from 'react-hot-toast';
+import { SeriesFilterModal } from './modals/XAI/SeriesFilterModal';
 import AnalyticsIcons from '../../../assets/ai/analytics.svg';
 import AutoAwesomeMosaicIcons from '../../../assets/ai/auto_awesome_mosaic.svg';
 import BidLandscapeIcons from '../../../assets/ai/bid_landscape.svg';
@@ -129,6 +130,8 @@ onUnivariatePreview
     const [showFinishModal, setShowFinishModal] = useState(false);
     const [showDeleteWorkflowModal, setShowDeleteWorkflowModal] = useState(false);
     const [deleteTargetModelIndex, setDeleteTargetModelIndex] = useState(null);
+    const [showSeriesFilterModal, setShowSeriesFilterModal] = useState(false);
+    const isSeriesEnsemble = isEnsemble && datasetState?.ensembleType === 'series';
 
     const cleanupMutation = useMutation({
         mutationFn: async () => {
@@ -883,6 +886,20 @@ if (
                 </div>
             )}
 
+            {/* Series Ensemble Filter Modal */}
+            <SeriesFilterModal
+                isOpen={showSeriesFilterModal}
+                onClose={() => setShowSeriesFilterModal(false)}
+                ensembleId={datasetState?.ensembleId}
+                workflowId={activeWorkflowId}
+                nextWorkflowId={models[activeModelIndex + 1]?.id}
+                isTimeseries={['univariate_timeseries', 'multivariate_timeseries'].includes(modelGenesisConfig?.modelling_type)}
+                onConfirm={() => {
+                    setShowSeriesFilterModal(false);
+                    handleNext();
+                }}
+            />
+
             {/* Add Workflow Modal */}
             {showAddWorkflowModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1180,7 +1197,7 @@ if (
 
                                 {isXAIPage && isEnsemble && activeModelIndex < models.length - 1 && (
                                     <button
-                                        onClick={handleNext}
+                                        onClick={() => (isSeriesEnsemble ? setShowSeriesFilterModal(true) : handleNext())}
                                         disabled={isNextDisabled()}
                                         className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#7d67a6] disabled:hover:bg-[#8e78b7]"
                                     >
@@ -1208,7 +1225,7 @@ if (
 
                                 {isLastStage && isEnsemble && activeModelIndex < models.length - 1 && !isXAIPage && (
                                     <button
-                                        onClick={handleNext}
+                                        onClick={() => (isSeriesEnsemble ? setShowSeriesFilterModal(true) : handleNext())}
                                         disabled={isNextDisabled()}
                                         className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#7d67a6] disabled:hover:bg-[#8e78b7]"
                                     >
