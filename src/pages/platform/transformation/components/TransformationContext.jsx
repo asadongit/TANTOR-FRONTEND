@@ -668,7 +668,11 @@ export function TransformationProvider({ children }) {
               EnableCountLogging: sourceData.enableCountLogging === true,
             };
           } else if (sourceData.sourceType === "federation-views") {   // ADD THIS BRANCH
-            const columnNames = Array.isArray(sourceData.columns)
+            const columnNames = Array.isArray(originalColumns) && originalColumns.length > 0
+              ? originalColumns.map((col) =>
+                  typeof col === "string" ? col : col.name
+                )
+              : Array.isArray(sourceData.columns)
               ? sourceData.columns.map((col) =>
                   typeof col === "string" ? col : col.name
                 )
