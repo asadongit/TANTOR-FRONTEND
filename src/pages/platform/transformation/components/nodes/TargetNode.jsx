@@ -23,8 +23,8 @@ export const TargetNode = ({ id, data }) => {
   const [selectedSchema, setSelectedSchema] = useState("");
   const [selectedTable, setSelectedTable] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [loadType, setLoadType] = useState("FullLoad");
-  const [loadStrategy, setLoadStrategy] = useState("append");
+  const [loadType, setLoadType] = useState(data.loadType || "FullLoad");
+  const [loadStrategy, setLoadStrategy] = useState(data.loadStrategy || "append");
   const [dataFetchStatus, setDataFetchStatus] = useState({
     connections: "idle",
     schemas: "idle",
@@ -65,12 +65,15 @@ export const TargetNode = ({ id, data }) => {
 
   const [enableCountLogging, setEnableCountLogging] = useState(false);
   // Add a ref to track restoration
+  // Add a ref to track restoration
   const hasRestoredEnableCountLogging = useRef(false);
   // Add a ref to track restoration for loadType
   const hasRestoredLoadType = useRef(false);
   // Add state for surrogate population
   const [surPopulation, setSurPopulation] = useState(false);
   const hasRestoredSurPopulation = useRef(false);
+  // Add a ref to track restoration for targetType (database/file) + file fields
+  const hasRestoredTargetType = useRef(false);
 
   const connectionDropdownRef = useRef(null);
   const schemaDropdownRef = useRef(null);
@@ -81,6 +84,23 @@ export const TargetNode = ({ id, data }) => {
     checksumColumns: [],
     changeType: ""
   });
+
+  // Target Type state (Database or File)
+  const [targetType, setTargetType] = useState(data.targetType || "");
+  const [targetTypeDropdownOpen, setTargetTypeDropdownOpen] = useState(false);
+  const targetTypeDropdownRef = useRef(null);
+
+  // File target type states
+  const [fileType, setFileType] = useState(data.fileType || "CSV");
+  const [fileTypeDropdownOpen, setFileTypeDropdownOpen] = useState(false);
+  const fileTypeDropdownRef = useRef(null);
+  const [targetFilePath, setTargetFilePath] = useState(data.targetFilePath || "");
+  const [targetFileName, setTargetFileName] = useState(data.targetFileName || "");
+  const [delimiter, setDelimiter] = useState(data.delimiter || ",");
+  const [header, setHeader] = useState(typeof data.header === "boolean" ? data.header : true);
+
+  // User-defined target columns for file target (since no DB table exists)
+  const [fileColumns, setFileColumns] = useState(data.fileColumns || [{ id: 1, name: "" }]);
 
   const hostnamev1 = window._env_?.VITE_FAST_API;
   const { token, decodedToken, project } = useAuth();
@@ -238,6 +258,19 @@ export const TargetNode = ({ id, data }) => {
     fetchConnections();
   }, [fetchConnections]);
 
+  const addTargetFileColumn = () => {
+    const newId = Math.max(...fileColumns.map(c => c.id), 0) + 1;
+    setFileColumns(prev => [...prev, { id: newId, name: "" }]);
+  };
+  const removeTargetFileColumn = (colId) => {
+    if (fileColumns.length > 1) {
+      setFileColumns(prev => prev.filter(c => c.id !== colId));
+    }
+  };
+  const updateTargetFileColumn = (colId, value) => {
+    setFileColumns(prev => prev.map(c => c.id === colId ? { ...c, name: value } : c));
+  };
+  
   const getNextAlias = useCallback(() => {
     if (!selectedTable) return "";
 
@@ -278,6 +311,13 @@ export const TargetNode = ({ id, data }) => {
     }
   }, [selectedTable, alias, getNextAlias]);
 
+  // Auto-generate alias for file target (since Alias Name field is removed from UI)
+  useEffect(() => {
+    if (targetType === "file" && !alias) {
+      setAlias(targetFileName ? `df_${targetFileName}` : `unnamed_target_${id}`);
+    }
+  }, [targetType, targetFileName, alias, id]);
+
   const getColumnsForTable = (tableName) => {
     const tableObj = tables.find((t) => t.table_name === tableName);
     return tableObj?.column_json || [];
@@ -307,6 +347,14 @@ export const TargetNode = ({ id, data }) => {
         tableDropdownRef.current &&
         !tableDropdownRef.current.contains(event.target)
       ) setTableDropdownOpen(false);
+      if (
+        targetTypeDropdownRef.current &&
+        !targetTypeDropdownRef.current.contains(event.target)
+      ) setTargetTypeDropdownOpen(false);
+      if (
+        fileTypeDropdownRef.current &&
+        !fileTypeDropdownRef.current.contains(event.target)
+      ) setFileTypeDropdownOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -438,6 +486,9 @@ export const TargetNode = ({ id, data }) => {
   };
 
   const getAllTargetColumns = () => {
+    if (targetType === "file") {
+      return fileColumns.filter(c => c.name && c.name.trim() !== "").map(c => c.name);
+    }
     let targetCols = [];
     if (Array.isArray(columns) && columns.length > 0) {
       targetCols = columns.map(col => (typeof col === "string" ? col : col.name || col));
@@ -694,7 +745,9 @@ export const TargetNode = ({ id, data }) => {
       const allAvailableSourceColumns = getAllSourceColumns();
       const sourceColMap = {};
       allAvailableSourceColumns.forEach(col => {
-        if (col) sourceColMap[col.toLowerCase()] = col;
+        if (!col) return;
+        const colName = typeof col === "object" ? col.name : col;
+        if (colName) sourceColMap[colName.toLowerCase()] = col;
       });
       const targetCols = getAllTargetColumns();
       mappingToSend = {};
@@ -710,7 +763,7 @@ export const TargetNode = ({ id, data }) => {
     const allAvailableSourceColumns = getAllSourceColumns();
     const enhancedSourceColumnOptions = allAvailableSourceColumns.map(col => ({
       value: col,
-      label: col
+      label: typeof col === "object" ? col.name : col
     }));
 
     // FIXED: Get all available columns for SCD validation
@@ -1067,6 +1120,24 @@ export const TargetNode = ({ id, data }) => {
   useEffect(() => {
     let hasUpdated = false;
 
+    // Restore Target Type (Database or File) and file-specific fields
+    if (data.targetType && !hasRestoredTargetType.current) {
+      setTargetType(data.targetType);
+      hasRestoredTargetType.current = true;
+      hasUpdated = true;
+
+      if (data.targetType === "file") {
+        setFileType(data.fileType || "CSV");
+        setTargetFilePath(data.targetFilePath || "");
+        setTargetFileName(data.targetFileName || "");
+        setDelimiter(data.delimiter || ",");
+        setHeader(typeof data.header === "boolean" ? data.header : true);
+        if (Array.isArray(data.fileColumns) && data.fileColumns.length > 0) {
+          setFileColumns(data.fileColumns);
+        }
+      }
+    }
+
     if (data.connection && data.connectionId && data.connectionType && !selectedConnection.name) {
       setSelectedConnection({
         name: data.connection,
@@ -1207,7 +1278,14 @@ export const TargetNode = ({ id, data }) => {
     data.selectedSourceId,
     data.enableCountLogging, // Keep this dependency for proper restoration
     data.surPopulation, // Add to dependency array
-    data.scdConfig
+    data.scdConfig,
+    data.targetType, // Restore Database/File selection
+    data.fileType,
+    data.targetFilePath,
+    data.targetFileName,
+    data.delimiter,
+    data.header,
+    data.fileColumns
   ]);
 
   useEffect(() => {
@@ -1363,36 +1441,55 @@ export const TargetNode = ({ id, data }) => {
 
 
 
-    data.onDataChange({
-      connection: selectedConnection.name,
-      connectionId: selectedConnection.id,
-      connectionType: selectedConnection.type,
-      schema: selectedSchema,
-      table: selectedTable,
-      loadType: loadType,
-      loadStrategy: loadStrategy,
-      columns:
-        columns.map(col =>
-          typeof col === "string" ? { name: col, datatype: "" } : { name: col.column_name || col.name, datatype: col.DATA_TYPE || col.datatype || "" }
-        ),
-      alias: alias,
-      columnMapping,
-      targetMapping,
-      selectedSourceId: selectedSourceForMapping,
-      objectType: selectedObjectType,
-      preProcedures: enrichedPreProcedures,
-      postProcedures: enrichedPostProcedures,
-      enableCountLogging: enableCountLogging,
-      surPopulation: surPopulation, // Add surrogate population to data changes
-      // FIXED: Always include validated SCD config in data changes
-      scdConfig: {
-        primaryKeys: Array.isArray(scdConfig.primaryKeys) ? scdConfig.primaryKeys : [],
-        surrogateKey: scdConfig.surrogateKey || "",
-        checksumColumns: Array.isArray(scdConfig.checksumColumns) ? scdConfig.checksumColumns : [],
-        changeType: scdConfig.changeType || ""
-      }
-    });
-  }, [
+    if (targetType === "file") {
+      data.onDataChange({
+        targetType: "file",
+        fileType: fileType,
+        targetFilePath: targetFilePath,
+        targetFileName: targetFileName,
+        delimiter: delimiter,
+        header: header,
+        loadStrategy: loadStrategy,
+        fileColumns: fileColumns,
+        alias: alias,
+        targetMapping,
+        selectedSourceId: selectedSourceForMapping,
+        enableCountLogging: enableCountLogging,
+        preProcedures: enrichedPreProcedures,
+        postProcedures: enrichedPostProcedures,
+      });
+    } else {
+      data.onDataChange({
+        targetType: "database",
+        connection: selectedConnection.name,
+        connectionId: selectedConnection.id,
+        connectionType: selectedConnection.type,
+        schema: selectedSchema,
+        table: selectedTable,
+        loadType: loadType,
+        loadStrategy: loadStrategy,
+        columns:
+          columns.map(col =>
+            typeof col === "string" ? { name: col, datatype: "" } : { name: col.column_name || col.name, datatype: col.DATA_TYPE || col.datatype || "" }
+          ),
+        alias: alias,
+        columnMapping,
+        targetMapping,
+        selectedSourceId: selectedSourceForMapping,
+        objectType: selectedObjectType,
+        preProcedures: enrichedPreProcedures,
+        postProcedures: enrichedPostProcedures,
+        enableCountLogging: enableCountLogging,
+        surPopulation: surPopulation,
+        scdConfig: {
+          primaryKeys: Array.isArray(scdConfig.primaryKeys) ? scdConfig.primaryKeys : [],
+          surrogateKey: scdConfig.surrogateKey || "",
+          checksumColumns: Array.isArray(scdConfig.checksumColumns) ? scdConfig.checksumColumns : [],
+          changeType: scdConfig.changeType || ""
+        }
+      });
+    }
+    }, [
     selectedConnection, selectedSchema, selectedTable, loadType, loadStrategy,
     tables, alias, columnMapping, targetMapping, selectedSourceForMapping,
     selectedObjectType, selectedPreProcedures, selectedPostProcedures, storedParameterMappings,
@@ -1403,7 +1500,7 @@ export const TargetNode = ({ id, data }) => {
     JSON.stringify(scdConfig.primaryKeys),
     scdConfig.surrogateKey,
     JSON.stringify(scdConfig.checksumColumns),
-    scdConfig.changeType
+    scdConfig.changeType, targetType, fileType, targetFilePath, targetFileName, delimiter, header, fileColumns
   ]);
 
   const connectionDropdownClasses = "w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8";
@@ -1427,271 +1524,501 @@ export const TargetNode = ({ id, data }) => {
         <h3 className="text-black font-medium">Target</h3>
       </div>
 
-      <div className="space-y-3">
-        <div>
-
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-black mb-0.5 block">
-              Connection
-            </label>
-            {dataFetchStatus.connections === "loading" && (
-              <div className="flex items-center">
-                <Loader size={10} className="animate-spin text-[#8E77BB] mr-1" />
-                <span className="text-[10px] text-gray-500">Loading...</span>
+      <div>
+        <label className="text-xs font-semibold text-black mb-0.5 block">
+          Target Type
+        </label>
+        <div className="relative" ref={targetTypeDropdownRef}>
+          <button
+            type="button"
+            className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+            onClick={() => setTargetTypeDropdownOpen(v => !v)}
+          >
+            {targetType === "database" ? "Database" : targetType === "file" ? "File" : "Select target type"}
+            <span className="ml-auto pl-2">&#9662;</span>
+          </button>
+          {targetTypeDropdownOpen && (
+            <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1">
+              <div
+                className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${targetType === "database" ? "bg-gray-100" : ""}`}
+                onClick={() => {
+                  setTargetType("database");
+                  setTargetTypeDropdownOpen(false);
+                  setTargetFilePath("");
+                  setTargetFileName("");
+                  setFileColumns([{ id: 1, name: "" }]);
+                }}
+              >
+                Database
               </div>
-            )}
-          </div>
-          <div className="relative" ref={connectionDropdownRef}>
-            <button
-              type="button"
-              className={connectionDropdownClasses}
-              onClick={() => setConnectionDropdownOpen(v => !v)}
-              disabled={loading.connections}
-            >
-              {selectedConnection.name
-                ? `${selectedConnection.name} (${selectedConnection.type})`
-                : dataFetchStatus.connections === "loading"
-                  ? "Loading connections..."
-                  : "Select connection"}
-              <span className="ml-auto pl-2">&#9662;</span>
-            </button>
-            {connectionDropdownOpen && (
-              <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-52 overflow-auto">
-                <input
-                  type="search"
-                  placeholder="Search connections..."
-                  className="w-full p-1 text-[11px] text-black border-b border-gray-200"
-                  value={connectionSearch}
-                  onChange={e => setConnectionSearch(e.target.value)}
-                  autoFocus
-                />
-                {filteredConnections.length === 0 && (
-                  <div className="p-2 text-xs text-gray-500">No connections found</div>
-                )}
-                {filteredConnections.map((connection, idx) => (
-                  <div
-                    key={idx}
-                    className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${selectedConnection.name === connection.connection_name ? "bg-gray-100" : ""}`}
-                    onClick={() => {
-                      setSelectedConnection({
-                        name: connection.connection_name,
-                        id: connection.connection_id,
-                        type: connection.connection_type,
-                      });
-                      setSelectedSchema("");
-                      setSelectedTable("");
-                      setColumns([]);
-                      fetchSchemas(connection.connection_name);
-                      setConnectionDropdownOpen(false);
-                    }}
-                  >
-                    {connection.connection_name} ({connection.connection_type})
-                  </div>
-                ))}
+              <div
+                className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${targetType === "file" ? "bg-gray-100" : ""}`}
+                onClick={() => {
+                  setTargetType("file");
+                  setTargetTypeDropdownOpen(false);
+                  setSelectedConnection({ name: "", id: "", type: "" });
+                  setSelectedSchema("");
+                  setSelectedTable("");
+                  setColumns([]);
+                }}
+              >
+                File
               </div>
-            )}
-            {loading.connections && (
-              <div className="absolute right-2 top-2">
-                <Loader size={12} className="animate-spin text-gray-400" />
-              </div>
-            )}
-          </div>
-          {dataFetchStatus.connections === "error" && (
-            <p className="text-[10px] text-red-500 mt-1">
-              Failed to load connections
-            </p>
+            </div>
           )}
-          {dataFetchStatus.connections === "success" &&
-            connections.length === 0 && (
-              <p className="text-[10px] text-amber-500 mt-1">
-                No connections found
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {targetType === "database" && (
+          <>
+          <div>
+
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-black mb-0.5 block">
+                Connection
+              </label>
+              {dataFetchStatus.connections === "loading" && (
+                <div className="flex items-center">
+                  <Loader size={10} className="animate-spin text-[#8E77BB] mr-1" />
+                  <span className="text-[10px] text-gray-500">Loading...</span>
+                </div>
+              )}
+            </div>
+            <div className="relative" ref={connectionDropdownRef}>
+              <button
+                type="button"
+                className={connectionDropdownClasses}
+                onClick={() => setConnectionDropdownOpen(v => !v)}
+                disabled={loading.connections}
+              >
+                {selectedConnection.name
+                  ? `${selectedConnection.name} (${selectedConnection.type})`
+                  : dataFetchStatus.connections === "loading"
+                    ? "Loading connections..."
+                    : "Select connection"}
+                <span className="ml-auto pl-2">&#9662;</span>
+              </button>
+              {connectionDropdownOpen && (
+                <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-52 overflow-auto">
+                  <input
+                    type="search"
+                    placeholder="Search connections..."
+                    className="w-full p-1 text-[11px] text-black border-b border-gray-200"
+                    value={connectionSearch}
+                    onChange={e => setConnectionSearch(e.target.value)}
+                    autoFocus
+                  />
+                  {filteredConnections.length === 0 && (
+                    <div className="p-2 text-xs text-gray-500">No connections found</div>
+                  )}
+                  {filteredConnections.map((connection, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${selectedConnection.name === connection.connection_name ? "bg-gray-100" : ""}`}
+                      onClick={() => {
+                        setSelectedConnection({
+                          name: connection.connection_name,
+                          id: connection.connection_id,
+                          type: connection.connection_type,
+                        });
+                        setSelectedSchema("");
+                        setSelectedTable("");
+                        setColumns([]);
+                        fetchSchemas(connection.connection_name);
+                        setConnectionDropdownOpen(false);
+                      }}
+                    >
+                      {connection.connection_name} ({connection.connection_type})
+                    </div>
+                  ))}
+                </div>
+              )}
+              {loading.connections && (
+                <div className="absolute right-2 top-2">
+                  <Loader size={12} className="animate-spin text-gray-400" />
+                </div>
+              )}
+            </div>
+            {dataFetchStatus.connections === "error" && (
+              <p className="text-[10px] text-red-500 mt-1">
+                Failed to load connections
               </p>
             )}
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-black mb-0.5 block">
-              Schema
-            </label>
-            {dataFetchStatus.schemas === "loading" && (
-              <div className="flex items-center">
-                <Loader size={10} className="animate-spin text-[#8E77BB] mr-1" />
-                <span className="text-[10px] text-gray-500">Loading...</span>
-              </div>
-            )}
+            {dataFetchStatus.connections === "success" &&
+              connections.length === 0 && (
+                <p className="text-[10px] text-amber-500 mt-1">
+                  No connections found
+                </p>
+              )}
           </div>
-          <div className="relative" ref={schemaDropdownRef}>
-            <button
-              type="button"
-              className={schemaDropdownClasses}
-              onClick={() => setSchemaDropdownOpen(v => !v)}
-              disabled={!selectedConnection.name || loading.schemas}
-            >
-              {selectedSchema
-                ? selectedSchema
-                : !selectedConnection.name
-                  ? "Select connection first"
-                  : dataFetchStatus.schemas === "loading"
-                    ? "Loading schemas..."
-                    : "Select schema"}
-              <span className="ml-auto pl-2">&#9662;</span>
-            </button>
-            {schemaDropdownOpen && (
-              <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-52 overflow-auto">
-                <input
-                  type="search"
-                  placeholder="Search schemas..."
-                  className="w-full p-1 text-[11px] text-black border-b border-gray-200"
-                  value={schemaSearch}
-                  onChange={e => setSchemaSearch(e.target.value)}
-                  autoFocus
-                />
-                {filteredSchemas.length === 0 && (
-                  <div className="p-2 text-xs text-gray-500">No schemas found</div>
-                )}
-                {filteredSchemas.map((schema, idx) => (
-                  <div
-                    key={idx}
-                    className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${selectedSchema === schema.table_schema ? "bg-gray-100" : ""}`}
-                    onClick={() => {
-                      setSelectedSchema(schema.table_schema);
-                      setSelectedTable("");
-                      setColumns([]);
-                      fetchTablesAndColumns(selectedConnection.name, schema.table_schema);
-                      setSchemaDropdownOpen(false);
-                    }}
-                  >
-                    {schema.table_schema}
-                  </div>
-                ))}
-              </div>
-            )}
-            {loading.schemas && (
-              <div className="absolute right-2 top-2">
-                <Loader size={12} className="animate-spin text-gray-400" />
-              </div>
-            )}
-          </div>
-          {dataFetchStatus.schemas === "error" && (
-            <p className="text-[10px] text-red-500 mt-1">
-              Failed to load schemas
-            </p>
-          )}
-          {dataFetchStatus.schemas === "success" && schemas.length === 0 && (
-            <p className="text-[10px] text-amber-500 mt-1">
-              No schemas found
-            </p>
-          )}
-        </div>
 
-        {selectedSchema && (
-          <>
-            {/* Object type buttons */}
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className={`flex-1 p-1.5 text-[11px] rounded-sm border text-center focus:outline-none focus:ring-1 focus:ring-gray-400 ${selectedObjectType === "tables"
-                  ? "bg-[#8E77BB] text-white border-[#8E77BB]"
-                  : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
-                  }`}
-                onClick={() => handleObjectTypeChange("tables")}
-              >
-                Tables
-              </button>
-              <button
-                type="button"
-                className={`flex-1 p-1.5 text-[11px] rounded-sm border text-center focus:outline-none focus:ring-1 focus:ring-gray-400 ${selectedObjectType === "procedures"
-                  ? "bg-[#8E77BB] text-white border-[#8E77BB]"
-                  : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
-                  }`}
-                onClick={() => handleObjectTypeChange("procedures")}
-              >
-                Procedures
-              </button>
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-black mb-0.5 block">
+                Schema
+              </label>
+              {dataFetchStatus.schemas === "loading" && (
+                <div className="flex items-center">
+                  <Loader size={10} className="animate-spin text-[#8E77BB] mr-1" />
+                  <span className="text-[10px] text-gray-500">Loading...</span>
+                </div>
+              )}
             </div>
+            <div className="relative" ref={schemaDropdownRef}>
+              <button
+                type="button"
+                className={schemaDropdownClasses}
+                onClick={() => setSchemaDropdownOpen(v => !v)}
+                disabled={!selectedConnection.name || loading.schemas}
+              >
+                {selectedSchema
+                  ? selectedSchema
+                  : !selectedConnection.name
+                    ? "Select connection first"
+                    : dataFetchStatus.schemas === "loading"
+                      ? "Loading schemas..."
+                      : "Select schema"}
+                <span className="ml-auto pl-2">&#9662;</span>
+              </button>
+              {schemaDropdownOpen && (
+                <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-52 overflow-auto">
+                  <input
+                    type="search"
+                    placeholder="Search schemas..."
+                    className="w-full p-1 text-[11px] text-black border-b border-gray-200"
+                    value={schemaSearch}
+                    onChange={e => setSchemaSearch(e.target.value)}
+                    autoFocus
+                  />
+                  {filteredSchemas.length === 0 && (
+                    <div className="p-2 text-xs text-gray-500">No schemas found</div>
+                  )}
+                  {filteredSchemas.map((schema, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${selectedSchema === schema.table_schema ? "bg-gray-100" : ""}`}
+                      onClick={() => {
+                        setSelectedSchema(schema.table_schema);
+                        setSelectedTable("");
+                        setColumns([]);
+                        fetchTablesAndColumns(selectedConnection.name, schema.table_schema);
+                        setSchemaDropdownOpen(false);
+                      }}
+                    >
+                      {schema.table_schema}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {loading.schemas && (
+                <div className="absolute right-2 top-2">
+                  <Loader size={12} className="animate-spin text-gray-400" />
+                </div>
+              )}
+            </div>
+            {dataFetchStatus.schemas === "error" && (
+              <p className="text-[10px] text-red-500 mt-1">
+                Failed to load schemas
+              </p>
+            )}
+            {dataFetchStatus.schemas === "success" && schemas.length === 0 && (
+              <p className="text-[10px] text-amber-500 mt-1">
+                No schemas found
+              </p>
+            )}
+          </div>
 
-            {selectedObjectType === "tables" && (
-              <>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-black mb-0.5 block">
-                      Table
-                    </label>
-                    {dataFetchStatus.tables === "loading" && (
-                      <div className="flex items-center">
-                        <Loader size={10} className="animate-spin text-[#8E77BB] mr-1" />
-                        <span className="text-[10px] text-gray-500">Loading...</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-1.5" ref={tableDropdownRef}>
-                    <div className="relative">
-                      <button
-                        type="button"
-                        className={tableDropdownClasses}
-                        onClick={() => setTableDropdownOpen(v => !v)}
-                        disabled={loading.tables}
-                      >
-                        {selectedTable
-                          ? selectedTable
-                          : dataFetchStatus.tables === "loading"
-                            ? "Loading tables..."
-                            : "Select table"}
-                        <span className="ml-auto pl-2">&#9662;</span>
-                      </button>
-                      {tableDropdownOpen && (
-                        <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-52 overflow-auto">
-                          <input
-                            type="search"
-                            placeholder="Search tables..."
-                            className="w-full p-1 text-[11px] text-black border-b border-gray-200"
-                            value={tableSearch}
-                            onChange={e => setTableSearch(e.target.value)}
-                            autoFocus
-                          />
-                          {filteredTables.length === 0 && (
-                            <div className="p-2 text-xs text-gray-500">No tables found</div>
-                          )}
-                          {filteredTables.map((table, idx) => (
-                            <div
-                              key={idx}
-                              className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${selectedTable === table.table_name ? "bg-gray-100" : ""}`}
-                              onClick={async () => {
-                                setSelectedTable(table.table_name);
-                                setTableDropdownOpen(false);
-                                const cols = await fetchColumns(
-                                  selectedConnection.name,
-                                  selectedSchema,
-                                  table.table_name
-                                );
-                                setColumns(cols.map(col => col.column_name));
-                              }}
-                            >
-                              {table.table_name}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {loading.tables && (
-                        <div className="absolute right-2 top-2">
-                          <Loader size={12} className="animate-spin text-gray-400" />
+          {selectedSchema && (
+            <>
+              {/* Object type buttons */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className={`flex-1 p-1.5 text-[11px] rounded-sm border text-center focus:outline-none focus:ring-1 focus:ring-gray-400 ${selectedObjectType === "tables"
+                    ? "bg-[#8E77BB] text-white border-[#8E77BB]"
+                    : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
+                    }`}
+                  onClick={() => handleObjectTypeChange("tables")}
+                >
+                  Tables
+                </button>
+                <button
+                  type="button"
+                  className={`flex-1 p-1.5 text-[11px] rounded-sm border text-center focus:outline-none focus:ring-1 focus:ring-gray-400 ${selectedObjectType === "procedures"
+                    ? "bg-[#8E77BB] text-white border-[#8E77BB]"
+                    : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
+                    }`}
+                  onClick={() => handleObjectTypeChange("procedures")}
+                >
+                  Procedures
+                </button>
+              </div>
+
+              {selectedObjectType === "tables" && (
+                <>
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-black mb-0.5 block">
+                        Table
+                      </label>
+                      {dataFetchStatus.tables === "loading" && (
+                        <div className="flex items-center">
+                          <Loader size={10} className="animate-spin text-[#8E77BB] mr-1" />
+                          <span className="text-[10px] text-gray-500">Loading...</span>
                         </div>
                       )}
                     </div>
+                    <div className="space-y-1.5" ref={tableDropdownRef}>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          className={tableDropdownClasses}
+                          onClick={() => setTableDropdownOpen(v => !v)}
+                          disabled={loading.tables}
+                        >
+                          {selectedTable
+                            ? selectedTable
+                            : dataFetchStatus.tables === "loading"
+                              ? "Loading tables..."
+                              : "Select table"}
+                          <span className="ml-auto pl-2">&#9662;</span>
+                        </button>
+                        {tableDropdownOpen && (
+                          <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-52 overflow-auto">
+                            <input
+                              type="search"
+                              placeholder="Search tables..."
+                              className="w-full p-1 text-[11px] text-black border-b border-gray-200"
+                              value={tableSearch}
+                              onChange={e => setTableSearch(e.target.value)}
+                              autoFocus
+                            />
+                            {filteredTables.length === 0 && (
+                              <div className="p-2 text-xs text-gray-500">No tables found</div>
+                            )}
+                            {filteredTables.map((table, idx) => (
+                              <div
+                                key={idx}
+                                className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${selectedTable === table.table_name ? "bg-gray-100" : ""}`}
+                                onClick={async () => {
+                                  setSelectedTable(table.table_name);
+                                  setTableDropdownOpen(false);
+                                  const cols = await fetchColumns(
+                                    selectedConnection.name,
+                                    selectedSchema,
+                                    table.table_name
+                                  );
+                                  setColumns(cols.map(col => col.column_name));
+                                }}
+                              >
+                                {table.table_name}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {loading.tables && (
+                          <div className="absolute right-2 top-2">
+                            <Loader size={12} className="animate-spin text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {dataFetchStatus.tables === "error" && (
+                      <p className="text-[10px] text-red-500 mt-1">
+                        Failed to load tables
+                      </p>
+                    )}
+                    {dataFetchStatus.tables === "success" && tables.length === 0 && (
+                      <p className="text-[10px] text-amber-500 mt-1">
+                        No tables found
+                      </p>
+                    )}
                   </div>
-                  {dataFetchStatus.tables === "error" && (
-                    <p className="text-[10px] text-red-500 mt-1">
-                      Failed to load tables
-                    </p>
+                  {selectedTable && (
+                    <div className="mt-2">
+                      <label className="text-xs font-semibold text-black mb-0.5 block">
+                        Alias Name
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
+                        value={alias}
+                        onChange={e => setAlias(e.target.value)}
+                        placeholder="Enter alias name"
+                      />
+                    </div>
                   )}
-                  {dataFetchStatus.tables === "success" && tables.length === 0 && (
-                    <p className="text-[10px] text-amber-500 mt-1">
-                      No tables found
-                    </p>
+                  {selectedTable && (
+                    <>
+                      <div>
+                        <label className="text-xs font-semibold text-black mb-0.5 block">
+                          Load Type
+                        </label>
+                        <div className="relative">
+                          <select
+                            className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+                            value={loadType}
+                            onChange={(e) => setLoadType(e.target.value)}
+                          >
+                            <option value="FullLoad">Full Load</option>
+                            <option value="SCD1">SCD1</option>
+                            <option value="SCD2">SCD2</option>
+
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-black mb-0.5 block">
+                          Load Strategy
+                        </label>
+                        <div className="relative">
+                          <select
+                            className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+                            value={loadStrategy}
+                            onChange={(e) => setLoadStrategy(e.target.value)}
+                          >
+                            <option value="append">Append</option>
+                            <option value="overwrite">Overwrite</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Add Count Logging checkbox after Load Strategy - FIXED */}
+                      <div className="mt-2">
+                        <label className="flex items-center text-xs font-semibold text-black">
+                          <input
+                            type="checkbox"
+                            className="mr-1.5 h-3.5 w-3.5"
+                            checked={enableCountLogging}
+                            onChange={(e) => {
+                              const newValue = e.target.checked;
+                              setEnableCountLogging(newValue);
+
+                              // FIXED: Immediately update the data through onDataChange with the actual node reference
+                              if (data.onDataChange) {
+                                data.onDataChange({ enableCountLogging: newValue });
+                              }
+
+                              // FIXED: Update the actual node data in window.allNodes if available
+                              if (window.allNodes) {
+                                const nodeIndex = window.allNodes.findIndex(n => n.id === id);
+                                if (nodeIndex !== -1) {
+                                  window.allNodes[nodeIndex].data.enableCountLogging = newValue;
+                                }
+                              }
+
+                              // Update context immediately for JSON generation
+                              dispatch({
+                                type: ACTION_TYPES.UPDATE_TARGET,
+                                payload: {
+                                  id: id,
+                                  data: { enableCountLogging: newValue }
+                                }
+                              });
+
+                              // Trigger sidebar update
+                              window.allNodesLastUpdate = Date.now();
+                              if (window.triggerSidebarUpdate) {
+                                window.triggerSidebarUpdate();
+                              }
+                            }}
+                          />
+                          <span>Enable Count Logging</span>
+                        </label>
+                      </div>
+
+                      {/* Add Surrogate Population checkbox for SCD1 */}
+                      {loadType === "SCD1" && (
+                        <div className="mt-2">
+                          <label className="flex items-center text-xs font-semibold text-black">
+                            <input
+                              type="checkbox"
+                              className="mr-1.5 h-3.5 w-3.5"
+                              checked={surPopulation}
+                              onChange={(e) => {
+                                const newValue = e.target.checked;
+                                setSurPopulation(newValue);
+
+                                // Update the data through onDataChange
+                                if (data.onDataChange) {
+                                  data.onDataChange({ surPopulation: newValue });
+                                }
+
+                                // Update the actual node data in window.allNodes if available
+                                if (window.allNodes) {
+                                  const nodeIndex = window.allNodes.findIndex(n => n.id === id);
+                                  if (nodeIndex !== -1) {
+                                    window.allNodes[nodeIndex].data.surPopulation = newValue;
+                                  }
+                                }
+
+                                // Update context immediately for JSON generation
+                                dispatch({
+                                  type: ACTION_TYPES.UPDATE_TARGET,
+                                  payload: {
+                                    id: id,
+                                    data: { surPopulation: newValue }
+                                  }
+                                });
+
+                                // Trigger sidebar update
+                                window.allNodesLastUpdate = Date.now();
+                                if (window.triggerSidebarUpdate) {
+                                  window.triggerSidebarUpdate();
+                                }
+                              }}
+                            />
+                            <span>Surrogate Population</span>
+                          </label>
+                        </div>
+                      )}
+                    </>
                   )}
-                </div>
-                {selectedTable && (
+                  {selectedTable && data.connectedSources > 0 && (
+                    <div className="mt-4">
+
+                      <div className="mb-2">
+                        <label className="text-xs font-semibold text-black mb-1 block">
+                          Select Source for Mapping
+                        </label>
+                        <select
+                          className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
+                          value={selectedSourceForMapping}
+                          onChange={handleSourceSelectionChange}
+                        >
+                          <option value="">Select source</option>
+                          {connectedSourceNodes.map(src => (
+                            <option key={src.id} value={src.id}>
+                              {src.data?.alias || src.data?.connection || src.id}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <button
+                        className={`mt-2 w-full ${mappingConfirmed ? 'bg-green-600' : 'bg-[#8E77BB]'} text-white text-xs font-semibold py-1 px-2 rounded hover:bg-${mappingConfirmed ? 'green-700' : '[#7a6bb0]'} transition-colors`}
+                        onClick={handlePrefillAndOpenMappingDrawer}
+                        disabled={!selectedSourceForMapping}
+                      >
+                        {mappingConfirmed ? 'Target Mapping (Confirmed)' : 'Target Mapping'}
+                      </button>
+                      {mappingConfirmed && (
+                        <div className="mt-1 text-[10px] text-green-600">
+                          Target mapping has been confirmed
+                        </div>
+                      )}
+                      {!selectedSourceForMapping && (
+                        <div className="mt-1 text-[10px] text-red-500">
+                          Please select a source to map columns.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {selectedObjectType === "procedures" && (
+                <div className="space-y-3 mt-2">
                   <div className="mt-2">
                     <label className="text-xs font-semibold text-black mb-0.5 block">
                       Alias Name
@@ -1704,397 +2031,216 @@ export const TargetNode = ({ id, data }) => {
                       placeholder="Enter alias name"
                     />
                   </div>
-                )}
-                {selectedTable && (
-                  <>
-                    <div>
-                      <label className="text-xs font-semibold text-black mb-0.5 block">
-                        Load Type
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-black">
+                        Pre Procedure
                       </label>
-                      <div className="relative">
-                        <select
-                          className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
-                          value={loadType}
-                          onChange={(e) => setLoadType(e.target.value)}
-                        >
-                          <option value="FullLoad">Full Load</option>
-                          <option value="SCD1">SCD1</option>
-                          <option value="SCD2">SCD2</option>
-
-                        </select>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-black mb-0.5 block">
-                        Load Strategy
-                      </label>
-                      <div className="relative">
-                        <select
-                          className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
-                          value={loadStrategy}
-                          onChange={(e) => setLoadStrategy(e.target.value)}
-                        >
-                          <option value="append">Append</option>
-                          <option value="overwrite">Overwrite</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Add Count Logging checkbox after Load Strategy - FIXED */}
-                    <div className="mt-2">
-                      <label className="flex items-center text-xs font-semibold text-black">
-                        <input
-                          type="checkbox"
-                          className="mr-1.5 h-3.5 w-3.5"
-                          checked={enableCountLogging}
-                          onChange={(e) => {
-                            const newValue = e.target.checked;
-                            setEnableCountLogging(newValue);
-
-                            // FIXED: Immediately update the data through onDataChange with the actual node reference
-                            if (data.onDataChange) {
-                              data.onDataChange({ enableCountLogging: newValue });
-                            }
-
-                            // FIXED: Update the actual node data in window.allNodes if available
-                            if (window.allNodes) {
-                              const nodeIndex = window.allNodes.findIndex(n => n.id === id);
-                              if (nodeIndex !== -1) {
-                                window.allNodes[nodeIndex].data.enableCountLogging = newValue;
-                              }
-                            }
-
-                            // Update context immediately for JSON generation
-                            dispatch({
-                              type: ACTION_TYPES.UPDATE_TARGET,
-                              payload: {
-                                id: id,
-                                data: { enableCountLogging: newValue }
-                              }
-                            });
-
-                            // Trigger sidebar update
-                            window.allNodesLastUpdate = Date.now();
-                            if (window.triggerSidebarUpdate) {
-                              window.triggerSidebarUpdate();
-                            }
-                          }}
-                        />
-                        <span>Enable Count Logging</span>
-                      </label>
-                    </div>
-
-                    {/* Add Surrogate Population checkbox for SCD1 */}
-                    {loadType === "SCD1" && (
-                      <div className="mt-2">
-                        <label className="flex items-center text-xs font-semibold text-black">
-                          <input
-                            type="checkbox"
-                            className="mr-1.5 h-3.5 w-3.5"
-                            checked={surPopulation}
-                            onChange={(e) => {
-                              const newValue = e.target.checked;
-                              setSurPopulation(newValue);
-
-                              // Update the data through onDataChange
-                              if (data.onDataChange) {
-                                data.onDataChange({ surPopulation: newValue });
-                              }
-
-                              // Update the actual node data in window.allNodes if available
-                              if (window.allNodes) {
-                                const nodeIndex = window.allNodes.findIndex(n => n.id === id);
-                                if (nodeIndex !== -1) {
-                                  window.allNodes[nodeIndex].data.surPopulation = newValue;
-                                }
-                              }
-
-                              // Update context immediately for JSON generation
-                              dispatch({
-                                type: ACTION_TYPES.UPDATE_TARGET,
-                                payload: {
-                                  id: id,
-                                  data: { surPopulation: newValue }
-                                }
-                              });
-
-                              // Trigger sidebar update
-                              window.allNodesLastUpdate = Date.now();
-                              if (window.triggerSidebarUpdate) {
-                                window.triggerSidebarUpdate();
-                              }
-                            }}
-                          />
-                          <span>Surrogate Population</span>
-                        </label>
-                      </div>
-                    )}
-                  </>
-                )}
-                {selectedTable && data.connectedSources > 0 && (
-                  <div className="mt-4">
-
-                    <div className="mb-2">
-                      <label className="text-xs font-semibold text-black mb-1 block">
-                        Select Source for Mapping
-                      </label>
-                      <select
-                        className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
-                        value={selectedSourceForMapping}
-                        onChange={handleSourceSelectionChange}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPreProcedures(prev => [...prev, { id: prev.length + 1, procedure: null }])}
+                        className="flex items-center justify-center w-4 h-4 bg-[#8E77BB] text-white rounded-full hover:bg-[#7A6BA3] focus:outline-none"
+                        title="Add pre procedure"
                       >
-                        <option value="">Select source</option>
-                        {connectedSourceNodes.map(src => (
-                          <option key={src.id} value={src.id}>
-                            {src.data?.alias || src.data?.connection || src.id}
-                          </option>
-                        ))}
-                      </select>
+                        +
+                      </button>
                     </div>
-                    <button
-                      className={`mt-2 w-full ${mappingConfirmed ? 'bg-green-600' : 'bg-[#8E77BB]'} text-white text-xs font-semibold py-1 px-2 rounded hover:bg-${mappingConfirmed ? 'green-700' : '[#7a6bb0]'} transition-colors`}
-                      onClick={handlePrefillAndOpenMappingDrawer}
-                      disabled={!selectedSourceForMapping}
-                    >
-                      {mappingConfirmed ? 'Target Mapping (Confirmed)' : 'Target Mapping'}
-                    </button>
-                    {mappingConfirmed && (
-                      <div className="mt-1 text-[10px] text-green-600">
-                        Target mapping has been confirmed
-                      </div>
-                    )}
-                    {!selectedSourceForMapping && (
-                      <div className="mt-1 text-[10px] text-red-500">
-                        Please select a source to map columns.
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-
-            {selectedObjectType === "procedures" && (
-              <div className="space-y-3 mt-2">
-                <div className="mt-2">
-                  <label className="text-xs font-semibold text-black mb-0.5 block">
-                    Alias Name
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
-                    value={alias}
-                    onChange={e => setAlias(e.target.value)}
-                    placeholder="Enter alias name"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-semibold text-black">
-                      Pre Procedure
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPreProcedures(prev => [...prev, { id: prev.length + 1, procedure: null }])}
-                      className="flex items-center justify-center w-4 h-4 bg-[#8E77BB] text-white rounded-full hover:bg-[#7A6BA3] focus:outline-none"
-                      title="Add pre procedure"
-                    >
-                      +
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    {selectedPreProcedures.map((procedureItem, index) => (
-                      <div key={procedureItem.id} className="flex gap-1 items-center">
-                        <div
-                          className={`relative ${procedureItem.procedure ? 'flex-1' : 'w-full'}`}
-                          style={{ minWidth: 0, maxWidth: '180px', width: '180px' }}
-                        >
-                          <button
-                            type="button"
-                            className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-black text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
-                            style={{
-                              minWidth: 0,
-                              maxWidth: '180px',
-                              width: '180px',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}
-                            onClick={() => setPreProcedureDropdownOpen(prev => ({ ...prev, [procedureItem.id]: !prev[procedureItem.id] }))}
-                            title={procedureItem.procedure ? procedureItem.procedure.procedure_name : 'Select pre procedure'}
+                    <div className="space-y-2">
+                      {selectedPreProcedures.map((procedureItem, index) => (
+                        <div key={procedureItem.id} className="flex gap-1 items-center">
+                          <div
+                            className={`relative ${procedureItem.procedure ? 'flex-1' : 'w-full'}`}
+                            style={{ minWidth: 0, maxWidth: '180px', width: '180px' }}
                           >
-                            <span
-                              className="truncate block"
-                              style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                            <button
+                              type="button"
+                              className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-black text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+                              style={{
+                                minWidth: 0,
+                                maxWidth: '180px',
+                                width: '180px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}
+                              onClick={() => setPreProcedureDropdownOpen(prev => ({ ...prev, [procedureItem.id]: !prev[procedureItem.id] }))}
                               title={procedureItem.procedure ? procedureItem.procedure.procedure_name : 'Select pre procedure'}
                             >
-                              {procedureItem.procedure
-                                ? procedureItem.procedure.procedure_name
-                                : 'Select pre procedure'}
-                            </span>
-                            <span className="ml-auto pl-2">&#9662;</span>
-                          </button>
-                          {preProcedureDropdownOpen[procedureItem.id] && (
-                            <div className="absolute z-50 top-full left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-20 overflow-y-auto">
-                              <input
-                                type="search"
-                                placeholder="Search procedures..."
-                                className="w-full p-1 text-[11px] text-black border-b border-gray-200"
-                                value={preProcedureSearch}
-                                onChange={e => setPreProcedureSearch(e.target.value)}
-                                autoFocus
-                              />
-                              {filteredPreProcedures.length === 0 ? (
-                                <div className="p-2 text-[11px] text-gray-500">No procedures available</div>
-                              ) : (
-                                filteredPreProcedures.map((procedure, idx) => (
-                                  <div
-                                    key={idx}
-                                    className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${procedureItem.procedure && procedureItem.procedure.procedure_name === procedure.procedure_name ? "bg-gray-100" : ""}`}
-                                    onClick={() => {
-                                      setSelectedPreProcedures(prev =>
-                                        prev.map(p => p.id === procedureItem.id ? { ...p, procedure } : p)
-                                      );
-                                      setPreProcedureDropdownOpen(prev => ({ ...prev, [procedureItem.id]: false }));
-                                    }}
-                                  >
-                                    {procedure.procedure_name}
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          )}
-                        </div>
+                              <span
+                                className="truncate block"
+                                style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                title={procedureItem.procedure ? procedureItem.procedure.procedure_name : 'Select pre procedure'}
+                              >
+                                {procedureItem.procedure
+                                  ? procedureItem.procedure.procedure_name
+                                  : 'Select pre procedure'}
+                              </span>
+                              <span className="ml-auto pl-2">&#9662;</span>
+                            </button>
+                            {preProcedureDropdownOpen[procedureItem.id] && (
+                              <div className="absolute z-50 top-full left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-20 overflow-y-auto">
+                                <input
+                                  type="search"
+                                  placeholder="Search procedures..."
+                                  className="w-full p-1 text-[11px] text-black border-b border-gray-200"
+                                  value={preProcedureSearch}
+                                  onChange={e => setPreProcedureSearch(e.target.value)}
+                                  autoFocus
+                                />
+                                {filteredPreProcedures.length === 0 ? (
+                                  <div className="p-2 text-[11px] text-gray-500">No procedures available</div>
+                                ) : (
+                                  filteredPreProcedures.map((procedure, idx) => (
+                                    <div
+                                      key={idx}
+                                      className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${procedureItem.procedure && procedureItem.procedure.procedure_name === procedure.procedure_name ? "bg-gray-100" : ""}`}
+                                      onClick={() => {
+                                        setSelectedPreProcedures(prev =>
+                                          prev.map(p => p.id === procedureItem.id ? { ...p, procedure } : p)
+                                        );
+                                        setPreProcedureDropdownOpen(prev => ({ ...prev, [procedureItem.id]: false }));
+                                      }}
+                                    >
+                                      {procedure.procedure_name}
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            )}
+                          </div>
 
-                        {procedureItem.procedure && (
-                          <button
-                            type="button"
-                            onClick={() => openParametersModal(procedureItem.procedure, "pre", procedureItem.id)}
-                            className="px-2 py-1.5 text-[11px] bg-[#8E77BB] text-white rounded-sm border border-[#8E77BB] hover:bg-[#7A6BA3] focus:outline-none focus:ring-1 focus:ring-gray-400 whitespace-nowrap"
-                            title="View parameters"
-                          >
-                            Parameters
-                          </button>
-                        )}
-                        {selectedPreProcedures.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removePreProcedureDropdown(procedureItem.id)}
-                            className="flex items-center justify-center w-6 h-6 text-red-500 hover:text-red-700 focus:outline-none"
-                            title="Remove pre procedure"
-                          >
-                            <X size={12} />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-semibold text-black">
-                      Post Procedure
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPostProcedures(prev => [...prev, { id: prev.length + 1, procedure: null }])}
-                      className="flex items-center justify-center w-4 h-4 bg-[#8E77BB] text-white rounded-full hover:bg-[#7A6BA3] focus:outline-none"
-                      title="Add post procedure"
-                    >
-                      +
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    {selectedPostProcedures.map((procedureItem, index) => (
-                      <div key={procedureItem.id} className="flex gap-1 items-center">
-                        <div
-                          className={`relative ${procedureItem.procedure ? 'flex-1' : 'w-full'}`}
-                          style={{ minWidth: 0, maxWidth: '180px', width: '180px' }}
-                        >
-                          <button
-                            type="button"
-                            className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-black text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
-                            style={{
-                              minWidth: 0,
-                              maxWidth: '180px',
-                              width: '180px',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}
-                            onClick={() => setPostProcedureDropdownOpen(prev => ({ ...prev, [procedureItem.id]: !prev[procedureItem.id] }))}
-                            title={procedureItem.procedure ? procedureItem.procedure.procedure_name : 'Select post procedure'}
-
-                          >
-                            <span
-                              className="truncate block"
-                              style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                              title={procedureItem.procedure ? procedureItem.procedure.procedure_name : 'Select post procedure'}
+                          {procedureItem.procedure && (
+                            <button
+                              type="button"
+                              onClick={() => openParametersModal(procedureItem.procedure, "pre", procedureItem.id)}
+                              className="px-2 py-1.5 text-[11px] bg-[#8E77BB] text-white rounded-sm border border-[#8E77BB] hover:bg-[#7A6BA3] focus:outline-none focus:ring-1 focus:ring-gray-400 whitespace-nowrap"
+                              title="View parameters"
                             >
-                              {procedureItem.procedure
-                                ? procedureItem.procedure.procedure_name
-                                : 'Select post procedure'}
-                            </span>
-                            <span className="ml-auto pl-2">&#9662;</span>
-                          </button>
-                          {postProcedureDropdownOpen[procedureItem.id] && (
-                            <div className="absolute z-50 top-full left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-20 overflow-y-auto">
-                              <input
-                                type="search"
-                                placeholder="Search procedures..."
-                                className="w-full p-1 text-[11px] text-black border-b border-gray-200"
-                                value={postProcedureSearch}
-                                onChange={e => setPostProcedureSearch(e.target.value)}
-                                autoFocus
-                              />
-                              {filteredPostProcedures.length === 0 ? (
-                                <div className="p-2 text-[11px] text-gray-500">No procedures available</div>
-                              ) : (
-                                filteredPostProcedures.map((procedure, idx) => (
-                                  <div
-                                    key={idx}
-                                    className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${procedureItem.procedure && procedureItem.procedure.procedure_name === procedure.procedure_name ? "bg-gray-100" : ""}`}
-                                    onClick={() => {
-                                      setSelectedPostProcedures(prev =>
-                                        prev.map(p => p.id === procedureItem.id ? { ...p, procedure } : p)
-                                      );
-                                      setPostProcedureDropdownOpen(prev => ({ ...prev, [procedureItem.id]: false }));
-                                    }}
-                                  >
-                                    {procedure.procedure_name}
-                                  </div>
-                                ))
-                              )}
-                            </div>
+                              Parameters
+                            </button>
+                          )}
+                          {selectedPreProcedures.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removePreProcedureDropdown(procedureItem.id)}
+                              className="flex items-center justify-center w-6 h-6 text-red-500 hover:text-red-700 focus:outline-none"
+                              title="Remove pre procedure"
+                            >
+                              <X size={12} />
+                            </button>
                           )}
                         </div>
+                      ))}
+                    </div>
+                  </div>
 
-                        {procedureItem.procedure && (
-                          <button
-                            type="button"
-                            onClick={() => openParametersModal(procedureItem.procedure, "post", procedureItem.id)}
-                            className="px-2 py-1.5 text-[11px] bg-[#8E77BB] text-white rounded-sm border border-[#8E77BB] hover:bg-[#7A6BA3] focus:outline-none focus:ring-1 focus:ring-gray-400 whitespace-nowrap"
-                            title="View parameters"
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-black">
+                        Post Procedure
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPostProcedures(prev => [...prev, { id: prev.length + 1, procedure: null }])}
+                        className="flex items-center justify-center w-4 h-4 bg-[#8E77BB] text-white rounded-full hover:bg-[#7A6BA3] focus:outline-none"
+                        title="Add post procedure"
+                      >
+                        +
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {selectedPostProcedures.map((procedureItem, index) => (
+                        <div key={procedureItem.id} className="flex gap-1 items-center">
+                          <div
+                            className={`relative ${procedureItem.procedure ? 'flex-1' : 'w-full'}`}
+                            style={{ minWidth: 0, maxWidth: '180px', width: '180px' }}
                           >
-                            Parameters
-                          </button>
-                        )}
-                        {selectedPostProcedures.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removePostProcedureDropdown(procedureItem.id)}
-                            className="flex items-center justify-center w-6 h-6 text-red-500 hover:text-red-700 focus:outline-none"
-                            title="Remove post procedure"
-                          >
-                            <X size={12} />
-                          </button>
-                        )}
-                      </div>
-                    ))}
+                            <button
+                              type="button"
+                              className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-black text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+                              style={{
+                                minWidth: 0,
+                                maxWidth: '180px',
+                                width: '180px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}
+                              onClick={() => setPostProcedureDropdownOpen(prev => ({ ...prev, [procedureItem.id]: !prev[procedureItem.id] }))}
+                              title={procedureItem.procedure ? procedureItem.procedure.procedure_name : 'Select post procedure'}
+
+                            >
+                              <span
+                                className="truncate block"
+                                style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                title={procedureItem.procedure ? procedureItem.procedure.procedure_name : 'Select post procedure'}
+                              >
+                                {procedureItem.procedure
+                                  ? procedureItem.procedure.procedure_name
+                                  : 'Select post procedure'}
+                              </span>
+                              <span className="ml-auto pl-2">&#9662;</span>
+                            </button>
+                            {postProcedureDropdownOpen[procedureItem.id] && (
+                              <div className="absolute z-50 top-full left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-20 overflow-y-auto">
+                                <input
+                                  type="search"
+                                  placeholder="Search procedures..."
+                                  className="w-full p-1 text-[11px] text-black border-b border-gray-200"
+                                  value={postProcedureSearch}
+                                  onChange={e => setPostProcedureSearch(e.target.value)}
+                                  autoFocus
+                                />
+                                {filteredPostProcedures.length === 0 ? (
+                                  <div className="p-2 text-[11px] text-gray-500">No procedures available</div>
+                                ) : (
+                                  filteredPostProcedures.map((procedure, idx) => (
+                                    <div
+                                      key={idx}
+                                      className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${procedureItem.procedure && procedureItem.procedure.procedure_name === procedure.procedure_name ? "bg-gray-100" : ""}`}
+                                      onClick={() => {
+                                        setSelectedPostProcedures(prev =>
+                                          prev.map(p => p.id === procedureItem.id ? { ...p, procedure } : p)
+                                        );
+                                        setPostProcedureDropdownOpen(prev => ({ ...prev, [procedureItem.id]: false }));
+                                      }}
+                                    >
+                                      {procedure.procedure_name}
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {procedureItem.procedure && (
+                            <button
+                              type="button"
+                              onClick={() => openParametersModal(procedureItem.procedure, "post", procedureItem.id)}
+                              className="px-2 py-1.5 text-[11px] bg-[#8E77BB] text-white rounded-sm border border-[#8E77BB] hover:bg-[#7A6BA3] focus:outline-none focus:ring-1 focus:ring-gray-400 whitespace-nowrap"
+                              title="View parameters"
+                            >
+                              Parameters
+                            </button>
+                          )}
+                          {selectedPostProcedures.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removePostProcedureDropdown(procedureItem.id)}
+                              className="flex items-center justify-center w-6 h-6 text-red-500 hover:text-red-700 focus:outline-none"
+                              title="Remove post procedure"
+                            >
+                              <X size={12} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
+            </>
             )}
           </>
         )}
@@ -2192,7 +2338,7 @@ export const TargetNode = ({ id, data }) => {
         )}
       </div>
 
-      {selectedConnection.type && (
+      {targetType === "database" && selectedConnection.type && (
         <div className="mt-3 pt-2 border-t border-gray-200">
           <span className="text-[10px] text-gray-500">
             Connection Type:{" "}
@@ -2200,6 +2346,159 @@ export const TargetNode = ({ id, data }) => {
               {selectedConnection.type}
             </span>
           </span>
+        </div>
+      )}
+
+      {targetType === "file" && (
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-black mb-0.5 block">File Type</label>
+            <div className="relative" ref={fileTypeDropdownRef}>
+              <button
+                type="button"
+                className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+                onClick={() => setFileTypeDropdownOpen(v => !v)}
+              >
+                {fileType}
+                <span className="ml-auto pl-2">&#9662;</span>
+              </button>
+              {fileTypeDropdownOpen && (
+                <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1">
+                  <div
+                    className="p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100"
+                    onClick={() => { setFileType("CSV"); setFileTypeDropdownOpen(false); }}
+                  >
+                    CSV
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-black mb-0.5 block">File Path</label>
+            <input
+              type="text"
+              value={targetFilePath}
+              onChange={(e) => setTargetFilePath(e.target.value)}
+              placeholder="Enter file path"
+              className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-black mb-0.5 block">File Name</label>
+            <input
+              type="text"
+              value={targetFileName}
+              onChange={(e) => setTargetFileName(e.target.value)}
+              placeholder="Enter file name"
+              className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-black">Column Mapping</label>
+              <button
+                type="button"
+                onClick={addTargetFileColumn}
+                className="flex items-center justify-center w-5 h-5 bg-[#8E77BB] text-white rounded-full hover:bg-[#7A6BA3] focus:outline-none"
+                title="Add column"
+              >
+                +
+              </button>
+            </div>
+            <div className="space-y-2 max-h-[132px] overflow-y-auto pr-1">
+              {fileColumns.map(col => (
+                <div key={col.id} className="flex gap-1.5 items-center">
+                  <input
+                    type="text"
+                    value={col.name}
+                    onChange={(e) => updateTargetFileColumn(col.id, e.target.value)}
+                    placeholder="Column name"
+                    className="flex-1 min-w-0 p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                  />
+                  {fileColumns.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeTargetFileColumn(col.id)}
+                      className="flex items-center justify-center w-5 h-5 text-red-500 hover:text-red-700 focus:outline-none flex-shrink-0"
+                      title="Remove column"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-black mb-0.5 block">Delimiter</label>
+            <input
+              type="text"
+              value={delimiter}
+              onChange={(e) => setDelimiter(e.target.value)}
+              maxLength={1}
+              className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+            />
+          </div>
+
+          <label className="flex items-center gap-2 text-[11px] font-semibold text-black cursor-pointer">
+            <input
+              type="checkbox"
+              checked={header}
+              onChange={(e) => setHeader(e.target.checked)}
+              className="accent-[#8E77BB]"
+            />
+            Include Header
+          </label>
+
+          <div>
+            <label className="text-xs font-semibold text-black mb-0.5 block">Load Strategy</label>
+            <select
+              className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+              value={loadStrategy}
+              onChange={(e) => setLoadStrategy(e.target.value)}
+            >
+              <option value="append">Append</option>
+              <option value="overwrite">Overwrite</option>
+            </select>
+          </div>
+
+          {data.connectedSources > 0 && (
+            <div className="mt-4">
+              <div className="mb-2">
+                <label className="text-xs font-semibold text-black mb-1 block">Select Source for Mapping</label>
+                <select
+                  className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
+                  value={selectedSourceForMapping}
+                  onChange={handleSourceSelectionChange}
+                >
+                  <option value="">Select source</option>
+                  {connectedSourceNodes.map(src => (
+                    <option key={src.id} value={src.id}>
+                      {src.data?.alias || src.data?.connection || src.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                className={`mt-2 w-full ${mappingConfirmed ? 'bg-green-600' : 'bg-[#8E77BB]'} text-white text-xs font-semibold py-1 px-2 rounded`}
+                onClick={handlePrefillAndOpenMappingDrawer}
+                disabled={!selectedSourceForMapping}
+              >
+                {mappingConfirmed ? 'Target Mapping (Confirmed)' : 'Target Mapping'}
+              </button>
+            </div>
+          )}
+
+          <div className="mt-3 pt-2 border-t border-gray-200">
+            <span className="text-[10px] text-gray-500">
+              Target Type: <span className="font-semibold text-[#8E77BB]">File ({fileType})</span>
+            </span>
+          </div>
         </div>
       )}
     </div>
