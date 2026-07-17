@@ -2352,7 +2352,7 @@ export const TargetNode = ({ id, data }) => {
       {targetType === "file" && (
         <div className="space-y-3">
           <div>
-            <label className="text-xs font-semibold text-black mb-0.5 block">File Type</label>
+            <label className="text-xs font-semibold text-black mb-0.5 mt-1 block">File Type</label>
             <div className="relative" ref={fileTypeDropdownRef}>
               <button
                 type="button"
