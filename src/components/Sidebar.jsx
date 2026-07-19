@@ -116,7 +116,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar, setIsSidebarCollap
     agentMeshUnreadCount: s.unreadCount ?? 0,
     agentMeshSetShowNotif: s.setShowNotifications,
   })));
-  const location = useLocation();
+
   const isOnAgentMesh = location.pathname.startsWith('/ai/agent-mesh');
 
   // Remove the old localStorage-reading useEffect and currentActiveSection state.
