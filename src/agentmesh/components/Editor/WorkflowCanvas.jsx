@@ -24,6 +24,7 @@ import {
   FiSliders,
   FiCompass,
 } from "react-icons/fi";
+import { VscVariableGroup } from "react-icons/vsc";
 import { motion, AnimatePresence } from "framer-motion";
 import ContextMenu from "./ContextMenu";
 import VariableExplorer from "./VariableExplorer";
@@ -834,8 +835,17 @@ export default function WorkflowCanvas() {
 
       if (e.key === "Delete" || e.key === "Backspace") {
         const currentEdges = storeState.edges;
-        const selectedNodes = currentNodes.filter(n => n.selected);
-        const selectedEdges = currentEdges.filter(e => e.selected);
+        let selectedNodes = currentNodes.filter(n => n.selected);
+        if (selectedNodes.length === 0 && currentSelectedNodeId) {
+          const matchedNode = currentNodes.find(n => n.id === currentSelectedNodeId);
+          if (matchedNode) selectedNodes = [matchedNode];
+        }
+
+        let selectedEdges = currentEdges.filter(e => e.selected);
+        if (selectedEdges.length === 0 && uiState.selectedEdgeId) {
+          const matchedEdge = currentEdges.find(e => e.id === uiState.selectedEdgeId);
+          if (matchedEdge) selectedEdges = [matchedEdge];
+        }
 
         const hasSelectedNodes = selectedNodes.length > 0;
         const hasSelectedEdges = selectedEdges.length > 0;
@@ -1161,7 +1171,7 @@ export default function WorkflowCanvas() {
             }}
             title="Workflow Variables"
           >
-            <FiSliders size={20} />
+            <VscVariableGroup size={20} />
           </button>
 
           <button

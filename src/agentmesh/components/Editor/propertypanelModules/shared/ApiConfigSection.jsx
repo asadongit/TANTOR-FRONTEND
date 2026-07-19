@@ -43,8 +43,8 @@ export const ApiConfigSection = memo(function ApiConfigSection({ data, update, p
 
       <div className="p-4">
         {activeTab === 'endpoint' && (
-          <div className="flex gap-2.5">
-            <div className="w-[120px]">
+          <div className="flex flex-col gap-2.5">
+            <div>
               <Field label="Method">
                 <Select
                   value={method}

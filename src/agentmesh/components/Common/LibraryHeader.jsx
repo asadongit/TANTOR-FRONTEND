@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { FiSearch, FiFilter, FiGrid, FiList } from 'react-icons/fi';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import PageHeader from './PageHeader';
 
 export default function LibraryHeader({
@@ -18,11 +18,17 @@ export default function LibraryHeader({
   nodeTypes = [],
   selectedNodeType = 'All',
   onNodeTypeChange,
+  tags = [],
+  selectedTag = 'All',
+  onTagChange,
+  tagLabel = 'Tag',
   viewMode = 'cards',
   onViewModeChange,
   placeholder = 'Search templates...',
   actions = null,
-  showFilters = true
+  showFilters = true,
+  showViewToggle = true,
+  showSearch = true,
 }) {
   const [searchOpen, setSearchOpen] = useState(!!search);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -75,12 +81,13 @@ export default function LibraryHeader({
     return () => globalThis.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const hasActiveFilters = selectedGroup !== 'All' || selectedCategory !== 'All' || selectedNodeType !== 'All';
+  const hasActiveFilters = selectedGroup !== 'All' || selectedCategory !== 'All' || selectedNodeType !== 'All' || selectedTag !== 'All';
 
   const handleReset = () => {
     if (onGroupChange) onGroupChange('All');
     if (onCategoryChange) onCategoryChange('All');
     if (onNodeTypeChange) onNodeTypeChange('All');
+    if (onTagChange) onTagChange('All');
     setFilterOpen(false);
   };
 
@@ -90,36 +97,38 @@ export default function LibraryHeader({
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         {/* Collapsible Search Bar */}
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', transition: 'width 0.2s', width: (searchOpen || search) ? 320 : 36 }}>
-          {(!searchOpen && !search) ? (
-            <button
-              type="button"
-              onClick={() => setSearchOpen(true)}
-              title={placeholder}
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8
-              }}
-            >
-              <FiSearch size={18} color="#6B7280" />
-            </button>
-          ) : (
-            <div style={{ position: 'relative', width: '100%' }}>
-              <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} size={16} />
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder={placeholder}
-                value={search}
-                onChange={e => onSearchChange(e.target.value)}
-                onBlur={() => { if (!search) setSearchOpen(false); }}
+        {showSearch && (
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', transition: 'width 0.2s', width: (searchOpen || search) ? 320 : 36 }}>
+            {(!searchOpen && !search) ? (
+              <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                title={placeholder}
                 style={{
-                  width: '100%', padding: '8px 12px 8px 36px', border: '1px solid #E5E7EB', borderRadius: 10,
-                  fontSize: 14, outline: 'none', background: 'white', color: '#111827'
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8
                 }}
-              />
-            </div>
-          )}
-        </div>
+              >
+                <FiSearch size={18} color="#6B7280" />
+              </button>
+            ) : (
+              <div style={{ position: 'relative', width: '100%' }}>
+                <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} size={16} />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder={placeholder}
+                  value={search}
+                  onChange={e => onSearchChange(e.target.value)}
+                  onBlur={() => { if (!search) setSearchOpen(false); }}
+                  style={{
+                    width: '100%', padding: '8px 12px 8px 36px', border: '1px solid #E5E7EB', borderRadius: 10,
+                    fontSize: 14, outline: 'none', background: 'white', color: '#111827'
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Filters Popover */}
         {showFilters && (
@@ -143,11 +152,17 @@ export default function LibraryHeader({
 
             <AnimatePresence>
               {filterOpen && (
-                <div style={{
-                  position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 260,
-                  background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
-                  boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', zIndex: 100, padding: 16
-                }}>
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  style={{
+                    position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 260,
+                    background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
+                    boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', zIndex: 100, padding: 16,
+                    maxHeight: '260px', overflowY: 'auto'
+                  }}
+                >
                   {nodeTypes && nodeTypes.length > 0 && (
                     <div style={{ marginBottom: 16 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', marginBottom: 8 }}>By Node Type</div>
@@ -180,6 +195,18 @@ export default function LibraryHeader({
                       {categories.map(c => <option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>)}
                     </select>
                   </div>
+                  {tags && tags.length > 0 && (
+                    <div style={{ marginTop: 16 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>By {tagLabel}</div>
+                      <select
+                        value={selectedTag}
+                        onChange={e => { if (onTagChange) onTagChange(e.target.value); }}
+                        style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 8, outline: 'none', fontSize: 13 }}
+                      >
+                        {tags.map(t => <option key={t} value={t}>{t === 'All' ? `All ${tagLabel}s` : t}</option>)}
+                      </select>
+                    </div>
+                  )}
                   <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end' }}>
                     <button
                       type="button"
@@ -189,7 +216,7 @@ export default function LibraryHeader({
                       Reset
                     </button>
                   </div>
-                </div>
+                </motion.div>
               )}
             </AnimatePresence>
           </div>
@@ -199,34 +226,36 @@ export default function LibraryHeader({
         {actions}
 
         {/* Grid/List View Toggles */}
-        <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: 10, padding: 2 }}>
-          <button
-            type="button"
-            onClick={() => onViewModeChange('cards')}
-            style={{
-              width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: viewMode === 'cards' ? 'white' : 'transparent',
-              border: 'none', borderRadius: 8, cursor: 'pointer',
-              color: viewMode === 'cards' ? '#111827' : '#9CA3AF',
-              boxShadow: viewMode === 'cards' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-            }}
-          >
-            <FiGrid size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() => onViewModeChange('list')}
-            style={{
-              width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: viewMode === 'list' ? 'white' : 'transparent',
-              border: 'none', borderRadius: 8, cursor: 'pointer',
-              color: viewMode === 'list' ? '#111827' : '#9CA3AF',
-              boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-            }}
-          >
-            <FiList size={16} />
-          </button>
-        </div>
+        {showViewToggle && onViewModeChange && (
+          <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: 10, padding: 2 }}>
+            <button
+              type="button"
+              onClick={() => onViewModeChange('cards')}
+              style={{
+                width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: viewMode === 'cards' ? 'white' : 'transparent',
+                border: 'none', borderRadius: 8, cursor: 'pointer',
+                color: viewMode === 'cards' ? '#111827' : '#9CA3AF',
+                boxShadow: viewMode === 'cards' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+              }}
+            >
+              <FiGrid size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => onViewModeChange('list')}
+              style={{
+                width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: viewMode === 'list' ? 'white' : 'transparent',
+                border: 'none', borderRadius: 8, cursor: 'pointer',
+                color: viewMode === 'list' ? '#111827' : '#9CA3AF',
+                boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+              }}
+            >
+              <FiList size={16} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -249,9 +278,15 @@ LibraryHeader.propTypes = {
   })),
   selectedNodeType: PropTypes.string,
   onNodeTypeChange: PropTypes.func,
+  tags: PropTypes.arrayOf(PropTypes.string),
+  selectedTag: PropTypes.string,
+  onTagChange: PropTypes.func,
+  tagLabel: PropTypes.string,
   viewMode: PropTypes.oneOf(['cards', 'list']),
-  onViewModeChange: PropTypes.func.isRequired,
+  onViewModeChange: PropTypes.func,
   placeholder: PropTypes.string,
   actions: PropTypes.node,
-  showFilters: PropTypes.bool
+  showFilters: PropTypes.bool,
+  showViewToggle: PropTypes.bool,
+  showSearch: PropTypes.bool
 };

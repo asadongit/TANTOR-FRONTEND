@@ -247,26 +247,24 @@ const EmailNodeConfig = memo(function EmailNodeConfig({ data, update }) {
             {toError && <div style={{ color: "#EF4444", fontSize: "11px", marginTop: "4px" }}>{toError}</div>}
           </Field>
 
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <Field label="Cc" hint="Comma or newline-separated.">
-              <Textarea
-                value={data.email_cc || ""}
-                onChange={(v) => update({ email_cc: v })}
-                placeholder="cc@example.com"
-                rows={2}
-              />
-              {ccError && <div style={{ color: "#EF4444", fontSize: "11px", marginTop: "4px" }}>{ccError}</div>}
-            </Field>
-            <Field label="Bcc" hint="Comma or newline-separated.">
-              <Textarea
-                value={data.email_bcc || ""}
-                onChange={(v) => update({ email_bcc: v })}
-                placeholder="bcc@example.com"
-                rows={2}
-              />
-              {bccError && <div style={{ color: "#EF4444", fontSize: "11px", marginTop: "4px" }}>{bccError}</div>}
-            </Field>
-          </div>
+          <Field label="Cc" hint="Comma or newline-separated.">
+            <Textarea
+              value={data.email_cc || ""}
+              onChange={(v) => update({ email_cc: v })}
+              placeholder="cc@example.com"
+              rows={2}
+            />
+            {ccError && <div style={{ color: "#EF4444", fontSize: "11px", marginTop: "4px" }}>{ccError}</div>}
+          </Field>
+          <Field label="Bcc" hint="Comma or newline-separated.">
+            <Textarea
+              value={data.email_bcc || ""}
+              onChange={(v) => update({ email_bcc: v })}
+              placeholder="bcc@example.com"
+              rows={2}
+            />
+            {bccError && <div style={{ color: "#EF4444", fontSize: "11px", marginTop: "4px" }}>{bccError}</div>}
+          </Field>
 
       <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider my-3 border-b pb-1">
         Email Content & Customization

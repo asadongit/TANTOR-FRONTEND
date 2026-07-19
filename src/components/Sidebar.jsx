@@ -48,7 +48,7 @@ import AgentMeshIcon from '../assets/ai/agentmesh.svg';
 import CollaboratorIcon from '../assets/ai/collabarator.svg';
 import MarketplaceIcon from '../assets/ai/margetplace.svg';
 import NeoModeIcon from '../assets/ai/neomode.svg';
-import ObservabilityIcon from '../assets/ai/observability.svg';
+// import ObservabilityIcon from '../assets/ai/observability.svg';
 import AccountTreeIcon from '../assets/ai/account_tree.svg';
 import { usePersonaStatuses } from '../hooks/dataGovernance/Users/auth';
 import { useUIStore as useAgentMeshUIStore } from '../agentmesh/store';
@@ -457,7 +457,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar, setIsSidebarCollap
         { name: 'Workflows', agentMeshPage: 'workflows' },
         { name: 'Marketplace', agentMeshPage: 'marketplace' },
         { name: 'Logs', agentMeshPage: 'logs' },
-        { name: 'Observability', agentMeshPage: 'observability' },
+        // { name: 'Observability', agentMeshPage: 'observability' },
         {
           name: 'Admin Panel',
           agentMeshAccordionAdmin: true,
@@ -472,7 +472,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar, setIsSidebarCollap
       ],
     },
     { name: 'Marketplace', icon: MarketplaceIcon, path: `${AI_PREFIX}/marketplace` },
-    { name: 'Observability', icon: ObservabilityIcon, path: `${AI_PREFIX}/observability` },
+    // { name: 'Observability', icon: ObservabilityIcon, path: `${AI_PREFIX}/observability` },
     { type: 'divider' },
     { name: 'Collaboration', icon: CollaboratorIcon, path: `${AI_PREFIX}/collaboration` },
     { name: 'Neo Mode', icon: NeoModeIcon, path: `${AI_PREFIX}/neo-mode` },

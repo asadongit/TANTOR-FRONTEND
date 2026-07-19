@@ -1,9 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  FiFileText, FiClock, FiCheckCircle, FiSearch, FiRefreshCw, FiTag, 
-  FiEyeOff, FiUsers, FiGlobe, FiFilter, FiX, FiCheck, FiTrash2, FiAlertCircle,
-  FiGrid, FiList
+  FiFileText, FiRefreshCw, FiTag, 
+  FiEyeOff, FiUsers, FiGlobe, FiX, FiCheck, FiTrash2
 } from 'react-icons/fi';
 import { ReactFlow, Background, Controls } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -16,7 +15,7 @@ import {
   deleteWorkflowTemplate 
 } from '../../../../api/agentmesh';
 import Pagination from '../../../Common/Pagination';
-import PageHeader from '../../../Common/PageHeader';
+import LibraryHeader from '../../../Common/LibraryHeader';
 
 // Visual preview rendering showing flow structure
 function WorkflowMinimap({ nodes = [], edges = [] }) {
@@ -244,7 +243,7 @@ export default function WorkflowTemplateController() {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
+  // const [searchOpen, setSearchOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedScope, setSelectedScope] = useState('All');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState('All');
@@ -255,9 +254,9 @@ export default function WorkflowTemplateController() {
   const [templateDetails, setTemplateDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
-  const [filterOpen, setFilterOpen] = useState(false);
-  const filterPanelRef = useRef(null);
-  const searchInputRef = useRef(null);
+  // const [filterOpen, setFilterOpen] = useState(false);
+  // const filterPanelRef = useRef(null);
+  // const searchInputRef = useRef(null);
 
   const [categories, setCategories] = useState(['All']);
   const [groups, setGroups] = useState(['All']);
@@ -347,17 +346,7 @@ export default function WorkflowTemplateController() {
     setCurrentPage(1);
   }, [selectedCategory, selectedGroupFilter, selectedScope, debouncedSearch, activeTab]);
 
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (filterPanelRef.current && !filterPanelRef.current.contains(event.target)) {
-        setFilterOpen(false);
-      }
-    }
-    if (filterOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [filterOpen]);
+  // Cleaned up old filter/search handlers (now managed inside LibraryHeader)
 
   const handleUpdateStatus = async (id, status) => {
     setActionInProgress(id);
@@ -423,152 +412,33 @@ export default function WorkflowTemplateController() {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#F8FAFC', height: '100%', overflow: 'hidden', fontFamily: "'Google Sans','Roboto',sans-serif" }}>
       {/* Header */}
-      <div style={{ 
-        padding: '16px 32px', 
-        background: 'white', 
-        borderBottom: '1px solid var(--border-light)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        zIndex: 10
-      }}>
-        <PageHeader 
-          title="Template Approval Queue" 
-          description="Review and manage submissions for shared custom workflow templates." 
-          letterSpacing="-0.5px"
-        />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* Search bar */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', transition: 'all 0.2s', width: (searchOpen || search) ? 260 : 36 }}>
-            {(!searchOpen && !search) && (
-              <button
-                onClick={() => setSearchOpen(true)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8 }}
-              >
-                <FiSearch size={18} color="#6B7280" />
-              </button>
-            )}
-            {(searchOpen || search) && (
-              <div style={{ position: 'relative', width: '100%' }}>
-                <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} size={16} />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search templates..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  onBlur={() => { if (!search) setSearchOpen(false); }}
-                  autoFocus={searchOpen && !search}
-                  style={{
-                    width: '100%', padding: '8px 12px 8px 36px', border: '1px solid #E5E7EB', borderRadius: 10,
-                    fontSize: 14, outline: 'none', background: 'white', color: '#111827', boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-            )}
-          </div>
-
+      <LibraryHeader
+        title="Template Approval Queue"
+        description="Review and manage submissions for shared custom workflow templates."
+        search={search}
+        onSearchChange={setSearch}
+        placeholder="Search templates..."
+        groups={groups}
+        selectedGroup={selectedGroupFilter}
+        onGroupChange={setSelectedGroupFilter}
+        categories={categories}
+        selectedCategory={selectedCategory}
+        onCategoryChange={setSelectedCategory}
+        tags={['All', 'private', 'member', 'public']}
+        selectedTag={selectedScope}
+        onTagChange={setSelectedScope}
+        tagLabel="Scope"
+        viewMode={viewMode === 'card' ? 'cards' : 'list'}
+        onViewModeChange={(mode) => setViewMode(mode === 'cards' ? 'card' : 'list')}
+        actions={
           <button
             onClick={loadTemplates}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--theme-primary-glow)', color: 'var(--theme-primary)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
           >
             <FiRefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
           </button>
-
-          {/* Filters */}
-          <div style={{ position: 'relative' }} ref={filterPanelRef}>
-            <button
-              onClick={() => setFilterOpen(!filterOpen)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
-                background: filterOpen ? '#111827' : 'white', color: filterOpen ? 'white' : '#111827',
-                border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer'
-              }}
-            >
-              <FiFilter size={16} /> Filters
-              {(selectedCategory !== 'All' || selectedGroupFilter !== 'All' || selectedScope !== 'All') && (
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444' }} />
-              )}
-            </button>
-
-            <AnimatePresence>
-              {filterOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                  style={{
-                    position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 260,
-                    background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
-                    boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', zIndex: 100, padding: 16
-                  }}
-                >
-                  <div style={{ marginBottom: 12 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Scope</div>
-                    <select
-                      value={selectedScope}
-                      onChange={(e) => setSelectedScope(e.target.value)}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 6, fontSize: 13, background: 'white' }}
-                    >
-                      <option value="All">All Scopes</option>
-                      <option value="private">Private</option>
-                      <option value="member">Member</option>
-                      <option value="public">Public</option>
-                    </select>
-                  </div>
-
-                  <div style={{ marginBottom: 12 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Group</div>
-                    <select
-                      value={selectedGroupFilter}
-                      onChange={(e) => setSelectedGroupFilter(e.target.value)}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 6, fontSize: 13, background: 'white' }}
-                    >
-                      <option value="All">All Groups</option>
-                      {groups.filter(g => g !== 'All').map(g => <option key={g} value={g}>{g}</option>)}
-                    </select>
-                  </div>
-
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Category</div>
-                    <select
-                      value={selectedCategory}
-                      onChange={(e) => setSelectedCategory(e.target.value)}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 6, fontSize: 13, background: 'white' }}
-                    >
-                      <option value="All">All Categories</option>
-                      {categories.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          <div style={{ display: 'flex', gap: 2, background: 'var(--bg-canvas)', border: '1px solid var(--border)', borderRadius: 10, padding: '4px' }}>
-            <button 
-              onClick={() => setViewMode('card')}
-              style={{
-                background: viewMode === 'card' ? 'var(--theme-primary)' : 'transparent',
-                color: viewMode === 'card' ? 'white' : '#6B7280',
-                border: 'none', borderRadius: 6, padding: '6px 10px', display: 'flex', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s'
-              }}
-              title="Card View"
-            >
-              <FiGrid size={16} />
-            </button>
-            <button 
-              onClick={() => setViewMode('list')}
-              style={{
-                background: viewMode === 'list' ? 'var(--theme-primary)' : 'transparent',
-                color: viewMode === 'list' ? 'white' : '#6B7280',
-                border: 'none', borderRadius: 6, padding: '6px 10px', display: 'flex', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s'
-              }}
-              title="List View"
-            >
-              <FiList size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Tabs */}
       <div style={{ background: 'white', borderBottom: '1px solid var(--border-light)', display: 'flex', gap: 24, padding: '0 32px' }}>

@@ -2,12 +2,12 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWorkflowStore, useUIStore, useRunStore } from '../../../store';
 import { listMarketplaceUsecases, listWorkflowCategories, getWorkflow } from '../../../api/agentmesh';
-import { FiSearch, FiUser, FiMessageSquare, FiInfo, FiTag, FiGrid, FiList, FiFilter, FiX, FiZap, FiBookOpen } from 'react-icons/fi';
+import { FiUser, FiMessageSquare, FiInfo, FiTag, FiX, FiZap, FiBookOpen, FiLoader } from 'react-icons/fi';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import bannerImage from '../../../assets/data/Stack-p-2000.png';
 import Pagination from '../../Common/Pagination';
 import SwaggerUI from 'swagger-ui-react';
-import PageHeader from '../../Common/PageHeader';
+import LibraryHeader from '../../Common/LibraryHeader';
 import 'swagger-ui-react/swagger-ui.css';
 
 const PURPLE_THEME = {
@@ -192,7 +192,7 @@ const generateOpenApiSpec = (workflow) => {
   };
 };
 
-function MarketplaceListRow({ w, onChat, onDetails, isRunning, idx }) {
+function MarketplaceListRow({ w, onChat, onDetails, isRunning, idx, isLaunching }) {
   const theme = PURPLE_THEME;
 
   return (
@@ -305,15 +305,10 @@ function MarketplaceListRow({ w, onChat, onDetails, isRunning, idx }) {
         ))}
         <button
           onClick={() => onChat(w)}
-          style={{
-            height: 32, border: 'none', borderRadius: 8,
-            background: 'var(--theme-primary)', color: 'white', padding: '0 14px', display: 'flex', alignItems: 'center',
-            gap: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.filter = 'brightness(1.1)'}
-          onMouseLeave={(e) => e.currentTarget.style.filter = 'none'}
+          disabled={isLaunching}
+          className="h-8 px-3.5 border-none rounded-lg bg-[var(--theme-primary)] text-white hover:brightness-110 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 text-[11px] font-bold"
         >
-          <FiMessageSquare size={16} /> Launch
+          {isLaunching ? <FiLoader className="animate-spin" size={16} /> : <FiMessageSquare size={16} />} {isLaunching ? 'Launching...' : 'Launch'}
         </button>
         <button
           onClick={() => onDetails(w)}
@@ -333,7 +328,7 @@ function MarketplaceListRow({ w, onChat, onDetails, isRunning, idx }) {
 }
 
 
-function MarketplaceCard({ w, onChat, onDetails, isRunning, idx }) {
+function MarketplaceCard({ w, onChat, onDetails, isRunning, idx, isLaunching }) {
   const theme = PURPLE_THEME;
 
   return (
@@ -476,15 +471,10 @@ function MarketplaceCard({ w, onChat, onDetails, isRunning, idx }) {
           ))}
           <button
             onClick={(e) => { e.stopPropagation(); onChat(w); }}
-            style={{
-              height: 36, padding: '0 16px', borderRadius: 8, border: '1px solid var(--theme-primary-glow)',
-              background: 'var(--theme-primary-glow)', color: 'var(--theme-primary)', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', gap: 6, fontSize: 11, fontWeight: 800, cursor: 'pointer', transition: 'all 0.3s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--theme-primary)'; e.currentTarget.style.color = 'white'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--theme-primary-glow)'; e.currentTarget.style.color = 'var(--theme-primary)'; }}
+            disabled={isLaunching}
+            className="h-9 px-4 rounded-lg border border-[var(--theme-primary-glow)] bg-[var(--theme-primary-glow)] text-[var(--theme-primary)] hover:bg-[var(--theme-primary)] hover:text-white transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 text-[11px] font-extrabold"
           >
-            <FiMessageSquare size={14} /> Launch
+            {isLaunching ? <FiLoader className="animate-spin" size={14} /> : <FiMessageSquare size={14} />} {isLaunching ? 'Launching...' : 'Launch'}
           </button>
         </div>
 
@@ -511,18 +501,19 @@ export default function MarketplacePage() {
   const { workflows, setWorkflows, loadWorkflowIntoEditor } = useWorkflowStore();
   const { setRunOpen } = useUIStore();
   const [loading, setLoading] = useState(false);
+  const [launchingId, setLaunchingId] = useState(null);
   const [viewMode, setViewMode] = useState('cards');
   const [search, setSearch] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [filterOpen, setFilterOpen] = useState(false);
+  // const [searchOpen, setSearchOpen] = useState(false);
+  // const [filterOpen, setFilterOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState('All');
   const [selectedTagFilter, setSelectedTagFilter] = useState('All');
   const [categories, setCategories] = useState(['All']);
   const [groups, setGroups] = useState(['All']);
 
-  const searchInputRef = useRef(null);
-  const filterPanelRef = useRef(null);
+  // const searchInputRef = useRef(null);
+  // const filterPanelRef = useRef(null);
   const containerRef = useRef(null);
   const { scrollY } = useScroll({ container: containerRef });
 
@@ -575,23 +566,7 @@ export default function MarketplacePage() {
     setCurrentPage(1);
   }, [search, selectedCategory, selectedGroupFilter, selectedTagFilter]);
 
-  // Focus input when opening search
-  useEffect(() => {
-    if (searchOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [searchOpen]);
-
-  // Handle clicks outside filter panel
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (filterPanelRef.current && !filterPanelRef.current.contains(event.target)) {
-        setFilterOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  // Cleaned up old filter/search handlers (now managed inside LibraryHeader)
 
   const [swaggerWorkflow, setSwaggerWorkflow] = useState(null);
 
@@ -601,6 +576,7 @@ export default function MarketplacePage() {
       return;
     }
     if (w.launch_url === 'swagger') {
+      setLaunchingId(w.id);
       let fullWorkflow = w;
       if (!w.config) {
         try {
@@ -608,16 +584,19 @@ export default function MarketplacePage() {
         } catch (err) {
           console.error(err);
           alert("Failed to load workflow details: " + err.message);
+          setLaunchingId(null);
           return;
         }
       }
       setSwaggerWorkflow(fullWorkflow);
+      setLaunchingId(null);
       return;
     }
     if (w.launch_url) {
       window.open(w.launch_url, '_blank', 'noopener,noreferrer');
       return;
     }
+    setLaunchingId(w.id);
     const currentWfId = useWorkflowStore.getState().workflowId;
     if (currentWfId !== w.id) {
       useRunStore.getState().reset(); // Reset only if switching agents
@@ -629,11 +608,13 @@ export default function MarketplacePage() {
       } catch (err) {
         console.error(err);
         alert("Failed to load workflow details: " + err.message);
+        setLaunchingId(null);
         return;
       }
     }
     loadWorkflowIntoEditor(fullWorkflow);
     setRunOpen(true);
+    setLaunchingId(null);
   };
 
   const [selectedAgent, setSelectedAgent] = useState(null);
@@ -742,131 +723,24 @@ export default function MarketplacePage() {
           </motion.div>
         )}
       </AnimatePresence>
-      <div style={{ padding: '16px 32px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white' }}>
-        <PageHeader 
-          title="Marketplace" 
-          description="Explore community-built agents, tools, and workflows ready to deploy directly into your workspace." 
-        />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* Search bar collapsible */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', transition: 'width 0.2s', width: (searchOpen || search) ? 320 : 36 }}>
-            {(!searchOpen && !search) && (
-              <button
-                onClick={() => setSearchOpen(true)}
-                title="Search marketplace by name"
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8
-                }}
-              >
-                <FiSearch size={18} color="#6B7280" />
-              </button>
-            )}
-            {searchOpen && (
-              <div style={{ position: 'relative', width: '100%' }}>
-                <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} size={16} />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search Marketplace..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  onBlur={() => { if (!search) setSearchOpen(false); }}
-                  onKeyDown={e => {
-                    if (e.key === 'Escape') { setSearch(''); setSearchOpen(false); }
-                    if (e.key === 'Enter') searchInputRef.current.blur();
-                  }}
-                  style={{
-                    width: '100%', padding: '8px 12px 8px 36px', border: '1px solid #E5E7EB', borderRadius: 10,
-                    fontSize: 14, outline: 'none', background: 'white', color: '#111827'
-                  }}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Filters */}
-          <div style={{ position: 'relative' }} ref={filterPanelRef}>
-            <button
-              onClick={() => setFilterOpen(!filterOpen)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
-                background: filterOpen ? '#111827' : 'white',
-                color: filterOpen ? 'white' : '#111827',
-                border: '1px solid #E5E7EB', borderRadius: 10, fontSize: 13, fontWeight: 600,
-                cursor: 'pointer', transition: 'all 0.2s'
-              }}
-            >
-              <FiFilter size={16} /> Filters
-              {(selectedCategory !== 'All' || selectedGroupFilter !== 'All' || selectedTagFilter !== 'All') && (
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444' }} />
-              )}
-            </button>
-
-            <AnimatePresence>
-              {filterOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                  style={{
-                    position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 260,
-                    background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
-                    boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', zIndex: 100, padding: 16
-                  }}
-                >
-                  <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>By Group</div>
-                    <select
-                      value={selectedGroupFilter}
-                      onChange={(e) => setSelectedGroupFilter(e.target.value)}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 8, outline: 'none', fontSize: 13 }}
-                    >
-                      {groups.map(g => <option key={g} value={g}>{g}</option>)}
-                    </select>
-                  </div>
-
-                  <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>By Category</div>
-                    <select
-                      value={selectedCategory}
-                      onChange={(e) => setSelectedCategory(e.target.value)}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 8, outline: 'none', fontSize: 13 }}
-                    >
-                      {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>By Tag</div>
-                    <select
-                      value={selectedTagFilter}
-                      onChange={(e) => setSelectedTagFilter(e.target.value)}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: 8, outline: 'none', fontSize: 13 }}
-                    >
-                      <option value="All">All</option>
-                      <option value="top 10">Top 10</option>
-                      <option value="trending">Trending</option>
-                      <option value="hot">Hot</option>
-                    </select>
-                  </div>
-
-                  <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end' }}>
-                    <button
-                      onClick={() => { setSelectedCategory('All'); setSelectedGroupFilter('All'); setSelectedTagFilter('All'); }}
-                      style={{ padding: '6px 10px', fontSize: 12, color: '#6B7280', border: 'none', background: 'none', cursor: 'pointer' }}
-                    >
-                      Reset All
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          <div style={{ display: 'flex', gap: 2, background: 'var(--bg-canvas)', border: '1px solid var(--border)', borderRadius: 10, padding: '4px' }}>
-            <button onClick={() => setViewMode('cards')} style={{ background: viewMode === 'cards' ? 'var(--theme-primary)' : 'transparent', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', color: viewMode === 'cards' ? 'white' : '#6B7280' }}><FiGrid size={16} /></button>
-            <button onClick={() => setViewMode('list')} style={{ background: viewMode === 'list' ? 'var(--theme-primary)' : 'transparent', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', color: viewMode === 'list' ? 'white' : '#6B7280' }}><FiList size={16} /></button>
-          </div>
-        </div>
-      </div>
+      <LibraryHeader
+        title="Marketplace"
+        description="Explore community-built agents, tools, and workflows ready to deploy directly into your workspace."
+        search={search}
+        onSearchChange={setSearch}
+        placeholder="Search Marketplace..."
+        groups={groups}
+        selectedGroup={selectedGroupFilter}
+        onGroupChange={setSelectedGroupFilter}
+        categories={categories}
+        selectedCategory={selectedCategory}
+        onCategoryChange={setSelectedCategory}
+        tags={['All', 'top 10', 'trending', 'hot']}
+        selectedTag={selectedTagFilter}
+        onTagChange={setSelectedTagFilter}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
 
       <div
         ref={containerRef}
@@ -981,7 +855,7 @@ export default function MarketplacePage() {
           viewMode === 'cards' ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
               {workflows.map((w, i) => (
-                <MarketplaceCard key={w.id} w={w} idx={i} onChat={handleChat} onDetails={handleDetails} isRunning={false} />
+                <MarketplaceCard key={w.id} w={w} idx={i} onChat={handleChat} onDetails={handleDetails} isRunning={false} isLaunching={launchingId === w.id} />
               ))}
 
 
@@ -989,7 +863,7 @@ export default function MarketplacePage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {workflows.map((w, i) => (
-                <MarketplaceListRow key={w.id} w={w} idx={i} onChat={handleChat} onDetails={handleDetails} isRunning={false} />
+                <MarketplaceListRow key={w.id} w={w} idx={i} onChat={handleChat} onDetails={handleDetails} isRunning={false} isLaunching={launchingId === w.id} />
               ))}
             </div>
           )
